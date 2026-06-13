@@ -1,0 +1,8 @@
+anthropic>=0.40
+google-genai>=0.3
+pyyaml>=6.0
+pydantic>=2.6
+requests>=2.31
+tenacity>=8.2
+pytest>=8.0
+python-json-logger>=2.0

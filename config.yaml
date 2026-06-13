@@ -1,0 +1,62 @@
+operator: gemini_cli             # engine brain: gemini_cli | gemini | claude | mock  (pluggable, Part 1)
+model: ""                        # "" = let the gemini CLI pick its default; or e.g. gemini-2.5-pro
+                                 # gemini_cli uses the local `gemini` CLI on its free OAuth quota
+                                 # (sidesteps the API key whose project has free-tier quota = 0)
+model_fast: ""                   # optional lighter model for query-gen/prescreen ("" = reuse `model`)
+model_version_tag: ""            # filled at runtime for audit
+
+retrieval:
+  provider: gemini_cli           # gemini_cli | gemini_grounding | fixture (tests)
+  queries_per_check: 2
+  results_per_query: 4
+  max_passage_chars: 1500
+  cache: true
+  template_checks: [value_durability, legality]  # skip LLM query-gen on these cheap decisive gates
+  fast_queries: 1                # query count for template_checks (latency saver on the 80%-kill path)
+
+thresholds:
+  confidence_floor: 0.6
+  min_composite_to_pass: 3.2
+
+hard_gates:                      # Part 4 kill-filter; evaluated kill-fast in this order
+  - value_durability: [refuted, unverifiable]
+  - incumbency: [supported]
+  - payer_solvency: [refuted, unverifiable]
+  - distribution: [refuted, unverifiable]
+  - legality: [refuted]
+  - pain_reality: [refuted, unverifiable]
+  - adversarial_decisive: true
+
+weights:
+  pain_acuity: 0.20
+  money_provability: 0.20
+  automatability: 0.20
+  distribution: 0.15
+  defensibility: 0.15
+  build_feasibility: 0.10
+
+generation:
+  candidates_per_signal: 5
+  controller:
+    killrate_window: 50
+    exploration_min: 0.2
+    exploration_max: 0.9
+    lenses: [broaden, narrow, analogical, first_principles, invert, combine_signals, cross_sector]
+    target_qualities: [acute_pain, solvent_motivated_payer, durable_hard_core, real_distribution, clean_legality, high_automatability]
+
+listing:
+  publish_on: pass
+  surfaces: [own_store, syndicate]
+  tiers: [scout, operator, founder_investor]
+  exclusivity: true
+  subscription: true
+  pricing: { driver: composite, premium_axis: automatability }
+
+schedule: { cadence: daily, batch_size: 5 }
+
+spend:
+  daily_cap_usd: 20.0
+  warn_at_usd: 15.0
+
+store:
+  dir: store

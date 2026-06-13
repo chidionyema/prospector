@@ -1,0 +1,26 @@
+{
+  "Haulage HMRC fuel-duty": [
+    {"url": "https://gov.uk/red-diesel-reform-2022", "text": "2022 red-diesel reform removed off-road entitlement for haulage", "published_at": "2022-04-01"}
+  ],
+  "Construction retention": [
+    {"url": "https://insolvency.example.com/construction", "text": "retentions being banned; loss is insolvency-driven", "published_at": "2023-01-01"}
+  ],
+  "AI subscription spend-audit": [
+    {"url": "https://saas-market.example.com", "text": "funded incumbents already ship SaaS-spend management", "published_at": "2024-01-01"}
+  ],
+  "Care-home council fee": [
+    {"url": "https://council-funding.example.com", "text": "councils chronically under-funded; payer can't pay", "published_at": "2024-05-01"}
+  ],
+  "Token/credit resale": [
+    {"url": "https://tos.example.com", "text": "resale/account-sharing violates provider terms", "published_at": "2024-01-01"}
+  ],
+  "Generic AI meal-planner": [
+    {"url": "https://app-store.example.com", "text": "saturated consumer category, no acute pain", "published_at": "2024-01-01"}
+  ],
+  "Unified-API niche bridge": [
+    {"url": "https://api-economy.example.com", "text": "proven pattern; moat = un-shortcuttable integration work", "published_at": "2024-01-01"}
+  ],
+  "Construction smash-and-grab": [
+    {"url": "https://statutory-adjudication.example.com", "text": "solvent payer + statutory adjudication forcing mechanism", "published_at": "2024-01-01"}
+  ]
+}

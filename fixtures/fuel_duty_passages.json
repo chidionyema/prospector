@@ -1,0 +1,9 @@
+{
+  "red diesel": [
+    {"url": "https://www.gov.uk/government/publications/changes-to-rebated-fuels-entitlement-from-1-april-2022", "text": "From 1 April 2022 the UK removed the entitlement to use red diesel (rebated diesel) for most sectors including construction and haulage-adjacent off-road use, as part of red diesel reform announced at Budget 2020. Eligible uses are now sharply restricted.", "published_at": "2022-01-01"},
+    {"url": "https://www.gov.uk/guidance/fuel-duty", "text": "Fuel duty rebates for off-road use were withdrawn for most industries from April 2022; businesses must now use full-duty white diesel.", "published_at": "2022-04-01"}
+  ],
+  "fuel duty rebate haulage": [
+    {"url": "https://www.gov.uk/government/publications/changes-to-rebated-fuels-entitlement-from-1-april-2022", "text": "The 2022 red diesel reform removed off-road rebate entitlement for the affected sectors, eliminating the rebate a PTO fuel-duty recovery service would depend on.", "published_at": "2022-04-01"}
+  ]
+}

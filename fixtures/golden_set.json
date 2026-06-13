@@ -1,0 +1,10 @@
+[
+  {"idea": "Haulage HMRC fuel-duty PTO rebate", "expected": "kill", "gate": "value_durability", "must_surface": "2022 red-diesel reform removed off-road entitlement for haulage"},
+  {"idea": "Construction retention recovery", "expected": "kill", "gate": "value_durability/distribution", "must_surface": "retentions being banned; loss is insolvency-driven"},
+  {"idea": "AI subscription spend-audit bot", "expected": "kill", "gate": "incumbency", "must_surface": "funded incumbents already ship SaaS-spend management"},
+  {"idea": "Care-home council fee arbitrage", "expected": "kill", "gate": "payer_solvency", "must_surface": "councils chronically under-funded; payer can't pay"},
+  {"idea": "Token/credit resale clearinghouse", "expected": "kill", "gate": "legality", "must_surface": "resale/account-sharing violates provider terms"},
+  {"idea": "Generic AI meal-planner app", "expected": "kill", "gate": "incumbency/pain_reality", "must_surface": "saturated consumer category, no acute pain (non-reg test)"},
+  {"idea": "Unified-API niche bridge (open-core)", "expected": "pass", "gate": null, "must_surface": "proven pattern; moat = un-shortcuttable integration work"},
+  {"idea": "Construction smash-and-grab (invalid Pay Less Notice)", "expected": "pass", "gate": null, "must_surface": "solvent payer + statutory adjudication forcing mechanism"}
+]
