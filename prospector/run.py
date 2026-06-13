@@ -407,6 +407,21 @@ def _cmd_signal(args: argparse.Namespace) -> None:
     print(f"\n--- token/call audit ---\n{json.dumps(get_usage_summary(), indent=2)}")
 
 
+def _cmd_report(args, cfg, log_path) -> None:
+    """Render the catalogue / metrics / costs. Reads on-disk state only; no model calls."""
+    from .report import (catalogue_report, metrics_report, costs_report, full_report)
+    from .store import Store
+    store = Store(cfg)
+    if args.full:
+        print(full_report(store, log_path))
+    elif args.metrics:
+        print(metrics_report(store))
+    elif args.costs:
+        print(costs_report(log_path))
+    else:  # default: catalogue
+        print(catalogue_report(store, decision=args.decision))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="python -m prospector.run",
@@ -444,6 +459,20 @@ def main() -> None:
     sig_p.add_argument("--publish", action="store_true",
                        help="Generate listing artifacts + publish PASSes (extra model calls)")
 
+    # ---- report subcommand ----
+    rep_p = sub.add_parser("report", help="Read the catalogue, metrics, and costs (no model calls)")
+    rep_view = rep_p.add_mutually_exclusive_group()
+    rep_view.add_argument("--catalogue", action="store_true",
+                          help="List vetted ideas grouped by decision (default)")
+    rep_view.add_argument("--metrics", action="store_true",
+                          help="Truth-loop health: kill rate, gate distribution")
+    rep_view.add_argument("--costs", action="store_true",
+                          help="Lifetime spend, tokens, slowest operations")
+    rep_view.add_argument("--full", action="store_true",
+                          help="All three views")
+    rep_p.add_argument("--decision", choices=["pass", "kill", "defer"],
+                       help="Filter the catalogue to one decision")
+
     args = parser.parse_args()
 
     # Keep the verbose JSON audit log out of the way (it goes to a tail-able file);
@@ -459,6 +488,8 @@ def main() -> None:
         _cmd_vet(args)
     elif args.command == "signal":
         _cmd_signal(args)
+    elif args.command == "report":
+        _cmd_report(args, cfg_for_log, log_path)
     else:
         parser.print_help()
         sys.exit(1)
