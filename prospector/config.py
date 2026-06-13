@@ -12,7 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 @dataclass
 class Retrieval:
-    provider: str = "fixture"
+    # str (single provider) or list[str] (ordered failover chain, Part 9).
+    provider: "str | list[str]" = "fixture"
     queries_per_check: int = 2
     results_per_query: int = 4
     max_passage_chars: int = 1500
@@ -44,7 +45,8 @@ class Spend:
 
 @dataclass
 class Config:
-    operator: str = "mock"
+    # str (single brain) or list[str] (ordered failover chain, Part 9).
+    operator: "str | list[str]" = "mock"
     model: str = ""
     # Optional lighter model for mechanical calls (query-gen, prescreen). Empty
     # => reuse `model` (the CLI already auto-routes utility calls to flash).

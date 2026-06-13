@@ -438,7 +438,7 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "mock"],
+    vet_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "mock"],
                        help="Override operator from config")
     vet_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -450,7 +450,7 @@ def main() -> None:
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "mock"],
+    sig_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")

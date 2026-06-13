@@ -18,6 +18,7 @@ import threading
 import time
 from typing import Optional
 
+from .errors import ProviderExhaustedError, looks_exhausted
 from .models import Source
 from .operator import Operator, _extract_json
 from .retrieval import SearchProvider
@@ -122,6 +123,12 @@ def run_gemini_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
                 time.sleep(backoff)
     logger.error("Gemini CLI failed after retries",
                  extra={"attempts": retries + 1, "web": web, "error": str(last_err)[:300]})
+    # Quota/credit exhaustion is a FAILOVER signal (the fallback layer retires this
+    # provider and tries the next), distinct from a generic transient failure.
+    if looks_exhausted(str(last_err)):
+        raise ProviderExhaustedError(
+            f"gemini cli exhausted after {retries + 1} attempts: {last_err}",
+            provider=f"gemini_cli/{model or 'default'}")
     raise RuntimeError(f"gemini cli failed after {retries + 1} attempts: {last_err}")
 
 

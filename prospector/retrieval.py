@@ -13,11 +13,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 import urllib.request
 
+from .errors import ProviderExhaustedError
 from .models import Source
 from .telemetry import track_latency, logger
 
@@ -162,20 +164,75 @@ class DiskCache(SearchProvider):
         return results
 
 
-def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
+class FallbackSearchProvider(SearchProvider):
+    """Chain of grounding providers with quota-aware failover (Part 9 resilience).
+
+    A search tries each provider in order. When one fails *persistently* (it already
+    did its own internal retries) the provider is RETIRED for the rest of this run and
+    the next one takes over — so a mid-run quota/credit exhaustion on one LLM is
+    transparently replaced by the next. A legitimate empty result ([]) from a WORKING
+    provider is returned as-is (no failover — that's real evidence of nothing).
+
+    Only when EVERY provider is retired does search() raise — which run_check turns
+    into a DEFER (re-vet later), never a false kill.
+    """
+    def __init__(self, providers: list[tuple[str, SearchProvider]]):
+        if not providers:
+            raise ValueError("FallbackSearchProvider needs at least one provider")
+        self.providers = providers
+        self._dead: set[str] = set()      # provider names retired for this run
+        self._lock = threading.Lock()
+
+    @track_latency(name="fallback_search")
+    def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        last_err: Optional[Exception] = None
+        for name, prov in self.providers:
+            with self._lock:
+                if name in self._dead:
+                    continue
+            try:
+                return prov.search(query, k=k, max_chars=max_chars)
+            except Exception as e:
+                last_err = e
+                exhausted = isinstance(e, ProviderExhaustedError)
+                with self._lock:
+                    self._dead.add(name)   # retire on persistent failure (run-scoped)
+                logger.warning(
+                    f"Grounding provider {name!r} {'exhausted' if exhausted else 'failed'}; "
+                    f"failing over to next",
+                    extra={"provider": name, "exhausted": exhausted, "error": str(e)[:200]})
+        # Every provider is retired — propagate so run_check defers (not a kill).
+        raise ProviderExhaustedError(
+            f"all grounding providers exhausted/failed: {last_err}",
+            provider="+".join(n for n, _ in self.providers))
+
+
+def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
     r = cfg.retrieval
-    if r.provider == "fixture":
-        base: SearchProvider = FixtureProvider(fixtures=fixtures)
-    elif r.provider == "gemini_cli":
+    if name == "fixture":
+        return FixtureProvider(fixtures=fixtures)
+    if name == "gemini_cli":
         from .gemini_cli import GeminiCliGroundingProvider
         # Grounding is a web SEARCH (fetch URLs+passages), not reasoning — use the fast
         # model. gemini-2.5-pro's grounded search is heavy and times out (~240s); flash-lite
         # returns the same passages in seconds. The capable model is reserved for the verdict.
-        base = GeminiCliGroundingProvider(model=(cfg.model_fast or cfg.model or None),
+        return GeminiCliGroundingProvider(model=(cfg.model_fast or cfg.model or None),
                                           timeout=r.search_timeout, retries=r.search_retries)
-    elif r.provider == "gemini_grounding":
-        base = GeminiGroundingProvider(model=cfg.model if cfg.operator == "gemini"
+    if name == "claude_cli":
+        from .claude_cli import ClaudeCliGroundingProvider
+        return ClaudeCliGroundingProvider(timeout=max(r.search_timeout, 120),
+                                          retries=r.search_retries)
+    if name == "gemini_grounding":
+        return GeminiGroundingProvider(model=cfg.model if cfg.operator == "gemini"
                                        else "gemini-2.0-flash")
-    else:
-        raise ValueError(f"unknown retrieval provider: {r.provider!r}")
-    return DiskCache(base) if r.cache else base
+    raise ValueError(f"unknown retrieval provider: {name!r}")
+
+
+def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
+    # provider may be a single name or an ordered fallback chain.
+    names = cfg.retrieval.provider
+    names = [names] if isinstance(names, str) else list(names)
+    built = [(n, _build_search(n, cfg, fixtures)) for n in names]
+    base: SearchProvider = (built[0][1] if len(built) == 1
+                            else FallbackSearchProvider(built))
+    return DiskCache(base) if cfg.retrieval.cache else base

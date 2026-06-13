@@ -164,18 +164,69 @@ class MockOperator(Operator):
         return "{}"
 
 
-def make_operator(cfg, fast: bool = False) -> Operator:
-    kind = cfg.operator
+class FallbackOperator(Operator):
+    """Chain of brains with quota-aware failover (Part 9 resilience).
+
+    Each raw call tries operators in order. When one raises (its adapter already did
+    internal retries) it is RETIRED for the rest of this run and the next brain takes
+    over — so a mid-run quota/credit exhaustion is transparently replaced. Parse
+    repair (bad JSON) stays with the working brain: it returns text, so it is not
+    retired; complete_json's repair loop re-prompts it. Only when every brain is
+    retired does _raw raise (ProviderExhaustedError), which callers fail-safe/defer.
+    """
+    def __init__(self, operators: list[tuple[str, Operator]]):
+        if not operators:
+            raise ValueError("FallbackOperator needs at least one operator")
+        self.operators = operators
+        self.name = "fallback(" + "+".join(n for n, _ in operators) + ")"
+        self._dead: set[str] = set()
+
+    def _raw(self, system: str, user: str, temperature: float) -> str:
+        from .errors import ProviderExhaustedError
+        from .telemetry import logger
+        last_err: Optional[Exception] = None
+        for name, op in self.operators:
+            if name in self._dead:
+                continue
+            try:
+                return op._raw(system, user, temperature)
+            except Exception as e:
+                last_err = e
+                self._dead.add(name)
+                logger.warning(
+                    f"Brain {name!r} {'exhausted' if isinstance(e, ProviderExhaustedError) else 'failed'}; "
+                    f"failing over to next",
+                    extra={"provider": name, "error": str(e)[:200]})
+        raise ProviderExhaustedError(
+            f"all brains exhausted/failed: {last_err}",
+            provider="+".join(n for n, _ in self.operators))
+
+
+def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     # fast=True selects the lighter model for mechanical calls (query-gen,
     # prescreen); falls back to the main model when model_fast is unset.
     model = (getattr(cfg, "model_fast", "") or cfg.model) if fast else cfg.model
     if kind == "gemini_cli":
         from .gemini_cli import GeminiCliOperator
         return GeminiCliOperator(model=(model or None))
+    if kind == "claude_cli":
+        # model/model_fast are Gemini-specific pins; don't leak them to the claude
+        # CLI — let it use its own configured default.
+        from .claude_cli import ClaudeCliOperator
+        return ClaudeCliOperator(model=None)
     if kind == "gemini":
         return GeminiOperator(model=model)
     if kind == "claude":
         return ClaudeOperator(model=model)
     if kind == "mock":
         return MockOperator()
-    raise ValueError(f"unknown operator: {kind!r} (expected gemini|claude|mock)")
+    raise ValueError(f"unknown operator: {kind!r} "
+                     "(expected gemini_cli|claude_cli|gemini|claude|mock)")
+
+
+def make_operator(cfg, fast: bool = False) -> Operator:
+    # operator may be a single name or an ordered fallback chain.
+    kinds = cfg.operator
+    kinds = [kinds] if isinstance(kinds, str) else list(kinds)
+    built = [(k, _build_operator(k, cfg, fast)) for k in kinds]
+    return built[0][1] if len(built) == 1 else FallbackOperator(built)

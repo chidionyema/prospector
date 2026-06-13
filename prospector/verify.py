@@ -12,6 +12,7 @@ import json
 from typing import Callable, Optional
 
 from .config import Config
+from .errors import ProviderExhaustedError
 from .kill_filter import is_hard_fail
 from .models import (CHECKS, DEFER_GATE, AdversarialResult, Candidate, CheckResult,
                      Source, Verdict)
@@ -79,6 +80,10 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     user += f"\n\nPassages:\n{passages}"
     try:
         data = op.complete_json(system, user, temperature=0.0)
+    except ProviderExhaustedError:
+        # Every brain is out of quota/credit — an outage, not a weak idea. Let it
+        # propagate so run_check defers the candidate (re-vet) instead of killing.
+        raise
     except Exception as e:
         logger.error(f"Verdict call failed for {check_name}: {e}")
         return CheckResult(check_name=check_name, verdict=Verdict.UNVERIFIABLE,
@@ -149,7 +154,16 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
         if s.source_id not in seen:
             seen.add(s.source_id)
             uniq.append(s)
-    result = verdict_for(op, cand, check_name, uniq)
+    try:
+        result = verdict_for(op, cand, check_name, uniq)
+    except ProviderExhaustedError as e:
+        logger.warning(f"All brains exhausted ruling {check_name}: {e}; deferring",
+                       extra={"check": check_name})
+        return CheckResult(
+            check_name=check_name, verdict=Verdict.UNVERIFIABLE, confidence=0.0,
+            rationale=("Verdict brain unavailable — all LLMs out of quota/credit. "
+                       "Cannot rule; candidate deferred for re-vet."),
+            queries=queries, degraded=True, retrieval_failed=True)
     result.queries = queries
     logger.info(f"Check {check_name} result: {result.verdict.value}", 
                 extra={"check": check_name, "verdict": result.verdict.value, "confidence": result.confidence})

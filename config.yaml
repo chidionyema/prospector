@@ -1,13 +1,19 @@
-operator: gemini_cli             # engine brain: gemini_cli | gemini | claude | mock  (pluggable, Part 1)
-model: "gemini-2.5-pro"          # verdict brain + grounding. Pinned: the CLI's implicit
-                                 # default and gemini-2.5-flash are quota-exhausted on this
-                                 # account; pro + flash-lite still have capacity (quota is
-                                 # per-model). gemini_cli uses the local `gemini` CLI's OAuth quota.
+operator: [gemini_cli, claude_cli]   # brain failover chain (Part 9): try gemini CLI first,
+                                 # fall over to the claude CLI when gemini is out of quota/credit.
+                                 # Single string still works: `operator: gemini_cli`.
+model: "gemini-2.5-pro"          # verdict brain (Gemini-specific pin). Pinned: the CLI's
+                                 # implicit default and gemini-2.5-flash are quota-exhausted on
+                                 # this account; pro + flash-lite still have capacity (quota is
+                                 # per-model). The claude_cli fallback ignores this and uses its
+                                 # own default model.
 model_fast: "gemini-2.5-flash-lite"  # cheap model for query-gen/prescreen (live quota; "" = reuse `model`)
 model_version_tag: ""            # filled at runtime for audit
 
 retrieval:
-  provider: gemini_cli           # gemini_cli | gemini_grounding | fixture (tests)
+  provider: [gemini_cli, claude_cli]   # grounding failover chain: gemini CLI web-search
+                                 # first, fall over to claude CLI web-search when gemini's
+                                 # search quota is spent. Options: gemini_cli | claude_cli |
+                                 # gemini_grounding | fixture. Single string still works.
   queries_per_check: 2
   results_per_query: 4
   max_passage_chars: 1500
@@ -17,8 +23,9 @@ retrieval:
   # not judgment, so it belongs in code; the model is reserved for ruling on fetched passages.
   template_checks: [pain_reality, value_durability, incumbency, payer_solvency, distribution, legality]
   fast_queries: 1                # query count per templated check (latency saver on the 80%-kill path)
-  search_timeout: 75             # seconds per web-search; throttled free-tier searches fail fast -> DEFER
-  search_retries: 1              # retries per web-search (fail fast; don't hang on a throttled backend)
+  search_timeout: 75             # seconds per web-search; throttled free-tier searches fail fast
+  search_retries: 0              # no in-place retry: with a fallback chain, fail FAST to the next
+                                 # provider instead of re-hitting the throttled/dead one
 
 thresholds:
   confidence_floor: 0.6
