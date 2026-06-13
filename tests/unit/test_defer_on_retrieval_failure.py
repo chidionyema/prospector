@@ -75,6 +75,30 @@ def test_vet_candidate_defers_on_outage_not_kill(cfg, cand):
     assert "retriev" in d.reason.lower()
 
 
+def test_grounding_provider_propagates_transport_failure(monkeypatch):
+    """Regression for the real-provider gap: the unit DEFER path only fires if search()
+    RAISES, but the live GeminiCliGroundingProvider used to swallow transport errors and
+    return [] — making an outage indistinguishable from 'found nothing' and wrongly KILL.
+    A transport failure (run_gemini_cli gave up after retries) MUST propagate."""
+    from prospector import gemini_cli
+    from prospector.gemini_cli import GeminiCliGroundingProvider
+
+    def boom(*a, **k):
+        raise RuntimeError("gemini cli failed after 3 attempts: QUOTA_EXHAUSTED")
+    monkeypatch.setattr(gemini_cli, "run_gemini_cli", boom)
+    with pytest.raises(RuntimeError):
+        GeminiCliGroundingProvider().search("anything")
+
+
+def test_grounding_provider_empty_on_ran_but_no_results(monkeypatch):
+    """Contrast: the search RAN but produced no parseable/usable JSON — that is a
+    legitimate empty result, NOT an outage, so it returns [] (caller may KILL)."""
+    from prospector import gemini_cli
+    from prospector.gemini_cli import GeminiCliGroundingProvider
+    monkeypatch.setattr(gemini_cli, "run_gemini_cli", lambda *a, **k: "no json here")
+    assert GeminiCliGroundingProvider().search("anything") == []
+
+
 def test_legit_empty_result_still_kills(cfg, cand):
     """Contrast case: a search that genuinely finds nothing is NOT an outage —
     value_durability policy (unverifiable kills) still applies."""

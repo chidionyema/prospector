@@ -21,6 +21,13 @@ class Retrieval:
     # templates instead (cheap decisive gates that kill most candidates).
     template_checks: list[str] = field(default_factory=list)
     fast_queries: int = 1  # query count used for template_checks
+    # Web-grounding fail-fast budget. The free gemini web-search tool throttles after a
+    # burst and then internally backs off for ~hours, which presents as a 240s hang. A
+    # short timeout + few retries makes a throttled search GIVE UP quickly so the candidate
+    # DEFERS (re-vet later) instead of blocking the whole run. Verdict calls (no web) are
+    # unaffected — they use run_gemini_cli's normal timeout.
+    search_timeout: int = 75      # seconds per grounding web-search call
+    search_retries: int = 1       # retries for a grounding web-search call (fail fast)
 
 
 @dataclass

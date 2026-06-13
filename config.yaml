@@ -1,8 +1,9 @@
 operator: gemini_cli             # engine brain: gemini_cli | gemini | claude | mock  (pluggable, Part 1)
-model: ""                        # "" = let the gemini CLI pick its default; or e.g. gemini-2.5-pro
-                                 # gemini_cli uses the local `gemini` CLI on its free OAuth quota
-                                 # (sidesteps the API key whose project has free-tier quota = 0)
-model_fast: ""                   # optional lighter model for query-gen/prescreen ("" = reuse `model`)
+model: "gemini-2.5-pro"          # verdict brain + grounding. Pinned: the CLI's implicit
+                                 # default and gemini-2.5-flash are quota-exhausted on this
+                                 # account; pro + flash-lite still have capacity (quota is
+                                 # per-model). gemini_cli uses the local `gemini` CLI's OAuth quota.
+model_fast: "gemini-2.5-flash-lite"  # cheap model for query-gen/prescreen (live quota; "" = reuse `model`)
 model_version_tag: ""            # filled at runtime for audit
 
 retrieval:
@@ -11,8 +12,13 @@ retrieval:
   results_per_query: 4
   max_passage_chars: 1500
   cache: true
-  template_checks: [value_durability, legality]  # skip LLM query-gen on these cheap decisive gates
-  fast_queries: 1                # query count for template_checks (latency saver on the 80%-kill path)
+  # All six gates use deterministic disconfirming-query templates (_DISCONFIRM_TEMPLATES in
+  # verify.py) — eliminates the LLM query-gen call entirely. Query generation is a lookup,
+  # not judgment, so it belongs in code; the model is reserved for ruling on fetched passages.
+  template_checks: [pain_reality, value_durability, incumbency, payer_solvency, distribution, legality]
+  fast_queries: 1                # query count per templated check (latency saver on the 80%-kill path)
+  search_timeout: 75             # seconds per web-search; throttled free-tier searches fail fast -> DEFER
+  search_retries: 1              # retries per web-search (fail fast; don't hang on a throttled backend)
 
 thresholds:
   confidence_floor: 0.6

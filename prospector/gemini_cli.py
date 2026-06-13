@@ -138,8 +138,11 @@ class GeminiCliOperator(Operator):
 
 class GeminiCliGroundingProvider(SearchProvider):
     """Live web-search grounding via the CLI. Returns resolvable URLs + passages."""
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None,
+                 timeout: int = 75, retries: int = 1):
         self.model = model
+        self.timeout = timeout      # fail-fast budget per web-search (free tier throttles)
+        self.retries = retries
 
     @track_latency(name="gemini_cli_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
@@ -151,12 +154,20 @@ class GeminiCliGroundingProvider(SearchProvider):
             "Use only real source URLs you actually retrieved. No prose, no code fences."
         )
         logger.info(f"Gemini CLI Search started: {query!r}")
+        # A TRANSPORT failure (timeout, quota, bad exit — run_gemini_cli already retried
+        # and gave up) means we never got to look. It must PROPAGATE so run_check counts a
+        # failed search and the candidate DEFERS — swallowing it as [] would make an outage
+        # indistinguishable from "searched, found nothing" and wrongly KILL the idea.
+        resp = run_gemini_cli(prompt, web=True, model=self.model,
+                              timeout=self.timeout, retries=self.retries)  # raises -> retrieval_failed
         try:
-            resp = run_gemini_cli(prompt, web=True, model=self.model)
             data = _extract_json(resp)
         except Exception as e:
-            logger.warning(f"Gemini CLI Search failed: {e}", extra={"error": str(e)})
-            return []                       # graceful degradation -> caller: unverifiable
+            # The search RAN but returned no parseable JSON. That is a legitimate empty
+            # result (the model found nothing usable), not an outage -> return [].
+            logger.warning(f"Gemini CLI Search: unparseable response, treating as empty: {e}",
+                           extra={"error": str(e)})
+            return []
         if isinstance(data, dict):
             data = data.get("results") or data.get("passages") or []
         out: list[Source] = []

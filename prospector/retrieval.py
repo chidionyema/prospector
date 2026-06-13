@@ -168,7 +168,11 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
         base: SearchProvider = FixtureProvider(fixtures=fixtures)
     elif r.provider == "gemini_cli":
         from .gemini_cli import GeminiCliGroundingProvider
-        base = GeminiCliGroundingProvider(model=(cfg.model or None))
+        # Grounding is a web SEARCH (fetch URLs+passages), not reasoning — use the fast
+        # model. gemini-2.5-pro's grounded search is heavy and times out (~240s); flash-lite
+        # returns the same passages in seconds. The capable model is reserved for the verdict.
+        base = GeminiCliGroundingProvider(model=(cfg.model_fast or cfg.model or None),
+                                          timeout=r.search_timeout, retries=r.search_retries)
     elif r.provider == "gemini_grounding":
         base = GeminiGroundingProvider(model=cfg.model if cfg.operator == "gemini"
                                        else "gemini-2.0-flash")
