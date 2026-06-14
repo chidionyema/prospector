@@ -29,17 +29,18 @@ def make_check(name: str, verdict: Verdict, confidence: float = 0.9,
 def _all_passing_checks() -> list[CheckResult]:
     """A clean set: all required checks with supported/refuted verdicts that pass."""
     return [
-        # value_durability: kills on refuted/unverifiable — must be supported
+        # value_durability: kills on refuted only — supported passes
         make_check("value_durability", Verdict.SUPPORTED),
         # incumbency: kills on supported — must be refuted (no incumbent)
         make_check("incumbency", Verdict.REFUTED),
-        # payer_solvency: kills on refuted/unverifiable — must be supported
+        # payer_solvency: kills on refuted only — supported passes
         make_check("payer_solvency", Verdict.SUPPORTED),
-        # distribution: kills on refuted/unverifiable — must be supported
+        # distribution: kills on refuted only — supported passes
         make_check("distribution", Verdict.SUPPORTED),
-        # legality: kills on refuted only — supported is fine
-        make_check("legality", Verdict.SUPPORTED),
-        # pain_reality: kills on refuted/unverifiable — must be supported
+        # legality: kills on SUPPORTED (margin depends on breaking law) — a lawful
+        # idea is REFUTED ("no, it doesn't require illegality"), which passes.
+        make_check("legality", Verdict.REFUTED),
+        # pain_reality: kills on refuted only — supported passes
         make_check("pain_reality", Verdict.SUPPORTED),
     ]
 
@@ -54,12 +55,12 @@ def cfg() -> Config:
 # ---------------------------------------------------------------------------
 
 class TestValueDurabilityGate:
-    def test_unverifiable_kills(self, cfg):
+    def test_unverifiable_does_not_kill(self, cfg):
+        """Silence is not evidence: unverifiable must NOT trip the gate."""
         checks = [make_check("value_durability", Verdict.UNVERIFIABLE)]
         killed, gate, reason = apply_gates(checks, cfg)
-        assert killed is True
-        assert gate == "value_durability"
-        assert "value_durability" in reason
+        assert killed is False
+        assert gate is None
 
     def test_refuted_kills(self, cfg):
         checks = [make_check("value_durability", Verdict.REFUTED)]
@@ -105,19 +106,19 @@ class TestPayerSolvencyGate:
         assert killed is True
         assert gate == "payer_solvency"
 
-    def test_unverifiable_kills(self, cfg):
+    def test_unverifiable_does_not_kill(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
             make_check("incumbency", Verdict.REFUTED),
             make_check("payer_solvency", Verdict.UNVERIFIABLE),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
-        assert killed is True
-        assert gate == "payer_solvency"
+        assert killed is False
+        assert gate is None
 
 
 class TestDistributionGate:
-    def test_unverifiable_kills(self, cfg):
+    def test_unverifiable_does_not_kill(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
             make_check("incumbency", Verdict.REFUTED),
@@ -125,8 +126,8 @@ class TestDistributionGate:
             make_check("distribution", Verdict.UNVERIFIABLE),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
-        assert killed is True
-        assert gate == "distribution"
+        assert killed is False
+        assert gate is None
 
     def test_refuted_kills(self, cfg):
         checks = [
@@ -141,21 +142,31 @@ class TestDistributionGate:
 
 
 class TestLegalityGate:
-    def test_refuted_kills(self, cfg):
-        """legality only kills on refuted (not unverifiable per config)."""
+    def test_supported_kills(self, cfg):
+        """legality kills on SUPPORTED — the margin genuinely depends on breaking
+        law/terms or falsifying a measurement. A lawful idea is REFUTED and survives."""
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
             make_check("incumbency", Verdict.REFUTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.SUPPORTED),
-            make_check("legality", Verdict.REFUTED),
+            make_check("legality", Verdict.SUPPORTED),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
         assert killed is True
         assert gate == "legality"
 
+    def test_refuted_does_not_kill(self, cfg):
+        """legality=refuted ("lawful — does not require breaking law", incl. a creative
+        but lawful workaround) must NOT kill. This is the false-negative that the inverted
+        [refuted] gate used to produce on good ideas."""
+        checks = _all_passing_checks()   # legality is REFUTED here
+        killed, gate, _ = apply_gates(checks, cfg)
+        assert killed is False
+        assert gate is None
+
     def test_unverifiable_does_not_kill(self, cfg):
-        """legality=unverifiable does NOT kill (config only has [refuted] for legality)."""
+        """legality=unverifiable does NOT kill (silence is not evidence of illegality)."""
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
             make_check("incumbency", Verdict.REFUTED),
@@ -176,25 +187,25 @@ class TestPainRealityGate:
             make_check("incumbency", Verdict.REFUTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.SUPPORTED),
-            make_check("legality", Verdict.SUPPORTED),
+            make_check("legality", Verdict.REFUTED),
             make_check("pain_reality", Verdict.REFUTED),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
         assert killed is True
         assert gate == "pain_reality"
 
-    def test_unverifiable_kills(self, cfg):
+    def test_unverifiable_does_not_kill(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
             make_check("incumbency", Verdict.REFUTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.SUPPORTED),
-            make_check("legality", Verdict.SUPPORTED),
+            make_check("legality", Verdict.REFUTED),
             make_check("pain_reality", Verdict.UNVERIFIABLE),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
-        assert killed is True
-        assert gate == "pain_reality"
+        assert killed is False
+        assert gate is None
 
 
 # ---------------------------------------------------------------------------
@@ -233,14 +244,13 @@ def test_adversarial_decisive_false_does_not_kill(cfg):
 # Confidence floor: required check supported but confidence below floor
 # ---------------------------------------------------------------------------
 
-def test_confidence_floor_triggers_fail_for_required_check(cfg):
-    """A check whose verdict is 'supported' but confidence < floor should
-    be treated as not-grounded for gates where unverifiable kills."""
+def test_low_confidence_supported_does_not_fail_non_killing_gate(cfg):
+    """value_durability kills only on 'refuted'. A low-confidence 'supported'
+    is not a killing verdict, so it must NOT trip the gate — low confidence
+    alone never kills (a KILL must be grounded in cited disconfirming evidence)."""
     floor = cfg.thresholds.confidence_floor  # 0.6
     low_conf = floor - 0.1  # 0.5
 
-    # value_durability killing verdicts include unverifiable; low confidence on
-    # a supported value_durability should be treated as effectively unverifiable
     cr = CheckResult(
         check_name="value_durability",
         verdict=Verdict.SUPPORTED,
@@ -248,7 +258,7 @@ def test_confidence_floor_triggers_fail_for_required_check(cfg):
         rationale="barely supported",
         citations=["x"],
     )
-    assert is_hard_fail("value_durability", cr, cfg) is True
+    assert is_hard_fail("value_durability", cr, cfg) is False
 
 
 def test_confidence_above_floor_not_a_fail(cfg):

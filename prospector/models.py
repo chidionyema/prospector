@@ -38,7 +38,10 @@ CHECKS: dict[str, str] = {
     "incumbency": "Does someone already solve this well (funded incumbent or dominant cheap option)?",
     "payer_solvency": "Does the payer have budget and motive (not a broke body, not a segment that won't pay)?",
     "distribution": "A low-friction route to the buyer (self-serve / forcing mechanism / existing channel)?",
-    "legality": "Does the margin depend on breaking terms/law or falsifying a measurement?",
+    "legality": ("Does the margin REQUIRE actually breaking the law/contract terms or "
+                 "falsifying a measurement? A creative but lawful workaround — exploiting a "
+                 "legitimate statutory mechanism or a permitted loophole — is NOT a fail; only "
+                 "a margin that cannot exist without genuine illegality/breach counts."),
 }
 
 SCORE_AXES = ("pain_acuity", "money_provability", "automatability",

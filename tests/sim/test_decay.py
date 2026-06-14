@@ -53,7 +53,7 @@ def test_decay_loop_refreshes_valid_dossier(setup_store):
         if "analyst" in system:
             m = re.search(r"\[([a-f0-9]{16})\]", user)
             cid = [m.group(1)] if m else []
-            v = "refuted" if "incumbency" in user else "supported"
+            v = "refuted" if ("incumbency" in user or "legality" in user) else "supported"
             return {"verdict": v, "confidence": 0.9, "rationale": "ok", "citations": cid}
         if "Score a vetted opportunity" in system:
             return {
@@ -93,7 +93,7 @@ def test_decay_loop_delists_failed_dossier(setup_store):
             cid = [m.group(1)] if m else []
             if "value_durability" in user:
                 return {"verdict": "refuted", "confidence": 0.9, "rationale": "dead", "citations": cid}
-            v = "refuted" if "incumbency" in user else "supported"
+            v = "refuted" if ("incumbency" in user or "legality" in user) else "supported"
             return {"verdict": v, "confidence": 0.9, "rationale": "ok", "citations": cid}
         if "Score a vetted opportunity" in system:
             return {

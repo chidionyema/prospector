@@ -48,8 +48,8 @@ GOLDEN_EXPECTATIONS = {
         "rationale": "councils chronically under-funded; payer can't pay"
     },
     "Token/credit resale": {
-        "kill_gate": "legality", 
-        "kill_verdict": "refuted",
+        "kill_gate": "legality",
+        "kill_verdict": "supported",   # margin DEPENDS ON breaking provider terms -> kill
         "rationale": "resale/account-sharing violates provider terms"
     },
     "Generic AI meal-planner": {
@@ -109,10 +109,11 @@ def _make_golden_router():
                     "citations": [first_id]
                 }
             
-            # PASS logic
-            # incumbency: PASS means refuted (no incumbents)
-            # others: PASS means supported
-            v = "refuted" if current_check == "incumbency" else "supported"
+            # PASS logic — depends on each check's QUESTION FRAMING:
+            #   incumbency ("someone already solves this?")  -> PASS = refuted (no incumbent)
+            #   legality   ("margin depends on breaking law?") -> PASS = refuted (lawful)
+            #   others (positively framed)                    -> PASS = supported
+            v = "refuted" if current_check in ("incumbency", "legality") else "supported"
             
             # Surface the rationale in pain_reality for PASS cases
             rat = exp["rationale"] if (not kill_gate and current_check == "pain_reality") else "No evidence to the contrary."
