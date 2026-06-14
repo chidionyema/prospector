@@ -124,12 +124,17 @@ def costs_report(jsonl_path: str | Path) -> str:
                 op = d.get("operation") or "?"
                 lat_total[op] += float(d.get("latency_ms", 0) or 0)
                 lat_count[op] += 1
-            elif d.get("message") == "Gemini CLI usage":
+            elif d.get("message") in ("Gemini CLI usage", "Claude CLI usage"):
                 calls += 1
                 if d.get("web"):
                     web_calls += 1
                 for k in tok:
                     tok[k] += int(d.get(k, 0) or 0)
+                # Claude CLI reports its real billed cost per call — fold it into spend.
+                cost = float(d.get("cost_usd", 0) or 0)
+                if cost:
+                    spend_usd += cost
+                    spend_by_phase[d.get("phase") or "main"] += cost
 
     out = ["═" * 72, "COST & USAGE (lifetime, from audit log)", "═" * 72,
            f"  estimated spend     ${spend_usd:.2f}",

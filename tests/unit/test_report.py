@@ -76,3 +76,31 @@ def test_costs_parses_audit_log(tmp_path):
 
 def test_costs_missing_log(tmp_path):
     assert "No audit log" in costs_report(tmp_path / "nope.jsonl")
+
+
+def test_costs_counts_claude_usage_and_folds_cost(tmp_path):
+    log = tmp_path / "prospector.jsonl"
+    lines = [
+        {"message": "Gemini CLI usage", "web": True, "input": 10, "output": 5, "total": 20},
+        {"message": "Claude CLI usage", "web": True, "input": 100, "output": 50,
+         "total": 200, "cached": 30, "cost_usd": 0.25},
+    ]
+    log.write_text("\n".join(json.dumps(x) for x in lines))
+    out = costs_report(log)
+    assert "2 web-search" in out          # both usage lines counted
+    assert "$0.25" in out                 # claude's real billed cost folded into spend
+
+
+def test_save_removes_stale_decision_file(tmp_path):
+    """A re-vet that changes the decision must not leave the old verdict's file."""
+    cfg = load_config()
+    cfg.store["dir"] = str(tmp_path)
+    store = Store(cfg)
+    store.save(_kill("Same idea", "incumbency"))
+    cid = next(iter(p.name.split(".")[0] for p in (tmp_path / "dossiers").glob("*.json")))
+    # re-save the SAME candidate as a PASS
+    pass_d = _pass("Same idea")
+    pass_d.candidate.candidate_id = cid  # force same id
+    store.save(pass_d)
+    files = sorted(p.name for p in (tmp_path / "dossiers").glob(f"{cid}.*.json"))
+    assert files == [f"{cid}.pass.json"]   # the .kill.json is gone

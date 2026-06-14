@@ -78,9 +78,17 @@ class Store:
     def save(self, dossier: Dossier) -> Path:
         """Persist dossier JSON and upsert the index row. Returns the JSON path."""
         cid = dossier.candidate.candidate_id
-        dec = dossier.decision.value  # "pass" or "kill"
+        dec = dossier.decision.value  # "pass" | "kill" | "defer"
         path = self._dossier_dir / f"{cid}.{dec}.json"
         path.write_text(dossier.to_json(), encoding="utf-8")
+
+        # A re-vet can change a candidate's decision (e.g. defer -> kill). The DB row is
+        # upserted by candidate_id, but the JSON filename encodes the decision, so an old
+        # verdict's file would linger and be double-counted. Remove any stale-decision
+        # files for this candidate (keep only the one we just wrote).
+        for stale in self._dossier_dir.glob(f"{cid}.*.json"):
+            if stale != path:
+                stale.unlink(missing_ok=True)
 
         composite = dossier.score.composite if dossier.score else None
         with self._connect() as conn:

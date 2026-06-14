@@ -23,7 +23,7 @@ from .errors import ProviderExhaustedError, looks_exhausted
 from .models import Source
 from .operator import Operator, _extract_json
 from .retrieval import SearchProvider
-from .telemetry import logger, track_latency
+from .telemetry import logger, record_usage, track_latency
 
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,7 +34,24 @@ _CLI_SEM = threading.Semaphore(_MAX_CLI)
 _BACKOFFS = (2, 5, 10)
 
 
-def _attempt_claude_cli(cmd: list[str], timeout: int) -> str:
+def _record_claude_usage(data: dict, web: bool) -> None:
+    """Log token usage + the CLI's real total_cost_usd against the current phase,
+    mirroring gemini_cli so `report --costs` accounts for Claude calls too."""
+    u = (data or {}).get("usage") or {}
+    inp = int(u.get("input_tokens", 0) or 0)
+    out = int(u.get("output_tokens", 0) or 0)
+    cached = int(u.get("cache_read_input_tokens", 0) or 0)
+    total = inp + out + cached + int(u.get("cache_creation_input_tokens", 0) or 0)
+    cost = float(data.get("total_cost_usd", 0) or 0)
+    record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
+                 cached_tokens=cached, web=web)
+    # cost_usd here is the CLI's own billed figure (more accurate than an estimate);
+    # costs_report sums it into spend.
+    logger.info("Claude CLI usage", extra={"web": web, "input": inp, "output": out,
+                                           "total": total, "cached": cached, "cost_usd": cost})
+
+
+def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool) -> str:
     """One CLI invocation under the concurrency cap. Raises on transient failure."""
     with _CLI_SEM:
         proc = subprocess.run(cmd, capture_output=True, text=True,
@@ -51,6 +68,7 @@ def _attempt_claude_cli(cmd: list[str], timeout: int) -> str:
             raise RuntimeError(f"claude cli error result: {str(data)[:200]}")
         resp = data.get("result")
         if resp:
+            _record_claude_usage(data, web)
             return str(resp)
     raise RuntimeError(f"claude cli empty/unexpected response: {str(data)[:200]}")
 
@@ -75,7 +93,7 @@ def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
     last_err: Optional[Exception] = None
     for attempt in range(retries + 1):
         try:
-            return _attempt_claude_cli(cmd, timeout)
+            return _attempt_claude_cli(cmd, timeout, web)
         except (subprocess.TimeoutExpired, RuntimeError) as e:
             last_err = e
             if attempt < retries:
