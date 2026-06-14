@@ -91,10 +91,17 @@ class Candidate:
 
     @staticmethod
     def from_dict(d: dict[str, Any]) -> "Candidate":
+        tags = dict(d.get("tags", {}) or {})
+        # The generator's mandated durable-wedge declaration + commodity pre-mortem
+        # (see prompts/generate.md). Carried in the free-form tags dict so they persist
+        # into the dossier for observability without widening the Candidate contract.
+        for k in ("durable_wedge_type", "commodity_premortem"):
+            if d.get(k) is not None and k not in tags:
+                tags[k] = d[k]
         return Candidate(
             title=d.get("title", ""), one_liner=d.get("one_liner", ""),
             hypothesis=d.get("hypothesis", ""), who_pays=d.get("who_pays", ""),
-            why_now=d.get("why_now", ""), tags=d.get("tags", {}) or {},
+            why_now=d.get("why_now", ""), tags=tags,
             automatability=d.get("automatability"),
             weak_monetisation=bool(d.get("weak_monetisation", False)),
             candidate_id=d.get("candidate_id", ""))
