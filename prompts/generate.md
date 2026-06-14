@@ -40,8 +40,21 @@ USER: Signal (optional): {signal_text}   Sector hint (optional): {sector}
   incumbent alternative a fact-checker would cite to prove your value is already captured, and
   state the CONCRETE reason that incumbent structurally CANNOT capture THIS value. If you cannot
   give that concrete reason, your wedge is 'none' — do not pretend otherwise, and do not attack a
-  pain whose obvious product is already free unless your wedge sits OUTSIDE that free thing. An
-  idea that survives its own pre-mortem is the only kind that survives verification.
+  pain whose obvious product is already free unless your wedge sits OUTSIDE that free thing.
+  TWO STRUCTURAL TRAPS account for almost EVERY commoditisation kill — screen your idea against
+  BOTH before proposing it:
+    (1) FIRST-PARTY FREE TOOL: whoever imposes a duty almost always ships a free first-party way
+        to discharge it — a regulator's own filing tool, a platform's native feature, an OEM's
+        bundled capability. A wrapper/concierge/"compliance-as-a-feature" on that duty is dead on
+        arrival. Your wedge must deliver what the first-party tool STRUCTURALLY will not, not a
+        nicer UI over the same free thing. (This single pattern killed most prior ideas: the body
+        that creates the burden gives away the cure.)
+    (2) MATURE-COMMODITY CORE: if the core capability is already supplied by several established
+        vendors (a category years old), you are entering a price-competed commodity; a
+        concierge / white-label / backbone / "-as-a-service" layer on such a core is the same dead
+        wrapper in a costume. Re-enter ONLY if your wedge changes the unit economics or the
+        underlying capability, never merely the packaging or the target vertical.
+  An idea that survives its own pre-mortem AND both traps is the only kind that survives verification.
 Produce up to {k} DISTINCT opportunities. Range widely; if no signal, generate blue-sky
 ACROSS MANY UNRELATED SECTORS — do not cluster in any single domain, and explicitly avoid
 the recently-killed / saturated area named in the failure modes above.
