@@ -22,5 +22,17 @@
   ],
   "Construction smash-and-grab": [
     {"url": "https://statutory-adjudication.example.com", "text": "solvent payer + statutory adjudication forcing mechanism", "published_at": "2024-01-01"}
+  ],
+  "Construction Statutory Adjudication Arbitrage": [
+    {"url": "https://statutory-adjudication.example.com", "text": "Statutory adjudication is a mandatory legal right for construction contracts in the UK, providing a forcing mechanism for payment.", "published_at": "2024-01-01"}
+  ],
+  "Illegal LinkedIn Scraping Hub": [
+    {"url": "https://linkedin.com/legal/user-agreement", "text": "scraping LinkedIn violates section 8.2 of the User Agreement; it is a breach of contract and illegal under CFAA.", "published_at": "2024-01-01"}
+  ],
+  "Niche Dental Practice CRM (<3 staff)": [
+    {"url": "https://dental-tech.example.com", "text": "Small dental practices with <3 staff are ignored by enterprise CRM vendors like Salesforce, creating a gap for vertical tools.", "published_at": "2024-01-01"}
+  ],
+  "Generic E-commerce Platform for SMBs": [
+    {"url": "https://ecomm-market.example.com", "text": "Shopify and Amazon already own 90% of the small-seller e-commerce market; incumbency is total.", "published_at": "2024-01-01"}
   ]
 }

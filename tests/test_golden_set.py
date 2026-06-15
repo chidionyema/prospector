@@ -27,8 +27,6 @@ from prospector.retrieval import FixtureProvider
 # ---------------------------------------------------------------------------
 
 GOLDEN_EXPECTATIONS = {
-    # 5 KILL cases: value_durability/distribution/payer_solvency gates only.
-    # incumbency and legality are excluded: deepseek's priors override evidence on B2B SaaS.
     "Haulage HMRC fuel-duty": {
         "kill_gate": "value_durability",
         "kill_verdict": "refuted",
@@ -54,6 +52,22 @@ GOLDEN_EXPECTATIONS = {
         "kill_verdict": "refuted",
         "rationale": "NFT market collapsed 2022-2024; value destroyed and not recovered"
     },
+    "Construction Statutory Adjudication Arbitrage": {
+        "kill_gate": None, # PASS
+    },
+    "Illegal LinkedIn Scraping Hub": {
+        "kill_gate": "legality",
+        "kill_verdict": "refuted",
+        "rationale": "violates section 8.2 of the User Agreement"
+    },
+    "Niche Dental Practice CRM (<3 staff)": {
+        "kill_gate": None, # PASS
+    },
+    "Generic E-commerce Platform for SMBs": {
+        "kill_gate": "incumbency",
+        "kill_verdict": "refuted",
+        "rationale": "Shopify and Amazon already own 90% of the small-seller e-commerce market"
+    }
 }
 
 def _make_golden_router():
@@ -81,7 +95,7 @@ def _make_golden_router():
                 return {"verdict": "unverifiable", "confidence": 0.5, "rationale": "unknown idea", "citations": []}
             
             exp = GOLDEN_EXPECTATIONS[active_idea]
-            kill_gate = exp["kill_gate"]
+            kill_gate = exp.get("kill_gate")
             
             # Identify current check from user text
             current_check = None
@@ -98,14 +112,11 @@ def _make_golden_router():
                     "citations": [first_id]
                 }
             
-            # PASS logic — depends on each check's QUESTION FRAMING:
-            #   incumbency ("someone already solves this?")  -> PASS = refuted (no incumbent)
-            #   legality   ("margin depends on breaking law?") -> PASS = refuted (lawful)
-            #   others (positively framed)                    -> PASS = supported
-            v = "refuted" if current_check in ("incumbency", "legality") else "supported"
+            # PASS logic — all checks now follow positive polarity (supported = GOOD)
+            v = "supported"
             
             # Surface the rationale in pain_reality for PASS cases
-            rat = exp["rationale"] if (not kill_gate and current_check == "pain_reality") else "No evidence to the contrary."
+            rat = exp.get("rationale") if (not kill_gate and current_check == "pain_reality") else "No evidence to the contrary."
             
             return {
                 "verdict": v,
@@ -161,6 +172,6 @@ def test_golden_set_discrimination_is_perfect_with_mock_data():
     discrimination, results = run_golden_set(op, search, cfg, str(golden_set_path), verbose=True)
     
     assert discrimination == 1.0, f"Expected 100% discrimination, got {discrimination:.1%}"
-    assert len(results) == 5
+    assert len(results) == 9
     for r in results:
         assert r["passed"], f"Case {r['idea']!r} failed to meet expectations"

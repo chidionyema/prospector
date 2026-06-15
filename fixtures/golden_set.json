@@ -28,5 +28,27 @@
     "expected": "kill",
     "gate": "value_durability",
     "must_surface": "NFT market collapsed"
+  },
+  {
+    "idea": "Construction Statutory Adjudication Arbitrage",
+    "expected": "pass",
+    "must_surface": "statutory adjudication forcing mechanism"
+  },
+  {
+    "idea": "Illegal LinkedIn Scraping Hub",
+    "expected": "kill",
+    "gate": "legality",
+    "must_surface": "violates section 8.2 of the User Agreement"
+  },
+  {
+    "idea": "Niche Dental Practice CRM (<3 staff)",
+    "expected": "pass",
+    "must_surface": "ignored by enterprise CRM vendors"
+  },
+  {
+    "idea": "Generic E-commerce Platform for SMBs",
+    "expected": "kill",
+    "gate": "incumbency",
+    "must_surface": "Shopify and Amazon already own 90%"
   }
-]
+  ]
