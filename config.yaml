@@ -67,20 +67,21 @@ hard_gates:                      # Part 4 kill-filter; evaluated kill-fast in th
   # let value_durability execute ~every candidate before any other gate ran).
   # See CLAUDE.md: "A KILL is not the model's opinion; it is grounded in evidence."
   # The killing verdict depends on the check's QUESTION FRAMING (models.py CHECKS):
-  # positively-framed checks ("is the value durable?", "real pain?") kill on `refuted`;
-  # negatively-framed checks — where a YES is the bad case — kill on `supported`. Two
-  # gates are negatively framed: incumbency ("does someone already solve this?") and
-  # legality ("does the margin DEPEND ON breaking law/terms or falsifying a measure?").
+  # All checks are instructed via verdict.md to use POSITIVE polarity:
+  # "supported" = PASS (space is open, legal, durable, solvent)
+  # "refuted"   = KILL (incumbent exists, illegal, obsolete, broke)
+  # This unified polarity ensures all hard gates kill on `refuted`.
   # legality was historically `[refuted]`, which inverted it: it killed LEGAL ideas
   # (verdict refuted = "no, it doesn't break the law") and let genuinely unlawful ones
   # through. A creative-but-LAWFUL workaround (exploiting a legitimate statutory
   # mechanism) must SURVIVE; only a margin that requires actually breaking law/terms or
   # falsifying data is a kill — hence legality kills on `supported`.
   - value_durability: [refuted]
-  - incumbency: [supported]
+  - incumbency: [refuted]
   - payer_solvency: [refuted]
   - distribution: [refuted]
-  - legality: [supported]
+  - legality: [refuted]
+
   - pain_reality: [refuted]
   - adversarial_decisive: true
 
@@ -116,10 +117,10 @@ lanes:
   venture:                         # unicorn-ambition: the durable-moat bar (= current default)
     hard_gates:
       - value_durability: [refuted]
-      - incumbency: [supported]
+      - incumbency: [refuted]
       - payer_solvency: [refuted]
       - distribution: [refuted]
-      - legality: [supported]
+      - legality: [refuted]
       - pain_reality: [refuted]
       - adversarial_decisive: true
     thresholds:
@@ -132,7 +133,8 @@ lanes:
       - buyer_intent: [refuted]    # nobody searching/paying => dead
       - currency: [refuted]        # stale/peaked trend => dead
       - route_to_market: [refuted] # no beginner-followable channel => dead
-      - legality: [supported]      # margin requires genuine illegality => dead
+      - legality: [refuted]
+      # margin requires genuine illegality => dead
       # adversarial stays DECISIVE, but lane-aware (see adversarial_directive): it must NOT
       # kill on "no moat / commoditised" (the wrong objection for a £30 pack — commoditised
       # = buyers exist), yet it MUST still kill on grounded DELIVERABILITY/DEMAND failure
@@ -202,7 +204,8 @@ lanes:
       - buyer_intent: [refuted]    # nobody searching/paying => dead
       - payer_solvency: [refuted]  # payer has no budget/motive => no business
       - distribution: [refuted]    # no real route to the customer => dead
-      - legality: [supported]      # margin requires genuine illegality => dead
+      - legality: [refuted]
+      # margin requires genuine illegality => dead
       - adversarial_decisive: true
     adversarial_directive: >
       This candidate is a SMALL BUSINESS (roughly 1–20 staff) meant to throw off real owner
@@ -248,7 +251,7 @@ lanes:
       - pain_reality: [refuted]    # no acute, real pain => no growth engine
       - payer_solvency: [refuted]
       - distribution: [refuted]    # no scalable route => not a growth business
-      - legality: [supported]
+      - legality: [refuted]
       - adversarial_decisive: true
     adversarial_directive: >
       This candidate is a GROWTH-STAGE STARTUP that must show a REPEATABLE, SCALABLE growth

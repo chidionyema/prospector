@@ -27,20 +27,14 @@ def make_check(name: str, verdict: Verdict, confidence: float = 0.9,
 
 
 def _all_passing_checks() -> list[CheckResult]:
-    """A clean set: all required checks with supported/refuted verdicts that pass."""
+    """A clean set: all required checks with supported verdicts that pass."""
     return [
-        # value_durability: kills on refuted only — supported passes
+        # All checks now follow positive polarity (supported = GOOD)
         make_check("value_durability", Verdict.SUPPORTED),
-        # incumbency: kills on supported — must be refuted (no incumbent)
-        make_check("incumbency", Verdict.REFUTED),
-        # payer_solvency: kills on refuted only — supported passes
+        make_check("incumbency", Verdict.SUPPORTED),
         make_check("payer_solvency", Verdict.SUPPORTED),
-        # distribution: kills on refuted only — supported passes
         make_check("distribution", Verdict.SUPPORTED),
-        # legality: kills on SUPPORTED (margin depends on breaking law) — a lawful
-        # idea is REFUTED ("no, it doesn't require illegality"), which passes.
-        make_check("legality", Verdict.REFUTED),
-        # pain_reality: kills on refuted only — supported passes
+        make_check("legality", Verdict.SUPPORTED),
         make_check("pain_reality", Verdict.SUPPORTED),
     ]
 
@@ -76,19 +70,19 @@ class TestValueDurabilityGate:
 
 
 class TestIncumbencyGate:
-    def test_supported_kills(self, cfg):
-        """incumbency=supported means a strong incumbent exists — kill."""
+    def test_refuted_kills(self, cfg):
+        """incumbency=refuted means a strong incumbent exists — kill."""
         checks = [
             # value_durability must pass first (supported), then incumbency kills
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.SUPPORTED),
+            make_check("incumbency", Verdict.REFUTED),
         ]
         killed, gate, reason = apply_gates(checks, cfg)
         assert killed is True
         assert gate == "incumbency"
 
-    def test_refuted_passes(self, cfg):
-        """incumbency=refuted means no dominant incumbent — gate passes."""
+    def test_supported_passes(self, cfg):
+        """incumbency=supported means no dominant incumbent — gate passes."""
         checks = _all_passing_checks()
         killed, gate, _ = apply_gates(checks, cfg)
         assert killed is False
@@ -99,7 +93,7 @@ class TestPayerSolvencyGate:
     def test_refuted_kills(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.REFUTED),
         ]
         killed, gate, reason = apply_gates(checks, cfg)
@@ -109,7 +103,7 @@ class TestPayerSolvencyGate:
     def test_unverifiable_does_not_kill(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.UNVERIFIABLE),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
@@ -121,7 +115,7 @@ class TestDistributionGate:
     def test_unverifiable_does_not_kill(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.UNVERIFIABLE),
         ]
@@ -132,7 +126,7 @@ class TestDistributionGate:
     def test_refuted_kills(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.REFUTED),
         ]
@@ -142,25 +136,23 @@ class TestDistributionGate:
 
 
 class TestLegalityGate:
-    def test_supported_kills(self, cfg):
-        """legality kills on SUPPORTED — the margin genuinely depends on breaking
-        law/terms or falsifying a measurement. A lawful idea is REFUTED and survives."""
+    def test_refuted_kills(self, cfg):
+        """legality kills on REFUTED — the margin genuinely depends on breaking
+        law/terms or falsifying a measurement."""
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.SUPPORTED),
-            make_check("legality", Verdict.SUPPORTED),
+            make_check("legality", Verdict.REFUTED),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
         assert killed is True
         assert gate == "legality"
 
-    def test_refuted_does_not_kill(self, cfg):
-        """legality=refuted ("lawful — does not require breaking law", incl. a creative
-        but lawful workaround) must NOT kill. This is the false-negative that the inverted
-        [refuted] gate used to produce on good ideas."""
-        checks = _all_passing_checks()   # legality is REFUTED here
+    def test_supported_passes(self, cfg):
+        """legality=supported ("lawful — does not require breaking law") must NOT kill."""
+        checks = _all_passing_checks()   # legality is SUPPORTED here
         killed, gate, _ = apply_gates(checks, cfg)
         assert killed is False
         assert gate is None
@@ -169,7 +161,7 @@ class TestLegalityGate:
         """legality=unverifiable does NOT kill (silence is not evidence of illegality)."""
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.SUPPORTED),
             make_check("legality", Verdict.UNVERIFIABLE),
@@ -184,10 +176,10 @@ class TestPainRealityGate:
     def test_refuted_kills(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.SUPPORTED),
-            make_check("legality", Verdict.REFUTED),
+            make_check("legality", Verdict.SUPPORTED),
             make_check("pain_reality", Verdict.REFUTED),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
@@ -197,10 +189,10 @@ class TestPainRealityGate:
     def test_unverifiable_does_not_kill(self, cfg):
         checks = [
             make_check("value_durability", Verdict.SUPPORTED),
-            make_check("incumbency", Verdict.REFUTED),
+            make_check("incumbency", Verdict.SUPPORTED),
             make_check("payer_solvency", Verdict.SUPPORTED),
             make_check("distribution", Verdict.SUPPORTED),
-            make_check("legality", Verdict.REFUTED),
+            make_check("legality", Verdict.SUPPORTED),
             make_check("pain_reality", Verdict.UNVERIFIABLE),
         ]
         killed, gate, _ = apply_gates(checks, cfg)
@@ -275,18 +267,18 @@ def test_confidence_above_floor_not_a_fail(cfg):
     assert is_hard_fail("value_durability", cr, cfg) is False
 
 
-def test_incumbency_low_confidence_supported_still_kills(cfg):
-    """incumbency: killing verdict is 'supported', so low confidence supported
+def test_incumbency_low_confidence_refuted_still_kills(cfg):
+    """incumbency: killing verdict is 'refuted', so low confidence refuted
     is caught by the first branch (verdict in killing set) directly."""
     floor = cfg.thresholds.confidence_floor
     low_conf = floor - 0.1
 
     cr = CheckResult(
         check_name="incumbency",
-        verdict=Verdict.SUPPORTED,
+        verdict=Verdict.REFUTED,
         confidence=low_conf,
-        rationale="supported with low confidence",
+        rationale="refuted with low confidence",
         citations=["x"],
     )
-    # 'supported' is in the killing set for incumbency -> is_hard_fail True regardless
+    # 'refuted' is in the killing set for incumbency -> is_hard_fail True regardless
     assert is_hard_fail("incumbency", cr, cfg) is True

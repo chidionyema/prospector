@@ -14,9 +14,10 @@ VERDICT AXIOM:
 
 POLARITY (apply to every check literally):
   value_durability:  "supported" means the passage shows the value IS durable,
-    real, and not already commoditised or evaporating.  A passage confirming
-    "this reform removed the basis for the service" is "refuted" — it proves
-    the value is GONE, not that it is durable.
+    real, and not already commoditised or evaporating.  "refuted" means the value 
+    is GONE (the basis for the service no longer exists). A mere 'competitor' or 
+    'substitute' is NOT a refutation of durability unless it is a total commodity 
+    or a free first-party tool that removes ALL possible margin for a new entry.
   incumbency:  "supported" means NO incumbent solves this well (the space is
     open).  "Refuted" means an incumbent already owns the need.
   payer_solvency:  "supported" means the payer CAN and WILL pay.  "Refuted"

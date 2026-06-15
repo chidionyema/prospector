@@ -131,10 +131,7 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     return min(1.0, max(0.0, confidence))
 
 
-# Filler/brand/product-noise stripped from search queries. A 30-word product
-# sentence ("a mobile-first photogrammetry tool that turns any smartphone into…")
-# is a poor web query and flash-grounding returns 0 sources; 5-6 domain keywords
-# recall far better. Stopwords + generic product nouns only — domain terms survive.
+# Filler/brand/product-noise stripped from search queries.
 _QUERY_NOISE = frozenset({
     "a", "an", "the", "and", "or", "for", "of", "to", "in", "on", "with", "that",
     "this", "any", "into", "turns", "turn", "your", "their", "our", "its", "is",
@@ -142,15 +139,15 @@ _QUERY_NOISE = frozenset({
     "help", "new", "real", "time", "first", "grade", "professional", "platform",
     "tool", "tools", "app", "apps", "solution", "solutions", "service", "services",
     "system", "systems", "software", "product", "powered", "driven", "instrument",
-    "enabled", "compliant",
+    "enabled", "compliant", "under", "underneath", "across", "between", "through",
 })
 
 
-def _keywords(cand: Candidate, k: int = 6) -> str:
-    """Compress title+one_liner into a few salient search keywords. one_liner leads
-    so domain terms win the cap over a coined brand name in the title. Keeps
-    acronyms (EUDR) verbatim; drops filler/stopwords; dedups; caps at k tokens."""
-    text = f"{cand.one_liner} {cand.title}"
+def _keywords(cand: Candidate, k: int = 12) -> str:
+    """Compress one_liner+title+hypothesis into salient search keywords. 
+    Increased cap (k=12) and hypothesis inclusion ensures domain-specific terms 
+    (e.g. 'EU Data Act') survive the generic framing."""
+    text = f"{cand.one_liner} {cand.title} {cand.hypothesis}"
     out: list[str] = []
     seen: set[str] = set()
     for raw in re.findall(r"[A-Za-z][A-Za-z0-9-]+", text):
@@ -158,17 +155,45 @@ def _keywords(cand: Candidate, k: int = 6) -> str:
         if len(low) < 3 or low in _QUERY_NOISE or low in seen:
             continue
         seen.add(low)
-        out.append(raw if raw.isupper() else low)  # keep acronyms as-is
+        out.append(raw if raw.isupper() else low)
         if len(out) >= k:
             break
     return " ".join(out) or cand.title
 
 
+# Balanced search templates: disconfirm (kill-fast) + confirm (score-high).
+_DISCONFIRM_TEMPLATES: dict[str, list[str]] = {
+    "value_durability": ["{q} obsolete OR commoditised OR replaced by free alternative"],
+    "legality": ["{q} regulation OR licence required OR banned OR illegal"],
+    "incumbency": ["{q} incumbent market leader dominant competitor"],
+    "payer_solvency": ["{q} budget cuts OR cannot afford OR insolvency"],
+    "distribution": ["{q} customer acquisition channel saturated OR expensive"],
+    "pain_reality": ["{q} not a real problem OR existing workaround"],
+}
+
+_CONFIRM_TEMPLATES: dict[str, list[str]] = {
+    "value_durability": ["{q} durable moat barrier defensibility"],
+    "legality": ["{q} legal framework compliance pathway"],
+    "incumbency": ["{q} market gap underserved segment"],
+    "payer_solvency": ["{q} budget willingness to pay ROI"],
+    "distribution": ["{q} acquisition channel case study"],
+    "pain_reality": ["{q} acute problem testimonial evidence"],
+}
+
+
 def _templated_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
+    """Mix confirm and disconfirm queries for a balanced view."""
     base = _keywords(cand)
-    tmpls = _DISCONFIRM_TEMPLATES.get(check_name) or ["{q} " + check_name]
-    out = [t.format(q=base) for t in tmpls][:max(1, n)]
-    return out or [f"{base} {check_name}"]
+    disconfirm = _DISCONFIRM_TEMPLATES.get(check_name, [])
+    confirm = _CONFIRM_TEMPLATES.get(check_name, [])
+    
+    out = []
+    if disconfirm:
+        out.append(disconfirm[0].format(q=base))
+    if confirm:
+        out.append(confirm[0].format(q=base))
+        
+    return out[:max(1, n)] or [f"{base} {check_name}"]
 
 
 @track_latency(name="gen_queries")

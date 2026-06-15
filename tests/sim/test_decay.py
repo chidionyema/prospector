@@ -53,9 +53,11 @@ def test_decay_loop_refreshes_valid_dossier(setup_store):
         if "analyst" in system:
             m = re.search(r"\[([a-f0-9]{16})\]", user)
             cid = [m.group(1)] if m else []
-            v = "refuted" if ("incumbency" in user or "legality" in user) else "supported"
+            # All checks now use positive polarity (supported = GOOD)
+            v = "supported" 
             return {"verdict": v, "confidence": 0.9, "rationale": "ok", "citations": cid}
         if "Score a vetted opportunity" in system:
+
             return {
                 "scores": {ax: 4 for ax in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]},
                 "justification": {ax: "good" for ax in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]}
