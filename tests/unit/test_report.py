@@ -57,6 +57,27 @@ def test_metrics_kill_rate_and_gate_distribution(tmp_path):
     assert "distribution" in out
 
 
+def test_generation_quality_reads_first_class_structural_form(tmp_path):
+    """Regression: structural_form is a first-class field, not tags['form:*'].
+
+    The report once scanned only tags['form:*'] and reported '0 forms' for every
+    real run, firing a false 'generator monoculture' alarm while the catalogue was
+    in fact structurally diverse. Forms must surface from the canonical field.
+    """
+    from prospector.report import generation_quality_report
+    cfg, store = _store(tmp_path)
+    for title, form in [("a", "vertical_saas"), ("b", "local_service"),
+                        ("c", "micro_ecommerce")]:
+        d = _kill(title, "value_durability")
+        d.candidate.structural_form = form
+        store.save(d)
+    out = generation_quality_report(store)
+    assert "3 seen" in out  # all three distinct forms counted
+    for form in ("vertical_saas", "local_service", "micro_ecommerce"):
+        assert form in out
+    assert "0 forms" not in out
+
+
 def test_costs_parses_audit_log(tmp_path):
     log = tmp_path / "prospector.jsonl"
     lines = [

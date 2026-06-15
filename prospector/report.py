@@ -352,6 +352,16 @@ def costs_report(jsonl_path: str | Path) -> str:
 def _structural_forms(rows: list[dict]) -> set[str]:
     forms: set[str] = set()
     for r in rows:
+        # Canonical: structural_form is a first-class field on the dossier index
+        # (and on candidate). Read it directly — the legacy tags["form:*"] scheme
+        # below is kept only for back-compat with pre-field rows.
+        sform = r.get("structural_form")
+        if sform:
+            forms.add(str(sform))
+        cand = r.get("candidate")
+        if isinstance(cand, dict) and cand.get("structural_form"):
+            forms.add(str(cand["structural_form"]))
+
         tags = r.get("tags", {})
         if isinstance(tags, dict):
             for k, v in tags.items():

@@ -195,6 +195,15 @@ def _structural_forms_in(rows: list[dict]) -> set[str]:
     """Extract structural forms seen in a set of rows (index or JSON)."""
     forms: set[str] = set()
     for r in rows:
+        # Canonical first-class field (dossier index column + candidate field).
+        # The legacy tags["form:*"] scan below is back-compat for pre-field rows.
+        sform = r.get("structural_form")
+        if sform:
+            forms.add(str(sform))
+        cand = r.get("candidate")
+        if isinstance(cand, dict) and cand.get("structural_form"):
+            forms.add(str(cand["structural_form"]))
+
         tags = r.get("tags", {})
         if isinstance(tags, dict):
             for k in tags:
