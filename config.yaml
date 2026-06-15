@@ -1,21 +1,35 @@
-operator: [gemini_cli, claude_cli]   # brain failover chain (Part 9): try gemini CLI first,
-                                 # fall over to the claude CLI when gemini is out of quota/credit.
+# MOAT CHAIN (Part 9 failover): PRIMARY brains first, then a GUARDRAILED cheap tail.
+#   gemini_cli, claude_cli  = TRUSTED moat (rule kills/passes normally).
+#   deepseek, minimax       = EMERGENCY FALLBACK — engaged by the circuit breaker ONLY
+#                             when BOTH gemini AND claude are exhausted. A verdict ruled
+#                             by a fallback brain marks the dossier `provisional`: it does
+#                             NOT publish on PASS and is auto re-vetted by the moat on the
+#                             next `vet --resume` (see verify.py MOAT_PRIMARY). This keeps
+#                             throughput up during a quota outage without trusting a
+#                             cheap model's ruling as final.
+# PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
+# specs/offline-moat-validation.md and run, recording a clearance:
+#   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
+operator: [gemini_cli, claude_cli, deepseek, minimax]   # primary moat + guardrailed cheap tail.
                                  # Single string still works: `operator: gemini_cli`.
-model: "gemini-2.5-pro"          # verdict brain (Gemini-specific pin). Pinned: the CLI's
-                                 # implicit default and gemini-2.5-flash are quota-exhausted on
-                                 # this account; pro + flash-lite still have capacity (quota is
-                                 # per-model). The claude_cli fallback ignores this and uses its
-                                 # own default model.
+model: "gemini-2.5-flash-lite"          # verdict brain (Gemini-specific pin).
 model_fast: "gemini-2.5-flash-lite"  # cheap model for query-gen/prescreen (live quota; "" = reuse `model`)
 model_version_tag: ""            # filled at runtime for audit
 
 retrieval:
-  provider: [gemini_cli, claude_cli]   # grounding failover chain: gemini CLI web-search
-                                 # first, fall over to claude CLI web-search when gemini's
-                                 # search quota is spent. Options: gemini_cli | claude_cli |
-                                 # gemini_grounding | fixture. Single string still works.
-  queries_per_check: 2
-  results_per_query: 4
+  # Full resilience grounding chain — working providers first:
+  #   1. exa            — real web search via Exa API (1,000-20,000/mo free; needs EXA_API_KEY)
+  #   2. brave          — real web search via Brave API (2,000/mo free; needs BRAVE_API_KEY)
+  #   3. gemini_cli     — real web search via Google CLI (20/day free; exhausts fast)
+  #   4. claude_cli     — real web search via Claude CLI (credit-based; claude-3-5-sonnet)
+  #
+  # NOTE: deepseek/minimax_search/openrouter were REMOVED — they are LLM-synthesis
+  # providers, NOT real search engines. Without a Brave API key they return hallucinated
+  # URLs that _resolve() drops, causing every check to return "unverifiable".
+  # Options: exa | brave | gemini_cli | claude_cli | gemini_grounding | fixture
+  provider: [exa, brave, gemini_cli, claude_cli]
+  queries_per_check: 0              # 0 = skip LLM query-gen entirely; use template only (kill-fast path)
+  results_per_query: 1             # 1 source per query; kill-fast short-circuits anyway
   max_passage_chars: 1500
   cache: true
   # All six gates use deterministic disconfirming-query templates (_DISCONFIRM_TEMPLATES in
@@ -23,9 +37,24 @@ retrieval:
   # not judgment, so it belongs in code; the model is reserved for ruling on fetched passages.
   template_checks: [pain_reality, value_durability, incumbency, payer_solvency, distribution, legality]
   fast_queries: 1                # query count per templated check (latency saver on the 80%-kill path)
-  search_timeout: 75             # seconds per web-search; throttled free-tier searches fail fast
-  search_retries: 0              # no in-place retry: with a fallback chain, fail FAST to the next
-                                 # provider instead of re-hitting the throttled/dead one
+  search_model: "gemini-2.5-flash"  # SEARCH/grounding model — mid-tier for recall (flash-lite returns
+                                 # 0 sources for many queries). Verdict ruling still uses `model` (-lite).
+
+  # --- Resilience layer (Part 9). All knobs live here — no hardcoded values in code. ---
+  search_timeout: 75             # base seconds per web-search (attempt 0)
+  search_timeout_max: 150        # adaptive ceiling: the timeout escalates per retry up to this
+  search_timeout_escalation: 1.5 # slow≠dead — give each retry more headroom before giving up
+  search_retries: 1              # in-place retries before failing over to the next provider
+  claude_min_timeout: 120        # claude grounding floor (its search runs slower than gemini's)
+  queue_timeout: 45              # max wait for a free provider slot before failing over (bounds
+                                 # total latency at queue_timeout + search_timeout; was UNBOUNDED)
+  gemini_concurrency: 2          # max concurrent gemini CLI subprocesses (heavy node processes)
+  claude_concurrency: 2          # max concurrent claude CLI subprocesses
+  vet_workers: 1                 # 1 candidate at a time — reduces concurrent DeepSeek grounding load
+                                 # workers no longer oversubscribe 2+2 slots and self-induce timeouts
+  breaker_failure_threshold: 3   # CONSECUTIVE transient fails before a provider is retired (one
+                                 # timeout under load no longer permanently dead-lists it)
+  breaker_cooldown_s: 60         # seconds a retired provider stays out before a half-open recovery probe
 
 thresholds:
   confidence_floor: 0.6
@@ -63,8 +92,238 @@ weights:
   defensibility: 0.15
   build_feasibility: 0.10
 
+# ---- Ambition lanes (Part 14) ----
+# The engine caters to the FULL spectrum of ideas — from £30 side-hustles to unicorn-
+# potential ventures — by judging each candidate against the bar appropriate to its OWN
+# ambition class, NOT one universal filter (think an Amazon catalogue: list anything, but
+# each item is graded by its own class). The cross-lane invariant that never moves is
+# source-or-die grounding; only WHICH claims must hold (the gate roles + thresholds) swaps.
+# A lane overrides hard_gates / thresholds / weights; the top-level blocks above are the
+# implicit default. `active_lane: ""` => default => byte-for-byte today's venture behaviour.
+# MULTI-LANE BY DEFAULT: the catalogue is mixed-ambition (a buyer seeking a side hustle and a
+# buyer wanting to launch a startup browse the SAME catalogue, each item graded by its own
+# class). One run fans generation out across `active_lanes`, auto-classifies each idea into its
+# natural tier, then vets each against THAT tier's bar. `active_lane` (singular) still pins a
+# single lane and overrides active_lanes; empty active_lanes => single-default (venture) run.
+active_lane: ""
+active_lanes: [side_hustle, smb, growth, venture]
+lane_quota:                        # candidates generated per tier per multi-lane run
+  side_hustle: 4
+  smb: 3
+  growth: 3
+  venture: 3
+lanes:
+  venture:                         # unicorn-ambition: the durable-moat bar (= current default)
+    hard_gates:
+      - value_durability: [refuted]
+      - incumbency: [supported]
+      - payer_solvency: [refuted]
+      - distribution: [refuted]
+      - legality: [supported]
+      - pain_reality: [refuted]
+      - adversarial_decisive: true
+    thresholds:
+      confidence_floor: 0.6
+      min_composite_to_pass: 3.2
+  side_hustle:                     # £30-pack lane: judge DEMAND + DELIVERABILITY, not moat.
+    # Commoditised, high-intent niches are GOOD here (lots of searchers/payers = the buyer),
+    # so value_durability/incumbency are OFF. The real moat filter is the Stage-7 CAC test.
+    hard_gates:                    # kill-fast: cheapest decisive demand signal first
+      - buyer_intent: [refuted]    # nobody searching/paying => dead
+      - currency: [refuted]        # stale/peaked trend => dead
+      - route_to_market: [refuted] # no beginner-followable channel => dead
+      - legality: [supported]      # margin requires genuine illegality => dead
+      # adversarial stays DECISIVE, but lane-aware (see adversarial_directive): it must NOT
+      # kill on "no moat / commoditised" (the wrong objection for a £30 pack — commoditised
+      # = buyers exist), yet it MUST still kill on grounded DELIVERABILITY/DEMAND failure
+      # (method doesn't work, channel dead, no demand, already free). Turning it fully off
+      # let through a dishonest PASS whose own dossier refuted it.
+      - adversarial_decisive: true
+    # Re-frames the adversarial pass for the £30-pack bar: commoditisation is fine; kill
+    # only on grounded evidence the thing won't deliver or sell. (Empty for venture.)
+    adversarial_directive: >
+      This candidate is a £30 INFO-PRODUCT PACK, not a venture. Commoditisation, absence
+      of a moat or defensibility, low switching cost, or the fact that 'anyone could
+      assemble this themselves' are NOT valid kill reasons here — buyers pay £30 for
+      convenience, curation and a method they can follow. You may mark the case 'decisive'
+      ONLY on grounded evidence of a DELIVERABILITY or DEMAND failure: practitioners report
+      the method does not actually work as sold; the route/channel is closed, banned or
+      being deprecated; there is no real buyer demand; or the promised outcome is already
+      available FREE in a form buyers will use instead. Never mark 'decisive' for mere lack
+      of a moat, novelty, or defensibility.
+    score_checks:                  # run + score, never kill (soft signal for the composite)
+      # claims_verifiable is SOFT here: its disconfirm query ("false OR contradicted")
+      # structurally surfaces a negative for any niche, so it kills demand-real ideas on
+      # "the space got more competitive" — a quality signal, not a kill criterion.
+      - claims_verifiable
+      - payer_solvency
+      - distribution
+      - pain_reality
+    thresholds:
+      confidence_floor: 0.6
+      min_composite_to_pass: 2.0   # lower bar: a £30 pack is not a venture
+    # Lane-aware GENERATION: merged over the top-level `generation:` block (for_lane).
+    # Re-aims generation at side-hustle-SCALE OPPORTUNITIES (the kind of opportunity), NOT
+    # at "£30 packs" (the £30 pack is the downstream SELLING FORMAT, applied to every tier —
+    # see listing/packs; it is NOT this lane's idea space). Decoupling these two axes is the
+    # core correction: tier = scale of the opportunity; packaging = how we sell it.
+    generation:
+      # lane_directive is injected at the top of generate_system.md and OVERRIDES the
+      # venture moat language that follows. Empty for venture => prompt unchanged.
+      lane_directive: >
+        LANE OVERRIDE — IGNORE every durable-moat / wedge / defensibility / "kills ~80%"
+        requirement stated anywhere below: it DOES NOT APPLY to this run. Generate
+        SIDE-HUSTLE-SCALE OPPORTUNITIES: a specific thing ONE solo person can start with
+        little capital, for supplemental or income-replacing earnings. Judge an idea ONLY on:
+        (1) DEMAND — are real people actively searching for or already paying for this RIGHT
+        NOW; (2) DELIVERABILITY — can a beginner follow an OPEN route to the promised outcome;
+        (3) CURRENCY — is it live now, not a peaked fad. Commoditised, crowded, "anyone could
+        do it" niches are GOOD here (crowds = buyers). Each idea must name a SPECIFIC, concrete
+        opportunity (the exact niche + the exact thing sold/done) — never a platform,
+        marketplace, registry, or venture. Span DIVERSE forms; do NOT collapse to one format.
+        Favour sharp, non-obvious opportunities over the tired top-10 side hustles.
+      # Side-hustle-SCALE opportunity forms (what the solo operator actually DOES/sells) —
+      # NOT "£30 pack" deliverable formats. The £30 pack packages any of these for sale.
+      structural_forms:
+        - local_service          # a hands-on local service one person can deliver
+        - micro_ecommerce        # a small niche product store (print-on-demand, dropship, handmade)
+        - productized_freelance  # a freelance skill sold as a fixed-scope, repeatable product
+        - content_channel        # a monetised audience in a specific niche (ads/sponsor/affiliate)
+        - niche_micro_saas       # a tiny single-workflow tool for one underserved niche
+        - marketplace_seller     # selling into an existing marketplace's built-in demand
+        - rental_arbitrage       # renting/reselling an asset or access for a spread
+        - info_product           # a course/templates/kit teaching one valuable skill
+  smb:                             # small-business lane: a real 1–20-staff business that throws
+    # off genuine owner income. Bar above side_hustle: demand is not enough — the PAYER must be
+    # solvent and there must be a real route to customers (both HARD). A deep moat is still NOT
+    # required (commoditised-but-profitable small businesses are fine); the kill is no real
+    # business / broken unit economics, surfaced by the adversarial pass.
+    hard_gates:                    # kill-fast: cheapest decisive signal first
+      - buyer_intent: [refuted]    # nobody searching/paying => dead
+      - payer_solvency: [refuted]  # payer has no budget/motive => no business
+      - distribution: [refuted]    # no real route to the customer => dead
+      - legality: [supported]      # margin requires genuine illegality => dead
+      - adversarial_decisive: true
+    adversarial_directive: >
+      This candidate is a SMALL BUSINESS (roughly 1–20 staff) meant to throw off real owner
+      income, NOT a venture-scale company. Commoditisation, absence of a durable moat, low
+      switching cost, or 'anyone could compete' are NOT valid kill reasons — plenty of
+      profitable small businesses are commoditised. You may mark the case 'decisive' ONLY on
+      grounded evidence of a real-business failure: the unit economics cannot clear a living
+      owner income (costs/CAC exceed achievable margin), there is no reachable paying customer
+      base, the route to customers is closed/banned, or the demand is not real. Never mark
+      'decisive' merely for lack of a moat, novelty, or defensibility.
+    score_checks:                  # run + score, never kill
+      - pain_reality
+      - currency
+      - route_to_market
+      - claims_verifiable
+    thresholds:
+      confidence_floor: 0.6
+      min_composite_to_pass: 2.6   # above side_hustle (2.0), below growth/venture
+    generation:
+      lane_directive: >
+        LANE OVERRIDE — IGNORE every durable-moat / wedge / defensibility / "kills ~80%"
+        requirement below: it DOES NOT APPLY here. Generate SMALL-BUSINESS OPPORTUNITIES — a
+        venture one founder (optionally a tiny team) can build into a real business of roughly
+        1–20 people that pays a genuine owner income. Judge an idea ONLY on: (1) DEMAND — real
+        people/firms actively paying for this now; (2) VIABLE UNIT ECONOMICS — a believable
+        margin after delivery cost and customer acquisition; (3) A REAL ROUTE TO CUSTOMERS a
+        small operator can actually work. A durable moat is NOT required — commoditised but
+        profitable is fine. Name a SPECIFIC, concrete business (who it serves + what it sells),
+        never a platform, marketplace, registry, or venture-scale play. Span DIVERSE forms.
+      structural_forms:
+        - productized_service    # a done-for-you outcome sold as a repeatable product
+        - local_service_chain    # a hands-on service that can grow past one operator
+        - vertical_tool          # narrow software for one workflow in one niche
+        - b2b_service            # an ongoing service sold to other small businesses
+        - ecommerce_brand        # a niche product brand with repeat purchase
+        - specialist_agency      # a focused agency owning one specific deliverable
+        - niche_distribution     # sourcing/reselling into an underserved channel
+        - equipment_or_rental    # an asset-backed service or rental operation
+  growth:                          # growth-startup lane: venture-track, must show a REPEATABLE,
+    # scalable growth motion (a channel that compounds + retention), but NOT yet a deep moat.
+    # Bar above smb: acute pain is now HARD. The kill is no scalable channel / no retention.
+    hard_gates:
+      - pain_reality: [refuted]    # no acute, real pain => no growth engine
+      - payer_solvency: [refuted]
+      - distribution: [refuted]    # no scalable route => not a growth business
+      - legality: [supported]
+      - adversarial_decisive: true
+    adversarial_directive: >
+      This candidate is a GROWTH-STAGE STARTUP that must show a REPEATABLE, SCALABLE growth
+      motion — but a deep durable moat is NOT yet required (early growth companies often lack
+      one). Do NOT kill merely for absence of a moat or defensibility. You may mark the case
+      'decisive' ONLY on grounded evidence that growth cannot compound: there is no scalable,
+      repeatable acquisition channel (only manual/unscalable selling), or no plausible
+      retention (one-shot demand, churn that kills the motion), or the acute pain is not real.
+    score_checks:
+      - value_durability
+      - incumbency
+      - currency
+      - buyer_intent
+      - claims_verifiable
+    thresholds:
+      confidence_floor: 0.6
+      min_composite_to_pass: 2.9   # above smb (2.6), just below venture (3.2)
+    generation:
+      lane_directive: >
+        LANE OVERRIDE — a deep durable moat is NOT required for THIS run; do not demand one.
+        Generate GROWTH-STARTUP OPPORTUNITIES — ventures that can grow fast via a REPEATABLE,
+        SCALABLE motion. Judge an idea on: (1) ACUTE PAIN a defined segment feels now; (2) a
+        SOLVENT, MOTIVATED PAYER; (3) a SCALABLE, REPEATABLE acquisition CHANNEL (self-serve,
+        a forcing function, an existing high-volume channel) — not manual one-off selling;
+        (4) plausible RETENTION (the need recurs / the product compounds). A deep moat can come
+        later. Name a SPECIFIC, concrete startup (segment + product + growth motion). Span
+        DIVERSE forms; do NOT collapse to one shape.
+      structural_forms:
+        - vertical_saas          # software for one industry's core workflow, self-serve growth
+        - plg_tool               # a product-led tool with built-in viral/self-serve acquisition
+        - transactional_platform # takes a cut of a transaction it uniquely originates/de-risks
+        - prosumer_tool          # a tool for prosumers/creators with bottoms-up adoption
+        - api_product            # an API/infra product developers adopt and embed
+        - data_workflow          # a compounding-data product that improves with usage
+        - marketplace_thin       # a focused marketplace seeding one liquid niche first
+        - vertical_service_scaled # a service productised toward a scalable delivery model
+
 generation:
   candidates_per_signal: 5
+  max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
+  max_rounds: 6         # max batching rounds to hit the requested candidate count
+  operator_archetype: solo_agent
+  refinement_enabled: true # ML Improvement: enable the cynical analyst critique pass
+  # ORTHOGONALITY AXIS (Part 3 redesign). Generation mode-collapsed: the ONLY diversity
+  # axis was the creativity LENS, which varies the ANGLE of attack but not the BUSINESS
+  # FORM — so every lens on a regulatory signal converged on the same "central data /
+  # rating / registry utility" shape (6 ideas from 2 unrelated signals were one idea).
+  # We now fan out across distinct STRUCTURAL FORMS: each parallel call must build its
+  # idea in a DIFFERENT business form, so the dead reference-data shape is at most ONE
+  # cell of many — collapse broken by construction, not by another prompt adjective.
+  structural_forms:
+    - productized_service   # a done-for-you OUTCOME sold as a product; human labour is the wedge, automated down over time
+    - vertical_tool         # narrow software for ONE workflow in ONE niche; switching-cost moat once embedded
+    - transaction_broker    # take a cut of a transaction you uniquely ORIGINATE or de-risk (not a generic marketplace)
+    - risk_financing        # take the OTHER SIDE of a cashflow/risk others won't underwrite; price an asymmetry you can read
+    - physical_ops          # an atoms+bits operation a laptop rival cannot ship; logistics/inspection/on-the-ground presence
+    - audience_media        # build a SPECIFIC audience's trust first, then monetise the attention/access you own
+    - picks_and_shovels     # sell the inputs/tooling to everyone chasing the same gold rush, not the gold
+    - data_intelligence     # proprietary COMPOUNDING data rivals structurally cannot obtain (the one form that may be a data play)
+  # Audience persona axis — varies the BUYER independently of the business form.
+  # Together with structural_forms this creates an 8×8 = 64-cell diversity matrix,
+  # breaking the B2B-institutional monoculture that drives the value_durability wall.
+  audience_forms:
+    - retiree_cohort          # 60+ with capital, time, health anxiety; asset-rich, income-poor
+    - gen_z_worker            # 18-27, gig economy, digital native, low savings, job-hopping
+    - smb_owner               # 1-20 employee business owner; wears every hat, cash-flow stressed
+    - primary_carer           # parents of young children or guardians of elderly relatives
+    - manual_tradesperson     # construction, logistics, hospitality; hands-on, time-poor, digitally underserved
+    - public_sector_worker    # nurses, teachers, civil servants; fixed pay, predictable needs
+    - freelancer_creative     # designers, writers, consultants; income volatile, client-dependent
+    - squeezed_middle         # 35-55, dual-income, asset-rich on paper, cash-poor month-to-month
+  archetypes:
+    solo_agent:
+      binding: "SOLO AGENT-OPERATOR (binding — an idea failing these is INVALID, do not propose it): distribution must be OWNED or FREE (you cannot buy reach or out-spend anyone); the whole thing must be BUILDABLE and OPERABLE by ONE AI-leveraged person with no team, no outside capital, no licence; the moat must be one a solo can actually hold (proprietary process/data/taste/judgment, a captive niche, or switching cost) — never one that needs scale, headcount, or capital."
+      forbid: "FORBIDDEN SHAPES (a solo structurally CANNOT be these — proposing one is an automatic miss): a licensed/accredited rating agency, a central registry/index/authority, a regulator or standards body, a bank/insurer/DFI underwriting at scale, a two-sided marketplace whose liquidity you must buy, or anything that only works once you are already a large incumbent with an existing book."
   controller:
     killrate_window: 50
     exploration_min: 0.2

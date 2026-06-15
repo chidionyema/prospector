@@ -5,13 +5,50 @@ contract. Only structurally-invalid JSON elements are skipped.
 """
 from __future__ import annotations
 
-from typing import Any
+import hashlib
+import json
+import math
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Optional
 
 from .config import Config
 from .models import Candidate
 from .operator import Operator
 from .prompts import render
 from .telemetry import logger, track_latency
+
+
+def _parse_candidates(data: Any) -> list[Candidate]:
+    """Coerce a model response (bare list or wrapper dict) into Candidates.
+
+    Never kills on quality — only skips elements that cannot be parsed as a dict
+    with at least a 'title' key (structural invalidity only).
+    """
+    if isinstance(data, list):
+        raw_list = data
+    elif isinstance(data, dict):
+        for key in ("opportunities", "candidates", "results", "items"):
+            if isinstance(data.get(key), list):
+                raw_list = data[key]
+                break
+        else:
+            raw_list = next((v for v in data.values() if isinstance(v, list)), [])
+    else:
+        raw_list = []
+
+    out: list[Candidate] = []
+    for item in raw_list:
+        if not isinstance(item, dict) or not item.get("title"):
+            continue
+        try:
+            out.append(Candidate.from_dict(item))
+        except Exception:
+            continue
+    return out
+
+
+def _norm_title(t: str) -> str:
+    return " ".join(str(t).lower().split())
 
 
 @track_latency(name="generate")
@@ -25,19 +62,18 @@ def generate(
     target_qualities: str | None = None,
     recent_failure_modes: str | None = None,
     k: int | None = None,
+    *,
+    gen_op: Optional[Operator] = None,
+    grid_priorities: Optional[list[str]] = None,
 ) -> list[Candidate]:
     """Generate k raw Candidate opportunities from a signal.
 
-    Never kills on quality — only skips elements that cannot be parsed as a
-    dict with at least a 'title' key (structural invalidity only).
+    gen_op: optional separate operator for generation.  When set (e.g. MiniMax),
+    generation calls go through gen_op while verification uses op (Claude/Gemini).
+    This allows cheaper models for generation without touching the verification moat.
+    Defaults to op when unset.  Never kills on quality — only skips elements
+    that cannot be parsed as a dict with at least a 'title' key.
     """
-    logger.info("Generation started", extra={
-        "sector": sector, 
-        "lens": strategy_lens, 
-        "exploration": exploration_level,
-        "k": k
-    })
-    
     gen_cfg: dict[str, Any] = cfg.generation
 
     if k is None:
@@ -51,51 +87,328 @@ def generate(
     if recent_failure_modes is None:
         recent_failure_modes = ""
 
-    system, user = render(
-        "generate",
-        signal_text=signal_text,
-        sector=sector,
-        strategy_lens=strategy_lens,
-        exploration_level=exploration_level,
-        target_qualities=target_qualities,
-        recent_failure_modes=recent_failure_modes,
-        k=k,
-    )
+    # Models under-deliver on one large "give me k ideas" call, so we batch — but
+    # batching SEQUENTIALLY (each round waiting on the prior round's avoid-list) made
+    # one slow/retrying LLM call stall the whole chain (3+ min/round = not practical).
+    # Instead we fan out a WAVE of independent calls CONCURRENTLY, each owning a
+    # distinct creativity lens so they diverge by construction (minimal overlap to
+    # dedup). A slow call no longer blocks its siblings. Cross-wave avoid-lists keep
+    # later waves diverging from what's already in hand. Physical load stays bounded by
+    # the CLI concurrency semaphores; a dry-guard stops us if the model is tapped out.
+    target = k
+    max_per_call = int(gen_cfg.get("max_per_call", 10) or 10)
+    max_rounds = int(gen_cfg.get("max_rounds", 6) or 6)  # now a cap on WAVES
+    lenses = [l.strip() for l in str(strategy_lens).split(",") if l.strip()] or ["broaden"]
 
-    try:
-        data = op.complete_json(system, user, temperature=0.9)
-    except Exception as e:
-        logger.error(f"Generation failed: {e}", extra={"error": str(e)})
-        return []
+    # PRIMARY diversity axis = the structural business FORM (not the creativity lens).
+    # Lenses vary the angle of attack but every angle on a regulatory signal collapsed
+    # onto the same "central data/rating/registry utility" shape. Each parallel call now
+    # owns a DISTINCT form, so that dead shape is at most one cell of many. The operator
+    # archetype's binding constraints are folded into every call so infeasible shapes
+    # (rating agency, registry, capital-heavy plays) are never proposed in the first place.
+    forms = [str(f).strip() for f in (gen_cfg.get("structural_forms") or []) if str(f).strip()]
 
-    # Normalise: the model may return a bare list or a wrapper dict.
-    if isinstance(data, list):
-        raw_list = data
-    elif isinstance(data, dict):
-        # Try common wrapper keys; fall back to first list-valued key.
-        for key in ("opportunities", "candidates", "results", "items"):
-            if isinstance(data.get(key), list):
-                raw_list = data[key]
-                break
-        else:
-            # Find the first list value in the dict.
-            raw_list = next(
-                (v for v in data.values() if isinstance(v, list)), []
-            )
-    else:
-        raw_list = []
+    # SECONDARY diversity axis = the AUDIENCE PERSONA (the buyer). Together with forms this
+    # creates an NxM diversity matrix (default 8x8=64 cells), breaking the B2B-institutional
+    # monoculture that drives the value_durability kill wall. Each parallel call owns a
+    # distinct form x audience cell. Descriptions are specific: named person, age range,
+    # pain felt daily, budget authority.
+    audience_forms = [str(a).strip() for a in (gen_cfg.get("audience_forms") or []) if str(a).strip()]
+    _AUDIENCE_DESCRIPTIONS: dict[str, str] = {
+        "retiree_cohort":
+            "A person aged 60-75, recently retired or approaching retirement. Has accumulated "
+            "assets (pension pot, property) but irregular income. Feels: health anxiety, "
+            "loneliness, desire to pass wealth on, digital exclusion. Spends on: healthcare, "
+            "leisure, gifting, inheritance planning. Has budget authority over their own finances "
+            "and often adult children's finances too.",
+        "gen_z_worker":
+            "A person aged 18-27, in casualised or gig work (rideshare, delivery, freelance). "
+            "No pension, no savings buffer, income volatile week-to-week. Feels: instability, "
+            "exclusion from mainstream financial products, time-poverty. Spends on: transport, "
+            "housing, food. Has budget authority over a very tight monthly balance.",
+        "smb_owner":
+            "A person running a business with 1-20 employees, often themselves as the primary "
+            "worker. Handles finance, sales, operations, HR simultaneously. Feels: cash-flow "
+            "stress, admin overwhelm, competitive pressure. Spends on: software subscriptions, "
+            "staff, supplies. Has budget authority but every pound is scrutinised.",
+        "primary_carer":
+            "A person (any age) who is the main carer for young children, elderly parents, or "
+            "disabled relatives. Has fragmented work history and reduced earning capacity. Feels: "
+            "time-poverty, guilt, isolation, financial precarity. Spends on: childcare, care "
+            "products, respite services. Budget is constrained but decisions are high-stakes.",
+        "manual_tradesperson":
+            "A person aged 25-55 working in construction, plumbing, electrical, logistics, or "
+            "hospitality. Physically skilled, time-poor, digitally underserved. Feels: "
+            "admin burden eating into earning time, unfair tax treatment, physical risk. "
+            "Spends on: tools, transport, training, insurance. Budget authority over "
+            "business purchases, personal spending is disciplined.",
+        "public_sector_worker":
+            "A person aged 30-60 employed in the NHS, a school, local government, or the "
+            "civil service. Stable income, defined pension, but pay is capped and conditions "
+            "are tightening. Feels: workload pressure, frustration with under-resourcing, "
+            "desire for side income. Spends on: housing, childcare, transport. Has budget "
+            "authority within a constrained household.",
+        "freelancer_creative":
+            "A person aged 25-45 working as a designer, writer, developer, consultant, or "
+            "creative professional. Income is project-based and lumpy. Feels: client "
+            "management burden, feast-or-famine anxiety, desire for predictability. Spends on: "
+            "software, subscriptions, professional development. Has budget authority over "
+            "discretionary spend but is price-sensitive on subscriptions.",
+        "squeezed_middle":
+            "A person aged 35-55 with a professional career, mortgage, and children. "
+            "Appears affluent on paper (property, pension) but cash-poor in the short term. "
+            "Feels: the pinch between fixed costs and aspirational spending, complexity of "
+            "financial decisions. Spends on: mortgage, school fees, healthcare, elder care. "
+            "Budget authority is shared with a partner; decisions are deliberated.",
+    }
+
+    arche = str(gen_cfg.get("operator_archetype", "")).strip()
+    arche_cfg = (gen_cfg.get("archetypes") or {}).get(arche, {}) if arche else {}
+    operator_constraints = " ".join(
+        s for s in (str(arche_cfg.get("binding", "")).strip(),
+                    str(arche_cfg.get("forbid", "")).strip()) if s)
+
+    # Lane-aware generation framing. For a cheaper lane (e.g. side_hustle) this OVERRIDES
+    # the venture moat language in generate_system.md — it tells the model to produce £30
+    # info-product pack niches judged on demand + deliverability, not durable defensibility.
+    # Empty for venture/default => the prompt renders byte-for-byte as today (golden-safe).
+    lane_directive = str(gen_cfg.get("lane_directive", "") or "")
+
+    # Audience forms loaded and rotated AFTER structural forms so both are ready here.
+    logger.info("Generation started", extra={
+        "sector": sector,
+        "lens": strategy_lens,
+        "exploration": exploration_level,
+        "k": k,
+        "forms": forms,
+        "audiences": audience_forms,
+    })
+
+    # FIX #5: seed and avoid are now template variables in generate.md (user section).
+    # The static taxonomy/lens/rules live in generate_system.md and are cached by the
+    # model.  This cuts per-call tokens from ~2,500 to ~600 — a ~75% reduction.
+    def _one_call(form: str, lens: str, audience: str, ask: int,
+                   avoid: str, seed: str) -> list[Candidate]:
+        # Audience persona description for the prompt.
+        aud_desc = _AUDIENCE_DESCRIPTIONS.get(audience, audience)
+        system, user = render(
+            "generate", signal_text=signal_text, sector=sector, strategy_lens=lens,
+            structural_form=form or "any feasible form", operator_constraints=operator_constraints,
+            exploration_level=exploration_level, target_qualities=target_qualities,
+            recent_failure_modes=recent_failure_modes, k=ask,
+            avoid=(avoid or "(none so far — propose freely)"),
+            seed=seed,
+            audience_persona=audience,
+            audience_description=aud_desc,
+            lane_directive=lane_directive)
+        # FIX 4: Use gen_op (MiniMax, fast=True → abab6.5s-chat) for generation if
+        # provided, else fall back to op.  abab6.5s-chat is the creative chat model;
+        # MiniMax-M3 is a reasoning model — better at math/coding, worse at ideation.
+        _gen = gen_op or op
+        try:
+            raw_response = _gen.complete_json(system, user, temperature=0.9)
+            cands = _parse_candidates(raw_response)
+        except Exception as e:
+            logger.error(f"Generation batch {seed} failed: {e}", extra={"error": str(e)})
+            return []
+            
+        if form:
+            for c in cands:
+                # Categorical field (survives asdict() into the dossier), not a boolean tag.
+                c.structural_form = form
+        return cands
+
+    def _refine_wave(candidates: list[Candidate], _gen: Operator, lane_directive: str) -> list[Candidate]:
+        """Sharpen and filter candidates using a cynical analyst persona. 
+        Cost Optimization: refined in a single batch per wave.
+        """
+        if not candidates or not gen_cfg.get("refinement_enabled", True):
+            return candidates
+            
+        cands_data = [c.to_dict() for c in candidates]
+        system, user = render(
+            "refine", 
+            candidates_json=json.dumps(cands_data, indent=2),
+            lane_directive=lane_directive
+        )
+        
+        # Use a slightly lower temperature for refinement to encourage strictness
+        try:
+            raw_response = _gen.complete_json(system, user, temperature=0.5)
+            refined = _parse_candidates(raw_response)
+            # Re-map structural forms from the original candidates if lost in refinement
+            original_map = {c.title: c.structural_form for c in candidates}
+            for r in refined:
+                if not r.structural_form:
+                    r.structural_form = original_map.get(r.title, "")
+            return refined
+        except Exception as e:
+            logger.warning(f"Refinement wave failed: {e}")
+            return candidates # Fallback to original if refinement fails
 
     candidates: list[Candidate] = []
-    for item in raw_list:
-        if not isinstance(item, dict):
-            continue
-        if not item.get("title"):
-            continue
-        try:
-            candidates.append(Candidate.from_dict(item))
-        except Exception:
-            # Skip any element that cannot be coerced; never crash.
-            continue
+    seen: set[str] = set()
+    seen_forms: set[str] = set()
+    dry_rounds = 0
 
+    # Audience rotation base. The audience axis MUST advance off the same global call
+    # ordinal as the form axis (offset + i), NOT the per-wave index i — otherwise every
+    # backfill wave (n_calls==1) and every fresh invocation restarts at index 0 and the
+    # whole catalogue collapses onto audience_forms[0] (observed: 22/25 dossiers pinned to
+    # 'retiree_cohort'). We also seed the start from the signal so different signals begin
+    # at different personas, breaking the cross-run bias toward the first persona.
+    _seed_src = (signal_text or sector or "").encode("utf-8")
+    aud_base = int(hashlib.sha1(_seed_src).hexdigest(), 16) if audience_forms else 0
+
+    for wave in range(1, max_rounds + 1):
+        if len(candidates) >= target:
+            break
+        remaining = target - len(candidates)
+        axis = forms or lenses
+        # One call per DISTINCT form (capped at the form count), enough to cover the
+        # remainder. Each call asks for a small share so it stays anchored to its form.
+        n_calls = max(1, min(len(axis), max(remaining, len(lenses))))
+        ask = max(1, min(max_per_call, math.ceil(remaining / n_calls)))
+        avoid = "; ".join(c.title for c in candidates[-40:]) if candidates else ""
+        # Rotate the form window each wave so later waves try forms earlier waves skipped.
+        offset = (wave - 1) * n_calls
+
+        def _assign(i: int) -> tuple[str, str, str]:
+            # Rotate forms and audience personas across the GLOBAL call ordinal (offset + i),
+            # not the per-wave index, so both axes keep advancing through backfill waves and
+            # across invocations instead of resetting to index 0 every time.
+            g = offset + i
+            form = forms[g % len(forms)] if forms else ""
+            lens = lenses[i % len(lenses)]
+            if audience_forms:
+                A = len(audience_forms)
+                # Decorrelate the audience from the form: forms and audiences are both length
+                # ~8, so a plain `g % A` would lock the pair to the diagonal (8 of 64 cells).
+                # Adding g // len(forms) shifts the persona by one each time the form list
+                # wraps, sweeping the full form x audience matrix over successive calls.
+                aud = audience_forms[(aud_base + g + (g // len(forms))) % A]
+            else:
+                aud = ""
+            return form, lens, aud
+
+        def _fan_out(indices: range) -> list[tuple[str, str, list[Candidate]]]:
+            with ThreadPoolExecutor(max_workers=max(1, len(indices))) as ex:
+                def _go(i: int) -> tuple[str, str, list[Candidate]]:
+                    form, lens, aud = _assign(i)
+                    return form, aud, _one_call(form, lens, aud, ask, avoid, f"{wave}.{i + 1}")
+                return list(ex.map(_go, indices))
+
+        # L4 canary: on the FIRST wave, make one call alone before fanning out the rest.
+        # If the active brain is exhausted this single call trips its breaker / marks it
+        # dead (health.py), so the remaining calls — and every later wave — SKIP it for
+        # free instead of N concurrent calls each paying the full failover timeout.
+        if wave == 1 and n_calls > 1:
+            f0, l0, a0 = _assign(0)
+            batches = [(f0, a0, _one_call(f0, l0, a0, ask, avoid, f"{wave}.1"))]
+            batches += _fan_out(range(1, n_calls))
+        else:
+            batches = _fan_out(range(n_calls))
+
+        # --- ML Optimization: Wave-level Refinement ---
+        # Collect all candidates from the wave and refine them in ONE call.
+        # This reduces refinement cost from N calls to 1 call per wave.
+        raw_wave_cands = []
+        for _, _, clist in batches:
+            raw_wave_cands.extend(clist)
+        
+        # FIX: gen_op for generation, else fall back to op.
+        _gen = gen_op or op
+        refined_wave_cands = _refine_wave(raw_wave_cands, _gen, lane_directive)
+        
+        # Re-batch the refined candidates for the diversity loop
+        # We preserve the (form, aud) grouping by re-distributing refined cands.
+        refined_batches = []
+        for form, aud, _ in batches:
+            # All candidates for this form/aud that survived refinement
+            form_cands = [c for c in refined_wave_cands if c.structural_form == form]
+            refined_batches.append((form, aud, form_cands))
+
+        # Anti-collapse dedup: pass 1 accepts at most ONE idea per UNUSED form
+        # (maximise structural diversity); pass 2 backfills seconds only if still short.
+        added = 0
+        for diversity_pass in (True, False):
+            for form, aud, clist in refined_batches:
+                for c in clist:
+                    key = _norm_title(c.title)
+                    if key in seen:
+                        continue
+                    if diversity_pass and form and form in seen_forms:
+                        continue
+                    seen.add(key)
+                    if form:
+                        seen_forms.add(form)
+                    # Persist audience persona into the candidate's tags for audit.
+                    if aud:
+                        c.tags["audience"] = aud
+                    candidates.append(c)
+                    added += 1
+                    if len(candidates) >= target:
+                        break
+                if len(candidates) >= target:
+                    break
+            if len(candidates) >= target:
+                break
+
+        logger.info(
+            f"Generation wave {wave}: +{added} (total {len(candidates)}/{target}) "
+            f"[{n_calls} parallel calls, forms={len(seen_forms)}]",
+            extra={"wave": wave, "added": added, "total": len(candidates), "calls": n_calls})
+        if added == 0:
+            dry_rounds += 1
+            if dry_rounds >= 2:
+                logger.warning("Generation dry: no new candidates two waves running")
+                break
+        else:
+            dry_rounds = 0
+
+    candidates = candidates[:target]
     logger.info(f"Generated {len(candidates)} candidates", extra={"count": len(candidates)})
     return candidates
+
+
+def generate_multilane(
+    op: Operator,
+    cfg: Config,
+    *,
+    lanes: list[str],
+    lane_counts: dict[str, int] | None = None,
+    signal_text: str = "",
+    sector: str = "",
+    strategy_lens: str = "broaden",
+    exploration_level: float = 0.5,
+    target_qualities: str | None = None,
+    recent_failure_modes: str | None = None,
+    gen_op: Optional[Operator] = None,
+    grid_priorities: Optional[dict[str, list[str]]] = None,
+) -> list[Candidate]:
+    """Fan generation OUT across ambition lanes for a mixed-ambition catalogue (Part 14).
+
+    For each tier in `lanes`, resolve `cfg.for_lane(tier)` (which swaps in that lane's
+    generation framing — e.g. side-hustle-scale opportunities vs venture moats) and ask for
+    `lane_counts[tier]` candidates, tagging each result with `ambition_tier=tier`. The same
+    shared machinery (the `generate` divergence engine) runs underneath every lane; only the
+    framing and quota differ. Returns the concatenated, tier-tagged candidate list. Generation
+    still judges nothing — the per-tier moat downstream does that.
+    """
+    out: list[Candidate] = []
+    for tier in lanes:
+        lane_cfg = cfg.for_lane(tier)
+        k = (lane_counts or {}).get(tier)
+        # ML Improvement: Grid Scheduler (Stage 3)
+        priorities = (grid_priorities or {}).get(tier)
+        cands = generate(
+            op, lane_cfg, signal_text=signal_text, sector=sector,
+            strategy_lens=strategy_lens, exploration_level=exploration_level,
+            target_qualities=target_qualities, recent_failure_modes=recent_failure_modes,
+            k=k, gen_op=gen_op, grid_priorities=priorities)
+        for c in cands:
+            c.ambition_tier = tier
+        logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",
+                    extra={"lane": tier, "count": len(cands)})
+        out.extend(cands)
+    return out

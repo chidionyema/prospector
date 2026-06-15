@@ -1,0 +1,10 @@
+{
+  "name": "pi-governance",
+  "version": "1.0.0",
+  "description": "Instills a global operational DNA: P-P-E loop, Exit Code Zero, and Goal Tracking.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "latest"
+  }
+}

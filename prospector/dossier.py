@@ -28,6 +28,7 @@ def build_dossier(
     score: Optional[ScoreResult],
     cfg,                          # Config — typed loosely to avoid circular import issues
     op_model_version: str,
+    provider_chain: str = "",
     created_at: str = "",
     reverify_due_at: Optional[str] = None,
 ) -> Dossier:
@@ -41,15 +42,20 @@ def build_dossier(
     The caller is responsible for computing `score` whenever gate_fired is None
     (i.e., the candidate survived all hard gates and needs ranking).
     """
-    if gate_fired == DEFER_GATE:
-        # Not a kill: a decisive check could not be retrieved (infra/outage). Park the
-        # candidate for re-vet — never publish, never count as an evidentiary kill.
+    if gate_fired in (DEFER_GATE, "moat_exhausted"):
+        # Not a kill: a decisive check could not be retrieved or the moat was unavailable.
+        # Park the candidate for re-vet — never publish, never count as an evidentiary kill.
         decision = Decision.DEFER
         failed = next((c for c in checks if getattr(c, "retrieval_failed", False)), None)
-        cn = failed.check_name if failed else "a decisive gate"
-        reason = (f"Deferred — could not retrieve evidence for '{cn}' "
-                  f"(retrieval/infra failure). NOT an evidentiary kill; re-vet when "
-                  f"retrieval is healthy.")
+        if gate_fired == "moat_exhausted":
+            reason = ("Deferred — moat (verdict / adversarial pass) was unavailable "
+                      "(Claude + Gemini exhausted).  NOT an evidentiary kill; re-vet when "
+                      "moat recovers.  Candidate will auto-resume on next `vet --resume`.")
+        else:
+            cn = failed.check_name if failed else "a decisive gate"
+            reason = (f"Deferred — could not retrieve evidence for '{cn}' "
+                      f"(retrieval/infra failure). NOT an evidentiary kill; re-vet when "
+                      f"retrieval is healthy.")
         gate_fired = None  # no real gate fired; keep the audit honest
     elif gate_fired is not None:
         decision = Decision.KILL
@@ -79,6 +85,14 @@ def build_dossier(
             f"{cfg.thresholds.min_composite_to_pass} — gate 'min_composite' fired."
         )
 
+    # Provisional rollup: the decision is real but untrusted if ANY ruling that fed it
+    # was served by the cheap emergency fallback tail (moat exhausted). A degraded/
+    # deferred check never ruled, so it carries provisional=False and a DEFER stays
+    # non-provisional. A provisional PASS will not publish; both PASS and KILL auto
+    # re-vet on the next `vet --resume`.
+    provisional = any(getattr(c, "provisional", False) for c in checks) or \
+        bool(adversarial is not None and getattr(adversarial, "provisional", False))
+
     return Dossier(
         candidate=cand,
         decision=decision,
@@ -88,8 +102,10 @@ def build_dossier(
         adversarial=adversarial,
         score=score,
         model_version=op_model_version,
+        provider_chain=provider_chain,
         created_at=created_at,
         reverify_due_at=reverify_due_at,
+        provisional=provisional,
     )
 
 
@@ -127,6 +143,15 @@ def render_markdown(dossier: Dossier) -> str:
     # --- Decision badge (prominent) ---
     lines.append(_DECISION_BADGE[dossier.decision])
     lines.append("")
+
+    # Provisional banner: this verdict was reached by the cheap emergency fallback tail
+    # because the trusted moat was exhausted. Real-but-untrusted — never publishes on
+    # PASS, auto re-vetted by the moat on the next `vet --resume`.
+    if dossier.provisional:
+        lines.append("> ⚠️ **PROVISIONAL** — ruled by the emergency fallback tail "
+                     "(trusted moat exhausted). Not final: awaiting moat re-vet via "
+                     "`vet --resume`; will not publish while provisional.")
+        lines.append("")
 
     # KILL reason gets its own highlighted block
     if dossier.decision == Decision.KILL:

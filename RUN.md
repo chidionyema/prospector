@@ -15,7 +15,20 @@ python -m prospector.run vet --title "..." --one_liner "..." --why_now "..."
 
 # Blue-sky (no signal)
 python -m prospector.run generate --candidates 10 --exploration 0.7
+
+# Self-sourced sweep (EXTENSION beyond the original spec): surface N diverse,
+# sector-spread signals, save them to signals/ as a re-runnable audit trail, then
+# run the full grounded pipeline over each. Discovery judges nothing; the same moat
+# vets and kills every candidate. Use --dry-run to only surface + save signals.
+python -m prospector.run discover --signals 10 --count 5
 ```
+
+> **Note — `discover` is a deliberate extension.** The original spec's model is
+> operator-pasted signal files in `signals/` (signal *sourcing* is a human activity).
+> The `discover` command lets the engine self-source a diverse signal portfolio so
+> generation ranges across sectors instead of variations on one hand-written theme.
+> It sits strictly *upstream* of the eight steps below and changes none of them — the
+> grounded verify→gate moat is unchanged.
 
 **2. DEDUP vs catalogue.** Embed-match each candidate against existing Dossiers in store/. Drop near-duplicates; mark the existing Dossier for refresh instead.
 
@@ -75,6 +88,18 @@ Duration: 42 sec
 pytest -q
 python -m prospector.run vet --title "Haulage HMRC fuel-duty PTO rebate" \
   --operator mock --fixtures fixtures/fuel_duty_passages.json
+```
+
+**Resume after moat exhaustion:**
+```bash
+# Re-vet all candidates that were DEFERRED because the moat (Claude+Gemini) was down.
+# Safe to run when Claude/Gemini quota has recovered.
+python -m prospector.run vet --resume
+
+# Re-run the full pipeline for all signals that failed at generation time
+# (when the non-critical chain — DeepSeek/MiniMax/Gemini-flash — was all down).
+# Safe to run when the generation chain has recovered.
+python -m prospector.run generate --resume
 ```
 
 **Run a batch of candidates from a signal (reads GEMINI_API_KEY):**

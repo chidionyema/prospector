@@ -1,0 +1,37 @@
+{
+  "openrouter/google/gemma-4-31b-it:free": {
+    "dead_until": 1781535019.783457,
+    "marked_at": 1781534719.7837,
+    "dead_for_s": 300.0
+  },
+  "openrouter/google/gemma-4-26b-a4b-it:free": {
+    "dead_until": 1781535017.424729,
+    "marked_at": 1781534717.424937,
+    "dead_for_s": 300.0
+  },
+  "openrouter/qwen/qwen3-coder:free": {
+    "dead_until": 1781535017.948842,
+    "marked_at": 1781534717.949058,
+    "dead_for_s": 300.0
+  },
+  "openrouter/qwen/qwen3-next-80b-a3b-instruct:free": {
+    "dead_until": 1781535018.2684002,
+    "marked_at": 1781534718.268662,
+    "dead_for_s": 300.0
+  },
+  "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free": {
+    "dead_until": 1781535018.804662,
+    "marked_at": 1781534718.8048909,
+    "dead_for_s": 300.0
+  },
+  "openrouter/openrouter/free": {
+    "dead_until": 1781535019.340336,
+    "marked_at": 1781534719.340555,
+    "dead_for_s": 300.0
+  },
+  "openrouter": {
+    "dead_until": 1781539872.553098,
+    "marked_at": 1781536272.5535092,
+    "dead_for_s": 3600.0
+  }
+}

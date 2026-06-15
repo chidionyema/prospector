@@ -148,9 +148,15 @@ def get_recent_failure_modes(store: Store, window: int = 20) -> str:
 
     if domains:
         top = sorted(domains.items(), key=lambda x: x[1], reverse=True)[:5]
+        # Hard exclusion, not a footnote: these domains are the recurring CAPTURERS the
+        # value_durability gate keeps citing to prove value is already taken. The model
+        # cannot retrieve at generation time, so hand it the wall directly — anything
+        # whose core value these already supply is dead on arrival; do not propose it.
         parts.append(
-            "Sources/incumbents that keep refuting ideas: "
-            + ", ".join(d for d, _ in top) + "."
+            "PROVEN CAPTURERS — these already supply this value (free, first-party, or as "
+            "an established product) and keep killing ideas: " + ", ".join(d for d, _ in top)
+            + ". Do NOT propose any idea whose core value any of them already provides; your "
+            "wedge must sit OUTSIDE what they offer or pick a different problem entirely."
         )
 
     if reasons:
@@ -188,3 +194,99 @@ def blue_sky_failure_steer(fails: str) -> str:
     if fails and fails.strip():
         return base + "\nSaturated area to AVOID (not to 'out-think' — to leave entirely): " + fails
     return base
+
+
+def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> str:
+    """Stage 2: Retrieve top winners and decisive kills as few-shot exemplars.
+    
+    Includes:
+      - Top 2 PASSes by composite score.
+      - Top 2 Decisive Kills (adversarial certainty).
+      - 1 Diverse PASS (via DPP if op provided).
+    """
+    all_pass = store.all(decision=Decision.PASS.value)
+    all_kill = store.all(decision=Decision.KILL.value)
+    
+    if not all_pass and not all_kill:
+        return ""
+
+    exemplars = []
+
+    # 1. Top Winners
+    winners = sorted(all_pass, key=lambda x: x.get("composite") or 0.0, reverse=True)[:2]
+    for w in winners:
+        exemplars.append(f"PASS (Score {w.get('composite'):.1f}): {w['title']} - {w['one_liner']}")
+
+    # 2. Diverse Winner (DPP-ish)
+    if op and len(all_pass) > 2:
+        from .novelty import select_diverse_candidates
+        # Exclude the winners we already picked
+        winner_ids = {w["candidate_id"] for w in winners}
+        diverse_pool = []
+        for p in all_pass:
+            if p["candidate_id"] not in winner_ids:
+                # Mock candidate for DPP
+                from .models import Candidate
+                c = Candidate(title=p["title"], one_liner=p["one_liner"])
+                diverse_pool.append((c, p.get("composite") or 1.0, ""))
+        
+        if diverse_pool:
+            diverse = select_diverse_candidates(op, diverse_pool, k=1)
+            for d in diverse:
+                exemplars.append(f"PASS (Diverse): {d.title} - {d.one_liner}")
+
+    # 3. Decisive Kills (Feedback on what to avoid)
+    decisive_kills = sorted(all_kill, key=lambda x: x.get("adversarial_confidence") or 0.0, reverse=True)[:2]
+    for k in decisive_kills:
+        reason = "Critique decisive"
+        if k.get("gate_fired"):
+            reason = f"Killed by {k['gate_fired']}"
+        exemplars.append(f"KILL ({reason}): {k['title']} - {k['one_liner']}")
+
+    if not exemplars:
+        return ""
+
+    return "\nFEEDBACK FROM HISTORIC VERIFICATIONS (Learn from these):\n" + "\n".join(f"- {e}" for e in exemplars)
+
+
+def calculate_grid_priorities(store: Store, cfg: Config) -> dict[str, list[str]]:
+    """Stage 3: Identify underrepresented (tier x form) cells.
+    
+    Returns a dict {tier: [underrepresented_forms]} to bias the scheduler.
+    """
+    rows = store.all(decision=Decision.PASS.value)
+    
+    # Grid: tier -> form -> count
+    grid: dict[str, dict[str, int]] = {}
+    
+    # Initialize grid from config
+    active_lanes = getattr(cfg, "active_lanes", ["venture"]) or ["venture"]
+    for lane in active_lanes:
+        grid[lane] = {}
+        lane_cfg = cfg.for_lane(lane)
+        forms = lane_cfg.generation.get("structural_forms", [])
+        for f in forms:
+            grid[lane][f] = 0
+
+    # Populate from store
+    for r in rows:
+        tier = r.get("ambition_tier") or "venture"
+        form = r.get("structural_form")
+        if tier in grid and form in grid[tier]:
+            grid[tier][form] += 1
+            
+    # Identify priorities: forms with 0 passes in that tier
+    priorities: dict[str, list[str]] = {}
+    for tier, forms in grid.items():
+        if not forms:
+            continue
+        # Find forms with zero passes
+        empty = [f for f, count in forms.items() if count == 0]
+        if empty:
+            priorities[tier] = empty
+        else:
+            # If none are empty, target the ones with the minimum count
+            min_count = min(forms.values())
+            priorities[tier] = [f for f, count in forms.items() if count == min_count]
+            
+    return priorities

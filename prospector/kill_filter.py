@@ -1,15 +1,18 @@
 """Deterministic kill-filter (Part 4) — pure code over the verdicts, no model.
 Evaluate cheapest decisive gates first; stop at the first hard fail.
 
-A gate fires (KILL) if the check's verdict is in the gate's killing-verdicts set,
-OR a required verdict is below the confidence floor.
+A gate fires (KILL) iff the check's verdict is a cited killing verdict for that gate.
+We NEVER kill on `unverifiable`/silence or on low confidence alone: a KILL must be
+grounded in evidence (CLAUDE.md — "a KILL is not the model's opinion; it is grounded
+in evidence"). Weak or unproven ideas are not killed here — they fall through to
+scoring, where a low composite (and the adversarial gate) stop them publishing.
 """
 from __future__ import annotations
 
 from typing import Optional
 
 from .config import Config
-from .models import CheckResult, Verdict
+from .models import CheckResult
 
 
 def is_hard_fail(check_name: str, result: CheckResult, cfg: Config) -> bool:
@@ -23,19 +26,10 @@ def is_hard_fail(check_name: str, result: CheckResult, cfg: Config) -> bool:
     gates = cfg.gate_map()
     if check_name not in gates:
         return False
-    killing = set(gates[check_name])
-    if result.verdict.value in killing:
-        return True
-    # confidence floor: a gated check that isn't decisively clear is treated as a fail
-    # (a 'supported' incumbency below floor, or any required pass below floor).
-    if result.confidence < cfg.thresholds.confidence_floor:
-        # Only fail on low confidence when the check is one whose 'unverifiable' kills
-        # (i.e. we REQUIRE positive evidence). incumbency kills on 'supported', so a
-        # low-confidence incumbency=supported is handled above; low-confidence otherwise
-        # means we lack firm ground => treat as unverifiable for kill purposes.
-        if Verdict.UNVERIFIABLE.value in killing:
-            return True
-    return False
+    # Kill ONLY on a cited killing verdict (e.g. `refuted` = grounded disconfirming
+    # evidence; `supported` for incumbency = a real incumbent). `unverifiable`/silence
+    # and low confidence never kill — that would be a kill with no evidence behind it.
+    return result.verdict.value in set(gates[check_name])
 
 
 def apply_gates(checks: list[CheckResult], cfg: Config,

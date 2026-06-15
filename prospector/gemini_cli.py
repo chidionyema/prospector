@@ -34,9 +34,24 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # is decoupled from physical load (processes). Tune via PROSPECTOR_GEMINI_CONCURRENCY.
 _MAX_CLI = max(1, int(os.environ.get("PROSPECTOR_GEMINI_CONCURRENCY", "2") or "2"))
 _CLI_SEM = threading.Semaphore(_MAX_CLI)
+_SEM_LOCK = threading.Lock()
 
 # Layer 2 — operational resilience. Backoff schedule (seconds) between transient retries.
 _BACKOFFS = (2, 5, 10)
+
+
+def configure_concurrency(n: int) -> None:
+    """Resize the CLI subprocess governor from config (single source of truth).
+    The PROSPECTOR_GEMINI_CONCURRENCY env var, if set, pins the value and wins.
+    Call at startup (make_provider) before any calls are in flight."""
+    global _CLI_SEM, _MAX_CLI
+    if os.environ.get("PROSPECTOR_GEMINI_CONCURRENCY"):
+        return
+    n = max(1, int(n))
+    with _SEM_LOCK:
+        if n != _MAX_CLI:
+            _MAX_CLI = n
+            _CLI_SEM = threading.Semaphore(n)
 
 
 def _sum_token_usage(stats: Optional[dict]) -> dict:
@@ -66,12 +81,23 @@ def _cli_env() -> dict:
     return env
 
 
-def _attempt_gemini_cli(cmd: list[str], timeout: int, web: bool) -> str:
+def _attempt_gemini_cli(cmd: list[str], timeout: int, web: bool,
+                        queue_timeout: Optional[float] = None) -> str:
     """One CLI invocation under the concurrency cap. Raises RuntimeError /
-    TimeoutExpired on transient failure so the caller can retry."""
-    with _CLI_SEM:                         # bound concurrent heavy node processes
+    TimeoutExpired on transient failure so the caller can retry.
+
+    The slot wait is BOUNDED by queue_timeout (None => block, the verdict-brain
+    default): a grounding call that can't get a slot within the budget fails fast to
+    failover instead of blocking a vet indefinitely. This is the bug that made the
+    timeout meaningless — the semaphore wait used to sit OUTSIDE the timeout clock."""
+    if not _CLI_SEM.acquire(timeout=queue_timeout):   # bound concurrent heavy node processes
+        raise RuntimeError(
+            f"gemini cli slot acquire timed out after {queue_timeout}s (grounding queue saturated)")
+    try:
         proc = subprocess.run(cmd, capture_output=True, text=True, env=_cli_env(),
                               cwd=REPO_ROOT, timeout=timeout)
+    finally:
+        _CLI_SEM.release()
     if proc.returncode != 0:
         raise RuntimeError(f"gemini cli exit {proc.returncode}: {proc.stderr[-300:]}")
     try:
@@ -91,13 +117,18 @@ def _attempt_gemini_cli(cmd: list[str], timeout: int, web: bool) -> str:
 
 @track_latency(name="run_gemini_cli")
 def run_gemini_cli(prompt: str, *, web: bool = False, model: Optional[str] = None,
-                   timeout: int = 240, retries: int = 2) -> str:
+                   timeout: int = 240, timeout_max: Optional[int] = None,
+                   escalation: float = 1.0, retries: int = 2,
+                   queue_timeout: Optional[float] = None) -> str:
     """Run the CLI headless and return the model's response text.
 
     Resilient by design: transient failures (timeout, non-zero exit, garbled output —
     the symptoms of an overloaded free-tier CLI) are retried with backoff under a global
-    concurrency cap. Only a PERSISTENT failure raises — and callers (the grounding
-    provider) turn that into a deferral, never a kill.
+    concurrency cap. The per-attempt timeout is ADAPTIVE — it escalates by `escalation`
+    each retry up to `timeout_max`, because a timeout often means slow-but-working, not
+    dead; a flat short budget would just keep clipping a recovering provider. Only a
+    PERSISTENT failure raises — and callers (the grounding provider) turn that into a
+    deferral, never a kill.
     """
     cmd = [GEMINI_BIN, "--skip-trust", "-o", "json"]
     if web:
@@ -108,12 +139,21 @@ def run_gemini_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
 
     logger.info("Invoking Gemini CLI", extra={"model": model, "web": web})
 
+    ceiling = timeout_max or timeout
     last_err: Optional[Exception] = None
     for attempt in range(retries + 1):
+        attempt_timeout = min(ceiling, int(round(timeout * (escalation ** attempt))))
         try:
-            return _attempt_gemini_cli(cmd, timeout, web)
+            return _attempt_gemini_cli(cmd, attempt_timeout, web, queue_timeout)
         except (subprocess.TimeoutExpired, RuntimeError) as e:
             last_err = e
+            # Quota/credit exhaustion is PERSISTENT for this window — retrying (with an
+            # even longer timeout) just burns ~timeout seconds per attempt re-confirming a
+            # dead brain. Fail over NOW so the breaker/failover layer can skip it.
+            if looks_exhausted(str(e)):
+                logger.warning("Gemini CLI exhaustion detected; skipping remaining retries",
+                               extra={"web": web, "error": str(e)[:200]})
+                break
             if attempt < retries:
                 backoff = _BACKOFFS[min(attempt, len(_BACKOFFS) - 1)]
                 logger.warning(
@@ -146,19 +186,27 @@ class GeminiCliOperator(Operator):
 class GeminiCliGroundingProvider(SearchProvider):
     """Live web-search grounding via the CLI. Returns resolvable URLs + passages."""
     def __init__(self, model: Optional[str] = None,
-                 timeout: int = 75, retries: int = 1):
+                 timeout: int = 75, timeout_max: Optional[int] = None,
+                 escalation: float = 1.5, retries: int = 1,
+                 queue_timeout: Optional[float] = None):
         self.model = model
         self.timeout = timeout      # fail-fast budget per web-search (free tier throttles)
+        self.timeout_max = timeout_max or timeout
+        self.escalation = escalation
         self.retries = retries
+        self.queue_timeout = queue_timeout  # bounded slot wait before failover
 
     @track_latency(name="gemini_cli_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
         prompt = (
             f"Use google web search to find evidence about: {query}\n"
-            f"Return ONLY a JSON array of up to {k} objects, each exactly "
+            "Do NOT write, save, or create any file. Do NOT use any file-writing or "
+            "shell tool. Use ONLY web search, then put the answer directly in your reply.\n"
+            f"Your ENTIRE final reply must be ONLY a JSON array of up to {k} objects, each exactly "
             f'{{"url": "<real resolvable source url>", "text": "<relevant passage, '
             f'<= {max_chars} chars>", "published_at": "<date or null>"}}. '
-            "Use only real source URLs you actually retrieved. No prose, no code fences."
+            "Use only real source URLs you actually retrieved. No prose, no code fences, "
+            "no file references — emit the raw JSON array as the message text itself."
         )
         logger.info(f"Gemini CLI Search started: {query!r}")
         # A TRANSPORT failure (timeout, quota, bad exit — run_gemini_cli already retried
@@ -166,7 +214,9 @@ class GeminiCliGroundingProvider(SearchProvider):
         # failed search and the candidate DEFERS — swallowing it as [] would make an outage
         # indistinguishable from "searched, found nothing" and wrongly KILL the idea.
         resp = run_gemini_cli(prompt, web=True, model=self.model,
-                              timeout=self.timeout, retries=self.retries)  # raises -> retrieval_failed
+                              timeout=self.timeout, timeout_max=self.timeout_max,
+                              escalation=self.escalation, retries=self.retries,
+                              queue_timeout=self.queue_timeout)  # raises -> retrieval_failed
         try:
             data = _extract_json(resp)
         except Exception as e:
@@ -177,22 +227,9 @@ class GeminiCliGroundingProvider(SearchProvider):
             return []
         if isinstance(data, dict):
             data = data.get("results") or data.get("passages") or []
-        out: list[Source] = []
-        from .retrieval import _resolve
-        for item in (data or [])[:k]:
-            url = str(item.get("url", ""))
-            if not url:
-                continue
-            
-            # Tier 2 Bug 4: Verify the URL actually exists (HEAD request)
-            resolved = _resolve(url)
-            if not resolved:
-                logger.warning("Dropping fabricated/dead URL", extra={"url": url})
-                continue
-
-            out.append(Source.make(url=resolved,
-                                   text=str(item.get("text", ""))[:max_chars],
-                                   published_at=item.get("published_at"), query=query))
-        
+        # Verify each URL actually resolves (HEAD), dropping fabricated/dead ones —
+        # done in PARALLEL (independent checks; identical outcome to serial).
+        from .retrieval import resolve_sources
+        out = resolve_sources(data, query, max_chars, k)
         logger.info(f"Gemini CLI Search returned {len(out)} results", extra={"count": len(out)})
         return out

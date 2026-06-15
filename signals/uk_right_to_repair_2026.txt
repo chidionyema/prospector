@@ -1,0 +1,7 @@
+Signal: The UK's expanded Right to Repair regulations (in force 2025-2026) now
+require manufacturers of more appliance and electronics categories to supply
+spare parts and repair information to independent repairers for up to 10 years.
+Independent repair shops complain they still cannot get affordable, structured
+access to OEM parts catalogues, diagnostic codes, and repair manuals — each
+brand has a different portal, pricing, and data format. Consumers report long
+waits and refusals. Trading Standards is starting to act on non-compliance.

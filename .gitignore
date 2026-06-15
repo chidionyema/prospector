@@ -45,3 +45,10 @@ store/*.db
 
 # Runtime audit/telemetry artifacts (regenerated every run)
 store/*.jsonl
+store/golden_runs/
+publish/bundles/
+.aider*
+
+# .NET build output (store_platform)
+[Bb]in/
+[Oo]bj/

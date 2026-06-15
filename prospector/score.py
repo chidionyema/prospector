@@ -12,6 +12,7 @@ from .config import Config
 from .models import SCORE_AXES, Candidate, CheckResult, ScoreResult
 from .operator import Operator
 from .prompts import render
+from typing import Optional
 
 
 def composite(scores: dict[str, int], weights: dict[str, float]) -> float:
@@ -21,14 +22,17 @@ def composite(scores: dict[str, int], weights: dict[str, float]) -> float:
 
 
 def score_candidate(op: Operator, cfg: Config, cand: Candidate,
-                    checks: list[CheckResult]) -> ScoreResult:
+                    checks: list[CheckResult],
+                    *, scorer_op: Optional[Operator] = None) -> ScoreResult:
     claims = [{"check": c.check_name, "verdict": c.verdict.value,
                "confidence": c.confidence, "rationale": c.rationale,
                "citations": c.citations} for c in checks]
+    # FIX #12: scoring is a 0-5 rubric classification — flash-lite handles it identically.
+    _scorer = scorer_op or op
     system, user = render("score", candidate_json=json.dumps(cand.to_dict()),
                           claims_json=json.dumps(claims))
     try:
-        data = op.complete_json(system, user, temperature=0.0)
+        data = _scorer.complete_json(system, user, temperature=0.0)
         raw = data.get("scores", {}) or {}
         scores = {ax: int(round(float(raw.get(ax, 0) or 0))) for ax in SCORE_AXES}
         scores = {ax: max(0, min(5, v)) for ax, v in scores.items()}

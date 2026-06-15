@@ -33,23 +33,51 @@ def checks() -> list[CheckResult]:
 
 
 def test_artifact_grounding_labels_unverified(cand, checks):
-    """Proof: planted fantasy number gets labelled 'assumption — unverified'."""
-    
+    """Proof: planted fantasy number gets labelled 'assumption — unverified'.
+
+    FIX #3: financial_model now returns structured JSON assumptions (not prose content).
+    The LLM outputs {monthly_price, assumptions:[...], weaknesses:[...], ...} and Python
+    renders the arithmetic.  The 'assumption — unverified' label is carried through
+    by the model in the 'assumptions' list.  This test verifies the grounding contract
+    is preserved: the LLM still marks unverified figures as assumptions.
+    """
+
     def router(system: str, user: str) -> Any:
         if "generate a grounded business artifact" in system:
-            # Model 'hallucinates' a TAM but correctly labels it as unverified
+            # FIX #3: model outputs structured JSON — LLM marks the TAM as an assumption.
             return {
-                "type": "financial_model",
-                "content": "Verified: 100k users. TAM: £1B (assumption — unverified)."
+                "monthly_price": 49,
+                "target_customers_month_1": 20,
+                "target_customers_month_12": 200,
+                "estimated_cac_gbp": 300,
+                "estimated_clv_gbp": 1200,
+                "estimated_monthly_churn_pct": 5,
+                "cost_of_goods_pct": 20,
+                "overhead_month_1_gbp": 2000,
+                "sales_cycle_months": 1,
+                "payback_months": 6,
+                "assumptions": [
+                    # The LLM correctly labels the TAM as unverified.
+                    "TAM: £1B — assumption — unverified (no verified market size claim in evidence)",
+                    "Target customer base: 100k users — assumption — unverified"
+                ],
+                "weaknesses": [
+                    "TAM is unverified; market sizing relies on published third-party estimate "
+                    "without direct grounding in evidence."
+                ]
             }
         return {}
 
     op = MockOperator(router=router)
     artifacts = generate_artifacts(op, cand, checks)
-    
+
     content = artifacts.get("financial_model", "")
+    # FIX #3: the 'assumption — unverified' label is now in the assumptions list rendered
+    # into the model output.  The test verifies this grounding contract is preserved.
     assert "assumption — unverified" in content
-    assert "100k users" in content
+    assert "TAM" in content
+    # Python arithmetic renders correctly (price × customers → month 1 revenue).
+    assert "£980" in content or "980" in content
 
 
 def test_claim_check_rejects_unsupported_statement(cand, checks):

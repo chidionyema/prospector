@@ -5,10 +5,12 @@ passage set, which collapsed to `unverifiable`, which is a hard-fail for
 value_durability — so an infrastructure failure masqueraded as a grounded kill.
 
 The fix distinguishes:
-  - search RAISED (outage)            -> retrieval_failed=True  -> Decision.DEFER
-  - search returned [] (looked, empty) -> unverifiable           -> Decision.KILL (policy)
+  - search RAISED (outage)             -> retrieval_failed=True -> Decision.DEFER
+  - search returned [] (looked, empty) -> unverifiable          -> no silence-kill
 
-Both paths are asserted here so the distinction can't silently regress.
+Silence (unverifiable) is NOT evidence: it can neither defer (it's not an outage)
+nor kill (a KILL must be grounded in cited disconfirming evidence). Both paths are
+asserted here so the distinction can't silently regress.
 """
 from __future__ import annotations
 
@@ -99,13 +101,19 @@ def test_grounding_provider_empty_on_ran_but_no_results(monkeypatch):
     assert GeminiCliGroundingProvider().search("anything") == []
 
 
-def test_legit_empty_result_still_kills(cfg, cand):
-    """Contrast case: a search that genuinely finds nothing is NOT an outage —
-    value_durability policy (unverifiable kills) still applies."""
+def test_legit_empty_result_does_not_silence_kill_nor_defer(cfg, cand):
+    """Contrast case: a search that genuinely finds nothing is NOT an outage, so it
+    must not DEFER. But silence is not evidence either, so NO hard gate may fire —
+    unverifiable checks fall through to scoring, where a low composite stops it
+    publishing. The kill (if any) is a score-stage rejection, never a silence-kill."""
     op = MockOperator()
     d = vet_candidate(cand, op, EmptyProvider(), cfg)
-    assert d.decision == Decision.KILL
-    assert d.gate_fired == "value_durability"
+    # Not deferred: a genuine empty result is not a retrieval outage.
+    assert d.decision != Decision.DEFER
+    # No HARD gate fired on an all-unverifiable candidate (silence is not evidence).
+    # It may still be killed downstream at scoring (gate_fired == "min_composite").
+    hard_gates = set(cfg.gate_map().keys())
+    assert d.gate_fired not in hard_gates
     # And it is NOT mislabelled as a retrieval failure.
     vd = next(c for c in d.checks if c.check_name == "value_durability")
     assert vd.retrieval_failed is False

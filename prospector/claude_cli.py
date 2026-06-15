@@ -31,7 +31,22 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Cap concurrent heavy CLI subprocesses (mirrors gemini_cli's governor).
 _MAX_CLI = max(1, int(os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY", "2") or "2"))
 _CLI_SEM = threading.Semaphore(_MAX_CLI)
+_SEM_LOCK = threading.Lock()
 _BACKOFFS = (2, 5, 10)
+
+
+def configure_concurrency(n: int) -> None:
+    """Resize the CLI subprocess governor from config (single source of truth).
+    PROSPECTOR_CLAUDE_CONCURRENCY env var, if set, pins the value and wins.
+    Call at startup (make_provider) before any calls are in flight."""
+    global _CLI_SEM, _MAX_CLI
+    if os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY"):
+        return
+    n = max(1, int(n))
+    with _SEM_LOCK:
+        if n != _MAX_CLI:
+            _MAX_CLI = n
+            _CLI_SEM = threading.Semaphore(n)
 
 
 def _record_claude_usage(data: dict, web: bool) -> None:
@@ -51,11 +66,19 @@ def _record_claude_usage(data: dict, web: bool) -> None:
                                            "total": total, "cached": cached, "cost_usd": cost})
 
 
-def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool) -> str:
-    """One CLI invocation under the concurrency cap. Raises on transient failure."""
-    with _CLI_SEM:
+def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
+                        queue_timeout: Optional[float] = None) -> str:
+    """One CLI invocation under the concurrency cap. Raises on transient failure.
+    The slot wait is BOUNDED by queue_timeout (None => block) so a saturated provider
+    fails fast to failover instead of blocking a vet indefinitely."""
+    if not _CLI_SEM.acquire(timeout=queue_timeout):
+        raise RuntimeError(
+            f"claude cli slot acquire timed out after {queue_timeout}s (grounding queue saturated)")
+    try:
         proc = subprocess.run(cmd, capture_output=True, text=True,
                               cwd=REPO_ROOT, timeout=timeout, stdin=subprocess.DEVNULL)
+    finally:
+        _CLI_SEM.release()
     if proc.returncode != 0:
         raise RuntimeError(f"claude cli exit {proc.returncode}: {proc.stderr[-300:]}")
     try:
@@ -75,12 +98,15 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool) -> str:
 
 @track_latency(name="run_claude_cli")
 def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = None,
-                   timeout: int = 180, retries: int = 1) -> str:
+                   timeout: int = 180, timeout_max: Optional[int] = None,
+                   escalation: float = 1.0, retries: int = 1,
+                   queue_timeout: Optional[float] = None) -> str:
     """Run the claude CLI headless and return the response text.
 
-    Transient failures are retried with backoff; a persistent failure raises —
-    ProviderExhaustedError if it looks like quota/credit exhaustion (so the
-    fallback layer retires this provider), else a plain RuntimeError.
+    Transient failures are retried with backoff; the per-attempt timeout is ADAPTIVE
+    (escalates by `escalation` each retry up to `timeout_max` — slow≠dead). A persistent
+    failure raises — ProviderExhaustedError if it looks like quota/credit exhaustion (so
+    the fallback layer retires this provider), else a plain RuntimeError.
     """
     cmd = [CLAUDE_BIN, "-p", prompt, "--output-format", "json"]
     if web:
@@ -90,12 +116,20 @@ def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
 
     logger.info("Invoking Claude CLI", extra={"model": model, "web": web})
 
+    ceiling = timeout_max or timeout
     last_err: Optional[Exception] = None
     for attempt in range(retries + 1):
+        attempt_timeout = min(ceiling, int(round(timeout * (escalation ** attempt))))
         try:
-            return _attempt_claude_cli(cmd, timeout, web)
+            return _attempt_claude_cli(cmd, attempt_timeout, web, queue_timeout)
         except (subprocess.TimeoutExpired, RuntimeError) as e:
             last_err = e
+            # Exhaustion is persistent for this window — don't burn more attempts (each
+            # with a longer timeout) re-confirming it; fail over to the next brain now.
+            if looks_exhausted(str(e)):
+                logger.warning("Claude CLI exhaustion detected; skipping remaining retries",
+                               extra={"web": web, "error": str(e)[:200]})
+                break
             if attempt < retries:
                 backoff = _BACKOFFS[min(attempt, len(_BACKOFFS) - 1)]
                 logger.warning(
@@ -126,10 +160,15 @@ class ClaudeCliOperator(Operator):
 class ClaudeCliGroundingProvider(SearchProvider):
     """Live web-search grounding via the claude CLI. Returns resolvable URLs + passages."""
     def __init__(self, model: Optional[str] = None,
-                 timeout: int = 180, retries: int = 1):
+                 timeout: int = 180, timeout_max: Optional[int] = None,
+                 escalation: float = 1.5, retries: int = 1,
+                 queue_timeout: Optional[float] = None):
         self.model = model
         self.timeout = timeout
+        self.timeout_max = timeout_max or timeout
+        self.escalation = escalation
         self.retries = retries
+        self.queue_timeout = queue_timeout
 
     @track_latency(name="claude_cli_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
@@ -144,7 +183,9 @@ class ClaudeCliGroundingProvider(SearchProvider):
         # Transport/exhaustion failure PROPAGATES so the fallback layer can fail over
         # (and, if all providers are out, run_check defers — never a false kill).
         resp = run_claude_cli(prompt, web=True, model=self.model,
-                              timeout=self.timeout, retries=self.retries)
+                              timeout=self.timeout, timeout_max=self.timeout_max,
+                              escalation=self.escalation, retries=self.retries,
+                              queue_timeout=self.queue_timeout)
         try:
             data = _extract_json(resp)
         except Exception as e:
@@ -153,18 +194,8 @@ class ClaudeCliGroundingProvider(SearchProvider):
             return []
         if isinstance(data, dict):
             data = data.get("results") or data.get("passages") or []
-        out: list[Source] = []
-        from .retrieval import _resolve
-        for item in (data or [])[:k]:
-            url = str(item.get("url", ""))
-            if not url:
-                continue
-            resolved = _resolve(url)
-            if not resolved:
-                logger.warning("Dropping fabricated/dead URL", extra={"url": url})
-                continue
-            out.append(Source.make(url=resolved,
-                                   text=str(item.get("text", ""))[:max_chars],
-                                   published_at=item.get("published_at"), query=query))
+        # Resolve URLs in PARALLEL, dropping dead/fabricated ones (identical to serial).
+        from .retrieval import resolve_sources
+        out = resolve_sources(data, query, max_chars, k)
         logger.info(f"Claude CLI Search returned {len(out)} results", extra={"count": len(out)})
         return out

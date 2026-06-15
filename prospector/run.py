@@ -14,12 +14,107 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
 import sys
+from pathlib import Path
 from typing import Optional
+
+# Max candidates vetted in parallel. Each vet drives slow CLI subprocesses, so the
+# real throughput ceiling is the grounding concurrency; this caps how many candidate
+# vets are in flight at once. Sourced from config (retrieval.vet_workers, aligned to
+# grounding slots) so 5 workers no longer oversubscribe 2+2 slots and self-induce
+# timeouts; PROSPECTOR_VET_WORKERS still overrides for ops. Not a verdict knob.
+def _vet_workers(cfg) -> int:
+    env = os.environ.get("PROSPECTOR_VET_WORKERS")
+    if env:
+        return max(1, int(env))
+    return max(1, int(getattr(cfg.retrieval, "vet_workers", 3)))
+
+
+def _resolve_lanes(cfg, args) -> Optional[list]:
+    """Which ambition lanes this run spans (Part 14 — multi-lane-by-default).
+
+    --lane X            => single pinned tier [X] (classify skipped; tier is the user's word).
+    else active_lane    => single config-pinned tier (today's single-lane behaviour).
+    else active_lanes   => the multi-lane set (a mixed-ambition catalogue).
+    else                => None (no lane engaged → byte-for-byte today's single default).
+    """
+    lane = getattr(args, "lane", None)
+    if lane:
+        return [lane]
+    if getattr(cfg, "active_lane", ""):
+        return [cfg.active_lane]
+    if getattr(cfg, "active_lanes", None):
+        return list(cfg.active_lanes)
+    return None
+
+
+def _lane_counts(cfg, lanes: list, k: Optional[int]) -> dict:
+    """How many candidates to generate per lane. With no explicit total (`k` None) use the
+    per-lane `lane_quota` (default 3). With an explicit `--candidates k`, distribute k across
+    the lanes PROPORTIONAL to the quota weights (every lane keeps >=1) so the flag scales the
+    whole fan-out rather than any single tier. All values are config-sourced — no hardcoding."""
+    if not lanes:
+        return {}
+    quota = {t: max(1, int((cfg.lane_quota or {}).get(t, 3))) for t in lanes}
+    if k is None:
+        return quota
+    total_w = sum(quota.values()) or len(lanes)
+    counts = {t: max(1, round(k * quota[t] / total_w)) for t in lanes}
+    # Nudge the rounded counts toward the requested total k (never below 1 per lane).
+    order = sorted(lanes, key=lambda t: quota[t], reverse=True)
+    i = 0
+    while sum(counts.values()) != k and i < 10_000:
+        t = order[i % len(order)]
+        diff = k - sum(counts.values())
+        if diff > 0:
+            counts[t] += 1
+        elif counts[t] > 1:
+            counts[t] -= 1
+        i += 1
+    return counts
+
+
+# ---------------------------------------------------------------------------
+# Pending signal persistence (generation resilience)
+# When the generation chain (DeepSeek → MiniMax → Gemini) is exhausted, the signal
+# text is saved here so the operator can re-run generation with `generate --resume`
+# when the chain recovers.  Each pending signal is one JSON file keyed by a hash of
+# the signal text so re-runs don't create duplicates.
+# ---------------------------------------------------------------------------
+_PENDING_DIR = Path(__file__).resolve().parent.parent / "signals" / "pending"
+
+
+def _save_pending_signal(signal_text: str, cfg: Config) -> Path:
+    """Save a failed signal so `generate --resume` can retry it later."""
+    import hashlib
+    key = hashlib.sha1(signal_text.encode()).hexdigest()[:16]
+    path = _PENDING_DIR / f"{key}.json"
+    try:
+        _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"signal_text": signal_text, "key": key}), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"Could not save pending signal: {e}")
+    return path
+
+
+def _load_pending_signals() -> list[tuple[Path, str]]:
+    """Return all pending signals as (path, text) pairs."""
+    if not _PENDING_DIR.exists():
+        return []
+    results = []
+    for p in sorted(_PENDING_DIR.glob("*.json")):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            results.append((p, data.get("signal_text", "")))
+        except Exception:
+            pass
+    return results
 
 from .config import Config, load_config
 from .dedup import dedup
 from .dossier import build_dossier, render_markdown
+from .errors import ProviderExhaustedError
 from .generate import generate
 from .models import Candidate, Decision, Dossier
 from .operator import Operator
@@ -52,6 +147,8 @@ def vet_candidate(
     query_op: Optional[Operator] = None,
     publish: bool = False,
     show_checks: bool = False,
+    label: Optional[str] = None,
+    skip_adversarial: bool = False,
 ) -> Dossier:
     """Run the full verification pipeline for a single candidate.
 
@@ -72,28 +169,63 @@ def vet_candidate(
 
     from . import progress
 
+    def _check_line(res, prefix: str = "") -> str:
+        v = res.verdict.value
+        mark = "✗" if v in ("refuted", "unverifiable") else "✓"
+        return f"{prefix}{mark} {res.check_name} → {v} (conf {res.confidence:.2f})"
+
     on_check = None
-    if show_checks:
-        def on_check(res) -> None:  # live per-check line (single-vet only; the
-            v = res.verdict.value   # concurrent signal pool would interleave these)
-            mark = "✗" if v in ("refuted", "unverifiable") else "✓"
-            progress.note(f"{mark} {res.check_name}: {v} (conf {res.confidence:.2f})")
+    if label:
+        # Concurrent signal pool: tag EVERY line with the candidate so interleaved
+        # output from parallel vets stays attributable, and emit a line the moment
+        # the vet starts so the user gets immediate feedback (not a 60s silence).
+        progress.note(f"{label} ▸ vetting started")
+        def on_check(res) -> None:
+            progress.note(_check_line(res, prefix=f"{label} "))
+    elif show_checks:
+        # Single-vet: no interleaving, so no candidate prefix needed.
+        def on_check(res) -> None:
+            progress.note(_check_line(res))
 
     verify = _get_verify()
-    checks, adversarial, gate = verify(op, search, cfg, cand,
-                                       on_check=on_check, query_op=query_op)
+    # Build the moat operator chain string for the audit trail (e.g. "claude/claude-opus-4-8 →
+    # gemini/2.5-flash-lite").  FallbackOperator.name is already in that format.
+    _provider_chain = getattr(op, "name", "") or getattr(op, "model_version", "") or str(op)
+    try:
+        checks, adversarial, gate = verify(op, search, cfg, cand,
+                                           on_check=on_check, query_op=query_op,
+                                           skip_adversarial=skip_adversarial)
+    except ProviderExhaustedError as e:
+        # Both Claude AND Gemini are exhausted — the moat is down.  This is NOT a
+        # candidate quality failure; defer the candidate for re-vet when the moat
+        # recovers.  Log a moat-outage telemetry event so the audit trail is complete.
+        logger.warning(f"Moat exhausted for {cand.title!r}: {e}; deferring "
+                       f"(re-vet when moat recovers via `vet --resume`)",
+                       extra={"candidate_id": cand.candidate_id,
+                              "provider_exhausted": str(e)[:200],
+                              "event": "moat_outage"})
+        from .telemetry import record_usage
+        record_usage(0, 0, 0, 0, web=False,
+                     message=f"MOAT OUTAGE: {cand.candidate_id} deferred — {str(e)[:100]}")
+        checks, adversarial = [], None
+        gate = "moat_exhausted"
 
     score = None
     if gate is None:
         logger.info("Candidate survived all gates. Scoring...")
-        score = score_candidate(op, cfg, cand, checks)
+        # FIX #12: score is a rubric classification — route to flash-lite via query_op.
+        score = score_candidate(op, cfg, cand, checks, scorer_op=query_op)
 
         if publish:
             # --- Task B: Secondary artifacts + claim-check (publish-time only) ---
+            # FIX #12: route artifact/marketing generation to flash-lite (query_op/fast_op).
+            # FIX #13: generate_artifacts and generate_marketing_content are now
+            # parallelized internally (ThreadPoolExecutor) — 4 threads instead of
+            # sequential, cutting PASS-survivor latency by ~50%.
             logger.info("Generating publish-time artifacts + marketing content...")
             from .artifacts import generate_artifacts, generate_marketing_content
-            cand.tags["artifacts"] = generate_artifacts(op, cand, checks)
-            cand.tags["marketing"] = generate_marketing_content(op, cand, checks)
+            cand.tags["artifacts"] = generate_artifacts(op, cand, checks, fast_op=query_op)
+            cand.tags["marketing"] = generate_marketing_content(op, cand, checks, fast_op=query_op)
 
     now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -108,6 +240,7 @@ def vet_candidate(
         score=score,
         cfg=cfg,
         op_model_version=op.model_version,
+        provider_chain=_provider_chain,
         created_at=created_at,
         reverify_due_at=reverify_due_at,
     )
@@ -115,12 +248,19 @@ def vet_candidate(
     if store is not None:
         store.save(dossier)
 
-    if publish and dossier.decision == Decision.PASS:
+    if publish and dossier.decision == Decision.PASS and not dossier.provisional:
         try:
             from publish.publish import publish as _publish
             _publish(dossier, cfg)
         except Exception as e:
             logger.error(f"Publication failed for {cand.candidate_id}", extra={"error": str(e)})
+    elif publish and dossier.decision == Decision.PASS and dossier.provisional:
+        # Provisional PASS: the moat was exhausted and the cheap fallback tail ruled.
+        # Real-but-untrusted — never publish. It will auto re-vet on `vet --resume`.
+        logger.warning(
+            f"Provisional PASS held back from publication for {cand.candidate_id} "
+            f"(ruled by emergency fallback; awaiting moat re-vet via `vet --resume`).",
+            extra={"candidate_id": cand.candidate_id, "provider_chain": _provider_chain})
 
     logger.info(f"Vetting complete: {dossier.decision.value.upper()}", 
                 extra={"decision": dossier.decision.value, "gate": gate})
@@ -141,12 +281,22 @@ def run_signal(
     store: Optional[Store] = None,
     k: Optional[int] = None,
     publish: bool = False,
+    exploration: Optional[float] = None,
+    lanes: Optional[list] = None,
 ) -> list[Dossier]:
     """Generate candidates from a signal, dedup, prescreen, vet each, return dossiers.
 
     Any of cfg/op/search/store may be None — defaults are loaded automatically.
     Plain runs are cheap (verdict + score only); pass publish=True to also
-    generate listing artifacts and publish PASSes.
+    generate listing artifacts and publish PASSes. ``signal_text=""`` runs
+    blue-sky generation. ``exploration`` overrides the adaptive exploration level
+    when provided (e.g. the ``generate`` CLI's ``--exploration``).
+
+    ``lanes`` (Part 14 — multi-lane-by-default): the ambition tiers this run spans.
+      - None         => no lane engaged; byte-for-byte today's single-default behaviour.
+      - [X]          => single pinned tier (generate + vet in tier X; classify skipped).
+      - [X, Y, ...]  => MIXED catalogue: fan generation out per tier, auto-classify each idea
+                        into its natural tier, then vet EACH against its OWN tier's bar.
     """
     from .telemetry import get_usage_summary, reset_usage
     from . import progress
@@ -163,9 +313,59 @@ def run_signal(
         from .operator import make_operator
         op = make_operator(cfg)
 
-    # Lighter model for mechanical calls (query-gen, prescreen); == op if unset.
-    from .operator import make_operator as _make_op
-    fast_op = _make_op(cfg, fast=True)
+    # Tiered non-critical chain (fast_op): cheapest operators first, last-resort
+    # fallback to Gemini-flash.  Claude is deliberately EXCLUDED — it is too expensive
+    # for mechanical JSON work (prescreen, scoring, content).  The moat chain (Claude→
+    # Gemini) is only used for kill-check verdicts and adversarial analysis.
+    #
+    # Tier 1: DeepSeek-chat  $0.27/M in  (best for structured JSON output)
+    # Tier 2: MiniMax-M2.7   $0.30/M in  (secondary; robust fallback)
+    # Tier 3: Gemini-flash   $0.075/M in (last resort; cheaper per-token than Claude)
+    #
+    # Each tier is guarded by an independent circuit breaker.  A quota exhaustion on
+    # DeepSeek skips it and tries MiniMax; MiniMax exhausted skips to Gemini-flash;
+    # Gemini-flash exhausted → all three skipped → ProviderExhaustedError → DEFER.
+    # A tier's health mark does NOT pollute the moat health file (moat stays clean).
+    from .operator import _build_operator, FallbackOperator
+    from .errors import ProviderExhaustedError
+    from .telemetry import record_usage
+
+    def _build_operator_chain(order: tuple[str, ...], fast: bool) -> Operator:
+        """Build a FallbackOperator from the given tier order. Raises if none available."""
+        tiers = []
+        for kind in order:
+            try:
+                tiers.append((kind, _build_operator(kind, cfg, fast=fast)))
+            except RuntimeError:
+                pass  # tier not configured or missing API key
+        if len(tiers) == 0:
+            raise ProviderExhaustedError(
+                f"All operators in {order} unavailable — check API keys and credentials.")
+        if len(tiers) == 1:
+            logger.info(f"Single operator: {tiers[0][0]}")
+            return tiers[0][1]
+        r = cfg.retrieval
+        chain = FallbackOperator(tiers, failure_threshold=r.breaker_failure_threshold,
+                                cooldown_s=r.breaker_cooldown_s)
+        logger.info(f"Chain: {' → '.join(n for n, _ in tiers)}")
+        return chain
+
+    # gen_op: deepseek first (fastest for ~7000-char generation prompts: ~27s),
+    # then minimax (~54s), then gemini_cli (~21s) as fallbacks.
+    # Note: ollama dropped — RAM pressure causes 100s+ probes and timeouts on large prompts.
+    # Note: openrouter dropped — CF bot protection is persistent (all models blocked).
+    # Run `python -m prospector.run operators --gen` to re-diagnose and update this order.
+    gen_op = _build_operator_chain(
+        ("deepseek", "minimax", "gemini_cli"),
+        fast=True   # M2.7 non-reasoning for MiniMax when it serves as fallback
+    )
+
+    # fast_op: deepseek first (fastest), then minimax, then gemini_cli fallbacks.
+    # Same reasoning as gen_op: openrouter CF-blocked, ollama too slow.
+    fast_op = _build_operator_chain(
+        ("deepseek", "minimax", "gemini_cli"),
+        fast=True
+    )
 
     if search is None:
         from .retrieval import make_provider
@@ -175,10 +375,27 @@ def run_signal(
         store = Store(cfg)
 
     # --- Adaptive creativity (Part 3) ---
-    from .adaptive import calculate_exploration_level, get_recent_failure_modes
-    expl = calculate_exploration_level(store)
+    from .adaptive import (calculate_exploration_level, get_recent_failure_modes,
+                           select_lenses, blue_sky_failure_steer, get_exemplars,
+                           calculate_grid_priorities)
+    expl = exploration if exploration is not None else calculate_exploration_level(store)
     fails = get_recent_failure_modes(store)
-    logger.info(f"Adaptive Controller: expl={expl:.1f}", extra={"exploration_level": expl, "fails": fails})
+    # Blue-sky (no signal): the kill log is domain-specific and, fed raw, drags
+    # generation back into the saturated domain. Reframe it as a no-go zone +
+    # cross-sector mandate so blue-sky actually ranges (Part 15B breadth KPI).
+    if not signal_text.strip():
+        fails = blue_sky_failure_steer(fails)
+    
+    # ML Improvement: Exemplar injection (Stage 2)
+    exemplars = get_exemplars(store, op)
+    if exemplars:
+        fails = (fails or "") + "\n\n" + exemplars
+
+    # ML Improvement: Grid Scheduler (Stage 3)
+    grid_priorities = calculate_grid_priorities(store, cfg)
+
+    lenses = select_lenses(cfg, expl, k=k or 5)
+    logger.info(f"Adaptive Controller: expl={expl:.1f}", extra={"exploration_level": expl, "fails": fails, "lenses": lenses, "grid_priorities": grid_priorities})
 
     # --- Spend guard (Part 9) ---
     from .spend import SpendGuard
@@ -186,13 +403,51 @@ def run_signal(
                        warn_at_usd=cfg.spend.warn_at_usd)
 
     # --- Generate ---
-    candidates = generate(
-        op, cfg, signal_text=signal_text, k=k,
-        exploration_level=expl, recent_failure_modes=fails
-    )
+    # FIX: MiniMax generation — gen_op (MiniMax) for generation; op (Claude/Gemini) stays
+    # for verification.  gen_op falls back to op if MINIMAX_API_KEY is not configured.
+    if lanes and len(lanes) > 1:
+        # MULTI-LANE (Part 14): fan generation out across tiers.
+        # Tier is set inside generate_multilane() directly from the lane loop variable —
+        # no LLM call needed to re-confirm what generation already assigned.  The lane
+        # config (cfg.for_lane(tier)) shaped the idea at generation time; the tier tag
+        # is the authoritative routing key for the downstream vetting bar.
+        from .generate import generate_multilane
+        counts = _lane_counts(cfg, lanes, k)
+        progress.step(f"multi-lane generation across {len(lanes)} tier(s): {counts}")
+        candidates = generate_multilane(
+            op, cfg, lanes=lanes, lane_counts=counts, signal_text=signal_text,
+            strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
+            gen_op=gen_op, grid_priorities=grid_priorities)
+        # ambition_tier already set inside generate_multilane (c.ambition_tier = tier).
+    elif lanes:
+        # SINGLE pinned tier (--lane X or config active_lane): generate in that tier, tag it,
+        # skip classify (the tier is fixed by the operator's choice).
+        tier = lanes[0]
+        # ML Improvement: Grid Scheduler (Stage 3)
+        priorities = (grid_priorities or {}).get(tier)
+        candidates = generate(
+            op, cfg.for_lane(tier), signal_text=signal_text, k=k,
+            strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
+            gen_op=gen_op, grid_priorities=priorities)
+        for c in candidates:
+            c.ambition_tier = tier
+    else:
+        # DEFAULT (no lane engaged): byte-for-byte today's single-default behaviour.
+        # Use 'venture' (default) prioritized forms
+        priorities = (grid_priorities or {}).get("venture")
+        candidates = generate(
+            op, cfg, signal_text=signal_text, k=k,
+            strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
+            gen_op=gen_op, grid_priorities=priorities,
+        )
     if not candidates:
-        logger.warning("No candidates generated from signal")
-        progress.step("generation produced 0 candidates — nothing to vet")
+        # Generation chain exhausted — save the signal text so the operator can
+        # re-run it later with `generate --resume`.  Never lose a signal.
+        _save_pending_signal(signal_text, cfg)
+        logger.warning(f"Generation chain exhausted (deepseek/minimax/gemini all unavailable or "
+                       f"quota depleted). Signal saved for retry. Run `generate --resume` "
+                       f"when generation chain recovers.")
+        progress.step(f"generation chain exhausted — signal saved, re-run with generate --resume")
         return []
     logger.info(f"Generated {len(candidates)} candidates")
     progress.step(f"generated {len(candidates)} candidates")
@@ -232,56 +487,86 @@ def run_signal(
         if not found_recent_kill:
             final_candidates.append(cand)
 
-    # --- Prescreen ---
-    kept: list[Candidate] = []
-    for cand in final_candidates:
-        keep, reason = prescreen(fast_op, cfg, cand)
-        if keep:
-            kept.append(cand)
-        else:
-            logger.info(f"PRESCREENED OUT: {cand.title!r}", extra={"reason": reason})
-            progress.note(f"prescreened out: {cand.title!r}")
+    # --- Prescreen (parallel) ---
+    # prescreen() is a pure, no-web per-candidate call that NEVER raises (keep-biased
+    # on any error). Running candidates concurrently overlaps the calls without changing
+    # any keep/reject decision — physical load is still bounded by the CLI semaphores.
+    # Results are collected in submission order so kept[] stays in generation order.
+    from concurrent.futures import ThreadPoolExecutor
+    prescreened_data: list[tuple[Candidate, float, str]] = []
+    pre_workers = _vet_workers(cfg)
+    with ThreadPoolExecutor(max_workers=pre_workers) as pre_ex:
+        pre = [(cand, pre_ex.submit(prescreen, fast_op, cfg, cand))
+               for cand in final_candidates]
+        for cand, fut in pre:
+            keep, score, reason, features = fut.result()
+            if keep:
+                prescreened_data.append((cand, score, features))
+            else:
+                logger.info(f"PRESCREENED OUT: {cand.title!r}", extra={"reason": reason})
+                progress.note(f"prescreened out: {cand.title!r}")
 
-    if not kept:
+    if not prescreened_data:
         logger.warning("No candidates survived prescreen")
         progress.step("0 candidates survived prescreen")
         return []
-    progress.step(f"vetting {len(kept)} candidate(s) (concurrency=5)…")
+
+    # --- ML Improvement: DPP Novelty Selection ---
+    # Instead of vetting ALL prescreened candidates, we select the most diverse 
+    # and high-quality subset. This prevents spending moat tokens on near-duplicates.
+    from .novelty import select_diverse_candidates
+    target_k = k or getattr(cfg.generation, "candidates_per_signal", 5)
+    kept = select_diverse_candidates(op, prescreened_data, k=target_k)
+
+    workers = _vet_workers(cfg)
+    progress.step(f"vetting {len(kept)} candidate(s) diverse subset live (max {workers} in parallel)…")
 
     # --- Vet each candidate (Bounded Concurrency Task E) ---
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     dossiers: list[Dossier] = []
 
-    # We use a max_workers=5 as suggested in the spec/handover
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = []
-        for cand in kept:
+    def _label(idx: int, total: int, title: str) -> str:
+        short = (title[:34] + "…") if len(title) > 35 else title
+        return f"[{idx}/{total} {short}]"
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        fut_meta: dict = {}  # future -> stable candidate index (1-based, survives reorder)
+        for idx, cand in enumerate(kept, start=1):
             # Check spend guard (rough check before submitting)
             if guard.tripped():
                 logger.error(f"ABORTING: Spend guard tripped (${guard.total():.2f})")
                 break
-
-            # Submit to pool
-            futures.append(executor.submit(
-                vet_candidate, cand, op, search, cfg,
-                store=store, query_op=fast_op, publish=publish))
+            # Each candidate carries a stable [idx/N title] tag so its live per-check
+            # lines stay attributable even though parallel vets interleave on stderr.
+            # Per-tier vetting (Part 14): resolve config to THIS candidate's ambition tier so
+            # the gates/thresholds/weights/adversarial framing match the idea's own bar. For an
+            # untagged candidate (today's default) for_lane("") returns cfg unchanged.
+            vet_cfg = cfg.for_lane(cand.ambition_tier)
+            fut = executor.submit(
+                vet_candidate, cand, op, search, vet_cfg,
+                store=store, query_op=fast_op, publish=publish,
+                label=_label(idx, len(kept), cand.title))
+            fut_meta[fut] = idx
             # Rough cost estimate increment
             guard.add(0.01)
 
-        total_submitted = len(futures)
-        for i, future in enumerate(futures, start=1):
+        total_submitted = len(fut_meta)
+        # Stream each verdict the MOMENT its vet finishes (completion order), not in
+        # submission order — a fast KILL no longer waits behind a slow candidate.
+        for future in as_completed(fut_meta):
+            idx = fut_meta[future]
             try:
                 d = future.result()
                 gate_str = f" [gate={d.gate_fired}]" if d.gate_fired else ""
                 logger.info(f"Result: {d.candidate.title!r} → {d.decision.value.upper()}{gate_str}",
                             extra={"candidate_id": d.candidate.candidate_id, "decision": d.decision.value, "score": d.score.composite if d.score else None})
-                progress.result(i, total_submitted, d.decision.value, d.candidate.title,
+                progress.result(idx, total_submitted, d.decision.value, d.candidate.title,
                                 gate=d.gate_fired,
                                 composite=(d.score.composite if d.score else None))
                 dossiers.append(d)
             except Exception as e:
                 logger.error(f"ERROR vetting candidate: {e}", extra={"error": str(e)})
-                progress.note(f"[{i}/{total_submitted}] ⚠ error: {e}")
+                progress.note(f"[{idx}/{total_submitted}] ⚠ error: {e}")
 
     # --- Summary ---
     n_pass = sum(1 for d in dossiers if d.decision == Decision.PASS)
@@ -299,6 +584,13 @@ def run_signal(
         "usage": usage,
     })
     progress.summary(n_pass, n_kill, usage, n_defer=n_defer)
+
+    # Production self-watch (free, no model calls): flag calibration pathologies
+    # — zero-yield, single-gate dominance, dead gates — the moment they appear, so a
+    # mis-calibrated filter (e.g. a gate killing on silence) is surfaced, not silent.
+    from .diagnostics import calibration_alarms
+    for a in calibration_alarms(store, cfg):
+        progress.note(("🚨 " if a["level"] == "alarm" else "⚠️  ") + f"[{a['code']}] {a['message']}")
 
     return dossiers
 
@@ -319,6 +611,11 @@ def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     if hasattr(args, "fixtures") and args.fixtures:
         cfg.retrieval.provider = "fixture"
 
+    # Ambition-lane override (config-pinned): judge against THIS lane's gates/thresholds
+    # instead of the default. Applied last (returns a resolved copy). Empty => unchanged.
+    if getattr(args, "lane", None):
+        cfg = cfg.for_lane(args.lane)
+
     return cfg
 
 
@@ -335,7 +632,7 @@ def _make_search(cfg: Config, args: argparse.Namespace) -> SearchProvider:
 
 
 def _cmd_vet(args: argparse.Namespace) -> None:
-    """Vet a single candidate specified on the command line."""
+    """Vet a single candidate or re-vet all moat-deferred candidates."""
     cfg = _build_config_and_overrides(args)
 
     from .operator import make_operator
@@ -345,6 +642,10 @@ def _cmd_vet(args: argparse.Namespace) -> None:
     fast_op = make_operator(cfg, fast=True)
     search = _make_search(cfg, args)
     store = Store(cfg)
+
+    if getattr(args, "resume", False):
+        _cmd_resume(args, cfg, op, fast_op, search, store)
+        return
 
     cand = Candidate(
         title=args.title,
@@ -368,11 +669,94 @@ def _cmd_vet(args: argparse.Namespace) -> None:
     print(f"\n--- token/call audit ---\n{json.dumps(usage, indent=2)}")
 
 
+def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
+                fast_op: Operator, search: SearchProvider, store: Store) -> None:
+    """Re-vet all moat-deferred candidates.
+
+    Called when `vet --resume` is used or when the moat comes back online after an outage.
+    Loads each deferred candidate, re-runs the full verification pipeline (not partial —
+    the moat is now available, so we run everything), and overwrites the DEFER decision
+    with the fresh verdict.  Candidates that were deferred due to a real retrieval
+    outage (not moat exhaustion) are also retried.
+    """
+    # Two populations need the moat to revisit them:
+    #   1. DEFER  — the moat was unavailable, so no verdict was reached at all.
+    #   2. provisional — a real verdict WAS reached, but by the cheap emergency fallback
+    #      tail (moat exhausted). Re-vet so the trusted moat overwrites the cheap ruling.
+    # De-dup by candidate_id (a dossier can't be both, but guard against overlap).
+    deferred = store.all(decision="defer")
+    provisional = store.provisional()
+    seen_ids = {r.get("candidate_id", "") for r in deferred}
+    pending = list(deferred) + [r for r in provisional
+                                if r.get("candidate_id", "") not in seen_ids]
+    if not pending:
+        print("No deferred or provisional candidates to resume. Moat is healthy.")
+        return
+
+    n_prov = len(pending) - len(deferred)
+    print(f"Found {len(deferred)} deferred + {n_prov} provisional candidate(s). "
+          f"Re-vetting with moat...")
+    from .models import Candidate
+    from .telemetry import get_usage_summary, reset_usage
+    from . import progress
+
+    n_pass = n_kill = n_defer = 0
+    resumed_dossiers = []
+    for row in pending:
+        cid = row.get("candidate_id", "")
+        # Load the full dossier JSON to reconstruct the candidate fields.
+        full = store.get(cid)
+        if not full:
+            print(f"  ⚠ {cid}: dossier JSON missing, skipping")
+            continue
+        cand_dict = full.get("candidate", {})
+        cand = Candidate.from_dict(cand_dict)
+        # Also restore ambition_tier and structural_form from the stored data.
+        cand.ambition_tier = str(cand_dict.get("ambition_tier", "") or "")
+        cand.structural_form = str(cand_dict.get("structural_form", "") or "")
+        was_provisional = bool(row.get("provisional", 0))
+        prior = ("provisional " + str(full.get("decision", "")).upper()
+                 if was_provisional else "deferred")
+        original_reason = full.get("reason", "")[:80]
+        progress.banner(f"[resume] {cand.title!r} (was {prior}: {original_reason})")
+
+        try:
+            d = vet_candidate(cand, op, search, cfg, store=store,
+                              query_op=fast_op,
+                              publish=getattr(args, "publish", False),
+                              show_checks=True)
+        except ProviderExhaustedError as e:
+            # Moat still exhausted — stop here. Remaining candidates keep their prior
+            # state (deferred, or provisional verdict); re-run --resume when moat recovers.
+            progress.note(f"Moat still exhausted ({e}). Remaining candidates keep their "
+                         f"prior state. Re-run `vet --resume` when moat recovers.")
+            break
+
+        if d.decision == Decision.PASS:
+            n_pass += 1
+        elif d.decision == Decision.KILL:
+            n_kill += 1
+        else:
+            n_defer += 1
+        resumed_dossiers.append(d)
+
+    # Summary.
+    print(f"\n{'='*60}")
+    print(f"Resume complete: {len(resumed_dossiers)}/{len(pending)} re-vetted  "
+          f"✅{n_pass}  🛑{n_kill}  ⏸️{n_defer}")
+    if n_defer > 0:
+        print(f"  {n_defer} still deferred — moat may still be recovering.")
+    if n_pass > 0:
+        print(f"  ✅ {n_pass} candidate(s) PASSED — see store/dossiers/")
+    usage = get_usage_summary()
+    print(f"\n--- token/call audit ---\n{json.dumps(usage, indent=2)}")
+
+
 def _cmd_signal(args: argparse.Namespace) -> None:
     """Run the full signal pipeline from text or file."""
     cfg = _build_config_and_overrides(args)
 
-    if args.text:
+    if args.text is not None:  # "" is a valid blue-sky signal, not "missing"
         signal_text = args.text
     elif args.file:
         with open(args.file, encoding="utf-8") as fh:
@@ -388,7 +772,8 @@ def _cmd_signal(args: argparse.Namespace) -> None:
 
     dossiers = run_signal(signal_text, cfg=cfg, op=op, search=search, store=store,
                           k=getattr(args, "count", None),
-                          publish=getattr(args, "publish", False))
+                          publish=getattr(args, "publish", False),
+                          lanes=_resolve_lanes(cfg, args))
 
     # Durable, human-readable result on stdout (stderr carried the live progress).
     from .telemetry import get_usage_summary
@@ -407,22 +792,427 @@ def _cmd_signal(args: argparse.Namespace) -> None:
     print(f"\n--- token/call audit ---\n{json.dumps(get_usage_summary(), indent=2)}")
 
 
+def _cmd_generate(args: argparse.Namespace) -> None:
+    """Blue-sky run: generate + vet candidates with NO signal (signal_text="").
+    With --resume: re-run the full pipeline for all pending signals that failed due
+    to generation chain exhaustion."""
+    cfg = _build_config_and_overrides(args)
+
+    # --- Handle --resume: re-run pipeline for pending signals ---
+    if getattr(args, "resume", False):
+        _cmd_generate_resume(args, cfg)
+        return
+
+    from .operator import make_operator
+    op = make_operator(cfg)
+    search = _make_search(cfg, args)
+    store = Store(cfg)
+
+    dossiers = run_signal("", cfg=cfg, op=op, search=search, store=store,
+                          k=getattr(args, "candidates", None),
+                          exploration=getattr(args, "exploration", None),
+                          publish=getattr(args, "publish", False),
+                          lanes=_resolve_lanes(cfg, args))
+
+    from .telemetry import get_usage_summary
+    print(f"\n=== Blue-sky result: {len(dossiers)} candidate(s) vetted ===")
+    for d in dossiers:
+        glyph = {Decision.PASS: "PASS", Decision.KILL: "KILL",
+                 Decision.DEFER: "DEFER"}.get(d.decision, d.decision.value.upper())
+        if d.decision == Decision.DEFER:
+            detail = "retrieval failed — re-vet (NOT a kill)"
+        elif d.gate_fired:
+            detail = f"gate={d.gate_fired}"
+        else:
+            detail = f"composite={d.score.composite:.2f}" if d.score else ""
+        print(f"  [{glyph}] {d.candidate.title}  {detail}")
+        print(f"         id={d.candidate.candidate_id}  (full dossier: store/dossiers/{d.candidate.candidate_id}.json)")
+    print(f"\n--- token/call audit ---\n{json.dumps(get_usage_summary(), indent=2)}")
+
+
+def _cmd_generate_resume(args: argparse.Namespace, cfg: Config) -> None:
+    """Re-run the pipeline for all pending signals.
+
+    Reads signals from signals/pending/ and re-runs the full signal pipeline
+    (generate + vet) for each.  On success, removes the pending file.  On
+    failure, leaves it so it can be retried again.
+    Safe to re-run when the non-critical generation chain (DeepSeek/MiniMax/
+    Gemini) recovers from quota depletion.
+    """
+    pending = _load_pending_signals()
+    if not pending:
+        print("No pending signals to resume. signals/pending/ is empty.")
+        return
+
+    from .operator import make_operator
+    from .retrieval import make_provider
+    from .telemetry import reset_usage, get_usage_summary
+    from . import progress
+
+    reset_usage()
+    op = make_operator(cfg)
+    search = _make_search(cfg, args)
+    store = Store(cfg)
+
+    print(f"Found {len(pending)} pending signal(s). Re-running pipeline...")
+    total_pass = total_kill = total_defer = 0
+    for path, signal_text in pending:
+        signal_key = path.stem
+        progress.banner(f"[resume] {signal_key}: {signal_text[:60]!r}")
+        dossiers = run_signal(signal_text, cfg=cfg, op=op, search=search, store=store,
+                              k=getattr(args, "count", None),
+                              publish=getattr(args, "publish", False),
+                              lanes=_resolve_lanes(cfg, args))
+        n_pass = sum(1 for d in dossiers if d.decision == Decision.PASS)
+        n_kill = sum(1 for d in dossiers if d.decision == Decision.KILL)
+        n_defer = sum(1 for d in dossiers if d.decision == Decision.DEFER)
+        total_pass += n_pass
+        total_kill += n_kill
+        total_defer += n_defer
+
+        if dossiers:
+            # Generation succeeded — remove the pending file.
+            path.unlink(missing_ok=True)
+            print(f"  [{n_pass} pass / {n_kill} kill / {n_defer} defer] → pending file removed")
+        else:
+            # Generation still failing — leave the pending file for retry.
+            print(f"  Generation still failing — pending file retained")
+
+    print(f"\n=== Resume complete: {total_pass} pass / {total_kill} kill / {total_defer} defer ===")
+    if total_defer > 0:
+        print(f"  {total_defer} DEFERred — run `vet --resume` when moat recovers.")
+    print(f"\n--- token/call audit ---\n{json.dumps(get_usage_summary(), indent=2)}")
+
+
 def _cmd_report(args, cfg, log_path) -> None:
-    """Render the catalogue / metrics / costs. Reads on-disk state only; no model calls."""
-    from .report import (catalogue_report, metrics_report, costs_report, full_report)
+    """Render the catalogue / metrics / costs / generation quality / trend.
+    Reads on-disk state only; no model calls."""
+    from .report import (catalogue_report, metrics_report, costs_report,
+                           generation_quality_report, trend_report, full_report)
+    from .diagnostics import calibration_alarms, render_alarms
     from .store import Store
     store = Store(cfg)
     if args.full:
         print(full_report(store, log_path))
+        print("\n" + "═" * 72)
+        print("CALIBRATION SELF-WATCH")
+        print("═" * 72)
+        print(render_alarms(calibration_alarms(store, cfg)))
     elif args.metrics:
         print(metrics_report(store))
+        print("\n  calibration self-watch:")
+        print(render_alarms(calibration_alarms(store, cfg)))
+    elif args.generation_quality:
+        print(generation_quality_report(store))
+    elif args.trend:
+        windows = getattr(args, 'windows', (7, 30, 90))
+        print(trend_report(store, windows=windows))
     elif args.costs:
         print(costs_report(log_path))
     else:  # default: catalogue
         print(catalogue_report(store, decision=args.decision))
 
 
+def _cmd_diagnose(args, cfg, log_path) -> None:
+    """Calibration self-diagnostics. Free catalogue alarms always; --deep also runs
+    the golden set through the production brain chain against fixed evidence."""
+    from .diagnostics import (calibration_alarms, render_alarms,
+                              run_calibration, render_calibration)
+    from .store import Store
+    store = Store(cfg)
+    print("═" * 72)
+    print("CALIBRATION SELF-WATCH (catalogue, no model calls)")
+    print("═" * 72)
+    print(render_alarms(calibration_alarms(store, cfg)))
+    if getattr(args, "deep", False):
+        print()
+        report = run_calibration(cfg, floor=args.floor)
+        print(render_calibration(report))
+        if not report["ok"]:
+            sys.exit(2)  # regression → non-zero so CI / scripts can gate on it
+
+
+def _cmd_operators(args) -> None:
+    """Probe every operator: latency, health, circuit breakers, chain state.
+
+    Run this first whenever something feels wrong — it shows exactly which operators
+    are alive, how fast they respond, and what the persisted health marks say.
+    """
+    import time
+    from .config import load_config
+    from .health import get_health
+    from .operator import _build_operator, make_operator, OpenRouterOperator, FallbackOperator
+
+    SIMPLE_PROMPT = ("You are a helpful assistant. "
+                      "Reply to the following with exactly three words: Hello, how are you?")
+
+    print("=" * 72)
+    print("OPERATOR DIAGNOSTICS")
+    print("=" * 72)
+
+    # ── 1. Persisted health (cross-run exhaustion marks) ───────────────────
+    print("\n▸ Persisted health (store/provider_health.json)")
+    try:
+        health = get_health()
+        pdata = health._load()
+        if pdata:
+            now = time.time()
+            for name, entry in pdata.items():
+                until = float(entry.get("dead_until", 0))
+                remaining = max(0, until - now)
+                print(f"  ✗ {name:55s}  dead for {int(remaining):>5}s more")
+        else:
+            print("  (clean — no exhausted operators)")
+    except Exception as e:
+        print(f"  (could not read: {e})")
+
+    # ── 2. Individual operator probes ───────────────────────────────────────
+    print("\n▸ Individual operator probes")
+    available_ops = []  # list of (kind, op, elapsed_or_None)
+    cfg = load_config(args.config if args.config else None)
+
+    for kind in ("openrouter", "deepseek", "minimax", "gemini",
+                 "gemini_cli", "claude_cli"):
+        print(f"\n  {kind:15s}", end="", flush=True)
+        try:
+            op = _build_operator(kind, cfg, fast=True)
+            print(f"  [{op.name}]", end="")
+
+            # OpenRouter: show per-model health breakdown
+            if isinstance(op, OpenRouterOperator):
+                print()
+                for m, h in op._h.items():
+                    lats = sorted(h.get("latencies", []))
+                    median = lats[len(lats)//2] if lats else None
+                    total = h["successes"] + h["failures"] + h["empties"]
+                    rate = h["successes"] / total if total > 0 else None
+                    rate_str = f"{rate:.0%}" if rate is not None else "untested"
+                    lat_str = f"{median:.1f}s" if median else "—"
+                    br = op._breakers.get(m)
+                    br_sym = {"closed": "✓", "open": "✗",
+                              "half_open": "◐"}.get(br.state if br else "?", "?")
+                    print(f"    {br_sym}  {m[:50]:50s}"
+                          f"  ok={h['successes']:2d} fail={h['failures']:2d}"
+                          f"  rate={rate_str}  lat={lat_str}")
+
+            t0 = time.monotonic()
+            result = op._raw(SIMPLE_PROMPT, "", 0.1)
+            elapsed = time.monotonic() - t0
+            short = (result or "(empty)")[:60].replace("\n", " ")
+            print(f"  ✓ {elapsed:6.1f}s  → {short!r}")
+            available_ops.append((kind, op, elapsed))
+        except RuntimeError as e:
+            print(f"  ✗ unavailable: {e}")
+            available_ops.append((kind, None, None))
+        except Exception as e:
+            print(f"  ✗ FAILED: {type(e).__name__}: {e}")
+            available_ops.append((kind, None, None))
+
+    # ── 3. Non-critical chain ordering (same logic as run_signal) ────────
+    print("\n▸ Non-critical chain ordering")
+    # These match the order in run_signal's _build_operator_chain calls.
+    # gen_op: generation (creative, ~7000-char prompts)
+    # fast_op: scoring + prescreen (0-5 axis, simple prompts)
+    # Run `python -m prospector.run operators --gen` to measure and update these.
+    try:
+        from .errors import ProviderExhaustedError
+        r = cfg.retrieval
+
+        def build_chain(order, fast_label):
+            tiers = []
+            for kind in order:
+                try:
+                    op = _build_operator(kind, cfg, fast=False)  # gen_op uses fast=False for reasoning
+                    if fast_label:
+                        # fast_op uses fast=True for scoring/prescreen
+                        op = _build_operator(kind, cfg, fast=True)
+                    tiers.append((kind, op))
+                except RuntimeError:
+                    pass
+            if not tiers:
+                return f"{fast_label or 'chain'}: (none available)"
+            if len(tiers) == 1:
+                return f"{fast_label}: {tiers[0][0]} (single)"
+            fb = FallbackOperator(tiers, failure_threshold=r.breaker_failure_threshold,
+                                 cooldown_s=r.breaker_cooldown_s)
+            return f"{fast_label}: {' → '.join(n for n, _ in tiers)}"
+
+        print(f"  {build_chain(('deepseek', 'minimax', 'gemini_cli'), 'gen_op')}")
+        print(f"  {build_chain(('deepseek', 'minimax', 'gemini_cli'), 'fast_op')}")
+    except Exception as e:
+        print(f"  ✗ could not build chains: {e}")
+
+    # ── 4. Generation prompt probe (optional) ─────────────────────────────
+    if getattr(args, "gen", False):
+        print("\n▸ Generation prompt probe (~7000 chars)")
+        from .prompts import render
+        sys_p, usr_p = render("generate",
+                               signal_text="AI tools for UK small businesses",
+                               sector="", strategy_lens="broaden",
+                               exploration_level=0.5)
+        print(f"  Prompt size: {len(sys_p) + len(usr_p)} chars")
+        # Probe the non-critical chain operators only
+        gen_ops = [(k, o, b) for k, o, b in available_ops
+                   if o is not None and k in ("deepseek", "minimax", "gemini_cli")]
+        for kind, op, baseline in gen_ops:
+            print(f"\n  {kind:15s} (baseline {baseline:.1f}s)...", end="", flush=True)
+            t0 = time.monotonic()
+            try:
+                result = op._raw(sys_p, usr_p, 0.7)
+                elapsed = time.monotonic() - t0
+                short = str(result)[:80].replace("\n", " ")
+                print(f"  {elapsed:6.1f}s  → {short!r}")
+            except Exception as e:
+                elapsed = time.monotonic() - t0
+                print(f"  ✗ {elapsed:.1f}s: {type(e).__name__}: {e}")
+
+    # ── 5. Summary ─────────────────────────────────────────────────────────
+    print("\n▸ Summary")
+    working = [(n, t) for n, _, t in available_ops if t is not None]
+    slow = [(n, t) for n, _, t in available_ops if t is not None and t > 15]
+    dead = [n for n, _, t in available_ops if t is None]
+
+    if working:
+        by_speed = sorted(working, key=lambda x: x[1])
+        print(f"  Fastest : {by_speed[0][0]}({by_speed[0][1]:.1f}s)")
+        print(f"  All     : " + ", ".join(f"{n}({t:.1f}s)" for n, t in by_speed))
+    if slow:
+        print(f"  Slow    : " + ", ".join(f"{n}({t:.1f}s)" for n, t in slow))
+    if dead:
+        print(f"  Dead    : " + ", ".join(dead))
+    if not working and not dead:
+        print("  (no operators probed — check network and API keys)")
+
+    print("\n" + "=" * 72)
+
+
+
+def _save_discovered_signals(signals: list[dict]) -> list[str]:
+    """Persist discovered signals to signals/ as a re-runnable audit trail.
+
+    Mirrors the spec's operator-pasted-signal convention (signals/, one per file):
+    a discovered signal becomes a normal signal file the operator can re-vet or edit.
+    """
+    import re
+
+    out_dir = "signals"
+    os.makedirs(out_dir, exist_ok=True)
+    stamp = datetime.date.today().isoformat()
+    paths: list[str] = []
+    for s in signals:
+        slug = re.sub(r"[^a-z0-9]+", "_", s.get("title", "").lower()).strip("_")[:50] or "signal"
+        path = os.path.join(out_dir, f"discovered_{stamp}_{slug}.txt")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(s["signal_text"].strip() + "\n")
+        paths.append(path)
+    return paths
+
+
+def _cmd_discover(args: argparse.Namespace) -> None:
+    """Surface N diverse signals, then run the full pipeline on each (a sweep).
+
+    NOTE: signal *discovery* is a deliberate extension BEYOND the original spec —
+    the spec's model is operator-pasted signal files. This command lets the engine
+    self-source a diverse, sector-spread portfolio of signals so generation ranges
+    broadly instead of producing variations on one hand-written theme. It judges
+    nothing; the same grounded moat downstream still vets and kills every candidate.
+    """
+    cfg = _build_config_and_overrides(args)
+
+    from .operator import make_operator
+    from .discover import discover_signals
+    from . import progress
+
+    op = make_operator(cfg)
+    search = _make_search(cfg, args)
+    store = Store(cfg)
+
+    progress.banner(f"Signal discovery (spec extension): surfacing {args.signals} signal(s)")
+    signals = discover_signals(op, cfg, n=args.signals,
+                               sectors=getattr(args, "sectors", "") or "")
+    if not signals:
+        print("No signals discovered (model returned nothing usable).", file=sys.stderr)
+        sys.exit(1)
+
+    sectors = sorted({s.get("sector", "") for s in signals if s.get("sector")})
+    progress.step(f"discovered {len(signals)} signal(s) across {len(sectors)} sector(s)")
+    for s in signals:
+        print(f"  • [{s.get('sector', '?')}] {s['title']}")
+
+    if not getattr(args, "no_save", False):
+        saved = _save_discovered_signals(signals)
+        progress.note(f"saved {len(saved)} signal file(s) to signals/ (re-runnable audit trail)")
+
+    if getattr(args, "dry_run", False):
+        print("\n(dry-run) discovery only — no candidates generated or vetted.")
+        return
+
+    # --- Sweep: run the full grounded pipeline on each discovered signal ---
+    all_dossiers: list[Dossier] = []
+    for i, s in enumerate(signals, start=1):
+        progress.banner(f"[{i}/{len(signals)}] {s.get('sector', '?')}: {s['title']}")
+        ds = run_signal(s["signal_text"], cfg=cfg, op=op, search=search, store=store,
+                        k=getattr(args, "count", None),
+                        publish=getattr(args, "publish", False),
+                        lanes=_resolve_lanes(cfg, args))
+        all_dossiers.extend(ds)
+
+    # --- Cross-sweep summary ---
+    n_pass = sum(1 for d in all_dossiers if d.decision == Decision.PASS)
+    n_defer = sum(1 for d in all_dossiers if d.decision == Decision.DEFER)
+    n_kill = len(all_dossiers) - n_pass - n_defer
+    print(f"\n=== Discovery sweep complete: {len(signals)} signal(s) → "
+          f"{len(all_dossiers)} candidate(s) vetted ===")
+    print(f"    PASS={n_pass}  KILL={n_kill}  DEFER={n_defer}")
+    for d in all_dossiers:
+        if d.decision == Decision.PASS:
+            comp = f"  composite={d.score.composite:.2f}" if d.score else ""
+            print(f"  [PASS] {d.candidate.title}{comp}")
+            print(f"         id={d.candidate.candidate_id}  "
+                  f"(full dossier: store/dossiers/{d.candidate.candidate_id}.json)")
+    if n_pass == 0:
+        print("  (no PASS this sweep — per-signal verdicts in the catalogue / store/prospector.jsonl)")
+
+
+def _load_dotenv() -> None:
+    """Populate os.environ from env files, without adding a dependency (python-dotenv
+    is not installed). Existing env vars ALWAYS WIN — a real shell (which sources
+    ~/.config/llm/secrets.sh via ~/.zshrc) is authoritative; these files only fill gaps
+    for non-shell launches (IDE run config, cron, a bare subprocess).
+
+    Reads, in order (later files never override earlier or the live env):
+      1. the gitignored repo-root .env        (project-specific overrides)
+      2. ~/.config/llm/secrets.sh             (the canonical cross-tool key store)
+
+    Both are simple KEY=VALUE; a leading `export ` is tolerated (so the SAME file can be
+    sourced by zsh and parsed here — single source of truth). Blanks and #-comments are
+    skipped; surrounding quotes stripped. Missing/malformed files are silently ignored."""
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidates = [
+        os.path.join(repo_root, ".env"),
+        os.path.expanduser("~/.config/llm/secrets.sh"),
+    ]
+    for path in candidates:
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                lines = fh.readlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if line.startswith("export "):
+                line = line[len("export "):].strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+
+
 def main() -> None:
+    _load_dotenv()
     parser = argparse.ArgumentParser(
         prog="python -m prospector.run",
         description="Prospector opportunity vetting engine",
@@ -438,19 +1228,26 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "mock"],
+    vet_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
                        help="Override operator from config")
+    vet_p.add_argument("--lane", metavar="NAME",
+                       help="Ambition lane to judge against (e.g. side_hustle, venture). "
+                            "Default: config active_lane.")
     vet_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
     vet_p.add_argument("--publish", action="store_true",
                        help="Generate listing artifacts + publish on PASS (extra model calls)")
+    vet_p.add_argument("--resume", action="store_true",
+                       help="Re-vet all moat-deferred candidates (decision=defer).  "
+                            "Uses the same operator/lane as the original run.  "
+                            "Safe to re-run when the moat (Claude/Gemini) comes back online.")
 
     # ---- signal subcommand ----
     sig_p = sub.add_parser("signal", help="Run the full signal pipeline")
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "mock"],
+    sig_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")
@@ -458,20 +1255,88 @@ def main() -> None:
                        help="Path to fixtures JSON (uses FixtureProvider)")
     sig_p.add_argument("--publish", action="store_true",
                        help="Generate listing artifacts + publish PASSes (extra model calls)")
+    sig_p.add_argument("--lane", metavar="NAME",
+                       help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
+                            "Default: config active_lane.")
+
+    # ---- generate subcommand (blue-sky: no signal) ----
+    gen_p = sub.add_parser("generate", help="Blue-sky run: generate + vet candidates with no signal")
+    gen_p.add_argument("--candidates", type=int, default=None, metavar="N",
+                       help="Number of candidates to generate (default: config candidates_per_signal)")
+    gen_p.add_argument("--exploration", type=float, default=None, metavar="X",
+                       help="Override exploration level 0-1 (default: adaptive)")
+    gen_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
+                       help="Override operator from config")
+    gen_p.add_argument("--fixtures", metavar="PATH",
+                       help="Path to fixtures JSON (uses FixtureProvider)")
+    gen_p.add_argument("--publish", action="store_true",
+                       help="Generate listing artifacts + publish PASSes (extra model calls)")
+    gen_p.add_argument("--lane", metavar="NAME",
+                       help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
+                            "Default: config active_lane.")
+    gen_p.add_argument("--resume", action="store_true",
+                       help="Re-run generation for all pending signals that failed due to "
+                            "generation chain exhaustion.  Reads signals from "
+                            "signals/pending/ and re-runs the full pipeline (generate + vet). "
+                            "Safe to re-run when the non-critical chain (DeepSeek/MiniMax/ "
+                            "Gemini) recovers.")
+
+    # ---- discover subcommand (spec EXTENSION: self-sourced signals) ----
+    disc_p = sub.add_parser("discover",
+                            help="Self-source N diverse signals, then sweep the pipeline over each (beyond original spec)")
+    disc_p.add_argument("--signals", type=int, default=10, metavar="N",
+                        help="Number of diverse signals to surface (default 10)")
+    disc_p.add_argument("--sectors", metavar="LIST",
+                        help="Comma-separated sectors to spread across (default: built-in broad set)")
+    disc_p.add_argument("--count", type=int, default=None, metavar="N",
+                        help="Candidates to generate per signal (default: config candidates_per_signal)")
+    disc_p.add_argument("--dry-run", dest="dry_run", action="store_true",
+                        help="Only surface + save signals; do not generate or vet")
+    disc_p.add_argument("--no-save", dest="no_save", action="store_true",
+                        help="Do not write discovered signals to signals/")
+    disc_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
+                        help="Override operator from config")
+    disc_p.add_argument("--lane", metavar="NAME",
+                        help="Pin the sweep to a single ambition lane (default: multi-lane "
+                             "across config active_lanes).")
+    disc_p.add_argument("--fixtures", metavar="PATH",
+                        help="Path to fixtures JSON (uses FixtureProvider)")
+    disc_p.add_argument("--publish", action="store_true",
+                        help="Generate listing artifacts + publish PASSes (extra model calls)")
 
     # ---- report subcommand ----
-    rep_p = sub.add_parser("report", help="Read the catalogue, metrics, and costs (no model calls)")
+    rep_p = sub.add_parser("report", help="Read the catalogue, metrics, costs, generation quality, and trend (no model calls)")
     rep_view = rep_p.add_mutually_exclusive_group()
     rep_view.add_argument("--catalogue", action="store_true",
-                          help="List vetted ideas grouped by decision (default)")
+                          help="List vetted ideas grouped by decision + lane (default)")
     rep_view.add_argument("--metrics", action="store_true",
-                          help="Truth-loop health: kill rate, gate distribution")
+                          help="Truth-loop health: kill rate, per-lane breakdown, gate distribution")
     rep_view.add_argument("--costs", action="store_true",
-                          help="Lifetime spend, tokens, slowest operations")
+                          help="Lifetime spend, tokens, slowest ops (errors excluded)")
+    rep_view.add_argument("--generation-quality", dest="generation_quality", action="store_true",
+                          help="Generation quality: form diversity, audience spread, prescreen rate")
+    rep_view.add_argument("--trend", action="store_true",
+                          help="Rolling 7/30/90d cohort trend: kill rate over time")
     rep_view.add_argument("--full", action="store_true",
-                          help="All three views")
+                          help="All five views: catalogue + metrics + quality + trend + costs")
     rep_p.add_argument("--decision", choices=["pass", "kill", "defer"],
                        help="Filter the catalogue to one decision")
+
+    # ---- diagnose subcommand ----
+    diag_p = sub.add_parser("diagnose",
+                            help="Calibration self-diagnostics (alarms; --deep runs the golden set)")
+    diag_p.add_argument("--deep", action="store_true",
+                        help="Run the golden set through the production brain chain (model calls)")
+    diag_p.add_argument("--floor", type=float, default=0.75,
+                        help="Min golden discrimination to count as OK (default 0.75)")
+
+    # ---- operators subcommand ----
+    op_p = sub.add_parser("operators",
+                          help="Probe every operator: latency, health, circuit breakers, chain state")
+    op_p.add_argument("--timeout", type=float, default=60.0,
+                     help="Per-operator probe timeout in seconds (default: 60)")
+    op_p.add_argument("--gen", action="store_true",
+                     help="Also run a generation-prompt probe (tests full prompt size)")
 
     args = parser.parse_args()
 
@@ -488,8 +1353,16 @@ def main() -> None:
         _cmd_vet(args)
     elif args.command == "signal":
         _cmd_signal(args)
+    elif args.command == "generate":
+        _cmd_generate(args)
+    elif args.command == "discover":
+        _cmd_discover(args)
     elif args.command == "report":
         _cmd_report(args, cfg_for_log, log_path)
+    elif args.command == "diagnose":
+        _cmd_diagnose(args, cfg_for_log, log_path)
+    elif args.command == "operators":
+        _cmd_operators(args)
     else:
         parser.print_help()
         sys.exit(1)

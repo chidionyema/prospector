@@ -1,77 +1,451 @@
 # Prospector
 
-A continuously refreshed catalogue of vetted business opportunities, grounded in current evidence and verified by an automated engine. Sells tiered packs (Scout / Operator / Founder-Investor) self-serve on your own store and via syndication.
+A grounded business-opportunity vetting engine. It sources candidate ideas from
+signals, runs each through **six evidence-grounded checks**, kills the losers with
+a cited reason, ranks the survivors, and publishes only the ones that pass — every
+factual claim backed by a retrievable source or marked `unverifiable`.
 
-**What it does:** sources candidates from signals (demand complaints, cost shocks, regulatory changes, market gaps), vets each through six grounded checks (pain reality, value durability, incumbency, payer solvency, distribution, legality), kills the losers, ranks survivors by automatability and defensibility, grounds the winners with build specs and GTM plans, and publishes only the passes.
+**The moat is the filter, not the ideas.** Generation is deliberately unconstrained
+and creative; all the rigour lives downstream in verification. The model rules
+*only* from passages it actually fetched (web search or fixture) — no prior
+knowledge, no unsourced numbers. A **KILL with a cited reason is a first-class
+output**: the receipt that the filter is real and grounded.
 
-**Why it matters:** when production is commoditised by AI, value moves to *judgment* (what's worth building) and *grounding* (proof it's real). Prospector industrialises both — every listing carries sourced evidence, a build spec a dev can execute, and a kill-filter brutal enough to act on without redoing the homework.
+---
+
+## Table of contents
+
+- [The core idea](#the-core-idea)
+- [How it runs (no hosted API, no keys)](#how-it-runs-no-hosted-api-no-keys)
+- [Quickstart](#quickstart)
+- [The CLI](#the-cli)
+- [The eight-step pipeline](#the-eight-step-pipeline)
+- [The six grounded checks (the moat)](#the-six-grounded-checks-the-moat)
+- [Ambition lanes — one engine, four bars](#ambition-lanes--one-engine-four-bars)
+- [Two model chains: the moat vs. the cheap stuff](#two-model-chains-the-moat-vs-the-cheap-stuff)
+- [Resilience: failover, circuit breakers, DEFER](#resilience-failover-circuit-breakers-defer)
+- [Self-tuning and calibration](#self-tuning-and-calibration)
+- [Configuration](#configuration)
+- [Where output lives](#where-output-lives)
+- [Module map](#module-map)
+- [Invariants (the rules the code enforces)](#invariants-the-rules-the-code-enforces)
+- [Tests](#tests)
+- [Key docs](#key-docs)
+- [Pi Agent Autonomous Workflow](#pi-agent-autonomous-workflow)
+
+---
+
+## The core idea
+
+Most "idea generators" are creativity engines with no brakes. Prospector inverts
+that: **creativity lives in generation, constraint lives in verification, and the
+two loops never merge.** An idea is generated freely, then has to *survive* a
+fixed gauntlet of grounded checks before it can be published or sold.
+
+Three outputs are possible for any candidate:
+
+| Decision | Meaning |
+|----------|---------|
+| **PASS** | Cleared every hard gate **and** survived adversarial review **and** beat the lane's composite-score threshold. Eligible to publish. |
+| **KILL** | Failed a hard gate. The dossier records *which* gate fired and the *cited evidence* for it. A kill is grounded in passages the operator can see — never the model's opinion. |
+| **DEFER** | Retrieval or the brain was unavailable (infrastructure outage / quota exhaustion). Never a verdict, never published — the candidate is re-vetted when infra recovers. |
+
+Every run — pass, kill, or defer — writes a full dossier to `store/`. That log is
+the audit trail and the basis for the engine's self-tuning.
+
+---
+
+## How it runs (no hosted API, no keys)
+
+The entire engine runs **locally or inside your Claude Code / Gemini CLI
+subscription**. There are no hosted inference calls and no API-key billing in the
+default path — the brain and grounding are driven through the installed `gemini`
+and `claude` CLIs. This is an operating rule, not an accident (see `CLAUDE.md`).
+
+**Provider failover is built in.** Both the verdict brain and web grounding take an
+*ordered chain* of providers. If one runs out of quota/credit mid-run, the next
+takes over for the rest of the run; a provider that legitimately returns nothing is
+*not* treated as a failure. If **all** providers are exhausted, the candidate
+**DEFERs** — an outage never produces a false KILL.
+
+> Note: Gemini meters two separate quotas — *inference* and *web-search/grounding*.
+> The web-search bucket can be spent while inference still works, which is exactly
+> the case where failover to `claude_cli` grounding takes over.
+
+---
 
 ## Quickstart
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+python -m venv .venv && .venv/bin/pip install -r requirements.txt
 
-2. **Set your API key:**
-   ```bash
-   export GEMINI_API_KEY=your-key-here
-   ```
-   (or copy `.env.example` to `.env` and fill in)
+# 1. Offline single vet (no model calls — uses the mock brain + fixture passages)
+.venv/bin/python -m prospector.run vet \
+  --title "Haulage HMRC fuel-duty PTO rebate" \
+  --operator mock --fixtures fixtures/fuel_duty_passages.json
 
-3. **Run a single vet (offline, no API calls):**
-   ```bash
-   python -m prospector.run vet --title "Haulage HMRC fuel-duty PTO rebate" \
-     --operator mock --fixtures fixtures/fuel_duty_passages.json
-   ```
+# 2. Generate + vet candidates from a signal (live, uses the failover chain)
+.venv/bin/python -m prospector.run signal --file signals/example.txt --count 4
 
-4. **Run tests:**
-   ```bash
-   pytest -q
-   ```
+# 3. Blue-sky multi-lane run (no signal) — generates a MIXED catalogue across tiers
+.venv/bin/python -m prospector.run generate --candidates 12
 
-5. **Process a signal (generates 5 candidates, vets all):**
-   ```bash
-   python -m prospector.run signal --file signals/example.txt --batch-size 5
-   ```
+# 4. See what came through, the truth-loop health, and what it cost
+.venv/bin/python -m prospector.run report            # catalogue (default)
+.venv/bin/python -m prospector.run report --metrics  # kill rate, gate distribution, per-lane
+.venv/bin/python -m prospector.run report --costs    # spend, tokens, slow ops
+.venv/bin/python -m prospector.run report --full
 
-## Operator & Retrieval Model
+# 5. Tests
+.venv/bin/pytest -q
+```
 
-The engine plugs two swappable parts:
+---
 
-- **Operator (brain):** Gemini (default, production), Claude (via Claude API), or Mock (for offline testing). Change via `config.yaml` or `PROSPECTOR_OPERATOR` env var.
-- **Retrieval (grounding):** Gemini Semantic Search for live evidence, or fixtures for offline test. Every check grounds in real pages; no unsourced claims ship.
+## The CLI
 
-Short term: Claude Code runs supervised batches. Long term: swap to an API operator for unattended scale — the tooling never changes.
+All commands are subcommands of `python -m prospector.run`. `config.yaml` governs
+every parameter; flags override config per-run.
 
-## Key Docs
+| Command    | What it does | Key flags |
+|------------|--------------|-----------|
+| `vet`      | Vet a single candidate you supply, end to end. | `--title` (required), `--one-liner`, `--why-now`, `--operator`, `--lane`, `--fixtures`, `--publish`, `--resume` |
+| `signal`   | Generate N candidates from a signal, then vet all. | `--text` \| `--file` (one required), `--count`, `--operator`, `--lane`, `--fixtures`, `--publish` |
+| `generate` | Blue-sky run: generate + vet with **no signal**. Multi-lane by default. | `--candidates`, `--exploration`, `--operator`, `--lane`, `--fixtures`, `--publish`, `--resume` |
+| `discover` | Self-source a diverse, sector-spread signal portfolio, save it to `signals/`, then run the full pipeline over each. | `--signals N`, `--sectors LIST`, `--count`, `--dry-run`, `--no-save`, `--operator`, `--lane`, `--fixtures`, `--publish` |
+| `report`   | Read-only views over stored state (no model calls). | `--catalogue` (default) \| `--metrics` \| `--costs` \| `--generation-quality` \| `--trend` \| `--full`, `--decision` |
+| `diagnose` | Calibration health: free in-catalogue alarms, plus an optional golden-evidence calibration run. | `--deep`, `--floor` |
 
-- **[CLAUDE.md](CLAUDE.md)** — operating rules: source-or-die, verdict-from-retrieval-only, kill-fast, publish only on pass.
-- **[RUN.md](RUN.md)** — the eight-step per-run procedure with concrete CLI commands.
-- **[prospector-master-spec.md](prospector-master-spec.md)** — the complete specification: all prompts, golden-set acceptance tests, build roadmap, architecture.
+**Resume after an outage:**
 
-## Architecture
+```bash
+# Re-vet candidates that DEFERRED because the moat (Claude+Gemini) was down.
+.venv/bin/python -m prospector.run vet --resume
 
-Six modules drive the pipeline:
+# Re-run the full pipeline for signals that failed at generation time
+# (when the non-critical chain — DeepSeek/MiniMax/Gemini-flash — was all down).
+.venv/bin/python -m prospector.run generate --resume
+```
 
-- **generate.py** — divergent candidate creation (unconstrained, creative)
-- **verify.py** — the moat: six grounded checks; source-or-die; kill-fast
-- **kill_filter.py** — deterministic gates; KILL or PASS
-- **score.py** — ranks survivors; automatability weighted hardest
-- **dossier.py** — composes primary + secondary artifacts
-- **publish.py** — publishes PASS to own store + syndication (Stripe + Gumroad)
+`--lane NAME` pins a single ambition lane (`side_hustle`, `smb`, `growth`,
+`venture`). Omit it to run **all active lanes** (the default — a mixed catalogue).
 
-Everything is config-driven; swap operators or retrieval strategy without touching code.
+---
 
-## Success Criteria
+## The eight-step pipeline
 
-- **Grounding integrity:** ≥95% of claims carry resolvable sources; 0 unverifiable quantitative claims published.
-- **Filter discrimination:** measured on a fixed golden-set benchmark (Part 13B); must maintain high discrimination across mixed sectors.
-- **Freshness:** 0 published Dossiers past their re-verification SLA.
-- **Unit economics:** fully-loaded cost per published Dossier < target price ÷ 5.
+Every run executes these eight steps in order (`RUN.md` is the canonical
+procedure; the engine is the guarantee):
 
-Every criterion is provable; the test suite in `tests/` automates all of them.
+```
+1. GENERATE      divergent candidates from a signal (or blue-sky), per-lane fan-out
+2. DEDUP         embed-match against the catalogue; drop near-duplicates
+3. PRE-SCREEN    fast, cheap triage; kill only the obviously dead, keep-biased
+4. VERIFY        the moat: 6 grounded checks, kill-fast; then adversarial pass
+5. GATE          hard_gates → KILL or PASS; render a dossier either way
+6. ARTIFACTS     (PASS only) score on 6 axes; build spec/GTM/ops/financials;
+                 generate + claim-check marketing copy
+7. PUBLISH       (PASS only) write listing JSON with tiers; print syndication intent
+8. SUMMARY       decision, gate fired, source count, cost, timing
+```
 
-## License
+Steps 1–3 are cheap and run on the **non-critical chain**. Step 4 — the moat — is
+the only step that produces verdicts, and it runs **exclusively on Claude/Gemini**
+(see [Two model chains](#two-model-chains-the-moat-vs-the-cheap-stuff)).
 
-See LICENSE. No API keys in the repo; all configs are local.
+---
+
+## The six grounded checks (the moat)
+
+`verify.py` runs six universal checks against every candidate. They are the same
+six for any business, any sector, any scale — only the *bar* changes per lane.
+For each check the engine:
+
+1. **Generates disconfirming queries** — phrased to surface the evidence that
+   would make the idea *fail* (negative-first search). By default *all six* checks
+   use deterministic templates and skip the query-gen LLM call entirely
+   (`queries_per_check: 0`, every gate listed in `template_checks`): query
+   generation is a lookup, not judgment, so it lives in code.
+2. **Fetches real pages** — via the grounding chain; URLs are HEAD-validated so a
+   hallucinated link can't become a citation.
+3. **Renders a verdict from passages only** — `supported` / `refuted` /
+   `unverifiable`. **Source-or-die:** a `supported` verdict with no valid citation
+   is downgraded to `unverifiable`. Confidence is computed *algorithmically*
+   (citation fraction + source diversity + keyword relevance), not by LLM
+   self-rating.
+
+The six gates run in this **kill-fast order** (the order in `config.yaml:
+hard_gates`; the run short-circuits at the first hard fail). The *killing verdict*
+depends on each check's question framing — positively-framed checks kill on
+`refuted`, the two negatively-framed checks (`incumbency`, `legality`, where a YES
+is the bad case) kill on `supported`:
+
+| # | Check | Kills on | Meaning of a kill |
+|---|-------|----------|-------------------|
+| 1 | `value_durability` | `refuted` | the value is structurally commoditised — a wrapper, no durable wedge |
+| 2 | `incumbency`       | `supported` | an incumbent already solves this (a YES is the bad case) |
+| 3 | `payer_solvency`   | `refuted` | no plausibly solvent payer |
+| 4 | `distribution`     | `refuted` | no realistic route to the buyer |
+| 5 | `legality`         | `supported` | the margin *depends on* breaking law/terms or falsifying a measure (a lawful workaround survives; silence ≠ kill) |
+| 6 | `pain_reality`     | `refuted` | no evidence the pain is real / acute |
+
+This is the **venture** (default) gate set. Each lane swaps which checks are hard —
+see [Ambition lanes](#ambition-lanes--one-engine-four-bars). `unverifiable` is never
+a killing verdict for any gate: a kill must rest on *cited* disconfirming evidence,
+never on silence.
+
+After the checks, an **adversarial pass** makes the strongest evidence-based case
+that the idea is dead and records whether that case is *decisive*. Whether the
+adversarial pass may kill is lane-aware (`adversarial_decisive` in config).
+
+---
+
+## Ambition lanes — one engine, four bars
+
+Prospector is **multi-lane by default**. The same grounded machinery judges every
+idea, but the *bar* it's held to depends on the idea's **ambition tier** — the
+scale of business it implies. These are two orthogonal axes:
+
+- **Ambition tier** (`side_hustle` / `smb` / `growth` / `venture`) — the **scale**
+  an idea is judged by, and therefore which gates and thresholds apply.
+- **£30 pack** — a downstream **selling format** applied to *every* tier's PASS
+  output. It is *not* a lane's idea space. (An earlier bug baked "£30 info-product
+  pack" into the side-hustle lane's *generation*; that is fixed — side_hustle now
+  generates diverse side-hustle-*scale* opportunities.)
+
+| Lane | What it judges | Floor | Hard gates / kill criterion |
+|------|----------------|-------|------------------------------|
+| `side_hustle` | DEMAND + DELIVERABILITY for a solo operator | **2.0** | hard: `buyer_intent`, `currency`, `route_to_market`, `legality`. The moat checks are demoted to soft `score_checks` (never kill); "commoditised" is explicitly *not* a kill reason (crowds = buyers) |
+| `smb` | a real 1–20-staff business with owner income | **2.6** | hard: `buyer_intent`, `payer_solvency`, `distribution`, `legality`; adversarial kills only on broken unit economics |
+| `growth` | a repeatable, scalable growth motion | **2.9** | hard: `pain_reality`, `payer_solvency`, `distribution`, `legality`; adversarial kills on no scalable channel / no retention |
+| `venture` | a defensible, durable company | **3.2** | the full moat — all six gates hard; the original, strictest bar (= the top-level default) |
+
+Each lane also carries an `adversarial_directive` that re-frames the adversarial
+pass for its bar (e.g. for `side_hustle`/`smb`, lack of a moat is *not* a valid kill
+reason) and a `lane_directive` that re-aims generation at that tier's *scale* of
+opportunity.
+
+A run fans out generation per lane (quotas in `config.yaml: lane_quota`), tags each
+candidate with its `ambition_tier`, optionally **re-classifies** it to its natural
+tier (`classify.py`), and then vets each candidate on **its own lane's bar**
+(`cfg.for_lane(tier)`). The result is a single heterogeneous catalogue where an
+idea that PASSes `side_hustle` may legitimately KILL `venture`.
+
+---
+
+## The model chains: the moat vs. the cheap stuff
+
+This is the central cost/quality decision in the system. Three distinct provider
+chains do different jobs, each with its own failover, health file, and circuit
+breaker. The one rule that never bends: **DeepSeek/MiniMax (and Ollama/OpenRouter)
+never rule a verdict or an adversarial pass.**
+
+1. **The verdict brain (moat ruling) — Claude / Gemini only.** Every kill-check
+   verdict and every adversarial pass is *ruled* by a high-quality brain
+   (`operator: [gemini_cli, claude_cli]` by default). The cheap models are
+   **forbidden** here. This is the founder fence: the product is the integrity of
+   the kill, so the ruling is never cheapened.
+
+2. **The grounding / search chain — its own ordered failover.** Fetching pages is a
+   *separate* concern from ruling on them. The default search chain is
+   `deepseek → minimax_search → brave → gemini_cli → claude_cli`. DeepSeek and
+   MiniMax appear here as **search providers** — they *fetch and synthesise
+   passages*, they do not decide the verdict, so this does not breach the fence.
+   Every provider returns `[]` on failure so the chain continues.
+
+3. **The non-critical generation chain — DeepSeek → MiniMax → Gemini-flash.**
+   Generation, prescreen, and scoring don't need the expensive brain. If all tiers
+   fail, this chain raises `ProviderExhaustedError` and the signal is saved for
+   `generate --resume` — it **never silently falls back to the moat brain.**
+
+```
+                 ┌─────────────────────────────────────────────┐
+  signal ─────▶  │ GENERATE · PRESCREEN · SCORE                 │  non-critical chain
+                 │ DeepSeek → MiniMax → Gemini-flash            │  (cheap, creative)
+                 └───────────────────┬─────────────────────────┘
+                                     │ candidates
+                 ┌───────────────────▼─────────────────────────┐
+                 │ VERIFY (6 checks) · ADVERSARIAL             │  the MOAT
+                 │  rule on passages: Gemini → Claude   ONLY    │  (the verdict — never cheapened)
+                 │  fetch passages:  DeepSeek → MiniMax →       │  (grounding — a SEPARATE chain;
+                 │     Brave → Gemini → Claude                  │   search ≠ ruling)
+                 └───────────────────┬─────────────────────────┘
+                                     │ verdicts + cited sources
+                                  KILL / PASS / DEFER  →  dossier → store/
+```
+
+---
+
+## Resilience: failover, circuit breakers, DEFER
+
+The engine is designed to keep running through quota exhaustion and transient
+outages, and — critically — to **never turn an outage into a false KILL**.
+
+- **Circuit breaker** (`breaker.py`) — per-provider, three states (CLOSED → OPEN →
+  HALF_OPEN). A transient failure counts toward a threshold; a hard failure (quota
+  exhaustion) trips *immediately*. After a cooldown the breaker half-opens and
+  admits one probe; success closes it, failure re-opens it.
+- **Cross-run health** (`health.py`) — `store/provider_health.json` records, in
+  wall-clock time, that a provider is "dead until T" (parsed from the error's reset
+  window). The next run skips a known-dead provider from call #1 — no wasted re-probe.
+- **Failover chains** (`FallbackOperator`, `FallbackSearchProvider`) — walk the
+  ordered provider list, skipping any that are breaker-open or health-dead. A
+  provider returning `[]` is real evidence of *nothing*, not a failure, and is
+  returned as-is.
+- **DEFER, not crash** — when *every* provider in a chain is exhausted, the moat
+  raises `ProviderExhaustedError`; the candidate gets a `DEFER` decision (gate
+  `moat_exhausted` / `retrieval_unavailable`) and is picked up by `vet --resume`
+  once the chain recovers. Source-or-die means silence is `unverifiable`, never
+  `supported`; an outage is `DEFER`, never `KILL`.
+
+---
+
+## Self-tuning and calibration
+
+The kill log is not just an audit trail — it feeds back into generation and guards
+against the filter quietly drifting into over-restriction.
+
+- **Adaptive exploration** (`adaptive.py`) — the recent kill-rate sets a creativity
+  dial (0.0–1.0). A very high kill-rate widens exploration (more divergent lenses);
+  a low one narrows it. The engine also mines recent kill reasons and domains to
+  steer generation *away* from already-dead zones.
+- **Diagnostics** (`diagnostics.py`, `diagnose` command) — free in-catalogue
+  alarms: `zero_yield` (0 PASS — generation problem vs. over-tight filter),
+  `gate_dominance` (one gate eating >85% of kills), `dead_gate` (a configured gate
+  that never fires). `--deep` runs a calibration pass against fixed golden evidence.
+- **Golden-set regression** (`golden.py`, `tests/`) — a curated set of mixed-sector
+  cases the engine must discriminate correctly. It runs on the deterministic
+  mock+fixture path and **gates every prompt or config change**: a change that
+  regresses discrimination below the floor blocks ship.
+
+---
+
+## Configuration
+
+**Everything that affects verdicts or economics is in `config.yaml`** — swapping
+operators (e.g. Claude Code → an API operator) needs only a config change, no code:
+
+- `operator`, `retrieval.provider` — a single provider name **or** an ordered
+  failover chain, e.g. `[gemini_cli, claude_cli]`
+- `model`, `model_fast`, `model_version_tag`
+- `retrieval` — `queries_per_check`, `results_per_query`, `max_passage_chars`,
+  `cache`, `template_checks`, `search_timeout` (+ escalation), breaker thresholds,
+  per-CLI concurrency, `vet_workers`
+- `thresholds` — `confidence_floor`, `min_composite_to_pass`
+- `hard_gates` — gate **order** (kill-fast), killing verdicts per gate, `adversarial_decisive`
+- `weights` — the six scoring axes
+- `active_lanes`, `active_lane`, `lane_quota`, `lanes.*` — multi-lane setup and
+  per-lane bars/gates/generation
+- `generation`, `listing`, `schedule`, `spend`, `store.dir`
+
+**Operational knobs are environment variables:**
+
+| Env var | Purpose | Default |
+|---------|---------|---------|
+| `GEMINI_BIN` / `CLAUDE_BIN` | CLI binary paths | `gemini` / `claude` |
+| `PROSPECTOR_GEMINI_CONCURRENCY` / `PROSPECTOR_CLAUDE_CONCURRENCY` | max concurrent CLI subprocesses | `2` |
+| `PROSPECTOR_JSON_LOG` | emit structured JSON audit log to `store/prospector.jsonl` | off |
+| `PROSPECTOR_QUIET` | suppress console logging | off |
+
+`GEMINI_API_KEY` / `ANTHROPIC_API_KEY` are used **only** by the API-direct `gemini`
+/ `claude` operators, which are *not* part of the default subscription-CLI path.
+The CLI adapters deliberately strip `GEMINI_API_KEY` from the child env to force the
+free OAuth quota.
+
+---
+
+## Where output lives
+
+```
+store/
+  dossiers/<id>.<decision>.json   full dossier per candidate (PASS, KILL, DEFER all kept)
+  listings/<id>.json              published listing artifacts (PASS only, with --publish)
+  prospector.db                   SQLite index behind the `report` views
+  prospector.jsonl                structured audit log (spend, tokens, latency)
+  provider_health.json            cross-run "dead until T" provider marks
+  _cache/                         content-addressed search cache
+  pending/                        signals saved for `generate --resume`
+signals/                          signal files (operator-pasted or discover-sourced)
+```
+
+`store/` is gitignored — it is local state, never committed.
+
+---
+
+## Module map
+
+| Module | Responsibility |
+|--------|----------------|
+| `config.py` | typed config loader; `for_lane()` lane resolution |
+| `models.py` | data contracts: `Candidate`, `Source`, `CheckResult`, `Dossier`, `ScoreResult`; the check vocabulary |
+| `operator.py` | swappable brain + `FallbackOperator`; routes moat vs. non-critical |
+| `retrieval.py` | grounding chain, URL validation, disk cache, `FallbackSearchProvider` |
+| `gemini_cli.py` / `claude_cli.py` | subscription-CLI adapters (invoke, quota-detect, token-track) |
+| `breaker.py` / `health.py` | in-run circuit breaker / cross-run provider health |
+| `errors.py` | `ProviderExhaustedError` + exhaustion classifier + reset-window parser |
+| `generate.py` | divergent generation; `generate_multilane()` per-lane fan-out |
+| `classify.py` | classify a candidate into its natural ambition tier |
+| `discover.py` | self-source a diverse signal portfolio |
+| `prescreen.py` / `dedup.py` | cheap structural + LLM triage / near-duplicate drop |
+| `prompts.py` | load + render the prompt templates (system/user split, cached) |
+| `verify.py` | **the moat** — six grounded checks + adversarial pass |
+| `kill_filter.py` / `score.py` | deterministic gates / six-axis composite scoring |
+| `artifacts.py` | (PASS only) build spec / GTM / ops / financials + claim-checked marketing copy |
+| `dossier.py` / `store.py` | assemble the audit record / SQLite + JSON persistence |
+| `packs.py` / `publish.py`, `publish/publish.py` | compose the tiered (£30) packs / write listing + syndication intent |
+| `report.py` / `diagnostics.py` / `adaptive.py` / `golden.py` | reporting / alarms / self-tuning / regression harness |
+| `decay.py` | reverify scheduling (`reverify_due_at`) — dossiers go stale and re-vet |
+| `spend.py` / `telemetry.py` / `progress.py` | budget caps / audit logging / live run progress |
+| `api.py` | optional REST surface over the catalogue |
+| `run.py` | CLI entry point; orchestrates the eight steps and lane resolution |
+
+---
+
+## Invariants (the rules the code enforces)
+
+These are enforced by tests and are not negotiable:
+
+- **Source-or-die** — every factual claim cites a retrievable source or is
+  `unverifiable`. No unsourced number ships.
+- **Verdict-from-retrieval-only** — the model rules solely from passages it fetched.
+  Silence → `unverifiable`, never `supported`.
+- **DEFER ≠ KILL** — infrastructure failure defers; it never produces a verdict.
+- **The filter is universal** — the same six checks apply to every idea; only the
+  lane's bar changes.
+- **Kill-fast** — stop at the first hard fail; don't burn budget on dead ideas.
+- **Publish only on PASS** — a KILL blocks publication entirely.
+- **Two loops never merge** — demand metrics tune *what to offer*; truth metrics
+  *veto what may ship*. Demand never overrides truth.
+- **The moat stays on Claude/Gemini** — cheap models never touch a verdict or an
+  adversarial pass.
+- **Golden-set gates every change** — a discrimination regression blocks ship.
+
+---
+
+## Tests
+
+```bash
+.venv/bin/pytest -q                    # quick unit + behavioural
+.venv/bin/pytest -v tests/unit         # gate logic, lanes, failover, scoring
+.venv/bin/pytest -v tests/behavioural  # source-or-die, novelty, publish, observability
+.venv/bin/pytest tests/ -k golden      # the discrimination regression gate
+```
+
+Layout: `tests/{unit,behavioural,faults,invariants,integration,sim}/`. The fault
+tests assert graceful degradation (outages → DEFER, not crash); the invariant tests
+assert the two loops never merge.
+
+---
+
+## Key docs
+
+- **[AGENTS.md](AGENTS.md)** — the onboarding contract for any agent working on this
+  repo: orientation order, the truth invariants, the reasoning DNA, and how to pick up
+  the handover. Read it first.
+- **[CLAUDE.md](CLAUDE.md)** — operating rules + module map (the canonical constraints).
+- **[RUN.md](RUN.md)** — the eight-step per-run procedure with concrete commands.
+- **[prospector-master-spec.md](prospector-master-spec.md)** — full spec: prompts,
+  golden-set acceptance tests, roadmap.
+
+The engine is deterministic on config; the golden-set regression suite gates every
+change.

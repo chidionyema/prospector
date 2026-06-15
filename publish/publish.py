@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 # We assume this is run from the repo root so prospector is importable
 try:
     from prospector.models import Dossier, Decision
-    from prospector.packs import compose_packs
+    from prospector.bridge import EngineBridge
 except ImportError:
     # Fallback for direct execution if needed
     pass
@@ -20,7 +20,7 @@ except ImportError:
 def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
     """
     Publish a dossier on PASS (Part 6, 11).
-    Upserts to own store (Stripe) and syndicates to Gumroad.
+    Now uses EngineBridge to bundle artifacts and push to the Track 1 Store.
     """
     # Handle both Dossier object and dict
     if hasattr(dossier, "decision"):
@@ -36,44 +36,22 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
     if decision != Decision.PASS:
         return {"status": "skipped", "reason": f"Decision is {decision}"}
 
-    # 1. Compose tiered packs (Scout / Operator / Founder-Investor)
-    packs = compose_packs(dossier, cfg)
+    # Use the new EngineBridge for Track 1 (Paddle + Catalog API)
+    bridge = EngineBridge(cfg)
+    success = bridge.publish_pass(dossier)
 
-    # 2. Write listing to local store (canonical)
-    listing = {
-        "candidate_id": candidate_id,
-        "verified_at": getattr(dossier, "created_at", "") if hasattr(dossier, "created_at") else dossier.get("created_at"),
-        "reverify_due_at": getattr(dossier, "reverify_due_at", "") if hasattr(dossier, "reverify_due_at") else dossier.get("reverify_due_at"),
-        "source_count": len(dossier.all_sources if hasattr(dossier, "all_sources") else dossier.get("sources", [])),
-        "packs": packs,
-        "trust_metadata": {
-            "model": getattr(dossier, "model_version", "unknown") if hasattr(dossier, "model_version") else dossier.get("model_version"),
-            "grounding": "100% sourced"
+    if success:
+        return {
+            "status": "published",
+            "candidate_id": candidate_id,
+            "method": "EngineBridge (Track 1)"
         }
-    }
-    
-    listing_path = _write_listing(candidate_id, listing, cfg)
-
-    # 3. Simulate/Execute syndication push (Gumroad)
-    # A syndication outage must never block canonical publish (Part 6)
-    syndication_status = "pending"
-    try:
-        # Stub: gumroad_push(listing['packs']['scout'], listing['packs']['operator'])
-        syndication_status = "intent_logged (Gumroad Scout/Operator)"
-    except Exception as e:
-        syndication_status = f"failed: {e}"
-
-    print(f"\n[PUBLISH] {candidate_id} published to canonical store.")
-    print(f"  Packs: Scout (£{packs['scout']['price_cents']/100:.2f}), "
-          f"Operator (£{packs['operator']['price_cents']/100:.2f}), "
-          f"Founder (£{packs['founder_investor']['price_cents']/100:.2f})")
-    print(f"  Syndication: {syndication_status}")
-
-    return {
-        "status": "published",
-        "listing_path": str(listing_path),
-        "syndication_status": syndication_status
-    }
+    else:
+        return {
+            "status": "failed",
+            "candidate_id": candidate_id,
+            "reason": "EngineBridge publication failed"
+        }
 
 
 def _write_listing(candidate_id: str, listing: Dict[str, Any], cfg: Any) -> Path:

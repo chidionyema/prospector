@@ -27,17 +27,29 @@ CREATE TABLE IF NOT EXISTS dossiers (
     composite       REAL,
     created_at      TEXT,
     reverify_due_at TEXT,
-    path            TEXT
+    path            TEXT,
+    ambition_tier   TEXT,
+    structural_form TEXT,
+    provisional     INTEGER DEFAULT 0,
+    dense_reward    REAL,
+    adversarial_confidence REAL
 );
+"""
+
+_CREATE_INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_decision ON dossiers(decision);
 CREATE INDEX IF NOT EXISTS idx_reverify ON dossiers(reverify_due_at);
+CREATE INDEX IF NOT EXISTS idx_ambition_tier ON dossiers(ambition_tier);
+CREATE INDEX IF NOT EXISTS idx_structural_form ON dossiers(structural_form);
+CREATE INDEX IF NOT EXISTS idx_dense_reward ON dossiers(dense_reward);
 """
 
 _UPSERT = """
 INSERT OR REPLACE INTO dossiers
     (candidate_id, title, one_liner, decision, gate_fired, composite,
-     created_at, reverify_due_at, path)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+     created_at, reverify_due_at, path, ambition_tier, structural_form, 
+     provisional, dense_reward, adversarial_confidence)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 
@@ -64,12 +76,20 @@ class Store:
 
     def _init_db(self) -> None:
         with self._connect() as conn:
-            conn.executescript(_CREATE_TABLE)
-            # Migrate DBs created before the one_liner column existed: CREATE TABLE
-            # IF NOT EXISTS leaves an old table untouched, so add the column in place.
+            conn.execute(_CREATE_TABLE)
+            # Migration: add any new columns that an old DB is missing.
             cols = {r[1] for r in conn.execute("PRAGMA table_info(dossiers)")}
-            if "one_liner" not in cols:
-                conn.execute("ALTER TABLE dossiers ADD COLUMN one_liner TEXT")
+            for col, typ in [("one_liner", "TEXT"),
+                               ("ambition_tier", "TEXT"),
+                               ("structural_form", "TEXT"),
+                               ("provisional", "INTEGER DEFAULT 0"),
+                               ("dense_reward", "REAL"),
+                               ("adversarial_confidence", "REAL")]:
+                if col not in cols:
+                    conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
+            
+            # Create indexes AFTER columns are guaranteed to exist
+            conn.executescript(_CREATE_INDEXES)
 
     # ------------------------------------------------------------------
     # Public API
@@ -91,6 +111,11 @@ class Store:
                 stale.unlink(missing_ok=True)
 
         composite = dossier.score.composite if dossier.score else None
+        # Extract ambition_tier and structural_form for per-lane indexing.
+        tier = getattr(dossier.candidate, "ambition_tier", "") or ""
+        form = getattr(dossier.candidate, "structural_form", "") or ""
+        adv_conf = dossier.adversarial.confidence if dossier.adversarial else 0.0
+
         with self._connect() as conn:
             conn.execute(_UPSERT, (
                 cid,
@@ -102,6 +127,11 @@ class Store:
                 dossier.created_at,
                 dossier.reverify_due_at,
                 str(path),
+                tier,
+                form,
+                int(bool(getattr(dossier, "provisional", False))),
+                dossier.dense_reward,
+                adv_conf
             ))
         return path
 
@@ -128,14 +158,36 @@ class Store:
             return None
         return json.loads(p.read_text(encoding="utf-8"))
 
-    def all(self, decision: Optional[str] = None) -> list[dict]:
-        """Return all index rows as dicts, optionally filtered by decision string."""
-        if decision is not None:
-            with self._connect() as conn:
+    def all(self, decision: Optional[str] = None,
+             ambition_tier: Optional[str] = None) -> list[dict]:
+        """Return all index rows as dicts, optionally filtered.
+
+        Args:
+            decision: filter to pass/kill/defer only.
+            ambition_tier: filter to a specific lane (e.g. 'venture', 'side_hustle')."""
+        with self._connect() as conn:
+            if decision is not None and ambition_tier is not None:
+                rows = conn.execute(
+                    "SELECT * FROM dossiers WHERE decision = ? AND ambition_tier = ?",
+                    (decision, ambition_tier)).fetchall()
+            elif decision is not None:
                 rows = conn.execute(
                     "SELECT * FROM dossiers WHERE decision = ?", (decision,)
                 ).fetchall()
-        else:
-            with self._connect() as conn:
+            elif ambition_tier is not None:
+                rows = conn.execute(
+                    "SELECT * FROM dossiers WHERE ambition_tier = ?",
+                    (ambition_tier,)).fetchall()
+            else:
                 rows = conn.execute("SELECT * FROM dossiers").fetchall()
+        return [dict(row) for row in rows]
+
+    def provisional(self) -> list[dict]:
+        """Return rows ruled by the emergency fallback tail (moat exhausted).
+
+        These are real-but-untrusted decisions (PASS or KILL) awaiting a moat re-vet.
+        `vet --resume` re-runs them so the trusted moat overwrites the cheap verdict."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dossiers WHERE provisional = 1").fetchall()
         return [dict(row) for row in rows]

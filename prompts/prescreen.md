@@ -6,4 +6,4 @@ Set keep=false ONLY if clearly true: no conceivable acute pain/desire; no plausi
 solvent payer at all; plain undifferentiated commodity with no angle; or plainly
 illegal / dependent on breaking terms or falsifying data. Anything genuinely
 uncertain → keep=true (full grounding will judge it).
-Output ONLY: {"keep": bool, "reason": "<one sentence>"}
+Output ONLY: {"keep": bool, "score": float, "reason": "<one sentence>", "diversity_features": "<keywords for title+one_liner+wedge>"}

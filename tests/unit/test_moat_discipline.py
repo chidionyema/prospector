@@ -38,14 +38,21 @@ def test_parse_candidates_carries_wedge_field():
 
 
 def test_generate_prompt_renders_moat_taxonomy_and_premortem():
-    _system, user = render("generate", signal_text="s", sector="", strategy_lens="invert",
+    # FIX #5: the taxonomy (moat wedge, commodity pre-mortem, structural traps) moved
+    # from the user section to generate_system.md (static, model-cached).  The user
+    # section now carries only dynamic variables.  Both sections must be present.
+    system, user = render("generate", signal_text="s", sector="", strategy_lens="invert",
                            exploration_level=0.7, target_qualities="q",
-                           recent_failure_modes="f", k=5)
+                           recent_failure_modes="f", k=5, avoid="none", seed="1.1")
+    # Static taxonomy lives in the system section (generate_system.md).
     for needle in ("DURABLE VALUE-CAPTURE IS MANDATORY", "COMMODITY PRE-MORTEM",
                    "proprietary_data", "regulatory_license", "network_effect",
                    "switching_cost", "exclusive_channel", "technical_ip",
                    "durable_wedge_type", "commodity_premortem"):
-        assert needle in user, f"generate prompt missing: {needle}"
+        assert needle in system, f"generate system prompt missing: {needle}"
+    # Dynamic user-side variables render correctly.
+    assert "Exploration level 0-1: 0.7" in user
+    assert "STRUCTURAL FORM for THIS batch" in user
 
 
 class _FakeStore:

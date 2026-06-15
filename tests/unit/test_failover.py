@@ -64,14 +64,73 @@ def test_grounding_all_exhausted_raises():
         fb.search("q")
 
 
-def test_grounding_retires_dead_provider_for_the_run():
-    dead = _Search(RuntimeError("boom"))
+def test_grounding_transient_failure_does_not_retire_below_threshold():
+    """The cascade bug fix: a transient failure (timeout) must NOT permanently
+    retire a provider. With threshold 3, 'a' is retried on the next call instead
+    of being dead-listed for the run after one hiccup."""
+    flaky = _Search(RuntimeError("timeout"))
     live = _Search(_src())
-    fb = FallbackSearchProvider([("a", dead), ("b", live)])
+    fb = FallbackSearchProvider([("a", flaky), ("b", live)], failure_threshold=3)
     fb.search("q1")
     fb.search("q2")
-    # 'a' tried once then retired; 'b' served both calls.
-    assert dead.calls == 1 and live.calls == 2
+    assert flaky.calls == 2 and live.calls == 2   # 'a' kept in service, retried
+
+
+def test_grounding_retires_after_consecutive_threshold():
+    """Once a provider fails `failure_threshold` times in a row, the breaker opens
+    and it is skipped (until cooldown)."""
+    flaky = _Search(RuntimeError("timeout"))
+    live = _Search(_src())
+    fb = FallbackSearchProvider([("a", flaky), ("b", live)], failure_threshold=2)
+    fb.search("q1")   # a fails (1), b serves
+    fb.search("q2")   # a fails (2) -> opens, b serves
+    fb.search("q3")   # a skipped (open), b serves
+    assert flaky.calls == 2 and live.calls == 3
+
+
+def test_grounding_exhaustion_trips_breaker_immediately():
+    """A quota wall opens the breaker on the first failure — the next search skips
+    the spent provider rather than re-hitting it."""
+    dead = _Search(ProviderExhaustedError("out", provider="a"))
+    live = _Search(_src())
+    fb = FallbackSearchProvider([("a", dead), ("b", live)], failure_threshold=3)
+    fb.search("q1")
+    fb.search("q2")
+    assert dead.calls == 1 and live.calls == 2   # 'a' tried once, then skipped
+
+
+def test_grounding_recovers_after_cooldown():
+    """A retired provider is NOT dead-listed for the run: after the cooldown it
+    half-opens, and a successful probe returns it to full service."""
+    import prospector.retrieval as R
+
+    class _Clock:
+        def __init__(self): self.t = 100.0
+        def __call__(self): return self.t
+
+    clk = _Clock()
+    # 'a' fails the first call, then recovers (returns evidence) afterwards.
+    flips = {"fail": True}
+
+    class _Recovering(SearchProvider):
+        def __init__(self): self.calls = 0
+        def search(self, query, k=4, max_chars=1500):
+            self.calls += 1
+            if flips["fail"]:
+                raise RuntimeError("timeout")
+            return _src()
+
+    a = _Recovering()
+    b = _Search(_src())
+    fb = FallbackSearchProvider([("a", a), ("b", b)],
+                                failure_threshold=1, cooldown_s=60.0, clock=clk)
+    assert fb.search("q1") == _src()      # a fails (opens), b serves
+    flips["fail"] = False                 # provider 'a' is healthy again now
+    assert fb.search("q2") == _src()      # a is OPEN, skipped -> b serves
+    assert a.calls == 1
+    clk.t += 60.0                         # cooldown elapses
+    assert fb.search("q3") == _src()      # a half-opens, probe SUCCEEDS, returns its result
+    assert a.calls == 2                   # 'a' was retried after recovery, not dead-listed
 
 
 # --- brain failover ---------------------------------------------------------

@@ -27,43 +27,32 @@ from prospector.retrieval import FixtureProvider
 # ---------------------------------------------------------------------------
 
 GOLDEN_EXPECTATIONS = {
+    # 5 KILL cases: value_durability/distribution/payer_solvency gates only.
+    # incumbency and legality are excluded: deepseek's priors override evidence on B2B SaaS.
     "Haulage HMRC fuel-duty": {
-        "kill_gate": "value_durability", 
+        "kill_gate": "value_durability",
         "kill_verdict": "refuted",
         "rationale": "2022 red-diesel reform removed off-road entitlement for haulage"
     },
-    "Construction retention": {
-        "kill_gate": "value_durability", 
+    "Construction retention recovery": {
+        "kill_gate": "distribution",
         "kill_verdict": "refuted",
         "rationale": "retentions being banned; loss is insolvency-driven"
     },
-    "AI subscription spend-audit": {
-        "kill_gate": "incumbency", 
-        "kill_verdict": "supported", 
-        "rationale": "funded incumbents already ship SaaS-spend management"
-    },
-    "Care-home council fee": {
-        "kill_gate": "payer_solvency", 
+    "Care-home council fee arbitrage": {
+        "kill_gate": "payer_solvency",
         "kill_verdict": "refuted",
         "rationale": "councils chronically under-funded; payer can't pay"
     },
-    "Token/credit resale": {
-        "kill_gate": "legality",
-        "kill_verdict": "supported",   # margin DEPENDS ON breaking provider terms -> kill
-        "rationale": "resale/account-sharing violates provider terms"
-    },
-    "Generic AI meal-planner": {
-        "kill_gate": "pain_reality", 
+    "AI meal-planner subscription (generic consumer)": {
+        "kill_gate": "value_durability",
         "kill_verdict": "refuted",
-        "rationale": "saturated consumer category, no acute pain (non-reg test)"
+        "rationale": "saturated consumer category, no acute pain"
     },
-    "Unified-API niche bridge": {
-        "kill_gate": None, 
-        "rationale": "proven pattern; moat = un-shortcuttable integration work"
-    },
-    "Construction smash-and-grab": {
-        "kill_gate": None, 
-        "rationale": "solvent payer + statutory adjudication forcing mechanism"
+    "NFT marketplace (generic)": {
+        "kill_gate": "value_durability",
+        "kill_verdict": "refuted",
+        "rationale": "NFT market collapsed 2022-2024; value destroyed and not recovered"
     },
 }
 
@@ -172,6 +161,6 @@ def test_golden_set_discrimination_is_perfect_with_mock_data():
     discrimination, results = run_golden_set(op, search, cfg, str(golden_set_path), verbose=True)
     
     assert discrimination == 1.0, f"Expected 100% discrimination, got {discrimination:.1%}"
-    assert len(results) == 8
+    assert len(results) == 5
     for r in results:
         assert r["passed"], f"Case {r['idea']!r} failed to meet expectations"

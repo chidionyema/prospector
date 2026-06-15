@@ -1,8 +1,9 @@
 """Graceful degradation tests (Part 9).
 
 Proves that the engine fails safely and never crashes when:
-  1. FixtureProvider returns [] for all queries -> verdict forced to unverifiable,
-     verify() kills on the first required gate but does NOT raise.
+  1. FixtureProvider returns [] for all queries -> verdict forced to unverifiable;
+     verify() runs every check and fires NO gate (silence is not evidence) but does
+     NOT raise.
   2. MockOperator router raises inside a verdict call -> verdict_for returns
      unverifiable (degraded=True), no crash propagated.
 """
@@ -73,25 +74,23 @@ def test_empty_provider_yields_unverifiable_not_crash(cfg, cand):
     assert result.check_name == "pain_reality"
 
 
-def test_verify_with_empty_provider_kills_does_not_raise(cfg, cand):
-    """verify() with an empty provider should terminate cleanly (KILL on first gate
-    that fires for unverifiable, e.g. value_durability), never raise."""
+def test_verify_with_empty_provider_does_not_kill_or_raise(cfg, cand):
+    """verify() with an empty provider should terminate cleanly, never raise. Every
+    check comes back unverifiable (degraded), and because silence is not evidence NO
+    hard gate may fire — the candidate falls through to scoring rather than being
+    silence-killed."""
     op = MockOperator(router=_query_router)
     provider = _EmptyProvider()
 
     # Must not raise
     checks, adv, gate = verify(op, provider, cfg, cand)
 
-    # At least one check was run
+    # All six checks run to completion (no kill-fast short-circuit on silence).
     assert len(checks) >= 1
 
-    # The first check run is pain_reality (CHECKS dict order)
-    # With empty provider, pain_reality -> unverifiable -> is_hard_fail checks
-    # cfg.hard_gates order: value_durability, incumbency, payer_solvency, ...
-    # But verify() calls is_hard_fail(name, res, cfg) using the CHECKS order
-    # pain_reality (unverifiable) is_hard_fail? Only if unverifiable is in its gate's killing set
-    # pain_reality killing set: [refuted, unverifiable] -> yes, so kills immediately
-    assert gate is not None, "Expected a gate to fire when all sources are empty"
+    # No gate fires on an all-unverifiable candidate: a KILL must be grounded in
+    # cited disconfirming evidence, never in the absence of passages.
+    assert gate is None, "Silence must not fire a hard gate"
 
     # All returned checks should be degraded (no passages retrieved)
     for check in checks:

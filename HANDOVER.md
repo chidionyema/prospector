@@ -7,7 +7,7 @@ must follow, and exactly what to build next.**
 
 ---
 
-## 0. TL;DR state (as of 2026-06-13)
+## 0. TL;DR state (as of 2026-06-15)
 
 - The **engine core is built and green**: generate → dedup → prescreen → verify (6
   grounded kill-checks, kill-fast) → kill-filter → score → dossier → store, plus a CLI.
@@ -18,6 +18,13 @@ must follow, and exactly what to build next.**
   but the local `gemini` CLI runs on the user's free OAuth (Code Assist) quota. The engine
   now defaults to it: `operator: gemini_cli`, `retrieval: gemini_cli` (see §5). The
   mock+fixture path (§4) is still the right choice for fast offline tests/CI.
+
+## TWO TRACKS (user decision 2026-06-15: "both")
+The build has been split into two independent, non-blocking tracks:
+
+- **Track 1 = The Store** (see `specs/stage6-storefront-platform.md`). This is the immediate revenue path. Ships first (days). It is a thin storefront on Paddle and **composes none of the modules**. It never waits on the library.
+- **Track 2 = The Module Library** (see `specs/platform-modules.md`). "Harvest once, reuse forever." A standalone platform bet for FUTURE products that need first-party payments, identity, or delivery. Its consumer is the next product, NOT the store.
+- **Independence:** The store doesn't depend on the library; the library is justified on its own. Neither blocks the other. Recommended order: ship Track 1 first, then Track 2.
 
 ---
 
