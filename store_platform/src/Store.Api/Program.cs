@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Store.Api.Endpoints;
 using Store.Api.Contracts;
@@ -69,8 +71,25 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
 
 // --- INTERNAL/ENGINE ENDPOINTS ---
 
-app.MapPost("/internal/catalog", async (PublishRequest request, StoreDbContext db) =>
+app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http, StoreDbContext db, IConfiguration config) =>
 {
+    // Authenticate the engine→store publish call. Fail closed if no key is configured
+    // (an unauthenticated internal endpoint would let anyone publish to the catalogue).
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
     var pack = await db.Packs.FindAsync(request.Id).ConfigureAwait(false);
     if (pack == null)
     {

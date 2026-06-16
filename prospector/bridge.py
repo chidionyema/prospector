@@ -21,7 +21,7 @@ class EngineBridge:
     def __init__(self, cfg: Any):
         self.cfg = cfg
         # Store API settings
-        self.store_api_url = os.environ.get("STORE_API_URL", "http://localhost:5000")
+        self.store_api_url = os.environ.get("STORE_API_URL", "http://localhost:5291")
         self.internal_api_key = os.environ.get("STORE_INTERNAL_API_KEY", "prospector-dev-key")
         
         # Paddle settings
@@ -166,7 +166,10 @@ class EngineBridge:
         }
         
         try:
-            response = requests.post(url, json=payload, timeout=10)
+            # Authenticate to the Store's internal endpoint. The server compares this
+            # against its configured key in fixed time and rejects (401) on mismatch.
+            headers = {"X-Internal-Key": self.internal_api_key}
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
             if response.status_code == 200:
                 logger.info(f"EngineBridge: Successfully updated Catalog for {id}")
                 return True
