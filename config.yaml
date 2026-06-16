@@ -334,6 +334,35 @@ generation:
     lenses: [broaden, narrow, analogical, first_principles, invert, combine_signals, cross_sector]
     target_qualities: [acute_pain, solvent_motivated_payer, durable_hard_core, real_distribution, clean_legality, high_automatability]
 
+# Generation PROFILES (Part 16 — targeted steering). A profile is a reusable bundle of
+# `generation` overrides selectable with `--profile NAME` (or config `active_profile`). It
+# biases WHAT KIND of ideas are generated — it NEVER touches gates, thresholds or the moat,
+# so it cannot manufacture a pass. A profile composes over any --lane (its forms/focus win).
+# The `focus` string is injected into the generate prompt as a binding TARGETING CONSTRAINT;
+# `--focus "..."` at the CLI overrides it for one-off experiments.
+profiles:
+  online_autonomous_predator:
+    generation:
+      # Restrict to ONLINE / software-deliverable forms — drop physical_ops (atoms) and
+      # productized_service / risk_financing (human-labour or capital-heavy, not "no human
+      # in the loop"). These five can all run as automated online businesses.
+      structural_forms:
+        - vertical_tool         # narrow automated software for ONE niche workflow
+        - transaction_broker    # take a cut of a transaction you uniquely originate/de-risk, online
+        - data_intelligence     # proprietary compounding data, sold as an automated feed/API
+        - audience_media        # owned audience monetised via automated digital products/access
+        - picks_and_shovels     # automated tooling sold to everyone chasing one online gold rush
+      focus: >
+        ONLINE-NATIVE, FULLY-AUTOMATED business only. It must (1) operate entirely ONLINE —
+        no physical premises, inventory, logistics, or local in-person service; (2) run with
+        NO HUMAN IN THE LOOP for delivery — the value is produced and delivered by software/AI
+        on autopilot, not by the operator's manual labour per customer; (3) attack an ACUTE,
+        bleeding-neck pain a specific buyer feels NOW and will pay to stop today — predatory
+        instinct: go where the pain is sharpest and the alternative is doing nothing; and
+        (4) make money DIRECTLY ONLINE — self-serve signup and online payment, no sales calls,
+        no invoicing, no human onboarding. Reject anything requiring per-customer human work,
+        offline fulfilment, or a long manual sales cycle.
+
 listing:
   publish_on: pass
   surfaces: [own_store, syndicate]

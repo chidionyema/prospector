@@ -205,7 +205,7 @@ def vet_candidate(
                               "provider_exhausted": str(e)[:200],
                               "event": "moat_outage"})
         from .telemetry import record_usage
-        record_usage(0, 0, 0, 0, web=False,
+        record_usage(input_tokens=0, output_tokens=0, total_tokens=0, cached_tokens=0, web=False,
                      message=f"MOAT OUTAGE: {cand.candidate_id} deferred — {str(e)[:100]}")
         checks, adversarial = [], None
         gate = "moat_exhausted"
@@ -283,6 +283,7 @@ def run_signal(
     publish: bool = False,
     exploration: Optional[float] = None,
     lanes: Optional[list] = None,
+    focus: Optional[str] = None,
 ) -> list[Dossier]:
     """Generate candidates from a signal, dedup, prescreen, vet each, return dossiers.
 
@@ -417,7 +418,7 @@ def run_signal(
         candidates = generate_multilane(
             op, cfg, lanes=lanes, lane_counts=counts, signal_text=signal_text,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
-            gen_op=gen_op, grid_priorities=grid_priorities)
+            gen_op=gen_op, grid_priorities=grid_priorities, focus=focus)
         # ambition_tier already set inside generate_multilane (c.ambition_tier = tier).
     elif lanes:
         # SINGLE pinned tier (--lane X or config active_lane): generate in that tier, tag it,
@@ -428,7 +429,7 @@ def run_signal(
         candidates = generate(
             op, cfg.for_lane(tier), signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
-            gen_op=gen_op, grid_priorities=priorities)
+            gen_op=gen_op, grid_priorities=priorities, focus=focus)
         for c in candidates:
             c.ambition_tier = tier
     else:
@@ -438,7 +439,7 @@ def run_signal(
         candidates = generate(
             op, cfg, signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
-            gen_op=gen_op, grid_priorities=priorities,
+            gen_op=gen_op, grid_priorities=priorities, focus=focus,
         )
     if not candidates:
         # Generation chain exhausted — save the signal text so the operator can
@@ -616,6 +617,12 @@ def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     if getattr(args, "lane", None):
         cfg = cfg.for_lane(args.lane)
 
+    # Generation-profile override (Part 16): a targeted steering bundle (restricted forms +
+    # focus directive). Applied after the lane so it composes over it (profile wins). Empty
+    # => unchanged. for_lane re-applies it internally for per-tier multilane generation.
+    if getattr(args, "profile", None):
+        cfg = cfg.for_profile(args.profile)
+
     return cfg
 
 
@@ -631,7 +638,7 @@ def _make_search(cfg: Config, args: argparse.Namespace) -> SearchProvider:
     return make_provider(cfg, fixtures=fixtures)
 
 
-def _cmd_vet(args: argparse.Namespace) -> None:
+def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
     """Vet a single candidate or re-vet all moat-deferred candidates."""
     cfg = _build_config_and_overrides(args)
 
@@ -666,7 +673,8 @@ def _cmd_vet(args: argparse.Namespace) -> None:
         n_defer=1 if d.decision == Decision.DEFER else 0)
     print(render_markdown(d))
     usage = get_usage_summary()
-    print(f"\n--- token/call audit ---\n{json.dumps(usage, indent=2)}")
+    from .report import costs_report
+    print(f"\n{costs_report(log_path or '')}")
 
 
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
@@ -749,10 +757,11 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     if n_pass > 0:
         print(f"  ✅ {n_pass} candidate(s) PASSED — see store/dossiers/")
     usage = get_usage_summary()
-    print(f"\n--- token/call audit ---\n{json.dumps(usage, indent=2)}")
+    from .report import costs_report
+    print(f"\n{costs_report(log_path or '')}")
 
 
-def _cmd_signal(args: argparse.Namespace) -> None:
+def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:
     """Run the full signal pipeline from text or file."""
     cfg = _build_config_and_overrides(args)
 
@@ -773,7 +782,8 @@ def _cmd_signal(args: argparse.Namespace) -> None:
     dossiers = run_signal(signal_text, cfg=cfg, op=op, search=search, store=store,
                           k=getattr(args, "count", None),
                           publish=getattr(args, "publish", False),
-                          lanes=_resolve_lanes(cfg, args))
+                          lanes=_resolve_lanes(cfg, args),
+                          focus=getattr(args, "focus", None))
 
     # Durable, human-readable result on stdout (stderr carried the live progress).
     from .telemetry import get_usage_summary
@@ -789,10 +799,11 @@ def _cmd_signal(args: argparse.Namespace) -> None:
             detail = f"composite={d.score.composite:.2f}" if d.score else ""
         print(f"  [{glyph}] {d.candidate.title}  {detail}")
         print(f"         id={d.candidate.candidate_id}  (full dossier: store/dossiers/{d.candidate.candidate_id}.json)")
-    print(f"\n--- token/call audit ---\n{json.dumps(get_usage_summary(), indent=2)}")
+    from .report import costs_report
+    print(f"\n{costs_report(log_path or '')}")
 
 
-def _cmd_generate(args: argparse.Namespace) -> None:
+def _cmd_generate(args: argparse.Namespace, log_path: Path) -> None:
     """Blue-sky run: generate + vet candidates with NO signal (signal_text="").
     With --resume: re-run the full pipeline for all pending signals that failed due
     to generation chain exhaustion."""
@@ -800,7 +811,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
 
     # --- Handle --resume: re-run pipeline for pending signals ---
     if getattr(args, "resume", False):
-        _cmd_generate_resume(args, cfg)
+        _cmd_generate_resume(args, cfg, log_path)
         return
 
     from .operator import make_operator
@@ -812,7 +823,8 @@ def _cmd_generate(args: argparse.Namespace) -> None:
                           k=getattr(args, "candidates", None),
                           exploration=getattr(args, "exploration", None),
                           publish=getattr(args, "publish", False),
-                          lanes=_resolve_lanes(cfg, args))
+                          lanes=_resolve_lanes(cfg, args),
+                          focus=getattr(args, "focus", None))
 
     from .telemetry import get_usage_summary
     print(f"\n=== Blue-sky result: {len(dossiers)} candidate(s) vetted ===")
@@ -827,10 +839,11 @@ def _cmd_generate(args: argparse.Namespace) -> None:
             detail = f"composite={d.score.composite:.2f}" if d.score else ""
         print(f"  [{glyph}] {d.candidate.title}  {detail}")
         print(f"         id={d.candidate.candidate_id}  (full dossier: store/dossiers/{d.candidate.candidate_id}.json)")
-    print(f"\n--- token/call audit ---\n{json.dumps(get_usage_summary(), indent=2)}")
+    from .report import costs_report
+    print(f"\n{costs_report(log_path or '')}")
 
 
-def _cmd_generate_resume(args: argparse.Namespace, cfg: Config) -> None:
+def _cmd_generate_resume(args: argparse.Namespace, cfg: Config, log_path: Path) -> None:
     """Re-run the pipeline for all pending signals.
 
     Reads signals from signals/pending/ and re-runs the full signal pipeline
@@ -881,7 +894,8 @@ def _cmd_generate_resume(args: argparse.Namespace, cfg: Config) -> None:
     print(f"\n=== Resume complete: {total_pass} pass / {total_kill} kill / {total_defer} defer ===")
     if total_defer > 0:
         print(f"  {total_defer} DEFERred — run `vet --resume` when moat recovers.")
-    print(f"\n--- token/call audit ---\n{json.dumps(get_usage_summary(), indent=2)}")
+    from .report import costs_report
+    print(f"\n{costs_report(log_path or '')}")
 
 
 def _cmd_report(args, cfg, log_path) -> None:
@@ -1108,7 +1122,7 @@ def _save_discovered_signals(signals: list[dict]) -> list[str]:
     return paths
 
 
-def _cmd_discover(args: argparse.Namespace) -> None:
+def _cmd_discover(args: argparse.Namespace, log_path: Path) -> None:
     """Surface N diverse signals, then run the full pipeline on each (a sweep).
 
     NOTE: signal *discovery* is a deliberate extension BEYOND the original spec —
@@ -1258,6 +1272,13 @@ def main() -> None:
     sig_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    sig_p.add_argument("--profile", metavar="NAME",
+                       help="Generation profile: a reusable steering bundle (restricted forms + "
+                            "focus directive) from config 'profiles' (e.g. online_autonomous_predator).")
+    sig_p.add_argument("--focus", metavar="TEXT",
+                       help="Free-text targeting constraint applied to THIS run's generation "
+                            "(e.g. 'online only, fully automated, acute pain, makes money directly "
+                            "online'). Overrides a profile's focus. Generation-only; never a gate.")
 
     # ---- generate subcommand (blue-sky: no signal) ----
     gen_p = sub.add_parser("generate", help="Blue-sky run: generate + vet candidates with no signal")
@@ -1274,6 +1295,13 @@ def main() -> None:
     gen_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    gen_p.add_argument("--profile", metavar="NAME",
+                       help="Generation profile: a reusable steering bundle (restricted forms + "
+                            "focus directive) from config 'profiles' (e.g. online_autonomous_predator).")
+    gen_p.add_argument("--focus", metavar="TEXT",
+                       help="Free-text targeting constraint applied to THIS run's generation "
+                            "(e.g. 'online only, fully automated, acute pain, makes money directly "
+                            "online'). Overrides a profile's focus. Generation-only; never a gate.")
     gen_p.add_argument("--resume", action="store_true",
                        help="Re-run generation for all pending signals that failed due to "
                             "generation chain exhaustion.  Reads signals from "
@@ -1350,13 +1378,13 @@ def main() -> None:
     progress.note(f"audit log → {log_path}")
 
     if args.command == "vet":
-        _cmd_vet(args)
+        _cmd_vet(args, log_path)
     elif args.command == "signal":
-        _cmd_signal(args)
+        _cmd_signal(args, log_path)
     elif args.command == "generate":
-        _cmd_generate(args)
+        _cmd_generate(args, log_path)
     elif args.command == "discover":
-        _cmd_discover(args)
+        _cmd_discover(args, log_path)
     elif args.command == "report":
         _cmd_report(args, cfg_for_log, log_path)
     elif args.command == "diagnose":

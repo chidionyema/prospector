@@ -95,6 +95,13 @@ class Config:
     # Candidates generated per tier per multi-lane run (fan-out for coverage).
     lane_quota: dict[str, int] = field(default_factory=dict)
     generation: dict[str, Any] = field(default_factory=dict)
+    # Generation PROFILES (Part 16 — targeted steering): a named, reusable bundle of
+    # `generation` overrides (restricted structural_forms + a free-text `focus` directive)
+    # that biases WHAT KIND of ideas are generated, without touching gates/thresholds. A
+    # profile composes over any lane (it is re-applied after `for_lane` so its forms/focus
+    # WIN over the lane's generation framing). `active_profile` empty => unchanged (today).
+    profiles: dict[str, Any] = field(default_factory=dict)
+    active_profile: str = ""
     listing: dict[str, Any] = field(default_factory=dict)
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
@@ -139,8 +146,27 @@ class Config:
         new_weights = {**self.weights, **(lane.get("weights") or {})}
         new_hard_gates = lane.get("hard_gates") or self.hard_gates
         new_generation = {**self.generation, **(lane.get("generation") or {})}
-        return replace(self, hard_gates=new_hard_gates, thresholds=new_thresholds,
-                       weights=new_weights, generation=new_generation, active_lane=name)
+        resolved = replace(self, hard_gates=new_hard_gates, thresholds=new_thresholds,
+                           weights=new_weights, generation=new_generation, active_lane=name)
+        # A profile composes OVER the lane: re-apply it so its restricted forms / focus
+        # directive win over the lane's generation framing. No-op when no profile active.
+        if self.active_profile:
+            resolved = resolved.for_profile(self.active_profile)
+        return resolved
+
+    def for_profile(self, name: str | None) -> "Config":
+        """Return a Config with generation PROFILE `name` merged over `generation`.
+
+        A profile is generation-only: it merges its `generation` override (e.g. a restricted
+        `structural_forms` list + a free-text `focus` directive) on top of the current
+        generation config and records `active_profile`. Gates, thresholds and weights are
+        untouched — a profile steers what is GENERATED, never how strictly it is judged.
+        Unknown/empty name => unchanged. Composes with lanes via `for_lane` (profile wins)."""
+        if not name or name not in self.profiles:
+            return self
+        prof = self.profiles.get(name) or {}
+        new_generation = {**self.generation, **(prof.get("generation") or {})}
+        return replace(self, generation=new_generation, active_profile=name)
 
 
 def load_config(path: str | Path | None = None) -> Config:
@@ -160,6 +186,8 @@ def load_config(path: str | Path | None = None) -> Config:
         active_lanes=raw.get("active_lanes") or [],
         lane_quota=raw.get("lane_quota") or {},
         generation=raw.get("generation") or {},
+        profiles=raw.get("profiles") or {},
+        active_profile=raw.get("active_profile") or "",
         listing=raw.get("listing") or {},
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
@@ -167,4 +195,10 @@ def load_config(path: str | Path | None = None) -> Config:
     )
     # Resolve the configured active lane (if any) into the operative gate/threshold/weight
     # fields. Empty active_lane => the top-level defaults stand unchanged (today's behaviour).
-    return cfg.for_lane(cfg.active_lane) if cfg.active_lane else cfg
+    # A config-pinned active_profile (if any) is applied too; for_lane re-applies it so it
+    # composes correctly. Empty active_profile => generation untouched.
+    if cfg.active_lane:
+        return cfg.for_lane(cfg.active_lane)
+    if cfg.active_profile:
+        return cfg.for_profile(cfg.active_profile)
+    return cfg

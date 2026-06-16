@@ -1,6 +1,7 @@
 USER: Signal (optional): {signal_text}   Sector hint (optional): {sector}
   Exploration level 0-1: {exploration_level}
   {operator_constraints}
+  {focus_directive}
   STRUCTURAL FORM for THIS batch (the BUSINESS SHAPE every idea here MUST take): {structural_form}
   Creativity lens (secondary — the ANGLE): {strategy_lens}
   Target qualities to aim for (NOT gates): {target_qualities}

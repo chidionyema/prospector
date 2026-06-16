@@ -65,6 +65,7 @@ def generate(
     *,
     gen_op: Optional[Operator] = None,
     grid_priorities: Optional[list[str]] = None,
+    focus: str | None = None,
 ) -> list[Candidate]:
     """Generate k raw Candidate opportunities from a signal.
 
@@ -174,6 +175,17 @@ def generate(
     # Empty for venture/default => the prompt renders byte-for-byte as today (golden-safe).
     lane_directive = str(gen_cfg.get("lane_directive", "") or "")
 
+    # Targeted FOCUS directive (Part 16). A free-text steer ("online, fully-automated, acute
+    # pain, makes money directly online") that biases WHAT KIND of idea every call produces.
+    # Source precedence: the explicit `focus` arg (CLI --focus) overrides the active profile's
+    # `generation.focus`. Empty => the prompt renders byte-for-byte as today (golden-safe).
+    focus_text = focus if focus is not None else str(gen_cfg.get("focus", "") or "")
+    focus_text = focus_text.strip()
+    focus_directive = (
+        "TARGETING CONSTRAINT (binding for THIS run — every idea MUST satisfy it; "
+        f"an idea that does not fit is INVALID, do not propose it): {focus_text}"
+        if focus_text else "")
+
     # Audience forms loaded and rotated AFTER structural forms so both are ready here.
     logger.info("Generation started", extra={
         "sector": sector,
@@ -200,7 +212,8 @@ def generate(
             seed=seed,
             audience_persona=audience,
             audience_description=aud_desc,
-            lane_directive=lane_directive)
+            lane_directive=lane_directive,
+            focus_directive=focus_directive)
         # FIX 4: Use gen_op (MiniMax, fast=True → abab6.5s-chat) for generation if
         # provided, else fall back to op.  abab6.5s-chat is the creative chat model;
         # MiniMax-M3 is a reasoning model — better at math/coding, worse at ideation.
@@ -385,6 +398,7 @@ def generate_multilane(
     recent_failure_modes: str | None = None,
     gen_op: Optional[Operator] = None,
     grid_priorities: Optional[dict[str, list[str]]] = None,
+    focus: str | None = None,
 ) -> list[Candidate]:
     """Fan generation OUT across ambition lanes for a mixed-ambition catalogue (Part 14).
 
@@ -405,7 +419,7 @@ def generate_multilane(
             op, lane_cfg, signal_text=signal_text, sector=sector,
             strategy_lens=strategy_lens, exploration_level=exploration_level,
             target_qualities=target_qualities, recent_failure_modes=recent_failure_modes,
-            k=k, gen_op=gen_op, grid_priorities=priorities)
+            k=k, gen_op=gen_op, grid_priorities=priorities, focus=focus)
         for c in cands:
             c.ambition_tier = tier
         logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",

@@ -110,8 +110,8 @@ every parameter; flags override config per-run.
 | Command    | What it does | Key flags |
 |------------|--------------|-----------|
 | `vet`      | Vet a single candidate you supply, end to end. | `--title` (required), `--one-liner`, `--why-now`, `--operator`, `--lane`, `--fixtures`, `--publish`, `--resume` |
-| `signal`   | Generate N candidates from a signal, then vet all. | `--text` \| `--file` (one required), `--count`, `--operator`, `--lane`, `--fixtures`, `--publish` |
-| `generate` | Blue-sky run: generate + vet with **no signal**. Multi-lane by default. | `--candidates`, `--exploration`, `--operator`, `--lane`, `--fixtures`, `--publish`, `--resume` |
+| `signal`   | Generate N candidates from a signal, then vet all. | `--text` \| `--file` (one required), `--count`, `--operator`, `--lane`, `--profile`, `--focus`, `--fixtures`, `--publish` |
+| `generate` | Blue-sky run: generate + vet with **no signal**. Multi-lane by default. | `--candidates`, `--exploration`, `--operator`, `--lane`, `--profile`, `--focus`, `--fixtures`, `--publish`, `--resume` |
 | `discover` | Self-source a diverse, sector-spread signal portfolio, save it to `signals/`, then run the full pipeline over each. | `--signals N`, `--sectors LIST`, `--count`, `--dry-run`, `--no-save`, `--operator`, `--lane`, `--fixtures`, `--publish` |
 | `report`   | Read-only views over stored state (no model calls). | `--catalogue` (default) \| `--metrics` \| `--costs` \| `--generation-quality` \| `--trend` \| `--full`, `--decision` |
 | `diagnose` | Calibration health: free in-catalogue alarms, plus an optional golden-evidence calibration run. | `--deep`, `--floor` |
@@ -129,6 +129,31 @@ every parameter; flags override config per-run.
 
 `--lane NAME` pins a single ambition lane (`side_hustle`, `smb`, `growth`,
 `venture`). Omit it to run **all active lanes** (the default — a mixed catalogue).
+
+**Targeting generation (`--profile` / `--focus`).** These steer *what kind* of idea
+is generated — and only that. They never touch the gates, thresholds, or the moat,
+so they **cannot manufacture a pass**; an idea still has to survive the same six
+grounded checks. Omit both and generation runs exactly as before.
+
+- `--focus "TEXT"` — a free-text targeting constraint applied to this run only
+  (one-off experiments). It is injected into generation as a *binding constraint*
+  ("an idea that does not fit is INVALID").
+- `--profile NAME` — a reusable bundle from `config.yaml: profiles.*` that pairs a
+  restricted set of `structural_forms` with a baked-in focus directive. A profile
+  composes over `--lane` (its forms/focus win); `--focus` overrides a profile's focus.
+
+```bash
+# One-off steer:
+.venv/bin/python -m prospector.run generate \
+  --focus "online only, fully automated, acute pain, makes money directly online"
+
+# Reusable profile (ships in config.yaml):
+.venv/bin/python -m prospector.run generate --profile online_autonomous_predator
+```
+
+The shipped `online_autonomous_predator` profile targets online-native,
+no-human-in-the-loop businesses that attack an acute pain and take payment directly
+online. Add your own under `profiles:` in `config.yaml`.
 
 ---
 
@@ -336,6 +361,8 @@ operators (e.g. Claude Code → an API operator) needs only a config change, no 
 - `weights` — the six scoring axes
 - `active_lanes`, `active_lane`, `lane_quota`, `lanes.*` — multi-lane setup and
   per-lane bars/gates/generation
+- `profiles.*`, `active_profile` — reusable generation-targeting bundles
+  (restricted `structural_forms` + a `focus` directive); selectable with `--profile`
 - `generation`, `listing`, `schedule`, `spend`, `store.dir`
 
 **Operational knobs are environment variables:**
@@ -376,7 +403,7 @@ signals/                          signal files (operator-pasted or discover-sour
 
 | Module | Responsibility |
 |--------|----------------|
-| `config.py` | typed config loader; `for_lane()` lane resolution |
+| `config.py` | typed config loader; `for_lane()` lane resolution; `for_profile()` generation-targeting resolution |
 | `models.py` | data contracts: `Candidate`, `Source`, `CheckResult`, `Dossier`, `ScoreResult`; the check vocabulary |
 | `operator.py` | swappable brain + `FallbackOperator`; routes moat vs. non-critical |
 | `retrieval.py` | grounding chain, URL validation, disk cache, `FallbackSearchProvider` |
