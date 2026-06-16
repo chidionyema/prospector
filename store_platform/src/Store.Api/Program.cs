@@ -124,9 +124,13 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
         pack.DossierRef = request.DossierRef;
     }
 
-    pack.PaymentProvider = request.PaymentProvider;
-    pack.ProviderProductId = request.ProviderProductId;
-    pack.ProviderPriceId = request.ProviderPriceId;
+    // PaymentProvider defaults to "paddle" for backward compatibility with
+    // engine publishes that only send the legacy PaddleProductId/PaddlePriceId.
+    pack.PaymentProvider = request.PaymentProvider
+        ?? (request.PaddleProductId is not null ? "paddle" : null)
+        ?? "paddle";
+    pack.ProviderProductId = request.ProviderProductId ?? request.PaddleProductId;
+    pack.ProviderPriceId = request.ProviderPriceId ?? request.PaddlePriceId;
 
     // Content metadata (set by the engine after it uploads the deliverable to R2).
     if (request.ContentKey is not null)
@@ -153,6 +157,66 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
 .WithOpenApi();
 
 // --- WEBHOOK + DELIVERY ENDPOINTS ---
+
+// --- CHECKOUT ENDPOINT (P4/P7 — provider-agnostic, hot-reloaded) ---
+// The provider for NEW checkouts is determined by the runtime config
+// `payments:active_provider` (P7 — seamless switch, no redeploy). For
+// packs published before the switch, the pack's stored PaymentProvider is
+// honoured as a fallback so the buyer's checkout always succeeds.
+app.MapPost("/packs/{id}/checkout", async (
+    string id,
+    StoreDbContext db,
+    IServiceProvider sp,
+    IConfiguration config,
+    HttpRequest request) =>
+{
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null || !pack.IsListed)
+    {
+        return Results.NotFound();
+    }
+
+    // P7 — runtime active_provider (hot-reloaded) takes precedence for new checkouts
+    // and falls back to the pack's stored provider so legacy packs still work.
+    var runtimeProvider = config["payments:active_provider"];
+    var provider = !string.IsNullOrEmpty(runtimeProvider) ? runtimeProvider : (pack.PaymentProvider ?? "paddle");
+    var paymentProvider = sp.GetKeyedService<IPaymentProvider>(provider);
+    if (paymentProvider is null)
+    {
+        return Results.Problem(
+            $"Payment provider '{provider}' is not registered.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    string? buyerEmail = null;
+    if (request.HasJsonContentType())
+    {
+        try
+        {
+            var body = await request.ReadFromJsonAsync<CheckoutRequest>().ConfigureAwait(false);
+            buyerEmail = body?.Email;
+        }
+        catch
+        {
+            // Buyer email is optional; proceed with null if parse fails.
+        }
+    }
+
+    var storeUrl = config["Store:PublicUrl"] ?? Environment.GetEnvironmentVariable("STORE_PUBLIC_URL")
+        ?? $"{request.Scheme}://{request.Host}";
+    var baseUrl = storeUrl.TrimEnd('/');
+
+    var handle = await paymentProvider.CreateCheckoutAsync(
+        pack.ProviderPriceId ?? "",
+        buyerEmail,
+        $"{baseUrl}/orders/success?pack={id}",
+        $"{baseUrl}/pack/{id}",
+        CancellationToken.None).ConfigureAwait(false);
+
+    return Results.Ok(new { url = handle.Url });
+})
+.WithName("CreateCheckout")
+.WithOpenApi();
 
 app.MapWebhookEndpoints();
 app.MapDeliveryEndpoints();

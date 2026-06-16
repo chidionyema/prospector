@@ -5,7 +5,8 @@ export interface Pack {
   title: string;
   oneLine: string;
   price: string;
-  paddlePriceId: string;
+  paymentProvider: string;
+  providerPriceId: string;
 }
 
 export interface PackDetails extends Pack {

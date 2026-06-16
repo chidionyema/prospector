@@ -1,16 +1,67 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
 import { Section } from '@/components/marketing/blocks';
 import { fetchPackDetails, PackDetails } from '@/lib/api/client';
+import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
+import { getStripe, stripeConfigured } from '@/lib/stripe';
+import { API_BASE_URL } from '@/lib/config';
 
 interface PackPageProps {
   pack: PackDetails;
 }
 
 export default function PackPage({ pack }: PackPageProps) {
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const provider = pack.paymentProvider || 'paddle';
+  const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
+
+  const handleBuy = async () => {
+    setCheckingOut(true);
+    setCheckoutError(null);
+
+    try {
+      if (provider === 'stripe') {
+        await handleStripeCheckout(pack);
+      } else {
+        await handlePaddleCheckout(pack);
+      }
+    } catch (err: any) {
+      setCheckoutError(err.message || 'Checkout failed. Please try again.');
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  const handleStripeCheckout = async (pack: PackDetails) => {
+    // Call the backend to create a Stripe Checkout Session, then redirect.
+    const res = await fetch(`${API_BASE_URL}/packs/${pack.id}/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to start checkout: ${text}`);
+    }
+    const { url } = await res.json();
+    window.location.href = url;
+  };
+
+  const handlePaddleCheckout = async (pack: PackDetails) => {
+    await initPaddle();
+    openPaddleCheckout(pack.providerPriceId);
+  };
+
+  const canCheckout =
+    (provider === 'stripe' && stripeConfigured) ||
+    (provider !== 'stripe' && paddleConfigured);
+
   return (
     <MarketingLayout>
       <Seo title={`${pack.title} - Prospector Store`} />
@@ -69,15 +120,31 @@ export default function PackPage({ pack }: PackPageProps) {
                 <div className="text-4xl font-black text-text mt-1">{pack.price}</div>
               </div>
 
-              <button className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
-                Buy Now
+              {checkoutError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                  {checkoutError}
+                </div>
+              )}
+
+              <button
+                onClick={handleBuy}
+                disabled={!canCheckout || checkingOut}
+                className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {checkingOut ? 'Redirecting…' : 'Buy Now'}
               </button>
+
+              {!canCheckout && (
+                <p className="mt-2 text-xs text-amber-600 font-medium">
+                  {providerLabel} is not configured. Set API keys in environment.
+                </p>
+              )}
 
               <div className="mt-8 space-y-4">
                 {[
-                  { icon: 'shield', text: 'Secure delivery via Paddle' },
+                  { icon: 'shield', text: `Secure delivery via ${providerLabel}` },
                   { icon: 'mail', text: 'Instant download link' },
-                  { icon: 'lock', text: 'VAT & receipts handled' }
+                  { icon: 'lock', text: provider === 'stripe' ? 'VAT calculated at checkout' : 'VAT & receipts handled' }
                 ].map((feat, i) => (
                   <div key={i} className="flex items-center gap-3 text-xs text-muted font-medium">
                     <Icon name={feat.icon as any} size={14} />
