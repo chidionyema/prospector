@@ -1,0 +1,6 @@
+# Next.js / Node build artifacts and dependencies
+/node_modules/
+/.next/
+/out/
+*.tsbuildinfo
+next-env.d.ts

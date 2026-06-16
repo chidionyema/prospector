@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from .. import readers
-from .. import runner as _runner_mod  # for future use
+from prospector.control_center import readers
+from prospector.control_center import runner as _runner_mod  # for future use
 
 
 def render():

@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 
 import streamlit as st
 
-from .. import readers
-from ..components.gate_badge import st_severity_badge
+from prospector.control_center import readers
+from prospector.control_center.components.gate_badge import st_severity_badge
 
 
 def render():

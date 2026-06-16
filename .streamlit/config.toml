@@ -1,0 +1,7 @@
+# Control Center uses a custom radio nav in app.py (single entrypoint that calls
+# each page module's render()). The adjacent pages/ dir would otherwise trigger
+# Streamlit's native multipage auto-nav, which executes page files standalone
+# (no parent package) and duplicates navigation. Hide that auto-nav so only the
+# app.py radio nav drives the UI.
+[client]
+showSidebarNavigation = false

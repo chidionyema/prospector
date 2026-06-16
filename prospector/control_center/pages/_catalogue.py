@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from .. import readers
-from ..components.gate_badge import st_decision_badge
+from prospector.control_center import readers
+from prospector.control_center.components.gate_badge import st_decision_badge
 
 
 def render():

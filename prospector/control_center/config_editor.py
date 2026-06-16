@@ -267,7 +267,7 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
 
     # ── Log history ─────────────────────────────────────────────────────────
     _CC_DIR.mkdir(parents=True, exist_ok=True)
-    from . import readers as _r
+    from prospector.control_center import readers as _r
     _r.load_config_dict.clear()
     _r.load_config_typed.clear()
 
@@ -344,7 +344,7 @@ def certify_from_golden(golden_run_id: str, operator: str,
                         discrimination: float, floor: float,
                         passed: bool) -> None:
     """Called after a golden promotion run to update certification state."""
-    from . import readers as _r
+    from prospector.control_center import readers as _r
     if passed:
         cfg = load_config_raw()
         _write_certification(
@@ -384,7 +384,7 @@ def restore_backup(filename: str) -> tuple[bool, str]:
     safety_bak = CONFIG_PATH.with_suffix(".yaml.bak.restore." + ts)
     shutil.copy2(CONFIG_PATH, safety_bak)
     shutil.copy2(bak, CONFIG_PATH)
-    from . import readers as _r
+    from prospector.control_center import readers as _r
     _r.load_config_dict.clear()
     _r.load_config_typed.clear()
     return True, f"Restored from {filename} (safety backup: {safety_bak.name})"
