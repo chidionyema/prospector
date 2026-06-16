@@ -17,7 +17,8 @@ from prospector.api import app
 from prospector.config import load_config
 from prospector.models import Candidate, Decision, Dossier, Verdict, CheckResult, ScoreResult
 from prospector.store import Store
-from publish.publish import publish
+from prospector.packs import compose_packs
+from publish.publish import _write_listing
 
 client = TestClient(app)
 
@@ -44,8 +45,20 @@ def setup_store(tmp_path):
         checks=[CheckResult("pain_reality", Verdict.SUPPORTED, 0.9, "OK")]
     )
     store.save(dossier)
-    publish(dossier, cfg)
-    
+
+    # /v1/listings serves the local listing JSON (store_dir/listings/{id}.json).
+    # publish() now routes through EngineBridge (Store API catalog + R2) and writes
+    # no local listing when those are unconfigured, so write the listing the endpoint
+    # reads directly. This keeps the API-contract test independent of money-rail infra.
+    listing = {
+        "candidate_id": cand.candidate_id,
+        "verified_at": dossier.created_at,
+        "reverify_due_at": dossier.created_at,
+        "source_count": len(dossier.all_sources),
+        "packs": compose_packs(dossier, cfg),
+    }
+    _write_listing(cand.candidate_id, listing, cfg)
+
     return cfg, dossier
 
 
