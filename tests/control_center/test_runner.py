@@ -6,6 +6,7 @@ single-actuator concurrency.
 from __future__ import annotations
 
 import json
+import os
 import time
 
 import pytest
@@ -160,6 +161,50 @@ class TestSingleActuator:
         # Attempt a second launch — must raise RuntimeError
         with pytest.raises(RuntimeError, match="already in progress"):
             runner.launch(["echo", "second"])
+
+
+class TestRetentionSweep:
+    """CC go-live #4 — sweep_old_logs must prune stale run logs."""
+
+    def test_sweep_removes_old_logs(self, tmp_path, monkeypatch):
+        runs = tmp_path / "runs"
+        runs.mkdir()
+        monkeypatch.setattr(runner, "_RUNS_DIR", runs)
+
+        # Create an old log (mtime set 60 days ago)
+        old = runs / "old.log"
+        old.write_text("old")
+        old_mtime = time.time() - 60 * 86400
+        os.utime(str(old), (old_mtime, old_mtime))
+
+        # Create a recent log (mtime = now)
+        recent = runs / "recent.log"
+        recent.write_text("recent")
+
+        removed = runner.sweep_old_logs(retain_days=30)
+        assert removed == 1
+        assert not old.exists(), "Old log should be pruned"
+        assert recent.exists(), "Recent log should be retained"
+
+    def test_sweep_keeps_logs_within_retain_window(self, tmp_path, monkeypatch):
+        runs = tmp_path / "runs"
+        runs.mkdir()
+        monkeypatch.setattr(runner, "_RUNS_DIR", runs)
+
+        log = runs / "fresh.log"
+        log.write_text("fresh")
+
+        removed = runner.sweep_old_logs(retain_days=30)
+        assert removed == 0
+        assert log.exists()
+
+    def test_sweep_with_no_logs_succeeds(self, tmp_path, monkeypatch):
+        runs = tmp_path / "runs"
+        runs.mkdir()
+        monkeypatch.setattr(runner, "_RUNS_DIR", runs)
+
+        removed = runner.sweep_old_logs(retain_days=30)
+        assert removed == 0
 
 
 class TestGetLogLines:

@@ -250,3 +250,24 @@ def _pid_alive(pid: int) -> bool:
         return True
     except OSError:
         return False
+
+
+def sweep_old_logs(retain_days: int = 30) -> int:
+    """CC go-live task #4 — prune run logs older than `retain_days`.
+
+    Returns the number of files removed. Safe to call at any time;
+    only deletes from store/control_center/runs/, never touches dossiers or DB.
+    """
+    if not _RUNS_DIR.exists():
+        return 0
+
+    cutoff = time.time() - (retain_days * 86400)
+    removed = 0
+    for log_file in _RUNS_DIR.glob("*.log"):
+        try:
+            if log_file.stat().st_mtime < cutoff:
+                log_file.unlink()
+                removed += 1
+        except OSError:
+            pass
+    return removed
