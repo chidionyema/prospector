@@ -121,6 +121,37 @@ def render():
             st.warning("Live golden promotion costs API calls. "
                       "Make sure your operator key has quota.")
 
+    # ── Generative Alpha (Part 16 principal upgrade) ───────────────────────
+    st.divider()
+    st.subheader("💎 Generative Alpha Benchmark")
+    st.caption("Grades the generator's strategic depth by comparing output against "
+               "human-curated 'High-Alpha Targets' for specific signals.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Run strategic benchmark (Paid)",
+                   help="Runs golden_gen.py — grades strategic alpha using a Professor model."):
+            with st.status("Grading strategic alpha...", expanded=True) as status:
+                try:
+                    from prospector.golden_gen import run_generative_golden
+                    from prospector.operator import make_operator
+                    op = make_operator(cfg)
+                    prof_op = make_operator(cfg) # Use same or different in prod
+                    report = run_generative_golden(op, prof_op, cfg)
+                    
+                    st.metric("Batch Alpha Score", f"{report['overall_alpha']}/5.0")
+                    for case in report["cases"]:
+                        with st.expander(f"Signal: {case['signal'][:40]}…"):
+                            st.write(f"**Score:** {case['alpha_score']}/5.0")
+                            st.write(f"**Rationale:** {case['rationale']}")
+                            st.write("**Generated Ideas:**")
+                            for idea in case["generated"]:
+                                st.write(f"- {idea}")
+                    status.update(label="Benchmark complete!", state="complete")
+                except Exception as e:
+                    st.error(f"Benchmark failed: {e}")
+                    status.update(label="Benchmark failed", state="error")
+
     # ── Operator health ─────────────────────────────────────────────────────
     st.divider()
     st.subheader("⚡ Operator health")
