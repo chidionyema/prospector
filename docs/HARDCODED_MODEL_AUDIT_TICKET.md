@@ -1,0 +1,101 @@
+# Ticket: Audit & remove hardcoded model identifiers
+
+**Status:** Open · **Priority:** Medium · **Owner:** TBD (not money-rail; non-fence work)
+**Filed:** 2026-06-16 · **Refers to:** the same anti-pattern as the original
+`PaddleTransaction` → `PaymentTransaction` P0 refactor (provider-coupled
+identifiers baked into the type, config, and operator modules).
+
+## Why this exists
+
+We are in the middle of a forced migration off `deepseek-chat` (deprecated
+2026-07-24, ~5 weeks out). The "fix" proposed was to hardcode
+`deepseek-v4-pro` / `deepseek-v4-flash` into `prospector/operator.py:346-347`
+and `prospector/retrieval.py:455`. The founder vetoed that approach on the
+grounds that **model strings should not be hardcoded in operator code** — the
+whole point of the standing config-driven architecture is that swapping models
+requires *only* `config.yaml` (or env), not code changes. Hardcoding in
+`operator.py` perpetuates the same anti-pattern `deepseek-chat` was, just one
+forced migration sooner.
+
+**The actual cost of the anti-pattern:** every time DeepSeek / MiniMax /
+Gemini / Claude rolls a new flagship or deprecates an old one, somebody has
+to grep the codebase, edit the operator, ship a release, and hope no fixture
+or prompt is still pinned to the old name. We just did this twice in one
+week (`MiniMax-M3` upgrade, now the `deepseek-chat` → V4 migration). Each
+migration risks silently breaking a path (e.g. `retrieval.py:455` had a
+latent `deepseek-chat` in the disabled DeepSeekSearchProvider that would
+have 500'd on 2026-07-24 if it had been re-enabled).
+
+## Scope: the audit
+
+Find every place a model identifier is hardcoded outside `config.yaml` (and
+its env-var overrides). For each, classify it and decide a single canonical
+home.
+
+**Likely places to inspect (not exhaustive — the audit must verify):**
+
+| File:line | What it is | Hardcoded? | Should move to |
+|---|---|---|---|
+| `prospector/operator.py:340-347` (DeepSeekOperator) | `_DEFAULT_MODEL` / `_FALLBACK_MODEL` strings | yes | `config.yaml` `models.deepseek` block, or env |
+| `prospector/operator.py:247-248` (MiniMaxOperator) | `_DEFAULT_MODEL` / `_FALLBACK_MODEL` | yes | `config.yaml` `models.minimax` block, or env |
+| `prospector/operator.py` (ClaudeOperator, GeminiOperator, GeminiCLIOperator) | any `_DEFAULT_MODEL` | probably yes | `config.yaml` |
+| `prospector/retrieval.py:455` (DeepSeekSearchProvider) | `model_name` | yes | `config.yaml` (and provider removed from active chain regardless) |
+| `prospector/retrieval.py` (other search providers) | `model_name` for the decomposition step | check | `config.yaml` |
+| `config.yaml:13` (operator chain) | names operator kinds, not models | ok | leave |
+| `config.yaml` `model:` / `model_fast:` fields | model strings | check | these are the canonical home, verify they exist and are honored |
+| `prompts/*.md` | no model refs expected | check | should be none |
+| `fixtures/*.json` | mock model outputs | ok | mocks are pinned, that's the point |
+| Test fixtures / `tests/**/*.py` | model strings in test setup | check | tests pinning the default for regression are ok; tests *asserting* the default name are pinning-to-implementation, fragile |
+| `store/golden_runs/*.json` | `operator` field per run | ok | historical, immutable audit trail |
+| `telemetry.py` (`PRICING` dict) | per-model USD prices | yes | `config.yaml` `pricing` block (separately: pricing has the same coupling — if a new model ships, this dict is wrong silently) |
+| `run.py` golden CLI invocation | `--operator` flag default | check | defaults should be config-driven |
+
+## Acceptance criteria
+
+1. **Audit doc** listing every hardcoded model identifier in the codebase,
+   with file:line and a decision (move / keep / deprecate). Grouped by
+   category (operator, retrieval, pricing, prompts, tests, fixtures).
+2. **Single source of truth** — every model identifier that's actually
+   consumed at runtime reads from `config.yaml` (or env override). The
+   operator classes expose a constructor parameter for the model and have
+   **no** `_DEFAULT_MODEL` strings.
+3. **Pricing follows** — `telemetry.PRICING` is replaced with a config-driven
+   lookup. Missing-price = explicit error, not a silent $0.
+4. **Migration story** — for the immediate `deepseek-chat` deprecation
+   (2026-07-24), document a one-line config change that does the migration
+   without code. This is the *demonstration* that the refactor was worth it.
+5. **Tests** — a behavioural test that swaps the config model string and
+   verifies the operator picks it up without code change. Locks in the
+   "no hardcoded names" invariant going forward.
+6. **No regressions** — `pytest -q` stays green, golden-set still passes
+   (model-version field in run metadata captures the change).
+
+## Out of scope
+
+- The moat routing decision (Claude→Gemini, not hardcoded *here*, but
+  worth confirming the operator factory isn't pinning either).
+- Renaming existing config keys (forward-compat: keep current names,
+  add the new ones, deprecate the old later).
+- Anything in `store_platform/` (separate repo; its own ticket).
+
+## Why this isn't urgent right now
+
+`deepseek-chat` deprecation is 5 weeks out; we have time to do this
+properly. The DeepSeek V4 migration is a 1-line `config.yaml` change once
+the audit is done — that's the point. The current hardcoded strings
+are a latent tech-debt bomb that pays out a forced migration every
+6-12 months; the audit converts it into a config toggle.
+
+## How to hand off
+
+This is a self-contained refactor (no founder-fence touchpoints, no
+money rail). Safe to assign to any executor (DeepSeek / MiniMax / Nina)
+once the audit doc is written. The migration one-liner in step 4 should
+be the first thing implemented and tested — it's the value proof.
+
+---
+
+*Filed 2026-06-16 after the founder vetoed hardcoding `deepseek-v4-pro`
+in `operator.py`. Anti-pattern: same shape as the original
+`PaddleTransaction` naming, same risk: forced migration on every
+provider release.*
