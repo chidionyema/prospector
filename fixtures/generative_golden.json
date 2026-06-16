@@ -1,0 +1,24 @@
+[
+  {
+    "signal": "EU Data Act forces connected vehicle data out of OEM silos",
+    "targets": [
+      {
+        "title": "Fleet Maintenance Prediction via Multi-OEM Telemetry",
+        "rationale": "Uses the Data Act to pull cross-brand telemetry into one prediction engine for mixed fleets."
+      },
+      {
+        "title": "Post-Sale Vehicle Component Insurance Engine",
+        "rationale": "Third-party insurance products based on real vehicle health data, previously OEM-only."
+      }
+    ]
+  },
+  {
+    "signal": "UK statutory adjudication forcing mechanism for construction payments",
+    "targets": [
+      {
+        "title": "Automated Statutory Adjudication Dossier Generator",
+        "rationale": "Automates the evidence collection and claim generation for SME subcontractors."
+      }
+    ]
+  }
+]

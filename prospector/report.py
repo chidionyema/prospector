@@ -133,6 +133,18 @@ def metrics_report(store: Store) -> str:
     out.append(f"  total search outages  {retrieval_fail}  ({retrieval_fail/n*100:.1f}%)")
     out.append(f"  degraded (local) runs {degraded}  ({degraded/n*100:.1f}%)")
     
+    # ── Generative Alpha (Part 16 principal upgrade) ──────────────────────
+    from .diagnostics import calculate_generative_alpha
+    alpha = calculate_generative_alpha(store)
+    if alpha.get("n", 0) > 0:
+        out.append("")
+        out.append("  GENERATIVE ALPHA (Quality of PASSes):")
+        out.append("  " + "─" * 50)
+        out.append(f"  rolling avg score     {alpha['rolling_avg']:.2f}")
+        for axis, val in alpha.get("axis_averages", {}).items():
+            bar = "█" * round(val / 5.0 * 24)
+            out.append(f"  {axis:<22} {val:.1f}/5.0  {bar}")
+
     return "\n".join(out)
 
 

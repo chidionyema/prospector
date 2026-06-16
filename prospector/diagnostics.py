@@ -106,7 +106,73 @@ def calibration_alarms(store: Store, cfg: Config, *,
                 "drift_rate": drift_rate
             })
 
+    # ── Generative Alpha / Quality Decay (Part 16 principal upgrade) ────────
+    # Measures the rolling average of composite scores for PASS dossiers.
+    alpha = calculate_generative_alpha(store)
+    if alpha.get("rolling_avg", 0) < 3.0 and alpha.get("n", 0) >= 5:
+        alarms.append({
+            "level": "alarm", "code": "quality_decay",
+            "message": (
+                f"Rolling alpha (avg score of passes) has dropped to {alpha['rolling_avg']:.2f}. "
+                f"Generator is producing lower-value ideas. Check exploration levels "
+                f"and recent failure mode feedback."
+            ),
+            "lane": None,
+            "alpha": alpha["rolling_avg"]
+        })
+
     return alarms
+
+
+def calculate_generative_alpha(store: Store, window: int = 50) -> dict[str, Any]:
+    """Calculate rolling quality metrics for passed ideas (Generative Alpha)."""
+    rows = store.all(decision="pass")
+    if not rows:
+        return {"n": 0, "rolling_avg": 0.0, "axis_averages": {}}
+
+    # Most recent first
+    rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    recent = rows[:window]
+    
+    n = len(recent)
+    avg = sum(float(r.get("composite") or 0) for r in recent) / n
+    
+    # Per-axis averages (requires loading full dossiers for axis breakdown)
+    # We only sample the top 10 to keep it fast.
+    axis_sums = Counter()
+    axis_n = 0
+    for r in recent[:10]:
+        d = store.get(r["candidate_id"])
+        if d and d.get("score") and d["score"].get("scores"):
+            for axis, val in d["score"]["scores"].items():
+                axis_sums[axis] += float(val)
+            axis_n += 1
+            
+    axis_avgs = {ax: total / axis_n for ax, total in axis_sums.items()} if axis_n else {}
+
+    return {
+        "n": n,
+        "rolling_avg": round(avg, 2),
+        "axis_averages": axis_avgs
+    }
+
+
+def calculate_yield(store: Store, window: int = 50) -> float:
+    """Calculate the Exploration-Yield Ratio.
+    
+    Yield = (Advisory Board Passes) / (Avg Exploration Level).
+    High exploration with low pass rate signals 'hallucinatory noise'.
+    """
+    rows = store.all()
+    if len(rows) < 10:
+        return 0.0
+    
+    rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    recent = rows[:window]
+    
+    passes = sum(1 for r in recent if r.get("decision") == "pass")
+    # This is a proxy: higher survival = higher yield
+    return passes / len(recent)
 
 
 def _lane_alarms(rows: list[dict], lane: str, cfg: Config,

@@ -26,6 +26,7 @@ output**: the receipt that the filter is real and grounded.
 - [Resilience: failover, circuit breakers, DEFER](#resilience-failover-circuit-breakers-defer)
 - [Principal Upgrades — Architectural Resilience](#principal-upgrades--architectural-resilience)
 - [Polymorphic Vetting — The Persona System](#polymorphic-vetting--the-persona-system)
+- [Generative Alpha — Quality Tracking](#generative-alpha--quality-tracking)
 - [Self-tuning and calibration](#self-tuning-and-calibration)
 - [Configuration](#configuration)
 - [Where output lives](#where-output-lives)
@@ -365,6 +366,17 @@ python -m prospector.run vet --title "X" --persona shark
 # Run a signal through the full Advisory Board
 python -m prospector.run signal --file signal.txt --board
 ```
+
+---
+
+## Generative Alpha — Quality Tracking
+
+To ensure the generator is actually improving over time, Prospector tracks **Generative Alpha** (the "Value Density" of passed ideas).
+
+- **Diamond Alpha Metric (💎):** A rolling average of the **Composite Score** for all PASS dossiers. If the average drops below 3.0, a `quality_decay` alarm is triggered.
+- **Axis Breakdown:** The system tracks which specific value-axes (e.g., `pain_acuity`, `automatability`) are improving or decaying, visible in the Overview cockpit.
+- **Exploration-Yield Ratio:** Measures the efficiency of the creative process. High exploration (weirdness) must result in a proportional increase in surviving ideas to be considered "Efficient Alpha."
+- **Generative Golden Set:** A new benchmark harness (`golden_gen.py`) that compares AI output against human-curated "High-Alpha Targets" using an LLM Professor to grade strategic depth.
 
 ---
 
