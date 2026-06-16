@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from .models import Dossier, Decision
+from .pack_validation import validate_pack
 
 logger = logging.getLogger("prospector.bridge")
 
@@ -58,7 +59,20 @@ class EngineBridge:
         # 1. Prepare pack files
         artifacts = candidate.tags.get("artifacts", {})
         marketing = candidate.tags.get("marketing", [])
-        
+
+        # AUTO-VERIFICATION GATE (FENCED): a pack may only be LISTED when its deliverable
+        # is actually complete. Generation is non-critical and flaky — a tier can return
+        # empty/unparseable output or hit a quota wall — so without this gate a half-empty
+        # pack would still zip, upload, and list. We compute completeness here and AND it
+        # into is_listed below; an incomplete pack is registered UNLISTED for retry, never
+        # sold. This mirrors the list-only-after-upload invariant: list only when sellable.
+        pack_complete, pack_problems = validate_pack(artifacts, marketing)
+        if not pack_complete:
+            logger.error(
+                f"EngineBridge: pack {candidate_id} FAILED completeness gate; "
+                f"will register UNLISTED. Problems: {pack_problems}"
+            )
+
         listing_copy = next((m["copy"] for m in marketing if m["type"] == "listing_page"), "")
         one_liner = candidate.one_liner or (listing_copy[:150] + "..." if len(listing_copy) > 150 else listing_copy)
 
@@ -104,19 +118,26 @@ class EngineBridge:
 
         # 3.5 Upload the deliverable to R2 (content-addressed by hash, so a later republish
         # writes a NEW object and never overwrites content an existing buyer is entitled to).
-        content_hash = self._sha256(bundle_path)
-        content_key = f"packs/{candidate_id}/{content_hash}.zip"
-        uploaded = self.r2.upload(bundle_path, content_key)
-        if not uploaded:
-            # List-only-after-upload: if the content isn't in storage, the pack must not go
-            # live. We still register the record (unlisted) so the operator can retry.
-            logger.error(
-                f"EngineBridge: R2 upload failed/unconfigured for {candidate_id}; "
-                f"publishing UNLISTED (no deliverable in storage)."
-            )
+        # We skip the upload entirely for an incomplete pack — no point storing a broken zip.
+        content_hash: Optional[str] = None
+        content_key: Optional[str] = None
+        uploaded = False
+        if pack_complete:
+            content_hash = self._sha256(bundle_path)
+            content_key = f"packs/{candidate_id}/{content_hash}.zip"
+            uploaded = self.r2.upload(bundle_path, content_key)
+            if not uploaded:
+                # List-only-after-upload: if the content isn't in storage, the pack must not
+                # go live. We still register the record (unlisted) so the operator can retry.
+                logger.error(
+                    f"EngineBridge: R2 upload failed/unconfigured for {candidate_id}; "
+                    f"publishing UNLISTED (no deliverable in storage)."
+                )
 
-        # 4. Update Catalog via Store API. is_listed only when the content is actually in
-        # storage; the Store enforces the same invariant server-side as defence in depth.
+        # 4. Update Catalog via Store API. is_listed requires BOTH a complete pack AND the
+        # content in storage; the Store enforces the upload half server-side (defence in
+        # depth). The completeness half is enforced here at the only place packs are minted.
+        is_listed = uploaded and pack_complete
         return self._update_catalog(
             id=candidate_id,
             title=candidate.title,
@@ -124,9 +145,9 @@ class EngineBridge:
             dossier_ref=dossier_ref,
             paddle_product_id=paddle_product_id,
             paddle_price_id=paddle_price_id,
-            is_listed=uploaded,
-            content_key=content_key if uploaded else None,
-            content_hash=content_hash if uploaded else None,
+            is_listed=is_listed,
+            content_key=content_key if is_listed else None,
+            content_hash=content_hash if is_listed else None,
         )
 
     @staticmethod

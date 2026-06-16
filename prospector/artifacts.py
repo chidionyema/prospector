@@ -187,12 +187,38 @@ def _render_financial_model(assumptions: Dict[str, Any],
 # Artifact generation
 # ---------------------------------------------------------------------------
 
+def _validate_artifact_shape(t: str, data: Any) -> Any:
+    """Reject wrong-type / empty responses so they trigger a repair turn, not silence.
+
+    Weaker generation models routinely ignore the requested `type` and return the most
+    salient schema (the detailed financial_model), or emit prose under a key other than
+    "content". Before this guard those landed as data.get("content") == "" — a silent
+    empty artifact with no exception, so neither complete_json's repair loop nor the
+    operator-chain failover ever fired. Raising ValueError here routes both: complete_json
+    re-prompts the same model with the correction, and if it still won't comply the chain
+    fails over to the next operator. Passed as complete_json(validate=...).
+    """
+    if not isinstance(data, dict):
+        raise ValueError(f"expected a JSON object for artifact '{t}', got {type(data).__name__}")
+    got_type = data.get("type")
+    if got_type and got_type != t:
+        raise ValueError(f"wrong artifact type: asked for '{t}', model returned '{got_type}'")
+    if t == "financial_model":
+        # Structured inputs — just needs to be the dict; Python does the arithmetic.
+        return data
+    content = str(data.get("content") or "").strip()
+    if not content:
+        raise ValueError(f"artifact '{t}' has empty 'content' (model produced no body)")
+    return data
+
+
 def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
                       t: str) -> tuple[str, str]:
     """Generate one artifact type. Runs in a thread; returns (type, content)."""
     system, user = render("artifacts", candidate_json=cand_json,
                           claims_json=claims_json, type=t)
-    data = op.complete_json(system, user, temperature=0.3)
+    data = op.complete_json(system, user, temperature=0.3,
+                            validate=lambda d: _validate_artifact_shape(t, d))
 
     # FIX #3: financial_model returns structured JSON — perform arithmetic in Python.
     if t == "financial_model" and isinstance(data, dict):
