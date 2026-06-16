@@ -96,11 +96,20 @@ class Store:
     # ------------------------------------------------------------------
 
     def save(self, dossier: Dossier) -> Path:
-        """Persist dossier JSON and upsert the index row. Returns the JSON path."""
+        """Persist dossier JSON and upsert the index row. Returns the JSON path.
+
+        The write is atomic (write-temp-then-rename) so a mid-write kill or crash
+        never leaves a partial/corrupt dossier JSON — the prior version or nothing
+        is visible at the target path. This is the cancel-safety guarantee. (CC #1)
+        """
         cid = dossier.candidate.candidate_id
         dec = dossier.decision.value  # "pass" | "kill" | "defer"
         path = self._dossier_dir / f"{cid}.{dec}.json"
-        path.write_text(dossier.to_json(), encoding="utf-8")
+        # Atomic write: temp → rename. A SIGKILL mid-write leaves the temp file
+        # orphaned (never at the target path); only a completed write lands.
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(dossier.to_json(), encoding="utf-8")
+        tmp.rename(path)
 
         # A re-vet can change a candidate's decision (e.g. defer -> kill). The DB row is
         # upserted by candidate_id, but the JSON filename encodes the decision, so an old
