@@ -7,6 +7,8 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
 {
     public DbSet<Pack> Packs => Set<Pack>();
     public DbSet<SalesAudit> SalesAudits => Set<SalesAudit>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<Entitlement> Entitlements => Set<Entitlement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,6 +24,22 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.PaddleTransactionId).IsUnique();
+        });
+
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Not unique: one transaction can yield several orders (multi-item cart).
+            entity.HasIndex(e => e.PaddleTransactionId);
+            entity.Property(e => e.Status).HasConversion<int>();
+        });
+
+        modelBuilder.Entity<Entitlement>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.GrantToken).IsUnique();
+            entity.HasIndex(e => e.PackId);
+            entity.Property(e => e.Status).HasConversion<int>();
         });
     }
 }

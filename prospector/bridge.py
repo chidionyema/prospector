@@ -4,6 +4,7 @@ Ships the £30 bundle (zip) and updates the Catalog.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -28,6 +29,10 @@ class EngineBridge:
         self.paddle_api_key = os.environ.get("PADDLE_API_KEY")
         self.paddle_env = os.environ.get("PADDLE_ENVIRONMENT", "sandbox")
         self.paddle = PaddleClient(self.paddle_api_key, self.paddle_env) if self.paddle_api_key else None
+
+        # Content storage (Cloudflare R2, S3-compatible). The deliverable must live here
+        # before a pack may be listed — selling something we can't deliver is forbidden.
+        self.r2 = R2Uploader()
 
     def publish_pass(self, dossier: Dossier) -> bool:
         """
@@ -97,7 +102,21 @@ class EngineBridge:
         else:
             logger.warning(f"EngineBridge: PADDLE_API_KEY not set. Using stubs for {candidate_id}")
 
-        # 4. Update Catalog via Store API
+        # 3.5 Upload the deliverable to R2 (content-addressed by hash, so a later republish
+        # writes a NEW object and never overwrites content an existing buyer is entitled to).
+        content_hash = self._sha256(bundle_path)
+        content_key = f"packs/{candidate_id}/{content_hash}.zip"
+        uploaded = self.r2.upload(bundle_path, content_key)
+        if not uploaded:
+            # List-only-after-upload: if the content isn't in storage, the pack must not go
+            # live. We still register the record (unlisted) so the operator can retry.
+            logger.error(
+                f"EngineBridge: R2 upload failed/unconfigured for {candidate_id}; "
+                f"publishing UNLISTED (no deliverable in storage)."
+            )
+
+        # 4. Update Catalog via Store API. is_listed only when the content is actually in
+        # storage; the Store enforces the same invariant server-side as defence in depth.
         return self._update_catalog(
             id=candidate_id,
             title=candidate.title,
@@ -105,8 +124,19 @@ class EngineBridge:
             dossier_ref=dossier_ref,
             paddle_product_id=paddle_product_id,
             paddle_price_id=paddle_price_id,
-            is_listed=True
+            is_listed=uploaded,
+            content_key=content_key if uploaded else None,
+            content_hash=content_hash if uploaded else None,
         )
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        """SHA-256 of the bundle, used as the content-addressed storage key."""
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
 
     def _create_bundle(self, dossier: Dossier, artifacts: Dict[str, str], marketing: List[Dict[str, str]]) -> Optional[Path]:
         """Bundle the pack files into a zip."""
@@ -150,8 +180,10 @@ class EngineBridge:
         if content:
             zipf.writestr(filename, content)
 
-    def _update_catalog(self, id: str, title: str, one_line: str, dossier_ref: str, 
-                        paddle_product_id: str, paddle_price_id: str, is_listed: bool) -> bool:
+    def _update_catalog(self, id: str, title: str, one_line: str, dossier_ref: str,
+                        paddle_product_id: str, paddle_price_id: str, is_listed: bool,
+                        content_key: Optional[str] = None,
+                        content_hash: Optional[str] = None) -> bool:
         """Call the .NET Store API's /internal/catalog endpoint."""
         url = f"{self.store_api_url}/internal/catalog"
         payload = {
@@ -164,6 +196,10 @@ class EngineBridge:
             "isListed": is_listed,
             "pricePence": 3000 # £30.00 hardcoded per spec
         }
+        if content_key is not None:
+            payload["contentKey"] = content_key
+        if content_hash is not None:
+            payload["contentHash"] = content_hash
         
         try:
             # Authenticate to the Store's internal endpoint. The server compares this
@@ -179,6 +215,59 @@ class EngineBridge:
         except Exception as e:
             logger.error(f"EngineBridge: Failed to connect to Store API at {url}: {e}")
             return False
+
+class R2Uploader:
+    """
+    Uploads deliverables to Cloudflare R2 (S3-compatible) via boto3. Mirrors the .NET
+    R2ContentStorage: if any credential is missing — or boto3 isn't installed — it stays
+    unconfigured and upload() is a no-op returning False, so the engine still runs in dev
+    without R2 wired. The store's list-only-after-upload invariant then keeps such packs
+    unlisted rather than selling something undeliverable.
+    """
+    def __init__(self) -> None:
+        self.account_id = os.environ.get("R2_ACCOUNT_ID")
+        self.access_key = os.environ.get("R2_ACCESS_KEY_ID")
+        self.secret_key = os.environ.get("R2_SECRET_ACCESS_KEY")
+        self.bucket = os.environ.get("R2_BUCKET")
+        self._client = None
+
+        if not all([self.account_id, self.access_key, self.secret_key, self.bucket]):
+            return
+
+        try:
+            import boto3  # lazy: optional dependency, only needed when R2 is configured
+            from botocore.config import Config as BotoConfig
+
+            self._client = boto3.client(
+                "s3",
+                endpoint_url=f"https://{self.account_id}.r2.cloudflarestorage.com",
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_key,
+                config=BotoConfig(signature_version="s3v4", region_name="auto"),
+            )
+        except ImportError:
+            logger.error("R2Uploader: boto3 not installed; uploads disabled (pip install boto3).")
+            self._client = None
+
+    @property
+    def is_configured(self) -> bool:
+        return self._client is not None
+
+    def upload(self, local_path: Path, object_key: str) -> bool:
+        """Upload a file to R2. Returns False (never raises) if unconfigured or on error."""
+        if self._client is None:
+            return False
+        try:
+            self._client.upload_file(
+                str(local_path), self.bucket, object_key,
+                ExtraArgs={"ContentType": "application/zip"},
+            )
+            logger.info(f"R2Uploader: Uploaded {object_key} to bucket {self.bucket}")
+            return True
+        except Exception as e:
+            logger.error(f"R2Uploader: Upload of {object_key} failed: {e}")
+            return False
+
 
 class PaddleClient:
     """Minimal Paddle Billing API client."""

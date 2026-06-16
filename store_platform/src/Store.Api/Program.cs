@@ -5,6 +5,7 @@ using Store.Api.Endpoints;
 using Store.Api.Contracts;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
+using Store.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,16 +14,22 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<StoreDbContext>(options =>
     options.UseSqlite(connectionString));
 
+builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
+builder.Services.AddScoped<FulfilmentService>();
+builder.Services.AddSingleton<IContentStorage, R2ContentStorage>();
+builder.Services.AddHttpClient<IEmailSender, PostmarkEmailSender>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Ensure database is created/migrated
+// Apply EF migrations at startup. MigrateAsync (not EnsureCreated) so new tables
+// (Orders, Entitlements) and future schema changes land on an existing database.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-    await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+    await db.Database.MigrateAsync().ConfigureAwait(false);
 }
 
 // Configure the HTTP request pipeline.
@@ -112,7 +119,24 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
 
     pack.PaddleProductId = request.PaddleProductId;
     pack.PaddlePriceId = request.PaddlePriceId;
-    pack.IsListed = request.IsListed;
+
+    // Content metadata (set by the engine after it uploads the deliverable to R2).
+    if (request.ContentKey is not null)
+    {
+        pack.ContentKey = request.ContentKey;
+    }
+    if (request.ContentHash is not null)
+    {
+        pack.ContentHash = request.ContentHash;
+    }
+    if (request.ContentVersion is { } version)
+    {
+        pack.ContentVersion = version;
+    }
+
+    // List-only-after-upload: a pack may only go live once it has deliverable content.
+    // Selling something we cannot deliver is the cardinal sin of this layer.
+    pack.IsListed = request.IsListed && !string.IsNullOrEmpty(pack.ContentKey);
 
     await db.SaveChangesAsync().ConfigureAwait(false);
     return Results.Ok(pack);
@@ -120,8 +144,9 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
 .WithName("PublishPack")
 .WithOpenApi();
 
-// --- WEBHOOK ENDPOINTS ---
+// --- WEBHOOK + DELIVERY ENDPOINTS ---
 
 app.MapWebhookEndpoints();
+app.MapDeliveryEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);

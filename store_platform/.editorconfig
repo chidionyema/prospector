@@ -1,0 +1,14 @@
+root = true
+
+# EF Core migrations are generated code. The scaffolder doesn't satisfy our strict
+# analyzers (file-name-per-type, method length, etc.), and hand-editing generated
+# files is wrong — mark them generated so Roslyn/Meziantou/Sonar skip them.
+[**/Migrations/*.cs]
+generated_code = true
+
+# Test project: xUnit1030 forbids ConfigureAwait in test methods, which directly
+# conflicts with CA2007/MA0004 (require ConfigureAwait). xUnit's guidance wins in
+# test code, so silence the awaiter-config rules here.
+[**/Store.Tests/**.cs]
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.MA0004.severity = none

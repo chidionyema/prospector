@@ -1,0 +1,5 @@
+
+# SQLite dev databases (regenerated from EF migrations at startup)
+*.db
+*.db-shm
+*.db-wal

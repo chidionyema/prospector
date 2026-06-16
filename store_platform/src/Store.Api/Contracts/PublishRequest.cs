@@ -8,5 +8,8 @@ public record PublishRequest(
     string? PaddleProductId = null,
     string? PaddlePriceId = null,
     bool IsListed = false,
-    long? PricePence = null
+    long? PricePence = null,
+    string? ContentKey = null,
+    string? ContentHash = null,
+    int? ContentVersion = null
 );
