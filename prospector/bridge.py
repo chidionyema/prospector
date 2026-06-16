@@ -1,6 +1,7 @@
 """
-EngineBridge — Connects Prospector PASS to the Store API and Paddle.
-Ships the £30 bundle (zip) and updates the Catalog.
+EngineBridge — Connects Prospector PASS to the Store API and payment provider.
+Ships the £30 bundle (zip), provisions the product with the active payment provider
+(Paddle or Stripe), and updates the Catalog.
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import os
 import requests
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol
 from datetime import datetime
 
 from .models import Dossier, Decision
@@ -19,21 +20,47 @@ from .pack_validation import validate_pack
 
 logger = logging.getLogger("prospector.bridge")
 
+
+class ProductProvisioner(Protocol):
+    """Provider-agnostic product provisioning. Implementations: PaddleClient, StripeProvisioner."""
+    def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
+        """Returns the provider's product ID."""
+        ...
+
+    def create_price(self, product_id: str, amount_pence: int, currency: str) -> str:
+        """Returns the provider's price ID."""
+        ...
+
 class EngineBridge:
     def __init__(self, cfg: Any):
         self.cfg = cfg
         # Store API settings
         self.store_api_url = os.environ.get("STORE_API_URL", "http://localhost:5291")
         self.internal_api_key = os.environ.get("STORE_INTERNAL_API_KEY", "prospector-dev-key")
-        
-        # Paddle settings
+
+        # Active provider selection (config-driven, matches .NET MoneyRailConfigGate)
+        self.active_provider = getattr(cfg, "store_payments", {}).get("active_provider", "paddle") if hasattr(cfg, "store_payments") else \
+            os.environ.get("PAYMENTS_ACTIVE_PROVIDER", "paddle")
+
+        # Paddle settings (kept for backward compat + fallback)
         self.paddle_api_key = os.environ.get("PADDLE_API_KEY")
         self.paddle_env = os.environ.get("PADDLE_ENVIRONMENT", "sandbox")
         self.paddle = PaddleClient(self.paddle_api_key, self.paddle_env) if self.paddle_api_key else None
 
+        # Stripe settings
+        self.stripe_api_key = os.environ.get("STRIPE_API_KEY")
+        self.stripe = StripeProvisioner(self.stripe_api_key) if self.stripe_api_key else None
+
         # Content storage (Cloudflare R2, S3-compatible). The deliverable must live here
         # before a pack may be listed — selling something we can't deliver is forbidden.
         self.r2 = R2Uploader()
+
+    @property
+    def provisioner(self) -> Optional[ProductProvisioner]:
+        """Returns the active product provisioner, or None if unconfigured."""
+        if self.active_provider == "stripe":
+            return self.stripe
+        return self.paddle
 
     def publish_pass(self, dossier: Dossier) -> bool:
         """
@@ -82,39 +109,41 @@ class EngineBridge:
             logger.error(f"EngineBridge: Failed to create bundle for {candidate_id}")
             return False
 
-        # 3. Paddle Integration (Phase 2)
-        paddle_product_id = f"pro_stub_{candidate_id[:8]}"
-        paddle_price_id = f"pri_stub_{candidate_id[:8]}"
+        # 3. Provision product with the active payment provider (P3 — provider-agnostic)
+        provider_product_id = f"prov_stub_{candidate_id[:8]}"
+        provider_price_id = f"price_stub_{candidate_id[:8]}"
+        payment_provider = self.active_provider
 
-        if self.paddle:
+        prov = self.provisioner
+        if prov:
             try:
-                logger.info(f"EngineBridge: Creating Paddle product for {candidate_id}")
-                custom_data = {
+                logger.info(f"EngineBridge: Creating {payment_provider} product for {candidate_id}")
+                metadata = {
                     "dossier_ref": dossier_ref,
                     "candidate_id": candidate_id,
+                    "pack_id": candidate_id,
                     "bundle_version": datetime.utcnow().isoformat()
                 }
-                paddle_product_id = self.paddle.create_product(
+                provider_product_id = prov.create_product(
                     name=candidate.title,
                     description=one_liner,
-                    custom_data=custom_data
+                    metadata=metadata
                 )
-                
-                logger.info(f"EngineBridge: Creating Paddle price for {paddle_product_id}")
-                paddle_price_id = self.paddle.create_price(
-                    product_id=paddle_product_id,
-                    amount_pence=3000 # £30.00
+
+                logger.info(f"EngineBridge: Creating {payment_provider} price for {provider_product_id}")
+                provider_price_id = prov.create_price(
+                    product_id=provider_product_id,
+                    amount_pence=3000  # £30.00
                 )
-                
-                # UPLOAD PACK (Deferred until Sandbox setup is confirmed by user)
-                # In 2026, this either uses a new Paddle Billing Upload API or sets a custom fulfillment URL.
-                logger.info(f"EngineBridge: Uploading pack {bundle_path} to Paddle (simulated)")
-                
+
             except Exception as e:
-                logger.error(f"EngineBridge: Paddle integration failed: {e}")
+                logger.error(f"EngineBridge: {payment_provider} provisioning failed: {e}")
                 return False
         else:
-            logger.warning(f"EngineBridge: PADDLE_API_KEY not set. Using stubs for {candidate_id}")
+            logger.warning(
+                f"EngineBridge: No {payment_provider} API key set. "
+                f"Using stubs for {candidate_id}"
+            )
 
         # 3.5 Upload the deliverable to R2 (content-addressed by hash, so a later republish
         # writes a NEW object and never overwrites content an existing buyer is entitled to).
@@ -143,8 +172,9 @@ class EngineBridge:
             title=candidate.title,
             one_line=one_liner,
             dossier_ref=dossier_ref,
-            paddle_product_id=paddle_product_id,
-            paddle_price_id=paddle_price_id,
+            payment_provider=payment_provider,
+            provider_product_id=provider_product_id,
+            provider_price_id=provider_price_id,
             is_listed=is_listed,
             content_key=content_key if is_listed else None,
             content_hash=content_hash if is_listed else None,
@@ -202,7 +232,8 @@ class EngineBridge:
             zipf.writestr(filename, content)
 
     def _update_catalog(self, id: str, title: str, one_line: str, dossier_ref: str,
-                        paddle_product_id: str, paddle_price_id: str, is_listed: bool,
+                        payment_provider: str, provider_product_id: str, provider_price_id: str,
+                        is_listed: bool,
                         content_key: Optional[str] = None,
                         content_hash: Optional[str] = None) -> bool:
         """Call the .NET Store API's /internal/catalog endpoint."""
@@ -212,8 +243,9 @@ class EngineBridge:
             "title": title,
             "oneLine": one_line,
             "dossierRef": dossier_ref,
-            "paddleProductId": paddle_product_id,
-            "paddlePriceId": paddle_price_id,
+            "paymentProvider": payment_provider,
+            "providerProductId": provider_product_id,
+            "providerPriceId": provider_price_id,
             "isListed": is_listed,
             "pricePence": 3000 # £30.00 hardcoded per spec
         }
@@ -300,13 +332,13 @@ class PaddleClient:
             "Content-Type": "application/json"
         }
 
-    def create_product(self, name: str, description: str, custom_data: Dict[str, Any]) -> str:
+    def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
         url = f"{self.base_url}/products"
         payload = {
             "name": name,
             "tax_category": "digital-goods",
             "description": description,
-            "custom_data": custom_data
+            "custom_data": metadata
         }
         resp = requests.post(url, json=payload, headers=self.headers)
         resp.raise_for_status()
@@ -326,3 +358,44 @@ class PaddleClient:
         resp = requests.post(url, json=payload, headers=self.headers)
         resp.raise_for_status()
         return resp.json()["data"]["id"]
+
+
+class StripeProvisioner:
+    """Stripe Product + Price provisioning for the publish path.
+    Mirror of the .NET StripeProvider.CreateProductAsync — creates a one-off
+    fixed-price digital product in Stripe (test or live) for the storefront.
+    """
+    def __init__(self, api_key: str):
+        import stripe
+        stripe.api_key = api_key
+        self._stripe = stripe
+
+    def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
+        """Create a Stripe Product and a one-off £30 Price. Returns product ID."""
+        product = self._stripe.Product.create(
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+        logger.info(f"StripeProvisioner: Created product {product.id}")
+
+        # Create the price immediately — the store needs both IDs.
+        self._stripe.Price.create(
+            product=product.id,
+            unit_amount=3000,  # £30.00 in pence
+            currency="gbp",
+            metadata=metadata,
+        )
+        logger.info(f"StripeProvisioner: Created price for product {product.id}")
+
+        return product.id
+
+    def create_price(self, product_id: str, amount_pence: int, currency: str = "gbp") -> str:
+        """Create a Stripe Price. Returns price ID. (Product must already exist.)"""
+        price = self._stripe.Price.create(
+            product=product_id,
+            unit_amount=amount_pence,
+            currency=currency,
+        )
+        logger.info(f"StripeProvisioner: Created price {price.id} for product {product_id}")
+        return price.id
