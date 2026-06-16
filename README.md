@@ -92,8 +92,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 # 4. See what came through, the truth-loop health, and what it cost
 .venv/bin/python -m prospector.run report            # catalogue (default)
-.venv/bin/python -m prospector.run report --metrics  # kill rate, gate distribution, per-lane
-.venv/bin/python -m prospector.run report --costs    # spend, tokens, slow ops
+.venv/bin/python -m prospector.run report --metrics  # kill rate, gate distribution, per-lane, grounding/outage stats
+.venv/bin/python -m prospector.run report --costs    # spend by agent/provider, tokens, repairs, slow ops
 .venv/bin/python -m prospector.run report --full
 
 # 5. Tests
