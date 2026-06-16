@@ -6,6 +6,7 @@ using Store.Api.Contracts;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
 using Store.Api.Services;
+using Store.Api.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +19,10 @@ builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
 builder.Services.AddScoped<FulfilmentService>();
 builder.Services.AddSingleton<IContentStorage, R2ContentStorage>();
 builder.Services.AddHttpClient<IEmailSender, PostmarkEmailSender>();
+
+builder.Services.AddKeyedScoped<IPaymentProvider, PaddleProvider>("paddle");
+builder.Services.AddKeyedScoped<IPaymentProvider, StripeProvider>("stripe");
+builder.Services.AddHostedService<MoneyRailConfigGate>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -51,7 +56,8 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
             p.Title,
             p.OneLine,
             Price = Money.ToDisplayString(p.PricePence, "£"),
-            p.PaddlePriceId
+            p.PaymentProvider,
+            p.ProviderPriceId
         })
         .ToListAsync()
         .ConfigureAwait(false);
@@ -68,7 +74,8 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
             pack.Title,
             pack.OneLine,
             Price = Money.ToDisplayString(pack.PricePence, "£"),
-            pack.PaddlePriceId,
+            pack.PaymentProvider,
+            pack.ProviderPriceId,
             pack.DossierRef
         })
         : Results.NotFound();
@@ -117,8 +124,9 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
         pack.DossierRef = request.DossierRef;
     }
 
-    pack.PaddleProductId = request.PaddleProductId;
-    pack.PaddlePriceId = request.PaddlePriceId;
+    pack.PaymentProvider = request.PaymentProvider;
+    pack.ProviderProductId = request.ProviderProductId;
+    pack.ProviderPriceId = request.ProviderPriceId;
 
     // Content metadata (set by the engine after it uploads the deliverable to R2).
     if (request.ContentKey is not null)

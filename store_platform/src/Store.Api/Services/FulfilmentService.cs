@@ -13,11 +13,11 @@ namespace Store.Api.Services;
 /// </summary>
 public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
 {
-    public async Task<FulfilmentOutcome> FulfilAsync(PaddleTransaction txn)
+    public async Task<FulfilmentOutcome> FulfilAsync(PaymentTransaction txn)
     {
         ArgumentNullException.ThrowIfNull(txn);
 
-        if (await TransactionAlreadyRecordedAsync(txn.TransactionId).ConfigureAwait(false))
+        if (await TransactionAlreadyRecordedAsync(txn.Provider, txn.TransactionId).ConfigureAwait(false))
         {
             return new FulfilmentOutcome(true, [], []);
         }
@@ -43,11 +43,11 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
     }
 
     private async Task FulfilItemAsync(
-        PaddleTransaction txn, PurchasedItem item, List<Entitlement> created, List<string> unfulfilled)
+        PaymentTransaction txn, PurchasedItem item, List<Entitlement> created, List<string> unfulfilled)
     {
         var pack = item.ProductId is null
             ? null
-            : await db.Packs.FirstOrDefaultAsync(p => p.PaddleProductId == item.ProductId).ConfigureAwait(false);
+            : await db.Packs.FirstOrDefaultAsync(p => p.ProviderProductId == item.ProductId && p.PaymentProvider == txn.Provider).ConfigureAwait(false);
 
         var order = NewOrder(txn, pack?.Id, item.AmountPence);
         db.Orders.Add(order);
@@ -76,7 +76,7 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
     }
 
     private async Task<FulfilmentOutcome> CommitAsync(
-        PaddleTransaction txn, IReadOnlyList<Entitlement> created, IReadOnlyList<string> unfulfilled)
+        PaymentTransaction txn, IReadOnlyList<Entitlement> created, IReadOnlyList<string> unfulfilled)
     {
         try
         {
@@ -89,7 +89,7 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
             // processed; otherwise it is a real failure — rethrow so the caller returns
             // a non-2xx and the provider retries.
             db.ChangeTracker.Clear();
-            if (await TransactionAlreadyRecordedAsync(txn.TransactionId).ConfigureAwait(false))
+            if (await TransactionAlreadyRecordedAsync(txn.Provider, txn.TransactionId).ConfigureAwait(false))
             {
                 return new FulfilmentOutcome(true, [], []);
             }
@@ -100,22 +100,24 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
         return new FulfilmentOutcome(false, created, unfulfilled);
     }
 
-    private Task<bool> TransactionAlreadyRecordedAsync(string transactionId) =>
-        db.SalesAudits.AnyAsync(s => s.PaddleTransactionId == transactionId);
+    private Task<bool> TransactionAlreadyRecordedAsync(string provider, string transactionId) =>
+        db.SalesAudits.AnyAsync(s => s.PaymentProvider == provider && s.ProviderTransactionId == transactionId);
 
-    private static SalesAudit BuildAudit(PaddleTransaction txn) => new()
+    private static SalesAudit BuildAudit(PaymentTransaction txn) => new()
     {
-        PaddleTransactionId = txn.TransactionId,
-        PaddleProductId = txn.Items.Count > 0 ? txn.Items[0].ProductId ?? "" : "",
+        PaymentProvider = txn.Provider,
+        ProviderTransactionId = txn.TransactionId,
+        ProviderProductId = txn.Items.Count > 0 ? txn.Items[0].ProductId ?? "" : "",
         AmountPence = txn.TotalAmountPence,
         Currency = txn.Currency,
         Country = txn.Country,
         OccurredAt = txn.OccurredAt,
     };
 
-    private static Order NewOrder(PaddleTransaction txn, string? packId, long amountPence) => new()
+    private static Order NewOrder(PaymentTransaction txn, string? packId, long amountPence) => new()
     {
-        PaddleTransactionId = txn.TransactionId,
+        PaymentProvider = txn.Provider,
+        ProviderTransactionId = txn.TransactionId,
         BuyerEmail = txn.BuyerEmail,
         PackId = packId,
         AmountPence = amountPence,

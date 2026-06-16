@@ -10,6 +10,9 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
 
+    <!-- Stripe -->
+    <PackageVersion Include="Stripe.net" Version="47.3.0" />
+
     <!-- Object storage (Cloudflare R2, S3-compatible) for pack delivery -->
     <PackageVersion Include="AWSSDK.S3" Version="4.0.23" />
 

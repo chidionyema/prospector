@@ -124,7 +124,7 @@ public sealed class FulfilmentServiceTests : IDisposable
         Assert.Null(order.PackId);
     }
 
-    private async Task<FulfilmentOutcome> RunAsync(PaddleTransaction txn)
+    private async Task<FulfilmentOutcome> RunAsync(PaymentTransaction txn)
     {
         using var ctx = NewContext();
         var svc = new FulfilmentService(ctx, new TokenGenerator());
@@ -140,15 +140,15 @@ public sealed class FulfilmentServiceTests : IDisposable
             Title = id,
             OneLine = "x",
             DossierRef = "d",
-            PaddleProductId = productId,
+            ProviderProductId = productId,
             ContentKey = contentKey,
             ContentVersion = version,
         });
         await ctx.SaveChangesAsync();
     }
 
-    private static PaddleTransaction Txn(string id, params PurchasedItem[] items) =>
-        new(id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
+    private static PaymentTransaction Txn(string id, params PurchasedItem[] items) =>
+        new("paddle", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
 
     private StoreDbContext NewContext() => new(_options);
 

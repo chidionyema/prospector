@@ -16,10 +16,15 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Store.Catalog\Store.Catalog.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Store.Tests" />
   </ItemGroup>
 
 </Project>

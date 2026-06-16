@@ -1,7 +1,7 @@
 namespace Store.Catalog.Domain;
 
 /// <summary>
-/// A fulfilment record for one purchased pack. One Paddle transaction can produce
+/// A fulfilment record for one purchased pack. One payment transaction can produce
 /// several Orders (multi-item cart). The authoritative financial total for the whole
 /// transaction lives on <see cref="SalesAudit"/>; this row records what was bought
 /// and drives entitlement. PackId is nullable to capture a paid-but-unfulfillable
@@ -10,7 +10,8 @@ namespace Store.Catalog.Domain;
 public class Order
 {
     public long Id { get; set; }
-    public required string PaddleTransactionId { get; set; }
+    public string PaymentProvider { get; set; } = "paddle";
+    public required string ProviderTransactionId { get; set; }
     public string BuyerEmail { get; set; } = "";
     public string? PackId { get; set; }
     public long AmountPence { get; set; }

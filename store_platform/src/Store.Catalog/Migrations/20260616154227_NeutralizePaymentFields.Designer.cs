@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Store.Catalog.Persistence;
 
@@ -10,9 +11,11 @@ using Store.Catalog.Persistence;
 namespace Store.Catalog.Migrations
 {
     [DbContext(typeof(StoreDbContext))]
-    partial class StoreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616154227_NeutralizePaymentFields")]
+    partial class NeutralizePaymentFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -69,44 +72,6 @@ namespace Store.Catalog.Migrations
                     b.HasIndex("PackId");
 
                     b.ToTable("Entitlements");
-                });
-
-            modelBuilder.Entity("Store.Catalog.Domain.IdempotencyJournalEntry", b =>
-                {
-                    b.Property<string>("IdempotencyKey")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CommandType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ContentType")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RequestFingerprint")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ResponseBodyBase64")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("StatusCode")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("IdempotencyKey");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.ToTable("IdempotencyJournal");
                 });
 
             modelBuilder.Entity("Store.Catalog.Domain.Order", b =>
@@ -246,39 +211,6 @@ namespace Store.Catalog.Migrations
                         .IsUnique();
 
                     b.ToTable("SalesAudits");
-                });
-
-            modelBuilder.Entity("Store.Catalog.Domain.WebhookEvent", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ProviderEventId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RawPayload")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Provider", "ProviderEventId")
-                        .IsUnique();
-
-                    b.ToTable("WebhookEvents");
                 });
 
             modelBuilder.Entity("Store.Catalog.Domain.Entitlement", b =>

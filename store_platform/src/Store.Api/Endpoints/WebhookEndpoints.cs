@@ -1,8 +1,5 @@
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Store.Api.Payments;
 using Store.Api.Services;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
@@ -11,78 +8,54 @@ namespace Store.Api.Endpoints;
 
 public static class WebhookEndpoints
 {
-    private const int SignatureToleranceMinutes = 5;
-
     public static void MapWebhookEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/webhooks/paddle", HandlePaddleWebhook);
+        app.MapPost("/webhooks/{provider}", HandleWebhook);
+        app.MapPost("/webhooks/paddle", (
+            HttpRequest request,
+            IConfiguration config,
+            ILogger<Program> logger,
+            FulfilmentService fulfilmentService,
+            StoreDbContext db,
+            IEmailSender emailSender,
+            IServiceProvider sp) => HandleWebhook("paddle", request, config, logger, fulfilmentService, db, emailSender, sp));
     }
 
-    private static async Task<IResult> HandlePaddleWebhook(
+    private static async Task<IResult> HandleWebhook(
+        string provider,
         HttpRequest request,
         IConfiguration config,
         ILogger<Program> logger,
         FulfilmentService fulfilmentService,
         StoreDbContext db,
-        IEmailSender emailSender)
+        IEmailSender emailSender,
+        IServiceProvider sp)
     {
-        var secret = config["Paddle:WebhookSecret"];
-        if (string.IsNullOrEmpty(secret))
+        var paymentProvider = sp.GetKeyedService<IPaymentProvider>(provider);
+        if (paymentProvider is null)
         {
-            logger.LogError("Paddle webhook secret is not configured. Failing closed.");
-            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
-        }
-
-        if (!request.Headers.TryGetValue("Paddle-Signature", out var signatureHeader))
-        {
-            logger.LogWarning("Paddle webhook missing signature header.");
-            return Results.BadRequest("Missing signature");
+            return Results.NotFound();
         }
 
         using var reader = new StreamReader(request.Body);
         var rawBody = await reader.ReadToEndAsync().ConfigureAwait(false);
 
-        if (!VerifyPaddleSignature(signatureHeader!, rawBody, secret))
+        var result = await paymentProvider.VerifyAndParseAsync(request, rawBody, config, logger).ConfigureAwait(false);
+
+        if (!result.Verified)
         {
-            logger.LogWarning("Paddle webhook signature verification failed.");
-            return Results.BadRequest("Invalid signature");
+            return HandleVerifyFailure(result);
         }
 
-        var storeUrl = config["Store:PublicUrl"] ?? Environment.GetEnvironmentVariable("STORE_PUBLIC_URL");
-        return await ProcessAsync(rawBody, fulfilmentService, db, emailSender, storeUrl, logger)
-            .ConfigureAwait(false);
-    }
+        var txn = result.Transaction!;
 
-    private static async Task<IResult> ProcessAsync(
-        string rawBody,
-        FulfilmentService fulfilmentService,
-        StoreDbContext db,
-        IEmailSender emailSender,
-        string? storeUrl,
-        ILogger logger)
-    {
-        PaddleTransaction txn;
-        try
+        // --- DEDUP LAYER (P2) ---
+        if (await RegisterWebhookEventAsync(db, provider, txn, result.Reason, rawBody).ConfigureAwait(false))
         {
-            using var jsonDoc = JsonDocument.Parse(rawBody);
-            var root = jsonDoc.RootElement;
-            var eventType = OptionalString(root, "event_type");
-            if (!string.Equals(eventType, "transaction.completed", StringComparison.Ordinal))
-            {
-                return Results.Ok(new { status = "IGNORED", eventType });
-            }
-
-            txn = ParsePaddleTransaction(root);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Malformed Paddle webhook body.");
-            return Results.BadRequest("Malformed body");
+            return Results.Ok(new { status = "ALREADY_PROCESSED", eventId = txn.TransactionId });
         }
 
-        // Fulfil: SalesAudit + Order(s) + Entitlement(s) in one atomic write. Idempotent.
         var outcome = await fulfilmentService.FulfilAsync(txn).ConfigureAwait(false);
-
         if (outcome.AlreadyProcessed)
         {
             return Results.Ok(new { status = "ALREADY_PROCESSED" });
@@ -90,13 +63,11 @@ public static class WebhookEndpoints
 
         if (outcome.Unfulfilled.Count > 0)
         {
-            // Paid but undeliverable — an operator must reconcile. The money is recorded.
             logger.LogError("PAID-WITHOUT-FULFILMENT for {TransactionId}: {Items}",
                 txn.TransactionId, string.Join(", ", outcome.Unfulfilled));
         }
 
-        // Deliver the magic link AFTER the atomic write commits. A failed/skipped send is
-        // non-fatal: the entitlement exists and the link is re-issuable.
+        var storeUrl = config["Store:PublicUrl"] ?? Environment.GetEnvironmentVariable("STORE_PUBLIC_URL");
         await DispatchEmailsAsync(outcome.EntitlementsCreated, db, emailSender, storeUrl, logger)
             .ConfigureAwait(false);
 
@@ -107,6 +78,52 @@ public static class WebhookEndpoints
             unfulfilled = outcome.Unfulfilled,
         });
     }
+
+    // Records the inbound webhook for dedup. Returns true if this event was already
+    // processed (caller short-circuits with ALREADY_PROCESSED). Behaviour is identical
+    // to the prior inline dedup block: the pre-check and the persistence race both map
+    // to "already processed".
+    private static async Task<bool> RegisterWebhookEventAsync(
+        StoreDbContext db, string provider, PaymentTransaction txn, string? reason, string rawBody)
+    {
+        if (await WebhookAlreadyProcessedAsync(db, provider, txn.TransactionId).ConfigureAwait(false))
+        {
+            return true;
+        }
+
+        try
+        {
+            db.WebhookEvents.Add(new WebhookEvent
+            {
+                Provider = provider,
+                ProviderEventId = txn.TransactionId,
+                EventType = reason ?? "completed",
+                RawPayload = rawBody
+            });
+        }
+        catch (DbUpdateException)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static IResult HandleVerifyFailure(WebhookVerifyResult result)
+    {
+        if (string.Equals(result.Reason, "secret-not-configured", StringComparison.Ordinal))
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+        if (result.Ignored)
+        {
+            return Results.Ok(new { status = "IGNORED", eventType = result.Reason });
+        }
+        return Results.BadRequest(result.Reason ?? "Invalid signature");
+    }
+
+    private static Task<bool> WebhookAlreadyProcessedAsync(StoreDbContext db, string provider, string eventId) =>
+        db.WebhookEvents.AnyAsync(e => e.Provider == provider && e.ProviderEventId == eventId);
 
     private static async Task DispatchEmailsAsync(
         IReadOnlyList<Entitlement> entitlements,
@@ -139,112 +156,5 @@ public static class WebhookEndpoints
                     ent.PackId, ent.BuyerEmail);
             }
         }
-    }
-
-    private static PaddleTransaction ParsePaddleTransaction(JsonElement root)
-    {
-        var data = root.GetProperty("data");
-        var details = data.GetProperty("details");
-        var totals = details.GetProperty("totals");
-
-        var items = new List<PurchasedItem>();
-        if (details.TryGetProperty("line_items", out var lineItems)
-            && lineItems.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in lineItems.EnumerateArray())
-            {
-                var productId = OptionalString(item, "product_id");
-                var amount = item.TryGetProperty("totals", out var itemTotals)
-                    ? ParseAmount(itemTotals, "total")
-                    : 0;
-                items.Add(new PurchasedItem(productId, amount));
-            }
-        }
-
-        return new PaddleTransaction(
-            TransactionId: OptionalString(data, "id") ?? "",
-            BuyerEmail: ExtractEmail(data),
-            Currency: OptionalString(data, "currency_code") ?? "GBP",
-            Country: ExtractCountry(data),
-            TotalAmountPence: ParseAmount(totals, "total"),
-            OccurredAt: ParseOccurredAt(root),
-            Items: items);
-    }
-
-    private static string ExtractEmail(JsonElement data)
-    {
-        if (data.TryGetProperty("custom_data", out var custom)
-            && custom.ValueKind == JsonValueKind.Object
-            && custom.TryGetProperty("email", out var customEmail))
-        {
-            return customEmail.GetString() ?? "";
-        }
-
-        return OptionalString(data, "customer_email") ?? "";
-    }
-
-    private static string ExtractCountry(JsonElement data) =>
-        data.TryGetProperty("address", out var address) && address.ValueKind == JsonValueKind.Object
-            ? OptionalString(address, "country_code") ?? ""
-            : "";
-
-    private static DateTime ParseOccurredAt(JsonElement root)
-    {
-        // Paddle puts occurred_at on the event envelope; fall back to data then to now.
-        var raw = OptionalString(root, "occurred_at")
-            ?? OptionalString(root.GetProperty("data"), "occurred_at");
-        return raw is null
-            ? DateTime.UtcNow
-            : DateTime.Parse(raw, CultureInfo.InvariantCulture,
-                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
-    }
-
-    // Paddle sends monetary amounts as strings in the currency's smallest unit; tolerate
-    // both string and number forms so a real webhook never throws on the money field.
-    private static long ParseAmount(JsonElement parent, string name)
-    {
-        if (!parent.TryGetProperty(name, out var el))
-        {
-            return 0;
-        }
-
-        return el.ValueKind == JsonValueKind.String
-            ? long.Parse(el.GetString()!, CultureInfo.InvariantCulture)
-            : el.GetInt64();
-    }
-
-    private static string? OptionalString(JsonElement parent, string name) =>
-        parent.TryGetProperty(name, out var el) ? el.GetString() : null;
-
-    private static bool VerifyPaddleSignature(string signatureHeader, string rawBody, string secret)
-    {
-        var parts = signatureHeader.Split(';');
-        var ts = Array.Find(parts, p => p.StartsWith("ts=", StringComparison.Ordinal))?.Split('=')[1];
-        var h1 = Array.Find(parts, p => p.StartsWith("h1=", StringComparison.Ordinal))?.Split('=')[1];
-
-        if (string.IsNullOrEmpty(ts) || string.IsNullOrEmpty(h1))
-        {
-            return false;
-        }
-
-        if (!long.TryParse(ts, NumberStyles.Integer, CultureInfo.InvariantCulture, out var tsUnix))
-        {
-            return false;
-        }
-
-        var offset = DateTimeOffset.FromUnixTimeSeconds(tsUnix);
-        if (Math.Abs((DateTimeOffset.UtcNow - offset).TotalMinutes) > SignatureToleranceMinutes)
-        {
-            return false;
-        }
-
-        var payload = $"{ts}:{rawBody}";
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
-        var hashString = Convert.ToHexStringLower(hash);
-
-        return CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(hashString),
-            Encoding.UTF8.GetBytes(h1));
     }
 }
