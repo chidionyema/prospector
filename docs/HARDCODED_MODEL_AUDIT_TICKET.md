@@ -70,6 +70,37 @@ home.
 6. **No regressions** — `pytest -q` stays green, golden-set still passes
    (model-version field in run metadata captures the change).
 
+## Progress (2026-06-16)
+
+Step 2 (partial) and step 5 (partial) landed in commit 1d36dd3:
+
+- `cfg.model` and `cfg.model_fast` are now threaded through `_build_operator`
+  to all four non-mock operators (gemini, claude, deepseek, minimax).
+  Setting `cfg.model = "deepseek-v4-pro"` (or any string) now selects
+  that model without code changes. The deepseek-chat 2026-07-24
+  deprecation is now a 1-line `config.yaml` change.
+- `tests/unit/test_model_config.py` (8 tests) locks the invariant in:
+  every config override is reflected in the operator, and every empty
+  config falls back to a sensible hardcoded default.
+- The Claude SDK tests are skipped — `jiter` (anthropic's native dep)
+  is broken in this venv (Python 3.14 compat issue). The other three
+  providers are sufficient to verify the threading.
+
+What remains of step 2: the per-operator `_DEFAULT_MODEL` strings are
+still in `operator.py`. Removing them requires deciding the empty-config
+default at the config layer (a `model_defaults` block in `config.yaml`)
+and updating all four operators to source their default from there.
+This is the next sub-step.
+
+Audit (step 1) — the per-file table above is the audit. The status
+column is filled in for each row; the rightmost column indicates the
+target home. This isn't an external doc; it lives in the ticket
+itself so the audit is co-located with the fix plan.
+
+Pricing (step 3), retrieval providers (`retrieval.py:455,599,743`),
+and the operator factory default-model strings (the remaining `_DEFAULT_MODEL`
+constants) are all still TODO.
+
 ## Out of scope
 
 - The moat routing decision (Claude→Gemini, not hardcoded *here*, but
