@@ -176,6 +176,28 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append(cand.hypothesis)
         lines.append("")
 
+    # --- Generation Refinement (Diff) ---
+    if cand.refinement_history:
+        lines.append("---")
+        lines.append("## Generation Refinement (Diff)")
+        lines.append("")
+        lines.append("> How the **Cynical Analyst** sharpened the raw brainstormed idea.")
+        lines.append("")
+        for entry in cand.refinement_history:
+            before = entry.get("before", {})
+            lines.append("#### Changes:")
+            if before.get("title") != cand.title:
+                lines.append(f"- **Title**: ~~{before.get('title')}~~ → {cand.title}")
+            if before.get("one_liner") != cand.one_liner:
+                lines.append(f"- **One-liner**: ~~{before.get('one_liner')}~~ → {cand.one_liner}")
+            if before.get("hypothesis") != cand.hypothesis:
+                lines.append(f"- **Hypothesis**: ~~{before.get('hypothesis')}~~ → {cand.hypothesis}")
+            if before.get("who_pays") != cand.who_pays:
+                lines.append(f"- **Who Pays**: ~~{before.get('who_pays')}~~ → {cand.who_pays}")
+            if before.get("why_now") != cand.why_now:
+                lines.append(f"- **Why Now**: ~~{before.get('why_now')}~~ → {cand.why_now}")
+        lines.append("")
+
     # --- Per-check verdicts ---
     if dossier.checks:
         lines.append("---")
@@ -191,14 +213,17 @@ def render_markdown(dossier: Dossier) -> str:
             lines.append("")
             lines.append(chk.rationale)
             lines.append("")
+            
             if chk.citations:
                 lines.append("**Citations:** " + ", ".join(f"`{c}`" for c in chk.citations))
                 lines.append("")
-            # Inline source URLs
-            for src in chk.sources:
-                pub = f" ({src.published_at})" if src.published_at else ""
-                lines.append(f"- [{src.url}]({src.url}){pub}")
+
+            # --- Chain-of-Evidence (Contextual Snippets) ---
             if chk.sources:
+                lines.append("**Evidence from sources:**")
+                for src in chk.sources:
+                    snippet = src.text[:300].replace("\n", " ")
+                    lines.append(f"- [{src.source_id}] *\"{snippet}...\"* — [{src.url}]({src.url})")
                 lines.append("")
 
     # --- Adversarial case ---
@@ -243,13 +268,15 @@ def render_markdown(dossier: Dossier) -> str:
     all_src = dossier.all_sources
     if all_src:
         lines.append("---")
-        lines.append("## Sources")
+        lines.append("## Chain-of-Evidence (Full Sources)")
         lines.append("")
         for src in all_src:
             pub = f" ({src.published_at})" if src.published_at else ""
-            snippet = src.text[:120].replace("\n", " ")
-            lines.append(f"- **[{src.source_id}]** [{src.url}]({src.url}){pub}")
-            lines.append(f"  > {snippet}…")
+            snippet = src.text[:500].replace("\n", " ")
+            lines.append(f"### Source [{src.source_id}]")
+            lines.append(f"**URL:** [{src.url}]({src.url}){pub}")
+            lines.append("")
+            lines.append(f"> {snippet}...")
             lines.append("")
 
     # --- Metadata footer ---

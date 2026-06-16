@@ -343,6 +343,10 @@ generation:
 profiles:
   online_autonomous_predator:
     generation:
+      # Hard floor: "no human in the loop" is a GUARANTEE here, not a preference. Candidates
+      # whose self-reported automatability is below this (or unstated) are dropped at
+      # generation time, before the moat ever sees them. Generation-only — never a verdict gate.
+      automatability_floor: 0.8
       # Restrict to ONLINE / software-deliverable forms — drop physical_ops (atoms) and
       # productized_service / risk_financing (human-labour or capital-heavy, not "no human
       # in the loop"). These five can all run as automated online businesses.

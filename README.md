@@ -139,8 +139,9 @@ grounded checks. Omit both and generation runs exactly as before.
   (one-off experiments). It is injected into generation as a *binding constraint*
   ("an idea that does not fit is INVALID").
 - `--profile NAME` — a reusable bundle from `config.yaml: profiles.*` that pairs a
-  restricted set of `structural_forms` with a baked-in focus directive. A profile
-  composes over `--lane` (its forms/focus win); `--focus` overrides a profile's focus.
+  restricted set of `structural_forms` with a baked-in focus directive (and,
+  optionally, an `automatability_floor`). A profile composes over `--lane` (its
+  forms/focus win); `--focus` overrides a profile's focus.
 
 ```bash
 # One-off steer:
@@ -154,6 +155,15 @@ grounded checks. Omit both and generation runs exactly as before.
 The shipped `online_autonomous_predator` profile targets online-native,
 no-human-in-the-loop businesses that attack an acute pain and take payment directly
 online. Add your own under `profiles:` in `config.yaml`.
+
+**Automatability hard floor (`generation.automatability_floor`).** Optional and
+opt-in. The focus directive *asks* the model for high automation; the floor *enforces*
+it. Set a `0–1` minimum (the shipped profile uses `0.8`) and any candidate whose
+self-reported automatability is below it — or unstated — is dropped at generation
+time, before the moat ever sees it. This turns "no human in the loop" from a
+preference into a guarantee. It is a **generation filter, never a verdict gate**: it
+shapes the candidate pool, it does not judge truth. Unset (the default) = no
+filtering, generation behaves exactly as before.
 
 ---
 
@@ -362,7 +372,8 @@ operators (e.g. Claude Code → an API operator) needs only a config change, no 
 - `active_lanes`, `active_lane`, `lane_quota`, `lanes.*` — multi-lane setup and
   per-lane bars/gates/generation
 - `profiles.*`, `active_profile` — reusable generation-targeting bundles
-  (restricted `structural_forms` + a `focus` directive); selectable with `--profile`
+  (restricted `structural_forms` + a `focus` directive + optional
+  `automatability_floor`); selectable with `--profile`
 - `generation`, `listing`, `schedule`, `spend`, `store.dir`
 
 **Operational knobs are environment variables:**

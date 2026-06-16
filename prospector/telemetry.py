@@ -141,34 +141,104 @@ def set_context(session_id: Optional[str] = None, candidate_id: Optional[str] = 
 
 _USAGE_LOCK = threading.Lock()
 _USAGE: Dict[str, Dict[str, int]] = {}
+_USAGE_BY_PROVIDER: Dict[str, Dict[str, int]] = {}
 
-_USAGE_KEYS = ("calls", "web_calls", "input", "output", "total", "cached")
+_USAGE_KEYS = ("calls", "web_calls", "input", "output", "total", "cached", "self_corrections")
+
+# Pricing per 1M tokens in USD (2026 typical rates)
+PRICING = {
+    "gemini": {"input": 0.10, "output": 0.40},
+    "claude": {"input": 3.00, "output": 15.00},
+    "deepseek": {"input": 0.27, "output": 1.10},
+    "minimax": {"input": 0.30, "output": 0.30}, # Flat rate for MiniMax M2.7/M3
+    "ollama": {"input": 0.00, "output": 0.00},
+    "mock": {"input": 0.00, "output": 0.00},
+}
 
 
 def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
                  total_tokens: int = 0, cached_tokens: int = 0,
-                 web: bool = False) -> None:
-    """Record one model/search call's token usage against the current phase."""
+                 web: bool = False, provider: str = "unknown",
+                 message: str = "", self_correction: bool = False) -> None:
+    """Record one model/search call's token usage against the current phase and provider."""
     phase = PHASE.get() or "main"
+    # Extract root provider (e.g. 'gemini/gemini-2.0' -> 'gemini')
+    root_provider = provider.split("/")[0].lower() if "/" in provider else provider.lower()
+    
     with _USAGE_LOCK:
+        # 1. Update by phase
         u = _USAGE.setdefault(phase, {k: 0 for k in _USAGE_KEYS})
         u["calls"] += 1
         if web:
             u["web_calls"] += 1
+        if self_correction:
+            u["self_corrections"] += 1
         u["input"] += int(input_tokens or 0)
         u["output"] += int(output_tokens or 0)
         u["total"] += int(total_tokens or 0)
         u["cached"] += int(cached_tokens or 0)
+        
+        # 2. Update by provider
+        p = _USAGE_BY_PROVIDER.setdefault(root_provider, {k: 0 for k in _USAGE_KEYS})
+        p["calls"] += 1
+        if self_correction:
+            p["self_corrections"] += 1
+        p["input"] += int(input_tokens or 0)
+        p["output"] += int(output_tokens or 0)
+        p["total"] += int(total_tokens or 0)
+        p["cached"] += int(cached_tokens or 0)
+
+        # 3. Log a spend event if there's non-zero pricing
+        price = PRICING.get(root_provider, {"input": 0, "output": 0})
+        cost = (input_tokens * price["input"] / 1_000_000) + (output_tokens * price["output"] / 1_000_000)
+        if cost > 0:
+            logger.info(
+                f"Spend event: {provider} cost=${cost:.6f}", 
+                extra={
+                    "event": "spend",
+                    "provider": provider,
+                    "amount_usd": cost,
+                    "phase": phase,
+                    "input": input_tokens,
+                    "output": output_tokens
+                }
+            )
+        
+        if message:
+            logger.info(message, extra={
+                "provider": provider,
+                "input": input_tokens,
+                "output": output_tokens,
+                "cached": cached_tokens,
+                "cost_usd": round(cost, 6)
+            })
 
 
 def get_usage_summary() -> Dict[str, Any]:
-    """Return {'total': {...}, 'by_phase': {phase: {...}}} of all usage so far."""
+    """Return {'total': {...}, 'by_phase': {phase: {...}}, 'by_provider': {...}}."""
     with _USAGE_LOCK:
         agg = {k: 0 for k in _USAGE_KEYS}
         for u in _USAGE.values():
             for k in _USAGE_KEYS:
                 agg[k] += u.get(k, 0)
-        return {"total": agg, "by_phase": {k: dict(v) for k, v in _USAGE.items()}}
+                
+        # Calculate total cost
+        total_cost = 0.0
+        provider_stats = {}
+        for prov, u in _USAGE_BY_PROVIDER.items():
+            price = PRICING.get(prov, {"input": 0, "output": 0})
+            cost = (u["input"] * price["input"] / 1_000_000) + (u["output"] * price["output"] / 1_000_000)
+            total_cost += cost
+            p_data = dict(u)
+            p_data["cost_usd"] = round(cost, 6)
+            provider_stats[prov] = p_data
+
+        return {
+            "total": agg, 
+            "total_cost_usd": round(total_cost, 4),
+            "by_phase": {k: dict(v) for k, v in _USAGE.items()},
+            "by_provider": provider_stats
+        }
 
 
 def reset_usage() -> None:

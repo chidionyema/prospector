@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from typing import Any, Optional
 
 from .config import Config
@@ -49,6 +50,42 @@ def _parse_candidates(data: Any) -> list[Candidate]:
 
 def _norm_title(t: str) -> str:
     return " ".join(str(t).lower().split())
+
+
+# Word → score map for self-reported automatability (the model emits a number OR a word).
+_AUTOMATABILITY_WORDS: dict[str, float] = {
+    "none": 0.0, "manual": 0.1, "very low": 0.1, "low": 0.25, "med": 0.5,
+    "medium": 0.5, "moderate": 0.5, "high": 0.85, "very high": 0.95,
+    "full": 1.0, "fully": 1.0, "fully automated": 1.0, "complete": 1.0,
+    "autonomous": 1.0,
+}
+
+
+def _automatability_score(val: Any) -> Optional[float]:
+    """Coerce a self-reported automatability value to a float in [0, 1], or None if
+    it cannot be parsed. Tolerant of the schema being loosely specified: accepts a
+    0-1 float, a 0-100 number/percentage, or a word ('high', 'fully automated', ...).
+    None is returned for missing/unintelligible values so the caller decides policy."""
+    if val is None or isinstance(val, bool):
+        return None if val is None else (1.0 if val else 0.0)
+    if isinstance(val, (int, float)):
+        f = float(val)
+        return max(0.0, min(1.0, f / 100.0 if f > 1.0 else f))
+    s = str(val).strip().lower()
+    if not s:
+        return None
+    if s.endswith("%"):
+        s = s[:-1].strip()
+    if s in _AUTOMATABILITY_WORDS:
+        return _AUTOMATABILITY_WORDS[s]
+    try:
+        f = float(s)
+        return max(0.0, min(1.0, f / 100.0 if f > 1.0 else f))
+    except ValueError:
+        for word, score in _AUTOMATABILITY_WORDS.items():
+            if word in s:
+                return score
+        return None
 
 
 @track_latency(name="generate")
@@ -186,6 +223,16 @@ def generate(
         f"an idea that does not fit is INVALID, do not propose it): {focus_text}"
         if focus_text else "")
 
+    # Automatability HARD FLOOR (Part 16). Optional, opt-in: a profile (or config) may set
+    # `generation.automatability_floor` to a 0-1 minimum. When set, candidates whose self-
+    # reported automatability falls below it (or is unintelligible) are dropped at generation
+    # time — turning "no human in the loop" from a soft prompt aim into a guarantee. Unset =>
+    # None => no filtering, byte-for-byte today's behaviour (golden-safe). This is a generation
+    # filter, never a verdict gate: it shapes the candidate pool, it does not judge truth.
+    _floor_raw = gen_cfg.get("automatability_floor")
+    automatability_floor: Optional[float] = (
+        float(_floor_raw) if _floor_raw is not None else None)
+
     # Audience forms loaded and rotated AFTER structural forms so both are ready here.
     logger.info("Generation started", extra={
         "sector": sector,
@@ -248,13 +295,40 @@ def generate(
         # Use a slightly lower temperature for refinement to encourage strictness
         try:
             raw_response = _gen.complete_json(system, user, temperature=0.5)
-            refined = _parse_candidates(raw_response)
-            # Re-map structural forms from the original candidates if lost in refinement
-            original_map = {c.title: c.structural_form for c in candidates}
-            for r in refined:
-                if not r.structural_form:
-                    r.structural_form = original_map.get(r.title, "")
-            return refined
+            refined_data = raw_response if isinstance(raw_response, list) else []
+            
+            # Re-map and track history
+            refined_cands = []
+            original_by_title = {c.title: c for c in candidates}
+            
+            for r_dict in refined_data:
+                # Find matching original candidate
+                orig_title = r_dict.get("title")
+                orig = original_by_title.get(orig_title)
+                
+                if orig:
+                    # Capture the sharpening diff
+                    r_cand = Candidate.from_dict(r_dict)
+                    r_cand.structural_form = orig.structural_form
+                    r_cand.ambition_tier = orig.ambition_tier
+                    
+                    # Store the 'before' state in history
+                    history_entry = {
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "action": "refined",
+                        "model": _gen.name,
+                        "before": {
+                            "title": orig.title,
+                            "one_liner": orig.one_liner,
+                            "hypothesis": orig.hypothesis,
+                            "who_pays": orig.who_pays,
+                            "why_now": orig.why_now
+                        }
+                    }
+                    r_cand.refinement_history = orig.refinement_history + [history_entry]
+                    refined_cands.append(r_cand)
+                    
+            return refined_cands
         except Exception as e:
             logger.warning(f"Refinement wave failed: {e}")
             return candidates # Fallback to original if refinement fails
@@ -332,7 +406,25 @@ def generate(
         # FIX: gen_op for generation, else fall back to op.
         _gen = gen_op or op
         refined_wave_cands = _refine_wave(raw_wave_cands, _gen, lane_directive)
-        
+
+        # Automatability hard floor (opt-in): drop wave candidates below the configured
+        # minimum so later waves backfill toward `target` with only automatable ideas.
+        # A candidate with a missing/unintelligible automatability is dropped too — a
+        # "no human in the loop" guarantee cannot be made for an unknown.
+        if automatability_floor is not None:
+            kept = []
+            for c in refined_wave_cands:
+                sc = _automatability_score(c.automatability)
+                if sc is not None and sc >= automatability_floor:
+                    kept.append(c)
+            dropped = len(refined_wave_cands) - len(kept)
+            if dropped:
+                logger.info(
+                    f"Automatability floor {automatability_floor:.2f}: dropped {dropped} "
+                    f"of {len(refined_wave_cands)} wave candidate(s)",
+                    extra={"floor": automatability_floor, "dropped": dropped})
+            refined_wave_cands = kept
+
         # Re-batch the refined candidates for the diversity loop
         # We preserve the (form, aud) grouping by re-distributing refined cands.
         refined_batches = []

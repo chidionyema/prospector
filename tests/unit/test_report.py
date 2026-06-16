@@ -83,13 +83,18 @@ def test_costs_parses_audit_log(tmp_path):
     lines = [
         {"event": "spend", "amount_usd": 0.05, "phase": "signal_pipeline"},
         {"event": "spend", "amount_usd": 0.10, "phase": "signal_pipeline"},
+        # Provider stats only from usage entries (input/output > 0)
         {"message": "Gemini CLI usage", "web": True, "input": 100, "output": 50, "total": 200},
         {"event": "latency", "operation": "gemini_cli_search", "latency_ms": 5000.0},
     ]
     log.write_text("\n".join(json.dumps(x) for x in lines))
     out = costs_report(log)
+    assert "LIFETIME COST & USAGE BREAKDOWN" in out
     assert "$0.15" in out
-    assert "1 web-search" in out
+    assert "total model calls      1" in out
+    assert "gemini" in out.lower()
+    # Check for slowest operations block (restored)
+    assert "slowest operations" in out
     assert "gemini_cli_search" in out
 
 
@@ -101,13 +106,18 @@ def test_costs_counts_claude_usage_and_folds_cost(tmp_path):
     log = tmp_path / "prospector.jsonl"
     lines = [
         {"message": "Gemini CLI usage", "web": True, "input": 10, "output": 5, "total": 20},
+        # Total cost is max(spend events, sum of providers)
         {"message": "Claude CLI usage", "web": True, "input": 100, "output": 50,
          "total": 200, "cached": 30, "cost_usd": 0.25},
     ]
     log.write_text("\n".join(json.dumps(x) for x in lines))
     out = costs_report(log)
-    assert "2 web-search" in out          # both usage lines counted
-    assert "$0.25" in out                 # claude's real billed cost folded into spend
+    # Check for provider breakdown
+    assert "SPEND BY AGENT / PROVIDER" in out
+    assert "claude" in out.lower()
+    assert "gemini" in out.lower()
+    # Claude's $0.25 + Gemini's estimate (negligible)
+    assert "$0.25" in out
 
 
 def test_save_removes_stale_decision_file(tmp_path):

@@ -125,6 +125,13 @@ class Operator(ABC):
             try:
                 text = self._raw(sys, user, temperature)
                 data = _extract_json(text)
+                
+                # If we succeeded after a repair turn, record it as a self-correction
+                if attempt > 0:
+                    from .telemetry import record_usage
+                    record_usage(provider=self.name, self_correction=True,
+                                 message=f"LLM self-corrected on attempt {attempt}")
+                
                 return validate(data) if validate else data
             except (ParseError, json.JSONDecodeError, ValueError) as e:
                 last_err = e
@@ -157,6 +164,13 @@ class ClaudeOperator(Operator):
             model=self.model, max_tokens=4096, temperature=temperature,
             system=system, messages=[{"role": "user", "content": user}],
         )
+        # Track usage
+        usage = resp.usage
+        from .telemetry import record_usage
+        record_usage(input_tokens=usage.input_tokens, 
+                     output_tokens=usage.output_tokens,
+                     total_tokens=usage.input_tokens + usage.output_tokens,
+                     provider=self.name)
         return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
 
 
@@ -179,6 +193,15 @@ class GeminiOperator(Operator):
             model=self.model, contents=f"{system}\n\n{user}",
             config=types.GenerateContentConfig(temperature=temperature),
         )
+        # Track usage
+        usage = resp.usage_metadata
+        if usage:
+            from .telemetry import record_usage
+            record_usage(input_tokens=usage.prompt_token_count or 0,
+                         output_tokens=usage.candidates_token_count or 0,
+                         total_tokens=usage.total_token_count or 0,
+                         cached_tokens=usage.cached_content_token_count or 0,
+                         provider=self.name)
         return resp.text or ""
 
     @track_latency(name="gemini_embed")
@@ -283,7 +306,7 @@ class MiniMaxOperator(Operator):
         total = int(usage.get("total_tokens", 0) or 0)
         from .telemetry import record_usage, logger
         record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
-                     cached_tokens=0, web=False)
+                     cached_tokens=0, web=False, provider=self.name)
 
         # OpenAI-compatible response shape
         content = data.get("choices", [{}])[0].get("message", {}).get("content", "") or ""
@@ -371,7 +394,7 @@ class DeepSeekOperator(Operator):
         total = int(usage.get("total_tokens", 0) or 0)
         from .telemetry import record_usage, logger
         record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
-                     cached_tokens=0, web=False)
+                     cached_tokens=0, web=False, provider=self.name)
 
         content = (data.get("choices", [{}])[0].get("message", {})
                    .get("content", "") or "")
@@ -618,6 +641,16 @@ class OpenRouterOperator(Operator):
                 data = json.loads(raw)
                 content = (data.get("choices", [{}])[0].get("message", {})
                            .get("content") or "")
+                
+                # Track usage
+                usage = data.get("usage") or {}
+                inp = int(usage.get("prompt_tokens", 0) or 0)
+                out = int(usage.get("completion_tokens", 0) or 0)
+                total = int(usage.get("total_tokens", 0) or 0)
+                from .telemetry import record_usage
+                record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
+                             provider=f"openrouter/{model}")
+                
                 self._breakers[model].record_success()
                 self._mark(model, ok=True)
                 logger.info(f"OpenRouter {model} ok ({latency:.1f}s): {len(content)} chars")
@@ -713,7 +746,15 @@ class OllamaOperator(Operator):
 
         content = (data.get("choices", [{}])[0].get("message", {})
                    .get("content", "") or "")
-        from .telemetry import logger
+        from .telemetry import record_usage, logger
+        # Track usage
+        usage = data.get("usage") or {}
+        inp = int(usage.get("prompt_tokens", 0) or 0)
+        out = int(usage.get("completion_tokens", 0) or 0)
+        total = int(usage.get("total_tokens", 0) or 0)
+        record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
+                     provider=self.name)
+        
         logger.info(f"Ollama response: length={len(content)}")
         return content
 
@@ -730,6 +771,11 @@ class MockOperator(Operator):
 
     def _raw(self, system: str, user: str, temperature: float) -> str:
         self.calls.append((system, user))
+        # Record mock usage for diagnostic testing
+        from .telemetry import record_usage
+        record_usage(input_tokens=100, output_tokens=50, total_tokens=150, 
+                     provider=self.name)
+        
         if self.router:
             out = self.router(system, user)
             if out is not None:

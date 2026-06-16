@@ -111,6 +111,10 @@ class Candidate:
     # to packaging: the tier sets the vetting BAR; the £30 pack is downstream selling format.
     # Default "" = no lane engaged (today's single-default behaviour, back-compat).
     ambition_tier: str = ""
+    # Optional audit trail of how the raw brainstormed idea was sharpened during the
+    # refinement pass (list of {"before": {...}} snapshots). Purely additive observability
+    # — never read by any gate; rendered in the dossier's "Generation Refinement" section.
+    refinement_history: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.candidate_id:
@@ -146,7 +150,8 @@ class Candidate:
             weak_monetisation=bool(d.get("weak_monetisation", False)),
             candidate_id=d.get("candidate_id", ""),
             structural_form=sform,
-            ambition_tier=str(d.get("ambition_tier", "") or ""))
+            ambition_tier=str(d.get("ambition_tier", "") or ""),
+            refinement_history=list(d.get("refinement_history") or []))
 
 
 @dataclass

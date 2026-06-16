@@ -122,6 +122,17 @@ def metrics_report(store: Store) -> str:
         for gate, c in gates.most_common():
             bar = "█" * round(c / max(gates.values()) * 24)
             out.append(f"  {gate:<22} {c:>3}  {bar}")
+
+    # ── Search & Grounding ──────────────────────────────────────────────
+    retrieval_fail = sum(1 for r in rows if r.get("retrieval_failed"))
+    degraded = sum(1 for r in rows if r.get("degraded"))
+    
+    out.append("")
+    out.append("  SEARCH & GROUNDING:")
+    out.append("  " + "─" * 50)
+    out.append(f"  total search outages  {retrieval_fail}  ({retrieval_fail/n*100:.1f}%)")
+    out.append(f"  degraded (local) runs {degraded}  ({degraded/n*100:.1f}%)")
+    
     return "\n".join(out)
 
 
@@ -268,72 +279,121 @@ def costs_report(jsonl_path: str | Path) -> str:
     if not p.exists():
         return f"No audit log at {p} — run something first."
 
-    spend_usd = 0.0
-    tok = {"input": 0, "output": 0, "total": 0, "cached": 0}
-    calls = web_calls = 0
+    # Parse full log for lifetime metrics
+    lifetime_usd_from_events = 0.0
+    tok = {"input": 0, "output": 0, "total": 0, "cached": 0, "self_corrections": 0}
     err_count = 0
     lat_total: dict[str, float] = defaultdict(float)
     lat_count: dict[str, int] = defaultdict(int)
     spend_by_phase: dict[str, float] = defaultdict(float)
-    # Per-provider call counts for failover visibility
-    calls_by_provider: dict[str, int] = defaultdict(int)
+    
+    # Per-provider call counts and spend
+    provider_stats: dict[str, dict[str, Any]] = {}
 
     with p.open() as f:
         for line in f:
-            try:
-                d = json.loads(line)
-            except Exception:
-                continue
-
-            # FIX Bug 4: skip error entries — they corrupt latency and cost totals
+            try: d = json.loads(line)
+            except: continue
+            
             ev = d.get("event")
+            # 1. Track errors (latency status="error")
             if ev == "latency" and d.get("status") == "error":
                 err_count += 1
                 continue
 
+            # 2. Authoritative spend events
             if ev == "spend":
                 amt = float(d.get("amount_usd", 0) or 0)
-                spend_usd += amt
+                lifetime_usd_from_events += amt
                 spend_by_phase[d.get("phase") or "main"] += amt
-            elif ev == "latency":
+                continue
+                
+            # 3. Latency tracking
+            if ev == "latency":
                 op = d.get("operation") or "?"
                 lat_total[op] += float(d.get("latency_ms", 0) or 0)
                 lat_count[op] += 1
-            elif d.get("message") in ("Gemini CLI usage", "Claude CLI usage"):
-                calls += 1
-                if d.get("web"):
-                    web_calls += 1
-                # Track which provider logged this call
-                provider = d.get("model", "").split("/")[0] if d.get("model") else "unknown"
-                if provider:
-                    calls_by_provider[provider] += 1
-                for k in tok:
-                    tok[k] += int(d.get(k, 0) or 0)
-                # Claude CLI reports its real billed cost per call
-                cost = float(d.get("cost_usd", 0) or 0)
-                if cost:
-                    spend_usd += cost
-                    spend_by_phase[d.get("phase") or "main"] += cost
+                # Latency events don't attribute usage to providers here to avoid phantom rows
 
-    out = ["═" * 72, "COST & USAGE (lifetime, audit log — errors excluded)", "═" * 72,
-            f"  estimated spend       ${spend_usd:.2f}",
-            f"  model calls          {calls}   ({web_calls} web-search, "
-            f"{calls - web_calls} inference)",
-            f"  errors excluded      {err_count}  (from latency totals)"]
-    if calls_by_provider:
-        out.append("  calls by provider:")
-        for prov, cnt in sorted(calls_by_provider.items(), key=lambda x: -x[1]):
-            out.append(f"    {prov:<20} {cnt}")
+            # 4. Actual usage logs (LLM calls)
+            inp = int(d.get("input", 0) or 0)
+            outp = int(d.get("output", 0) or 0)
+            if inp > 0 or outp > 0:
+                # Attribution rule: only from actual usage entries
+                provider = d.get("provider") or d.get("model", "").split("/")[0]
+                # Backward compat for older logs
+                if not provider and "message" in d:
+                    msg = d["message"].lower()
+                    if "claude cli usage" in msg: provider = "claude"
+                    elif "gemini cli usage" in msg: provider = "gemini"
+                
+                if provider:
+                    root = provider.split("/")[0].lower()
+                    s = provider_stats.setdefault(root, {"calls": 0, "input": 0, "output": 0, "cost_usd": 0.0, "self_corrections": 0})
+                    
+                    s["calls"] += 1
+                    s["input"] += inp
+                    s["output"] += outp
+                    s["self_corrections"] += 1 if d.get("self_correction") else 0
+                    
+                    tok["input"] += inp
+                    tok["output"] += outp
+                    tok["total"] += int(d.get("total", 0) or (inp + outp))
+                    tok["cached"] += int(d.get("cached", 0) or 0)
+                    tok["self_corrections"] += 1 if d.get("self_correction") else 0
+                    
+                    # Estimate cost for this entry
+                    # (Claude CLI reports its real billed cost per call in 'cost_usd')
+                    cost = float(d.get("cost_usd", 0) or 0)
+                    if cost:
+                        s["cost_usd"] += cost
+                    else:
+                        from .telemetry import PRICING
+                        price = PRICING.get(root, {"input": 0, "output": 0})
+                        s["cost_usd"] += (inp * price["input"] / 1_000_000) + (outp * price["output"] / 1_000_000)
+
+    # COST AUTHORITY RULE:
+    # 1. Total spend = max(explicit spend events, sum of per-provider costs).
+    # 2. Header total ALWAYS equals the sum of the per-provider column for internal consistency.
+    # 3. Any difference between authoritative spend and attributed usage is shown as 'legacy / unattributed'.
+    sum_attributed = sum(s["cost_usd"] for s in provider_stats.values())
+    total_spend = max(lifetime_usd_from_events, sum_attributed)
+    
+    if total_spend > sum_attributed:
+        provider_stats["legacy / unattributed"] = {"cost_usd": total_spend - sum_attributed}
+
+    out = ["═" * 72, "LIFETIME COST & USAGE BREAKDOWN (from audit log)", "═" * 72,
+            f"  total estimated spend  ${total_spend:.4f}",
+            f"  total model calls      {sum(s.get('calls', 0) for s in provider_stats.values())}",
+            f"  errors excluded        {err_count}  (from latency totals)",
+            ""]
+    
+    if provider_stats:
+        out.append("  SPEND BY AGENT / PROVIDER:")
+        out.append("  " + "─" * 50)
+        sorted_prov = sorted(provider_stats.items(), key=lambda x: -x[1].get("cost_usd", 0))
+        for prov, stats in sorted_prov:
+            cost = stats.get("cost_usd", 0)
+            calls = stats.get("calls", 0)
+            inp, outp = stats.get("input", 0), stats.get("output", 0)
+            rep = stats.get("self_corrections", 0)
+            rep_str = f", {rep} repairs" if rep else ""
+            call_str = f"({calls:>3} calls, {inp:,} in / {outp:,} out{rep_str})" if calls else ""
+            out.append(f"  {prov:<25} ${cost:7.4f}  {call_str}")
+        out.append("")
+
     out.extend([
-        f"  tokens in            {tok['input']:,}",
-        f"  tokens out           {tok['output']:,}",
-        f"  tokens total         {tok['total']:,}   ({tok['cached']:,} cached)",
+        f"  total tokens in        {tok['input']:,}",
+        f"  total tokens out       {tok['output']:,}",
+        f"  total tokens total     {tok['total']:,}   ({tok['cached']:,} cached)",
     ])
+    
     if spend_by_phase:
         out.append("")
         out.append("  spend by phase:")
         for ph, amt in sorted(spend_by_phase.items(), key=lambda x: -x[1]):
             out.append(f"    {ph:<22} ${amt:.2f}")
+
     if lat_total:
         out.append("")
         out.append("  slowest operations (total wall-clock, errors excluded):")
@@ -343,6 +403,7 @@ def costs_report(jsonl_path: str | Path) -> str:
             n = lat_count[op]
             out.append(f"    {op:<22} {ms/1000:7.1f}s total   "
                        f"{ms/n/1000:5.1f}s avg × {n}")
+
     return "\n".join(out)
 
 
