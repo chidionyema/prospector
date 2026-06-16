@@ -24,6 +24,8 @@ output**: the receipt that the filter is real and grounded.
 - [Ambition lanes — one engine, four bars](#ambition-lanes--one-engine-four-bars)
 - [Two model chains: the moat vs. the cheap stuff](#two-model-chains-the-moat-vs-the-cheap-stuff)
 - [Resilience: failover, circuit breakers, DEFER](#resilience-failover-circuit-breakers-defer)
+- [Principal Upgrades — Architectural Resilience](#principal-upgrades--architectural-resilience)
+- [Polymorphic Vetting — The Persona System](#polymorphic-vetting--the-persona-system)
 - [Self-tuning and calibration](#self-tuning-and-calibration)
 - [Configuration](#configuration)
 - [Where output lives](#where-output-lives)
@@ -332,6 +334,37 @@ outages, and — critically — to **never turn an outage into a false KILL**.
   `moat_exhausted` / `retrieval_unavailable`) and is picked up by `vet --resume`
   once the chain recovers. Source-or-die means silence is `unverifiable`, never
   `supported`; an outage is `DEFER`, never `KILL`.
+
+---
+
+## Principal Upgrades — Architectural Resilience
+
+As a Principal Engineer upgrade (Part 16), the engine implements three advanced strategies to ensure grounding integrity and maximize the value of failure data.
+
+- **Domain-Aware Patience (Tiered Timeouts):** The engine doesn't treat every URL equally. While a general 4s timeout prevents waiting on dead hosts, **authoritative sources** (e.g., FT, Reuters, .gov, .edu, .int) are granted a **15s "Deep-Grounding" window**. This prevents "Low-Brow Drift" where the engine biases toward fast SEO junk and drops high-quality, high-latency evidence.
+- **Stochastic Full-Vetting (1-in-10 Audit):** To keep the Adaptive Controller from playing "whack-a-mole," every 10th candidate bypasses the kill-fast short-circuit. Even if it fails gate #1, it is forced through the entire gauntlet. This sacrifices ~10% efficiency to gather a **multi-dimensional failure surface**, allowing the system to identify correlations between different business-model failures.
+- **Shadow Moats (Parallel Verification):** The engine infrastructure supports running an **experimental operator** in parallel with the primary moat. Drift between the primary and experimental verdicts is logged to `prospector.jsonl`, allowing new models (e.g. DeepSeek-R1 or O1) to be vetted against the "Founder-Fence" invariants before they are promoted to primary.
+
+---
+
+## Polymorphic Vetting — The Persona System
+
+Prospector implements a **Polymorphic Vetting Pipeline** (Part 16 principal upgrade) that allows the entire engine to be "tinted" with a specific analytical persona. This separates the clinical **grounding in reality** (the Moat) from the **analytical judgment** (the Persona).
+
+- **Analytical Personas (`--persona`):** Swappable lenses that provide unique biases for generation, truth-judgment, and adversarial analysis.
+  - `shark`: Kevin O'Leary mode — obsessed with margins, moats, and $100M+ scale.
+  - `minimalist`: Solopreneur mode — focused on automation, low-complexity, and high laptop cashflow.
+  - `academic`: Research mode — requires high-fidelity peer-reviewed evidence and first-principles logic.
+- **Advisory Board (`--board`):** Enables **Analytical Multi-Tenancy**. The candidate is vetted by multiple shadow personas in parallel. Discrepancies between the primary decision and the Advisory Board (e.g., "Shark passes, but Minimalist kills on complexity") are logged for deep analysis.
+
+Example usage:
+```bash
+# Vet with a specific persona
+python -m prospector.run vet --title "X" --persona shark
+
+# Run a signal through the full Advisory Board
+python -m prospector.run signal --file signal.txt --board
+```
 
 ---
 

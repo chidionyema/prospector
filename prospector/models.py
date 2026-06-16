@@ -231,7 +231,10 @@ class Dossier:
     # Persisted so the audit trail shows exactly which brains were used, including
     # any failover steps when the primary moat was exhausted mid-run.
     provider_chain: str = ""
+    # The active persona that 'tinted' the analysis (Part 16).
+    persona: str = ""
     created_at: str = ""
+
     reverify_due_at: Optional[str] = None
     # True when ANY decisive ruling in this dossier (the gate that fired, or — for a
     # survivor — any check / the adversarial pass) was served by the cheap emergency

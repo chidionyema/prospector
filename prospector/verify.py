@@ -211,7 +211,7 @@ def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int) -> list[
 
 @track_latency(name="verdict_for")
 def verdict_for(op: Operator, cand: Candidate, check_name: str,
-                sources: list[Source]) -> CheckResult:
+                sources: list[Source], cfg: Config) -> CheckResult:
     """Rule ONLY from the provided passages. Silence => unverifiable.
 
     FIX #2: passages are truncated to VERDICT_PASSAGE_TRUNCATE chars — enough for
@@ -232,12 +232,18 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
                            confidence=0.0,
                            rationale="No passages retrieved; downgraded (graceful degradation).",
                            degraded=True)
+    
+    # Persona bias (Part 16 principal upgrade)
+    persona = cfg.personas.get(cfg.active_persona) or {}
+    verdict_bias = persona.get("verdict_bias", "")
+
     # FIX #2: truncate passages to reduce verdict input tokens by ~5-6x.
     # Format: [source_id] <truncated_text>  (url and title are in the prompt template).
     passages = "\n".join(
         f"[{s.source_id}] {s.text[:VERDICT_PASSAGE_TRUNCATE]}" for s in sources)
     system, user = render("verdict", candidate_json=json.dumps(cand.to_dict()),
-                          check_name=check_name, check_question=CHECKS[check_name])
+                          check_name=check_name, check_question=CHECKS[check_name],
+                          verdict_bias=verdict_bias)
     user = user.replace("{for each: [source_id] (url, published_at) text}", passages)
     user += f"\n\nPassages:\n{passages}"
     try:
@@ -363,7 +369,7 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     # + guardrailed cheap tail), NOT by query_op (the non-critical query/gen chain).
     # query_op above is used only for mechanical query-generation.
     try:
-        result = verdict_for(op, cand, check_name, uniq)
+        result = verdict_for(op, cand, check_name, uniq, cfg)
     except ProviderExhaustedError as e:
         logger.warning(f"All brains exhausted ruling {check_name}: {e}; deferring",
                        extra={"check": check_name})
@@ -386,10 +392,16 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
     # for venture/default => byte-for-byte the original prompt (golden-set safe).
     lane = cfg.lanes.get(cfg.active_lane) or {}
     lane_directive = lane.get("adversarial_directive") or ""
+    
+    # Persona bias (Part 16 principal upgrade)
+    persona = cfg.personas.get(cfg.active_persona) or {}
+    adv_bias = persona.get("adversarial_bias", "")
+
     verification_json = json.dumps([c.to_dict() for c in checks])
     system, user = render("adversarial", candidate_json=json.dumps(cand.to_dict()),
                           verification_json=verification_json,
-                          lane_directive=lane_directive)
+                          lane_directive=lane_directive,
+                          adversarial_bias=adv_bias)
     try:
         data = op.complete_json(system, user, temperature=0.3)
         citations = [str(c) for c in (data.get("citations") or [])]
@@ -424,6 +436,7 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
            on_check: Optional[Callable[[CheckResult], None]] = None,
            query_op: Optional[Operator] = None,
            skip_adversarial: bool = False,
+           full_vet: bool = False,
            ) -> tuple[list[CheckResult], Optional[AdversarialResult], Optional[str]]:
     """Run the six checks kill-fast. Returns (checks_run, adversarial_or_None,
     first_failing_gate_or_None). Stops at the first hard fail (skips remaining checks
@@ -433,6 +446,8 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
         skip_adversarial: When True, skips the adversarial pass entirely.  Used by the
             golden-set harness to isolate the six-check logic from the adversarial layer.
             The adversarial pass must be validated separately (promotion gate).
+        full_vet: When True, bypasses the kill-fast short-circuit and runs ALL checks.
+            Used to gather a complete failure surface for adaptive learning.
     """
     checks: list[CheckResult] = []
     # Kill-fast order is driven by config (cheapest decisive gates first), so config
@@ -448,20 +463,30 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
         run_order = gated + extras
     else:
         run_order = gated + [c for c in DEFAULT_CHECKS if c not in gated]
+    
+    first_failing_gate = None
+    
     for name in run_order:
         res = run_check(op, search, cfg, cand, name, query_op=query_op)
         checks.append(res)
         if on_check:
             on_check(res)
-        # A retrieval outage on a decisive gate means we cannot rule. Defer the whole
-        # candidate (re-vet later) rather than let a failed search count as a kill.
+        
+        # Determine if this gate fired
+        gate_fired = False
         if res.retrieval_failed and name in cfg.gate_map():
-            logger.warning(f"Deferring candidate: retrieval failed on gate {name!r}",
-                           extra={"gate": name, "deferred": True})
-            return checks, None, DEFER_GATE
-        if is_hard_fail(name, res, cfg):
+            gate_fired = True
+            if first_failing_gate is None:
+                first_failing_gate = DEFER_GATE
+        elif is_hard_fail(name, res, cfg):
+            gate_fired = True
+            if first_failing_gate is None:
+                first_failing_gate = name
+
+        # Short-circuit ONLY if not full_vet
+        if gate_fired and not full_vet:
             logger.info(f"Kill-fast triggered by gate: {name}", extra={"gate": name})
-            return checks, None, name        # short-circuit
+            return checks, None, first_failing_gate
 
     # adversarial() calls op.complete_json — if the moat chain (Claude → Gemini) is
     # exhausted, it raises ProviderExhaustedError.  Catch it here so the candidate
@@ -475,10 +500,15 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
             logger.warning(f"Moat exhausted during adversarial pass: {e}; deferring candidate "
                            f"{cand.candidate_id!r} (adversarial step unrun — re-vet when moat recovers)",
                            extra={"candidate_id": cand.candidate_id, "provider_exhausted": str(e)[:200]})
-            return checks, None, "moat_exhausted"
+            return checks, None, first_failing_gate or "moat_exhausted"
+        
         if cfg.adversarial_decisive_kills and adv.decisive:
-            logger.info("Kill-fast triggered by adversarial pass")
-            return checks, adv, "adversarial_decisive"
+            if first_failing_gate is None:
+                first_failing_gate = "adversarial_decisive"
+            if not full_vet:
+                logger.info("Kill-fast triggered by adversarial pass")
+                return checks, adv, first_failing_gate
     else:
         adv = None
-    return checks, adv, None
+    
+    return checks, adv, first_failing_gate

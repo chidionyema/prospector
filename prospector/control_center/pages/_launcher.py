@@ -170,10 +170,20 @@ def _render_vet_form():
         title = st.text_input("Title *", placeholder="e.g. Fuel duty rebate automation")
         one_liner = st.text_input("One-liner", placeholder="Short description")
         why_now = st.text_input("Why now", placeholder="e.g. HMRC rule change 2024")
-        lane = st.selectbox("Lane",
-                           ["", "venture", "operator", "founder", "scout"], index=0)
-        operator = st.selectbox("Operator",
-                               ["mock", "gemini_cli", "claude", "gemini"], index=1)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            lane = st.selectbox("Lane",
+                               ["", "venture", "operator", "founder", "scout"], index=0)
+            operator = st.selectbox("Operator",
+                                   ["mock", "gemini_cli", "claude", "gemini"], index=1)
+        with col2:
+            persona = st.selectbox("Persona",
+                                  ["", "shark", "minimalist", "academic"], index=0,
+                                  help="Analytical bias to 'tint' the analysis.")
+            board = st.checkbox("Advisory Board mode", value=False,
+                               help="Run shark, minimalist, and academic in parallel.")
+
         fixtures = st.checkbox("Offline mode (--fixtures)", value=True)
         publish = st.checkbox("Publish on PASS (requires golden certification)")
 
@@ -181,7 +191,7 @@ def _render_vet_form():
 
         submitted = st.form_submit_button("🚀 Launch vet", type="primary")
         if submitted and title:
-            _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish)
+            _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish, persona, board)
         elif submitted:
             st.warning("Title is required.")
 
@@ -193,10 +203,20 @@ def _render_signal_form():
                            placeholder="e.g. Rising energy costs for SME manufacturers",
                            height=4)
         count = st.slider("Candidates to generate", 1, 10, 3)
-        lane = st.selectbox("Lane",
-                           ["", "venture", "operator", "founder", "scout"], index=0)
-        operator = st.selectbox("Operator",
-                               ["mock", "gemini_cli", "claude", "gemini"], index=1)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            lane = st.selectbox("Lane",
+                               ["", "venture", "operator", "founder", "scout"], index=0)
+            operator = st.selectbox("Operator",
+                                   ["mock", "gemini_cli", "claude", "gemini"], index=1)
+        with col2:
+            persona = st.selectbox("Persona",
+                                  ["", "shark", "minimalist", "academic"], index=0,
+                                  help="Analytical bias to 'tint' the analysis.")
+            board = st.checkbox("Advisory Board mode", value=False,
+                               help="Run shark, minimalist, and academic in parallel.")
+
         fixtures = st.checkbox("Offline mode (--fixtures)", value=True)
         publish = st.checkbox("Publish on PASS (requires golden certification)")
 
@@ -204,7 +224,7 @@ def _render_signal_form():
 
         submitted = st.form_submit_button("🚀 Launch signal", type="primary")
         if submitted and text:
-            _launch_signal(text, count, lane, operator, fixtures, publish)
+            _launch_signal(text, count, lane, operator, fixtures, publish, persona, board)
         elif submitted:
             st.warning("Signal text is required.")
 
@@ -214,29 +234,48 @@ def _render_generate_form():
         st.markdown("**Direct candidate generation**")
         candidates = st.slider("Candidates", 1, 20, 5)
         exploration = st.slider("Exploration level", 0.2, 0.9, 0.5, 0.1)
-        lane = st.selectbox("Lane",
-                           ["", "venture", "operator", "founder", "scout"], index=0)
-        operator = st.selectbox("Operator",
-                               ["mock", "gemini_cli", "claude", "gemini"], index=1)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            lane = st.selectbox("Lane",
+                               ["", "venture", "operator", "founder", "scout"], index=0)
+            operator = st.selectbox("Operator",
+                                   ["mock", "gemini_cli", "claude", "gemini"], index=1)
+        with col2:
+            persona = st.selectbox("Persona",
+                                  ["", "shark", "minimalist", "academic"], index=0,
+                                  help="Analytical bias to 'tint' the analysis.")
+            board = st.checkbox("Advisory Board mode", value=False,
+                               help="Run shark, minimalist, and academic in parallel.")
+
         fixtures = st.checkbox("Offline mode (--fixtures)", value=True)
 
         _scope_hint("generate", candidates, operator, fixtures)
 
         submitted = st.form_submit_button("🚀 Launch generate", type="primary")
         if submitted:
-            _launch_generate(candidates, exploration, lane, operator, fixtures)
+            _launch_generate(candidates, exploration, lane, operator, fixtures, persona, board)
 
 
 def _render_discover_form():
     with st.form("discover_form"):
         st.markdown("**Discover opportunities from sectors**")
         count = st.slider("Discoveries", 1, 20, 5)
-        dry_run = st.checkbox("Dry run", value=True)
-        fixtures = st.checkbox("Offline mode (--fixtures)", value=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            dry_run = st.checkbox("Dry run", value=True)
+            fixtures = st.checkbox("Offline mode (--fixtures)", value=True)
+        with col2:
+            persona = st.selectbox("Persona",
+                                  ["", "shark", "minimalist", "academic"], index=0,
+                                  help="Analytical bias to 'tint' the analysis.")
+            board = st.checkbox("Advisory Board mode", value=False,
+                               help="Run shark, minimalist, and academic in parallel.")
 
         submitted = st.form_submit_button("🚀 Launch discover", type="primary")
         if submitted:
-            _launch_discover(count, dry_run, fixtures)
+            _launch_discover(count, dry_run, fixtures, persona, board)
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +313,7 @@ def _scope_hint(mode: str, candidates: int, operator: str, fixtures: bool):
 # Launch helpers
 # ---------------------------------------------------------------------------
 
-def _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish):
+def _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish, persona, board):
     """Build argv and launch a vet run."""
     argv = ["python", "-m", "prospector.run", "vet",
             "--title", title, "--operator", operator]
@@ -284,6 +323,10 @@ def _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish):
         argv += ["--why-now", why_now]
     if lane:
         argv += ["--lane", lane]
+    if persona:
+        argv += ["--persona", persona]
+    if board:
+        argv += ["--board"]
     if fixtures:
         argv += ["--fixtures"]
     if publish:
@@ -291,11 +334,15 @@ def _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish):
     _do_launch(argv)
 
 
-def _launch_signal(text, count, lane, operator, fixtures, publish):
+def _launch_signal(text, count, lane, operator, fixtures, publish, persona, board):
     argv = ["python", "-m", "prospector.run", "signal",
             "--text", text, "--count", str(count), "--operator", operator]
     if lane:
         argv += ["--lane", lane]
+    if persona:
+        argv += ["--persona", persona]
+    if board:
+        argv += ["--board"]
     if fixtures:
         argv += ["--fixtures"]
     if publish:
@@ -303,23 +350,31 @@ def _launch_signal(text, count, lane, operator, fixtures, publish):
     _do_launch(argv)
 
 
-def _launch_generate(candidates, exploration, lane, operator, fixtures):
+def _launch_generate(candidates, exploration, lane, operator, fixtures, persona, board):
     argv = ["python", "-m", "prospector.run", "generate",
             "--candidates", str(candidates),
             "--exploration", str(exploration),
             "--operator", operator]
     if lane:
         argv += ["--lane", lane]
+    if persona:
+        argv += ["--persona", persona]
+    if board:
+        argv += ["--board"]
     if fixtures:
         argv += ["--fixtures"]
     _do_launch(argv)
 
 
-def _launch_discover(count, dry_run, fixtures):
+def _launch_discover(count, dry_run, fixtures, persona, board):
     argv = ["python", "-m", "prospector.run", "discover",
             "--count", str(count)]
     if dry_run:
         argv += ["--dry-run"]
+    if persona:
+        argv += ["--persona", persona]
+    if board:
+        argv += ["--board"]
     if fixtures:
         argv += ["--fixtures"]
     _do_launch(argv)

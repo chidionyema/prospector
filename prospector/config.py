@@ -68,6 +68,65 @@ class Spend:
 
 
 @dataclass
+class ModelDefaults:
+    """Per-provider default model identifiers. These are the *fallbacks* used
+    when a provider is selected but `cfg.model` is empty. Setting
+    `cfg.model = "..."` overrides these on a per-call basis (see
+    `operator._build_operator`).
+
+    Why this dataclass exists: model identifiers used to be hardcoded in
+    each operator's `_DEFAULT_MODEL` strings. That coupled code to a moving
+    target (provider rollouts, deprecations) and forced a code change +
+    release for every model migration. Now they're config-driven — the
+    `deepseek-chat` 2026-07-24 deprecation is a 1-line `config.yaml` change.
+
+    The defaults below are the *historical* values (what the hardcoded
+    strings used to be). If `config.yaml` is missing the `model_defaults`
+    block, these defaults are used. `config.yaml`'s `model_defaults` block
+    takes precedence.
+    """
+    # Operator defaults (one per provider kind, plus a `_fast` split for the
+    # cheap/structured variant where it exists).
+    gemini: str = "gemini-2.0-flash"
+    claude: str = "claude-opus-4-8"
+    deepseek: str = "deepseek-chat"
+    minimax: str = "MiniMax-M3"        # full reasoning model
+    minimax_fast: str = "MiniMax-M2.7"  # cheap/structured
+    ollama: str = "qwen2.5-coder:7b"
+    # Search provider defaults (the LLM that decomposes queries for the
+    # function-calling search providers). One per search provider.
+    search: dict[str, str] = field(default_factory=lambda: {
+        "deepseek": "deepseek-chat",
+        "minimax":  "MiniMax-M3",
+    })
+
+
+@dataclass
+class PriceTier:
+    """Per-token USD price for a provider."""
+    input: float = 0.0
+    output: float = 0.0
+
+
+@dataclass
+class Pricing:
+    """Per-provider token pricing (USD per 1M tokens).
+
+    Used by telemetry to estimate spend. Missing-provider lookups return
+    PriceTier(0, 0) (free / unknown / not-priced-yet) with a warning log so
+    spend is never silently wrong. The historical values from
+    `telemetry.PRICING` are the defaults; `config.yaml`'s `pricing` block
+    overrides them.
+    """
+    gemini: PriceTier = field(default_factory=lambda: PriceTier(0.10, 0.40))
+    claude: PriceTier = field(default_factory=lambda: PriceTier(3.00, 15.00))
+    deepseek: PriceTier = field(default_factory=lambda: PriceTier(0.27, 1.10))
+    minimax: PriceTier = field(default_factory=lambda: PriceTier(0.30, 0.30))
+    ollama: PriceTier = field(default_factory=lambda: PriceTier(0.00, 0.00))
+    mock: PriceTier = field(default_factory=lambda: PriceTier(0.00, 0.00))
+
+
+@dataclass
 class Config:
     # str (single brain) or list[str] (ordered failover chain, Part 9).
     operator: "str | list[str]" = "mock"
@@ -102,10 +161,22 @@ class Config:
     # WIN over the lane's generation framing). `active_profile` empty => unchanged (today).
     profiles: dict[str, Any] = field(default_factory=dict)
     active_profile: str = ""
+    # Personas (Part 16 principal refactor): Analytical multi-tenancy.
+    # A persona provides analytical bias/voice for generation, verdict, and adversarial.
+    personas: dict[str, Any] = field(default_factory=dict)
+    active_persona: str = ""
     listing: dict[str, Any] = field(default_factory=dict)
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
+    # Per-provider default model identifiers (see ModelDefaults docstring).
+    # This is the canonical home for "what model does provider X use by default".
+    # Operators / search providers consume this; the historical `_DEFAULT_MODEL`
+    # strings in operator.py are GONE.
+    model_defaults: ModelDefaults = field(default_factory=ModelDefaults)
+    # Per-provider token pricing (USD per 1M tokens). Consumed by
+    # `telemetry.get_price(provider)`; replaces the hardcoded `PRICING` dict.
+    pricing: Pricing = field(default_factory=Pricing)
 
     @property
     def store_dir(self) -> Path:
@@ -152,6 +223,9 @@ class Config:
         # directive win over the lane's generation framing. No-op when no profile active.
         if self.active_profile:
             resolved = resolved.for_profile(self.active_profile)
+        # A persona also composes OVER the lane.
+        if self.active_persona:
+            resolved = resolved.for_persona(self.active_persona)
         return resolved
 
     def for_profile(self, name: str | None) -> "Config":
@@ -166,7 +240,76 @@ class Config:
             return self
         prof = self.profiles.get(name) or {}
         new_generation = {**self.generation, **(prof.get("generation") or {})}
-        return replace(self, generation=new_generation, active_profile=name)
+        resolved = replace(self, generation=new_generation, active_profile=name)
+        # If we have an active persona, re-apply it so its generation_bias win.
+        if self.active_persona:
+            resolved = resolved.for_persona(self.active_persona)
+        return resolved
+
+    def for_persona(self, name: str | None) -> "Config":
+        """Return a Config with persona `name` analytical bias applied.
+
+        A persona can provide:
+        - `generation_bias`: Injected into the generation system prompt.
+        - `verdict_bias`: Injected into the verdict system prompt.
+        - `adversarial_bias`: Injected into the adversarial system prompt.
+        - `thresholds`: Persona-specific threshold tweaks.
+        """
+        if not name or name not in self.personas:
+            return self
+        persona = self.personas.get(name) or {}
+        # Apply threshold overrides if any
+        new_thresholds = self.thresholds
+        if persona.get("thresholds"):
+            new_thresholds = replace(self.thresholds, **persona["thresholds"])
+        
+        return replace(self, thresholds=new_thresholds, active_persona=name)
+
+
+def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
+    """Parse the `model_defaults` block from config.yaml.
+
+    The block is optional; if absent, the dataclass defaults are used (which
+    match the historical hardcoded values for backwards compatibility).
+    """
+    if not raw_md:
+        return ModelDefaults()
+    # Split the operator defaults (top-level) from the search-provider defaults
+    # (nested under `search:`). The shape mirrors ModelDefaults exactly.
+    search = raw_md.get("search") or {}
+    return ModelDefaults(
+        gemini=raw_md.get("gemini", "gemini-2.0-flash"),
+        claude=raw_md.get("claude", "claude-opus-4-8"),
+        deepseek=raw_md.get("deepseek", "deepseek-chat"),
+        minimax=raw_md.get("minimax", "MiniMax-M3"),
+        minimax_fast=raw_md.get("minimax_fast", "MiniMax-M2.7"),
+        ollama=raw_md.get("ollama", "qwen2.5-coder:7b"),
+        search=search,
+    )
+
+
+def _parse_pricing(raw_pr: dict | None) -> Pricing:
+    """Parse the `pricing` block from config.yaml. Per-provider
+    {input: usd_per_1M_input, output: usd_per_1M_output}. Missing providers
+    use the historical default (free / $0.00) — see Pricing docstring.
+    """
+    if not raw_pr:
+        return Pricing()
+    def _tier(d: dict | None, default: PriceTier) -> PriceTier:
+        if not d:
+            return default
+        return PriceTier(
+            input=float(d.get("input", default.input)),
+            output=float(d.get("output", default.output)),
+        )
+    return Pricing(
+        gemini=_tier(raw_pr.get("gemini"), Pricing().gemini),
+        claude=_tier(raw_pr.get("claude"), Pricing().claude),
+        deepseek=_tier(raw_pr.get("deepseek"), Pricing().deepseek),
+        minimax=_tier(raw_pr.get("minimax"), Pricing().minimax),
+        ollama=_tier(raw_pr.get("ollama"), Pricing().ollama),
+        mock=_tier(raw_pr.get("mock"), Pricing().mock),
+    )
 
 
 def load_config(path: str | Path | None = None) -> Config:
@@ -188,17 +331,23 @@ def load_config(path: str | Path | None = None) -> Config:
         generation=raw.get("generation") or {},
         profiles=raw.get("profiles") or {},
         active_profile=raw.get("active_profile") or "",
+        personas=raw.get("personas") or {},
+        active_persona=raw.get("active_persona") or "",
         listing=raw.get("listing") or {},
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},
+        model_defaults=_parse_model_defaults(raw.get("model_defaults")),
+        pricing=_parse_pricing(raw.get("pricing")),
     )
     # Resolve the configured active lane (if any) into the operative gate/threshold/weight
     # fields. Empty active_lane => the top-level defaults stand unchanged (today's behaviour).
     # A config-pinned active_profile (if any) is applied too; for_lane re-applies it so it
     # composes correctly. Empty active_profile => generation untouched.
     if cfg.active_lane:
-        return cfg.for_lane(cfg.active_lane)
+        cfg = cfg.for_lane(cfg.active_lane)
     if cfg.active_profile:
-        return cfg.for_profile(cfg.active_profile)
+        cfg = cfg.for_profile(cfg.active_profile)
+    if cfg.active_persona:
+        cfg = cfg.for_persona(cfg.active_persona)
     return cfg

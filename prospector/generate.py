@@ -103,6 +103,7 @@ def generate(
     gen_op: Optional[Operator] = None,
     grid_priorities: Optional[list[str]] = None,
     focus: str | None = None,
+    pass_patterns: str = "",
 ) -> list[Candidate]:
     """Generate k raw Candidate opportunities from a signal.
 
@@ -248,6 +249,10 @@ def generate(
     # model.  This cuts per-call tokens from ~2,500 to ~600 — a ~75% reduction.
     def _one_call(form: str, lens: str, audience: str, ask: int,
                    avoid: str, seed: str) -> list[Candidate]:
+        # Persona bias (Part 16 principal upgrade)
+        persona = cfg.personas.get(cfg.active_persona) or {}
+        gen_bias = persona.get("generation_bias", "")
+
         # Audience persona description for the prompt.
         aud_desc = _AUDIENCE_DESCRIPTIONS.get(audience, audience)
         system, user = render(
@@ -260,7 +265,9 @@ def generate(
             audience_persona=audience,
             audience_description=aud_desc,
             lane_directive=lane_directive,
-            focus_directive=focus_directive)
+            focus_directive=focus_directive,
+            generation_bias=gen_bias,
+            pass_patterns=pass_patterns)
         # FIX 4: Use gen_op (MiniMax, fast=True → abab6.5s-chat) for generation if
         # provided, else fall back to op.  abab6.5s-chat is the creative chat model;
         # MiniMax-M3 is a reasoning model — better at math/coding, worse at ideation.
@@ -281,11 +288,27 @@ def generate(
     def _refine_wave(candidates: list[Candidate], _gen: Operator, lane_directive: str) -> list[Candidate]:
         """Sharpen and filter candidates using a cynical analyst persona. 
         Cost Optimization: refined in a single batch per wave.
+        Skips structurally-thin candidates (title+one_liner < 50 chars) —
+        refinement won't help them survive the moat.
         """
         if not candidates or not gen_cfg.get("refinement_enabled", True):
             return candidates
-            
-        cands_data = [c.to_dict() for c in candidates]
+
+        # Split: thin candidates return unchanged (refinement can't help them),
+        # substantive candidates get the LLM refinement pass.
+        thin: list[Candidate] = []
+        substantive: list[Candidate] = []
+        for c in candidates:
+            text_len = len(str(c.title or "")) + len(str(c.one_liner or ""))
+            if text_len < 50:
+                thin.append(c)
+            else:
+                substantive.append(c)
+
+        if not substantive:
+            return thin
+
+        cands_data = [c.to_dict() for c in substantive]
         system, user = render(
             "refine", 
             candidates_json=json.dumps(cands_data, indent=2),
@@ -299,7 +322,7 @@ def generate(
             
             # Re-map and track history
             refined_cands = []
-            original_by_title = {c.title: c for c in candidates}
+            original_by_title = {c.title: c for c in substantive}
             
             for r_dict in refined_data:
                 # Find matching original candidate
@@ -328,10 +351,10 @@ def generate(
                     r_cand.refinement_history = orig.refinement_history + [history_entry]
                     refined_cands.append(r_cand)
                     
-            return refined_cands
+            return thin + refined_cands
         except Exception as e:
             logger.warning(f"Refinement wave failed: {e}")
-            return candidates # Fallback to original if refinement fails
+            return thin + substantive  # Fallback: thin + unrefined substantive
 
     candidates: list[Candidate] = []
     seen: set[str] = set()
@@ -491,6 +514,7 @@ def generate_multilane(
     gen_op: Optional[Operator] = None,
     grid_priorities: Optional[dict[str, list[str]]] = None,
     focus: str | None = None,
+    pass_patterns: str = "",
 ) -> list[Candidate]:
     """Fan generation OUT across ambition lanes for a mixed-ambition catalogue (Part 14).
 
@@ -511,7 +535,8 @@ def generate_multilane(
             op, lane_cfg, signal_text=signal_text, sector=sector,
             strategy_lens=strategy_lens, exploration_level=exploration_level,
             target_qualities=target_qualities, recent_failure_modes=recent_failure_modes,
-            k=k, gen_op=gen_op, grid_priorities=priorities, focus=focus)
+            k=k, gen_op=gen_op, grid_priorities=priorities, focus=focus,
+            pass_patterns=pass_patterns)
         for c in cands:
             c.ambition_tier = tier
         logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",

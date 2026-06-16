@@ -3,17 +3,23 @@ Adjusts exploration_level based on the rolling kill-rate to find fresh niches.
 """
 from __future__ import annotations
 
+import json
+from collections import Counter
+from typing import Optional
 from urllib.parse import urlparse
 
+from .config import Config
 from .models import Decision
-from .store import Store
 
 
-def calculate_exploration_level(store: Store, window: int = 50) -> float:
+def calculate_exploration_level(store: Store, cfg: Optional[Config] = None, 
+                               window: int = 50) -> float:
     """Determine the creativity level (0.0 to 1.0) based on recent kill-rate.
     
-    If the moat is killing almost everything (>90%), we raise exploration
-    to vary the lens and find fresh patterns.
+    PERSONA-NORMALIZED (Part 16 principal upgrade): Different personas have 
+    different baseline "severity". A 95% kill rate for the 'shark' is normal,
+    but for a 'clinical auditor' it signals a failure in generative creativity.
+    We normalize the actual kill rate against the persona's pass-bar.
     """
     rows = store.all()
     if not rows:
@@ -21,23 +27,81 @@ def calculate_exploration_level(store: Store, window: int = 50) -> float:
     
     # Sort by creation date descending to get most recent
     rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-    recent = rows[:window]
     
-    kills = sum(1 for r in recent if r.get("decision") == Decision.KILL.value)
-    kill_rate = kills / len(recent)
+    # Filter by the active persona if provided, to ensure we are comparing 
+    # apples to apples.
+    active_persona = cfg.active_persona if cfg else ""
+    persona_rows = [r for r in rows if (r.get("persona") or "") == active_persona]
     
-    # High kill-rate (>90%) -> Maximum exploration
-    if kill_rate >= 0.9:
+    # If not enough data for THIS persona, fall back to global but with 
+    # a warning/adjustment.
+    target_rows = persona_rows[:window] if len(persona_rows) >= 10 else rows[:window]
+    
+    if not target_rows:
+        return 0.5
+
+    kills = sum(1 for r in target_rows if r.get("decision") == Decision.KILL.value)
+    kill_rate = kills / len(target_rows)
+    
+    # Baseline severity adjustment:
+    # Shark (bar=3.8) -> expects ~95% kill
+    # Default (bar=3.2) -> expects ~70% kill
+    baseline = 0.7
+    if cfg and active_persona:
+        p_cfg = cfg.personas.get(active_persona) or {}
+        p_thresh = p_cfg.get("thresholds", {}).get("min_composite_to_pass", 3.2)
+        # Heuristic: every 0.1 above 3.2 adds 5% to the expected kill-rate baseline
+        baseline = min(0.98, 0.7 + (max(0, p_thresh - 3.2) * 0.5))
+
+    # Normalized deviation: how much are we killing compared to what we EXPECT?
+    deviation = kill_rate - baseline
+
+    # High deviation (>15% above baseline) -> Maximum exploration
+    if deviation >= 0.15:
         return 1.0
-    # Healthy kill-rate (70-90%) -> High exploration
-    if kill_rate >= 0.7:
+    # Moderate deviation (>5% above baseline) -> High exploration
+    if deviation >= 0.05:
         return 0.8
-    # Low kill-rate (<30%) -> Low exploration (exploit current patterns)
-    if kill_rate <= 0.3:
+    # Negative deviation (lower kill rate than expected) -> Exploit current patterns
+    if deviation <= -0.1:
         return 0.2
     
     # Default/Medium
     return 0.5
+
+
+def calculate_persona_drift(store: Store, window: int = 50) -> dict[str, float]:
+    """Calculate the 'Philosophy Delta' — how much personas disagree.
+    
+    Consensus Collapse occurs when all personas agree 100% of the time, 
+    meaning they aren't providing distinct analytical value.
+    Returns: {persona_pair: disagreement_rate}
+    """
+    # This requires looking at the audit log for ADVISORY BOARD DRIFT events
+    # since the SQLite store only holds the final decision.
+    drift_events = []
+    jsonl_path = store._root / "prospector.jsonl"
+    if not jsonl_path.exists():
+        return {}
+
+    total_board_vets = 0
+    disagreements = Counter()
+
+    for line in jsonl_path.read_text().splitlines():
+        try:
+            d = json.loads(line)
+            if "ADVISORY BOARD" in d.get("message", ""):
+                total_board_vets += 1
+                if "differs" in d.get("message", ""):
+                    shadow = d.get("shadow_persona", "unknown")
+                    disagreements[shadow] += 1
+        except Exception:
+            pass
+    
+    if total_board_vets == 0:
+        return {}
+
+    return {p: count / total_board_vets for p, count in disagreements.items()}
 
 
 # Lenses ordered from convergent (exploit) to divergent (explore). The divergent
@@ -75,7 +139,8 @@ def select_lenses(cfg, exploration_level: float, k: int = 5) -> str:
     return ", ".join(chosen[:k]) if k else ", ".join(chosen)
 
 
-def get_recent_failure_modes(store: Store, window: int = 20) -> str:
+def get_recent_failure_modes(store: Store, cfg: Optional[Config] = None, 
+                             window: int = 20) -> str:
     """Summarise WHY recent ideas died — not just which gate fired.
 
     The gate name alone ("value_durability (16)") tells the generator nothing
@@ -85,9 +150,15 @@ def get_recent_failure_modes(store: Store, window: int = 20) -> str:
     learning signal: it lets generation pivot the value-capture model away from a
     commoditised category instead of re-submitting the same dead shape.
     """
+    active_persona = cfg.active_persona if cfg else ""
     rows = store.all(decision=Decision.KILL.value)
-    rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-    recent = rows[:window]
+    
+    # Persona-specific learning (Part 16 principal upgrade)
+    persona_rows = [r for r in rows if (r.get("persona") or "") == active_persona]
+    target_rows = persona_rows[:window] if len(persona_rows) >= 5 else rows[:window]
+
+    target_rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    recent = target_rows[:window]
     if not recent:
         return ""
 
@@ -202,7 +273,6 @@ def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> st
     Includes:
       - Top 2 PASSes by composite score.
       - Top 2 Decisive Kills (adversarial certainty).
-      - 1 Diverse PASS (via DPP if op provided).
     """
     all_pass = store.all(decision=Decision.PASS.value)
     all_kill = store.all(decision=Decision.KILL.value)
@@ -212,36 +282,29 @@ def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> st
 
     exemplars = []
 
-    # 1. Top Winners
-    winners = sorted(all_pass, key=lambda x: x.get("composite") or 0.0, reverse=True)[:2]
+    # 1. Top Winners — load full dossier for one_liner
+    winners = sorted(all_pass, key=lambda x: x.get("composite") or 0.0, reverse=True)[:3]
     for w in winners:
-        exemplars.append(f"PASS (Score {w.get('composite'):.1f}): {w['title']} - {w['one_liner']}")
+        cid = w.get("candidate_id", "")
+        dossier = store.get(cid) if cid else None
+        cand = (dossier or {}).get("candidate", {}) if dossier else {}
+        one_liner = cand.get("one_liner", "") or w.get("one_liner", "")
+        title = cand.get("title", "") or w.get("title", "")
+        comp = w.get("composite", 0)
+        exemplars.append(f"PASS (Score {float(comp):.1f}): {title} - {one_liner}")
 
-    # 2. Diverse Winner (DPP-ish)
-    if op and len(all_pass) > 2:
-        from .novelty import select_diverse_candidates
-        # Exclude the winners we already picked
-        winner_ids = {w["candidate_id"] for w in winners}
-        diverse_pool = []
-        for p in all_pass:
-            if p["candidate_id"] not in winner_ids:
-                # Mock candidate for DPP
-                from .models import Candidate
-                c = Candidate(title=p["title"], one_liner=p["one_liner"])
-                diverse_pool.append((c, p.get("composite") or 1.0, ""))
-        
-        if diverse_pool:
-            diverse = select_diverse_candidates(op, diverse_pool, k=1)
-            for d in diverse:
-                exemplars.append(f"PASS (Diverse): {d.title} - {d.one_liner}")
-
-    # 3. Decisive Kills (Feedback on what to avoid)
+    # 2. Decisive Kills (Feedback on what to avoid)
     decisive_kills = sorted(all_kill, key=lambda x: x.get("adversarial_confidence") or 0.0, reverse=True)[:2]
     for k in decisive_kills:
         reason = "Critique decisive"
         if k.get("gate_fired"):
             reason = f"Killed by {k['gate_fired']}"
-        exemplars.append(f"KILL ({reason}): {k['title']} - {k['one_liner']}")
+        cid = k.get("candidate_id", "")
+        dossier = store.get(cid) if cid else None
+        cand = (dossier or {}).get("candidate", {}) if dossier else {}
+        one_liner = cand.get("one_liner", "") or k.get("one_liner", "")
+        title = cand.get("title", "") or k.get("title", "")
+        exemplars.append(f"KILL ({reason}): {title} - {one_liner}")
 
     if not exemplars:
         return ""
@@ -249,10 +312,107 @@ def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> st
     return "\nFEEDBACK FROM HISTORIC VERIFICATIONS (Learn from these):\n" + "\n".join(f"- {e}" for e in exemplars)
 
 
+def get_pass_traits(store, n: int = 20) -> str:
+    """Extract common traits from PASS survivors for positive learning.
+
+    Analyzes recent PASS dossiers for:
+      - sectors (tags.sector)
+      - structural forms (structural_form)
+      - audience personas (tags.audience)
+      - durable wedge types (from hypotheses and tags)
+
+    Returns a compact summary string for injection into generation prompts,
+    or "" when no PASSes exist (graceful degradation).
+    """
+    all_pass = store.all(decision=Decision.PASS.value)
+    if not all_pass:
+        return ""
+
+    recent = sorted(all_pass, key=lambda x: x.get("created_at", ""), reverse=True)[:n]
+
+    sectors: dict[str, int] = {}
+    forms: dict[str, int] = {}
+    audiences: dict[str, int] = {}
+    wedges: dict[str, int] = {}
+    titles_one_liners: list[str] = []
+
+    _WEDGE_KEYWORDS = [
+        "proprietary_data", "regulatory_license", "network_effect",
+        "switching_cost", "exclusive_channel", "technical_ip",
+        "regulatory", "arbitrage", "compliance", "statutory",
+        "adjudication", "captive", "embedded", "compounding",
+    ]
+
+    for r in recent:
+        cid = r.get("candidate_id", "")
+        dossier = store.get(cid) if cid else None
+        if not dossier:
+            continue
+        cand = dossier.get("candidate", {})
+        if not cand:
+            continue
+
+        # Sector
+        tags = cand.get("tags", {}) or {}
+        sector = str(tags.get("sector", "") or "").strip().lower()
+        if sector:
+            sectors[sector] = sectors.get(sector, 0) + 1
+
+        # Structural form — check both row level and candidate dict
+        form = str(r.get("structural_form", "") or cand.get("structural_form", "") or "").strip().lower()
+        if form:
+            forms[form] = forms.get(form, 0) + 1
+
+        # Audience
+        aud = str(tags.get("audience", "") or "").strip().lower()
+        if aud:
+            audiences[aud] = audiences.get(aud, 0) + 1
+
+        # Wedge type — mine from hypothesis and durable_wedge_type field
+        hypothesis = str(cand.get("hypothesis", "") or "").lower()
+        wedge_field = str(cand.get("durable_wedge_type", "") or "").strip().lower()
+        if wedge_field and wedge_field != "none":
+            wedges[wedge_field] = wedges.get(wedge_field, 0) + 1
+        for kw in _WEDGE_KEYWORDS:
+            if kw in hypothesis:
+                wedges[kw] = wedges.get(kw, 0) + 1
+
+        # Title + one_liner for pattern extraction
+        tl = f"{cand.get('title', '')} — {cand.get('one_liner', '')}"
+        if tl.strip():
+            titles_one_liners.append(tl[:120])
+
+    parts: list[str] = []
+    top_sectors = sorted(sectors.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_forms = sorted(forms.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_audiences = sorted(audiences.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_wedges = sorted(wedges.items(), key=lambda x: x[1], reverse=True)[:3]
+
+    parts.append("SURVIVOR PATTERNS — ideas that ACTUALLY PASSED the moat share these traits:")
+    if top_sectors:
+        parts.append(f"  Sectors: {', '.join(f'{s}({c})' for s, c in top_sectors)}")
+    if top_forms:
+        parts.append(f"  Forms: {', '.join(f'{f}({c})' for f, c in top_forms)}")
+    if top_audiences:
+        parts.append(f"  Audiences: {', '.join(f'{a}({c})' for a, c in top_audiences)}")
+    if top_wedges:
+        parts.append(f"  Wedges: {', '.join(f'{w}({c})' for w, c in top_wedges)}")
+
+    if titles_one_liners:
+        parts.append("  Examples (real PASS survivors):")
+        for t in titles_one_liners[:3]:
+            parts.append(f"    - {t}")
+
+    return "\n".join(parts)
+
+
 def calculate_grid_priorities(store: Store, cfg: Config) -> dict[str, list[str]]:
-    """Stage 3: Identify underrepresented (tier x form) cells.
-    
-    Returns a dict {tier: [underrepresented_forms]} to bias the scheduler.
+    """Stage 3: Identify underrepresented AND fertile (tier x form) cells.
+
+    Returns a dict {tier: [priority_forms]} to bias the scheduler.
+    Underrepresented forms (zero PASSes) get top priority.
+    Fertile forms (highest PASS counts) get boosted — repeated 2-3x
+    in the priority list so they get more generation budget.
     """
     rows = store.all(decision=Decision.PASS.value)
     
@@ -275,18 +435,28 @@ def calculate_grid_priorities(store: Store, cfg: Config) -> dict[str, list[str]]
         if tier in grid and form in grid[tier]:
             grid[tier][form] += 1
             
-    # Identify priorities: forms with 0 passes in that tier
+    # Identify priorities: zero-count forms first, then fertile forms boosted
     priorities: dict[str, list[str]] = {}
     for tier, forms in grid.items():
         if not forms:
             continue
-        # Find forms with zero passes
-        empty = [f for f, count in forms.items() if count == 0]
-        if empty:
-            priorities[tier] = empty
-        else:
-            # If none are empty, target the ones with the minimum count
-            min_count = min(forms.values())
-            priorities[tier] = [f for f, count in forms.items() if count == min_count]
+        tier_priorities: list[str] = []
+
+        # 1. Zero-count forms (exploration — need at least one PASS)
+        zero_forms = [f for f, count in forms.items() if count == 0]
+        tier_priorities.extend(zero_forms)
+
+        # 2. Fertile forms (exploitation — boost what works)
+        nonzero = [(f, count) for f, count in forms.items() if count > 0]
+        if nonzero:
+            nonzero.sort(key=lambda x: x[1], reverse=True)
+            # Boost the top 2 fertile forms: repeat top 3x, second 2x
+            if len(nonzero) >= 1:
+                tier_priorities.extend([nonzero[0][0]] * 3)
+            if len(nonzero) >= 2:
+                tier_priorities.extend([nonzero[1][0]] * 2)
+
+        if tier_priorities:
+            priorities[tier] = tier_priorities
             
     return priorities

@@ -149,6 +149,9 @@ def vet_candidate(
     show_checks: bool = False,
     label: Optional[str] = None,
     skip_adversarial: bool = False,
+    full_vet: bool = False,
+    experimental_op: Optional[Operator] = None,
+    board_personas: Optional[list[str]] = None,
 ) -> Dossier:
     """Run the full verification pipeline for a single candidate.
 
@@ -163,9 +166,16 @@ def vet_candidate(
     score (cheap). Pass publish=True to generate listing content and publish on
     PASS. ``query_op`` is an optional lighter model for the mechanical query-gen
     step (model tiering); falls back to ``op``.
+
+    Args:
+        full_vet: When True, bypasses kill-fast and runs ALL checks (Stochastic Full-Vetting).
+        experimental_op: Optional operator to run verification against in parallel
+            (Shadow Moat). Findings are logged but do not change the dossier decision.
+        board_personas: Optional list of persona names to run as 'Advisory Board'. 
+            Each persona runs verification in parallel and findings are logged.
     """
     set_context(candidate_id=cand.candidate_id, phase="vetting")
-    logger.info(f"Vetting candidate: {cand.title!r}")
+    logger.info(f"Vetting candidate: {cand.title!r} (full_vet={full_vet}, persona={cfg.active_persona})")
 
     from . import progress
 
@@ -179,11 +189,13 @@ def vet_candidate(
         # Concurrent signal pool: tag EVERY line with the candidate so interleaved
         # output from parallel vets stays attributable, and emit a line the moment
         # the vet starts so the user gets immediate feedback (not a 60s silence).
-        progress.note(f"{label} ▸ vetting started")
+        progress.note(f"{label} ▸ vetting started" + (" [FULL-VET]" if full_vet else ""))
         def on_check(res) -> None:
             progress.note(_check_line(res, prefix=f"{label} "))
     elif show_checks:
         # Single-vet: no interleaving, so no candidate prefix needed.
+        if full_vet:
+            progress.note("Full-vet mode: short-circuit disabled.")
         def on_check(res) -> None:
             progress.note(_check_line(res))
 
@@ -191,10 +203,39 @@ def vet_candidate(
     # Build the moat operator chain string for the audit trail (e.g. "claude/claude-opus-4-8 →
     # gemini/2.5-flash-lite").  FallbackOperator.name is already in that format.
     _provider_chain = getattr(op, "name", "") or getattr(op, "model_version", "") or str(op)
+    
+    # Shadow Moat: Run experimental verification in parallel if requested.
+    # We do this first (or concurrently) to ensure it doesn't wait for the primary.
+    exp_res = None
+    if experimental_op:
+        logger.info(f"SHADOW MOAT: Running experimental vet for {cand.title!r}")
+        try:
+            # Run a silent verification (no progress updates)
+            exp_res = verify(experimental_op, search, cfg, cand, 
+                            skip_adversarial=skip_adversarial, full_vet=full_vet)
+        except Exception as e:
+            logger.warning(f"Shadow Moat failed for {cand.candidate_id}: {e}")
+
+    # ADVISORY BOARD (Part 16 principal upgrade): Run shadow personas in parallel.
+    board_results = {}
+    if board_personas:
+        for p_name in board_personas:
+            if p_name == cfg.active_persona: continue
+            logger.info(f"ADVISORY BOARD: persona {p_name!r} analyzing {cand.title!r}")
+            try:
+                p_cfg = cfg.for_persona(p_name)
+                # Run silent verification with shadow persona
+                p_res = verify(op, search, p_cfg, cand, 
+                               skip_adversarial=skip_adversarial, full_vet=full_vet)
+                board_results[p_name] = p_res
+            except Exception as e:
+                logger.warning(f"Advisory Board failed for persona {p_name!r}: {e}")
+
     try:
         checks, adversarial, gate = verify(op, search, cfg, cand,
                                            on_check=on_check, query_op=query_op,
-                                           skip_adversarial=skip_adversarial)
+                                           skip_adversarial=skip_adversarial,
+                                           full_vet=full_vet)
     except ProviderExhaustedError as e:
         # Both Claude AND Gemini are exhausted — the moat is down.  This is NOT a
         # candidate quality failure; defer the candidate for re-vet when the moat
@@ -209,6 +250,25 @@ def vet_candidate(
                      message=f"MOAT OUTAGE: {cand.candidate_id} deferred — {str(e)[:100]}")
         checks, adversarial = [], None
         gate = "moat_exhausted"
+
+    # Log Shadow Moat drift
+    if exp_res:
+        exp_checks, exp_adv, exp_gate = exp_res
+        if exp_gate != gate:
+            logger.warning(f"SHADOW MOAT DRIFT for {cand.candidate_id}: "
+                           f"Primary={gate} vs Experimental={exp_gate}",
+                           extra={"primary": gate, "experimental": exp_gate, 
+                                  "candidate": cand.title})
+    
+    # Log Advisory Board findings
+    for p_name, (p_checks, p_adv, p_gate) in board_results.items():
+        if p_gate != gate:
+            logger.info(f"ADVISORY BOARD ({p_name!r}) differs for {cand.candidate_id}: "
+                        f"Primary={gate} vs {p_name}={p_gate}",
+                        extra={"primary_persona": cfg.active_persona, "shadow_persona": p_name,
+                               "primary_gate": gate, "shadow_gate": p_gate})
+        else:
+            logger.info(f"ADVISORY BOARD ({p_name!r}) agrees with primary decision ({gate})")
 
     score = None
     if gate is None:
@@ -284,6 +344,7 @@ def run_signal(
     exploration: Optional[float] = None,
     lanes: Optional[list] = None,
     focus: Optional[str] = None,
+    board_personas: Optional[list[str]] = None,
 ) -> list[Dossier]:
     """Generate candidates from a signal, dedup, prescreen, vet each, return dossiers.
 
@@ -351,22 +412,28 @@ def run_signal(
         logger.info(f"Chain: {' → '.join(n for n, _ in tiers)}")
         return chain
 
-    # gen_op: deepseek first (fastest for ~7000-char generation prompts: ~27s),
-    # then minimax (~54s), then gemini_cli (~21s) as fallbacks.
-    # Note: ollama dropped — RAM pressure causes 100s+ probes and timeouts on large prompts.
-    # Note: openrouter dropped — CF bot protection is persistent (all models blocked).
-    # Run `python -m prospector.run operators --gen` to re-diagnose and update this order.
+    # gen_op: gemini API first (~1s per call, paid quota), deepseek fallback.
     gen_op = _build_operator_chain(
-        ("deepseek", "minimax", "gemini_cli"),
-        fast=True   # M2.7 non-reasoning for MiniMax when it serves as fallback
-    )
-
-    # fast_op: deepseek first (fastest), then minimax, then gemini_cli fallbacks.
-    # Same reasoning as gen_op: openrouter CF-blocked, ollama too slow.
-    fast_op = _build_operator_chain(
-        ("deepseek", "minimax", "gemini_cli"),
+        ("gemini", "deepseek", "gemini_cli"),
         fast=True
     )
+
+    # fast_op: same order.
+    fast_op = _build_operator_chain(
+        ("gemini", "deepseek", "gemini_cli"),
+        fast=True
+    )
+
+    # Shadow Moat (Part 16 principal upgrade): optionally load an experimental 
+    # operator to run in parallel. Findings are logged for drift analysis.
+    experimental_op = None
+    exp_name = getattr(cfg, "experimental_operator", None)
+    if exp_name:
+        try:
+            experimental_op = _build_operator(exp_name, cfg)
+            logger.info(f"SHADOW MOAT ENABLED: using experimental operator {exp_name!r}")
+        except Exception as e:
+            logger.warning(f"Could not initialize shadow moat operator {exp_name!r}: {e}")
 
     if search is None:
         from .retrieval import make_provider
@@ -379,8 +446,8 @@ def run_signal(
     from .adaptive import (calculate_exploration_level, get_recent_failure_modes,
                            select_lenses, blue_sky_failure_steer, get_exemplars,
                            calculate_grid_priorities)
-    expl = exploration if exploration is not None else calculate_exploration_level(store)
-    fails = get_recent_failure_modes(store)
+    expl = exploration if exploration is not None else calculate_exploration_level(store, cfg=cfg)
+    fails = get_recent_failure_modes(store, cfg=cfg)
     # Blue-sky (no signal): the kill log is domain-specific and, fed raw, drags
     # generation back into the saturated domain. Reframe it as a no-go zone +
     # cross-sector mandate so blue-sky actually ranges (Part 15B breadth KPI).
@@ -404,6 +471,10 @@ def run_signal(
                        warn_at_usd=cfg.spend.warn_at_usd)
 
     # --- Generate ---
+    # Positive learning: extract PASS survivor patterns for injection into generation.
+    from .adaptive import get_pass_traits
+    patterns = get_pass_traits(store)
+
     # FIX: MiniMax generation — gen_op (MiniMax) for generation; op (Claude/Gemini) stays
     # for verification.  gen_op falls back to op if MINIMAX_API_KEY is not configured.
     if lanes and len(lanes) > 1:
@@ -418,7 +489,8 @@ def run_signal(
         candidates = generate_multilane(
             op, cfg, lanes=lanes, lane_counts=counts, signal_text=signal_text,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
-            gen_op=gen_op, grid_priorities=grid_priorities, focus=focus)
+            gen_op=gen_op, grid_priorities=grid_priorities, focus=focus,
+            pass_patterns=patterns)
         # ambition_tier already set inside generate_multilane (c.ambition_tier = tier).
     elif lanes:
         # SINGLE pinned tier (--lane X or config active_lane): generate in that tier, tag it,
@@ -429,7 +501,8 @@ def run_signal(
         candidates = generate(
             op, cfg.for_lane(tier), signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
-            gen_op=gen_op, grid_priorities=priorities, focus=focus)
+            gen_op=gen_op, grid_priorities=priorities, focus=focus,
+            pass_patterns=patterns)
         for c in candidates:
             c.ambition_tier = tier
     else:
@@ -440,6 +513,7 @@ def run_signal(
             op, cfg, signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
+            pass_patterns=patterns,
         )
     if not candidates:
         # Generation chain exhausted — save the signal text so the operator can
@@ -537,6 +611,12 @@ def run_signal(
             if guard.tripped():
                 logger.error(f"ABORTING: Spend guard tripped (${guard.total():.2f})")
                 break
+            
+            # Stochastic Full-Vetting (Part 16 principal upgrade): 1-in-10 candidates 
+            # bypass kill-fast to gather a complete failure surface for the 
+            # Adaptive Controller.
+            should_full_vet = (idx % 10 == 0)
+            
             # Each candidate carries a stable [idx/N title] tag so its live per-check
             # lines stay attributable even though parallel vets interleave on stderr.
             # Per-tier vetting (Part 14): resolve config to THIS candidate's ambition tier so
@@ -546,7 +626,10 @@ def run_signal(
             fut = executor.submit(
                 vet_candidate, cand, op, search, vet_cfg,
                 store=store, query_op=fast_op, publish=publish,
-                label=_label(idx, len(kept), cand.title))
+                label=_label(idx, len(kept), cand.title),
+                full_vet=should_full_vet,
+                experimental_op=experimental_op,
+                board_personas=board_personas)
             fut_meta[fut] = idx
             # Rough cost estimate increment
             guard.add(0.01)
@@ -623,6 +706,11 @@ def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     if getattr(args, "profile", None):
         cfg = cfg.for_profile(args.profile)
 
+    # Persona override (Part 16 principal upgrade): analytical multi-tenancy.
+    # Applied after the profile so its biases (generation/verdict/adversarial) win.
+    if getattr(args, "persona", None):
+        cfg = cfg.for_persona(args.persona)
+
     return cfg
 
 
@@ -636,6 +724,12 @@ def _make_search(cfg: Config, args: argparse.Namespace) -> SearchProvider:
             fixtures = json.load(fh)
 
     return make_provider(cfg, fixtures=fixtures)
+
+
+def _resolve_board(args: argparse.Namespace) -> Optional[list[str]]:
+    if getattr(args, "board", False):
+        return ["shark", "minimalist", "academic"]
+    return None
 
 
 def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
@@ -666,7 +760,8 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
 
     d = vet_candidate(cand, op, search, cfg, store=store,
                       query_op=fast_op, publish=getattr(args, "publish", False),
-                      show_checks=True)
+                      show_checks=True,
+                      board_personas=_resolve_board(args))
     progress.summary(
         n_pass=1 if d.decision == Decision.PASS else 0,
         n_kill=1 if d.decision == Decision.KILL else 0,
@@ -732,7 +827,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
             d = vet_candidate(cand, op, search, cfg, store=store,
                               query_op=fast_op,
                               publish=getattr(args, "publish", False),
-                              show_checks=True)
+                              show_checks=True,
+                              board_personas=_resolve_board(args))
         except ProviderExhaustedError as e:
             # Moat still exhausted — stop here. Remaining candidates keep their prior
             # state (deferred, or provisional verdict); re-run --resume when moat recovers.
@@ -783,7 +879,8 @@ def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:
                           k=getattr(args, "count", None),
                           publish=getattr(args, "publish", False),
                           lanes=_resolve_lanes(cfg, args),
-                          focus=getattr(args, "focus", None))
+                          focus=getattr(args, "focus", None),
+                          board_personas=_resolve_board(args))
 
     # Durable, human-readable result on stdout (stderr carried the live progress).
     from .telemetry import get_usage_summary
@@ -824,7 +921,8 @@ def _cmd_generate(args: argparse.Namespace, log_path: Path) -> None:
                           exploration=getattr(args, "exploration", None),
                           publish=getattr(args, "publish", False),
                           lanes=_resolve_lanes(cfg, args),
-                          focus=getattr(args, "focus", None))
+                          focus=getattr(args, "focus", None),
+                          board_personas=_resolve_board(args))
 
     from .telemetry import get_usage_summary
     print(f"\n=== Blue-sky result: {len(dossiers)} candidate(s) vetted ===")
@@ -955,7 +1053,7 @@ def _cmd_operators(args) -> None:
     import time
     from .config import load_config
     from .health import get_health
-    from .operator import _build_operator, make_operator, OpenRouterOperator, FallbackOperator
+    from .operator import _build_operator, make_operator, FallbackOperator
 
     SIMPLE_PROMPT = ("You are a helpful assistant. "
                       "Reply to the following with exactly three words: Hello, how are you?")
@@ -985,29 +1083,12 @@ def _cmd_operators(args) -> None:
     available_ops = []  # list of (kind, op, elapsed_or_None)
     cfg = load_config(args.config if args.config else None)
 
-    for kind in ("openrouter", "deepseek", "minimax", "gemini",
+    for kind in ("deepseek", "minimax", "gemini",
                  "gemini_cli", "claude_cli"):
         print(f"\n  {kind:15s}", end="", flush=True)
         try:
             op = _build_operator(kind, cfg, fast=True)
             print(f"  [{op.name}]", end="")
-
-            # OpenRouter: show per-model health breakdown
-            if isinstance(op, OpenRouterOperator):
-                print()
-                for m, h in op._h.items():
-                    lats = sorted(h.get("latencies", []))
-                    median = lats[len(lats)//2] if lats else None
-                    total = h["successes"] + h["failures"] + h["empties"]
-                    rate = h["successes"] / total if total > 0 else None
-                    rate_str = f"{rate:.0%}" if rate is not None else "untested"
-                    lat_str = f"{median:.1f}s" if median else "—"
-                    br = op._breakers.get(m)
-                    br_sym = {"closed": "✓", "open": "✗",
-                              "half_open": "◐"}.get(br.state if br else "?", "?")
-                    print(f"    {br_sym}  {m[:50]:50s}"
-                          f"  ok={h['successes']:2d} fail={h['failures']:2d}"
-                          f"  rate={rate_str}  lat={lat_str}")
 
             t0 = time.monotonic()
             result = op._raw(SIMPLE_PROMPT, "", 0.1)
@@ -1101,6 +1182,111 @@ def _cmd_operators(args) -> None:
 
 
 
+def _manage_lanes(action: str, lane_name: str | None, config_path: Path) -> None:
+    """Manage ambition lanes in config.yaml via line-based editing.
+
+    Actions:
+      list   — print defined lanes + active_lane / active_lanes (no mutation)
+      nix    — remove lane_name from active_lanes
+      natch  — add lane_name to active_lanes
+      set    — set active_lane to lane_name (single-lane pin; "" => unset)
+      unset  — clear active_lane to "" (multi-lane mode)
+
+    Uses regex-based line replacement to preserve YAML comments and structure.
+    """
+    import re
+
+    text = config_path.read_text()
+
+    # ------------------------------------------------------------------ list
+    if action == "list":
+        cfg = load_config(config_path)
+        defined = list(cfg.lanes.keys()) if cfg.lanes else []
+        print(f"Defined lanes: {', '.join(defined) if defined else '(none defined)'}")
+        al = cfg.active_lane or ""
+        als = cfg.active_lanes or []
+        mode = "(single-lane mode)" if al else "(multi-lane mode)"
+        print(f"active_lane: {al!r}  {mode}")
+        print(f"active_lanes: [{', '.join(als)}]")
+        return
+
+    # ------------------------------------------------------------------ nix
+    if action == "nix":
+        # Parse the active_lanes line
+        m = re.search(r"^active_lanes:\s*\[(.*?)\]\s*$", text, re.MULTILINE)
+        if not m:
+            print("error: active_lanes line not found in config.yaml", file=sys.stderr)
+            sys.exit(1)
+        current = [s.strip() for s in m.group(1).split(",") if s.strip()]
+        if lane_name not in current:
+            print(f"note: '{lane_name}' is not in active_lanes (no change).")
+            print(f"active_lanes: [{', '.join(current)}]")
+            return
+        current.remove(lane_name)
+        new_line = f"active_lanes: [{', '.join(current)}]"
+        text = re.sub(r"^active_lanes:\s*\[.*?\]\s*$", new_line, text, flags=re.MULTILINE)
+        config_path.write_text(text)
+        print(f"nixed '{lane_name}' — active_lanes: [{', '.join(current)}]")
+        return
+
+    # ------------------------------------------------------------------ natch
+    if action == "natch":
+        m = re.search(r"^active_lanes:\s*\[(.*?)\]\s*$", text, re.MULTILINE)
+        if not m:
+            print("error: active_lanes line not found in config.yaml", file=sys.stderr)
+            sys.exit(1)
+        current = [s.strip() for s in m.group(1).split(",") if s.strip()]
+        if lane_name in current:
+            print(f"note: '{lane_name}' is already in active_lanes (no change).")
+            print(f"active_lanes: [{', '.join(current)}]")
+            return
+        current.append(lane_name)
+        new_line = f"active_lanes: [{', '.join(current)}]"
+        text = re.sub(r"^active_lanes:\s*\[.*?\]\s*$", new_line, text, flags=re.MULTILINE)
+        config_path.write_text(text)
+        print(f"natched '{lane_name}' — active_lanes: [{', '.join(current)}]")
+        return
+
+    # ------------------------------------------------------------------ set
+    if action == "set":
+        lane_val = lane_name or ""
+        new_active = f'active_lane: "{lane_val}"'
+        if re.search(r"^active_lane:", text, re.MULTILINE):
+            text = re.sub(r"^active_lane:\s*\".*?\"\s*$", new_active, text, flags=re.MULTILINE)
+        else:
+            print("error: active_lane line not found in config.yaml", file=sys.stderr)
+            sys.exit(1)
+        config_path.write_text(text)
+        if lane_val:
+            print(f"active_lane set to '{lane_val}' (single-lane mode)")
+        else:
+            print("active_lane unset (multi-lane mode)")
+        return
+
+    # ------------------------------------------------------------------ unset
+    if action == "unset":
+        text = re.sub(r"^active_lane:\s*\".*?\"\s*$", 'active_lane: ""', text, flags=re.MULTILINE)
+        config_path.write_text(text)
+        print("active_lane unset (multi-lane mode)")
+        return
+
+    print(f"error: unknown lanes action '{action}'", file=sys.stderr)
+    sys.exit(1)
+
+
+def _cmd_lanes(args: argparse.Namespace, log_path: Path) -> None:
+    """Dispatch to _manage_lanes with args from the CLI."""
+    from .config import REPO_ROOT
+    action = getattr(args, "lanes_action", "list")
+    lane_name = getattr(args, "lane", None)
+    config_path = args.config if getattr(args, "config", None) else REPO_ROOT / "config.yaml"
+    path = Path(config_path) if not isinstance(config_path, Path) else config_path
+    if not path.exists():
+        print(f"error: config file not found at {path}", file=sys.stderr)
+        sys.exit(1)
+    _manage_lanes(action, lane_name, path)
+
+
 def _save_discovered_signals(signals: list[dict]) -> list[str]:
     """Persist discovered signals to signals/ as a re-runnable audit trail.
 
@@ -1163,12 +1349,14 @@ def _cmd_discover(args: argparse.Namespace, log_path: Path) -> None:
 
     # --- Sweep: run the full grounded pipeline on each discovered signal ---
     all_dossiers: list[Dossier] = []
+    board = _resolve_board(args)
     for i, s in enumerate(signals, start=1):
         progress.banner(f"[{i}/{len(signals)}] {s.get('sector', '?')}: {s['title']}")
         ds = run_signal(s["signal_text"], cfg=cfg, op=op, search=search, store=store,
                         k=getattr(args, "count", None),
                         publish=getattr(args, "publish", False),
-                        lanes=_resolve_lanes(cfg, args))
+                        lanes=_resolve_lanes(cfg, args),
+                        board_personas=board)
         all_dossiers.extend(ds)
 
     # --- Cross-sweep summary ---
@@ -1242,11 +1430,17 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
+    vet_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     vet_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane to judge against (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    vet_p.add_argument("--persona", metavar="NAME",
+                       help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
+                            "Default: config active_persona.")
+    vet_p.add_argument("--board", action="store_true",
+                       help="Enable 'Advisory Board' mode: run multiple shadow personas (shark, minimalist, academic) "
+                            "in parallel for deep critique.")
     vet_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
     vet_p.add_argument("--publish", action="store_true",
@@ -1261,7 +1455,7 @@ def main() -> None:
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
+    sig_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")
@@ -1272,6 +1466,12 @@ def main() -> None:
     sig_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    sig_p.add_argument("--persona", metavar="NAME",
+                       help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
+                            "Default: config active_persona.")
+    sig_p.add_argument("--board", action="store_true",
+                       help="Enable 'Advisory Board' mode: run multiple shadow personas (shark, minimalist, academic) "
+                            "in parallel for deep critique.")
     sig_p.add_argument("--profile", metavar="NAME",
                        help="Generation profile: a reusable steering bundle (restricted forms + "
                             "focus directive) from config 'profiles' (e.g. online_autonomous_predator).")
@@ -1286,7 +1486,7 @@ def main() -> None:
                        help="Number of candidates to generate (default: config candidates_per_signal)")
     gen_p.add_argument("--exploration", type=float, default=None, metavar="X",
                        help="Override exploration level 0-1 (default: adaptive)")
-    gen_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
+    gen_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     gen_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -1295,6 +1495,9 @@ def main() -> None:
     gen_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    gen_p.add_argument("--persona", metavar="NAME",
+                       help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
+                            "Default: config active_persona.")
     gen_p.add_argument("--profile", metavar="NAME",
                        help="Generation profile: a reusable steering bundle (restricted forms + "
                             "focus directive) from config 'profiles' (e.g. online_autonomous_predator).")
@@ -1322,11 +1525,14 @@ def main() -> None:
                         help="Only surface + save signals; do not generate or vet")
     disc_p.add_argument("--no-save", dest="no_save", action="store_true",
                         help="Do not write discovered signals to signals/")
-    disc_p.add_argument("--operator", choices=["gemini_cli", "claude_cli", "gemini", "claude", "minimax", "deepseek", "openrouter", "mock"],
+    disc_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
                         help="Override operator from config")
     disc_p.add_argument("--lane", metavar="NAME",
                         help="Pin the sweep to a single ambition lane (default: multi-lane "
                              "across config active_lanes).")
+    disc_p.add_argument("--persona", metavar="NAME",
+                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
+                             "Default: config active_persona.")
     disc_p.add_argument("--fixtures", metavar="PATH",
                         help="Path to fixtures JSON (uses FixtureProvider)")
     disc_p.add_argument("--publish", action="store_true",
@@ -1366,6 +1572,23 @@ def main() -> None:
     op_p.add_argument("--gen", action="store_true",
                      help="Also run a generation-prompt probe (tests full prompt size)")
 
+    # ---- lanes subcommand ----
+    lanes_p = sub.add_parser("lanes", help="Manage ambition lanes (list, nix, natch, set, unset)")
+    lanes_act = lanes_p.add_subparsers(dest="lanes_action", required=True)
+
+    lanes_act.add_parser("list", help="Show all defined lanes and active configuration")
+
+    nix_p = lanes_act.add_parser("nix", help="Remove a lane from active_lanes")
+    nix_p.add_argument("lane", help="Lane name to remove")
+
+    natch_p = lanes_act.add_parser("natch", help="Add a lane to active_lanes")
+    natch_p.add_argument("lane", help="Lane name to add")
+
+    set_p = lanes_act.add_parser("set", help="Set active_lane (single-lane pin; empty = unset / multi-lane)")
+    set_p.add_argument("lane", nargs="?", default="", help="Lane name (omit or empty to unset)")
+
+    lanes_act.add_parser("unset", help="Clear active_lane (return to multi-lane mode)")
+
     args = parser.parse_args()
 
     # Keep the verbose JSON audit log out of the way (it goes to a tail-able file);
@@ -1391,6 +1614,8 @@ def main() -> None:
         _cmd_diagnose(args, cfg_for_log, log_path)
     elif args.command == "operators":
         _cmd_operators(args)
+    elif args.command == "lanes":
+        _cmd_lanes(args, log_path)
     else:
         parser.print_help()
         sys.exit(1)

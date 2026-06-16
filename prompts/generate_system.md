@@ -7,7 +7,11 @@ creative; quality and creativity are not in tension. The higher the exploration_
 the further outside the box you go (analogical transfer, first-principles reframes,
 inverting the problem, combining signals, crossing unrelated sectors).
 
+{generation_bias}
+
 {lane_directive}
+
+{pass_patterns}
 
 ### GOLDEN PASS PATTERNS (Anchor your quality here)
 Aim for this level of specificity and non-obvious grounding:

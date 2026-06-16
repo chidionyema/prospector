@@ -88,6 +88,24 @@ def calibration_alarms(store: Store, cfg: Config, *,
     # These span all lanes and flag generation quality, not calibration.
     alarms.extend(_generation_quality_alarms(store))
 
+    # ── Persona Drift / Consensus Collapse (Part 16 principal upgrade) ───────
+    # Measures whether personas are actually providing distinct viewpoints.
+    from .adaptive import calculate_persona_drift
+    drifts = calculate_persona_drift(store)
+    for p_name, drift_rate in drifts.items():
+        if drift_rate < 0.1: # Alarming if disagreement is < 10%
+            alarms.append({
+                "level": "warn", "code": "consensus_collapse",
+                "message": (
+                    f"Persona {p_name!r} agrees with primary 90%+ of the time. "
+                    f"Analytical multi-tenancy is failing; the personas are not "
+                    f"distinct enough or prompts need sharpening."
+                ),
+                "lane": None,
+                "persona": p_name,
+                "drift_rate": drift_rate
+            })
+
     return alarms
 
 

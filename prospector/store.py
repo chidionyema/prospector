@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS dossiers (
     structural_form TEXT,
     provisional     INTEGER DEFAULT 0,
     dense_reward    REAL,
-    adversarial_confidence REAL
+    adversarial_confidence REAL,
+    persona         TEXT
 );
 """
 
@@ -42,14 +43,15 @@ CREATE INDEX IF NOT EXISTS idx_reverify ON dossiers(reverify_due_at);
 CREATE INDEX IF NOT EXISTS idx_ambition_tier ON dossiers(ambition_tier);
 CREATE INDEX IF NOT EXISTS idx_structural_form ON dossiers(structural_form);
 CREATE INDEX IF NOT EXISTS idx_dense_reward ON dossiers(dense_reward);
+CREATE INDEX IF NOT EXISTS idx_persona ON dossiers(persona);
 """
 
 _UPSERT = """
 INSERT OR REPLACE INTO dossiers
     (candidate_id, title, one_liner, decision, gate_fired, composite,
      created_at, reverify_due_at, path, ambition_tier, structural_form, 
-     provisional, dense_reward, adversarial_confidence)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     provisional, dense_reward, adversarial_confidence, persona)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 
@@ -84,7 +86,8 @@ class Store:
                                ("structural_form", "TEXT"),
                                ("provisional", "INTEGER DEFAULT 0"),
                                ("dense_reward", "REAL"),
-                               ("adversarial_confidence", "REAL")]:
+                               ("adversarial_confidence", "REAL"),
+                               ("persona", "TEXT")]:
                 if col not in cols:
                     conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
             
@@ -140,7 +143,8 @@ class Store:
                 form,
                 int(bool(getattr(dossier, "provisional", False))),
                 dossier.dense_reward,
-                adv_conf
+                adv_conf,
+                getattr(dossier, "persona", "") or ""
             ))
         return path
 

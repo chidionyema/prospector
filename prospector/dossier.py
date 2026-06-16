@@ -103,6 +103,7 @@ def build_dossier(
         score=score,
         model_version=op_model_version,
         provider_chain=provider_chain,
+        persona=cfg.active_persona,
         created_at=created_at,
         reverify_due_at=reverify_due_at,
         provisional=provisional,
@@ -283,6 +284,8 @@ def render_markdown(dossier: Dossier) -> str:
     lines.append("---")
     lines.append("## Metadata")
     lines.append("")
+    if dossier.persona:
+        lines.append(f"- **Persona:** {dossier.persona}")
     lines.append(f"- **Model:** {dossier.model_version}")
     lines.append(f"- **Candidate ID:** `{cand.candidate_id}`")
     lines.append(f"- **Created:** {dossier.created_at}")

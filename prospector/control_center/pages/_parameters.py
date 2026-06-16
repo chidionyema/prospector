@@ -27,7 +27,7 @@ def render():
     # ── Initialise staged config ──────────────────────────────────────────
     _init_staged()
 
-    cfg = st.session_state["staged_config"]
+    cfg = st.session_state["staged_config"] or _ce.load_config_raw()
     orig_mtime = st.session_state.get("_config_mtime", 0.0)
 
     # ── Raw YAML view ─────────────────────────────────────────────────────
@@ -73,9 +73,60 @@ def render():
     _render_retrieval(cfg)
     st.divider()
     _render_lanes(cfg)
+    st.divider()
+    _render_personas(cfg)
 
     st.divider()
     _render_diff_and_save(cfg, orig_mtime)
+...
+# ---------------------------------------------------------------------------
+# Personas
+# ---------------------------------------------------------------------------
+
+def _render_personas(cfg: dict):
+    st.subheader("👤 Personas (Analytical Multi-Tenancy)")
+    st.caption("A persona 'tints' the entire pipeline with a specific analytical bias. "
+               "Generation, verdicts, and adversarial cases are all affected.")
+
+    personas = cfg.get("personas", {})
+    active_persona = cfg.get("active_persona", "")
+
+    st.write(f"Default persona: `{active_persona or '(none)'}`")
+
+    for p_name, p_cfg in personas.items():
+        with st.expander(f"Persona: **{p_name}**"):
+            # Threshold overrides
+            st.markdown("**Threshold Overrides**")
+            p_thresh = p_cfg.get("thresholds", {})
+            min_comp = p_thresh.get("min_composite_to_pass", 3.2)
+            new_min = st.number_input(
+                f"Min composite to PASS ({p_name})", 0.0, 20.0, float(min_comp), 0.1,
+                key=f"p_thresh_{p_name}")
+            _update_staged(cfg, f"personas.{p_name}.thresholds.min_composite_to_pass", new_min)
+
+            # Biases
+            st.markdown("**Analytical Biases**")
+            gen_bias = st.text_area(
+                "Generation bias", p_cfg.get("generation_bias", ""),
+                help="Injected into the generation system prompt.",
+                key=f"p_gen_{p_name}")
+            verdict_bias = st.text_area(
+                "Verdict bias", p_cfg.get("verdict_bias", ""),
+                help="Injected into the verdict system prompt.",
+                key=f"p_ver_{p_name}")
+            adv_bias = st.text_area(
+                "Adversarial bias", p_cfg.get("adversarial_bias", ""),
+                help="Injected into the adversarial system prompt.",
+                key=f"p_adv_{p_name}")
+
+            _update_staged(cfg, f"personas.{p_name}.generation_bias", gen_bias)
+            _update_staged(cfg, f"personas.{p_name}.verdict_bias", verdict_bias)
+            _update_staged(cfg, f"personas.{p_name}.adversarial_bias", adv_bias)
+
+            if gen_bias != p_cfg.get("generation_bias") or \
+               verdict_bias != p_cfg.get("verdict_bias") or \
+               adv_bias != p_cfg.get("adversarial_bias"):
+                st.session_state["_changed_moat"] = True
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +135,7 @@ def render():
 
 def _init_staged():
     """Set up the staged config in session_state on first load."""
-    if "staged_config" not in st.session_state:
+    if st.session_state.get("staged_config") is None:
         st.session_state["staged_config"] = _ce.load_config_raw()
     if "_config_mtime" not in st.session_state:
         st.session_state["_config_mtime"] = _ce.get_config_mtime()

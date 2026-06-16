@@ -10,11 +10,27 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [gemini_cli, claude_cli, deepseek, minimax]   # primary moat + guardrailed cheap tail.
+operator: [gemini, gemini_cli, deepseek, minimax]   # gemini API first (fast, trusted primary),
+                                 # gemini_cli fallback (OAuth quota),
+                                 # deepseek/minimax emergency fallback.
                                  # Single string still works: `operator: gemini_cli`.
-model: "gemini-2.5-flash-lite"          # verdict brain (Gemini-specific pin).
-model_fast: "gemini-2.5-flash-lite"  # cheap model for query-gen/prescreen (live quota; "" = reuse `model`)
+model: "gemini-2.5-flash"          # verdict brain (Gemini, fast + grounded).
+model_fast: "deepseek-v4-flash"  # cheap model for query-gen/prescreen
 model_version_tag: ""            # filled at runtime for audit
+
+# --- Model defaults (Part: HARDCODED_MODEL_AUDIT_TICKET) ---
+# Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:
+# are empty or unset for a given provider context.
+model_defaults:
+  gemini:       "gemini-2.5-flash"      # GeminiOperator default
+  claude:       "claude-sonnet-4-5"     # ClaudeOperator default
+  deepseek:     "deepseek-v4-pro"       # DeepSeekOperator default
+  minimax:      "MiniMax-M3"           # MiniMaxOperator (fast=False)
+  minimax_fast: "MiniMax-M2.7"         # MiniMaxOperator (fast=True)
+  ollama:       "qwen2.5-coder:7b"     # OllamaOperator default
+  search:
+    deepseek:    "deepseek-v4-flash"
+    minimax:     "MiniMax-M3"
 
 retrieval:
   # Full resilience grounding chain — working providers first:
@@ -366,6 +382,56 @@ profiles:
         (4) make money DIRECTLY ONLINE — self-serve signup and online payment, no sales calls,
         no invoicing, no human onboarding. Reject anything requiring per-customer human work,
         offline fulfilment, or a long manual sales cycle.
+
+# Personas (Part 16 — analytical multi-tenancy). A persona provides analytical bias/voice
+# for generation, verdict, and adversarial. It "tints" the entire pipeline.
+# active_persona: "" (default)
+active_persona: ""
+personas:
+  shark:
+    generation_bias: >
+      You are Kevin O'Leary. You care ONLY about massive margins, unassailable moats,
+      and scale. If an idea is 'too small' or 'too easy to copy', don't even propose it.
+      Search for the 'unfair advantage' in every signal. Reject anything that feels like
+      a hobby or a tiny niche without a path to a $100M exit.
+    verdict_bias: >
+      Be ruthlessly skeptical. If the evidence doesn't prove a massive, recurring pain
+      and a clear ability to capture value, mark it REFUTED. Don't be 'nice'. Look for
+      the hidden commodity trap.
+    adversarial_bias: >
+      Your job is to find the one reason this company will go bankrupt. Is there a giant
+      already doing this? Is the CAC higher than the LTV? Is the margin being eaten by
+      incumbents? Kill it if you can.
+    thresholds:
+      min_composite_to_pass: 3.8
+  minimalist:
+    generation_bias: >
+      You are a solopreneur. You want zero employees, 90% automation, and high cashflow.
+      Avoid complex operations, physical inventory, or long sales cycles. Focus on 'boring'
+      but profitable niches that can be run from a laptop.
+    verdict_bias: >
+      Focus on deliverability. Can ONE person actually run this using AI? If it requires
+      a team, a physical presence, or a complex license, it's REFUTED for this persona.
+    adversarial_bias: >
+      Find the operational trap. Where will the founder get stuck doing manual labor?
+      If it's not truly autonomous or if it has 'people risk', kill it.
+    thresholds:
+      min_composite_to_pass: 3.2
+  academic:
+    generation_bias: >
+      You are a research scientist. Look for deep technical breakthroughs, regulatory
+      shifts rooted in data, and first-principles optimizations. Avoid marketing fluff
+      and 'growth hacks'. Focus on structural changes in science and law.
+    verdict_bias: >
+      Require high-fidelity evidence. Is there a peer-reviewed study? Is there a primary
+      legal source? If the citations are 'blog posts' but not 'sources of truth',
+      downgrade the confidence.
+    adversarial_bias: >
+      Identify the logical flaw. Is the hypothesis grounded in sound physics/economics/law?
+      If the reasoning is weak or based on a misunderstanding of the technical signal,
+      it's dead.
+    thresholds:
+      min_composite_to_pass: 3.4
 
 listing:
   publish_on: pass

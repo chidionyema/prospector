@@ -68,12 +68,45 @@ class SearchProvider(ABC):
 # sites behind a CDN sometimes need a beat to answer even a fast bot-reject.)
 _RESOLVE_TIMEOUT = 4.0
 
+# Tiered timeout for high-authority sources (Part 16 principal upgrade).
+# Authoritative sites often have heavy CDNs or bot-mitigation that can take
+# longer to answer a HEAD request. We give them 15s to ensure we don't drop
+# the best evidence due to transient latency.
+_HIGH_AUTHORITY_TIMEOUT = 15.0
+
+_HIGH_AUTHORITY_DOMAINS = {
+    "ft.com", "reuters.com", "bloomberg.com", "wsj.com", "economist.com",
+    "nytimes.com", "theguardian.com", "bbc.co.uk", "bbc.com", "hbr.org",
+    "nature.com", "science.org", "mit.edu", "stanford.edu", "harvard.edu",
+    "gov.uk", "europa.eu", "un.org", "worldbank.org", "imf.org", "nih.gov",
+    "who.int", "gartner.com", "forrester.com", "mckinsey.com", "deloitte.com",
+}
+
+def _get_timeout(url: str) -> float:
+    """Determine timeout based on domain authority (Domain-Aware Patience)."""
+    try:
+        parsed = urllib.parse.urlparse(url.lower())
+        netloc = parsed.netloc
+        if netloc.startswith("www."):
+            netloc = netloc[4:]
+        
+        # TLD-based authority
+        if netloc.endswith(".gov") or netloc.endswith(".edu") or netloc.endswith(".int"):
+            return _HIGH_AUTHORITY_TIMEOUT
+            
+        # Domain-list authority
+        if any(netloc == d or netloc.endswith("." + d) for d in _HIGH_AUTHORITY_DOMAINS):
+            return _HIGH_AUTHORITY_TIMEOUT
+    except Exception:
+        pass
+    return _RESOLVE_TIMEOUT
+
 # A real browser UA, not "Mozilla/5.0 prospector": many CDNs (Cloudflare et al.)
 # 403 obviously-bot agents on sight, which dropped legitimate sources.
 _RESOLVE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
-def _resolve(url: str, timeout: float = _RESOLVE_TIMEOUT) -> Optional[str]:
+def _resolve(url: str, timeout: Optional[float] = None) -> Optional[str]:
     """Confirm a grounding URL is REAL (not fabricated). Under web=True the CLI
     grounds on a live Google Search, so URLs come from Google's index, not model
     hallucination — the real fabrication signal is a made-up HOST (DNS failure),
@@ -85,10 +118,14 @@ def _resolve(url: str, timeout: float = _RESOLVE_TIMEOUT) -> Optional[str]:
     treated as fabricated/dead → DROP. Returns the canonical URL or None."""
     if not url.lower().startswith(("http://", "https://")):
         return None
+    
+    # Use tiered timeout if none provided (Domain-Aware Patience)
+    to = timeout if timeout is not None else _get_timeout(url)
+    
     req = urllib.request.Request(url, method="HEAD",
                                  headers={"User-Agent": _RESOLVE_UA})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with urllib.request.urlopen(req, timeout=to) as r:
             return r.url or url
     except urllib.error.HTTPError:
         # The server RESPONDED with an error code — the host is real (bot-wall,
@@ -395,7 +432,14 @@ class _LLMSearchProvider(SearchProvider):
         "authoritative sources (government sites, industry reports, news). "
         "Format URLs on their own line like: SOURCE: https://...")
 
-    def __init__(self, resolve_urls: bool = True, max_chars: int = 1500):
+    def __init__(self, model_name: str = "", resolve_urls: bool = True,
+                 max_chars: int = 1500):
+        # `model_name` is config-driven (passed by the factory from
+        # cfg.model_defaults.search.<provider>). The class-level attribute
+        # is preserved as a fallback so subclasses can still be constructed
+        # without config in tests.
+        if model_name:
+            self.model_name = model_name
         self.resolve_urls = resolve_urls
         self.max_chars = max_chars
 
@@ -452,7 +496,9 @@ class DeepSeekSearchProvider(_LLMSearchProvider):
     is available — still useful because DeepSeek's training covers recent data.
     """
 
-    model_name = "deepseek-chat"
+    # The model name is config-driven (cfg.model_defaults.search.deepseek).
+    # The factory passes it as a constructor arg. The class-level attribute
+    # is left empty as a fallback for tests that don't construct via factory.
     provider_name = "deepseek"
     _BASE_URL = "https://api.deepseek.com/beta"
 
@@ -596,7 +642,9 @@ class MiniMaxSearchProvider(_LLMSearchProvider):
     Falls back to pure synthesis if no external search backend is available.
     """
 
-    model_name = "MiniMax-M3"
+    # The model name is config-driven (cfg.model_defaults.search.minimax).
+    # The factory passes it as a constructor arg. The class-level attribute
+    # is left empty as a fallback for tests that don't construct via factory.
     provider_name = "minimax"
     _BASE_URL = "https://api.minimax.io/v1"
 
@@ -740,7 +788,9 @@ class OpenRouterSearchProvider(_LLMSearchProvider):
     breakers handle rate-limits within OpenRouterOperator itself).
     """
 
-    model_name = "google/gemma-4-31b-it:free"
+    # The model name is config-driven (cfg.model_defaults.search.openrouter).
+    # The factory passes it as a constructor arg. The class-level attribute
+    # is left empty as a fallback for tests that don't construct via factory.
     provider_name = "openrouter"
     _BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -961,18 +1011,30 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
             escalation=r.search_timeout_escalation, retries=r.search_retries,
             queue_timeout=r.queue_timeout)
     if name == "gemini_grounding":
-        return GeminiGroundingProvider(model=cfg.model if cfg.operator == "gemini"
-                                       else "gemini-2.0-flash")
+        # Gemini grounding: use cfg.model if the operator is gemini, else the
+        # configured gemini default. (Not search.deepseek — that block is for
+        # the LLM-search providers; gemini_grounding is direct search.)
+        md = getattr(cfg, "model_defaults", None)
+        if cfg.operator == "gemini" and cfg.model:
+            model = cfg.model
+        else:
+            model = md.gemini if md else "gemini-2.0-flash"
+        return GeminiGroundingProvider(model=model)
     if name == "brave":
         return BraveSearchProvider()
     if name == "exa":
         return ExaSearchProvider()
     if name == "deepseek":
-        return DeepSeekSearchProvider()
+        # LLM-search provider — model name comes from cfg.model_defaults.search.deepseek.
+        md = getattr(cfg, "model_defaults", None)
+        search_model = (md.search.get("deepseek") if md and md.search
+                        else "deepseek-chat")
+        return DeepSeekSearchProvider(model_name=search_model)
     if name == "minimax_search":
-        return MiniMaxSearchProvider()
-    if name == "openrouter":
-        return OpenRouterSearchProvider()
+        md = getattr(cfg, "model_defaults", None)
+        search_model = (md.search.get("minimax") if md and md.search
+                        else "MiniMax-M3")
+        return MiniMaxSearchProvider(model_name=search_model)
     raise ValueError(f"unknown retrieval provider: {name!r}")
 
 

@@ -1,4 +1,7 @@
 SYSTEM: Your only job is to kill this idea using the evidence gathered.
+
+{adversarial_bias}
+
 {lane_directive}
 USER: Candidate: {candidate_json}   All claims + passages: {verification_json}
 Make the strongest EVIDENCE-BASED case it's dead or not worth building. Cite
