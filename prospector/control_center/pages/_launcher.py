@@ -328,7 +328,7 @@ def _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish, pe
     if board:
         argv += ["--board"]
     if fixtures:
-        argv += ["--fixtures"]
+        argv += ["--fixtures", "fixtures/golden_fixtures.json"]
     if publish:
         argv += ["--publish"]
     _do_launch(argv)
@@ -344,7 +344,7 @@ def _launch_signal(text, count, lane, operator, fixtures, publish, persona, boar
     if board:
         argv += ["--board"]
     if fixtures:
-        argv += ["--fixtures"]
+        argv += ["--fixtures", "fixtures/golden_fixtures.json"]
     if publish:
         argv += ["--publish"]
     _do_launch(argv)
@@ -362,7 +362,7 @@ def _launch_generate(candidates, exploration, lane, operator, fixtures, persona,
     if board:
         argv += ["--board"]
     if fixtures:
-        argv += ["--fixtures"]
+        argv += ["--fixtures", "fixtures/golden_fixtures.json"]
     _do_launch(argv)
 
 
@@ -376,7 +376,7 @@ def _launch_discover(count, dry_run, fixtures, persona, board):
     if board:
         argv += ["--board"]
     if fixtures:
-        argv += ["--fixtures"]
+        argv += ["--fixtures", "fixtures/golden_fixtures.json"]
     _do_launch(argv)
 
 
