@@ -321,6 +321,75 @@ def run_calibration(cfg: Config,
             "ok": discrimination >= floor, "cases": cases}
 
 
+def diagnostics_data(store, cfg, golden_dir: str = "store/golden_runs/",
+                     floor: float = 0.75) -> dict[str, Any]:
+    """Return structured diagnostics for the Control Center UI.
+
+
+    Combines calibration alarms (free, no model call) with the latest golden-set
+    run results and the trend of discrimination scores over time.
+
+    Returns: {alarms: [Alarm],
+              latest_golden: {discrimination, floor, ok, cases} | None,
+              golden_trend: [{ts, discrimination, ok, operator}]}
+    """
+    alarms = calibration_alarms(store, cfg)
+
+    # ── Latest golden run ─────────────────────────────────────────────────
+    golden_path = Path(golden_dir)
+    latest_golden: dict[str, Any] | None = None
+    if golden_path.exists():
+        runs = sorted(golden_path.glob("*.json"), reverse=True)
+        if runs:
+            try:
+                latest = json.loads(runs[0].read_text(encoding="utf-8"))
+                latest_golden = latest
+            except Exception:
+                pass
+
+    # ── Golden discrimination trend ──────────────────────────────────────
+    golden_trend: list[dict[str, Any]] = []
+    if golden_path.exists():
+        for f in sorted(golden_path.glob("*.json")):
+            try:
+                d = json.loads(f.read_text(encoding="utf-8"))
+                golden_trend.append({
+                    "filename": f.name,
+                    "ts": d.get("ts") or f.stat().st_mtime,
+                    "discrimination": d.get("discrimination"),
+                    "floor": d.get("floor", floor),
+                    "ok": d.get("ok"),
+                    "operator": d.get("operator"),
+                })
+            except Exception:
+                pass
+    golden_trend.sort(key=lambda x: x.get("ts", 0), reverse=True)
+
+    return {
+        "alarms": alarms,
+        "latest_golden": latest_golden,
+        "golden_trend": golden_trend,
+    }
+
+
+def run_diagnostics(store, cfg, golden_dir: str = "store/golden_runs/",
+                       floor: float = 0.75) -> str:
+    """Run calibration harness (with model calls) + return human-readable diagnostics.
+
+
+    This is the full diagnostic: alarms (free) + golden-set harness (paid).
+    For the UI use diagnostics_data() instead.
+    """
+    data = diagnostics_data(store, cfg, golden_dir, floor)
+    alarm_text = render_alarms(data["alarms"])
+    parts = ["═" * 72, "CALIBRATION + DIAGNOSTICS", "═" * 72,
+             "\n── Calibration alarms ──\n" + alarm_text]
+    if data["latest_golden"]:
+        parts.append("\n── Golden set (latest) ──\n"
+                     + render_calibration(data["latest_golden"]))
+    return "\n".join(parts)
+
+
 def render_calibration(report: dict[str, Any]) -> str:
     out = ["═" * 72, "CALIBRATION HARNESS (real brain · fixed golden evidence)", "═" * 72,
            f"  discrimination   {report['discrimination']:.0%}   (floor {report['floor']:.0%})  "

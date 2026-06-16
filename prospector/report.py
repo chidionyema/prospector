@@ -444,3 +444,289 @@ def full_report(store: Store, jsonl_path: str | Path,
         trend_report(store, trend_windows),
         costs_report(jsonl_path),
     ])
+
+
+# ---------------------------------------------------------------------------
+# Structured data variants (used by the Control Center UI)
+# ---------------------------------------------------------------------------
+
+def catalogue_data(store: Store, decision: Optional[str] = None) -> dict[str, Any]:
+    """Return structured catalogue data for the UI.
+
+    Returns: {total, by_decision: {pass:[rows], defer:[rows], kill:[rows]}}
+    """
+    rows = store.all(decision)
+    if not rows:
+        return {"total": 0, "by_decision": {"pass": [], "defer": [], "kill": []}}
+    rows.sort(key=lambda r: (_ORDER.get((r.get("decision") or "").lower(), 9),
+                             -(r.get("composite") or 0)))
+    by_dec: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        by_dec[(r.get("decision") or "?").lower()].append(r)
+    return {
+        "total": len(rows),
+        "by_decision": {dec: by_dec.get(dec, []) for dec in ("pass", "defer", "kill")},
+    }
+
+
+def metrics_data(store: Store) -> dict[str, Any]:
+    """Return structured metrics for the UI.
+
+    Returns: {total, n_pass, n_kill, n_defer, kill_rate, pass_rate,
+              per_lane: [{lane, n, pass, kill, kill_rate, forms, top_gate}],
+              kill_gate_distribution: [{gate, count, share}],
+              retrieval_fail, degraded, retrieval_fail_pct, degraded_pct}
+    """
+    rows = store.all()
+    if not rows:
+        return {"total": 0}
+    n = len(rows)
+    dec = Counter((r.get("decision") or "?").lower() for r in rows)
+    vetted = dec["pass"] + dec["kill"]
+    kill_rate = (dec["kill"] / vetted * 100) if vetted else 0.0
+    pass_rate = (dec["pass"] / vetted * 100) if vetted else 0.0
+
+    by_lane: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        lane = r.get("ambition_tier") or "(unset)"
+        by_lane[lane].append(r)
+    lanes_with_data = {k: v for k, v in sorted(by_lane.items()) if len(v) >= 2}
+    per_lane = []
+    for lane, lane_rows in lanes_with_data.items():
+        l_pass = sum(1 for r in lane_rows if (r.get("decision") or "").lower() == "pass")
+        l_kill = sum(1 for r in lane_rows if (r.get("decision") or "").lower() == "kill")
+        l_ruled = l_pass + l_kill
+        l_kr = l_kill / l_ruled * 100 if l_ruled else 0.0
+        forms = _structural_forms(lane_rows)
+        gates = Counter(r.get("gate_fired") or "min_composite"
+                       for r in lane_rows if (r.get("decision") or "").lower() == "kill")
+        top = gates.most_common(1)
+        per_lane.append({
+            "lane": lane, "n": len(lane_rows), "pass": l_pass, "kill": l_kill,
+            "kill_rate": l_kr, "forms": sorted(forms),
+            "top_gate": top[0][0] if top else None, "top_gate_count": top[0][1] if top else 0,
+        })
+
+    gates_all = Counter(r.get("gate_fired") or "min_composite"
+                        for r in rows if (r.get("decision") or "").lower() == "kill")
+    kill_gate_distribution = []
+    if gates_all:
+        mx = max(gates_all.values())
+        for gate, c in gates_all.most_common():
+            kill_gate_distribution.append({"gate": gate, "count": c,
+                                           "share": round(c / mx, 3),
+                                           "bar": "█" * round(c / mx * 24)})
+
+    retrieval_fail = sum(1 for r in rows if r.get("retrieval_failed"))
+    degraded = sum(1 for r in rows if r.get("degraded"))
+    return {
+        "total": n, "n_pass": dec["pass"], "n_kill": dec["kill"],
+        "n_defer": dec["defer"], "kill_rate": kill_rate, "pass_rate": pass_rate,
+        "per_lane": per_lane,
+        "kill_gate_distribution": kill_gate_distribution,
+        "retrieval_fail": retrieval_fail, "degraded": degraded,
+        "retrieval_fail_pct": round(retrieval_fail / n * 100, 1) if n else 0.0,
+        "degraded_pct": round(degraded / n * 100, 1) if n else 0.0,
+    }
+
+
+def generation_quality_data(store: Store) -> dict[str, Any]:
+    """Return structured generation quality data for the UI.
+
+    Returns: {n_candidates, forms, form_count, audiences, prescreen_pass_rate,
+              prescreen_keep, prescreen_reject, warnings: []}
+    """
+    rows = store.all()
+    if not rows:
+        return {"n_candidates": 0}
+    n = len(rows)
+    forms = _structural_forms(rows)
+    audiences = Counter()
+    for r in rows:
+        tags = r.get("tags", {})
+        if isinstance(tags, dict):
+            aud = tags.get("audience")
+            if aud:
+                audiences[aud] += 1
+        elif isinstance(tags, list):
+            for item in tags:
+                if isinstance(item, dict) and item.get("type") == "audience":
+                    audiences[item.get("value", "")] += 1
+
+    prescreen_reject = 0
+    prescreen_keep = 0
+    jsonl_path = store._root / "prospector.jsonl"
+    if jsonl_path.exists():
+        for line in jsonl_path.read_text().splitlines():
+            try:
+                d = json.loads(line)
+                msg = d.get("message", "")
+                if "PRESCREENED OUT" in msg or "prescreened out" in msg.lower():
+                    prescreen_reject += 1
+                elif "Prescreen kept" in msg:
+                    prescreen_keep += 1
+            except Exception:
+                pass
+    prescreen_total = prescreen_reject + prescreen_keep
+    prescreen_rate = 100 - (prescreen_reject / prescreen_total * 100
+                             if prescreen_total else 0.0)
+
+    warnings: list[dict[str, Any]] = []
+    if len(forms) == 1 and n >= 10:
+        warnings.append({"code": "mono_form",
+                         "message": "Only 1 structural form across all candidates — generator may be collapsing to one shape."})
+    elif len(forms) <= 2 and n >= 15:
+        warnings.append({"code": "low_form_diversity",
+                         "message": f"Only {len(forms)} forms across {n} candidates."})
+
+    return {
+        "n_candidates": n, "forms": sorted(forms), "form_count": len(forms),
+        "audiences": dict(audiences.most_common(10)),
+        "prescreen_pass_rate": round(prescreen_rate, 1),
+        "prescreen_keep": prescreen_keep, "prescreen_reject": prescreen_reject,
+        "prescreen_total": prescreen_total,
+        "warnings": warnings,
+    }
+
+
+def trend_data(store: Store, windows: tuple[int, ...] = (7, 30, 90)) -> dict[str, Any]:
+    """Return structured trend data for the UI.
+
+    Returns: {windows: {7: {n, pass, kill, defer, pass_rate, kill_rate,
+                            top_gate, forms, lanes}, ...}}
+    """
+    rows = store.all()
+    now = datetime.now(timezone.utc)
+    result: dict[str, Any] = {"windows": {}}
+    for days in windows:
+        cutoff = now - timedelta(days=days)
+        window_rows = []
+        for r in rows:
+            ts = r.get("created_at", "")
+            if not ts:
+                continue
+            try:
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except Exception:
+                continue
+            if dt >= cutoff:
+                window_rows.append(r)
+        n = len(window_rows)
+        dec = Counter((r.get("decision") or "?").lower() for r in window_rows)
+        vetted = dec["pass"] + dec["kill"]
+        kr = dec["kill"] / vetted * 100 if vetted else 0.0
+        pr = dec["pass"] / vetted * 100 if vetted else 0.0
+        gates = Counter(r.get("gate_fired") or "min_composite"
+                       for r in window_rows
+                       if (r.get("decision") or "").lower() == "kill")
+        top = gates.most_common(1)
+        forms = _structural_forms(window_rows)
+        lanes = dict(Counter(r.get("ambition_tier") or ""
+                            for r in window_rows).most_common(3))
+        result["windows"][str(days)] = {
+            "n": n, "pass": dec["pass"], "kill": dec["kill"],
+            "defer": dec["defer"], "pass_rate": round(pr, 1),
+            "kill_rate": round(kr, 1), "top_gate": top[0][0] if top else None,
+            "top_gate_count": top[0][1] if top else 0,
+            "forms": sorted(forms), "lanes": lanes,
+        }
+    return result
+
+
+def costs_data(jsonl_path: str | Path) -> dict[str, Any]:
+    """Return structured cost/usage data for the UI.
+
+    Returns: {total_spend_usd, total_calls, errors_excluded,
+              providers: [{name, cost_usd, calls, input_tokens, output_tokens}],
+              tokens: {input, output, total, cached},
+              spend_by_phase: {phase: amount},
+              slowest_ops: [{operation, total_ms, avg_ms, count}]}
+    """
+    p = Path(jsonl_path)
+    if not p.exists():
+        return {"error": f"Audit log not found: {p}"}
+
+    lifetime_usd = 0.0
+    tok = {"input": 0, "output": 0, "total": 0, "cached": 0, "self_corrections": 0}
+    err_count = 0
+    lat_total: dict[str, float] = defaultdict(float)
+    lat_count: dict[str, int] = defaultdict(int)
+    spend_by_phase: dict[str, float] = defaultdict(float)
+    provider_stats: dict[str, dict[str, Any]] = {}
+
+    with p.open() as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except:
+                continue
+            ev = d.get("event")
+            if ev == "latency" and d.get("status") == "error":
+                err_count += 1
+                continue
+            if ev == "spend":
+                amt = float(d.get("amount_usd", 0) or 0)
+                lifetime_usd += amt
+                spend_by_phase[d.get("phase") or "main"] += amt
+                continue
+            if ev == "latency":
+                op = d.get("operation") or "?"
+                lat_total[op] += float(d.get("latency_ms", 0) or 0)
+                lat_count[op] += 1
+            inp = int(d.get("input", 0) or 0)
+            outp = int(d.get("output", 0) or 0)
+            if inp > 0 or outp > 0:
+                provider = d.get("provider") or d.get("model", "").split("/")[0]
+                if not provider and "message" in d:
+                    msg = d["message"].lower()
+                    if "claude cli usage" in msg:
+                        provider = "claude"
+                    elif "gemini cli usage" in msg:
+                        provider = "gemini"
+                if provider:
+                    root = provider.split("/")[0].lower()
+                    s = provider_stats.setdefault(root, {"calls": 0, "input": 0,
+                                                        "output": 0, "cost_usd": 0.0,
+                                                        "self_corrections": 0})
+                    s["calls"] += 1
+                    s["input"] += inp
+                    s["output"] += outp
+                    tok["input"] += inp
+                    tok["output"] += outp
+                    tok["total"] += int(d.get("total", 0) or (inp + outp))
+                    tok["cached"] += int(d.get("cached", 0) or 0)
+                    tok["self_corrections"] += 1 if d.get("self_correction") else 0
+                    cost = float(d.get("cost_usd", 0) or 0)
+                    if cost:
+                        s["cost_usd"] += cost
+                    else:
+                        from .telemetry import PRICING
+                        price = PRICING.get(root, {"input": 0, "output": 0})
+                        s["cost_usd"] += (inp * price["input"] / 1_000_000) + (outp * price["output"] / 1_000_000)
+
+    sum_attributed = sum(s["cost_usd"] for s in provider_stats.values())
+    total_spend = max(lifetime_usd, sum_attributed)
+    if total_spend > sum_attributed:
+        provider_stats["legacy / unattributed"] = {"cost_usd": total_spend - sum_attributed}
+
+    slowest_ops = []
+    if lat_total:
+        for op, ms in sorted(lat_total.items(), key=lambda x: -x[1])[:6]:
+            n = lat_count[op]
+            slowest_ops.append({"operation": op, "total_ms": round(ms, 1),
+                                 "avg_ms": round(ms / n, 1) if n else 0,
+                                 "count": n})
+
+    return {
+        "total_spend_usd": round(total_spend, 4),
+        "total_calls": sum(s.get("calls", 0) for s in provider_stats.values()),
+        "errors_excluded": err_count,
+        "providers": [
+            {"name": name, **stats}
+            for name, stats in sorted(provider_stats.items(),
+                                     key=lambda x: -x[1].get("cost_usd", 0))
+        ],
+        "tokens": tok,
+        "spend_by_phase": dict(sorted(spend_by_phase.items(), key=lambda x: -x[1])),
+        "slowest_ops": slowest_ops,
+    }
