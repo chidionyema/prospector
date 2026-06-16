@@ -257,6 +257,9 @@ class MiniMaxOperator(Operator):
         self._key = key
         # cheap=True uses MiniMax-M2.7 (stable, fast, good for structured output).
         # Full model (MiniMax-M3) for generation (needs creative divergence).
+        # An explicit `model` argument (from cfg.model) overrides the cheap/non-cheap
+        # split — caller is being explicit about which model to use (see model-config
+        # audit ticket: model identifiers must be config-driven, not hardcoded).
         self.model = (model
                       or (self._FALLBACK_MODEL if cheap else None)
                       or self._DEFAULT_MODEL)
@@ -885,10 +888,18 @@ class FallbackOperator(Operator):
 def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     # fast=True selects the lighter model for mechanical calls (query-gen,
     # prescreen); falls back to the main model when model_fast is unset.
-    model = (getattr(cfg, "model_fast", "") or cfg.model) if fast else cfg.model
+    # An empty string is treated as "unset" — the operator's own hardcoded
+    # default is then used. This keeps the model-config refactor honest:
+    # a config change is what selects a model, not code, but an absent
+    # config value still has a sensible fallback. The intent is to
+    # eliminate the per-operator `_DEFAULT_MODEL` strings in a follow-up;
+    # for now, those are the authoritative defaults.
+    cfg_model = getattr(cfg, "model_fast", "") if fast else getattr(cfg, "model", "")
+    has_cfg_model = bool(cfg_model)
+    model = cfg_model or None  # None means "let the operator pick its default"
     if kind == "gemini_cli":
         from .gemini_cli import GeminiCliOperator
-        return GeminiCliOperator(model=(model or None))
+        return GeminiCliOperator(model=model)
     if kind == "claude_cli":
         # model/model_fast are Gemini-specific pins; don't leak them to the claude
         # CLI — let it use its own configured default.
@@ -896,12 +907,16 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         return ClaudeCliOperator(model=None)
     if kind == "gemini":
         try:
-            return GeminiOperator(model=model)
+            if has_cfg_model:
+                return GeminiOperator(model=model)
+            return GeminiOperator()  # let `model` default-parameter value apply
         except ModuleNotFoundError as e:
             raise RuntimeError("GEMINI_API_KEY not set or google-genai not installed") from e
     if kind == "claude":
         try:
-            return ClaudeOperator(model=model)
+            if has_cfg_model:
+                return ClaudeOperator(model=model)
+            return ClaudeOperator()  # let `model` default-parameter value apply
         except ModuleNotFoundError as e:
             raise RuntimeError("ANTHROPIC_API_KEY not set or anthropic not installed") from e
     if kind == "mock":
@@ -910,12 +925,15 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         # MiniMax is routed to non-verification tasks only (generation, marketing,
         # artifacts).  fast=True uses MiniMax-M2.7 (structured output); fast=False
         # uses MiniMax-M3 (creative generation that needs divergence).
-        return MiniMaxOperator(cheap=fast)
+        # If cfg.model is set, it overrides the cheap/non-cheap default split
+        # (caller is being explicit about which model to use).
+        return MiniMaxOperator(model=model, cheap=fast)
     if kind == "deepseek":
         # DeepSeek-chat: $0.27/M input — cheapest in-class for structured JSON.
         # Routed to non-verification tasks only (prescreen, scoring, content).
         # MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
-        return DeepSeekOperator()
+        # cfg.model overrides the hardcoded default (caller is being explicit).
+        return DeepSeekOperator(model=model)
     if kind == "ollama":
         # Ollama: fully local, zero token cost. OpenAI-compatible endpoint.
         # Routed to non-verification tasks only (generation, prescreen, scoring).
