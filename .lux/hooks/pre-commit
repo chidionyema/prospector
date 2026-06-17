@@ -1,0 +1,30 @@
+#!/bin/sh
+# PDD pre-commit hook — Prospector (Python project)
+# Checks modified functions have valid POPDD receipts.
+# Add to .git/hooks/pre-commit as:
+#   ln -sf ../../.lux/hooks/pre-commit .git/hooks/pre-commit
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+echo "🔍 PDD Pre-Commit Check"
+echo "======================="
+
+# Run the CI gate script if it exists
+if [ -f "scripts/ci-gate.sh" ]; then
+  sh scripts/ci-gate.sh 2>&1
+  result=$?
+else
+  echo "⚠️  No ci-gate.sh found — skipping PDD check"
+  result=0
+fi
+
+if [ $result -ne 0 ]; then
+  echo ""
+  echo "❌ PDD gate BLOCKED this commit."
+  echo "   One or more modified functions lack POPDD receipts."
+  echo "   Run: python scripts/popdd_verify.py"
+  exit 1
+fi
+
+echo "✅ PDD gate passed — all modified functions have receipts."
+exit 0

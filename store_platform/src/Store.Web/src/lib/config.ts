@@ -27,4 +27,4 @@ export const PADDLE_SETTINGS = {
   clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || '',
 } as const;
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5291';

@@ -15,6 +15,21 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<StoreDbContext>(options =>
     options.UseSqlite(connectionString));
 
+// CORS — locked to the storefront origin so the browser accepts cross-origin
+// requests from the Next.js storefront to this API. Configure via Store:AllowedOrigin
+// or STORE_ALLOWED_ORIGIN env var. Defaults to localhost:3000 for development.
+var allowedOrigin = builder.Configuration["Store:AllowedOrigin"]
+    ?? Environment.GetEnvironmentVariable("STORE_ALLOWED_ORIGIN")
+    ?? "http://localhost:3000";
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.WithOrigins(allowedOrigin)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
+
 builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
 builder.Services.AddScoped<FulfilmentService>();
 builder.Services.AddSingleton<IContentStorage, R2ContentStorage>();
@@ -43,6 +58,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// CORS middleware — must come between routing and endpoints.
+app.UseCors();
 
 // --- PUBLIC CATALOG ENDPOINTS ---
 

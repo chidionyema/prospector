@@ -167,6 +167,20 @@ class EngineBridge:
         # content in storage; the Store enforces the upload half server-side (defence in
         # depth). The completeness half is enforced here at the only place packs are minted.
         is_listed = uploaded and pack_complete
+
+        # Determine the content version: for a new pack, start at 1. For a republish
+        # (content_hash differs from existing), increment. Query the store's current
+        # version by checking if the pack already exists with any content version.
+        content_version = 1
+        try:
+            check_url = f"{self.store_api_url}/catalog/{candidate_id}"
+            existing = requests.get(check_url, timeout=5)
+            if existing.status_code == 200:
+                data = existing.json()
+                content_version = (data.get("contentVersion") or 0) + 1
+        except Exception:
+            pass  # new pack — default to version 1
+
         return self._update_catalog(
             id=candidate_id,
             title=candidate.title,
@@ -178,6 +192,7 @@ class EngineBridge:
             is_listed=is_listed,
             content_key=content_key if is_listed else None,
             content_hash=content_hash if is_listed else None,
+            content_version=content_version,
         )
 
     @staticmethod
@@ -235,7 +250,8 @@ class EngineBridge:
                         payment_provider: str, provider_product_id: str, provider_price_id: str,
                         is_listed: bool,
                         content_key: Optional[str] = None,
-                        content_hash: Optional[str] = None) -> bool:
+                        content_hash: Optional[str] = None,
+                        content_version: int = 1) -> bool:
         """Call the .NET Store API's /internal/catalog endpoint."""
         url = f"{self.store_api_url}/internal/catalog"
         payload = {
@@ -247,7 +263,8 @@ class EngineBridge:
             "providerProductId": provider_product_id,
             "providerPriceId": provider_price_id,
             "isListed": is_listed,
-            "pricePence": 3000 # £30.00 hardcoded per spec
+            "pricePence": 3000,  # £30.00 hardcoded per spec
+            "contentVersion": content_version,
         }
         if content_key is not None:
             payload["contentKey"] = content_key

@@ -6,3 +6,4 @@ requests>=2.31
 tenacity>=8.2
 pytest>=8.0
 python-json-logger>=2.0
+lux-popdd @ file:///Users/chidionyema/Documents/code/popdd-py

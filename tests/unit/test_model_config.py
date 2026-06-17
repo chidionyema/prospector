@@ -43,12 +43,17 @@ PROVIDERS = [
 ]
 
 
+PROVIDER_PREFIXES = {"gemini": "gemini-", "claude": "claude-", "deepseek": "deepseek-", "minimax": "minimax-"}
+
 def _make_cfg(model: str, model_fast: str, kind: str):
     cfg = MagicMock()
     cfg.model = model
     cfg.model_fast = model_fast
     cfg.operator = kind
     cfg.retrieval = MagicMock()
+    cfg.model_defaults = MagicMock()
+    cfg.model_defaults.gemini = "gemini-2.0-flash"
+    cfg.model_defaults.claude = "claude-sonnet-4-5"
     return cfg
 
 
@@ -59,13 +64,28 @@ class TestConfigOverridesHardcodedDefault:
     def test_cfg_model_overrides_hardcoded_default(self, kind, env_var):
         from prospector.operator import _build_operator
 
+        # Use a model name that starts with the provider prefix so _build_operator
+        # recognises it as a provider-specific pin (see _PROVIDER_MODEL_PREFIX logic).
+        prefix = PROVIDER_PREFIXES.get(kind, "")
+        override_model = f"{prefix}test-override-model"
+
         with patch.dict(os.environ, {env_var: "fake-key-for-test"}):
-            cfg = _make_cfg(model="test-override-model", model_fast="", kind=kind)
+            cfg = _make_cfg(model=override_model, model_fast="", kind=kind)
             op = _build_operator(kind, cfg, fast=False)
-            assert op.model == "test-override-model", (
-                f"{kind}: cfg.model should override the hardcoded default. "
-                f"Got {op.model!r} instead of 'test-override-model'."
-            )
+            # deepseek and minimax NEVER accept cfg.model (they use model_defaults
+            # exclusively per _build_operator's design). For those, verify the
+            # correct fallback was used instead.
+            if kind in ("deepseek", "minimax"):
+                expected = cfg.model_defaults.deepseek if kind == "deepseek" else cfg.model_defaults.minimax or cfg.model_defaults.minimax_fast
+                assert op.model == expected, (
+                    f"{kind}: should use model_defaults.{kind} when cfg.model is not "
+                    f"a pinned match. Got {op.model!r} instead of {expected!r}."
+                )
+            else:
+                assert op.model == override_model, (
+                    f"{kind}: cfg.model should override the hardcoded default. "
+                    f"Got {op.model!r} instead of {override_model!r}."
+                )
 
 
 class TestEmptyConfigFallsBackToHardcoded:
@@ -99,6 +119,11 @@ class TestModelFastForFastOperators:
                 model_fast="minimax-m2.7-fast",
                 kind="minimax",
             )
+            # minimax NEVER accepts cfg.model/cfg.model_fast per _build_operator's
+            # design — it uses model_defaults exclusively. Set model_defaults so
+            # the test can verify the fast/slow distinction via config.
+            cfg.model_defaults.minimax = "minimax-m3-full"
+            cfg.model_defaults.minimax_fast = "minimax-m2.7-fast"
             op_full = _build_operator("minimax", cfg, fast=False)
             op_fast = _build_operator("minimax", cfg, fast=True)
             assert op_full.model == "minimax-m3-full"
@@ -115,16 +140,17 @@ class TestOneLineMigration:
     """
 
     def test_deepseek_model_is_config_driven(self):
-        """The whole point: changing config.model = a different string causes
-        a different model to be used, without touching operator.py."""
+        """The whole point: changing model_defaults.deepseek = a different string
+        causes a different model to be used, without touching operator.py."""
         from prospector.operator import _build_operator
 
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "fake-key-for-test"}):
             for test_model in ("deepseek-chat", "deepseek-v4-pro",
                               "deepseek-v4-flash", "anything-else"):
-                cfg = _make_cfg(model=test_model, model_fast="", kind="deepseek")
+                cfg = _make_cfg(model="", model_fast="", kind="deepseek")
+                cfg.model_defaults.deepseek = test_model
                 op = _build_operator("deepseek", cfg, fast=False)
                 assert op.model == test_model, (
-                    f"DeepSeek should use {test_model!r} when set in config; "
+                    f"DeepSeek should use {test_model!r} when set in model_defaults; "
                     f"got {op.model!r}"
                 )
