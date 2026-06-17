@@ -15,24 +15,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-from popdd import HmacSigner, ReceiptChain
+from popdd_agent import PopddAgent
 
 ROOT = Path(__file__).parent.parent
-KEY_PATH = ROOT / ".lux" / "keys" / "agent.pem"
-RECEIPTS_DIR = ROOT / ".lux" / "receipts"
 
 
 def main() -> int:
-    KEY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
+    agent = PopddAgent.at_path(ROOT)
 
-    signer = HmacSigner(HmacSigner.load_or_create_key(KEY_PATH))
-    chain = ReceiptChain(signer, agent_id="prospector-pipeline")
-
-    chain.append(
+    agent.sign_generic(
         action="test-run:start",
         target="prospector:test-suite",
-        proof={"verdict": "STARTED", "command": "pytest -q --tb=no"},
+        **{"verdict": "STARTED", "command": "pytest -q --tb=no"},
     )
 
     print("Running Prospector test suite...")
@@ -54,10 +48,10 @@ def main() -> int:
             failed = int(m.group(1))
 
     verdict = "PASS" if result.returncode == 0 and failed == 0 else "FAIL"
-    chain.append(
+    agent.sign_generic(
         action="test-run:complete",
         target="prospector:test-suite",
-        proof={
+        **{
             "verdict": verdict,
             "passed": passed,
             "failed": failed,
@@ -65,18 +59,16 @@ def main() -> int:
         },
     )
 
-    verify = chain.verify()
-    chain_path = RECEIPTS_DIR / f"prospector-test-{result.returncode}.jsonl"
-    chain.save(chain_path)
+    verify = agent.verify_chain()
+    # (auto-saved by PopddAgent)
 
     print(f"\n{'=' * 60}")
     print("  Prospector POPDD Run Complete")
     print(f"{'=' * 60}")
     print(f"  Test verdict:  {verdict} ({passed} passed, {failed} failed)")
-    print(f"  Chain valid:   {verify.valid}")
-    print(f"  Chain path:    {chain_path}")
+    print(f"  Chain valid:   {verify['valid']}")
     print(f"{'=' * 60}\n")
-    return 0 if verify.valid and verdict == "PASS" else 1
+    return 0 if verify['valid'] and verdict == "PASS" else 1
 
 
 if __name__ == "__main__":
