@@ -33,7 +33,6 @@ export default function Home({ packs }: HomeProps) {
       />
 
       <Section
-        id="catalog"
         bg="bg"
         width="7xl"
         title="Available Packs"
@@ -60,7 +59,7 @@ export default function Home({ packs }: HomeProps) {
               <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between">
                 <Link href={`/pack/${pack.id}`} className="text-sm font-bold text-text hover:text-primary transition-colors flex items-center gap-2">
                   View Details
-                  <Icon name="arrow-right" size={14} />
+                  <Icon name="arrowRight" size={14} />
                 </Link>
                 <button className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
                   Buy

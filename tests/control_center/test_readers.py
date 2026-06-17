@@ -99,10 +99,10 @@ class TestMoatDown:
         assert not readers.moat_down(health)
 
     def test_moat_down_ignores_non_moat_operators(self):
-        """OpenRouter tier operators should not trigger moat-down."""
+        """Non-moat operators (minimax, deepseek) should not trigger moat-down."""
         now = datetime.now(timezone.utc).timestamp()
         health = {
-            "openrouter": {"dead_until": now + 300, "dead_for_s": 300},
+            "minimax": {"dead_until": now + 300, "dead_for_s": 300},
             "deepseek": {"dead_until": now + 300, "dead_for_s": 300},
         }
         assert not readers.moat_down(health)
@@ -112,7 +112,7 @@ class TestMoatDown:
         health = {
             "claude": {"dead_until": 0},
             "gemini": "not_a_dict",
-            "openrouter": 42,
+            "minimax": 42,
             None: {},
         }
         # Must not raise — should skip the non-dict entries

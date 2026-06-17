@@ -36,7 +36,7 @@ def test_blue_sky_run_reframes_failure_modes_but_signal_run_keeps_raw(monkeypatc
     monkeypatch.setattr(runmod, "generate",
                         lambda *a, **k: captured.update(fails=k.get("recent_failure_modes")) or [])
     monkeypatch.setattr("prospector.adaptive.get_recent_failure_modes",
-                        lambda store, window=20: "MTD/HMRC saturated area")
+                        lambda store, cfg=None, window=20: "MTD/HMRC saturated area")
 
     # blue-sky → reframed
     runmod.run_signal("", cfg=cfg, op=MagicMock(), search=object(), store=Store(cfg))
@@ -76,7 +76,7 @@ def test_run_signal_uses_adaptive_exploration_when_not_overridden(monkeypatch):
     monkeypatch.setattr(runmod, "generate",
                         lambda *a, **k: captured.update(exploration_level=k.get("exploration_level")) or [])
     # Force the adaptive calc to a known value so we can assert it is used.
-    monkeypatch.setattr("prospector.adaptive.calculate_exploration_level", lambda store: 0.42)
+    monkeypatch.setattr("prospector.adaptive.calculate_exploration_level", lambda store, cfg=None, window=50: 0.42)
 
     runmod.run_signal("some signal", cfg=cfg, op=MagicMock(), search=object(), store=Store(cfg))
 

@@ -211,7 +211,7 @@ def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int) -> list[
 
 @track_latency(name="verdict_for")
 def verdict_for(op: Operator, cand: Candidate, check_name: str,
-                sources: list[Source], cfg: Config) -> CheckResult:
+                sources: list[Source], cfg: Config | None = None) -> CheckResult:
     """Rule ONLY from the provided passages. Silence => unverifiable.
 
     FIX #2: passages are truncated to VERDICT_PASSAGE_TRUNCATE chars — enough for
@@ -234,8 +234,11 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
                            degraded=True)
     
     # Persona bias (Part 16 principal upgrade)
-    persona = cfg.personas.get(cfg.active_persona) or {}
-    verdict_bias = persona.get("verdict_bias", "")
+    persona: dict = {}
+    verdict_bias = ""
+    if cfg is not None:
+        persona = cfg.personas.get(cfg.active_persona) or {}
+        verdict_bias = persona.get("verdict_bias", "")
 
     # FIX #2: truncate passages to reduce verdict input tokens by ~5-6x.
     # Format: [source_id] <truncated_text>  (url and title are in the prompt template).

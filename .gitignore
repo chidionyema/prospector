@@ -52,3 +52,4 @@ publish/bundles/
 # .NET build output (store_platform)
 [Bb]in/
 [Oo]bj/
+provider_health.json

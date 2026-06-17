@@ -145,7 +145,11 @@ _USAGE_BY_PROVIDER: Dict[str, Dict[str, int]] = {}
 
 _USAGE_KEYS = ("calls", "web_calls", "input", "output", "total", "cached", "self_corrections")
 
-# Pricing per 1M tokens in USD (2026 typical rates)
+# Pricing per 1M tokens in USD (2026 typical rates). This is the FALLBACK
+# when no config is provided; the canonical source is `config.yaml`'s
+# `pricing` block (consumed via `get_price()`). Keeping the module-level
+# `PRICING` for backwards compatibility with callers that don't have a
+# Config object handy.
 PRICING = {
     "gemini": {"input": 0.10, "output": 0.40},
     "claude": {"input": 3.00, "output": 15.00},
@@ -154,6 +158,36 @@ PRICING = {
     "ollama": {"input": 0.00, "output": 0.00},
     "mock": {"input": 0.00, "output": 0.00},
 }
+
+
+def get_price(provider: str, cfg=None) -> dict:
+    """Return the {input, output} USD-per-1M-token price for `provider`.
+
+    Reads from `cfg.pricing` (the canonical source) when a config is provided.
+    Falls back to the module-level PRICING dict for backwards compatibility
+    (callers without a Config object, primarily tests).
+
+    Missing-provider lookups return $0/$0 (treated as free / unpriced). This
+    is logged so spend is never silently wrong: a warning surfaces to the
+    operator that their config doesn't have a price for this provider.
+    """
+    provider = provider.split("/")[0].lower() if "/" in provider else provider.lower()
+    if cfg is not None and getattr(cfg, "pricing", None) is not None:
+        tier = getattr(cfg.pricing, provider, None)
+        if tier is not None:
+            return {"input": float(tier.input), "output": float(tier.output)}
+        # Provider not in config.pricing — fall through to module default
+        # but warn (this is the case the audit wanted to surface).
+        if provider not in PRICING:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                f"get_price: provider {provider!r} not in cfg.pricing or PRICING; "
+                f"returning $0 (will appear free in cost reports)"
+            )
+    # Fallback: module-level PRICING dict.
+    if provider in PRICING:
+        return PRICING[provider]
+    return {"input": 0.0, "output": 0.0}
 
 
 def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,

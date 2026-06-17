@@ -24,3 +24,35 @@ export async function fetchPackDetails(id: string): Promise<PackDetails> {
   if (!res.ok) throw new Error('Failed to fetch pack details');
   return res.json();
 }
+
+// Stub TIE-compat exports — the Store.Web is being repurposed from TIE to Prospector.
+// These APIs don't exist in the Store context but several components still import them.
+// Each stub returns safe defaults so the app type-checks without the TIE backend.
+export const bountiesApi = { mine: async () => [] as any[] };
+export const proposalsApi = { listMine: async () => [] as any[] };
+export const authApi = {
+  login: async () => ({ token: '', user: null }),
+  register: async () => ({ token: '', user: null }),
+  me: async () => null,
+  logout: async () => {},
+};
+export const externalAuthApi = {
+  providers: async () => ({ providers: [] as any[] }),
+  callback: async () => ({ token: '' }),
+  challengeUrl: (_provider: string, _redirectUrl: string) => '',
+};
+export const accountApi = {
+  get: async () => ({}),
+  update: async () => ({}),
+  delete: async () => {},
+  acceptTos: async (_version: string) => {},
+};
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+export function setAccessToken(_token: string | null) {}
+export function setOnUnauthorized(_fn: () => void) {}

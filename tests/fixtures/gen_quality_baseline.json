@@ -1,0 +1,45 @@
+{
+  "_comment": "Generation quality regression baseline. Captured 2026-06-16 after DPP trigram fallback + positive learning + fertile-cell boosting. Any future technique change must not regress these numbers unless the improvement is intentional and the new values are re-baselined.",
+  "dpp_diversity": {
+    "description": "DPP selection on 10 candidates (5 AI-cluster near-dupes + 5 diverse). Measures how many AI-cluster candidates survive selection and average pairwise trigram similarity of the selected set. Lower = better diversity.",
+    "test_set": {
+      "ai_cluster": ["AI Invoice Processing", "AI Expense Tracking", "AI Tax Filing", "AI Payroll Automation", "AI Inventory Management"],
+      "diverse": ["Construction Adjudication Arbitrage", "Probate Property Clear-Out Service", "Garden Office Power Broker", "Tradie Time-Capture Agent", "Solo Breeder Litter Deposit Recovery"]
+    },
+    "baseline": {
+      "k": 5,
+      "max_ai_cluster_selected": 4,
+      "max_avg_pairwise_similarity": 0.55,
+      "min_diverse_selected": 1
+    }
+  },
+  "pass_traits": {
+    "description": "get_pass_traits() output format invariants. Must contain these fields when PASSes exist. Empty store → empty string.",
+    "baseline": {
+      "required_fields_when_passes_exist": ["SURVIVOR PATTERNS", "Forms:", "Audiences:"],
+      "empty_store_returns": ""
+    }
+  },
+  "grid_priorities": {
+    "description": "calculate_grid_priorities() must boost fertile forms (top by count gets 3x, second gets 2x) in addition to zero-count forms.",
+    "baseline": {
+      "fertile_form_multiplier_top": 3,
+      "fertile_form_multiplier_second": 2,
+      "zero_count_forms_always_included": true
+    }
+  },
+  "exemplars": {
+    "description": "get_exemplars() must not crash when dossier JSON is missing or incomplete.",
+    "baseline": {
+      "handles_missing_dossier": true,
+      "handles_missing_one_liner": true
+    }
+  },
+  "thin_candidate_skip": {
+    "description": "Candidates with title+one_liner < 50 chars are not sent to the refinement LLM.",
+    "baseline": {
+      "min_chars_for_refinement": 50,
+      "thin_candidates_preserved": true
+    }
+  }
+}

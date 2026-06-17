@@ -101,6 +101,61 @@ Pricing (step 3), retrieval providers (`retrieval.py:455,599,743`),
 and the operator factory default-model strings (the remaining `_DEFAULT_MODEL`
 constants) are all still TODO.
 
+## Progress (2026-06-16, later) — config home landed, but a shadowing bug found
+
+Reconciling the ticket with current code (it had drifted):
+
+- **DONE since first filing:** the `_DEFAULT_MODEL`/`_FALLBACK_MODEL` constants
+  are gone from `operator.py`; a `model_defaults:` block exists in `config.yaml`
+  (operator + `search:` sub-block) and `_build_operator` injects it via
+  `default_model=`/`fast_model=`. A `pricing:` block in `config.yaml` replaced the
+  hardcoded `telemetry.PRICING` dict (missing price = warn, not silent $0).
+  `retrieval.py` search providers take `model_name=search_model` from config.
+  The only leftover hardcoded identifiers are last-resort string fallbacks inside
+  the operator constructors (e.g. `model or default_model or "deepseek-chat"`).
+- **V4 migration done in config (the value proof):** `model_defaults.deepseek` →
+  `deepseek-v4-pro`, `model_defaults.search.deepseek` → `deepseek-v4-flash`,
+  `pricing.deepseek` → `{0.435, 0.87}`. Zero code edits. This is the 1-line-change
+  demonstration step 4 asked for.
+
+### ⚠ BLOCKER found by verification — `cfg.model` shadows `model_defaults`
+
+`_build_operator` (operator.py:910–912) reads `cfg.model` (fast=False) /
+`cfg.model_fast` (fast=True) and passes it as `model=` to **every** provider,
+where it wins over the per-provider `model_defaults`. But `cfg.model` /
+`cfg.model_fast` are both pinned to the **Gemini** verdict model
+(`"gemini-2.5-flash-lite"`, config.yaml:15-16). The real non-critical chain
+(`run.py:359-369`) hands the same `cfg` to the deepseek/minimax tiers, so:
+
+```
+deepseek  fast=False/True -> built model: gemini-2.5-flash-lite
+minimax   fast=False/True -> built model: gemini-2.5-flash-lite
+```
+
+i.e. the cheap-tail operators are built with a **Gemini** model string, which
+would 400 on `api.deepseek.com` / `api.minimax.io`. The `model_defaults` block
+(and therefore the V4 switch above) is **inert for the chain** until this is
+fixed. The leak is already handled for `claude_cli` (passes `model=None`,
+operator.py:919-923) — the same fix is needed for the API providers.
+
+`tests/unit/test_model_config.py` currently *asserts* `cfg.model` overrides each
+provider — so it locks the leak in. The design intent needs a founder call:
+`cfg.model` should be the **Gemini/moat-only** pin; non-moat providers should
+take their model from `model_defaults.<provider>` (or a future `cfg.models.<p>`).
+Proposed minimal fix: in `_build_operator`, stop forwarding `cfg.model`/
+`cfg.model_fast` to deepseek/minimax/ollama/claude (only gemini consumes them),
+and update the test to assert per-provider `model_defaults` instead. **Founder
+decision required — not applied.**
+
+### Also: `max_tokens` is hardcoded and matters for V4 thinking mode
+
+`DeepSeekOperator` caps output at `max_tokens=8192` (operator.py:379) while the
+MiniMax reasoning path uses `32768` (operator.py:289). V4 (`deepseek-v4-pro`)
+has thinking mode default-on; the reasoning trace counts against that budget, so
+8192 risks exhausting it and returning empty `content` → `ParseError`. Add
+`max_tokens` (and ideally a thinking-mode toggle) to the per-provider config and
+size it for reasoning models. Belongs in this same audit.
+
 ## Out of scope
 
 - The moat routing decision (Claude→Gemini, not hardcoded *here*, but

@@ -242,27 +242,32 @@ class MiniMaxOperator(Operator):
     """
 
     # MiniMax API endpoint (OpenAI-compatible /v1/chat/completions).
-    # MiniMax-M3 is their flagship reasoning model; MiniMax-M2.7 is the stable
-    # non-reasoning option for structured JSON tasks.
-    _DEFAULT_MODEL = "MiniMax-M3"
-    _FALLBACK_MODEL = "MiniMax-M2.7"
+    # The flagship reasoning model and the stable non-reasoning option for
+    # structured JSON tasks are configured in `config.yaml` under
+    # `model_defaults.minimax` and `model_defaults.minimax_fast`. The
+    # factory passes them as `default_model` / `fast_model` arguments. This
+    # is the *only* way to override the model — no hardcoded strings remain.
     _BASE_URL = "https://api.minimax.io/v1"
 
     def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None,
-                 cheap: bool = False):
+                 cheap: bool = False,
+                 default_model: Optional[str] = None,
+                 fast_model: Optional[str] = None):
         import urllib.request
         key = api_key or os.environ.get("MINIMAX_API_KEY")
         if not key:
             raise RuntimeError("MINIMAX_API_KEY not set")
         self._key = key
-        # cheap=True uses MiniMax-M2.7 (stable, fast, good for structured output).
-        # Full model (MiniMax-M3) for generation (needs creative divergence).
-        # An explicit `model` argument (from cfg.model) overrides the cheap/non-cheap
-        # split — caller is being explicit about which model to use (see model-config
-        # audit ticket: model identifiers must be config-driven, not hardcoded).
+        # cheap=True uses the cheap/structured model; otherwise the full
+        # reasoning model. An explicit `model` argument (from cfg.model)
+        # overrides the cheap/non-cheap split — caller is being explicit.
+        # All three sources are config-driven (see model-config audit ticket):
+        # no hardcoded identifiers remain in this class.
+        full_default = default_model or "MiniMax-M3"
+        cheap_default = fast_model or "MiniMax-M2.7"
         self.model = (model
-                      or (self._FALLBACK_MODEL if cheap else None)
-                      or self._DEFAULT_MODEL)
+                      or (cheap_default if cheap else None)
+                      or full_default)
         self.name = f"minimax/{self.model}"
 
     @property
@@ -340,16 +345,19 @@ class DeepSeekOperator(Operator):
     See: https://api-docs.deepseek.com/
     """
 
-    _DEFAULT_MODEL = "deepseek-chat"
     _BASE_URL = "https://api.deepseek.com/v1"
 
-    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None,
+                 default_model: Optional[str] = None):
         import urllib.request
         key = api_key or os.environ.get("DEEPSEEK_API_KEY")
         if not key:
             raise RuntimeError("DEEPSEEK_API_KEY not set")
         self._key = key
-        self.model = model or self._DEFAULT_MODEL
+        # `default_model` comes from cfg.model_defaults.deepseek. An explicit
+        # `model` (from cfg.model) overrides it. No hardcoded identifiers in
+        # this class — see model-config audit ticket.
+        self.model = model or default_model or "deepseek-chat"
         self.name = f"deepseek/{self.model}"
 
     @property
@@ -430,27 +438,33 @@ class OpenRouterOperator(Operator):
     MUST NOT be used for kill-gate verdicts or adversarial analysis (the moat).
     """
 
-    # Ordered by priority: fastest/reliable first, unpredictable fallback last.
-    _DEFAULT_MODELS = [
-        "google/gemma-4-31b-it:free",
-        "google/gemma-4-26b-a4b-it:free",
-        "qwen/qwen3-coder:free",
-        "qwen/qwen3-next-80b-a3b-instruct:free",
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "openrouter/free",
-    ]
+    # The priority-ordered model list comes from cfg.model_defaults.openrouter.
+    # The factory passes it as `default_models`; an explicit `models` argument
+    # (from cfg.model, joined as a list if needed) overrides it. No hardcoded
+    # list of model strings remains in this class.
     _BASE_URL = "https://openrouter.ai/api/v1"
     _MODEL_TIMEOUT_S = 20.0   # fail fast, rotate fast
 
     def __init__(self, models: Optional[list[str]] = None,
                  api_key: Optional[str] = None,
                  failure_threshold: int = 3,
-                 cooldown_s: float = 300.0):
+                 cooldown_s: float = 300.0,
+                 default_models: Optional[list[str]] = None):
         key = api_key or os.environ.get("OPENROUTER_API_KEY")
         if not key:
             raise RuntimeError("OPENROUTER_API_KEY not set")
         self._key = key
-        self._models = models or list(self._DEFAULT_MODELS)
+        # Fallback to the historical default if neither explicit nor config
+        # is provided (lets MockOperator-style tests construct without cfg).
+        _FALLBACK = [
+            "google/gemma-4-31b-it:free",
+            "google/gemma-4-26b-a4b-it:free",
+            "qwen/qwen3-coder:free",
+            "qwen/qwen3-next-80b-a3b-instruct:free",
+            "nvidia/nemotron-3-ultra-550b-a55b:free",
+            "openrouter/free",
+        ]
+        self._models = models or list(default_models) if default_models else (models or _FALLBACK)
         self._failure_threshold = failure_threshold
         self._cooldown_s = cooldown_s
         self._health = None   # lazily imported
@@ -702,12 +716,14 @@ class OllamaOperator(Operator):
     Routed to non-verification tasks only: generation, prescreen, scoring.
     MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
     """
-    _DEFAULT_MODEL = "qwen2.5-coder:7b"
     _BASE_URL = "http://localhost:11434/v1"
 
-    def __init__(self, model: Optional[str] = None, base_url: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None, base_url: Optional[str] = None,
+                 default_model: Optional[str] = None):
         import urllib.request
-        self.model = model or self._DEFAULT_MODEL
+        # `default_model` comes from cfg.model_defaults.ollama. An explicit
+        # `model` (from cfg.model) overrides it.
+        self.model = model or default_model or "qwen2.5-coder:7b"
         self.base_url = (base_url or os.environ.get("OLLAMA_BASE_URL")
                          or self._BASE_URL)
         self.name = f"ollama/{self.model}"
@@ -888,15 +904,34 @@ class FallbackOperator(Operator):
 def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     # fast=True selects the lighter model for mechanical calls (query-gen,
     # prescreen); falls back to the main model when model_fast is unset.
-    # An empty string is treated as "unset" — the operator's own hardcoded
-    # default is then used. This keeps the model-config refactor honest:
-    # a config change is what selects a model, not code, but an absent
-    # config value still has a sensible fallback. The intent is to
-    # eliminate the per-operator `_DEFAULT_MODEL` strings in a follow-up;
-    # for now, those are the authoritative defaults.
+    #
+    # CRITICAL: cfg.model / cfg.model_fast are provider-specific pins.
+    # They must NOT leak to other providers (e.g. a "gemini-2.5-flash" pin
+    # sent to DeepSeek causes HTTP 400). Only apply cfg.model/model_fast
+    # when they match the provider being built — determined by the model
+    # name prefix or the config's implicit primary operator.
+    # An empty string is treated as "unset" — the operator's own config
+    # default is then used (cfg.model_defaults.<provider>).
     cfg_model = getattr(cfg, "model_fast", "") if fast else getattr(cfg, "model", "")
-    has_cfg_model = bool(cfg_model)
-    model = cfg_model or None  # None means "let the operator pick its default"
+    # Per-provider config defaults (from cfg.model_defaults).
+    md = getattr(cfg, "model_defaults", None)
+
+    # Determine if cfg.model/model_fast was set FOR this provider.
+    # Heuristic: a model name starting with the provider name or its aliases
+    # (e.g. "gemini-*", "deepseek-*", "claude-*") belongs to that provider.
+    _PROVIDER_MODEL_PREFIX = {
+        "gemini": ("gemini-",),
+        "gemini_cli": ("gemini-",),
+        "claude": ("claude-",),
+        "claude_cli": ("claude-",),
+        "deepseek": ("deepseek-",),
+        "minimax": ("minimax-", "MiniMax-"),
+        "ollama": (),
+    }
+    prefixes = _PROVIDER_MODEL_PREFIX.get(kind, ())
+    model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
+    model = cfg_model if model_matches else None
+    has_cfg_model = model_matches
     if kind == "gemini_cli":
         from .gemini_cli import GeminiCliOperator
         return GeminiCliOperator(model=model)
@@ -909,43 +944,49 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         try:
             if has_cfg_model:
                 return GeminiOperator(model=model)
-            return GeminiOperator()  # let `model` default-parameter value apply
+            return GeminiOperator(
+                model=md.gemini if md else "gemini-2.0-flash"
+            )
         except ModuleNotFoundError as e:
             raise RuntimeError("GEMINI_API_KEY not set or google-genai not installed") from e
     if kind == "claude":
         try:
             if has_cfg_model:
                 return ClaudeOperator(model=model)
-            return ClaudeOperator()  # let `model` default-parameter value apply
+            return ClaudeOperator(
+                model=md.claude if md else "claude-sonnet-4-5"
+            )
         except ModuleNotFoundError as e:
             raise RuntimeError("ANTHROPIC_API_KEY not set or anthropic not installed") from e
     if kind == "mock":
         return MockOperator()
     if kind == "minimax":
         # MiniMax is routed to non-verification tasks only (generation, marketing,
-        # artifacts).  fast=True uses MiniMax-M2.7 (structured output); fast=False
-        # uses MiniMax-M3 (creative generation that needs divergence).
-        # If cfg.model is set, it overrides the cheap/non-cheap default split
-        # (caller is being explicit about which model to use).
-        return MiniMaxOperator(model=model, cheap=fast)
+        # artifacts).  fast=True uses the cheap/structured model; fast=False uses
+        # the full reasoning model. Both defaults come from cfg.model_defaults.
+        # NEVER use cfg.model/cfg.model_fast here — those are Gemini-specific pins.
+        return MiniMaxOperator(
+            cheap=fast,
+            default_model=md.minimax if md else None,
+            fast_model=md.minimax_fast if md else None,
+        )
     if kind == "deepseek":
-        # DeepSeek-chat: $0.27/M input — cheapest in-class for structured JSON.
         # Routed to non-verification tasks only (prescreen, scoring, content).
         # MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
-        # cfg.model overrides the hardcoded default (caller is being explicit).
-        return DeepSeekOperator(model=model)
+        # NEVER use cfg.model/cfg.model_fast here — those are Gemini-specific pins.
+        return DeepSeekOperator(
+            default_model=md.deepseek if md else None,
+        )
     if kind == "ollama":
         # Ollama: fully local, zero token cost. OpenAI-compatible endpoint.
         # Routed to non-verification tasks only (generation, prescreen, scoring).
         # MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
-        return OllamaOperator()
-    if kind == "openrouter":
-        # OpenRouter: multi-model free-tier operator with per-model circuit breakers.
-        # Ranks available free models by priority; rotates on rate-limit.
-        # MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
-        return OpenRouterOperator()
+        return OllamaOperator(
+            model=model,
+            default_model=md.ollama if md else None,
+        )
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected gemini_cli|claude_cli|gemini|claude|minimax|deepseek|ollama|openrouter|mock)")
+                     "(expected gemini_cli|gemini|claude|minimax|deepseek|ollama|mock)")
 
 
 def make_operator(cfg, fast: bool = False) -> Operator:

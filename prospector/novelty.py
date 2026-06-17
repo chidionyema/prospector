@@ -17,6 +17,23 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
     if mag_a == 0 or mag_b == 0: return 0.0
     return dot / (mag_a * mag_b)
 
+
+def _text_similarity(a: str, b: str) -> float:
+    """Character trigram Jaccard similarity.
+
+    A zero-cost, deterministic fallback when embeddings are unavailable.
+    Character trigrams are language-agnostic and catch near-duplicate phrases
+    ("meal planning" vs "diet planning" share "pla", "lan", "ann", "nin", "ing").
+    Returns 0.0 for empty input; 1.0 for identical strings.
+    """
+    def _trigrams(s: str) -> set[str]:
+        clean = " ".join(str(s).lower().split())  # normalize whitespace
+        return {clean[i:i+3] for i in range(len(clean) - 2)}
+    ta, tb = _trigrams(a), _trigrams(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
+
 @track_latency(name="select_diverse_candidates")
 def select_diverse_candidates(
     op: Operator,
@@ -35,13 +52,37 @@ def select_diverse_candidates(
     if len(candidates_with_scores) <= k:
         return [c for c, s, f in candidates_with_scores]
 
-    # Generate embeddings for all candidates using the provided features
-    embeddings = []
+    # Generate embeddings for all candidates using the provided features.
+    # If the operator returns empty embeddings (most non-Gemini operators),
+    # fall back to text-based Jaccard similarity on title + one_liner.
+    embeddings: list[list[float]] = []
+    use_text_fallback = False
     for cand, score, features in candidates_with_scores:
-        # Fallback to title + one_liner if features are empty
         text = features or f"{cand.title} {cand.one_liner}"
         emb = op.embed(text)
-        embeddings.append(emb)
+        if not emb and not use_text_fallback and embeddings:
+            # First empty embedding detected — switch to text fallback
+            use_text_fallback = True
+        elif not emb:
+            use_text_fallback = True
+        embeddings.append(emb if emb else [])  # keep empty list for text fallback
+
+    def _sim(i: int, j: int) -> float:
+        """Similarity between candidates i and j, using embeddings or text fallback."""
+        if not use_text_fallback and embeddings[i] and embeddings[j]:
+            return cosine_similarity(embeddings[i], embeddings[j])
+        # Text fallback
+        ci = candidates_with_scores[i][0]
+        cj = candidates_with_scores[j][0]
+        return _text_similarity(
+            f"{ci.title} {ci.one_liner}",
+            f"{cj.title} {cj.one_liner}",
+        )
+
+    # Use higher diversity penalty for text fallback — text similarities
+    # are typically lower and sparser than embedding cosine similarities,
+    # so lambda needs a boost to achieve comparable diversity forcing.
+    effective_lambda = lambda_param * 3.0 if use_text_fallback else lambda_param
 
     selected_indices: List[int] = []
     
@@ -64,17 +105,16 @@ def select_diverse_candidates(
                 continue
             
             cand, score, _ = candidates_with_scores[i]
-            emb = embeddings[i]
             
             # Find max similarity to any already selected candidate
             max_sim = 0.0
             for s_idx in selected_indices:
-                sim = cosine_similarity(emb, embeddings[s_idx])
+                sim = _sim(i, s_idx)
                 max_sim = max(max_sim, sim)
             
             # Penalty term: exp(-lambda * max_sim)
             # lambda_param controls the trade-off between quality and diversity.
-            diversity_penalty = math.exp(-lambda_param * max_sim)
+            diversity_penalty = math.exp(-effective_lambda * max_sim)
             marginal_score = score * diversity_penalty
             
             if marginal_score > max_marginal_score:

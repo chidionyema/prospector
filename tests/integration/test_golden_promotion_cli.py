@@ -106,7 +106,7 @@ def test_golden_cli_exits_zero_on_full_pass(tmp_path: Path):
 # ---------------------------------------------------------------------------
 # §6 test 3: --operator deepseek/minimax accepted by argparse
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("op", ["deepseek", "minimax", "openrouter"])
+@pytest.mark.parametrize("op", ["deepseek", "minimax"])
 def test_golden_cli_accepts_real_operators(op: str):
     """Argparse must accept every operator in OPERATOR_CHOICES."""
     assert op in OPERATOR_CHOICES

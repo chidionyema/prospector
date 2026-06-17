@@ -16,6 +16,7 @@ import streamlit as st
 
 from prospector.control_center import state as _state
 from prospector.control_center import pages as _pages_mod
+from prospector.control_center.theme import inject_theme
 
 # Page modules — each exposes a render() function
 _PAGE_MODULES = {
@@ -54,6 +55,8 @@ def main():
         selected_dossier=None,
         staged_config=None,
     )
+
+    inject_theme()
 
     # ── Sidebar nav ─────────────────────────────────────────────────────────
     with st.sidebar:

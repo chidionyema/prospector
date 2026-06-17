@@ -31,8 +31,8 @@ from .retrieval import SearchProvider, make_provider
 from .run import vet_candidate
 
 OPERATOR_CHOICES = [
-    "gemini_cli", "claude_cli", "gemini", "claude",
-    "minimax", "deepseek", "openrouter", "mock",
+    "gemini_cli", "gemini", "claude",
+    "minimax", "deepseek", "mock",
 ]
 
 # Surface check: the dossier must SURFACE the case's key reason. We match a keyword

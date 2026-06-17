@@ -20,7 +20,7 @@ export const MARKETING_MECHANICS = [
   { href: '/faq', label: 'FAQ' },
 ] as const;
 
-export const MARKETING_ROLES = [] as const;
+export const MARKETING_ROLES: readonly { href: string; label: string }[] = [];
 
 interface MarketingLayoutProps {
   children: React.ReactNode;

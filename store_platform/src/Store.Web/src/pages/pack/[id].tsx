@@ -66,7 +66,7 @@ export default function PackPage({ pack }: PackPageProps) {
     <MarketingLayout>
       <Seo title={`${pack.title} - Prospector Store`} />
 
-      <Section bg="bg" width="5xl" className="!pt-12 !pb-24">
+      <Section bg="bg" width="6xl" className="!pt-12 !pb-24">
         <div className="flex flex-col md:flex-row gap-12">
           {/* Left: Content */}
           <div className="flex-1">
