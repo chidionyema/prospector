@@ -1,0 +1,5 @@
+{"t":"2026-06-16T12:17:06.793Z","m":"🔒 protecting 1444 verify/test file(s): tests/, prospector/report.py, prospector/diagnostics.py, prospector/run.py, prospector/verify.py, prospector/kill_filter.py, config.yaml, store/, prospector/models.py, prospector/config.py, prospector/store.py"}
+{"t":"2026-06-16T12:17:06.828Z","m":"▶ Builder [paid] deepseek-v3.2 (openrouter/deepseek/deepseek-v3.2) …"}
+{"t":"2026-06-16T12:36:21.476Z","m":"■ cancel requested."}
+{"t":"2026-06-16T12:36:22.603Z","m":"  ⚠ deepseek-v3.2 modified a protected verify/test file — reverted to founder snapshot."}
+{"t":"2026-06-16T12:36:22.604Z","m":"■ job canceled."}

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
+import os
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -169,6 +170,10 @@ class Config:
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
+    # Entitlements API key for the /entitlements check. Read from the
+    # PROSPECTOR_ENTITLEMENTS_API_KEY env var at config load time. No default
+    # — if unset, the entitlements check will fail clearly (fail-closed).
+    entitlements_api_key: str = ""
     # Per-provider default model identifiers (see ModelDefaults docstring).
     # This is the canonical home for "what model does provider X use by default".
     # Operators / search providers consume this; the historical `_DEFAULT_MODEL`
@@ -339,6 +344,12 @@ def load_config(path: str | Path | None = None) -> Config:
         store=raw.get("store") or {"dir": "store"},
         model_defaults=_parse_model_defaults(raw.get("model_defaults")),
         pricing=_parse_pricing(raw.get("pricing")),
+        # Read entitlements_api_key from env var; config.yaml value takes precedence
+        # over the env var when both are set (for testing/override).
+        entitlements_api_key=(
+            raw.get("entitlements_api_key")
+            or os.environ.get("PROSPECTOR_ENTITLEMENTS_API_KEY", "")
+        ),
     )
     # Resolve the configured active lane (if any) into the operative gate/threshold/weight
     # fields. Empty active_lane => the top-level defaults stand unchanged (today's behaviour).

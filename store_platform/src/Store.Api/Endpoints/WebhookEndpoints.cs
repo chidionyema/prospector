@@ -80,9 +80,10 @@ public static class WebhookEndpoints
     }
 
     // Records the inbound webhook for dedup. Returns true if this event was already
-    // processed (caller short-circuits with ALREADY_PROCESSED). Behaviour is identical
-    // to the prior inline dedup block: the pre-check and the persistence race both map
-    // to "already processed".
+    // processed (caller short-circuits with ALREADY_PROCESSED). The WebhookEvent is only
+    // staged here — the actual SaveChangesAsync (and thus any unique-constraint race) happens
+    // downstream in FulfilmentService.CommitAsync, where the duplicate is caught. A try/catch
+    // around Add() here would be dead code: Add() never touches the database.
     private static async Task<bool> RegisterWebhookEventAsync(
         StoreDbContext db, string provider, PaymentTransaction txn, string? reason, string rawBody)
     {
@@ -91,20 +92,13 @@ public static class WebhookEndpoints
             return true;
         }
 
-        try
+        db.WebhookEvents.Add(new WebhookEvent
         {
-            db.WebhookEvents.Add(new WebhookEvent
-            {
-                Provider = provider,
-                ProviderEventId = txn.TransactionId,
-                EventType = reason ?? "completed",
-                RawPayload = rawBody
-            });
-        }
-        catch (DbUpdateException)
-        {
-            return true;
-        }
+            Provider = provider,
+            ProviderEventId = txn.TransactionId,
+            EventType = reason ?? "completed",
+            RawPayload = rawBody
+        });
 
         return false;
     }

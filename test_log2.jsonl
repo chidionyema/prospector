@@ -1,0 +1,2 @@
+{"message": "Gemini CLI usage", "web": true, "input": 10, "output": 5, "total": 20}
+{"message": "Claude CLI usage", "web": true, "input": 100, "output": 50, "total": 200, "cached": 30, "cost_usd": 0.25}

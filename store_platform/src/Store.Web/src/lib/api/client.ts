@@ -25,6 +25,20 @@ export async function fetchPackDetails(id: string): Promise<PackDetails> {
   return res.json();
 }
 
+export interface OrderDetails {
+  packId: string;
+  packTitle: string;
+  status: 'active' | 'revoked';
+  downloadPath: string;
+}
+
+export async function fetchOrder(token: string): Promise<OrderDetails> {
+  const res = await fetch(`${API_BASE_URL}/api/orders/${token}`);
+  if (res.status === 404) throw new Error('not_found');
+  if (!res.ok) throw new Error('Failed to fetch order');
+  return res.json();
+}
+
 // Stub TIE-compat exports — the Store.Web is being repurposed from TIE to Prospector.
 // These APIs don't exist in the Store context but several components still import them.
 // Each stub returns safe defaults so the app type-checks without the TIE backend.

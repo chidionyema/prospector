@@ -36,7 +36,14 @@ class EngineBridge:
         self.cfg = cfg
         # Store API settings
         self.store_api_url = os.environ.get("STORE_API_URL", "http://localhost:5291")
-        self.internal_api_key = os.environ.get("STORE_INTERNAL_API_KEY", "prospector-dev-key")
+        # No default: a committed fallback key in a public repo is a credential anyone can
+        # use. Unset -> None, and _update_catalog refuses to publish (fail-closed), mirroring
+        # the Store's own 503-when-unconfigured behaviour.
+        self.internal_api_key = os.environ.get("STORE_INTERNAL_API_KEY")
+
+        # Entitlements API key: use config value (which reads from config.yaml or
+        # PROSPECTOR_ENTITLEMENTS_API_KEY env var). Empty = fail-closed.
+        self.entitlements_api_key = getattr(cfg, "entitlements_api_key", "")
 
         # Active provider selection (config-driven, matches .NET MoneyRailConfigGate)
         self.active_provider = getattr(cfg, "store_payments", {}).get("active_provider", "paddle") if hasattr(cfg, "store_payments") else \
@@ -71,9 +78,33 @@ class EngineBridge:
             logger.warning(f"EngineBridge: Skipping non-PASS dossier {dossier.candidate.candidate_id}")
             return False
 
+        # PROVISIONAL GUARD (P0 — trust-critical): a dossier whose ruling was served by
+        # the cheap emergency fallback tail (moat exhausted) is stamped provisional=true.
+        # A provisional PASS is a real-but-untrusted decision: the candidate may be valid,
+        # but the ruling was made by a model that is NOT cleared to decide truth in the
+        # moat. Refuse publication; auto re-vet by the trusted moat on `vet --resume`.
+        if getattr(dossier, "provisional", False):
+            logger.warning(
+                f"EngineBridge: Refusing to publish provisional dossier "
+                f"{dossier.candidate.candidate_id} ({dossier.candidate.title}) — "
+                "ruled by emergency fallback brain; must re-vet before publishing.",
+                extra={"candidate_id": dossier.candidate.candidate_id, "provisional": True},
+            )
+            return False
+
         candidate = dossier.candidate
         candidate_id = candidate.candidate_id
-        
+
+        # ENTITLEMENTS CHECK (P0): Before spending time/credits on bundling and
+        # provisioning, verify that the engine is entitled to publish this pack.
+        # Fail-closed — missing or invalid key blocks publication entirely.
+        if not self.entitlements_check(candidate_id):
+            logger.error(
+                f"EngineBridge: Entitlements check failed for {candidate_id}; "
+                "refusing to publish."
+            )
+            return False
+
         # UPLOAD PROVENANCE CHECK (FENCED)
         # We MUST have a dossier reference to list. No ref = no grounding = no sale.
         dossier_ref = f"dossier:{candidate_id}"
@@ -204,6 +235,46 @@ class EngineBridge:
                 h.update(chunk)
         return h.hexdigest()
 
+    def entitlements_check(self, candidate_id: str) -> bool:
+        """Verify that the engine is entitled to publish candidate_id.
+
+        Calls POST /entitlements with the configured API key (Bearer token).
+        Fail-closed: returns False when the key is unset or the endpoint
+        rejects the request, never silently using a stub credential.
+        """
+        if not self.entitlements_api_key:
+            logger.error(
+                f"EngineBridge: PROSPECTOR_ENTITLEMENTS_API_KEY not set; "
+                f"refusing to publish {candidate_id}."
+            )
+            return False
+
+        url = f"{self.store_api_url}/entitlements"
+        headers = {
+            "Authorization": f"Bearer {self.entitlements_api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {"candidate_id": candidate_id}
+
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            if response.status_code == 200:
+                logger.info(
+                    f"EngineBridge: Entitlements check passed for {candidate_id}"
+                )
+                return True
+            else:
+                logger.error(
+                    f"EngineBridge: Entitlements check failed for {candidate_id}: "
+                    f"{response.status_code} {response.text}"
+                )
+                return False
+        except Exception as e:
+            logger.error(
+                f"EngineBridge: Entitlements endpoint unreachable at {url}: {e}"
+            )
+            return False
+
     def _create_bundle(self, dossier: Dossier, artifacts: Dict[str, str], marketing: List[Dict[str, str]]) -> Optional[Path]:
         """Bundle the pack files into a zip."""
         candidate_id = dossier.candidate.candidate_id
@@ -271,6 +342,15 @@ class EngineBridge:
         if content_hash is not None:
             payload["contentHash"] = content_hash
         
+        # Fail closed: never publish without a configured key. The Store also 503s when its
+        # key is unset; refusing here removes any reliance on a default credential and avoids
+        # a pointless unauthenticated round-trip.
+        if not self.internal_api_key:
+            logger.error(
+                f"EngineBridge: STORE_INTERNAL_API_KEY not set; refusing to publish {id}."
+            )
+            return False
+
         try:
             # Authenticate to the Store's internal endpoint. The server compares this
             # against its configured key in fixed time and rejects (401) on mismatch.
@@ -388,23 +468,15 @@ class StripeProvisioner:
         self._stripe = stripe
 
     def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
-        """Create a Stripe Product and a one-off £30 Price. Returns product ID."""
+        """Create a Stripe Product. Returns product ID. The Price is created separately by
+        create_price (called once from publish_pass) so each product gets exactly one Price —
+        creating one here too orphaned a Price in Stripe on every publish."""
         product = self._stripe.Product.create(
             name=name,
             description=description,
             metadata=metadata,
         )
         logger.info(f"StripeProvisioner: Created product {product.id}")
-
-        # Create the price immediately — the store needs both IDs.
-        self._stripe.Price.create(
-            product=product.id,
-            unit_amount=3000,  # £30.00 in pence
-            currency="gbp",
-            metadata=metadata,
-        )
-        logger.info(f"StripeProvisioner: Created price for product {product.id}")
-
         return product.id
 
     def create_price(self, product_id: str, amount_pence: int, currency: str = "gbp") -> str:

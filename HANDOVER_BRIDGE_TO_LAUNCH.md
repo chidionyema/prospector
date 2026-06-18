@@ -58,7 +58,7 @@ Two incompatible shapes exist in the codebase **right now**:
 ### 3.2 Python publish (`prospector/bridge.py`, `publish/publish.py`)
 - `EngineBridge.publish_pass(dossier)` → builds bundle → (optional Paddle product/price) → POSTs `/internal/catalog`.
 - **POST body**: `{"id","title","oneLine","dossierRef","paddleProductId","paddlePriceId","isListed","pricePence":3000}`.
-- **Base URL**: `STORE_API_URL` (default **`http://localhost:5000`** — ⚠️ mismatches the API's `:5291`), `STORE_INTERNAL_API_KEY` (default `prospector-dev-key`, **sent but never checked server-side**).
+- **Base URL**: `STORE_API_URL` (default `http://localhost:5291`), `STORE_INTERNAL_API_KEY` (**no default — bridge fails closed if unset**; verified server-side in fixed time at `POST /internal/catalog`).
 - **Bundle** (`_create_bundle`): `publish/bundles/{candidate_id}/prospector_pack_{candidate_id[:8]}.zip` containing `01_Blueprint_BuildSpec.md`, `02_Marketing_Plan_GTM.md`, `03_Build_Launch_Kit.md`, `QA_Report.md`, `Marketing_Assets.md`.
 - **Upload**: simulated only (`bridge.py:90-92`).
 - `_write_listing` → `store/listings/{candidate_id}.json` (the 3-tier shape — see §2).

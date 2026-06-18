@@ -13,6 +13,9 @@ from prospector.bridge import EngineBridge, ProductProvisioner, StripeProvisione
 
 class TestEngineBridge(unittest.TestCase):
     def setUp(self):
+        # The bridge now fails closed without an internal key (no committed default), so the
+        # publish path must be given one explicitly — exactly as production does via env.
+        os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
         self.cfg = MagicMock()
         self.bridge = EngineBridge(self.cfg)
         # Point to the local test server
@@ -20,7 +23,10 @@ class TestEngineBridge(unittest.TestCase):
 
     @patch("requests.post")
     def test_publish_pass(self, mock_post):
-        # Mock successful response
+        # Mock the entitlements check to pass (separate from the catalog API call)
+        self.bridge.entitlements_check = MagicMock(return_value=True)
+
+        # Mock successful response for the catalog API call
         mock_post.return_value.status_code = 200
         mock_post.return_value.text = "OK"
 
@@ -58,16 +64,45 @@ class TestEngineBridge(unittest.TestCase):
         dossier.model_version = "test-model"
         dossier.created_at = "2026-06-15T00:00:00Z"
         dossier.reverify_due_at = "2026-07-15T00:00:00Z"
-        
+        dossier.provisional = False
+
         # 2. Call the bridge
         success = self.bridge.publish_pass(dossier)
         
         # 3. Assertions
-        self.assertTrue(success, "Bridge should successfully publish a PASS dossier")
+        self.assertTrue(success, "Bridge should successfully publish a non-provisional PASS dossier")
 
         # Check if zip exists
         zip_path = Path("publish/bundles/test-cand-123/prospector_pack_test-can.zip")
         self.assertTrue(zip_path.exists(), f"Bundle zip should be created at {zip_path}")
+
+    @patch("requests.post")
+    def test_refuse_provisional_pass(self, mock_post):
+        """A PASS dossier stamped provisional=true must be refused publication."""
+        candidate = Candidate(
+            title="Provisional Biz",
+            one_liner="Provisional ruling candidate"
+        )
+        candidate.candidate_id = "test-provisional-cand"
+
+        dossier = MagicMock(spec=Dossier)
+        dossier.decision = Decision.PASS
+        dossier.candidate = candidate
+        dossier.score = None
+        dossier.checks = []
+        dossier.adversarial = None
+        dossier.gate_fired = None
+        dossier.reason = "Provisional PASS — fallback brain ruled."
+        dossier.model_version = "test-model"
+        dossier.created_at = "2026-06-15T00:00:00Z"
+        dossier.provisional = True
+
+        # Call the bridge — should refuse to publish
+        success = self.bridge.publish_pass(dossier)
+
+        self.assertFalse(success, "Bridge must refuse to publish a provisional PASS dossier")
+        # Ensure _update_catalog was NEVER called
+        mock_post.assert_not_called()
 
 
 class TestProductProvisionerProtocol(unittest.TestCase):

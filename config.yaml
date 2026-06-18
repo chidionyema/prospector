@@ -434,6 +434,7 @@ personas:
       min_composite_to_pass: 3.4
 
 listing:
+  price_pence: 3000              # Single £30 pack — the commerce path is the truth
   publish_on: pass
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
@@ -449,3 +450,9 @@ spend:
 
 store:
   dir: store
+
+# Entitlements API key used by the bridge's /entitlements check.
+# Must be set to a valid key before publishing. Reads from the
+# PROSPECTOR_ENTITLEMENTS_API_KEY env var at load time (config.py).
+# Leave empty (or unset) to fail closed — no test-token stub fallback.
+entitlements_api_key: "$PROSPECTOR_ENTITLEMENTS_API_KEY"

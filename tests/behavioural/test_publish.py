@@ -8,6 +8,7 @@ Proofs:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -18,11 +19,22 @@ from prospector.config import Config
 from publish.publish import publish
 
 
+@pytest.fixture(autouse=True)
+def _internal_api_key(monkeypatch):
+    # The bridge fails closed without a configured internal key (no committed default), so
+    # the publish path needs one — exactly as production supplies it via env.
+    monkeypatch.setenv("STORE_INTERNAL_API_KEY", "test-internal-key")
+    # The entitlements check also fails closed without a configured API key.
+    monkeypatch.setenv("PROSPECTOR_ENTITLEMENTS_API_KEY", "test-entitlements-key")
+
+
 @pytest.fixture
-def cfg():
+def cfg(monkeypatch):
     c = Config()
     c.store = {"dir": "store_test"}
     c.listing = {"exclusivity": True, "subscription": True}
+    # Read entitlements key from env (set by _internal_api_key fixture)
+    c.entitlements_api_key = os.environ.get("PROSPECTOR_ENTITLEMENTS_API_KEY", "")
     return c
 
 

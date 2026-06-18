@@ -1,0 +1,13 @@
+{
+  "jobId": "67079429-fd41-4043-aa59-5ba1c2f741d7",
+  "state": "failed",
+  "step": "ladder exhausted",
+  "builder": "minimax-m2.7",
+  "tier": "paid",
+  "reviewer": null,
+  "approved": null,
+  "verify": ".venv/bin/python -m pytest tests/unit/test_lanes_cli.py -q",
+  "startedAt": "2026-06-16T18:49:45.624Z",
+  "updatedAt": "2026-06-16T18:50:11.977Z",
+  "pid": null
+}

@@ -49,6 +49,7 @@ public sealed class MoneyRailConfigGateTests
             {
                 ["payments:active_provider"] = "stripe",
                 ["Stripe:WebhookSecret"] = "whsec_test",
+                ["Stripe:ApiKey"] = "sk_test",
                 ["Paddle:WebhookSecret"] = "" // missing but doesn't matter
             })
             .Build();
@@ -66,7 +67,27 @@ public sealed class MoneyRailConfigGateTests
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
                 ["payments:active_provider"] = "stripe",
+                ["Stripe:ApiKey"] = "sk_test",
                 ["Stripe:WebhookSecret"] = "" // missing
+            })
+            .Build();
+
+        var gate = new MoneyRailConfigGate(config, NullLogger<MoneyRailConfigGate>.Instance);
+
+        return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public Task StartAsync_StripeActiveButApiKeyMissing_Throws()
+    {
+        // Webhook secret present but no API key: the app would boot and only fail at the
+        // first checkout with an opaque Stripe SDK error. The gate must catch it at startup.
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["payments:active_provider"] = "stripe",
+                ["Stripe:WebhookSecret"] = "whsec_test",
+                ["Stripe:ApiKey"] = "" // missing
             })
             .Build();
 

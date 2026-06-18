@@ -1,0 +1,6 @@
+{"t":"2026-06-16T18:49:45.627Z","m":"🔒 protecting 1 verify/test file(s): tests/unit/test_lanes_cli.py"}
+{"t":"2026-06-16T18:49:45.629Z","m":"▶ Builder [paid] deepseek-v3.2 (openrouter/deepseek/deepseek-v3.2) …"}
+{"t":"2026-06-16T18:50:00.142Z","m":"  ✗ deepseek-v3.2 did not reach green (pi exit 1, verify exit 2) — falling through."}
+{"t":"2026-06-16T18:50:00.143Z","m":"▶ Builder [paid] minimax-m2.7 (openrouter/minimax/minimax-m2.7) …"}
+{"t":"2026-06-16T18:50:11.976Z","m":"  ✗ minimax-m2.7 did not reach green (pi exit 1, verify exit 2) — falling through."}
+{"t":"2026-06-16T18:50:11.978Z","m":"✗ NO Builder reached a green verify. Ladder exhausted."}

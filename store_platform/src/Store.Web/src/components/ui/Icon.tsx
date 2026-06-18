@@ -32,6 +32,9 @@ import {
   ShieldIcon,
   TrendingUpIcon,
   Code2Icon,
+  MailIcon,
+  DownloadIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 
 /**
@@ -77,6 +80,9 @@ const ICON_MAP = {
   shield: ShieldIcon,
   'trending-up': TrendingUpIcon,
   code: Code2Icon,
+  mail: MailIcon,
+  download: DownloadIcon,
+  warning: AlertTriangleIcon,
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

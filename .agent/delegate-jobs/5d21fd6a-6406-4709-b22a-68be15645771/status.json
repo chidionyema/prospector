@@ -1,0 +1,13 @@
+{
+  "jobId": "5d21fd6a-6406-4709-b22a-68be15645771",
+  "state": "canceled",
+  "step": "canceled",
+  "builder": "deepseek-v3.2",
+  "tier": "paid",
+  "reviewer": null,
+  "approved": null,
+  "verify": ".venv/bin/python -m pytest tests/test_ui_theme.py -v",
+  "startedAt": "2026-06-16T18:34:18.226Z",
+  "updatedAt": "2026-06-16T18:34:49.849Z",
+  "pid": null
+}

@@ -20,7 +20,31 @@ public static class DeliveryEndpoints
     public static void MapDeliveryEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/orders/{token}", ShowOrder);
+        app.MapGet("/api/orders/{token}", GetOrderJson);
         app.MapGet("/download/{token}", Download);
+    }
+
+    private static async Task<IResult> GetOrderJson(string token, StoreDbContext db)
+    {
+        var entitlement = await FindActiveAsync(db, token).ConfigureAwait(false);
+        if (entitlement is null)
+        {
+            return Results.NotFound();
+        }
+
+        var title = await db.Packs
+            .Where(p => p.Id == entitlement.PackId)
+            .Select(p => p.Title)
+            .FirstOrDefaultAsync()
+            .ConfigureAwait(false) ?? entitlement.PackId;
+
+        return Results.Ok(new
+        {
+            packId = entitlement.PackId,
+            packTitle = title,
+            status = entitlement.Status.ToString().ToLowerInvariant(),
+            downloadPath = $"/download/{token}",
+        });
     }
 
     private static async Task<IResult> ShowOrder(string token, StoreDbContext db)
@@ -60,7 +84,10 @@ public static class DeliveryEndpoints
             return Results.NotFound();
         }
 
-        if (entitlement.Status == EntitlementStatus.Revoked)
+        // Authorize positively: only an Active entitlement may download. Checking "not
+        // Revoked" would silently honour any future non-Active status (e.g. Suspended,
+        // Pending) as deliverable.
+        if (entitlement.Status != EntitlementStatus.Active)
         {
             return Results.StatusCode(StatusCodes.Status410Gone);
         }

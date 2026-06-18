@@ -1,0 +1,4 @@
+{"event": "spend", "amount_usd": 0.05, "phase": "signal_pipeline"}
+{"event": "spend", "amount_usd": 0.1, "phase": "signal_pipeline"}
+{"message": "Gemini CLI usage", "web": true, "input": 100, "output": 50, "total": 200}
+{"event": "latency", "operation": "gemini_cli_search", "latency_ms": 5000.0}

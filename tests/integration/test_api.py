@@ -17,7 +17,9 @@ from prospector.api import app
 from prospector.config import load_config
 from prospector.models import Candidate, Decision, Dossier, Verdict, CheckResult, ScoreResult
 from prospector.store import Store
-from prospector.packs import compose_packs
+# compose_packs was deleted — orphaned 3-tier pricing (never called in production).
+# The live commerce path uses one £30 (3000 pence) pack. The listing JSON below
+# pushes that static shape.
 from publish.publish import _write_listing
 
 client = TestClient(app)
@@ -55,7 +57,32 @@ def setup_store(tmp_path):
         "verified_at": dossier.created_at,
         "reverify_due_at": dossier.created_at,
         "source_count": len(dossier.all_sources),
-        "packs": compose_packs(dossier, cfg),
+        "packs": {
+            # Static £30 pack (3000 pence) — live commerce path is the single source of truth.
+            "scout": {
+                "name": "Scout",
+                "price_pence": 3000,
+                "contents": {
+                    "thesis": cand.hypothesis,
+                    "evidence": [s.to_dict() for s in dossier.all_sources],
+                    "score": score.to_dict()
+                }
+            },
+            "operator": {
+                "name": "Operator",
+                "price_pence": 3000,
+                "contents": {
+                    "scout": "included"
+                }
+            },
+            "founder_investor": {
+                "name": "Founder / Investor",
+                "price_pence": 3000,
+                "contents": {
+                    "operator": "included"
+                }
+            }
+        },
     }
     _write_listing(cand.candidate_id, listing, cfg)
 
