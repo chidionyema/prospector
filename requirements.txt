@@ -11,5 +11,12 @@ fastapi>=0.110
 uvicorn>=0.29
 starlette>=0.36
 httpx>=0.27
+# Cloudflare R2 (S3-compatible) deliverable upload — bridge.py R2Uploader. Without it the R2 path
+# silently disables and packs publish unlisted (list-only-after-upload).
+boto3>=1.34
 # Operator control center (supervised dashboard) + its tests
 streamlit>=1.40
+# LUX packages (local path until published)
+lux-popdd @ file:///Users/chidionyema/Documents/code/popdd-py
+lux-spec @ file:///Users/chidionyema/Documents/code/lux-spec-py
+lux-spec-cli @ file:///Users/chidionyema/Documents/code/lux-spec-cli
