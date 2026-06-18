@@ -7,6 +7,12 @@
 
 ---
 
+## ⚠️ STATUS UPDATE — 2026-06-18 (this gap is now CLOSED)
+
+The "buyer pays → `SalesAudit` row → nothing" gap below **has been implemented**. The webhook now creates `Order` + `Entitlement` + `GrantToken` atomically (`FulfilmentService`), emails a magic link (`PostmarkEmailSender`), and serves a presigned download via `/orders/{token}` + `/download/{token}`; the deliverable is uploaded to R2 (content-addressed) under the list-only-after-upload invariant. Buyer UI exists (`pages/orders/`). Use the contracts and edge-case checklist below as a **verification reference**, not a build list. What actually remains is config/legal/ops — see the STATUS banner in `GO_LIVE_SPEC.md`. Stale inline details (e.g. base URL/internal-key defaults) have been corrected; this banner is the current truth.
+
+---
+
 ## 0. The one-sentence gap
 
 Today: *buyer pays → `SalesAudit` row written → **nothing**.* No entitlement, no content lookup, no delivery.

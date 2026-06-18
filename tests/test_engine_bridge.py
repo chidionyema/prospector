@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from prospector.models import Candidate, Dossier, Decision, ScoreResult
-from prospector.bridge import EngineBridge, ProductProvisioner, StripeProvisioner, PaddleClient
+from prospector.bridge import EngineBridge, ProductProvisioner, StripeProvisioner, PaddleClient, ProvisioningError
 
 class TestEngineBridge(unittest.TestCase):
     def setUp(self):
@@ -183,43 +183,46 @@ class TestProviderSelection(unittest.TestCase):
             self.assertIsNone(b.provisioner)
 
 
-class TestStripeProvisionerKnownGaps(unittest.TestCase):
-    """Document the known gaps in StripeProvisioner so they're explicit
-    (and discoverable), not silently lurking. These are not failing tests;
-    they're TODOs that the next sprint should close.
+class TestStripeProvisionerHardening(unittest.TestCase):
+    """The former known gaps are now closed: create_product/create_price pass an
+    idempotency_key (retry-safe — a publish retry reuses the Stripe-side object instead of
+    duplicating it), and Stripe SDK errors are translated to a domain ProvisioningError.
+    These tests verify the behaviour against a mocked Stripe client.
     """
 
-    def test_idempotency_key_NOT_set_on_create_product(self):
-        """KNOWN GAP: StripeProvisioner.create_product does not pass an
-        idempotency_key. A retry of publish_pass after a network error
-        creates a duplicate Stripe product.
+    def _provisioner(self):
+        # Build without __init__ (which would import stripe and set a real api_key), then
+        # inject a mock client. The real stripe.error hierarchy is kept so the except
+        # clauses in StripeProvisioner actually match.
+        import stripe
+        p = StripeProvisioner.__new__(StripeProvisioner)
+        p._stripe = MagicMock()
+        p._stripe.error = stripe.error
+        return p
 
-        Track: needs `idempotency_key=f"prospector-pack-{candidate_id}"` in
-        the stripe.Product.create call. PaddleClient has the same gap.
-        """
-        import inspect
-        source = inspect.getsource(StripeProvisioner.create_product)
-        # The fix is to add `idempotency_key=...` to the .create() call.
-        # Today it's not there — that is the bug.
-        self.assertNotIn("idempotency_key", source,
-            "REMINDER: this test exists to track the idempotency gap. "
-            "If idempotency_key is now in the source, the gap is closed — "
-            "delete this test.")
+    def test_create_product_passes_idempotency_key(self):
+        p = self._provisioner()
+        p._stripe.Product.create.return_value = MagicMock(id="prod_123")
+        pid = p.create_product("Name", "Desc", {"pack_id": "cand-9"})
+        self.assertEqual(pid, "prod_123")
+        self.assertEqual(
+            p._stripe.Product.create.call_args.kwargs["idempotency_key"],
+            "prospector-product-cand-9",
+        )
 
-    def test_stripe_error_handling_NOT_present(self):
-        """KNOWN GAP: StripeProvisioner does not catch stripe.error.StripeError
-        and re-raise as a domain-specific exception. A Stripe API failure
-        currently propagates as a raw stripe library error to the caller.
+    def test_create_price_passes_idempotency_key(self):
+        p = self._provisioner()
+        p._stripe.Price.create.return_value = MagicMock(id="price_123")
+        rid = p.create_price("prod_123", 3000, "gbp")
+        self.assertEqual(rid, "price_123")
+        self.assertIn("idempotency_key", p._stripe.Price.create.call_args.kwargs)
 
-        Track: wrap the .create() calls in try/except stripe.error.StripeError,
-        re-raise as ProvisioningError with the Stripe request_id for the
-        audit trail.
-        """
-        import inspect
-        source = inspect.getsource(StripeProvisioner.create_product)
-        self.assertNotIn("stripe.error.StripeError", source,
-            "REMINDER: this test exists to track the error-handling gap. "
-            "If StripeError is now caught, the gap is closed.")
+    def test_stripe_error_becomes_provisioning_error(self):
+        import stripe
+        p = self._provisioner()
+        p._stripe.Product.create.side_effect = stripe.error.APIConnectionError("boom")
+        with self.assertRaises(ProvisioningError):
+            p.create_product("Name", "Desc", {"pack_id": "cand-9"})
 
 
 if __name__ == "__main__":

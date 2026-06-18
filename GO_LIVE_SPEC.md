@@ -7,6 +7,28 @@
 
 ---
 
+## ⚠️ STATUS UPDATE — 2026-06-18 (supersedes the "sell-and-deliver chain is not built" verdict below)
+
+The fulfilment chain this document describes as the P0 showstopper **is now built and tested**. Treat the sections below as historical context; this banner is the current truth.
+
+**Built since this doc was written (all in the .NET store + Python bridge, founder-reviewed):**
+- `Order` / `Entitlement` / `OrderStatus` / `EntitlementStatus` domain entities + migrations.
+- `FulfilmentService` — webhook → atomic `SalesAudit` + `Order` + `Entitlement` + `GrantToken`, idempotent on the unique transaction id, never drops a paid sale.
+- Delivery endpoints — `/orders/{token}`, `/api/orders/{token}` (JSON), `/download/{token}` (presigned 5-min URL, Active-only).
+- Magic-link email — `IEmailSender` / `PostmarkEmailSender`, dispatched after fulfilment.
+- Content upload — `R2Uploader` (boto3, content-addressed) + the **list-only-after-upload** invariant enforced on both sides.
+- Buyer-facing UI — `pages/orders/[token].tsx`, `success.tsx`.
+- Money-rail hardening (2026-06-18 review): no committed default internal key (fail-closed); config gate validates `Stripe:ApiKey` + `WebhookSecret` at boot; Stripe provisioning is idempotent and raises a domain `ProvisioningError`; webhook dead-code removed; download authorizes positively on `Active`.
+
+**Genuinely remaining to take money (config / legal / ops — not code):**
+- Decision: Merchant-of-Record / payment provider for launch (Paddle-MoR safest), object storage, email provider, local-engine/hosted-storefront split sign-off.
+- Live payment keys + webhook secrets wired (gate now enforces presence at boot).
+- Legal: real reviewed ToS/Privacy (shells exist), **a refund policy**, and a point-of-sale "not financial advice" disclaimer.
+- CI golden-set gate (no CI yet) + an end-to-end signal→PASS→publish→buy→download→refund test.
+- Rotate the R2 + Gemini keys flagged exposed earlier.
+
+---
+
 ## 0. TL;DR — Go/No-Go Verdict
 
 **Verdict: NOT go-live ready for *taking money* today. The engine is ready; the sell-and-deliver chain is not.**

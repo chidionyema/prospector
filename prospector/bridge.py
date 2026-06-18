@@ -21,6 +21,12 @@ from .pack_validation import validate_pack
 logger = logging.getLogger("prospector.bridge")
 
 
+class ProvisioningError(Exception):
+    """A payment provider rejected product/price provisioning. Raised instead of letting a
+    raw provider-SDK exception leak to the publish path, so callers get a stable, domain-level
+    failure to handle."""
+
+
 class ProductProvisioner(Protocol):
     """Provider-agnostic product provisioning. Implementations: PaddleClient, StripeProvisioner."""
     def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
@@ -470,21 +476,44 @@ class StripeProvisioner:
     def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
         """Create a Stripe Product. Returns product ID. The Price is created separately by
         create_price (called once from publish_pass) so each product gets exactly one Price —
-        creating one here too orphaned a Price in Stripe on every publish."""
-        product = self._stripe.Product.create(
-            name=name,
-            description=description,
-            metadata=metadata,
-        )
+        creating one here too orphaned a Price in Stripe on every publish.
+
+        Idempotent on the pack id: a publish retry after a network blip reuses the same
+        Stripe-side product instead of minting a duplicate. Stripe errors are re-raised as a
+        domain ProvisioningError (with the request_id for the audit trail) so callers see a
+        provisioning failure, not a leaked SDK exception."""
+        pack_id = metadata.get("pack_id") or metadata.get("candidate_id") or name
+        try:
+            product = self._stripe.Product.create(
+                name=name,
+                description=description,
+                metadata=metadata,
+                idempotency_key=f"prospector-product-{pack_id}",
+            )
+        except self._stripe.error.StripeError as e:
+            raise self._provisioning_error("product", e) from e
         logger.info(f"StripeProvisioner: Created product {product.id}")
         return product.id
 
     def create_price(self, product_id: str, amount_pence: int, currency: str = "gbp") -> str:
-        """Create a Stripe Price. Returns price ID. (Product must already exist.)"""
-        price = self._stripe.Price.create(
-            product=product_id,
-            unit_amount=amount_pence,
-            currency=currency,
-        )
+        """Create a Stripe Price. Returns price ID. (Product must already exist.) Idempotent on
+        (product, amount, currency); Stripe errors re-raised as ProvisioningError."""
+        try:
+            price = self._stripe.Price.create(
+                product=product_id,
+                unit_amount=amount_pence,
+                currency=currency,
+                idempotency_key=f"prospector-price-{product_id}-{amount_pence}-{currency}",
+            )
+        except self._stripe.error.StripeError as e:
+            raise self._provisioning_error("price", e) from e
         logger.info(f"StripeProvisioner: Created price {price.id} for product {product_id}")
         return price.id
+
+    @staticmethod
+    def _provisioning_error(what: str, e: Exception) -> "ProvisioningError":
+        request_id = getattr(e, "request_id", None)
+        logger.error(
+            f"StripeProvisioner: {what} creation failed (request_id={request_id}): {e}"
+        )
+        return ProvisioningError(f"Stripe {what} creation failed: {e}")
