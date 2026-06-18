@@ -26,6 +26,8 @@ export { Logo } from './Logo';
 export { Field, describedBy } from './Field';
 export type { FieldProps } from './Field';
 
+export { CoverArt } from './CoverArt';
+
 export { Card } from './Card';
 export type { CardProps } from './Card';
 

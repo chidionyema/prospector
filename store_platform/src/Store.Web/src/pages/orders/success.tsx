@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
-import { Section } from '@/components/marketing/blocks';
 
 export default function OrderSuccess() {
   const { query } = useRouter();
@@ -14,8 +13,8 @@ export default function OrderSuccess() {
     <MarketingLayout>
       <Seo title="Order Confirmed – Prospector Store" />
 
-      <Section bg="bg" width="2xl" className="!pt-24 !pb-32">
-        <div className="flex flex-col items-center text-center gap-8">
+      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-bg px-6 py-16">
+        <div className="flex w-full max-w-2xl flex-col items-center text-center gap-8">
           <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
             <Icon name="check" size={32} className="text-success" />
           </div>
@@ -75,7 +74,7 @@ export default function OrderSuccess() {
             </a>
           </p>
         </div>
-      </Section>
+      </div>
     </MarketingLayout>
   );
 }

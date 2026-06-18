@@ -1,18 +1,41 @@
 import React, { useState } from 'react';
 import { GetServerSideProps } from 'next';
-import { useRouter } from 'next/router';
+import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon } from '@/components/ui';
+import { Icon, CoverArt } from '@/components/ui';
 import { Section } from '@/components/marketing/blocks';
-import { fetchPackDetails, PackDetails } from '@/lib/api/client';
+import { fetchPackDetails, formatPrice, PackDetails } from '@/lib/api/client';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
-import { getStripe, stripeConfigured } from '@/lib/stripe';
-import { API_BASE_URL } from '@/lib/config';
+import { stripeConfigured } from '@/lib/stripe';
+import { API_BASE_URL, LEGAL } from '@/lib/config';
+import { coverFor } from '@/lib/cover';
 
 interface PackPageProps {
   pack: PackDetails;
 }
+
+/**
+ * The six attacks every idea must survive before it can be listed.
+ * Framed as the attack that failed (refutational), not a positive rubber stamp:
+ * refutational two-sided framing out-persuades one-sided "validated" claims
+ * (Allen 1991, O'Keefe 1999, Eisend 2006).
+ */
+const CHECKS = [
+  'We tried to prove the pain was imagined. It was real.',
+  'We tried to show the value would not last. It held.',
+  'We tried to prove incumbents own the space. There was room.',
+  'We tried to find that no one would pay. A payer was there.',
+  'We tried to show it cannot reach a market. A route existed.',
+  'We tried to find a legal landmine. It came back clean.',
+];
+
+const INSIDE = [
+  { label: 'Blueprint', desc: 'The opportunity, the evidence, and why it is worth building.' },
+  { label: 'GTM plan', desc: 'Who pays, where to find them, and how to reach them.' },
+  { label: 'Build Kit', desc: 'The stack, the sequence, and the first moves to revenue.' },
+  { label: 'The receipts', desc: 'Every claim traced to a source you can open.' },
+];
 
 export default function PackPage({ pack }: PackPageProps) {
   const [checkingOut, setCheckingOut] = useState(false);
@@ -20,6 +43,7 @@ export default function PackPage({ pack }: PackPageProps) {
 
   const provider = pack.paymentProvider || 'paddle';
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
+  const priceLabel = formatPrice(pack.price);
 
   const handleBuy = async () => {
     setCheckingOut(true);
@@ -39,7 +63,6 @@ export default function PackPage({ pack }: PackPageProps) {
   };
 
   const handleStripeCheckout = async (pack: PackDetails) => {
-    // Call the backend to create a Stripe Checkout Session, then redirect.
     const res = await fetch(`${API_BASE_URL}/packs/${pack.id}/checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,96 +85,171 @@ export default function PackPage({ pack }: PackPageProps) {
     (provider === 'stripe' && stripeConfigured) ||
     (provider !== 'stripe' && paddleConfigured);
 
+  const notifyHref =
+    `mailto:${LEGAL.supportEmail}` +
+    `?subject=${encodeURIComponent(`Notify me when "${pack.title}" opens`)}` +
+    `&body=${encodeURIComponent(`Please email me the moment this pack is available to buy: ${pack.title} (${pack.id}).`)}`;
+
+  // Shared checkout body — rendered in the desktop sticky card and the mobile purchase bar.
+  const CheckoutBody = () => (
+    <>
+      <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">One time price</span>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-4xl font-black tracking-tight text-text">{priceLabel}</span>
+        <span className="text-sm font-medium text-muted">once</span>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2 rounded-lg bg-success/5 px-3 py-2 text-xs font-semibold text-success">
+        <Icon name="shield" size={14} />
+        14 day money back, no questions asked
+      </div>
+
+      {checkoutError && (
+        <div className="mt-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-xs text-danger">
+          {checkoutError}
+        </div>
+      )}
+
+      {canCheckout ? (
+        <button
+          onClick={handleBuy}
+          disabled={checkingOut}
+          className="mt-4 w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+        >
+          {checkingOut ? 'Redirecting…' : `Get this pack for ${priceLabel}`}
+        </button>
+      ) : (
+        <>
+          <a
+            href={notifyHref}
+            className="mt-4 block w-full rounded-xl bg-text py-4 text-center text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0"
+          >
+            Notify me when this opens
+          </a>
+          <p className="mt-2 text-xs font-medium text-muted">
+            Checkout is opening shortly. Tap to get a single email the moment this pack goes live.
+          </p>
+        </>
+      )}
+
+      <div className="mt-7 space-y-3 border-t border-border/70 pt-6">
+        {[
+          { icon: 'download', text: 'Instant download the moment you pay' },
+          { icon: 'lock', text: `Secure checkout via ${providerLabel}` },
+          { icon: 'mail', text: 'A private link sent straight to you' },
+        ].map((feat, i) => (
+          <div key={i} className="flex items-center gap-3 text-xs font-medium text-muted">
+            <Icon name={feat.icon as any} size={14} className="text-text/60" />
+            {feat.text}
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-6 text-center text-[11px] leading-relaxed text-muted">
+        A pack is grounded research, not a promise of business success. See our{' '}
+        <Link href="/refund" className="font-semibold text-primary hover:underline">refund policy</Link>.
+      </p>
+    </>
+  );
+
   return (
     <MarketingLayout>
-      <Seo title={`${pack.title} - Prospector Store`} />
+      <Seo title={`${pack.title} · Validated business opportunity`} />
 
-      <Section bg="bg" width="6xl" className="!pt-12 !pb-24">
-        <div className="flex flex-col md:flex-row gap-12">
+      <Section bg="bg" width="6xl" className="!pt-8 !pb-24">
+        {/* Breadcrumb */}
+        <Link
+          href="/#catalog"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-muted transition-colors hover:text-text"
+        >
+          <Icon name="arrowRight" size={14} className="rotate-180" />
+          All packs
+        </Link>
+
+        <div className="mt-6 flex flex-col gap-12 lg:flex-row">
           {/* Left: Content */}
           <div className="flex-1">
-            <div className="mb-8">
-              <span className="font-mono text-xs font-bold text-primary uppercase tracking-widest bg-primary/5 px-3 py-1.5 rounded-full border border-primary/20">
-                Small Business Pack
+            {/* Cover */}
+            <div className={`relative mb-8 h-44 overflow-hidden rounded-2xl ${coverFor(pack.id)}`}>
+              <CoverArt title={pack.title} />
+              <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-text shadow-sm">
+                <Icon name="verified" size={13} /> Survived six checks
               </span>
-              <h1 className="text-4xl md:text-5xl font-black text-text tracking-tighter mt-6 leading-tight">
-                {pack.title}
-              </h1>
             </div>
 
-            <div className="prose prose-slate max-w-none">
-              <p className="text-lg text-text/80 leading-relaxed mb-8">
-                {pack.oneLine}
+            <h1 className="text-4xl font-black leading-tight tracking-tight text-text md:text-5xl">
+              {pack.title}
+            </h1>
+            <p className="mt-5 text-lg leading-relaxed text-text/80">{pack.oneLine}</p>
+
+            {/* Mobile purchase bar — keeps price + CTA above the fold on small screens */}
+            <div className="mt-8 rounded-2xl border border-border bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
+              <CheckoutBody />
+            </div>
+
+            {/* Cleared all six checks — the proof block */}
+            <div className="mt-12">
+              <h2 className="text-xl font-bold tracking-tight text-text">Six ways we tried to kill it</h2>
+              <p className="mt-2 text-sm text-muted">
+                Each check is an attack, not a rubber stamp. Every claim that survived is backed by a real
+                source you can open. Ideas that fail any one of the six never reach the store.
               </p>
-              
-              <h3 className="text-xl font-bold text-text mb-4 mt-12">What's inside:</h3>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 list-none p-0">
-                {[
-                  { label: '01. Blueprint', desc: 'Detailed build specification' },
-                  { label: '02. GTM Plan', desc: 'Marketing and launch strategy' },
-                  { label: '03. Build Kit', desc: 'Financials and ops plan' },
-                  { label: '04. QA Report', desc: 'Grounded verification audit' }
-                ].map((item, i) => (
-                  <li key={i} className="bg-white border border-border rounded-lg p-4 flex flex-col shadow-sm">
-                    <span className="font-mono text-[10px] font-bold text-primary uppercase mb-1">{item.label}</span>
-                    <span className="text-sm font-medium text-text">{item.desc}</span>
+              <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {CHECKS.map((check) => (
+                  <li
+                    key={check}
+                    className="flex items-center gap-3 rounded-lg border border-border bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                  >
+                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success/10 text-success">
+                      <Icon name="check" size={13} />
+                    </span>
+                    <span className="text-sm font-medium text-text">{check}</span>
                   </li>
                 ))}
               </ul>
+              <Link
+                href="/how-it-works"
+                className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+              >
+                See how each check works
+                <Icon name="arrowRight" size={14} />
+              </Link>
+            </div>
 
-              <div className="mt-12 p-6 bg-surface2 border border-border rounded-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <Icon name="vouched" className="text-success" size={20} />
-                  <span className="font-bold text-sm uppercase tracking-widest font-mono">Verified Grounding</span>
-                </div>
-                <p className="text-xs text-muted leading-relaxed font-mono">
-                  Source: {pack.dossierRef}<br />
-                  Every figure and claim in this pack is traced to external evidence passed by the Prospector engine.
-                </p>
+            {/* What's inside */}
+            <div className="mt-12">
+              <h2 className="text-xl font-bold tracking-tight text-text">What&apos;s inside</h2>
+              <ul className="mt-6 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
+                {INSIDE.map((item, i) => (
+                  <li key={i} className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="mt-1 text-base font-bold text-text">{item.label}</span>
+                    <span className="mt-1.5 text-sm leading-relaxed text-text/70">{item.desc}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* The receipts */}
+            <div className="mt-12 rounded-xl border border-border bg-white p-6">
+              <div className="mb-3 flex items-center gap-2.5">
+                <Icon name="verified" className="text-success" size={18} />
+                <span className="font-mono text-xs font-bold uppercase tracking-widest text-text">The receipts</span>
               </div>
+              <p className="text-sm leading-relaxed text-text/70">
+                Every figure and claim in this pack is traced to external evidence you can open and check.
+                No hand waving, no vibes. Audit reference{' '}
+                <span className="font-mono text-xs text-muted">{pack.dossierRef}</span>.
+              </p>
             </div>
           </div>
 
-          {/* Right: Checkout Sidebar */}
-          <div className="w-full md:w-80 shrink-0">
-            <div className="bg-white border border-border rounded-2xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] sticky top-24">
-              <div className="mb-8">
-                <span className="text-xs font-bold text-muted uppercase tracking-widest font-mono">Price</span>
-                <div className="text-4xl font-black text-text mt-1">{pack.price}</div>
-              </div>
-
-              {checkoutError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-                  {checkoutError}
-                </div>
-              )}
-
-              <button
-                onClick={handleBuy}
-                disabled={!canCheckout || checkingOut}
-                className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {checkingOut ? 'Redirecting…' : 'Buy Now'}
-              </button>
-
-              {!canCheckout && (
-                <p className="mt-2 text-xs text-amber-600 font-medium">
-                  {providerLabel} is not configured. Set API keys in environment.
-                </p>
-              )}
-
-              <div className="mt-8 space-y-4">
-                {[
-                  { icon: 'shield', text: `Secure delivery via ${providerLabel}` },
-                  { icon: 'mail', text: 'Instant download link' },
-                  { icon: 'lock', text: provider === 'stripe' ? 'VAT calculated at checkout' : 'VAT & receipts handled' }
-                ].map((feat, i) => (
-                  <div key={i} className="flex items-center gap-3 text-xs text-muted font-medium">
-                    <Icon name={feat.icon as any} size={14} />
-                    {feat.text}
-                  </div>
-                ))}
-              </div>
+          {/* Right: Checkout (desktop sticky) */}
+          <div className="hidden w-full shrink-0 lg:block lg:w-80">
+            <div className="sticky top-24 rounded-2xl border border-border bg-white p-7 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
+              <CheckoutBody />
             </div>
           </div>
         </div>
@@ -165,12 +263,12 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
     const id = params?.id as string;
     const pack = await fetchPackDetails(id);
     return {
-      props: { pack }
+      props: { pack },
     };
   } catch (error) {
     console.error('Error fetching pack details:', error);
     return {
-      notFound: true
+      notFound: true,
     };
   }
 };
