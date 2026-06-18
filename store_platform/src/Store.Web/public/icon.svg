@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Prospector Store">
-  <!-- Assay hallmark: an octagonal punch (the certified cartouche) with the PASS check struck out of
-       it. The stamp that certifies a thing has been tested and is genuine. Mirrors
+  <!-- Wordmark-derived favicon: the brand "P" on the ink band tile. Mirrors the monogramOnly form in
        src/components/ui/Logo.tsx; regenerate this asset from it.
-       Ink ground (#0f172a, the dark band/footer shade), white struck octagon (#ffffff). -->
+       Ink ground (#0f172a, the dark band/footer shade), white letter. -->
   <rect width="32" height="32" rx="7" fill="#0f172a" />
-  <polygon points="12,6.4 20,6.4 25.6,12 25.6,20 20,25.6 12,25.6 6.4,20 6.4,12" fill="#ffffff" />
-  <path d="M10.8 16.2 L14.4 19.8 L22 11.8" fill="none" stroke="#0f172a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="16" y="17" text-anchor="middle" dominant-baseline="central"
+        font-family="'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-weight="800" font-size="21" fill="#ffffff">P</text>
 </svg>

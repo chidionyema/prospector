@@ -5,64 +5,60 @@ import { BRAND } from '@/lib/config';
 interface LogoProps {
   className?: string;
   /**
-   * Flip the lockup for the dark `band` / footer: the tile goes WHITE with an ink punch, and the
-   * wordmark inverts to light. On light backgrounds (default) the tile is ink (`--band`) and the
-   * struck octagon is white. The mark always contrasts its ground in both hue and lightness.
+   * Flip the lockup for a dark ground (the `band` / footer-on-ink case): the wordmark inverts to
+   * light, and the compact `P` tile becomes white with an ink letter.
    */
   onDark?: boolean;
-  /** Only render the mark tile, omitting the wordmark (used in the sticky header). */
+  /** Render only the compact `P` tile (used where a full wordmark will not fit). */
   monogramOnly?: boolean;
 }
 
 /**
- * Brand lockup: an "assay hallmark" mark + the configurable wordmark (BRAND.name).
+ * Brand lockup: a typographic wordmark, no pictogram.
  *
- * The mark is a struck octagonal punch with the PASS check knocked out of it — an assay hallmark, the
- * stamp that certifies a thing has been tested and is genuine. That is the product: every verdict is a
- * grounded receipt, and only what clears the filter is struck. The octagonal cartouche (not a generic
- * round badge) is the ownable shape; it is a solid monochrome fill (one ink tile, one struck octagon)
- * so it reads at favicon size and carries no inherited identity. The wordmark renders from the single
- * configurable `BRAND.name` (lib/config) so the name matches the page title, OG/Twitter meta, both
- * footers, and email at once. We emphasise the first word and mute the rest.
+ * A drawn mark (a loupe, an assay punch) kept reading as a stock icon and dating the brand; a
+ * confidently-set wordmark does not. So the identity IS the name: the first word in ink, the rest
+ * muted, tight tracking. Size comes from the caller's `className` (e.g. `text-xl` in the header,
+ * `text-3xl` in the footer) so one component serves every placement. The wordmark renders from the
+ * single configurable `BRAND.name` (lib/config) so it always matches the page title, OG/Twitter
+ * meta, both footers, and email.
  *
- * Source of truth for the favicon/app icon too: public/icon.svg mirrors this mark.
+ * `monogramOnly` is the only compact form — a `P` tile — kept for tight spots and for favicon
+ * parity (public/icon.svg mirrors it).
  */
 export function Logo({ className, onDark = false, monogramOnly = false }: LogoProps) {
-  const tile = onDark ? 'var(--surface, #ffffff)' : 'var(--band, #0f172a)';
-  const glass = onDark ? 'var(--band, #0f172a)' : 'var(--surface, #ffffff)';
   const textColor = onDark ? 'text-white' : 'text-text';
-
-  const mark = (
-    <svg viewBox="0 0 40 40" className="h-9 w-9 flex-none" aria-hidden="true">
-      <rect x="0" y="0" width="40" height="40" rx="9" fill={tile} />
-      {/* assay hallmark: an octagonal punch (the certified cartouche) with the PASS check struck out */}
-      <polygon points="15,8 25,8 32,15 32,25 25,32 15,32 8,25 8,15" fill={glass} />
-      <path
-        d="M13.5 20.2 L18 24.7 L27.5 14.8"
-        fill="none"
-        stroke={tile}
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  const mutedColor = onDark ? 'text-white/55' : 'text-muted';
 
   if (monogramOnly) {
-    return <span className={cx('inline-flex', className)}>{mark}</span>;
+    return (
+      <span
+        aria-label={BRAND.name}
+        className={cx(
+          'inline-flex h-9 w-9 flex-none items-center justify-center rounded-[10px] font-sans text-xl font-black leading-none',
+          onDark ? 'bg-white text-text' : 'bg-band text-white',
+          className,
+        )}
+      >
+        P
+      </span>
+    );
   }
 
   const [first, ...rest] = BRAND.name.split(' ');
   const tail = rest.join(' ');
 
   return (
-    <div className={cx('flex items-center gap-2.5', className)}>
-      {mark}
+    <span className={cx('inline-flex items-baseline whitespace-nowrap font-sans font-bold tracking-tight leading-none', className)}>
       <span className="sr-only">{BRAND.name}</span>
-      <span aria-hidden="true" className="whitespace-nowrap font-sans text-xl font-bold tracking-tight leading-none">
-        <span className={textColor}>{first}</span>
-        {tail && <span className={cx('font-semibold', onDark ? 'text-white/55' : 'text-muted')}> {tail}</span>}
+      <span aria-hidden="true" className={textColor}>
+        {first}
       </span>
-    </div>
+      {tail && (
+        <span aria-hidden="true" className={cx('ml-1.5 font-semibold', mutedColor)}>
+          {tail}
+        </span>
+      )}
+    </span>
   );
 }
