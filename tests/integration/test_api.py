@@ -128,14 +128,32 @@ def test_dossier_gating_negative(setup_store):
     assert response.status_code == 403
 
 
-def test_dossier_gating_positive(setup_store):
+def test_dev_all_access_token_inert_by_default(setup_store, monkeypatch):
+    """P2 — the dev all-access token must be a no-op unless the env var enables it,
+    so `Bearer test-token` is NOT a production backdoor."""
     cfg, dossier = setup_store
     from prospector import api
     api.cfg = cfg
     api.store = Store(cfg)
 
+    monkeypatch.delenv("PROSPECTOR_DEV_ALL_ACCESS_TOKEN", raising=False)
     cid = dossier.candidate.candidate_id
-    
+    response = client.get(f"/v1/dossiers/{cid}", headers={"Authorization": "Bearer test-token"})
+    assert response.status_code == 403
+
+
+def test_dossier_gating_positive(setup_store, monkeypatch):
+    cfg, dossier = setup_store
+    from prospector import api
+    api.cfg = cfg
+    api.store = Store(cfg)
+
+    # The all-access token is inert unless the dev env var explicitly enables it
+    # (no hardcoded backdoor). Opt in for this positive-gating test.
+    monkeypatch.setenv("PROSPECTOR_DEV_ALL_ACCESS_TOKEN", "test-token")
+
+    cid = dossier.candidate.candidate_id
+
     # Valid token
     response = client.get(f"/v1/dossiers/{cid}", headers={"Authorization": "Bearer test-token"})
     assert response.status_code == 200

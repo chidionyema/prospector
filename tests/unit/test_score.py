@@ -133,3 +133,38 @@ def test_passes_composite_at_exact_threshold(cfg):
 
 def test_passes_composite_none_score(cfg):
     assert passes_composite(None, cfg) is False
+
+
+# ---------------------------------------------------------------------------
+# P1-9 — score_failed flag distinguishes a scoring outage from a real 0/5
+# ---------------------------------------------------------------------------
+
+def test_score_failed_flag_set_when_scorer_raises(cfg):
+    """When the scorer operator errors, the all-zero fail-safe must carry
+    score_failed=True so the publish gate can tell it from a genuine low score."""
+    from prospector.score import score_candidate
+    from prospector.models import Candidate
+
+    class _Boom:
+        def complete_json(self, *a, **k):
+            raise RuntimeError("scorer down")
+
+    cand = Candidate(title="t", one_liner="o", hypothesis="h", who_pays="x")
+    result = score_candidate(_Boom(), cfg, cand, checks=[])
+    assert result.score_failed is True
+    assert all(v == 0 for v in result.scores.values())
+
+
+def test_score_failed_flag_false_on_success(cfg):
+    """A scorer that returns valid scores yields score_failed=False."""
+    from prospector.score import score_candidate
+    from prospector.models import Candidate
+
+    class _Ok:
+        def complete_json(self, *a, **k):
+            return {"scores": {ax: 3 for ax in SCORE_AXES},
+                    "justification": {ax: "ok" for ax in SCORE_AXES}}
+
+    cand = Candidate(title="t", one_liner="o", hypothesis="h", who_pays="x")
+    result = score_candidate(_Ok(), cfg, cand, checks=[])
+    assert result.score_failed is False

@@ -58,7 +58,7 @@ public sealed class PaddleProvider : IPaymentProvider
         throw new NotSupportedException("Paddle provisioning is handled by the Python bridge; Paddle checkout is a frontend overlay.");
     }
 
-    public Task<CheckoutHandle> CreateCheckoutAsync(string providerPriceId, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct)
+    public Task<CheckoutHandle> CreateCheckoutAsync(string packId, string providerPriceId, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct)
     {
         throw new NotSupportedException("Paddle provisioning is handled by the Python bridge; Paddle checkout is a frontend overlay.");
     }

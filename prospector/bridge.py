@@ -170,7 +170,8 @@ class EngineBridge:
                 logger.info(f"EngineBridge: Creating {payment_provider} price for {provider_product_id}")
                 provider_price_id = prov.create_price(
                     product_id=provider_product_id,
-                    amount_pence=3000  # £30.00
+                    # P2 — single source of truth: config listing.price_pence (£30 default).
+                    amount_pence=int(self.cfg.listing.get("price_pence", 3000))
                 )
 
             except Exception as e:
@@ -340,7 +341,8 @@ class EngineBridge:
             "providerProductId": provider_product_id,
             "providerPriceId": provider_price_id,
             "isListed": is_listed,
-            "pricePence": 3000,  # £30.00 hardcoded per spec
+            # P2 — single source of truth: config listing.price_pence (£30 default).
+            "pricePence": int(self.cfg.listing.get("price_pence", 3000)),
             "contentVersion": content_version,
         }
         if content_key is not None:

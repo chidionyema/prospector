@@ -6,4 +6,10 @@ requests>=2.31
 tenacity>=8.2
 pytest>=8.0
 python-json-logger>=2.0
-lux-popdd @ file:///Users/chidionyema/Documents/code/popdd-py
+# API layer (api.py) + its FastAPI test client
+fastapi>=0.110
+uvicorn>=0.29
+starlette>=0.36
+httpx>=0.27
+# Operator control center (supervised dashboard) + its tests
+streamlit>=1.40

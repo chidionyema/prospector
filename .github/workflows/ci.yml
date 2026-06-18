@@ -36,18 +36,20 @@ jobs:
           restore-keys: |
             uv-${{ runner.os }}-
 
+      # Install from requirements.txt (there is no pyproject.toml, so `uv sync`
+      # cannot be used). --system installs into the setup-python interpreter.
       - name: Install dependencies
-        run: uv sync
+        run: uv pip install --system -r requirements.txt
 
       - name: Main test suite (excluding UI theme)
-        run: uv run pytest -q --ignore=tests/test_ui_theme.py --tb=short -x -p no:warnings
+        run: python -m pytest -q --ignore=tests/test_ui_theme.py --tb=short -x -p no:warnings
 
       # ── Hard gate ──────────────────────────────────────────────
       # Block the pipeline if the golden set does not achieve 100 %
       # discrimination.  Every config change or prompt edit must
       # maintain perfect regression coverage on the 9 fixtures.
       - name: Golden-set regression gate ⛔
-        run: uv run pytest tests/test_golden_set.py -v --tb=short
+        run: python -m pytest tests/test_golden_set.py -v --tb=short
       # ────────────────────────────────────────────────────────────
 
   # ──────────────────────────────────────────────────────────────────

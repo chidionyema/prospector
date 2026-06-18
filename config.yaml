@@ -73,7 +73,14 @@ retrieval:
   breaker_cooldown_s: 60         # seconds a retired provider stays out before a half-open recovery probe
 
 thresholds:
-  confidence_floor: 0.6
+  # confidence_floor: a grounded killing verdict only HARD-kills when its deterministic
+  # grounding confidence clears this floor; below it the candidate falls through to
+  # scoring (not killed at the gate). The tunable lever for the value_durability
+  # over-restriction wall (war-room 2026-06-15). 0.0 = inert/golden-safe; CALIBRATE the
+  # real value by re-running the 6 known good/bad controls live under supervision before
+  # raising it (mock confidence ~0.4 flat is NOT the live scale). See P0-2 in
+  # docs/PIPELINE_REVIEW_2026-06-18.md.
+  confidence_floor: 0.0
   min_composite_to_pass: 3.2
 
 hard_gates:                      # Part 4 kill-filter; evaluated kill-fast in this order
@@ -140,7 +147,7 @@ lanes:
       - pain_reality: [refuted]
       - adversarial_decisive: true
     thresholds:
-      confidence_floor: 0.6
+      confidence_floor: 0.0   # calibrate live under supervision before raising (see thresholds note)
       min_composite_to_pass: 3.2
   side_hustle:                     # £30-pack lane: judge DEMAND + DELIVERABILITY, not moat.
     # Commoditised, high-intent niches are GOOD here (lots of searchers/payers = the buyer),
@@ -178,7 +185,7 @@ lanes:
       - distribution
       - pain_reality
     thresholds:
-      confidence_floor: 0.6
+      confidence_floor: 0.0   # calibrate live under supervision before raising (see thresholds note)
       min_composite_to_pass: 2.0   # lower bar: a £30 pack is not a venture
     # Lane-aware GENERATION: merged over the top-level `generation:` block (for_lane).
     # Re-aims generation at side-hustle-SCALE OPPORTUNITIES (the kind of opportunity), NOT
@@ -238,7 +245,7 @@ lanes:
       - route_to_market
       - claims_verifiable
     thresholds:
-      confidence_floor: 0.6
+      confidence_floor: 0.0   # calibrate live under supervision before raising (see thresholds note)
       min_composite_to_pass: 2.6   # above side_hustle (2.0), below growth/venture
     generation:
       lane_directive: >
@@ -283,7 +290,7 @@ lanes:
       - buyer_intent
       - claims_verifiable
     thresholds:
-      confidence_floor: 0.6
+      confidence_floor: 0.0   # calibrate live under supervision before raising (see thresholds note)
       min_composite_to_pass: 2.9   # above smb (2.6), just below venture (3.2)
     generation:
       lane_directive: >

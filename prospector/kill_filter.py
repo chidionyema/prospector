@@ -1,11 +1,13 @@
 """Deterministic kill-filter (Part 4) — pure code over the verdicts, no model.
 Evaluate cheapest decisive gates first; stop at the first hard fail.
 
-A gate fires (KILL) iff the check's verdict is a cited killing verdict for that gate.
-We NEVER kill on `unverifiable`/silence or on low confidence alone: a KILL must be
-grounded in evidence (CLAUDE.md — "a KILL is not the model's opinion; it is grounded
-in evidence"). Weak or unproven ideas are not killed here — they fall through to
-scoring, where a low composite (and the adversarial gate) stop them publishing.
+A gate fires (KILL) iff the check's verdict is a cited killing verdict for that gate
+AND its grounding confidence clears `thresholds.confidence_floor`. We NEVER kill on
+`unverifiable`/silence: a KILL must be grounded in evidence (CLAUDE.md — "a KILL is not
+the model's opinion; it is grounded in evidence"). Weak, unproven, or weakly-grounded
+ideas are not killed here — they fall through to scoring, where a low composite (and the
+adversarial gate) stop them publishing. The confidence_floor lever defaults to 0.0
+(inert); it is calibrated live under supervision (see config.yaml thresholds note / P0-2).
 """
 from __future__ import annotations
 
@@ -28,8 +30,17 @@ def is_hard_fail(check_name: str, result: CheckResult, cfg: Config) -> bool:
         return False
     # Kill ONLY on a cited killing verdict (e.g. `refuted` = grounded disconfirming
     # evidence; `supported` for incumbency = a real incumbent). `unverifiable`/silence
-    # and low confidence never kill — that would be a kill with no evidence behind it.
-    return result.verdict.value in set(gates[check_name])
+    # never kills — that would be a kill with no evidence behind it.
+    if result.verdict.value not in set(gates[check_name]):
+        return False
+    # And a killing verdict only HARD-kills when its grounding confidence clears the
+    # floor. A weakly-grounded refutation (e.g. one thinly-matching source) is not
+    # decisive evidence: it falls through to scoring, where a low composite + the
+    # adversarial gate stop it publishing. This closes the value_durability
+    # over-restriction wall (war-room 2026-06-15): known-good theses were killed at
+    # conf 0.25 while the gate already computed the good/bad signal — the kill rule was
+    # discarding it. Tunable per-lane via thresholds.confidence_floor in config.yaml.
+    return result.confidence >= cfg.thresholds.confidence_floor
 
 
 def apply_gates(checks: list[CheckResult], cfg: Config,

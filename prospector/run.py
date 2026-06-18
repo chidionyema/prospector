@@ -391,6 +391,12 @@ def run_signal(
     from .operator import _build_operator, FallbackOperator
     from .errors import ProviderExhaustedError
     from .telemetry import record_usage
+    from .health import get_noncritical_health
+
+    # Founder-fence: the non-critical chain records exhaustion to its OWN health file,
+    # never the moat's. A dead DeepSeek/MiniMax/Gemini-flash here must not blind the
+    # Claude→Gemini moat (and vice versa).
+    _noncritical_health = get_noncritical_health()
 
     def _build_operator_chain(order: tuple[str, ...], fast: bool) -> Operator:
         """Build a FallbackOperator from the given tier order. Raises if none available."""
@@ -408,21 +414,23 @@ def run_signal(
             return tiers[0][1]
         r = cfg.retrieval
         chain = FallbackOperator(tiers, failure_threshold=r.breaker_failure_threshold,
-                                cooldown_s=r.breaker_cooldown_s)
+                                cooldown_s=r.breaker_cooldown_s,
+                                health=_noncritical_health)
         logger.info(f"Chain: {' → '.join(n for n, _ in tiers)}")
         return chain
 
-    # gen_op: gemini API first (~1s per call, paid quota), deepseek fallback.
-    gen_op = _build_operator_chain(
-        ("gemini", "deepseek", "gemini_cli"),
-        fast=True
-    )
+    # Non-critical chain order = the doctrine in the comment block above: cheapest
+    # structured-JSON tier first, Gemini-flash only as last resort. DeepSeek → MiniMax →
+    # Gemini-flash. Gemini is LAST (not first) so non-critical work doesn't contend with
+    # the moat for Gemini quota; any tier exhaustion is recorded to the non-critical
+    # health file only. A missing/unconfigured tier (e.g. MiniMax) is skipped harmlessly.
+    _NONCRITICAL_ORDER = ("deepseek", "minimax", "gemini")
 
-    # fast_op: same order.
-    fast_op = _build_operator_chain(
-        ("gemini", "deepseek", "gemini_cli"),
-        fast=True
-    )
+    # gen_op: divergent candidate generation (non-critical).
+    gen_op = _build_operator_chain(_NONCRITICAL_ORDER, fast=True)
+
+    # fast_op: prescreen / scoring / mechanical JSON (non-critical), same order.
+    fast_op = _build_operator_chain(_NONCRITICAL_ORDER, fast=True)
 
     # Shadow Moat (Part 16 principal upgrade): optionally load an experimental 
     # operator to run in parallel. Findings are logged for drift analysis.

@@ -45,9 +45,14 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
     private async Task FulfilItemAsync(
         PaymentTransaction txn, PurchasedItem item, List<Entitlement> created, List<string> unfulfilled)
     {
+        // Resolve the deliverable pack from the identifier carried on the transaction.
+        // Stripe stamps the catalog pack id into checkout metadata (P0-1); Paddle carries
+        // the provider product id on its line items. Match either, scoped to the provider.
         var pack = item.ProductId is null
             ? null
-            : await db.Packs.FirstOrDefaultAsync(p => p.ProviderProductId == item.ProductId && p.PaymentProvider == txn.Provider).ConfigureAwait(false);
+            : await db.Packs.FirstOrDefaultAsync(p =>
+                (p.Id == item.ProductId || p.ProviderProductId == item.ProductId)
+                && p.PaymentProvider == txn.Provider).ConfigureAwait(false);
 
         var order = NewOrder(txn, pack?.Id, item.AmountPence);
         db.Orders.Add(order);
@@ -98,6 +103,44 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
         }
 
         return new FulfilmentOutcome(false, created, unfulfilled);
+    }
+
+    /// <summary>
+    /// P1-1 — apply a refund/dispute reversal: revoke every Active entitlement granted for
+    /// the original payment and move its orders to a reversed status, so a refunded/disputed
+    /// buyer can no longer download. Idempotent: re-applying finds nothing Active and is a
+    /// no-op. Matches the original payment by provider + transaction id.
+    /// </summary>
+    public async Task<RevocationOutcome> RevokeAsync(Store.Api.Payments.PaymentReversal reversal)
+    {
+        ArgumentNullException.ThrowIfNull(reversal);
+
+        var entitlements = await db.Entitlements
+            .Where(e => e.Order!.ProviderTransactionId == reversal.OriginalTransactionId
+                        && e.Order.PaymentProvider == reversal.Provider
+                        && e.Status == EntitlementStatus.Active)
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        foreach (var ent in entitlements)
+        {
+            ent.Status = EntitlementStatus.Revoked;
+        }
+
+        var newOrderStatus = string.Equals(reversal.Kind, "dispute", StringComparison.Ordinal)
+            ? OrderStatus.Disputed : OrderStatus.Refunded;
+        var orders = await db.Orders
+            .Where(o => o.ProviderTransactionId == reversal.OriginalTransactionId
+                        && o.PaymentProvider == reversal.Provider)
+            .ToListAsync()
+            .ConfigureAwait(false);
+        foreach (var order in orders)
+        {
+            order.Status = newOrderStatus;
+        }
+
+        await db.SaveChangesAsync().ConfigureAwait(false);
+        return new RevocationOutcome(entitlements.Count, orders.Count);
     }
 
     private Task<bool> TransactionAlreadyRecordedAsync(string provider, string transactionId) =>

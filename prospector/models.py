@@ -206,6 +206,11 @@ class ScoreResult:
     scores: dict[str, int]
     justification: dict[str, str]
     composite: float = 0.0
+    # P1-9 — True when scoring could not be computed (operator error / unparseable
+    # response) and the all-zero scores are a fail-safe, NOT a genuine 0/5 verdict.
+    # Lets the publish gate distinguish "scored and weak" from "could not score" so a
+    # scoring outage never silently reads as a real low composite.
+    score_failed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

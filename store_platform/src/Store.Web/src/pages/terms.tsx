@@ -1,114 +1,167 @@
+
+/* TODO: replace [OPERATOR LEGAL NAME], [CONTACT EMAIL], [BUSINESS ADDRESS] before go-live */
+/*
+ * Draft legal copy — review with qualified counsel before go-live.
+ * Covers: digital download licence, delivery, buyer obligations, limitation of liability,
+ * no-warranty on AI-generated content, governing law England & Wales.
+ */
 import React from 'react';
 import Link from 'next/link';
 import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/LegalDoc';
 import { LEGAL } from '@/lib/config';
+import Disclaimer from '@/components/Disclaimer';
 
 /**
- * Interim Terms of Service (L-04). B2B framing, platform-as-facilitator, no-outcome-guarantee,
- * acceptable-use (L-02), funds-held-by-your-bank (L-03), auto-release disclosure (L-06),
- * governing law E&W (L-11). Grounded in docs/legal/LEGAL-DECISIONS-LOG.md, pending counsel.
+ * Terms of Service for the Prospector digital-download storefront.
+ * Covers: what is sold (AI-generated business-analysis dossier, digital download),
+ * licence grant, delivery, buyer obligations, limitation of liability,
+ * no-warranty on AI output quality, governing law E&W.
+ * Pending review by qualified legal counsel before go-live.
  */
 export default function TermsPage() {
   return (
     <LegalDoc title="Terms of Service">
+
       <LegalText>
-        These terms are a contract between you and {LEGAL.entity} (&ldquo;we&rdquo;, &ldquo;us&rdquo;).
-        By creating an account you confirm you accept them. The Intro Exchange is a marketplace
-        for warm professional introductions: a <strong>buyer</strong> posts a request describing someone
-        they want to meet, and a <strong>connector</strong> who genuinely knows a matching person can
-        offer to make that introduction in exchange for the reward.
+        These Terms of Service (&ldquo;Terms&rdquo;) form a legally binding contract between you
+        (&ldquo;you&rdquo;, &ldquo;buyer&rdquo;) and {LEGAL.entity} (&ldquo;we&rdquo;,
+        &ldquo;us&rdquo;, &ldquo;our&rdquo;). By completing a purchase you confirm that you have
+        read, understood, and agree to these Terms. If you do not agree, do not purchase.
       </LegalText>
 
-      <LegalHeading>1. Who can use the platform</LegalHeading>
+      <LegalHeading>1. What we sell</LegalHeading>
       <LegalText>
-        The service is for <strong>business and professional use only</strong>. By registering you
-        confirm you are acting in the course of a business or profession and not as a consumer, that you
-        are at least 18, and that you have authority to enter into this contract.
+        We sell digital information products (&ldquo;Packs&rdquo;). Each Pack is an
+        AI-generated, source-grounded business-opportunity dossier delivered as a
+        digital download (PDF and/or structured data file). Packs are <strong>information
+        products only</strong> — they are not financial advice, investment advice, legal advice,
+        or any other form of professional advisory service.
       </LegalText>
 
-      <LegalHeading>2. We facilitate, we are not a party to the introduction</LegalHeading>
+      <LegalHeading>2. Licence to use</LegalHeading>
       <LegalText>
-        We provide the platform that connects buyers and connectors. We are <strong>not</strong> a party
-        to any introduction, and we do not guarantee that an introduction will lead to a meeting, a
-        response, a deal, or any other outcome. The reward is for a delivered, double-opted-in
-        introduction to a person matching the request, never a decision, a result, or anyone&apos;s
-        ongoing cooperation.
+        On completed payment we grant you a <strong>personal, non-exclusive, non-transferable,
+        non-sublicensable licence</strong> to access, read, and use the Pack content for your
+        own personal or internal business research purposes. You may not:
       </LegalText>
-
-      <LegalHeading>3. Acceptable use</LegalHeading>
-      <LegalText>You must not use the platform to seek or make an introduction that is:</LegalText>
       <LegalList
         items={[
-          'to or for a public official acting in their official capacity, or otherwise intended to corruptly influence any person or function (we operate to comply with the Bribery Act 2010);',
-          'a referral within a regulated profession (for example financial, legal, or insurance services) where paying a referral fee is restricted or prohibited;',
-          'based on personal data of a third party that you have no genuine relationship with, or that you obtained by scraping or bulk collection.',
+          'resell, redistribute, sublicence, or otherwise make the Pack content available to any third party, whether for payment or free of charge;',
+          'pass off the Pack content as your own original research or analysis;',
+          'use the Pack content to train, fine-tune, or otherwise develop machine-learning models without our prior written consent;',
+          'remove or obscure any copyright notice, disclaimer, or attribution contained in the Pack.',
+        ]}
+      />
+
+      <LegalHeading>3. Delivery</LegalHeading>
+      <LegalText>
+        After your payment is confirmed, access to the Pack is provided by means of a
+        time-limited download link sent to the email address you supplied at checkout and/or
+        made available immediately on-screen. Delivery is deemed complete when the download
+        link is made available. It is your responsibility to download the file promptly and to
+        ensure that your email address is correct at the time of purchase. If you experience a
+        technical problem preventing download, contact us at{' '}
+        <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
+          {LEGAL.supportEmail}
+        </a>{' '}
+        within 14 days of purchase.
+      </LegalText>
+
+      <LegalHeading>4. Prices and payment</LegalHeading>
+      <LegalText>
+        All prices are shown in GBP (£) and are inclusive of VAT where applicable. Payment is
+        processed by our third-party payment processor (currently Paddle or Stripe — see the
+        checkout page for the active processor). We do not store your full card details.
+        A transaction is complete when you receive an order-confirmation email.
+      </LegalText>
+
+      <LegalHeading>5. Buyer obligations</LegalHeading>
+      <LegalText>
+        You warrant and represent that:
+      </LegalText>
+      <LegalList
+        items={[
+          'you are at least 18 years old;',
+          'you are not purchasing on behalf of a consumer where different statutory rights apply unless you are acting in the course of a trade, business, craft, or profession;',
+          'any information you provide at checkout (in particular your email address) is accurate and complete;',
+          'you will use the Pack in compliance with all applicable laws and regulations.',
+        ]}
+      />
+
+      <LegalHeading>6. Nature of AI-generated content — no warranty</LegalHeading>
+      <LegalText>
+        Packs are produced by automated AI systems and are provided <strong>&ldquo;as
+        is&rdquo;</strong>. While we use source-grounding and editorial processes to improve
+        accuracy, <strong>we make no warranty, express or implied, that the Pack content is
+        accurate, complete, current, or fit for any particular purpose.</strong> AI-generated
+        content may contain errors, omissions, or outdated information. You are responsible for
+        conducting your own independent due diligence before acting on any information contained
+        in a Pack.
+      </LegalText>
+      <LegalText>
+        Nothing in a Pack constitutes financial advice, investment advice, legal advice, tax
+        advice, or any other professional or regulated advice. See our disclaimer below.
+      </LegalText>
+
+      <Disclaimer />
+
+      <LegalHeading>7. Limitation of liability</LegalHeading>
+      <LegalText>
+        To the fullest extent permitted by applicable law:
+      </LegalText>
+      <LegalList
+        items={[
+          'our total aggregate liability to you in connection with any purchase or these Terms shall not exceed the amount you paid for the relevant Pack;',
+          'we are not liable for any indirect, consequential, special, or exemplary loss, including loss of profits, loss of opportunity, or loss of data, even if we have been advised of the possibility of such loss;',
+          'we are not liable for any loss arising from your reliance on Pack content for a commercial, investment, or financial decision.',
         ]}
       />
       <LegalText>
-        You confirm these points for each request when you create it. We may suspend or remove accounts
-        and requests that breach this policy.
+        Nothing in these Terms limits liability for death or personal injury caused by our
+        negligence, fraud, or any other liability that cannot be excluded or limited by law.
       </LegalText>
 
-      <LegalHeading>4. Money: how funding and payment work</LegalHeading>
+      <LegalHeading>8. Intellectual property</LegalHeading>
       <LegalText>
-        When you fund a request, your payment is processed by <strong>Stripe</strong>. Your bank places an
-        authorisation hold on the reward amount. The money stays with your bank and is only taken once
-        the introduction is delivered and you approve it (or it auto-releases, see below). We never take
-        custody of your funds and we are not a bank or a payment institution; Stripe is the regulated
-        payment processor. A non-refundable platform fee is charged at the time you fund.
-      </LegalText>
-      <LegalText>
-        <strong>Auto-release:</strong> once an introduction becomes active (the person being introduced
-        has verified and accepted), if you take no action within the disclosed settlement window the held
-        amount is released to the connector automatically. This window is shown to you before you fund.
+        All intellectual property rights in and to the Packs (including underlying data,
+        prompts, and formatted output) are owned by or licensed to {LEGAL.entity}. These Terms
+        do not transfer any ownership rights to you; the licence in clause&nbsp;2 is the full
+        extent of your rights.
       </LegalText>
 
-      <LegalHeading>5. Refunds and disputes</LegalHeading>
+      <LegalHeading>9. Changes and availability</LegalHeading>
       <LegalText>
-        If an introduction is never delivered (for example, the person does not accept within the time
-        limit), the hold is voided and nothing is taken from you. If you have a dispute about a delivered
-        introduction you can raise it through the platform before the funds release. Our refund and
-        dispute handling is described when you fund and may evolve during the beta.
+        We may update or withdraw Packs from sale at any time. We may update these Terms;
+        the version date shown at the top of this page is the current version. Continued use
+        of the service after a material change constitutes acceptance of the revised Terms.
+        We will endeavour to notify you of material changes by email.
       </LegalText>
 
-      <LegalHeading>6. Your content and connectors&apos; claims</LegalHeading>
+      <LegalHeading>10. Governing law and jurisdiction</LegalHeading>
       <LegalText>
-        Connectors are responsible for the accuracy of what they say about a possible introduction and
-        warrant that they have a genuine relationship with the person. You are responsible for the
-        content you post. You grant us a licence to use the content you submit only as needed to operate
-        the platform.
+        These Terms are governed by the law of {LEGAL.governingLaw}. You and we both agree
+        to submit to the exclusive jurisdiction of the courts of {LEGAL.governingLaw}, save
+        that if you are a consumer resident in Scotland, Northern Ireland, or the EU, you may
+        also bring proceedings in the courts of your country of residence.
       </LegalText>
 
-      <LegalHeading>7. Liability</LegalHeading>
+      <LegalHeading>11. Contact</LegalHeading>
       <LegalText>
-        We provide the platform &ldquo;as is&rdquo;. To the extent the law allows, we are not liable for
-        the conduct of buyers, connectors, or introduced people, or for any business outcome. Nothing in
-        these terms limits liability that cannot be limited by law.
-      </LegalText>
-
-      <LegalHeading>8. Taxes</LegalHeading>
-      <LegalText>
-        Connectors are responsible for declaring and paying any tax due on reward income. We may be
-        required to collect and report connector income to HMRC under digital-platform reporting rules.
-        We do not give tax advice.
-      </LegalText>
-
-      <LegalHeading>9. Changes, suspension and termination</LegalHeading>
-      <LegalText>
-        We may update these terms; the current version and its version number are always shown at the top
-        of this page. We may suspend or end your access if you breach these terms. You can stop using the
-        platform at any time.
-      </LegalText>
-
-      <LegalHeading>10. Governing law</LegalHeading>
-      <LegalText>
-        These terms are governed by the law of {LEGAL.governingLaw}, and the courts of{' '}
-        {LEGAL.governingLaw} have exclusive jurisdiction. For privacy and your data rights, see our{' '}
+        Questions about these Terms or your purchase:{' '}
+        <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
+          {LEGAL.contactEmail}
+        </a>
+        . Operator: [OPERATOR LEGAL NAME], [BUSINESS ADDRESS]. For our refund policy, see{' '}
+        <Link href="/refund" className="text-primary hover:underline">
+          Refund Policy
+        </Link>
+        . For privacy, see our{' '}
         <Link href="/privacy" className="text-primary hover:underline">
           Privacy Policy
         </Link>
-        . Questions: <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">{LEGAL.contactEmail}</a>.
+        .
       </LegalText>
+
     </LegalDoc>
   );
 }

@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Store.Api.Payments;
 using Store.Api.Services;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
@@ -124,6 +125,70 @@ public sealed class FulfilmentServiceTests : IDisposable
         Assert.Null(order.PackId);
     }
 
+    // --- P0-1: Stripe stamps the catalog pack id (not the provider product id) into
+    // checkout metadata, so fulfilment must resolve the pack by Id too. ---
+
+    [Fact]
+    public async Task FulfilAsync_ResolvesPackByCatalogId_ForStripeMetadata()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+
+        // Stripe's ExtractItems carries the pack_id (== catalog Id), not the product id.
+        var outcome = await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+
+        Assert.Single(outcome.EntitlementsCreated);
+        Assert.Equal("pack-1", outcome.EntitlementsCreated[0].PackId);
+        Assert.Empty(outcome.Unfulfilled);
+    }
+
+    // --- P1-1: refund / dispute revoke the entitlement. ---
+
+    [Fact]
+    public async Task RevokeAsync_Refund_RevokesEntitlementAndMarksOrderRefunded()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+        await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+
+        var outcome = await RevokeAsync(new PaymentReversal("stripe", "evt_refund_1", "pi_1", "refund"));
+
+        Assert.Equal(1, outcome.EntitlementsRevoked);
+        using var verify = NewContext();
+        Assert.Equal(EntitlementStatus.Revoked, (await verify.Entitlements.FirstAsync()).Status);
+        Assert.Equal(OrderStatus.Refunded, (await verify.Orders.FirstAsync()).Status);
+    }
+
+    [Fact]
+    public async Task RevokeAsync_Dispute_MarksOrderDisputed()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+        await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+
+        await RevokeAsync(new PaymentReversal("stripe", "evt_dispute_1", "pi_1", "dispute"));
+
+        using var verify = NewContext();
+        Assert.Equal(EntitlementStatus.Revoked, (await verify.Entitlements.FirstAsync()).Status);
+        Assert.Equal(OrderStatus.Disputed, (await verify.Orders.FirstAsync()).Status);
+    }
+
+    [Fact]
+    public async Task RevokeAsync_IsIdempotent_SecondApplyRevokesNothing()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+        await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+        await RevokeAsync(new PaymentReversal("stripe", "evt_refund_1", "pi_1", "refund"));
+
+        var second = await RevokeAsync(new PaymentReversal("stripe", "evt_refund_2", "pi_1", "refund"));
+
+        Assert.Equal(0, second.EntitlementsRevoked);
+    }
+
+    [Fact]
+    public async Task RevokeAsync_UnknownTransaction_RevokesNothing()
+    {
+        var outcome = await RevokeAsync(new PaymentReversal("stripe", "evt_x", "pi_ghost", "refund"));
+        Assert.Equal(0, outcome.EntitlementsRevoked);
+    }
+
     private async Task<FulfilmentOutcome> RunAsync(PaymentTransaction txn)
     {
         using var ctx = NewContext();
@@ -131,7 +196,14 @@ public sealed class FulfilmentServiceTests : IDisposable
         return await svc.FulfilAsync(txn);
     }
 
-    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1)
+    private async Task<RevocationOutcome> RevokeAsync(PaymentReversal reversal)
+    {
+        using var ctx = NewContext();
+        var svc = new FulfilmentService(ctx, new TokenGenerator());
+        return await svc.RevokeAsync(reversal);
+    }
+
+    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "paddle")
     {
         using var ctx = NewContext();
         ctx.Packs.Add(new Pack
@@ -140,6 +212,7 @@ public sealed class FulfilmentServiceTests : IDisposable
             Title = id,
             OneLine = "x",
             DossierRef = "d",
+            PaymentProvider = provider,
             ProviderProductId = productId,
             ContentKey = contentKey,
             ContentVersion = version,
@@ -149,6 +222,9 @@ public sealed class FulfilmentServiceTests : IDisposable
 
     private static PaymentTransaction Txn(string id, params PurchasedItem[] items) =>
         new("paddle", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
+
+    private static PaymentTransaction StripeTxn(string id, params PurchasedItem[] items) =>
+        new("stripe", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
 
     private StoreDbContext NewContext() => new(_options);
 

@@ -31,6 +31,7 @@ def score_candidate(op: Operator, cfg: Config, cand: Candidate,
     _scorer = scorer_op or op
     system, user = render("score", candidate_json=json.dumps(cand.to_dict()),
                           claims_json=json.dumps(claims))
+    score_failed = False
     try:
         data = _scorer.complete_json(system, user, temperature=0.0)
         raw = data.get("scores", {}) or {}
@@ -39,10 +40,15 @@ def score_candidate(op: Operator, cfg: Config, cand: Candidate,
         justification = {ax: str((data.get("justification", {}) or {}).get(ax, ""))
                          for ax in SCORE_AXES}
     except Exception:
+        # P1-9 — the all-zero scores below are a FAIL-SAFE, not a real 0/5 verdict.
+        # Flag it so the publish gate never reads a scoring outage as a genuine low
+        # composite (which would silently bury a possibly-passing idea).
+        score_failed = True
         scores = {ax: 0 for ax in SCORE_AXES}
         justification = {ax: "scoring failed; fail-safe zero" for ax in SCORE_AXES}
     return ScoreResult(scores=scores, justification=justification,
-                       composite=composite(scores, cfg.weights))
+                       composite=composite(scores, cfg.weights),
+                       score_failed=score_failed)
 
 
 def passes_composite(score: Optional[ScoreResult], cfg: Config) -> bool:

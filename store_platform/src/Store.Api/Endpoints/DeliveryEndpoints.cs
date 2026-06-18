@@ -17,6 +17,12 @@ public static class DeliveryEndpoints
     // link decays fast. The entitlement, not the URL, is the durable right.
     private static readonly TimeSpan DownloadUrlTtl = TimeSpan.FromMinutes(5);
 
+    // P1-7 — per-entitlement download cap. A magic link that leaks (forwarded email, shared
+    // screenshot) must not become an unbounded mint of presigned URLs. The cap is deliberately
+    // generous so legitimate re-downloads across devices never hit it; beyond it the operator
+    // can re-issue. Overridable via Delivery:MaxDownloadsPerEntitlement.
+    private const int DefaultMaxDownloads = 50;
+
     public static void MapDeliveryEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/orders/{token}", ShowOrder);
@@ -73,7 +79,7 @@ public static class DeliveryEndpoints
     }
 
     private static async Task<IResult> Download(
-        string token, StoreDbContext db, IContentStorage storage, ILogger<Program> logger)
+        string token, StoreDbContext db, IContentStorage storage, IConfiguration config, ILogger<Program> logger)
     {
         var entitlement = await db.Entitlements
             .FirstOrDefaultAsync(e => e.GrantToken == token)
@@ -95,6 +101,16 @@ public static class DeliveryEndpoints
         if (entitlement.ExpiresAt is { } expiry && expiry <= DateTime.UtcNow)
         {
             return Results.StatusCode(StatusCodes.Status410Gone);
+        }
+
+        // P1-7 — cap total presigned-URL mints per entitlement so a leaked link can't fan out.
+        var maxDownloads = config.GetValue<int?>("Delivery:MaxDownloadsPerEntitlement") ?? DefaultMaxDownloads;
+        if (entitlement.DownloadCount >= maxDownloads)
+        {
+            logger.LogWarning(
+                "Download cap ({Cap}) reached for entitlement {PackId}; refusing further mints.",
+                maxDownloads, entitlement.PackId);
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
         }
 
         // Serve the key snapshotted on the entitlement (what the buyer paid for). Fall back

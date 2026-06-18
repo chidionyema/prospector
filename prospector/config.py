@@ -58,7 +58,16 @@ class Retrieval:
 
 @dataclass
 class Thresholds:
-    confidence_floor: float = 0.6
+    # confidence_floor: a killing verdict (refuted, or supported-for-incumbency) only
+    # HARD-kills when its deterministic grounding confidence clears this floor; below it,
+    # the candidate falls through to scoring instead of being killed at the gate. This is
+    # the tunable lever for the value_durability over-restriction wall (war-room
+    # 2026-06-15). DEFAULT 0.0 = inert (every grounded kill fires, golden-set safe). The
+    # real launch value must be calibrated by re-running the 6 known good/bad controls
+    # live under supervision (store/runs/control_experiment_*.log) — do NOT raise this
+    # above 0 from a guess; the mock/fixture confidence scale (~0.4 flat) is not the live
+    # scale. See docs/PIPELINE_REVIEW_2026-06-18.md (P0-2).
+    confidence_floor: float = 0.0
     min_composite_to_pass: float = 3.2
 
 

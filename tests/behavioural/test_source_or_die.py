@@ -12,7 +12,7 @@ import pytest
 from prospector.config import load_config
 from prospector.models import Candidate, Source, Verdict
 from prospector.operator import MockOperator
-from prospector.verify import verdict_for
+from prospector.verify import verdict_for, adversarial
 
 
 @pytest.fixture
@@ -123,3 +123,61 @@ def test_unverifiable_stays_unverifiable(cand):
     assert result.verdict == Verdict.UNVERIFIABLE
     # degraded is False here — the operator succeeded, it's just unverifiable
     assert result.degraded is False
+
+
+# ---------------------------------------------------------------------------
+# P1-5: synthesized:// sources are stripped before the verdict (moat rules on
+# RETRIEVED pages, never a cheap model's self-synthesis dressed as a source).
+# ---------------------------------------------------------------------------
+
+SYNTH_SOURCE = Source.make(url="synthesized://deepseek/knowledge",
+                           text="DeepSeek thinks the market is huge.")
+
+
+def test_synthesized_only_sources_are_not_grounding(cand):
+    """If the only 'source' is a synthesized:// self-summary, it is stripped and the
+    verdict degrades to unverifiable — never a synthesis-grounded supported."""
+    op = MockOperator(router=lambda s, u: {
+        "verdict": "supported", "confidence": 0.9,
+        "rationale": "supported", "citations": [SYNTH_SOURCE.source_id],
+    })
+    result = verdict_for(op, cand, "pain_reality", sources=[SYNTH_SOURCE])
+    assert result.verdict == Verdict.UNVERIFIABLE
+    assert result.degraded is True
+
+
+def test_synthesized_source_cannot_be_cited(cand):
+    """A real source + a synthesized one: a 'supported' that cites ONLY the
+    synthesized id is downgraded (synth is stripped from the valid-citation set)."""
+    op = MockOperator(router=lambda s, u: {
+        "verdict": "supported", "confidence": 0.9,
+        "rationale": "supported", "citations": [SYNTH_SOURCE.source_id],
+    })
+    result = verdict_for(op, cand, "pain_reality", sources=[REAL_SOURCE, SYNTH_SOURCE])
+    assert result.verdict == Verdict.UNVERIFIABLE
+
+
+# ---------------------------------------------------------------------------
+# P1-6: an adversarial DECISIVE kill must cite evidence (source-or-die).
+# ---------------------------------------------------------------------------
+
+def test_adversarial_decisive_without_citations_downgraded(cand):
+    """decisive=True with no citations is the model's opinion, not grounded
+    disconfirmation -> downgraded to non-decisive so it can't fire the gate."""
+    cfg = load_config()
+    op = MockOperator(router=lambda s, u: {
+        "kill_case": "I just think it's dead", "decisive": True, "citations": [],
+    })
+    result = adversarial(op, cfg, cand, checks=[])
+    assert result.decisive is False
+
+
+def test_adversarial_decisive_with_citations_kept(cand):
+    """decisive=True WITH citations is grounded -> stays decisive."""
+    cfg = load_config()
+    op = MockOperator(router=lambda s, u: {
+        "kill_case": "Statute X bans it", "decisive": True,
+        "citations": [REAL_SOURCE.source_id],
+    })
+    result = adversarial(op, cfg, cand, checks=[])
+    assert result.decisive is True

@@ -140,3 +140,30 @@ def test_grounding_success_clears_stale_mark(tmp_path):
     fb = FallbackSearchProvider([("a", live)], health=h)
     fb.search("q")
     assert not h.is_dead("a")                        # stale mark cleared on success
+
+
+# --- Founder-fence: the non-critical chain has its OWN health file (P1-3) ---------------
+
+def test_noncritical_health_is_a_separate_file_from_moat():
+    """get_noncritical_health() must be backed by a different path than the moat's
+    get_health(), so a non-critical exhaustion can never blind the moat (or vice versa)."""
+    import prospector.health as health
+
+    moat = health.get_health()
+    noncritical = health.get_noncritical_health()
+
+    assert moat is not noncritical
+    assert moat._path != noncritical._path
+    assert noncritical._path.name == "provider_health_noncritical.json"
+
+
+def test_noncritical_mark_does_not_pollute_moat(tmp_path):
+    """Marking a provider dead in the non-critical store leaves the moat store clean —
+    the two are physically independent files."""
+    moat = ProviderHealth(tmp_path / "moat.json", clock=_Clock())
+    noncritical = ProviderHealth(tmp_path / "noncritical.json", clock=_Clock())
+
+    noncritical.mark_exhausted("gemini", 3600.0)
+
+    assert noncritical.is_dead("gemini")
+    assert not moat.is_dead("gemini")     # moat is untouched

@@ -227,6 +227,13 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     next `vet --resume`. (This replaces the old FIX #7, which wrongly routed verdicts to
     the DeepSeek-first chain as primary even when the moat had full quota.)
     """
+    # P1-5 defense-in-depth: the moat rules on RETRIEVED pages, never on a cheap model's
+    # self-synthesis. An LLM-search provider that finds no real URLs emits a
+    # `synthesized://…` source (retrieval.py); strip those before ruling so they can be
+    # neither cited nor counted. If that empties the set we fall through to the
+    # graceful-degradation UNVERIFIABLE below — never a synthesis-grounded verdict.
+    sources = [s for s in sources
+               if not str(getattr(s, "url", "")).startswith("synthesized://")]
     if not sources:
         return CheckResult(check_name=check_name, verdict=Verdict.UNVERIFIABLE,
                            confidence=0.0,
@@ -409,7 +416,14 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
         data = op.complete_json(system, user, temperature=0.3)
         citations = [str(c) for c in (data.get("citations") or [])]
         decisive = bool(data.get("decisive", False))
-        
+        # source-or-die: a DECISIVE kill must cite evidence. An uncited "decisive"
+        # adversarial verdict is the model's opinion, not grounded disconfirmation —
+        # downgrade it so it cannot fire the adversarial_decisive hard gate.
+        if decisive and not citations:
+            logger.info("Adversarial claimed decisive with no citations; "
+                        "downgrading to non-decisive (source-or-die).")
+            decisive = False
+
         # Continuous decisiveness score [0..1]
         # Decisive kill with many citations -> high confidence (1.0)
         # Decisive but few citations -> medium confidence (0.7)

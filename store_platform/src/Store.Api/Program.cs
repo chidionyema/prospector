@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Store.Api.Endpoints;
 using Store.Api.Contracts;
@@ -42,6 +44,32 @@ builder.Services.AddHostedService<MoneyRailConfigGate>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// P1-7 — rate limiting. A global per-IP fixed-window limiter caps abusive bursts (token
+// guessing on /download, checkout spam). Webhooks are exempt: providers retry on non-2xx
+// and a 429'd webhook would drop fulfilment. Limits are overridable via RateLimiting:*.
+var rlPermit = builder.Configuration.GetValue<int?>("RateLimiting:PermitPerMinute") ?? 120;
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        // Webhooks must never be throttled — exempt them with a no-limit partition.
+        var path = httpContext.Request.Path.Value ?? string.Empty;
+        if (path.StartsWith("/webhooks", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitPartition.GetNoLimiter("webhooks");
+        }
+
+        var clientKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(clientKey, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rlPermit,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
+});
+
 var app = builder.Build();
 
 // Apply EF migrations at startup. MigrateAsync (not EnsureCreated) so new tables
@@ -61,6 +89,9 @@ if (app.Environment.IsDevelopment())
 
 // CORS middleware — must come between routing and endpoints.
 app.UseCors();
+
+// P1-7 — rate limiter must run before endpoints so throttled requests short-circuit.
+app.UseRateLimiter();
 
 // --- PUBLIC CATALOG ENDPOINTS ---
 
@@ -225,6 +256,7 @@ app.MapPost("/packs/{id}/checkout", async (
     var baseUrl = storeUrl.TrimEnd('/');
 
     var handle = await paymentProvider.CreateCheckoutAsync(
+        id,
         pack.ProviderPriceId ?? "",
         buyerEmail,
         $"{baseUrl}/orders/success?pack={id}",

@@ -5,6 +5,7 @@ Teasers public, full dossiers entitlement-gated.
 from __future__ import annotations
 
 import json
+import os
 from typing import Dict, List, Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -25,10 +26,17 @@ store = Store(cfg)
 # ---------------------------------------------------------------------------
 
 def get_entitlements(authorization: Optional[str] = Header(None)) -> List[str]:
-    """Check buyer entitlements. Stub: 'Bearer test-token' grants all."""
+    """Check buyer entitlements.
+
+    The dev all-access token is INERT unless PROSPECTOR_DEV_ALL_ACCESS_TOKEN is set
+    (P2 — closes the hardcoded `Bearer test-token` backdoor). In production the env var
+    is absent, so this grants nothing and the real entitlement path (JWT / purchase
+    state) governs. Read at request time so tests can opt in via the env var.
+    """
     if not authorization:
         return []
-    if authorization == "Bearer test-token":
+    dev_token = os.environ.get("PROSPECTOR_DEV_ALL_ACCESS_TOKEN")
+    if dev_token and authorization == f"Bearer {dev_token}":
         return ["all"]
     # Real app would check a JWT or database for Stripe purchase state
     return []

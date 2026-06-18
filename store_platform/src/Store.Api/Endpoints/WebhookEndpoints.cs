@@ -47,6 +47,13 @@ public static class WebhookEndpoints
             return HandleVerifyFailure(result);
         }
 
+        // P1-1 — refund/dispute: revoke the entitlement instead of granting one.
+        if (result.Reversal is not null)
+        {
+            return await HandleReversalAsync(db, provider, result.Reversal, rawBody, fulfilmentService, logger)
+                .ConfigureAwait(false);
+        }
+
         var txn = result.Transaction!;
 
         // --- DEDUP LAYER (P2) ---
@@ -101,6 +108,44 @@ public static class WebhookEndpoints
         });
 
         return false;
+    }
+
+    // P1-1 — apply a refund/dispute reversal. Deduped on the reversal event's own id
+    // (distinct from the original payment's transaction id) so a redelivered refund webhook
+    // is a no-op. Revocation itself is idempotent (only flips Active entitlements).
+    private static async Task<IResult> HandleReversalAsync(
+        StoreDbContext db,
+        string provider,
+        PaymentReversal reversal,
+        string rawBody,
+        FulfilmentService fulfilmentService,
+        ILogger logger)
+    {
+        if (await WebhookAlreadyProcessedAsync(db, provider, reversal.ReversalEventId).ConfigureAwait(false))
+        {
+            return Results.Ok(new { status = "ALREADY_PROCESSED", eventId = reversal.ReversalEventId });
+        }
+
+        db.WebhookEvents.Add(new WebhookEvent
+        {
+            Provider = provider,
+            ProviderEventId = reversal.ReversalEventId,
+            EventType = reversal.Kind,
+            RawPayload = rawBody,
+        });
+
+        var outcome = await fulfilmentService.RevokeAsync(reversal).ConfigureAwait(false);
+        logger.LogWarning(
+            "Reversal ({Kind}) for {TransactionId}: revoked {Revoked} entitlement(s), updated {Orders} order(s).",
+            reversal.Kind, reversal.OriginalTransactionId, outcome.EntitlementsRevoked, outcome.OrdersUpdated);
+
+        return Results.Ok(new
+        {
+            status = "REVERSED",
+            kind = reversal.Kind,
+            revoked = outcome.EntitlementsRevoked,
+            orders = outcome.OrdersUpdated,
+        });
     }
 
     private static IResult HandleVerifyFailure(WebhookVerifyResult result)

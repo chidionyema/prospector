@@ -32,6 +32,12 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             var stripeEvent = await Task.Run(() => EventUtility.ConstructEvent(
                 rawBody, signatureHeader, secret, throwOnApiVersionMismatch: false)).ConfigureAwait(false);
 
+            // P1-1 — money reversals revoke access instead of granting it.
+            if (TryParseReversal(stripeEvent, out var reversalResult))
+            {
+                return reversalResult;
+            }
+
             if (!string.Equals(stripeEvent.Type, "checkout.session.completed", StringComparison.Ordinal))
             {
                 return new WebhookVerifyResult(false, null, stripeEvent.Type, Ignored: true);
@@ -42,18 +48,7 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
                 return new WebhookVerifyResult(false, null, "invalid-session-object");
             }
 
-            var txn = new PaymentTransaction(
-                Provider: "stripe",
-                TransactionId: session.PaymentIntentId ?? session.Id,
-                BuyerEmail: session.CustomerDetails?.Email ?? session.CustomerEmail ?? "",
-                Currency: session.Currency?.ToUpperInvariant() ?? "GBP",
-                Country: session.CustomerDetails?.Address?.Country ?? "",
-                TotalAmountPence: session.AmountTotal ?? 0,
-                OccurredAt: stripeEvent.Created,
-                Items: ExtractItems(session)
-            );
-
-            return new WebhookVerifyResult(true, txn, null);
+            return new WebhookVerifyResult(true, BuildTransaction(session, stripeEvent), null);
         }
         catch (StripeException ex)
         {
@@ -66,6 +61,45 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             return new WebhookVerifyResult(false, null, "malformed");
         }
     }
+
+    // P1-1 — recognise refund/dispute events and translate them into a provider-agnostic
+    // reversal. Returns false for any non-reversal event so the caller continues to its
+    // normal grant path. The boolean+out keeps VerifyAndParseAsync within the length limit.
+    private static bool TryParseReversal(Stripe.Event stripeEvent, out WebhookVerifyResult result)
+    {
+        if (string.Equals(stripeEvent.Type, "charge.refunded", StringComparison.Ordinal))
+        {
+            // Partial refunds still revoke: a £30 digital pack is all-or-nothing.
+            result = stripeEvent.Data.Object is Charge charge
+                ? new WebhookVerifyResult(true, null, stripeEvent.Type, Reversal: new PaymentReversal(
+                    "stripe", stripeEvent.Id, charge.PaymentIntentId ?? charge.Id, "refund"))
+                : new WebhookVerifyResult(false, null, "invalid-charge-object");
+            return true;
+        }
+
+        if (string.Equals(stripeEvent.Type, "charge.dispute.created", StringComparison.Ordinal))
+        {
+            result = stripeEvent.Data.Object is Dispute dispute
+                ? new WebhookVerifyResult(true, null, stripeEvent.Type, Reversal: new PaymentReversal(
+                    "stripe", stripeEvent.Id, dispute.PaymentIntentId ?? dispute.ChargeId ?? "", "dispute"))
+                : new WebhookVerifyResult(false, null, "invalid-dispute-object");
+            return true;
+        }
+
+        result = null!;
+        return false;
+    }
+
+    private static PaymentTransaction BuildTransaction(Session session, Stripe.Event stripeEvent) =>
+        new(
+            Provider: "stripe",
+            TransactionId: session.PaymentIntentId ?? session.Id,
+            BuyerEmail: session.CustomerDetails?.Email ?? session.CustomerEmail ?? "",
+            Currency: session.Currency?.ToUpperInvariant() ?? "GBP",
+            Country: session.CustomerDetails?.Address?.Country ?? "",
+            TotalAmountPence: session.AmountTotal ?? 0,
+            OccurredAt: stripeEvent.Created,
+            Items: ExtractItems(session));
 
     private static List<PurchasedItem> ExtractItems(Session session)
     {
@@ -81,13 +115,21 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
     {
         EnsureStripeConfigured();
 
+        // P1-2 — idempotency keys: a network retry must not create a duplicate Stripe
+        // Product/Price. Key off a stable seed (candidate_id when provided, else title).
+        var seed = metadata.TryGetValue("candidate_id", out var cid) && !string.IsNullOrEmpty(cid)
+            ? cid : title;
+
         var productOptions = new ProductCreateOptions
         {
             Name = title,
             Metadata = new Dictionary<string, string>(metadata, StringComparer.Ordinal)
         };
         var productService = new ProductService();
-        var product = await productService.CreateAsync(productOptions, cancellationToken: ct).ConfigureAwait(false);
+        var product = await productService.CreateAsync(
+            productOptions,
+            new RequestOptions { IdempotencyKey = $"product-create-{seed}" },
+            ct).ConfigureAwait(false);
 
         var priceOptions = new PriceCreateOptions
         {
@@ -97,15 +139,18 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             Metadata = new Dictionary<string, string>(metadata, StringComparer.Ordinal)
         };
         var priceService = new PriceService();
-        var price = await priceService.CreateAsync(priceOptions, cancellationToken: ct).ConfigureAwait(false);
+        var price = await priceService.CreateAsync(
+            priceOptions,
+            new RequestOptions { IdempotencyKey = $"price-create-{seed}-{pricePence}-{currency.ToLowerInvariant()}" },
+            ct).ConfigureAwait(false);
 
         return new ProviderProduct(product.Id, price.Id);
     }
 
-    public async Task<CheckoutHandle> CreateCheckoutAsync(string providerPriceId, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct)
+    public async Task<CheckoutHandle> CreateCheckoutAsync(string packId, string providerPriceId, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct)
     {
         EnsureStripeConfigured();
-        
+
         var options = new SessionCreateOptions
         {
             LineItems =
@@ -120,6 +165,22 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             CustomerEmail = buyerEmail,
             SuccessUrl = successUrl,
             CancelUrl = cancelUrl,
+            // P0-1 — stamp the pack id so the inbound webhook (ExtractItems) can resolve
+            // which pack was bought and grant the entitlement. Without this every payment
+            // is paid-but-unfulfilled.
+            Metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["pack_id"] = packId,
+            },
+            // Propagate the same metadata onto the resulting PaymentIntent so it is also
+            // visible on charge.* / dispute events used by the refund handler.
+            PaymentIntentData = new SessionPaymentIntentDataOptions
+            {
+                Metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["pack_id"] = packId,
+                },
+            },
             // P5 — Stripe Tax: automatic VAT/sales-tax calculation at checkout.
             // Requires Stripe Tax to be enabled in the Stripe dashboard. When active,
             // the buyer sees the tax-inclusive total; the webhook session includes
