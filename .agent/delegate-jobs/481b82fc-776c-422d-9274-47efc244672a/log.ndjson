@@ -1,8 +1,0 @@
-{"t":"2026-06-16T12:40:32.541Z","m":"🔒 protecting 1460 verify/test file(s): tests/, prospector/report.py, prospector/diagnostics.py, prospector/run.py, prospector/verify.py, prospector/kill_filter.py, config.yaml, store/, prospector/models.py, prospector/config.py, prospector/store.py"}
-{"t":"2026-06-16T12:40:32.543Z","m":"▶ Builder [paid] deepseek-v3.2 (openrouter/deepseek/deepseek-v3.2) …"}
-{"t":"2026-06-16T12:53:17.199Z","m":"  ⚠ deepseek-v3.2 modified a protected verify/test file — reverted to founder snapshot."}
-{"t":"2026-06-16T12:54:25.655Z","m":"  ✓ deepseek-v3.2 reached green (verify exit 0)."}
-{"t":"2026-06-16T12:54:26.032Z","m":"▶ Review by claude-max-cli …"}
-{"t":"2026-06-16T12:54:33.794Z","m":"  ✗ claude-max-cli unavailable (exit 1) — falling through."}
-{"t":"2026-06-16T12:54:33.794Z","m":"▶ Review by claude-openrouter …"}
-{"t":"2026-06-16T12:55:12.927Z","m":"✓ done — NOT approved."}

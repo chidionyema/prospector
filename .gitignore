@@ -53,3 +53,5 @@ publish/bundles/
 [Bb]in/
 [Oo]bj/
 provider_health.json
+.agent/
+.checkpoints/
