@@ -48,6 +48,7 @@ retrieval:
   results_per_query: 1             # 1 source per query; kill-fast short-circuits anyway
   max_passage_chars: 1500
   cache: true
+  cache_ttl_s: 1209600   # 14 days; cached grounding older than this is re-fetched (0 = never expire)
   # All six gates use deterministic disconfirming-query templates (_DISCONFIRM_TEMPLATES in
   # verify.py) — eliminates the LLM query-gen call entirely. Query generation is a lookup,
   # not judgment, so it belongs in code; the model is reserved for ruling on fetched passages.
@@ -448,6 +449,10 @@ listing:
   exclusivity: true
   subscription: true
   pricing: { driver: composite, premium_axis: automatability }
+
+# Near-duplicate similarity ratio for Part 3 dedup (0..1). At or above this, the later
+# candidate is dropped as a duplicate. Higher = stricter (fewer dropped); lower = looser.
+dedup_threshold: 0.85
 
 schedule: { cadence: daily, batch_size: 5 }
 

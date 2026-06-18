@@ -885,19 +885,32 @@ class OpenRouterSearchProvider(_LLMSearchProvider):
 class DiskCache(SearchProvider):
     """Content-addressed cache over any provider (Part 9). Misses delegate; hits
     are served from store/_cache/<sha>.json."""
-    def __init__(self, inner: SearchProvider, cache_dir: Path = CACHE_DIR):
+    def __init__(self, inner: SearchProvider, cache_dir: Path = CACHE_DIR,
+                 ttl_s: int = 0):
         self.inner = inner
         self.cache_dir = cache_dir
+        # 0 disables expiry; otherwise a cache file older than ttl_s is a miss and
+        # the page is re-grounded so a verdict never rules on stale evidence.
+        self.ttl_s = ttl_s
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, query: str, k: int, max_chars: int) -> Path:
         h = hashlib.sha1(f"{query}|{k}|{max_chars}".encode()).hexdigest()[:20]
         return self.cache_dir / f"{h}.json"
 
+    def _is_fresh(self, p: Path) -> bool:
+        """A cache file is fresh if expiry is disabled or it is younger than ttl_s."""
+        if self.ttl_s <= 0:
+            return True
+        try:
+            return (time.time() - p.stat().st_mtime) < self.ttl_s
+        except OSError:
+            return False
+
     @track_latency(name="cached_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
         p = self._path(query, k, max_chars)
-        if p.exists():
+        if p.exists() and self._is_fresh(p):
             try:
                 results = [Source(**d) for d in json.loads(p.read_text())]
                 logger.info("Search cache hit", extra={"query": query, "count": len(results)})
@@ -1054,4 +1067,4 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
         else FallbackSearchProvider(built,
                                     failure_threshold=r.breaker_failure_threshold,
                                     cooldown_s=r.breaker_cooldown_s))
-    return DiskCache(base) if cfg.retrieval.cache else base
+    return DiskCache(base, ttl_s=cfg.retrieval.cache_ttl_s) if cfg.retrieval.cache else base

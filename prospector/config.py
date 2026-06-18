@@ -19,6 +19,11 @@ class Retrieval:
     results_per_query: int = 4
     max_passage_chars: int = 1500
     cache: bool = True
+    # DiskCache freshness: cached grounding passages older than this are treated as a
+    # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
+    # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,
+    # short enough that a re-vet weeks later re-grounds against the live page.
+    cache_ttl_s: int = 1_209_600
     # Checks that skip the LLM query-gen call and use deterministic disconfirming
     # templates instead (cheap decisive gates that kill most candidates).
     template_checks: list[str] = field(default_factory=list)
@@ -176,6 +181,10 @@ class Config:
     personas: dict[str, Any] = field(default_factory=dict)
     active_persona: str = ""
     listing: dict[str, Any] = field(default_factory=dict)
+    # Near-duplicate similarity ratio (Part 3 dedup). At or above this, two candidates
+    # are treated as duplicates and the later one is dropped. Lifted out of dedup.py so
+    # the freshness bar is tunable without a code change.
+    dedup_threshold: float = 0.85
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
@@ -348,6 +357,7 @@ def load_config(path: str | Path | None = None) -> Config:
         personas=raw.get("personas") or {},
         active_persona=raw.get("active_persona") or "",
         listing=raw.get("listing") or {},
+        dedup_threshold=float(raw.get("dedup_threshold", 0.85)),
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},

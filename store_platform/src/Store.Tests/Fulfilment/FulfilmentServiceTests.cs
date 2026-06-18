@@ -189,6 +189,45 @@ public sealed class FulfilmentServiceTests : IDisposable
         Assert.Equal(0, outcome.EntitlementsRevoked);
     }
 
+    [Fact]
+    public async Task Lifecycle_Buy_Download_Refund_EndToEnd()
+    {
+        // Full money-rail arc on one purchase: buy -> downloadable -> refund -> revoked.
+        await SeedPackAsync("pack-1", "prod-1", "content/pack-1.zip", version: 2, provider: "stripe");
+
+        // 1. BUY — webhook fulfilment grants a pinned, downloadable entitlement.
+        var fulfil = await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+        Assert.Single(fulfil.EntitlementsCreated);
+        var granted = fulfil.EntitlementsCreated[0];
+
+        // 2. DOWNLOAD — assert exactly what the delivery gate requires: Active status,
+        //    a pinned content snapshot, and a grant token to resolve the magic link.
+        using (var afterBuy = NewContext())
+        {
+            var ent = await afterBuy.Entitlements.FirstAsync();
+            Assert.Equal(EntitlementStatus.Active, ent.Status);          // gate: must be Active
+            Assert.Equal("content/pack-1.zip", ent.ContentKey);          // gate: has content to serve
+            Assert.Equal(2, ent.ContentVersion);                         // deliver-as-sold
+            Assert.False(string.IsNullOrEmpty(ent.GrantToken));          // magic-link resolvable
+            Assert.Equal(OrderStatus.Paid, (await afterBuy.Orders.FirstAsync()).Status);
+        }
+
+        // 3. REFUND — reversal webhook for the same PI revokes access.
+        var revoke = await RevokeAsync(new PaymentReversal("stripe", "evt_refund_1", "pi_1", "refund"));
+        Assert.Equal(1, revoke.EntitlementsRevoked);
+
+        // 4. DOWNLOAD AFTER REFUND — the gate now fails: entitlement is no longer Active.
+        using (var afterRefund = NewContext())
+        {
+            Assert.Equal(EntitlementStatus.Revoked, (await afterRefund.Entitlements.FirstAsync()).Status);
+            Assert.Equal(OrderStatus.Refunded, (await afterRefund.Orders.FirstAsync()).Status);
+        }
+
+        // Sanity: the same grant token is now attached to a Revoked entitlement, so the
+        // delivery endpoint's `Status == Active` check is what stops the download.
+        Assert.False(string.IsNullOrEmpty(granted.GrantToken));
+    }
+
     private async Task<FulfilmentOutcome> RunAsync(PaymentTransaction txn)
     {
         using var ctx = NewContext();

@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS dossiers (
     provisional     INTEGER DEFAULT 0,
     dense_reward    REAL,
     adversarial_confidence REAL,
-    persona         TEXT
+    persona         TEXT,
+    retrieval_degraded INTEGER DEFAULT 0
 );
 """
 
@@ -49,9 +50,9 @@ CREATE INDEX IF NOT EXISTS idx_persona ON dossiers(persona);
 _UPSERT = """
 INSERT OR REPLACE INTO dossiers
     (candidate_id, title, one_liner, decision, gate_fired, composite,
-     created_at, reverify_due_at, path, ambition_tier, structural_form, 
-     provisional, dense_reward, adversarial_confidence, persona)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     created_at, reverify_due_at, path, ambition_tier, structural_form,
+     provisional, dense_reward, adversarial_confidence, persona, retrieval_degraded)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 
@@ -87,7 +88,8 @@ class Store:
                                ("provisional", "INTEGER DEFAULT 0"),
                                ("dense_reward", "REAL"),
                                ("adversarial_confidence", "REAL"),
-                               ("persona", "TEXT")]:
+                               ("persona", "TEXT"),
+                               ("retrieval_degraded", "INTEGER DEFAULT 0")]:
                 if col not in cols:
                     conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
             
@@ -144,7 +146,12 @@ class Store:
                 int(bool(getattr(dossier, "provisional", False))),
                 dossier.dense_reward,
                 adv_conf,
-                getattr(dossier, "persona", "") or ""
+                getattr(dossier, "persona", "") or "",
+                # Audit: did ANY check rule under degraded/failed retrieval? Lets the
+                # audit trail tell a clean grounded verdict from one served on thin
+                # evidence, independent of the DEFER decision and provisional flag.
+                int(any(getattr(c, "degraded", False) or getattr(c, "retrieval_failed", False)
+                        for c in getattr(dossier, "checks", []) or [])),
             ))
         return path
 

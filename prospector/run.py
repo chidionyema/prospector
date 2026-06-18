@@ -85,17 +85,31 @@ def _lane_counts(cfg, lanes: list, k: Optional[int]) -> dict:
 _PENDING_DIR = Path(__file__).resolve().parent.parent / "signals" / "pending"
 
 
-def _save_pending_signal(signal_text: str, cfg: Config) -> Path:
-    """Save a failed signal so `generate --resume` can retry it later."""
+def _save_pending_signal(signal_text: str, cfg: Config) -> Optional[Path]:
+    """Persist a failed signal so `generate --resume` can retry it later.
+
+    Returns the path on a CONFIRMED write, or None if the signal could not be
+    durably saved. A write failure here means the signal would be silently lost,
+    so it is logged at ERROR (not warning) and surfaced to the caller — never
+    swallowed as if the deferral succeeded.
+    """
     import hashlib
     key = hashlib.sha1(signal_text.encode()).hexdigest()[:16]
     path = _PENDING_DIR / f"{key}.json"
     try:
         _PENDING_DIR.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"signal_text": signal_text, "key": key}), encoding="utf-8")
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps({"signal_text": signal_text, "key": key}), encoding="utf-8")
+        tmp.replace(path)  # atomic publish — a half-written file is never resumed
+        if not path.exists():
+            raise OSError(f"pending signal not present after write: {path}")
+        return path
     except Exception as e:
-        logger.warning(f"Could not save pending signal: {e}")
-    return path
+        logger.error(
+            f"FAILED to persist pending signal {key} — it will NOT be resumable: {e}",
+            extra={"signal_key": key, "pending_dir": str(_PENDING_DIR)},
+        )
+        return None
 
 
 def _load_pending_signals() -> list[tuple[Path, str]]:
@@ -537,7 +551,7 @@ def run_signal(
 
     # --- Dedup against catalogue ---
     catalogue = store.catalogue_titles()
-    unique, dropped = dedup(candidates, catalogue)
+    unique, dropped = dedup(candidates, catalogue, threshold=cfg.dedup_threshold)
     if dropped:
         logger.info(f"Dedup dropped {len(dropped)} near-duplicate pair(s)")
     if dropped:
@@ -753,7 +767,7 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
     store = Store(cfg)
 
     if getattr(args, "resume", False):
-        _cmd_resume(args, cfg, op, fast_op, search, store)
+        _cmd_resume(args, cfg, op, fast_op, search, store, log_path)
         return
 
     cand = Candidate(
@@ -781,7 +795,8 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
 
 
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
-                fast_op: Operator, search: SearchProvider, store: Store) -> None:
+                fast_op: Operator, search: SearchProvider, store: Store,
+                log_path: Optional[Path] = None) -> None:
     """Re-vet all moat-deferred candidates.
 
     Called when `vet --resume` is used or when the moat comes back online after an outage.
