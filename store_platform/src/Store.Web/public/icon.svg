@@ -1,12 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="The Intro Exchange">
-  <!-- WR-021 brand mark, an "IX" monogram (Introduction eXchange): the old "IE" lettermark read as a
-       plain "E". DEEP-BLUE ground (#1e3a8a, the same shade as the dark band/footer — one blue family,
-       the colour lock), white mark (#ffffff); the X is two crossing strokes, the back one dimmed so the
-       pair reads as two forms meeting (the "exchange"). Bright blue is reserved for buttons ("click");
-       the logo shares the band's deep blue. NO gold (WR-033: gold = settled-money signals only).
-       Source of truth = src/components/ui/Logo.tsx; this static asset is regenerated from it. -->
-  <rect width="32" height="32" rx="7" fill="#1e3a8a" />
-  <rect x="9" y="9.5" width="2.6" height="13" rx="0.6" fill="#ffffff" />
-  <path d="M14.6 9.8 L22.4 22.2" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" />
-  <path d="M22.4 9.8 L14.6 22.2" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" opacity="0.6" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Prospector Store">
+  <!-- Assay hallmark: an octagonal punch (the certified cartouche) with the PASS check struck out of
+       it. The stamp that certifies a thing has been tested and is genuine. Mirrors
+       src/components/ui/Logo.tsx; regenerate this asset from it.
+       Ink ground (#0f172a, the dark band/footer shade), white struck octagon (#ffffff). -->
+  <rect width="32" height="32" rx="7" fill="#0f172a" />
+  <polygon points="12,6.4 20,6.4 25.6,12 25.6,20 20,25.6 12,25.6 6.4,20 6.4,12" fill="#ffffff" />
+  <path d="M10.8 16.2 L14.4 19.8 L22 11.8" fill="none" stroke="#0f172a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
 </svg>
