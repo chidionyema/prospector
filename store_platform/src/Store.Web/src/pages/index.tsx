@@ -3,7 +3,7 @@ import { GetServerSideProps } from 'next';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon, CoverArt } from '@/components/ui';
+import { Icon, CoverArt, Input, Select, Button } from '@/components/ui';
 import { SectionBand, Section, FeatureCard, CtaBand } from '@/components/marketing/blocks';
 import { fetchCatalog, formatPrice, Pack } from '@/lib/api/client';
 import { coverFor } from '@/lib/cover';
@@ -68,6 +68,117 @@ function PackCard({ pack }: { pack: Pack }) {
   );
 }
 
+const SORTS = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'price-asc', label: 'Price: low to high' },
+  { value: 'price-desc', label: 'Price: high to low' },
+  { value: 'title', label: 'Name: A to Z' },
+] as const;
+
+type SortKey = (typeof SORTS)[number]['value'];
+
+/**
+ * Client-side catalog browser: search (title + one-line) and sort over the packs the server already
+ * sent. Pure client filtering is right while the catalogue is small (tens of packs); a server-side
+ * query (`/catalog?q=&sort=`) and lane/sector filters are the next step once packs carry taxonomy.
+ */
+function CatalogBrowser({ packs }: { packs: Pack[] }) {
+  const [query, setQuery] = React.useState('');
+  const [sort, setSort] = React.useState<SortKey>('newest');
+
+  const visible = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? packs.filter(
+          (p) => p.title.toLowerCase().includes(q) || p.oneLine.toLowerCase().includes(q),
+        )
+      : packs;
+    if (sort === 'newest') return filtered; // server already returns newest-first
+    return [...filtered].sort((a, b) => {
+      if (sort === 'title') return a.title.localeCompare(b.title);
+      const delta = parseFloat(a.price) - parseFloat(b.price);
+      return sort === 'price-asc' ? delta : -delta;
+    });
+  }, [packs, query, sort]);
+
+  if (packs.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-white py-20 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-bg text-muted">
+          <Icon name="search" size={20} />
+        </div>
+        <p className="font-semibold text-text">No packs are live right now.</p>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+          We publish an opportunity the moment it clears every check. Check back shortly.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full sm:max-w-xs">
+          <Input
+            label="Search packs"
+            hideLabel
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or idea…"
+          />
+        </div>
+        <div className="flex items-center gap-3 sm:justify-end">
+          <span className="whitespace-nowrap text-sm font-semibold text-muted">
+            {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
+          </span>
+          <div className="w-48">
+            <Select
+              label="Sort packs"
+              hideLabel
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+            >
+              {SORTS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {visible.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {visible.map((pack) => (
+              <PackCard key={pack.id} pack={pack} />
+            ))}
+          </div>
+          <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
+            <Icon name="shield" size={15} className="text-success" />
+            Every pack carries a 14 day money back guarantee.
+          </p>
+        </>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border bg-white py-16 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-bg text-muted">
+            <Icon name="search" size={20} />
+          </div>
+          <p className="font-semibold text-text">No packs match “{query.trim()}”.</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted">Try a broader word, or clear the search.</p>
+          <div className="mt-4">
+            <Button variant="secondary" onClick={() => setQuery('')}>
+              Clear search
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Home({ packs }: HomeProps) {
   return (
     <MarketingLayout>
@@ -97,44 +208,15 @@ export default function Home({ packs }: HomeProps) {
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-8 !pb-16 md:!pt-10 md:!pb-20">
-        <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
-            <p className="mt-2 max-w-xl text-base text-text/70">
-              We list a pack only when it clears every check. Most ideas never make it. £49 each, yours the
-              moment you pay.
-            </p>
-          </div>
-          {packs.length > 0 && (
-            <span className="text-sm font-semibold text-muted">
-              {packs.length} {packs.length === 1 ? 'pack' : 'packs'} live
-            </span>
-          )}
+        <div className="mb-6">
+          <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
+          <p className="mt-2 max-w-xl text-base text-text/70">
+            We list a pack only when it clears every check. Most ideas never make it. £49 each, yours the
+            moment you pay.
+          </p>
         </div>
 
-        {packs.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {packs.map((pack) => (
-                <PackCard key={pack.id} pack={pack} />
-              ))}
-            </div>
-            <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
-              <Icon name="shield" size={15} className="text-success" />
-              Every pack carries a 14 day money back guarantee.
-            </p>
-          </>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-white py-20 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-bg text-muted">
-              <Icon name="search" size={20} />
-            </div>
-            <p className="font-semibold text-text">No packs are live right now.</p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-              We publish an opportunity the moment it clears every check. Check back shortly.
-            </p>
-          </div>
-        )}
+        <CatalogBrowser packs={packs} />
       </Section>
 
       {/* 3. WHAT YOU GET — product detail, the three deliverables inside every pack. */}
