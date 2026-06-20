@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 
 /**
- * TIE semantic icon set (E17-003).
+ * Semantic icon set for the storefront.
  * Wraps Lucide to enforce accessible defaults and stroke consistency.
  * Icons inherit color from their parent (text-currentColor).
  */

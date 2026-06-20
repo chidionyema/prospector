@@ -1,5 +1,5 @@
 
-/* TODO: replace [OPERATOR LEGAL NAME], [CONTACT EMAIL], [BUSINESS ADDRESS] before go-live */
+/* Operator legal facts (legalName, address, contactEmail) come from LEGAL in @/lib/config — set them there once before go-live. */
 /*
  * Draft legal copy — review with qualified counsel before go-live.
  * Digital goods refund policy: UK Consumer Contracts Regulations 2013,
@@ -32,10 +32,24 @@ export default function RefundPage() {
         .
       </LegalText>
 
-      <LegalHeading>1. Statutory cancellation right — digital goods</LegalHeading>
+      <LegalHeading>1. Our 14 day money back guarantee</LegalHeading>
+      <LegalText>
+        Every Pack comes with a <strong>14 day money back guarantee, no questions asked</strong>.
+        If a Pack is not what you expected for any reason, email us within 14 days of your purchase
+        and we will refund you in full. You do not need to explain why. This is a voluntary guarantee
+        we offer in addition to your statutory rights described below, and it gives you more
+        protection than the law requires for digital goods.
+      </LegalText>
+      <LegalText>
+        The guarantee covers one refund per customer per Pack and is intended for genuine buyers.
+        We may decline a request only in cases of clear abuse, such as repeated buy and refund
+        cycles across many Packs.
+      </LegalText>
+
+      <LegalHeading>2. Statutory cancellation right for digital goods</LegalHeading>
       <LegalText>
         Under the <strong>Consumer Contracts (Information, Cancellation and Additional Charges)
-        Regulations 2013</strong> (SI&nbsp;2013/3134), consumers normally have a 14-day
+        Regulations 2013</strong> (SI&nbsp;2013/3134), consumers normally have a 14 day
         right to cancel a distance contract. However, Regulation&nbsp;37 provides that the
         cancellation right is <strong>lost once performance of a digital content contract
         begins</strong>, provided that:
@@ -49,9 +63,9 @@ export default function RefundPage() {
       <LegalText>
         At checkout you are asked to confirm both of these points before your purchase
         completes. By confirming, you expressly consent to immediate delivery of the digital
-        content and acknowledge that <strong>your statutory 14-day cancellation right is
+        content and acknowledge that <strong>your statutory 14 day cancellation right is
         waived once your download link is issued or your download begins, whichever is
-        earlier.</strong>
+        earlier.</strong> Our voluntary guarantee in clause 1 still applies regardless.
       </LegalText>
       <LegalText>
         If you are purchasing in the course of a business (not as a consumer), the Consumer
@@ -59,10 +73,9 @@ export default function RefundPage() {
         right arises.
       </LegalText>
 
-      <LegalHeading>2. Discretionary refund window — non-downloaded or faulty Packs</LegalHeading>
+      <LegalHeading>3. Situations we also cover</LegalHeading>
       <LegalText>
-        Notwithstanding the statutory position above, we operate a discretionary refund policy
-        as follows:
+        Beyond the 14 day guarantee in clause 1, the following always apply:
       </LegalText>
       <LegalList
         items={[
@@ -75,23 +88,17 @@ export default function RefundPage() {
           <>
             <strong>Faulty or corrupted file:</strong> if the downloaded file is technically
             defective (for example, the file is corrupt, blank, or does not match the
-            description of what was sold), report this within 14 days of purchase. We will
-            offer a corrected replacement or, at our discretion, a full refund.
+            description of what was sold), report this any time and we will offer a corrected
+            replacement or a full refund.
           </>,
           <>
             <strong>Duplicate purchase:</strong> if you accidentally purchased the same Pack
-            twice in the same session, contact us within 48 hours and we will refund the
-            duplicate charge.
+            twice in the same session, contact us and we will refund the duplicate charge.
           </>,
         ]}
       />
-      <LegalText>
-        Refunds are <strong>not</strong> available on the grounds that you disagree with the
-        conclusions of a Pack, found the content unhelpful, or made a purchasing decision
-        based on an incorrect assumption not caused by our product description.
-      </LegalText>
 
-      <LegalHeading>3. How to request a refund</LegalHeading>
+      <LegalHeading>4. How to request a refund</LegalHeading>
       <LegalText>
         To request a refund, email{' '}
         <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
@@ -102,19 +109,18 @@ export default function RefundPage() {
       <LegalList
         items={[
           'the email address used at checkout;',
-          'your order ID or order-confirmation email;',
-          'the reason for your request (one of the categories in clause 2 above); and',
-          'for faulty-file claims: a brief description of the defect.',
+          'your order ID or order confirmation email; and',
+          'for a faulty file: a brief description of the defect (a reason is not needed for a guarantee refund).',
         ]}
       />
       <LegalText>
         We aim to respond within 3 business days. Approved refunds are processed to the
         original payment method. The time for funds to appear in your account depends on your
-        bank or card provider (typically 5–10 business days). We are not responsible for delays
+        bank or card provider (typically 5 to 10 business days). We are not responsible for delays
         caused by your financial institution.
       </LegalText>
 
-      <LegalHeading>4. Chargebacks and payment disputes</LegalHeading>
+      <LegalHeading>5. Chargebacks and payment disputes</LegalHeading>
       <LegalText>
         We ask that you contact us at{' '}
         <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
@@ -126,10 +132,10 @@ export default function RefundPage() {
         providing evidence of delivery to your payment provider.
       </LegalText>
 
-      <LegalHeading>5. Disclaimer on Pack content</LegalHeading>
+      <LegalHeading>6. Disclaimer on Pack content</LegalHeading>
       <Disclaimer />
 
-      <LegalHeading>6. Contact</LegalHeading>
+      <LegalHeading>7. Contact</LegalHeading>
       <LegalText>
         Refund enquiries:{' '}
         <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
@@ -139,7 +145,7 @@ export default function RefundPage() {
         <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
           {LEGAL.contactEmail}
         </a>
-        . Operator: [OPERATOR LEGAL NAME], [BUSINESS ADDRESS]. See also our{' '}
+        . Operator: {LEGAL.legalName}, {LEGAL.address}. See also our{' '}
         <Link href="/terms" className="text-primary hover:underline">
           Terms of Service
         </Link>{' '}

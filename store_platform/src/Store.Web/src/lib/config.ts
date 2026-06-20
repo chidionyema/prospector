@@ -17,6 +17,11 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 
 
 export const LEGAL = {
   entity: 'Prospector Platform',
+  // The full registered legal name + business address shown in the legal docs' "registered
+  // details" lines. Single source of truth — set these once here before go-live (they are the
+  // only operator-supplied legal facts left). `legalName` defaults to the operating entity.
+  legalName: 'Prospector Platform',
+  address: 'Registered address available on request',
   governingLaw: 'England & Wales',
   contactEmail: 'privacy@prospector.store',
   supportEmail: 'support@prospector.store',

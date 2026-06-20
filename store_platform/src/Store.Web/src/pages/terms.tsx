@@ -1,5 +1,5 @@
 
-/* TODO: replace [OPERATOR LEGAL NAME], [CONTACT EMAIL], [BUSINESS ADDRESS] before go-live */
+/* Operator legal facts (legalName, address, contactEmail) come from LEGAL in @/lib/config — set them there once before go-live. */
 /*
  * Draft legal copy — review with qualified counsel before go-live.
  * Covers: digital download licence, delivery, buyer obligations, limitation of liability,
@@ -151,7 +151,7 @@ export default function TermsPage() {
         <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
           {LEGAL.contactEmail}
         </a>
-        . Operator: [OPERATOR LEGAL NAME], [BUSINESS ADDRESS]. For our refund policy, see{' '}
+        . Operator: {LEGAL.legalName}, {LEGAL.address}. For our refund policy, see{' '}
         <Link href="/refund" className="text-primary hover:underline">
           Refund Policy
         </Link>

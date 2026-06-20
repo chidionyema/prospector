@@ -13,6 +13,11 @@ export interface PackDetails extends Pack {
   dossierRef: string;
 }
 
+/** Display price without trailing ".00" so "£30.00" reads as "£30" (real pence kept). */
+export function formatPrice(price: string): string {
+  return price.replace(/[.,]00\b/, '');
+}
+
 export async function fetchCatalog(): Promise<Pack[]> {
   const res = await fetch(`${API_BASE_URL}/catalog`);
   if (!res.ok) throw new Error('Failed to fetch catalog');

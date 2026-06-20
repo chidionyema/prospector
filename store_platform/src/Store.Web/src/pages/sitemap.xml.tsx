@@ -11,26 +11,22 @@ import type { GetServerSideProps } from 'next';
 const PUBLIC_PATHS = [
   '/',
   '/how-it-works',
-  '/for-buyers',
-  '/for-connectors',
-  '/pricing',
   '/faq',
-  '/guides',
-  '/guides/how-to-get-a-warm-introduction',
-  '/guides/warm-intro-vs-cold-outreach',
-  '/guides/introduction-email-templates',
-  '/guides/what-to-pay-for-an-introduction',
   '/terms',
   '/privacy',
-  '/remove-me',
-  '/register',
-  '/login',
+  '/refund',
 ];
 
 function originFromReq(headers: { host?: string; 'x-forwarded-proto'?: string }): string {
-  const host = headers.host ?? 'localhost:3000';
-  const proto = headers['x-forwarded-proto'] ?? (host.startsWith('localhost') ? 'http' : 'https');
-  return `${proto}://${host}`;
+  const rawHost = headers.host ?? 'localhost:3000';
+  const proto = headers['x-forwarded-proto'] ?? (rawHost.startsWith('localhost') ? 'http' : 'https');
+  // The Host header is attacker-controllable and is interpolated into the XML body below, so
+  // only accept a clean hostname[:port]. Anything with markup chars (`<`, `>`, `&`, spaces)
+  // falls back to the configured site URL rather than corrupting the sitemap.
+  if (!/^[a-zA-Z0-9.-]+(:\d+)?$/.test(rawHost)) {
+    return (process.env.NEXT_PUBLIC_SITE_URL || 'https://localhost:3000').replace(/\/$/, '');
+  }
+  return `${proto}://${rawHost}`;
 }
 
 // Marketing copy changes occasionally; the home page is the most-updated. These are crawl-budget

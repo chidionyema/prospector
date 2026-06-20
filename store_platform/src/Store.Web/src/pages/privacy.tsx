@@ -1,5 +1,5 @@
 
-/* TODO: replace [OPERATOR LEGAL NAME], [CONTACT EMAIL], [BUSINESS ADDRESS] before go-live */
+/* Operator legal facts (legalName, address, contactEmail) come from LEGAL in @/lib/config — set them there once before go-live. */
 /*
  * Draft legal copy — review with qualified counsel before go-live.
  * UK/EU storefront privacy policy: data collected, lawful basis, retention,
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         Protection Act 2018). We never sell your personal data.
       </LegalText>
       <LegalText>
-        Our registered details: [OPERATOR LEGAL NAME], [BUSINESS ADDRESS]. Contact for privacy
+        Our registered details: {LEGAL.legalName}, {LEGAL.address}. Contact for privacy
         matters:{' '}
         <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
           {LEGAL.contactEmail}
@@ -187,7 +187,7 @@ export default function PrivacyPage() {
         <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
           {LEGAL.contactEmail}
         </a>
-        . Operator: [OPERATOR LEGAL NAME], [BUSINESS ADDRESS]. See also our{' '}
+        . Operator: {LEGAL.legalName}, {LEGAL.address}. See also our{' '}
         <Link href="/terms" className="text-primary hover:underline">
           Terms of Service
         </Link>{' '}

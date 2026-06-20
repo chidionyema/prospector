@@ -7,90 +7,68 @@ import { LEGAL } from '@/lib/config';
 
 const FAQS: { q: string; a: React.ReactNode }[] = [
   {
-    q: 'What am I actually paying for?',
+    q: 'What am I actually buying?',
     a: (
       <>
-        A warm intro to the right person, made by a super-connector who knows them and believes the fit is real. The person confirms their identity when they accept, so you know you&apos;re meeting a real, named individual.
+        A £49 pack: a grounded business opportunity dossier with a Blueprint, a go to market plan, and a Build Kit. It&apos;s a digital download, yours to read and build from as soon as payment clears.
       </>
     ),
   },
   {
-    q: "Isn&apos;t this just paying to pester people?",
+    q: 'What makes a pack "grounded"?',
     a: (
       <>
-        No. It&apos;s designed so it can&apos;t become that. Every intro is made by a connector who already knows the person and thinks it&apos;s a genuine fit for both sides. The person has to accept before you ever meet. We don&apos;t sell contact details and we don&apos;t do cold outreach.
+        Every pack passed the Prospector engine&apos;s six checks (real pain, durable value, room past incumbents, a solvent payer, a distribution route, and legality) and survived an adversarial review. Every claim and number cites a retrievable source, or it isn&apos;t in the pack.
       </>
     ),
   },
   {
-    q: 'Are you holding my money?',
+    q: 'How do I get the pack after I pay?',
     a: (
       <>
-        No, and that&apos;s rather the point. The reward is a hold with your own bank, via Stripe, like a hotel deposit. We can&apos;t touch it. It becomes a charge only when you approve a completed intro.
+        Checkout runs through Stripe. As soon as payment succeeds you get a time-limited download link, so the pack is in your hands within seconds.
       </>
     ),
   },
   {
-    q: 'What if no one takes my request?',
+    q: 'Can I get a refund?',
     a: (
       <>
-        Your bank releases the hold automatically. The only thing you&apos;ve spent is the posting fee.
+        Yes. Every pack comes with a 14 day money back guarantee, no questions asked. If it is not what you expected, email us within 14 days of purchase and we refund you. The full terms are on the{' '}
+        <Link href="/refund" className="text-primary font-bold hover:underline">refund policy</Link>{' '}page.
       </>
     ),
   },
   {
-    q: 'What if the meeting goes nowhere?',
+    q: 'Is a pack financial or investment advice?',
     a: (
       <>
-        That can happen. We can&apos;t promise outcomes, and we won&apos;t pretend otherwise. What we promise: the intro was real, the person was verified, and you approved it before paying.
+        No. A pack is research and information only, not financial, legal, or investment advice. It&apos;s an evidence backed starting point, and what you do with it is your decision.
       </>
     ),
   },
   {
-    q: "Why don&apos;t I see names when I review an offer?",
+    q: 'Are the opportunities guaranteed to work?',
     a: (
       <>
-        Two reasons. You judge the opportunity on its merits, and the connector&apos;s relationships stay private. You meet the person once they&apos;ve agreed to the intro.
+        No, and we won&apos;t pretend otherwise. We guarantee the analysis is grounded and sourced, not that the business will succeed. Execution is yours.
       </>
     ),
   },
   {
-    q: 'Could someone steal my contacts through this?',
+    q: 'Can I share or resell a pack?',
     a: (
       <>
-        No. Reviews are identity-blind, networks aren&apos;t browsable, and a contact&apos;s identity is only revealed when they personally accept an intro.
+        No. A pack is licensed for your own personal use, with no redistribution, resale, or use as training data. The details are in the{' '}
+        <Link href="/terms" className="font-semibold text-text underline underline-offset-2">Terms of Service</Link>.
       </>
     ),
   },
   {
-    q: 'Do connectors have to take my request?',
+    q: 'Is the store live right now?',
     a: (
       <>
-        No. You should be glad of that. Connectors only advance requests they can genuinely help with, because their standing depends on it. Their &quot;no&quot; is what makes their &quot;yes&quot; worth paying for.
-      </>
-    ),
-  },
-  {
-    q: 'Why would the person want to meet me?',
-    a: (
-      <>
-        Because a good intro is worth their time too. The connector only brings two people together when the fit works both ways, and the person accepts on their own terms.
-      </>
-    ),
-  },
-  {
-    q: 'What does the connector get?',
-    a: (
-      <>
-        The reward, minus our cut, paid only when the intro is accepted. Their incentive is the same as yours: a genuine fit.
-      </>
-    ),
-  },
-  {
-    q: 'Is this live right now?',
-    a: (
-      <>
-        Yes. Everything on this site is working today. We&apos;re in private beta and growing the connector network carefully.
+        Yes. Everything on this site works today, and new packs are published as they clear the filter.
       </>
     ),
   },
@@ -98,15 +76,10 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     q: 'Can I have my data removed?',
     a: (
       <>
-        Of course. Use the{' '}
-        <Link href="/remove-me" className="text-primary font-bold hover:underline">
-          data opt-out page
-        </Link>{' '}
-        or just email us. Details in the{' '}
-        <Link href="/privacy" className="font-semibold text-text underline underline-offset-2">
-          Privacy Policy
-        </Link>
-        .
+        Of course. Email us at{' '}
+        <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary font-bold hover:underline">{LEGAL.supportEmail}</a>{' '}
+        or read how we handle data in the{' '}
+        <Link href="/privacy" className="font-semibold text-text underline underline-offset-2">Privacy Policy</Link>.
       </>
     ),
   },
@@ -117,22 +90,22 @@ export default function Faq() {
     <MarketingLayout>
       <Seo
         title="FAQ"
-        description="The money, the people, and how it all works."
+        description="The packs, the payment, and the guarantees. Common questions about the Prospector Store."
       />
 
       <PageHero
         eyebrow="FAQ"
         title={<span className="leading-tight tracking-tighter">Common questions.</span>}
-        lead="The money, the people, and how it all works."
+        lead="What you're buying, how it's delivered, and what we do and don't promise."
       />
 
       <Section
         bg="white"
         width="7xl"
-        title={<span className="font-black">Network Operations</span>}
+        title={<span className="font-black">Buying a pack</span>}
       >
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 mt-12 md:mt-16 items-start">
-          
+
           <div className="space-y-6">
             {FAQS.map((item, i) => (
               <div key={i} className="bg-white border border-border p-8 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
@@ -150,13 +123,9 @@ export default function Faq() {
                   <span className="text-muted uppercase font-bold tracking-tight mb-1">Email</span>
                   <a href={`mailto:${LEGAL.supportEmail}`} className="font-bold text-primary break-all hover:underline">{LEGAL.supportEmail}</a>
                 </div>
-                <div className="flex flex-col border-b border-border/60 pb-4">
-                  <span className="text-muted uppercase font-bold tracking-tight mb-1">Response Time</span>
-                  <span className="font-bold text-text">&lt; 4 business hours</span>
-                </div>
                 <div className="flex flex-col">
-                   <span className="text-muted uppercase font-bold tracking-tight mb-1">Location</span>
-                   <span className="font-bold text-text">London & San Francisco</span>
+                  <span className="text-muted uppercase font-bold tracking-tight mb-1">Response Time</span>
+                  <span className="font-bold text-text">&lt; 1 business day</span>
                 </div>
               </div>
             </div>
@@ -166,10 +135,9 @@ export default function Faq() {
       </Section>
 
       <CtaBand
-        title="Ready to join the exchange?"
+        title="Browse the catalogue."
         lead=""
-        primary={{ href: '/register?role=Buyer', label: 'Get an intro' }}
-        secondary={{ href: '/register?role=Connector', label: 'Make intros' }}
+        primary={{ href: '/', label: 'Browse the packs' }}
       />
     </MarketingLayout>
   );
