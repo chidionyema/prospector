@@ -26,7 +26,12 @@ const DISALLOW = [
 
 function originFromReq(headers: { host?: string; 'x-forwarded-proto'?: string }): string {
   const rawHost = headers.host ?? 'localhost:3000';
-  const proto = headers['x-forwarded-proto'] ?? (rawHost.startsWith('localhost') ? 'http' : 'https');
+  // x-forwarded-proto is also attacker-controllable when the app is exposed without a trusted
+  // proxy; only honour http/https so it can't inject another scheme into the response body.
+  const fwdProto = headers['x-forwarded-proto'];
+  const proto = fwdProto === 'http' || fwdProto === 'https'
+    ? fwdProto
+    : (rawHost.startsWith('localhost') ? 'http' : 'https');
   // The Host header is attacker-controllable and is interpolated into the response body, so
   // only accept a clean hostname[:port]; otherwise fall back to the configured site URL.
   if (!/^[a-zA-Z0-9.-]+(:\d+)?$/.test(rawHost)) {

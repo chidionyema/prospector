@@ -146,7 +146,12 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
     logger.info("Daemon starting: interval=%ds, store=%s", interval, _store_dir(cfg))
     cycles = 0
     while not flag.stop:
-        run_tick(cfg, candidates=candidates, generate_fn=generate_fn)
+        try:
+            run_tick(cfg, candidates=candidates, generate_fn=generate_fn)
+        except Exception:  # noqa: BLE001 — a tick failure (e.g. a transient ledger read error
+            # inside the guard, before any spend) must not kill the daemon. Log and continue so
+            # the next cycle re-evaluates the guard rather than crash-looping under launchd.
+            logger.exception("Scheduler tick failed; continuing to next cycle")
         cycles += 1
         if max_cycles is not None and cycles >= max_cycles:
             break

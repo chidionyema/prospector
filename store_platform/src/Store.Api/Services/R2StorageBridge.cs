@@ -25,12 +25,25 @@ public static class R2StorageBridge
             return new Dictionary<string, string?>(StringComparer.Ordinal);
         }
 
+        var accessKey = Read(config, "R2:AccessKeyId", "R2_ACCESS_KEY_ID");
+        var secretKey = Read(config, "R2:SecretAccessKey", "R2_SECRET_ACCESS_KEY");
+        var bucket = Read(config, "R2:Bucket", "R2_BUCKET");
+
+        // All-or-nothing (matches the old R2ContentStorage invariant): a PARTIAL R2 config must
+        // not produce a half-built Storage config (e.g. a null bucket), which Crux.Storage would
+        // turn into malformed presigned URLs / a cryptic 403 instead of the clean "storage
+        // unconfigured" 503. Treat partial R2 config as unconfigured.
+        if (string.IsNullOrEmpty(accessKey) || string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(bucket))
+        {
+            return new Dictionary<string, string?>(StringComparer.Ordinal);
+        }
+
         return new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["Storage:ServiceUrl"] = $"https://{account}.r2.cloudflarestorage.com",
-            ["Storage:AccessKey"] = Read(config, "R2:AccessKeyId", "R2_ACCESS_KEY_ID"),
-            ["Storage:SecretKey"] = Read(config, "R2:SecretAccessKey", "R2_SECRET_ACCESS_KEY"),
-            ["Storage:BucketName"] = Read(config, "R2:Bucket", "R2_BUCKET"),
+            ["Storage:AccessKey"] = accessKey,
+            ["Storage:SecretKey"] = secretKey,
+            ["Storage:BucketName"] = bucket,
             // R2 uses the pseudo-region "auto"; Crux.Storage sets AuthenticationRegion="auto"
             // for SigV4 so presigned URLs validate against R2.
             ["Storage:Region"] = "auto",
