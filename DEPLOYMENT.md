@@ -60,7 +60,7 @@ prod secret store), NOT in tracked appsettings.
 | `payments:active_provider`  | set to `stripe`                          |
 | `Store:InternalApiKey`      | engine → `/internal/catalog` auth        |
 | `Store:EntitlementsApiKey`  | engine → entitlements auth               |
-| `R2:*` (Account/AccessKey/SecretAccessKey/Bucket) | already set via `R2_*` env (bridged into Keystone.Storage `Storage:*` at startup; no ops change) |
+| `R2:*` (Account/AccessKey/SecretAccessKey/Bucket) | already set via `R2_*` env (bridged into Crux.Storage `Storage:*` at startup; no ops change) |
 | Postmark server token       | delivery email (magic download link)     |
 
 > ⚠️ `MoneyRailConfigGate` **fails API startup** if the active provider's keys are missing. So set

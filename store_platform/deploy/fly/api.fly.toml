@@ -1,7 +1,9 @@
 # Store.Api on Fly.io. See store_platform/deploy/PROD_DEPLOY.md for the full runbook.
 #
-# Deploy (from store_platform/, so the build context includes local-feed/ + Store.Catalog):
-#   fly deploy --config deploy/fly/api.fly.toml
+# Deploy from store_platform/ so the build context (the `.`) includes local-feed/ + Store.Catalog:
+#   fly deploy . --config deploy/fly/api.fly.toml
+# The `.` sets the build context; `dockerfile` below is resolved relative to THIS config file's
+# directory (deploy/fly/), hence the ../../ climb back to the context root.
 #
 # Secrets (Stripe keys, R2, internal keys) are set with `fly secrets set ...`, NOT here.
 # This file holds only non-secret config.
@@ -10,7 +12,7 @@ app = "prospector-store-api"          # rename to your Fly app name
 primary_region = "lhr"                # pick your region
 
 [build]
-  dockerfile = "src/Store.Api/Dockerfile"
+  dockerfile = "../../src/Store.Api/Dockerfile"
 
 [env]
   ASPNETCORE_ENVIRONMENT = "Production"

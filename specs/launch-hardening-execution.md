@@ -8,7 +8,7 @@
 - prospector engine: `.venv/bin/python -m pytest -q`
 - Store.Api / Store.Tests: `cd store_platform/src && dotnet test Store.Tests/Store.Tests.csproj`
 - Store.Web: `cd store_platform/src/Store.Web && npx tsc --noEmit && npm run build`
-- kernel: `cd ~/Documents/code/keystone && dotnet build`
+- kernel: `cd ~/Documents/code/crux && dotnet build`
 
 **Current state (verified 2026-06-20):**
 - Security audit fixes applied + green (C# 61/61, Python 31, web typecheck clean). See the audit summary in this branch.
@@ -115,16 +115,16 @@ The Streamlit control center exposes config editing, run launching, catalogue/di
 Today: `Crux.Storage` in `Store.Api` only. The plan (PLATFORM_KERNEL_PLAN.md) is a shared kernel across projects. Roll out by value, money/identity on the founder fence. **Do NOT rip-and-replace working money code to chase adoption** — adopt where it removes real duplication and is proven by tests.
 
 ### 3.0 — Fix the distribution model first (BLOCKING)
-**Problem:** `Store.Api.csproj:24` references the kernel by relative cross-repo path (`..\..\..\..\keystone\src\Crux.Storage\Crux.Storage.csproj`). Builds on this machine only; breaks on CI/other machines/repo moves.
+**Problem:** `Store.Api.csproj:24` references the kernel by relative cross-repo path (`..\..\..\..\crux\src\Crux.Storage\Crux.Storage.csproj`). Builds on this machine only; breaks on CI/other machines/repo moves.
 **Fix:** publish the kernel as a GitHub Packages NuGet feed (per the plan); switch `Store.Api` to a versioned `<PackageReference Include="Crux.Storage" Version="…" />`.
-**Acceptance:** Store.Api builds from a clean checkout with no sibling `keystone/` repo present; CI green.
+**Acceptance:** Store.Api builds from a clean checkout with no sibling `crux/` repo present; CI green.
 
 ### 3.1 — Kernel test coverage (BLOCKING before consuming more packages)
 **Problem (from handoff):** Crux.Kernel + Crux.Idempotency tests dirs are EMPTY; Identity has 8 tests, Payments.Stripe 0.
 **Fix:** before any new consumer, each package being adopted must have tests proving its money/identity-critical behavior:
 - **Crux.Payments.Stripe** (highest priority if adopted): webhook signature accept/reject, `ChargeId` extraction, capture/refund routing, the dropped kill-switch decision.
 - **Crux.Idempotency**: dedup under concurrent duplicate.
-**Acceptance:** `cd ~/Documents/code/keystone && dotnet test` green; no package consumed without coverage.
+**Acceptance:** `cd ~/Documents/code/crux && dotnet test` green; no package consumed without coverage.
 
 ### 3.2 — Adoption order (each independently shippable, prove then move on)
 1. **Crux.Observability / Crux.Resilience** (lowest risk, no money/identity): `AddCruxResilience()` in `Store.Api`; replace ad-hoc HttpClient policies. *Acceptance:* Store.Tests green, resilience metrics emit.

@@ -1,6 +1,6 @@
 # Platform Kernel — Synthesis & Extraction Plan
 
-**Status:** approved direction (2026-06-19). Working name for the shared foundation: **Keystone**
+**Status:** approved direction (2026-06-19). Working name for the shared foundation: **Crux**
 (placeholder, rename freely). This is the plan to stop re-writing the same cross-cutting services
 (auth, payments, notifications, storage, audit, observability) in every project — TIE, haworks,
 haworks-platform, Prospector, and everything after.
@@ -37,38 +37,38 @@ Source notation: **[TIE]**, **[HP]** = haworks-platform. Robustness 1-5.
 ### Core packages (KERNEL-CORE — no infra deps, ship first)
 | Package | Source | Contents | Score |
 |---|---|---|---|
-| `Keystone.Kernel` | [TIE] SharedKernel + [HP] BuildingBlocks | `Result<T>`/`Error` (strip HP's 215 lines of domain error constants), `AuditableEntity`, `ICurrentUserService`, MediatR behaviors (validation / logging / **telemetry** / idempotency), `ConfigJwtSigningKeyProvider`, claims/httpcontext extensions | 4 |
-| `Keystone.Observability` | [HP] BuildingBlocks | OTel wiring + `CorrelationIdMiddleware` + correlation http-handler + `ActivityEnricher` + `AddDbHealthCheck<T>`. Parameterize the hardcoded 18-service meter list. Best-of-three. | 5 |
-| `Keystone.Resilience` | [HP] | Polly v8 `AddStandardResilienceHandler` + `IResilienceMetrics`/null-object. **Drop HP's duplicate custom Polly v7 factory.** | 4 |
-| `Keystone.Idempotency` | [HP] | `IIdempotencyStore` interface + `IdempotencyBehavior` (already EF-provider-agnostic, runs on sqlite) + new `EfIdempotencyStore<TContext>`. **Leave `PostgresIdempotencyStore` behind (xmax is Postgres-only).** | 4 |
+| `Crux.Kernel` | [TIE] SharedKernel + [HP] BuildingBlocks | `Result<T>`/`Error` (strip HP's 215 lines of domain error constants), `AuditableEntity`, `ICurrentUserService`, MediatR behaviors (validation / logging / **telemetry** / idempotency), `ConfigJwtSigningKeyProvider`, claims/httpcontext extensions | 4 |
+| `Crux.Observability` | [HP] BuildingBlocks | OTel wiring + `CorrelationIdMiddleware` + correlation http-handler + `ActivityEnricher` + `AddDbHealthCheck<T>`. Parameterize the hardcoded 18-service meter list. Best-of-three. | 5 |
+| `Crux.Resilience` | [HP] | Polly v8 `AddStandardResilienceHandler` + `IResilienceMetrics`/null-object. **Drop HP's duplicate custom Polly v7 factory.** | 4 |
+| `Crux.Idempotency` | [HP] | `IIdempotencyStore` interface + `IdempotencyBehavior` (already EF-provider-agnostic, runs on sqlite) + new `EfIdempotencyStore<TContext>`. **Leave `PostgresIdempotencyStore` behind (xmax is Postgres-only).** | 4 |
 
 ### Founder-fence packages (identity + money — Claude-owned)
 | Package | Source | Contents | Score |
 |---|---|---|---|
-| `Keystone.Identity` | [TIE] primary | Cookie/session auth, Google + LinkedIn OIDC + Apple (`AppleTokenValidator`). Cleaner seam than HP. **Optional graft from [HP]:** JWKS endpoint + rotating key ring + service-to-service tokens if multi-service auth is needed later. DROP IdentityServer4. | 4 |
-| `Keystone.Payments.Stripe` | [TIE] primary | Single-provider Stripe, escrow-grade, Polly, idempotency-first, MoneyRailConfigGate. | 4 |
-| `Keystone.Payments.MultiProvider` *(escalation, optional)* | [HP] | `IPaymentGateway` multi-provider (Stripe + PayPal) + webhook workers. Only for projects that need >1 PSP. | 3 |
+| `Crux.Identity` | [TIE] primary | Cookie/session auth, Google + LinkedIn OIDC + Apple (`AppleTokenValidator`). Cleaner seam than HP. **Optional graft from [HP]:** JWKS endpoint + rotating key ring + service-to-service tokens if multi-service auth is needed later. DROP IdentityServer4. | 4 |
+| `Crux.Payments.Stripe` | [TIE] primary | Single-provider Stripe, escrow-grade, Polly, idempotency-first, MoneyRailConfigGate. | 4 |
+| `Crux.Payments.MultiProvider` *(escalation, optional)* | [HP] | `IPaymentGateway` multi-provider (Stripe + PayPal) + webhook workers. Only for projects that need >1 PSP. | 3 |
 
 ### Capability packages (HP beats TIE here)
 | Package | Source | Contents + strip list | Score |
 |---|---|---|---|
-| `Keystone.Storage` | [HP] `src/Media` | `IS3Service` → rename **`IBlobStore`** with only `GetUploadPresignUrl` / `GetDownloadPresignUrl` / `Delete`. Already R2/S3/MinIO-compatible (`ServiceUrl` + `Region:auto`). **Strip:** multipart flow, ClamAV/quarantine, ImageSharp/FFmpeg processing, `MediaVersion`, MassTransit outbox. Collapse status enum to Pending→Active/Failed/Deleted. ~2 days. | 4 |
-| `Keystone.Notifications` | [HP] `src/Notifications` | 2-layer provider seam (`IEmailProvider`+gateway) with SES / SendGrid / Twilio / FCM + Scriban templating + suppression + preferences + idempotency + per-provider circuit breakers. **Strip/refactor:** invert mandatory-bus dispatch into a direct `NotificationDispatchService` (today the handler only publishes to RabbitMQ — no sync send path); strip Vault; strip app-specific consumers (`RefundEmailConsumer`, `SecretExpiryWarningConsumer`). ~3 days. | 4 |
+| `Crux.Storage` | [HP] `src/Media` | `IS3Service` → rename **`IBlobStore`** with only `GetUploadPresignUrl` / `GetDownloadPresignUrl` / `Delete`. Already R2/S3/MinIO-compatible (`ServiceUrl` + `Region:auto`). **Strip:** multipart flow, ClamAV/quarantine, ImageSharp/FFmpeg processing, `MediaVersion`, MassTransit outbox. Collapse status enum to Pending→Active/Failed/Deleted. ~2 days. | 4 |
+| `Crux.Notifications` | [HP] `src/Notifications` | 2-layer provider seam (`IEmailProvider`+gateway) with SES / SendGrid / Twilio / FCM + Scriban templating + suppression + preferences + idempotency + per-provider circuit breakers. **Strip/refactor:** invert mandatory-bus dispatch into a direct `NotificationDispatchService` (today the handler only publishes to RabbitMQ — no sync send path); strip Vault; strip app-specific consumers (`RefundEmailConsumer`, `SecretExpiryWarningConsumer`). ~3 days. | 4 |
 
 ### Optional commerce packages (generic enough to reuse; opt-in per project)
 | Package | Source | Why reusable / strip | Score |
 |---|---|---|---|
-| `Keystone.Commerce.Checkout` | [HP] CheckoutOrchestrator | Verified zero haworks domain language — a clean B2C stock⇄payment saga. Highest reuse ROI. Needs the bus (opt-in `Keystone.Messaging`). | 4 |
-| `Keystone.Commerce.Catalog` | [HP] Catalog | Generic Product/Category/Review/StockReservation. Strip demo controllers, `ProductCacheInvalidatedEvent`, cross-context `CheckoutItemData` embedding (→ local `LineItem`), `SagaId`/saga-propagation fields. | 4 |
-| `Keystone.Commerce.Pricing` | [HP] Pricing | Tiered discounts + promo codes + pluggable `ITaxCalculator`. Replace `ICatalogPricingClient` HTTP coupling with a caller-supplied `IProductPriceSource`. Add platform-fee as a first-class discount type. | 3 |
-| `Keystone.Commerce.Payouts` | [HP] Payouts | Double-entry ledger + `IPayoutGateway` (Stripe Connect) for two-sided marketplaces. Postgres-only locking (`FOR UPDATE SKIP LOCKED`). | 3 |
-| `Keystone.Commerce.Merchant` | [HP] Merchant | Cleanest generic vendor-onboarding domain. Replace `Haworks.BuildingBlocks.Authentication` dep with the kernel's auth abstraction. | 4 |
+| `Crux.Commerce.Checkout` | [HP] CheckoutOrchestrator | Verified zero haworks domain language — a clean B2C stock⇄payment saga. Highest reuse ROI. Needs the bus (opt-in `Crux.Messaging`). | 4 |
+| `Crux.Commerce.Catalog` | [HP] Catalog | Generic Product/Category/Review/StockReservation. Strip demo controllers, `ProductCacheInvalidatedEvent`, cross-context `CheckoutItemData` embedding (→ local `LineItem`), `SagaId`/saga-propagation fields. | 4 |
+| `Crux.Commerce.Pricing` | [HP] Pricing | Tiered discounts + promo codes + pluggable `ITaxCalculator`. Replace `ICatalogPricingClient` HTTP coupling with a caller-supplied `IProductPriceSource`. Add platform-fee as a first-class discount type. | 3 |
+| `Crux.Commerce.Payouts` | [HP] Payouts | Double-entry ledger + `IPayoutGateway` (Stripe Connect) for two-sided marketplaces. Postgres-only locking (`FOR UPDATE SKIP LOCKED`). | 3 |
+| `Crux.Commerce.Merchant` | [HP] Merchant | Cleanest generic vendor-onboarding domain. Replace `Haworks.BuildingBlocks.Authentication` dep with the kernel's auth abstraction. | 4 |
 
 ### Opt-in infra adapters (NOT default deps)
 | Package | Source | Note |
 |---|---|---|
-| `Keystone.Messaging` | [HP] Messaging | All-MassTransit. Kernel default ships only an `IDomainEventPublisher` interface (TIE's outbox is cleaner). This package is the MassTransit implementation. |
-| `Keystone.Vault` | [HP] Vault (20 files) | AppRole + dynamic DB creds + K8s sidecar. Kernel default = config secrets via `ConfigJwtSigningKeyProvider`; this is the opt-in escalation. |
+| `Crux.Messaging` | [HP] Messaging | All-MassTransit. Kernel default ships only an `IDomainEventPublisher` interface (TIE's outbox is cleaner). This package is the MassTransit implementation. |
+| `Crux.Vault` | [HP] Vault (20 files) | AppRole + dynamic DB creds + K8s sidecar. Kernel default = config secrets via `ConfigJwtSigningKeyProvider`; this is the opt-in escalation. |
 
 ### Explicitly NOT extracted (stay haworks-platform microservices / dropped)
 - **Audit** (partitioned tables + bus ingestion), **Privacy** (GDPR erasure saga), **Scheduler**
@@ -96,22 +96,22 @@ These are load-bearing bugs that will poison the kernel if lifted as-is:
 
 ## 4. Distribution
 - Private **GitHub Packages NuGet feed** under `chidionyema` org. `dotnet nuget add source` once per dev
-  machine + CI; consume via `dotnet add package Keystone.*`.
-- **SemVer**, strict. Founder-fence packages (`Keystone.Identity`, `Keystone.Payments.*`) get a CI gate:
+  machine + CI; consume via `dotnet add package Crux.*`.
+- **SemVer**, strict. Founder-fence packages (`Crux.Identity`, `Crux.Payments.*`) get a CI gate:
   no publish without Claude review of the diff (golden-set / contract tests green).
-- One kernel repo (`chidionyema/keystone`) with the package projects + their tests (port HP's Pact
+- One kernel repo (`chidionyema/crux`) with the package projects + their tests (port HP's Pact
   contract tests + TIE's analyzers + golden-journey CI). Aspire/Helm stay in haworks-platform.
 
 ---
 
 ## 5. Extraction order (each step independently shippable)
 1. **Step 0 fixes** in haworks-platform (above). Small, mechanical, de-risks everything.
-2. **`Keystone.Kernel` + `Keystone.Observability` + `Keystone.Resilience` + `Keystone.Idempotency`** —
+2. **`Crux.Kernel` + `Crux.Observability` + `Crux.Resilience` + `Crux.Idempotency`** —
    no infra deps; prove the feed + consumption model with the cheapest packages.
-3. **`Keystone.Storage`** (R2 presign) — first capability; Prospector already wants R2 download URLs.
-4. **`Keystone.Identity`** (founder fence) — TIE-led; this is what kills the per-project auth rewrite.
-5. **`Keystone.Payments.Stripe`** (founder fence) — eventually replaces Prospector's hand-rolled rail.
-6. **`Keystone.Notifications`** — invert the bus dependency; Prospector swaps Postmark behind the seam.
+3. **`Crux.Storage`** (R2 presign) — first capability; Prospector already wants R2 download URLs.
+4. **`Crux.Identity`** (founder fence) — TIE-led; this is what kills the per-project auth rewrite.
+5. **`Crux.Payments.Stripe`** (founder fence) — eventually replaces Prospector's hand-rolled rail.
+6. **`Crux.Notifications`** — invert the bus dependency; Prospector swaps Postmark behind the seam.
 7. **Optional commerce packages** — only when a project needs them.
 
 ---
@@ -119,10 +119,10 @@ These are load-bearing bugs that will poison the kernel if lifted as-is:
 ## 6. Prospector as consumer #1
 - Today: account-less guest checkout, hand-rolled ~200-line StripeProvider, sqlite, R2 download via
   `/download/{token}`. Wiring order:
-  - Adopt `Keystone.Storage` for the R2 presign leg (smallest, safest first cut).
-  - Adopt `Keystone.Identity` to restore accounts + social login — this **replaces** the from-scratch
+  - Adopt `Crux.Storage` for the R2 presign leg (smallest, safest first cut).
+  - Adopt `Crux.Identity` to restore accounts + social login — this **replaces** the from-scratch
     `store_platform/ACCOUNTS_RESTORE_PLAN.md` (scrapped: don't build identity from zero).
-  - Later, swap the hand-rolled Stripe for `Keystone.Payments.Stripe`.
+  - Later, swap the hand-rolled Stripe for `Crux.Payments.Stripe`.
 - Keep guest checkout working throughout. Money tables must get zero migration diff when the Users table
   lands. Uncomment the matching identity entries in `.protected-paths` as each file lands (silent-deletion
   guard stays active).
@@ -132,11 +132,11 @@ These are load-bearing bugs that will poison the kernel if lifted as-is:
 ## 7. Security audit (hard requirement, after the foundation lands)
 Comprehensive audit once extraction is in place. Reuse haworks-platform's
 `docs/agent-briefs/audit-protocol.md` + `docs/reviews/`. Focus: the founder-fence packages
-(`Keystone.Identity`, `Keystone.Payments.*`) — OAuth state/PKCE, open-redirect, unverified-email trust,
+(`Crux.Identity`, `Crux.Payments.*`) — OAuth state/PKCE, open-redirect, unverified-email trust,
 duplicate-account race, webhook signature validation, secret handling, idempotency under concurrency.
 
 ---
 
 ## 8. Open naming decision
-"Keystone" is a placeholder. Pick a final name before the first publish (it bakes into namespaces +
+"Crux" is a placeholder. Pick a final name before the first publish (it bakes into namespaces +
 package IDs). Everything else above is decided.

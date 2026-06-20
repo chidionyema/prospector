@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 
 import pytest
@@ -46,7 +47,7 @@ class TestLaunchPersist:
         monkeypatch.setattr(runner, "_RUNS_DIR", cc / "runs")
         runner._RING_BUFFERS.clear()
 
-        job_id = runner.launch(["python", "-c", "import time; time.sleep(0.2)"])
+        job_id = runner.launch([sys.executable, "-c", "import time; time.sleep(0.2)"])
         time.sleep(0.8)  # let daemon thread write the log
         log_file = runner._RUNS_DIR / f"{job_id}.log"
         assert log_file.exists(), f"Log file not found at {log_file}"
@@ -59,7 +60,7 @@ class TestLaunchPersist:
         (cc / "runs").mkdir()
         runner._RING_BUFFERS.clear()
 
-        job_id = runner.launch(["python", "-c", "import time; time.sleep(0.5)"])
+        job_id = runner.launch([sys.executable, "-c", "import time; time.sleep(0.5)"])
         # Wait a moment for the thread to start the subprocess
         time.sleep(0.3)
         jobs = json.loads((cc / "jobs.json").read_text())
@@ -78,7 +79,7 @@ class TestCancel:
         (cc / "runs").mkdir()
         runner._RING_BUFFERS.clear()
 
-        job_id = runner.launch(["python", "-c", "import time; time.sleep(60)"])
+        job_id = runner.launch([sys.executable, "-c", "import time; time.sleep(60)"])
         # Wait for the log file to exist — means the daemon thread has fully started
         log_file = runner._RUNS_DIR / f"{job_id}.log"
         for _ in range(30):
@@ -155,7 +156,7 @@ class TestSingleActuator:
         runner._RING_BUFFERS.clear()
 
         # Start a long-running job
-        job_id = runner.launch(["python", "-c", "import time; time.sleep(60)"])
+        job_id = runner.launch([sys.executable, "-c", "import time; time.sleep(60)"])
         time.sleep(0.4)  # let it fully start
 
         # Attempt a second launch — must raise RuntimeError

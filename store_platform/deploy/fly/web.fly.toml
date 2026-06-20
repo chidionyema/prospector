@@ -11,7 +11,7 @@ app = "prospector-store-web"          # rename to your Fly app name
 primary_region = "lhr"                # match the API region
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "../../src/Store.Web/Dockerfile"
 
 [http_service]
   internal_port = 3000

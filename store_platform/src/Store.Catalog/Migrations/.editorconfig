@@ -1,0 +1,10 @@
+# EF Core generates every file in this folder (migrations, designer, model snapshot). They are not
+# hand-written and must not be held to the solution's style/analyzer bar. The repo sets
+# TreatWarningsAsErrors + EnforceCodeStyleInBuild (Directory.Build.props), so on a COLD build (e.g.
+# the production Docker image) the analyzers run over this generated code and fail the build on
+# MA0048 (file name vs type), MA0051 (method length), CA1861 (const array args), etc. Incremental
+# local builds skip re-analyzing unchanged files, which hid this. Mark the folder as generated and
+# silence analyzer diagnostics here only — the rest of the solution keeps the full bar.
+[*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none

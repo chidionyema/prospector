@@ -1,8 +1,8 @@
-# Keystone Kernel — Execution Spec
+# Crux Kernel — Execution Spec
 
 **Goal:** Execute PLATFORM_KERNEL_PLAN.md in order. Every step independently shippable.
 **Founder fence:** Identity + money + contracts + migrations stay on Claude.
-**Verify command:** `dotnet test` (haworks-platform) / `dotnet build` (keystone) / `.venv/bin/python -m pytest -q` (prospector).
+**Verify command:** `dotnet test` (haworks-platform) / `dotnet build` (crux) / `.venv/bin/python -m pytest -q` (prospector).
 
 ---
 
@@ -54,25 +54,25 @@ Just don't extract Scheduler. Confirmed: `ScheduledEvent` has `HangfireJobId` pr
 
 ---
 
-## Phase 1 — Create Keystone repo + core packages
+## Phase 1 — Create Crux repo + core packages
 
-### 1.1: Create repo `chidionyema/keystone` (GitHub)
-Create under `~/Documents/code/keystone/`. Structure:
+### 1.1: Create repo `chidionyema/crux` (GitHub)
+Create under `~/Documents/code/crux/`. Structure:
 ```
-keystone/
+crux/
   Directory.Build.props
   Directory.Packages.props
-  keystone.sln
+  crux.sln
   src/
-    Keystone.Kernel/
-    Keystone.Observability/
-    Keystone.Resilience/
-    Keystone.Idempotency/
+    Crux.Kernel/
+    Crux.Observability/
+    Crux.Resilience/
+    Crux.Idempotency/
   tests/
-    Keystone.Kernel.Tests/
-    Keystone.Observability.Tests/
-    Keystone.Resilience.Tests/
-    Keystone.Idempotency.Tests/
+    Crux.Kernel.Tests/
+    Crux.Observability.Tests/
+    Crux.Resilience.Tests/
+    Crux.Idempotency.Tests/
 ```
 
 ### 1.2-1.5: Extract each core package
