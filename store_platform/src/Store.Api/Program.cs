@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -147,7 +148,15 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
             p.OneLine,
             Price = Money.ToDisplayString(p.PricePence, "£"),
             p.PaymentProvider,
-            p.ProviderPriceId
+            p.ProviderPriceId,
+            // Per-pack card specifics so the catalogue sells each pack on its own merits.
+            p.Headline,
+            p.WhoPays,
+            p.EffortTag,
+            p.ProofPoint,
+            p.TimeToFirstRevenue,
+            p.SourceCount,
+            p.VerifiedAt
         })
         .ToListAsync()
         .ConfigureAwait(false);
@@ -158,19 +167,53 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
 app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
 {
     var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
-    return pack is not null
-        ? Results.Ok(new {
-            pack.Id,
-            pack.Title,
-            pack.OneLine,
-            Price = Money.ToDisplayString(pack.PricePence, "£"),
-            pack.PaymentProvider,
-            pack.ProviderPriceId,
-            pack.DossierRef
-        })
-        : Results.NotFound();
+    if (pack is null) return Results.NotFound();
+
+    // Re-hydrate the JSON-text columns. Parse defensively: a malformed value yields null
+    // rather than a 500, so one bad row never takes down a product page.
+    static T? Rehydrate<T>(string? json) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<T>(json); }
+        catch (JsonException) { return null; }
+    }
+
+    return Results.Ok(new {
+        pack.Id,
+        pack.Title,
+        pack.OneLine,
+        Price = Money.ToDisplayString(pack.PricePence, "£"),
+        pack.PaymentProvider,
+        pack.ProviderPriceId,
+        pack.DossierRef,
+        // Conversion surfaces for the product page.
+        pack.Headline,
+        pack.Subhead,
+        pack.ProofPoint,
+        pack.WhoPays,
+        pack.EffortTag,
+        pack.TimeToFirstRevenue,
+        pack.QaVerdictSummary,
+        pack.SourceCount,
+        pack.VerifiedAt,
+        WhatYouGet = Rehydrate<string[]>(pack.WhatYouGetJson),
+        SampleExtract = Rehydrate<string[]>(pack.SampleExtractJson),
+        FinancialSnapshot = Rehydrate<Dictionary<string, string>>(pack.FinancialSnapshotJson)
+    });
 })
 .WithName("GetPackDetails")
+.WithOpenApi();
+
+// Catalogue-wide proof: how many packs cleared every gate and are live, against how many
+// were registered (the held-back ones never list). The storefront renders this as honest
+// survivorship social proof. Counts only what this layer actually knows.
+app.MapGet("/catalog/stats", async (StoreDbContext db) =>
+{
+    var registered = await db.Packs.CountAsync().ConfigureAwait(false);
+    var listed = await db.Packs.CountAsync(p => p.IsListed).ConfigureAwait(false);
+    return Results.Ok(new { listed, registered });
+})
+.WithName("GetCatalogStats")
 .WithOpenApi();
 
 // --- INTERNAL/ENGINE ENDPOINTS ---
@@ -235,6 +278,21 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     {
         pack.ContentVersion = version;
     }
+
+    // Storefront conversion metadata (optional, additive). Only overwrite when the engine
+    // sent a value, so a metadata-light republish never wipes existing copy.
+    if (request.Headline is not null) pack.Headline = request.Headline;
+    if (request.Subhead is not null) pack.Subhead = request.Subhead;
+    if (request.ProofPoint is not null) pack.ProofPoint = request.ProofPoint;
+    if (request.WhoPays is not null) pack.WhoPays = request.WhoPays;
+    if (request.EffortTag is not null) pack.EffortTag = request.EffortTag;
+    if (request.TimeToFirstRevenue is not null) pack.TimeToFirstRevenue = request.TimeToFirstRevenue;
+    if (request.QaVerdictSummary is not null) pack.QaVerdictSummary = request.QaVerdictSummary;
+    if (request.SourceCount is { } sources) pack.SourceCount = sources;
+    if (request.VerifiedAt is { } verifiedAt) pack.VerifiedAt = verifiedAt;
+    if (request.WhatYouGet is not null) pack.WhatYouGetJson = JsonSerializer.Serialize(request.WhatYouGet);
+    if (request.SampleExtract is not null) pack.SampleExtractJson = JsonSerializer.Serialize(request.SampleExtract);
+    if (request.FinancialSnapshot is not null) pack.FinancialSnapshotJson = JsonSerializer.Serialize(request.FinancialSnapshot);
 
     // List-only-after-upload: a pack may only go live once it has deliverable content.
     // Selling something we cannot deliver is the cardinal sin of this layer.

@@ -18,6 +18,21 @@ public record PublishRequest(
     string? ContentKey = null,
     string? ContentHash = null,
     int? ContentVersion = null,
+    // Storefront conversion metadata — the per-pack specifics the engine derives from the
+    // verified dossier so the catalogue can sell each pack on its own merits rather than
+    // generic boilerplate. All optional and additive: a pack still lists without them.
+    string? Headline = null,
+    string? Subhead = null,
+    string? ProofPoint = null,
+    string? WhoPays = null,
+    string? EffortTag = null,
+    string? TimeToFirstRevenue = null,
+    string? QaVerdictSummary = null,
+    int? SourceCount = null,
+    DateTime? VerifiedAt = null,
+    string[]? WhatYouGet = null,
+    string[]? SampleExtract = null,
+    IReadOnlyDictionary<string, string>? FinancialSnapshot = null,
     // Legacy fields — accepted for backward compatibility when the provider-agnostic
     // fields above are not present.
     string? PaddleProductId = null,
