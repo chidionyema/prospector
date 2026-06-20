@@ -1,8 +1,10 @@
 # Store.Web on Fly.io. See store_platform/deploy/PROD_DEPLOY.md for the full runbook.
 #
-# Deploy (from src/Store.Web — its own self-contained build context):
-#   fly deploy --config ../../deploy/fly/web.fly.toml \
+# Deploy from src/Store.Web (its own self-contained build context = the `.`):
+#   fly deploy . --config ../../deploy/fly/web.fly.toml \
 #     --build-arg NEXT_PUBLIC_API_URL=https://prospector-store-api.fly.dev
+# The `.` sets the build context to src/Store.Web; `dockerfile` below is resolved relative to THIS
+# config file's directory (deploy/fly/), hence the ../../ climb back to the Store.Web Dockerfile.
 #
 # NEXT_PUBLIC_API_URL is baked into the bundle at build time, so it is passed as a --build-arg
 # on every deploy (use your real Store.Api public URL), not stored as a runtime secret.

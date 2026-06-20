@@ -76,8 +76,10 @@ fly secrets set --app prospector-store-api \
 ## 3. Deploy the API
 
 ```bash
-# from store_platform/ — build context must include local-feed/ + Store.Catalog
-fly deploy --config deploy/fly/api.fly.toml
+# from store_platform/ — the `.` sets the build context (must include local-feed/ + Store.Catalog).
+# Without the `.`, fly uses the config file's directory (deploy/fly/) as the context and the build
+# fails. The dockerfile path inside the toml is config-dir-relative for the same reason.
+fly deploy . --config deploy/fly/api.fly.toml
 ```
 
 First boot runs EF `MigrateAsync` and creates an EMPTY schema on the volume. The catalogue is
@@ -96,7 +98,8 @@ curl -fsS https://prospector-store-api.fly.dev/catalog/stats  # {"listed":0,"reg
 
 ```bash
 cd src/Store.Web
-fly deploy --config ../../deploy/fly/web.fly.toml \
+# The `.` sets the build context to src/Store.Web (Next's self-contained build).
+fly deploy . --config ../../deploy/fly/web.fly.toml \
   --build-arg NEXT_PUBLIC_API_URL=https://prospector-store-api.fly.dev
 ```
 
@@ -172,6 +175,6 @@ Fly, deploy it with no `[http_service]` and reach it via `fly proxy` / WireGuard
 
 ## Updating later
 
-- API code change: `fly deploy --config deploy/fly/api.fly.toml` (from `store_platform/`).
+- API code change: `fly deploy . --config deploy/fly/api.fly.toml` (from `store_platform/`).
 - Web change: re-run the step-4 command (the build arg must always be the live API URL).
 - Rotate a secret: `fly secrets set --app prospector-store-api KEY=value` (triggers a restart).
