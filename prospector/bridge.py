@@ -10,6 +10,7 @@ import ipaddress
 import json
 import logging
 import os
+import re
 import requests
 import zipfile
 from pathlib import Path
@@ -21,6 +22,70 @@ from .models import Dossier, Decision
 from .pack_validation import validate_pack
 
 logger = logging.getLogger("prospector.bridge")
+
+
+# ---------------------------------------------------------------------------
+# Catalog metadata extraction — turns the generated pack into the per-pack data the
+# storefront needs to sell each pack specifically (sample excerpt, proof point, economics
+# teaser, trust signals) instead of generic chips. All extraction, no new generation.
+# ---------------------------------------------------------------------------
+
+# A line is "cited" if it carries a source marker or a year alongside a number — safe to show
+# pre-purchase because it demonstrates the research is real without revealing the how-to.
+_CITED_RE = re.compile(r"\(source\b|https?://|\b20\d\d\b", re.IGNORECASE)
+_MONEY_RE = re.compile(r"\*\*Month 1:\*\*.*?=\s*\*\*(£[\d,]+)\*\*")
+_LTV_RE = re.compile(r"LTV:CAC Ratio\s*\n\s*-\s*\*\*([\d.]+×)\*\*")
+_PAYBACK_RE = re.compile(r"Payback Period\s*\n\s*-\s*\*\*~?(\d+)\s*months?\*\*")
+
+
+def _sample_excerpts(build_spec: str, proof_point: str, max_items: int = 3) -> List[str]:
+    """A safe pre-purchase 'look inside': verbatim cited lines mined from the Blueprint, with
+    the claim-checked proof_point as a backstop when the Blueprint yields too few. Shows what
+    the research looks like, never the build steps (the how-to is the paid product)."""
+    out: List[str] = []
+    for raw in re.split(r"(?<=[.!?])\s+|\n", build_spec or ""):
+        line = raw.strip().lstrip("-*#> ").strip()
+        if not (40 <= len(line) <= 320):
+            continue
+        if _CITED_RE.search(line) and any(ch.isdigit() for ch in line) and line not in out:
+            out.append(line)
+        if len(out) >= max_items:
+            break
+    proof = (proof_point or "").strip()
+    if len(out) < 2 and proof and proof not in out:
+        out.append(proof)
+    return out[:max_items]
+
+
+def _financial_snapshot(fin_text: str) -> Dict[str, str]:
+    """Pull the Python-computed headline economics (Month 1 revenue, LTV:CAC, payback) from
+    the rendered financial model. These are arithmetically exact, so they are safe to surface
+    pre-purchase as a credible teaser. Returns {} when the model is sparse/unparseable."""
+    t = fin_text or ""
+    snap: Dict[str, str] = {}
+    m = _MONEY_RE.search(t)
+    if m:
+        snap["month1Revenue"] = m.group(1)
+    m = _LTV_RE.search(t)
+    if m:
+        snap["ltvCac"] = m.group(1)
+    m = _PAYBACK_RE.search(t)
+    if m:
+        snap["paybackMonths"] = f"{m.group(1)} months"
+    return snap
+
+
+def _trust_fields(dossier: Dossier) -> Dict[str, Any]:
+    """Trust signals from the moat-verified dossier: how many checks cleared and how many
+    distinct sources were cited. This is real, not a marketing number."""
+    checks = dossier.checks or []
+    total = len(checks)
+    cleared = sum(1 for c in checks if c.verdict.value in ("supported", "unverifiable"))
+    sources = len(dossier.all_sources)
+    out: Dict[str, Any] = {"sourceCount": sources}
+    if total:
+        out["qaVerdictSummary"] = f"{cleared}/{total} checks cleared · {sources} sources cited"
+    return out
 
 
 def _validate_store_api_url(url: str) -> str:
@@ -164,8 +229,29 @@ class EngineBridge:
                 f"will register UNLISTED. Problems: {pack_problems}"
             )
 
-        listing_copy = next((m["copy"] for m in marketing if m["type"] == "listing_page"), "")
+        listing = next((m for m in marketing if m.get("type") == "listing_page"), {})
+        listing_copy = listing.get("copy", "")
         one_liner = candidate.one_liner or (listing_copy[:150] + "..." if len(listing_copy) > 150 else listing_copy)
+
+        # Per-pack catalog metadata: the structured listing fields + a safe sample excerpt +
+        # the Python-computed economics teaser + moat trust signals. This is what lets the
+        # storefront sell each pack specifically instead of with identical generic chips.
+        subhead = (listing.get("subhead") or "").strip()
+        catalog_meta: Dict[str, Any] = {
+            "headline": (listing.get("headline") or "").strip()[:140],
+            "subhead": subhead[:280],
+            "whatYouGet": [str(x).strip() for x in (listing.get("what_you_get") or []) if str(x).strip()][:5],
+            "proofPoint": (listing.get("proof_point") or "").strip(),
+            "whoPays": (listing.get("who_pays") or "").strip(),
+            "effortTag": (listing.get("effort_tag") or "").strip(),
+            "timeToFirstRevenue": (listing.get("time_to_first_revenue") or "").strip(),
+            "sampleExtract": _sample_excerpts(artifacts.get("build_spec", ""), listing.get("proof_point", "")),
+            "financialSnapshot": _financial_snapshot(artifacts.get("financial_model", "")),
+            "verifiedAt": getattr(dossier, "created_at", "") or "",
+        }
+        catalog_meta.update(_trust_fields(dossier))
+        # Drop empties so the payload (and the Store API) only ever see populated fields.
+        catalog_meta = {k: v for k, v in catalog_meta.items() if v not in ("", [], {}, None)}
 
         # 2. Create the bundle (.zip)
         bundle_path = self._create_bundle(dossier, artifacts, marketing)
@@ -258,6 +344,7 @@ class EngineBridge:
             content_key=content_key if is_listed else None,
             content_hash=content_hash if is_listed else None,
             content_version=content_version,
+            metadata=catalog_meta,
         )
 
     @staticmethod
@@ -324,19 +411,28 @@ class EngineBridge:
                 
                 # 2. Marketing Plan (GTM Plan)
                 self._add_to_zip(zipf, "02_Marketing_Plan_GTM.md", artifacts.get("gtm_plan", ""))
-                
-                # 3. Build_Launch_Kit (Ops Plan + Financials)
-                ops_plan = artifacts.get("ops_plan", "")
+
+                # 3. Operations Plan
+                self._add_to_zip(zipf, "03_Operations_Plan.md", artifacts.get("ops_plan", ""))
+
+                # 4. Financial Model — its own file, with a provenance banner. The arithmetic is
+                # Python-computed from verified inputs (no LLM math), which is a real trust
+                # differentiator, so we say so where the buyer reads it.
                 financials = artifacts.get("financial_model", "")
-                launch_kit = f"# Build & Launch Kit\n\n{ops_plan}\n\n{financials}"
-                self._add_to_zip(zipf, "03_Build_Launch_Kit.md", launch_kit)
-                
-                # 4. QA Report
+                if financials:
+                    financials = (
+                        "> All figures below are computed by Python from verified inputs. No "
+                        "language model performed any calculation, so the arithmetic is exact.\n\n"
+                        + financials
+                    )
+                self._add_to_zip(zipf, "04_Financial_Model.md", financials)
+
+                # 5. QA Report
                 from .dossier import render_markdown
                 qa_report = render_markdown(dossier)
                 self._add_to_zip(zipf, "QA_Report.md", qa_report)
                 
-                # 5. Marketing Assets (Social, Email, SEO)
+                # 6. Marketing Assets (Social, Email, SEO)
                 marketing_text = "# Marketing Assets\n\n"
                 for m in marketing:
                     marketing_text += f"## {m['type'].replace('_', ' ').title()}\n\n{m['copy']}\n\n"
@@ -356,7 +452,8 @@ class EngineBridge:
                         is_listed: bool,
                         content_key: Optional[str] = None,
                         content_hash: Optional[str] = None,
-                        content_version: int = 1) -> bool:
+                        content_version: int = 1,
+                        metadata: Optional[Dict[str, Any]] = None) -> bool:
         """Call the .NET Store API's /internal/catalog endpoint."""
         url = f"{self.store_api_url}/internal/catalog"
         payload = {
@@ -376,6 +473,12 @@ class EngineBridge:
             payload["contentKey"] = content_key
         if content_hash is not None:
             payload["contentHash"] = content_hash
+        # Per-pack storefront/trust metadata (headline, sampleExtract, financialSnapshot, ...).
+        # Optional and additive: the Store API ignores any field it doesn't yet model, so a
+        # partial pack still publishes. Reserved keys above are never overwritten.
+        if metadata:
+            for k, v in metadata.items():
+                payload.setdefault(k, v)
         
         # Fail closed: never publish without a configured key. The Store also 503s when its
         # key is unset; refusing here removes any reliance on a default credential and avoids

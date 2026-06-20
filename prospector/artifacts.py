@@ -238,15 +238,20 @@ def generate_artifacts(
     checks: List[CheckResult],
     *,
     fast_op: Optional[Operator] = None,
+    quality_op: Optional[Operator] = None,
 ) -> Dict[str, str]:
     """Generate build_spec, gtm_plan, ops_plan, financial_model in parallel.
 
     FIX #13: parallelizes 4 sequential LLM calls into 1 ThreadPoolExecutor batch.
-    FIX #12: routes all calls to fast_op (flash-lite) — these are template-filling
-    tasks, not creative generation; flash-lite quality is identical at lower cost.
     FIX #3: financial_model outputs JSON assumptions; Python performs arithmetic.
+
+    The three PROSE artifacts ARE the £49 deliverable, so they route to ``quality_op``
+    (the Gemini CLI -> Claude CLI quality chain) when provided. The financial_model is a
+    pure JSON fill that Python turns into arithmetic, so it stays on the cheap ``fast_op``.
+    Both fall back to ``op`` (the moat) when their preferred operator isn't supplied.
     """
-    _op = fast_op or op
+    cheap_op = fast_op or op
+    prose_op = quality_op or op
 
     claims = [c.to_dict() for c in checks if c.verdict == Verdict.SUPPORTED]
     claims_json = json.dumps(claims)
@@ -257,7 +262,9 @@ def generate_artifacts(
 
     with ThreadPoolExecutor(max_workers=len(types)) as ex:
         futures = {
-            ex.submit(_gen_one_artifact, _op, cand_json, claims_json, t): t
+            ex.submit(_gen_one_artifact,
+                      cheap_op if t == "financial_model" else prose_op,
+                      cand_json, claims_json, t): t
             for t in types
         }
         for future in as_completed(futures):
@@ -287,21 +294,74 @@ def verify_claims(op: Operator, copy: str, claims: List[Dict[str, Any]]) -> bool
         return False
 
 
-def _gen_one_content(op: Operator, cand_json: str, claims_json: str,
-                     claims: List[Dict[str, Any]], t: str) -> Optional[Dict[str, str]]:
+def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Coerce a (possibly partial) listing_page response into the structured contract.
+
+    The storefront renders per-pack specifics (headline, what-you-get bullets, the single
+    strongest proof point, who pays, effort + time-to-revenue) instead of generic chips, so
+    the listing_page is structured rather than a freeform blob. This is tolerant: an operator
+    that only returns ``copy`` still yields a valid piece (structured fields empty), and when
+    ``copy`` is missing we assemble a prose fallback from the parts. ``copy`` is always set so
+    the completeness gate (which checks copy length) and the bundle keep working unchanged.
+    """
+    def _s(key: str) -> str:
+        return str(data.get(key) or "").strip()
+
+    what = [str(x).strip() for x in (data.get("what_you_get") or []) if str(x).strip()][:5]
+    effort = _s("effort_tag").lower()
+    copy = _s("copy")
+    if not copy:
+        parts = [p for p in (_s("headline"), _s("subhead")) if p]
+        if what:
+            parts.append("What you get: " + "; ".join(what))
+        if _s("proof_point"):
+            parts.append(_s("proof_point"))
+        copy = "\n\n".join(parts)
+    return {
+        "type": "listing_page",
+        "copy": copy,
+        "headline": _s("headline"),
+        "subhead": _s("subhead"),
+        "what_you_get": what,
+        "proof_point": _s("proof_point"),
+        "who_pays": _s("who_pays"),
+        "effort_tag": effort if effort in ("low", "medium", "high") else "",
+        "time_to_first_revenue": _s("time_to_first_revenue"),
+        "cta_text": _s("cta_text"),
+    }
+
+
+def _listing_check_text(piece: Dict[str, Any]) -> str:
+    """Everything a buyer will SEE on the card, concatenated for the claim-check gate, so
+    overstatement in the headline/bullets/proof_point is caught, not just the prose body."""
+    bits = [piece.get("headline", ""), piece.get("subhead", "")]
+    bits.extend(piece.get("what_you_get", []) or [])
+    bits.extend([piece.get("proof_point", ""), piece.get("copy", "")])
+    return "\n".join(b for b in bits if b)
+
+
+def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claims_json: str,
+                     claims: List[Dict[str, Any]], t: str) -> Optional[Dict[str, Any]]:
     """Generate one marketing piece with one regeneration attempt.
 
-    Returns None if the piece fails claim-check after the regeneration loop.
-    Runs in a thread (per content type, so 4 threads max).
+    ``gen_op`` drafts the copy (cheap for ancillary pieces, the quality chain for the
+    listing_page); ``check_op`` runs the claim-check — always the moat, because a verification
+    gate must never be judged by the same cheap model that produced the copy. Returns None if
+    the piece fails claim-check after the regeneration loop. Runs in a thread.
     """
     for attempt in range(2):
         system, user = render("content_gen", candidate_json=cand_json,
                               claims_json=claims_json, type=t)
-        data = op.complete_json(system, user, temperature=0.7)
-        copy = str(data.get("copy", ""))
+        data = gen_op.complete_json(system, user, temperature=0.7)
+        if t == "listing_page":
+            piece = _normalize_listing(data)
+            check_text = _listing_check_text(piece)
+        else:
+            piece = {"type": t, "copy": str(data.get("copy", ""))}
+            check_text = piece["copy"]
 
-        if verify_claims(op, copy, claims):
-            return {"type": t, "copy": copy}
+        if verify_claims(check_op, check_text, claims):
+            return piece
         logger.debug(f"Content {t} failed claim-check, regenerating (attempt {attempt + 1}/2)",
                      extra={"type": t})
 
@@ -315,15 +375,23 @@ def generate_marketing_content(
     checks: List[CheckResult],
     *,
     fast_op: Optional[Operator] = None,
-) -> List[Dict[str, str]]:
+    quality_op: Optional[Operator] = None,
+    check_op: Optional[Operator] = None,
+) -> List[Dict[str, Any]]:
     """Generate and claim-check listing_page, teaser_social, seo_preview, launch_email.
 
     FIX #13: all 4 content types are generated in parallel (4 threads instead of
     sequential).  Each type has its own 2-attempt regeneration loop.  The retry
-    loop is INSIDE the thread so threads are independent — a slow regeneration on
-    one type does not block the others.  FIX #12: calls route to fast_op.
+    loop is INSIDE the thread so threads are independent.
+
+    The listing_page is the storefront copy a buyer reads BEFORE paying, so it routes to
+    ``quality_op`` (the Gemini CLI -> Claude CLI chain); the ancillary pieces stay on the
+    cheap ``fast_op``. The claim-check gate always runs on ``check_op`` (the moat) — never the
+    drafting model. All three fall back to ``op`` when their preferred operator isn't supplied.
     """
-    _op = fast_op or op
+    cheap_op = fast_op or op
+    quality = quality_op or op
+    checker = check_op or op
 
     claims = [c.to_dict() for c in checks if c.verdict == Verdict.SUPPORTED]
     claims_json = json.dumps(claims)
@@ -333,10 +401,12 @@ def generate_marketing_content(
 
     with ThreadPoolExecutor(max_workers=len(types)) as ex:
         futures = {
-            ex.submit(_gen_one_content, _op, cand_json, claims_json, claims, t): t
+            ex.submit(_gen_one_content,
+                      quality if t == "listing_page" else cheap_op,
+                      checker, cand_json, claims_json, claims, t): t
             for t in types
         }
-        results: List[Dict[str, str]] = []
+        results: List[Dict[str, Any]] = []
         for future in as_completed(futures):
             t = futures[future]
             try:
