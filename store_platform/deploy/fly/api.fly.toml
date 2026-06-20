@@ -1,0 +1,44 @@
+# Store.Api on Fly.io. See store_platform/deploy/PROD_DEPLOY.md for the full runbook.
+#
+# Deploy (from store_platform/, so the build context includes local-feed/ + Store.Catalog):
+#   fly deploy --config deploy/fly/api.fly.toml
+#
+# Secrets (Stripe keys, R2, internal keys) are set with `fly secrets set ...`, NOT here.
+# This file holds only non-secret config.
+
+app = "prospector-store-api"          # rename to your Fly app name
+primary_region = "lhr"                # pick your region
+
+[build]
+  dockerfile = "src/Store.Api/Dockerfile"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  ConnectionStrings__DefaultConnection = "Data Source=/data/store.db"
+  payments__active_provider = "stripe"
+
+# Persistent SQLite catalogue/orders db. SQLite is a SINGLE-WRITER store, so this app must run
+# exactly ONE machine — do not scale the count above 1.
+[mounts]
+  source = "store_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Always-on: Stripe webhooks must reach a live machine, and SQLite cannot be shared across
+  # several machines. Keep one machine up; never autoscale to many.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "get"
+    path = "/catalog"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

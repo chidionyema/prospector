@@ -1,0 +1,17 @@
+# Build context for the Store.Web image. Keep package.json/lock, src/, public/, next.config,
+# tsconfig. Exclude build output, deps, test artifacts, and any local env that could shadow the
+# NEXT_PUBLIC_API_URL build arg.
+node_modules/
+.next/
+out/
+test-results/
+playwright-report/
+.env.local
+.env.*.local
+.env
+.env.*
+npm-debug.log*
+*.md
+.git/
+.gitignore
+Dockerfile

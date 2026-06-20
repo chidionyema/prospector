@@ -1,0 +1,26 @@
+# Store.Web on Fly.io. See store_platform/deploy/PROD_DEPLOY.md for the full runbook.
+#
+# Deploy (from src/Store.Web — its own self-contained build context):
+#   fly deploy --config ../../deploy/fly/web.fly.toml \
+#     --build-arg NEXT_PUBLIC_API_URL=https://prospector-store-api.fly.dev
+#
+# NEXT_PUBLIC_API_URL is baked into the bundle at build time, so it is passed as a --build-arg
+# on every deploy (use your real Store.Api public URL), not stored as a runtime secret.
+
+app = "prospector-store-web"          # rename to your Fly app name
+primary_region = "lhr"                # match the API region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Stateless front end: fine to scale to zero between visits.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
