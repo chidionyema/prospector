@@ -9,9 +9,13 @@
 #                                   entitlement -> presigned R2 download; idempotency;
 #                                   underpayment guard; refund + dispute revocation; forged
 #                                   signature rejected; download cap; expiry.
+#   Phase C (prove_storefront.sh) — NON-PAYMENT API: catalogue listing + fields, survivorship
+#                                   stats, pack detail, 404 handling, admin auth gates, CORS.
+#
+# (The rendered web UI is proven separately by prove_web.sh — a browser smoke.)
 #
 # Requires in env: STRIPE_TEST_SECRET_KEY, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
-# R2_SECRET_ACCESS_KEY, R2_BUCKET. Exit 0 only if every assertion in both phases passes.
+# R2_SECRET_ACCESS_KEY, R2_BUCKET. Exit 0 only if every assertion in every phase passes.
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -27,10 +31,18 @@ echo "########################################################################"
 bash "$SCRIPT_DIR/prove_money_path.sh"; B=$?
 
 echo
+echo "########################################################################"
+echo "#  PROVE ALL PATHS — Phase C: non-payment storefront API                #"
+echo "########################################################################"
+bash "$SCRIPT_DIR/prove_storefront.sh"; C=$?
+
+echo
 echo "================================  SUMMARY  ============================="
 printf "  Phase A  buy button / checkout : %s\n" "$([ $A -eq 0 ] && echo PASS || echo FAIL)"
 printf "  Phase B  fulfilment + negatives: %s\n" "$([ $B -eq 0 ] && echo PASS || echo FAIL)"
-echo "  Proof reports: store/launch/checkout-proof.md, store/launch/test-card-proof.md"
+printf "  Phase C  non-payment API       : %s\n" "$([ $C -eq 0 ] && echo PASS || echo FAIL)"
+echo "  Proofs: store/launch/{checkout,test-card,storefront}-proof.md"
+echo "  (web UI: bash store_platform/scripts/prove_web.sh)"
 echo "======================================================================="
-[ $A -eq 0 ] && [ $B -eq 0 ] && { echo "ALL PATHS PROVEN ✅"; exit 0; }
+[ $A -eq 0 ] && [ $B -eq 0 ] && [ $C -eq 0 ] && { echo "ALL PATHS PROVEN ✅"; exit 0; }
 echo "LAUNCH BLOCKED — at least one path failed ❌"; exit 1

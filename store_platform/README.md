@@ -26,7 +26,7 @@ bash store_platform/scripts/prove_launch.sh
 
 This is the gate to run **before every launch and after any change** to checkout, webhook,
 fulfilment, or delivery code. It boots its own throwaway API instances, proves all paths, and
-exits non-zero if anything fails. Two phases:
+exits non-zero if anything fails. Three phases:
 
 - **Phase A — the buy button** (`prove_checkout.sh`): for **every listed pack** it calls the
   real `POST /packs/{id}/checkout` against a copy of the real catalogue with your real Stripe
@@ -35,14 +35,32 @@ exits non-zero if anything fails. Two phases:
 - **Phase B — fulfilment + negative paths** (`prove_money_path.sh`): signed webhook → order →
   entitlement → presigned R2 download; idempotent replay; underpayment guard; refund and
   dispute revocation; forged-signature rejection (400); download cap (429); expiry (410).
+- **Phase C — non-payment API** (`prove_storefront.sh`): catalogue listing + required fields,
+  survivorship stats (`listed`/`registered`), single-pack detail, unknown-pack 404, the auth
+  gates on `/internal/catalog` and `/entitlements` (must reject unauthenticated writes), and
+  CORS. No Stripe/R2 needed — runs against a copy of the catalogue.
 
-Evidence reports are written to `store/launch/checkout-proof.md` and
-`store/launch/test-card-proof.md`. To run just one leg:
+Evidence reports are written to `store/launch/checkout-proof.md`,
+`store/launch/test-card-proof.md`, and `store/launch/storefront-proof.md`. To run just one leg:
 
 ```bash
 bash store_platform/scripts/prove_checkout.sh      # buy button only
 bash store_platform/scripts/prove_money_path.sh    # fulfilment + negatives only
+bash store_platform/scripts/prove_storefront.sh    # non-payment API only
 ```
+
+### Prove the rendered web UI (browser smoke)
+
+```bash
+bash store_platform/scripts/prove_web.sh
+```
+
+Separate from `prove_launch.sh` because it needs a browser. It production-builds Store.Web,
+boots it on **:3000** against a copy of the real catalogue (Store.Api on **:5291**), and runs a
+headless-Chromium Playwright smoke (`src/Store.Web/e2e/storefront.spec.ts`): the home page lists
+packs, a pack detail page renders with its buy button, the order-success page renders, and an
+unknown route returns the 404 page. The smoke stops at the buy button, so it needs no card — the
+actual Stripe redirect is proven server-side by Phase A. Ports are freed before boot and on exit.
 
 ## Launch the full stack for hands-on browser testing
 
