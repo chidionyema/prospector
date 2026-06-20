@@ -315,7 +315,7 @@ def _scope_hint(mode: str, candidates: int, operator: str, fixtures: bool):
 
 def _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish, persona, board):
     """Build argv and launch a vet run."""
-    argv = ["python", "-m", "prospector.run", "vet",
+    argv = [_sys.executable, "-m", "prospector.run", "vet",
             "--title", title, "--operator", operator]
     if one_liner:
         argv += ["--one-liner", one_liner]
@@ -335,7 +335,7 @@ def _launch_vet(title, one_liner, why_now, lane, operator, fixtures, publish, pe
 
 
 def _launch_signal(text, count, lane, operator, fixtures, publish, persona, board):
-    argv = ["python", "-m", "prospector.run", "signal",
+    argv = [_sys.executable, "-m", "prospector.run", "signal",
             "--text", text, "--count", str(count), "--operator", operator]
     if lane:
         argv += ["--lane", lane]
@@ -351,7 +351,7 @@ def _launch_signal(text, count, lane, operator, fixtures, publish, persona, boar
 
 
 def _launch_generate(candidates, exploration, lane, operator, fixtures, persona, board):
-    argv = ["python", "-m", "prospector.run", "generate",
+    argv = [_sys.executable, "-m", "prospector.run", "generate",
             "--candidates", str(candidates),
             "--exploration", str(exploration),
             "--operator", operator]
@@ -367,7 +367,7 @@ def _launch_generate(candidates, exploration, lane, operator, fixtures, persona,
 
 
 def _launch_discover(count, dry_run, fixtures, persona, board):
-    argv = ["python", "-m", "prospector.run", "discover",
+    argv = [_sys.executable, "-m", "prospector.run", "discover",
             "--count", str(count)]
     if dry_run:
         argv += ["--dry-run"]

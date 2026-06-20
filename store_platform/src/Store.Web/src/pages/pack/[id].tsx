@@ -311,20 +311,36 @@ export default function PackPage({ pack }: PackPageProps) {
               </div>
             )}
 
-            {/* What's inside */}
+            {/* What's inside — per-pack specifics when present, generic cards otherwise */}
             <div className="mt-12">
               <h2 className="text-xl font-bold tracking-tight text-text">What&apos;s inside</h2>
-              <ul className="mt-6 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
-                {INSIDE.map((item, i) => (
-                  <li key={i} className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span className="mt-1 text-base font-bold text-text">{item.label}</span>
-                    <span className="mt-1.5 text-sm leading-relaxed text-text/70">{item.desc}</span>
-                  </li>
-                ))}
-              </ul>
+              {pack.whatYouGet && pack.whatYouGet.length > 0 ? (
+                <ul className="mt-6 list-none space-y-3 p-0">
+                  {pack.whatYouGet.map((item, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-3 rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                    >
+                      <span className="mt-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className="text-sm leading-relaxed text-text/80">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="mt-6 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
+                  {INSIDE.map((item, i) => (
+                    <li key={i} className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className="mt-1 text-base font-bold text-text">{item.label}</span>
+                      <span className="mt-1.5 text-sm leading-relaxed text-text/70">{item.desc}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* A look inside — real sourced lines lifted straight from the pack */}
