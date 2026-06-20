@@ -5,7 +5,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon, CoverArt } from '@/components/ui';
 import { Section } from '@/components/marketing/blocks';
-import { fetchPackDetails, formatPrice, PackDetails } from '@/lib/api/client';
+import { fetchPackDetails, formatPrice, freshnessLabel, PackDetails } from '@/lib/api/client';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { stripeConfigured } from '@/lib/stripe';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
@@ -109,6 +109,40 @@ export default function PackPage({ pack }: PackPageProps) {
         14 day money back, no questions asked
       </div>
 
+      {pack.financialSnapshot &&
+        (pack.financialSnapshot.month1Revenue ||
+          pack.financialSnapshot.ltvCac ||
+          pack.financialSnapshot.paybackMonths) && (
+          <div className="mt-4 rounded-lg border border-border/70 bg-bg/40 p-3">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+              Modelled economics
+            </span>
+            <dl className="mt-2 space-y-1.5 text-xs">
+              {pack.financialSnapshot.month1Revenue && (
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-muted">Month 1 revenue</dt>
+                  <dd className="font-bold text-text">{pack.financialSnapshot.month1Revenue}</dd>
+                </div>
+              )}
+              {pack.financialSnapshot.ltvCac && (
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-muted">Lifetime value to cost</dt>
+                  <dd className="font-bold text-text">{pack.financialSnapshot.ltvCac}</dd>
+                </div>
+              )}
+              {pack.financialSnapshot.paybackMonths && (
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-muted">Payback</dt>
+                  <dd className="font-bold text-text">{pack.financialSnapshot.paybackMonths}</dd>
+                </div>
+              )}
+            </dl>
+            <p className="mt-2 text-[10px] leading-relaxed text-muted">
+              Computed by the engine from the pack&apos;s verified inputs. Your own results will differ.
+            </p>
+          </div>
+        )}
+
       {checkoutError && (
         <div className="mt-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-xs text-danger">
           {checkoutError}
@@ -159,7 +193,7 @@ export default function PackPage({ pack }: PackPageProps) {
 
   return (
     <MarketingLayout>
-      <Seo title={`${pack.title} · Validated business opportunity`} />
+      <Seo title={`${pack.title} · A business idea that survived our filter`} />
 
       <Section bg="bg" width="6xl" className="!pt-8 !pb-24">
         {/* Breadcrumb */}
@@ -186,6 +220,29 @@ export default function PackPage({ pack }: PackPageProps) {
               {pack.title}
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-text/80">{pack.oneLine}</p>
+            {pack.subhead && (
+              <p className="mt-3 text-base leading-relaxed text-text/60">{pack.subhead}</p>
+            )}
+
+            {(freshnessLabel(pack.verifiedAt) ||
+              (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) ||
+              pack.qaVerdictSummary) && (
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-muted">
+                {freshnessLabel(pack.verifiedAt) && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon name="scheduled" size={13} />
+                    {freshnessLabel(pack.verifiedAt)}
+                  </span>
+                )}
+                {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon name="check" size={13} className="text-success" />
+                    {pack.sourceCount} sources cited
+                  </span>
+                )}
+                {pack.qaVerdictSummary && <span>{pack.qaVerdictSummary}</span>}
+              </div>
+            )}
 
             {/* Mobile purchase bar — keeps price + CTA above the fold on small screens */}
             <div className="mt-8 rounded-2xl border border-border bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
@@ -221,6 +278,39 @@ export default function PackPage({ pack }: PackPageProps) {
               </Link>
             </div>
 
+            {/* Is this for you? — the concrete fit signals, when the pack carries them */}
+            {(pack.whoPays || pack.effortTag || pack.timeToFirstRevenue) && (
+              <div className="mt-12">
+                <h2 className="text-xl font-bold tracking-tight text-text">Is this for you?</h2>
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {pack.whoPays && (
+                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+                        Who pays
+                      </span>
+                      <span className="mt-1.5 text-sm leading-relaxed text-text/80">{pack.whoPays}</span>
+                    </div>
+                  )}
+                  {pack.effortTag && (
+                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+                        Effort to build
+                      </span>
+                      <span className="mt-1.5 text-sm font-semibold capitalize text-text">{pack.effortTag}</span>
+                    </div>
+                  )}
+                  {pack.timeToFirstRevenue && (
+                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+                        Time to first revenue
+                      </span>
+                      <span className="mt-1.5 text-sm font-semibold text-text">{pack.timeToFirstRevenue}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* What's inside */}
             <div className="mt-12">
               <h2 className="text-xl font-bold tracking-tight text-text">What&apos;s inside</h2>
@@ -236,6 +326,27 @@ export default function PackPage({ pack }: PackPageProps) {
                 ))}
               </ul>
             </div>
+
+            {/* A look inside — real sourced lines lifted straight from the pack */}
+            {pack.sampleExtract && pack.sampleExtract.length > 0 && (
+              <div className="mt-12">
+                <h2 className="text-xl font-bold tracking-tight text-text">A look inside</h2>
+                <p className="mt-2 text-sm text-muted">
+                  Real, sourced lines taken straight from the pack. This is the level of grounding behind
+                  every claim you are buying.
+                </p>
+                <ul className="mt-6 list-none space-y-3 p-0">
+                  {pack.sampleExtract.map((line, i) => (
+                    <li
+                      key={i}
+                      className="rounded-xl border border-border border-l-2 border-l-success bg-white px-5 py-4 text-sm leading-relaxed text-text/80 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                    >
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* The receipts */}
             <div className="mt-12 rounded-xl border border-border bg-white p-6">

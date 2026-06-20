@@ -5,11 +5,12 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon, CoverArt, Input, Select, Button } from '@/components/ui';
 import { SectionBand, Section, FeatureCard, CtaBand } from '@/components/marketing/blocks';
-import { fetchCatalog, formatPrice, Pack } from '@/lib/api/client';
+import { fetchCatalog, fetchCatalogStats, formatPrice, Pack, CatalogStats } from '@/lib/api/client';
 import { coverFor } from '@/lib/cover';
 
 interface HomeProps {
   packs: Pack[];
+  stats: CatalogStats | null;
 }
 
 const INSIDE = ['Blueprint', 'GTM plan', 'Build kit'] as const;
@@ -49,13 +50,41 @@ function PackCard({ pack }: { pack: Pack }) {
         </h3>
         <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-text/70">{pack.oneLine}</p>
 
-        <div className="mt-5 flex flex-wrap gap-1.5">
-          {INSIDE.map((chip) => (
-            <span key={chip} className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-              {chip}
-            </span>
-          ))}
-        </div>
+        {pack.whoPays || pack.effortTag || pack.timeToFirstRevenue ? (
+          // Per-pack specifics out-sell generic deliverable chips: name the buyer and the shape.
+          <div className="mt-4 space-y-2.5">
+            {pack.whoPays && (
+              <p className="line-clamp-2 text-xs leading-relaxed text-text/70">
+                <span className="font-semibold text-text">Who pays.</span> {pack.whoPays}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {pack.effortTag && (
+                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold capitalize text-muted">
+                  {pack.effortTag} effort
+                </span>
+              )}
+              {pack.timeToFirstRevenue && (
+                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+                  Revenue in {pack.timeToFirstRevenue}
+                </span>
+              )}
+              {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
+                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+                  {pack.sourceCount} sources
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-5 flex flex-wrap gap-1.5">
+            {INSIDE.map((chip) => (
+              <span key={chip} className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="mt-6 flex items-center justify-between border-t border-border/70 pt-4">
           <span className="text-sm font-bold text-text transition-colors group-hover:text-primary">See what is inside</span>
@@ -179,15 +208,15 @@ function CatalogBrowser({ packs }: { packs: Pack[] }) {
   );
 }
 
-export default function Home({ packs }: HomeProps) {
+export default function Home({ packs, stats }: HomeProps) {
   return (
     <MarketingLayout>
-      <Seo title="Validated business opportunities, researched and ready to build. £49 each" />
+      <Seo title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each" />
 
       {/* 1. HERO — short. A storefront states what it sells and moves you to the shelf. */}
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10 text-center animate-rise">
         <p className="mb-5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
-          Validated business opportunities · £49 each
+          Stress tested business ideas · £49 each
         </p>
         <h1 className="mx-auto max-w-[18ch] text-balance text-4xl font-bold leading-[1.08] tracking-tight text-text md:text-6xl">
           We tried to kill these business ideas. They survived.
@@ -214,6 +243,12 @@ export default function Home({ packs }: HomeProps) {
             We list a pack only when it clears every check. Most ideas never make it. £49 each, yours the
             moment you pay.
           </p>
+          {stats && stats.registered > stats.listed && (
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-success/5 px-3 py-1.5 text-xs font-semibold text-success">
+              <Icon name="shield" size={13} />
+              {stats.listed} live now, of {stats.registered} that reached final packaging.
+            </p>
+          )}
         </div>
 
         <CatalogBrowser packs={packs} />
@@ -293,14 +328,14 @@ export default function Home({ packs }: HomeProps) {
 
 export const getServerSideProps: GetServerSideProps = async () => {
   try {
-    const packs = await fetchCatalog();
+    const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
     return {
-      props: { packs },
+      props: { packs, stats },
     };
   } catch (error) {
     console.error('Error fetching catalog:', error);
     return {
-      props: { packs: [] },
+      props: { packs: [], stats: null },
     };
   }
 };
