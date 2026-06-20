@@ -100,13 +100,46 @@ def refund_body(evt_id: str, pi: str) -> str:
     return json.dumps(evt, separators=(",", ":"))
 
 
-def post_webhook(body: str) -> requests.Response:
+def dispute_body(evt_id: str, pi: str) -> str:
+    obj = {
+        "id": "dp_" + evt_id,
+        "object": "dispute",
+        "charge": "ch_" + evt_id,
+        "payment_intent": pi,
+        "reason": "fraudulent",
+        "status": "needs_response",
+    }
+    evt = {
+        "id": evt_id,
+        "object": "event",
+        "type": "charge.dispute.created",
+        "request": None,
+        "data": {"object": obj},
+        "created": int(time.time()),
+    }
+    return json.dumps(evt, separators=(",", ":"))
+
+
+def post_webhook(body: str, signature: str | None = None) -> requests.Response:
     return requests.post(
         f"{API}/webhooks/stripe",
         data=body.encode(),
-        headers={"Content-Type": "application/json", "Stripe-Signature": sign(body)},
+        headers={"Content-Type": "application/json",
+                 "Stripe-Signature": signature if signature is not None else sign(body)},
         timeout=30,
     )
+
+
+def purchase(evt_id: str, pi: str, amount: int = PRICE) -> str:
+    """Drive a signed checkout.session.completed and return the granted entitlement token."""
+    post_webhook(checkout_body(evt_id, pi, amount))
+    rows = q("SELECT GrantToken FROM Entitlements WHERE PackId=? ORDER BY rowid DESC", (PACK_ID,))
+    return rows[0]["GrantToken"] if rows else ""
+
+
+def status_of(token: str) -> int | None:
+    rows = q("SELECT Status FROM Entitlements WHERE GrantToken=?", (token,))
+    return rows[0]["Status"] if rows else None
 
 
 def q(sql: str, params: tuple = ()) -> list[sqlite3.Row]:
@@ -226,6 +259,75 @@ def gate5(token: str) -> None:
     EV["refund"] = f"entitlement {token[:10]}... revoked; download now {rd.status_code}"
 
 
+def gate6_invalid_signature() -> None:
+    print("Gate 6: a forged/invalid signature is rejected and grants nothing")
+    body = checkout_body("evt_forged_1", "pi_forged_1", PRICE)
+    r = post_webhook(body, signature="t=1,v1=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+    rejected = r.status_code != 200
+    record("gate6.invalid-sig-rejected", rejected,
+           f"forged Stripe-Signature -> {r.status_code} (must not be 200)")
+    granted = q("SELECT COUNT(*) c FROM Orders WHERE ProviderTransactionId=?", ("pi_forged_1",))[0]["c"]
+    record("gate6.no-order-from-forgery", granted == 0,
+           f"orders created from forged event: {granted} (must be 0)")
+    EV["forged"] = f"forged signature -> {r.status_code}, {granted} order(s) created"
+
+
+def gate7_dispute() -> None:
+    print("Gate 7: charge.dispute.created -> entitlement Revoked + download 410")
+    token = purchase("evt_disp_1", "pi_disp_1")
+    active = status_of(token) == 0
+    record("gate7.setup-active", active and bool(token),
+           f"fresh purchase entitlement Status={status_of(token)} (0=Active)")
+    r = post_webhook(dispute_body("evt_disp_evt_1", "pi_disp_1"))
+    record("gate7.webhook-200", r.status_code == 200, f"charge.dispute.created -> {r.status_code}")
+    record("gate7.entitlement-revoked", status_of(token) == 1,
+           f"Status={status_of(token)} (1=Revoked)")
+    rd = requests.get(f"{API}/download/{token}", allow_redirects=False, timeout=30)
+    record("gate7.download-410", rd.status_code == 410, f"GET /download after dispute -> {rd.status_code}")
+    EV["dispute"] = f"dispute revoked entitlement {token[:10]}...; download now {rd.status_code}"
+
+
+def gate8_download_cap() -> None:
+    cap = int(os.environ.get("DELIVERY_MAX_DOWNLOADS", "2"))
+    print(f"Gate 8: download cap ({cap}) enforced -> 429 past the limit")
+    token = purchase("evt_cap_1", "pi_cap_1")
+    if not token:
+        record("gate8.setup", False, "could not mint cap-test entitlement")
+        return
+    codes = []
+    for _ in range(cap):
+        codes.append(requests.get(f"{API}/download/{token}", allow_redirects=False, timeout=30).status_code)
+    over = requests.get(f"{API}/download/{token}", allow_redirects=False, timeout=30).status_code
+    within_ok = all(c in (301, 302, 303, 307, 308) for c in codes)
+    record("gate8.within-cap-redirects", within_ok,
+           f"first {cap} downloads -> {codes} (all redirect)")
+    record("gate8.over-cap-429", over == 429,
+           f"download #{cap + 1} -> {over} (must be 429 Too Many Requests)")
+    EV["cap"] = f"cap={cap}: first {cap} -> {codes}, next -> {over}"
+
+
+def gate9_expiry() -> None:
+    print("Gate 9: an expired entitlement (ExpiresAt in the past) -> download 410")
+    token = purchase("evt_exp_1", "pi_exp_1")
+    if not token:
+        record("gate9.setup", False, "could not mint expiry-test entitlement")
+        return
+    before = requests.get(f"{API}/download/{token}", allow_redirects=False, timeout=30).status_code
+    con = sqlite3.connect(DB_PATH)
+    try:
+        con.execute("UPDATE Entitlements SET ExpiresAt=? WHERE GrantToken=?",
+                    ("2000-01-01 00:00:00", token))
+        con.commit()
+    finally:
+        con.close()
+    after = requests.get(f"{API}/download/{token}", allow_redirects=False, timeout=30).status_code
+    record("gate9.live-before-expiry", before in (301, 302, 303, 307, 308),
+           f"before expiry -> {before} (downloadable)")
+    record("gate9.410-after-expiry", after == 410,
+           f"after ExpiresAt set to the past -> {after} (must be 410 Gone)")
+    EV["expiry"] = f"download {before} (live) -> {after} (expired)"
+
+
 def write_proof(all_pass: bool) -> None:
     stamp = time.strftime("%Y-%m-%d %H:%M:%S %Z")
     lines = [f"- [{'x' if ok else ' '}] **{name}** — {detail}" for name, ok, detail in RESULTS]
@@ -238,7 +340,7 @@ def write_proof(all_pass: bool) -> None:
 **Date:** {stamp}
 **Branch:** `launch-hardening-2026-06-18`
 **API:** `{API}`
-**Verdict:** {"✅ ALL FIVE GATES PASS" if all_pass else "❌ FAILURE — see gates below"}
+**Verdict:** {f"✅ ALL {len(RESULTS)} ASSERTIONS PASS" if all_pass else "❌ FAILURE — see gates below"}
 
 ## Gate results
 {chr(10).join(lines)}
@@ -251,6 +353,10 @@ def write_proof(all_pass: bool) -> None:
 - **Gate 3** presigned download URL (query redacted): `{EV.get('download_url', '?')}`
 - **Gate 4** underpayment: {EV.get('underpay', '?')}
 - **Gate 5** refund: {EV.get('refund', '?')}
+- **Gate 6** forged signature: {EV.get('forged', '?')}
+- **Gate 7** dispute: {EV.get('dispute', '?')}
+- **Gate 8** download cap: {EV.get('cap', '?')}
+- **Gate 9** expiry: {EV.get('expiry', '?')}
 
 ## Method note
 Gates 2–5 use deterministic signed-replay (controlled amount + payment_intent correlation)
@@ -284,6 +390,10 @@ def main() -> int:
         gate4()
         if token:
             gate5(token)
+        gate6_invalid_signature()
+        gate7_dispute()
+        gate8_download_cap()
+        gate9_expiry()
     finally:
         teardown()
     all_pass = all(ok for _, ok, _ in RESULTS)

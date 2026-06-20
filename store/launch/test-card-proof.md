@@ -4,10 +4,10 @@
 > Stripe TEST keys + live R2. Events are signed with the shared webhook secret (the same
 > HMAC-SHA256 Stripe uses), so signature verification runs the real code path.
 
-**Date:** 2026-06-20 19:26:32 BST
+**Date:** 2026-06-20 20:45:57 BST
 **Branch:** `launch-hardening-2026-06-18`
 **API:** `http://localhost:5291`
-**Verdict:** ✅ ALL FIVE GATES PASS
+**Verdict:** ✅ ALL 23 ASSERTIONS PASS
 
 ## Gate results
 - [x] **gate1.signature-verified-200** — POST /webhooks/stripe -> 200 (not 503)
@@ -23,15 +23,29 @@
 - [x] **gate5.webhook-200** — charge.refunded -> 200
 - [x] **gate5.entitlement-revoked** — Status=1 (1=Revoked)
 - [x] **gate5.download-410** — GET /download/{token} -> 410
+- [x] **gate6.invalid-sig-rejected** — forged Stripe-Signature -> 400 (must not be 200)
+- [x] **gate6.no-order-from-forgery** — orders created from forged event: 0 (must be 0)
+- [x] **gate7.setup-active** — fresh purchase entitlement Status=0 (0=Active)
+- [x] **gate7.webhook-200** — charge.dispute.created -> 200
+- [x] **gate7.entitlement-revoked** — Status=1 (1=Revoked)
+- [x] **gate7.download-410** — GET /download after dispute -> 410
+- [x] **gate8.within-cap-redirects** — first 2 downloads -> [302, 302] (all redirect)
+- [x] **gate8.over-cap-429** — download #3 -> 429 (must be 429 Too Many Requests)
+- [x] **gate9.live-before-expiry** — before expiry -> 302 (downloadable)
+- [x] **gate9.410-after-expiry** — after ExpiresAt set to the past -> 410 (must be 410 Gone)
 
 ## Evidence
 - **Gate 1** webhook status: `200` (signature-verified, not 503).
 - **Gate 2** Order row: `{'Id': 1, 'Status': 0, 'AmountPence': 4900}`
-- **Gate 2** Entitlement row: `{'GrantToken': '80DWFsFwHJuDEUUEwFT7uyfTPEPzWcCBI-xSAwrlSuw', 'Status': 0, 'ContentKey': 'proof/money-path-proof.txt'}`
-- **Gate 2** grant token: `80DWFsFwHJuDEUUEwFT7uyfTPEPzWcCBI-xSAwrlSuw`
+- **Gate 2** Entitlement row: `{'GrantToken': 'fQdIxxGyvAKlkAPZJb5qG9-hRzb7wtNtebBU4Esaz7I', 'Status': 0, 'ContentKey': 'proof/money-path-proof.txt'}`
+- **Gate 2** grant token: `fQdIxxGyvAKlkAPZJb5qG9-hRzb7wtNtebBU4Esaz7I`
 - **Gate 3** presigned download URL (query redacted): `https://4912457480997df81450b3ea614ccf3c.r2.cloudflarestorage.com/prospector-packs/proof/money-path-proof.txt ?<presigned, redacted>`
 - **Gate 4** underpayment: 100p paid vs 4900p price; active entitlements stayed at 1
-- **Gate 5** refund: entitlement 80DWFsFwHJ... revoked; download now 410
+- **Gate 5** refund: entitlement fQdIxxGyvA... revoked; download now 410
+- **Gate 6** forged signature: forged signature -> 400, 0 order(s) created
+- **Gate 7** dispute: dispute revoked entitlement rHPokzxD38...; download now 410
+- **Gate 8** download cap: cap=2: first 2 -> [302, 302], next -> 429
+- **Gate 9** expiry: download 302 (live) -> 410 (expired)
 
 ## Method note
 Gates 2–5 use deterministic signed-replay (controlled amount + payment_intent correlation)

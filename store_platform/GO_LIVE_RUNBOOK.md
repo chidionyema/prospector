@@ -1,9 +1,16 @@
 # Go-Live Runbook — Stripe LIVE cutover (WS0.2)
 
-The money path is already proven on Stripe TEST + live R2 (13/13 gates — see
-`store/launch/test-card-proof.md`, re-runnable via `scripts/prove_money_path.sh`). This runbook
-flips it to LIVE. Everything that can be automated is in `scripts/go_live.sh`; the steps below
-are the irreducible human jobs (pasting secrets, a dashboard click, one real card).
+Every money path is proven by one command, `scripts/prove_launch.sh` (Phase A: the real buy
+button for every pack; Phase B: signed webhook → entitlement → presigned download, idempotency,
+underpayment, refund + dispute revocation, forged-signature rejection, download cap, expiry — see
+`store/launch/checkout-proof.md` + `store/launch/test-card-proof.md`). This runbook flips it to
+LIVE. Everything that can be automated is in `scripts/go_live.sh`; the steps below are the
+irreducible human jobs (pasting secrets, a dashboard click, one real card).
+
+> **Stripe Tax / AutomaticTax.** Checkout enables Stripe Tax by default. The connected account
+> must have a head-office address + Stripe Tax configured
+> (https://dashboard.stripe.com/settings/tax) or checkout 500s. If you are not collecting tax at
+> launch, set `Stripe__AutomaticTax=false` in `.env.production` to turn it off.
 
 ## What only a human can do
 1. Obtain the **live** Stripe secret key (`sk_live_…`) from the Stripe dashboard.
@@ -43,12 +50,14 @@ Everything else (validation, reprovisioning prices, proving the fail-closed boot
    Copy its signing secret into `Stripe__WebhookSecret`, redeploy, and re-run go_live.sh
    `--skip-reprovision` to re-prove the gate with the final secret.
 
-4. **One real transaction.** Buy the cheapest pack on the live storefront with a real card, confirm
-   the download link works, then refund it in the dashboard and confirm the download 410s (access
-   revoked). To replay the full automated gate suite against live instead of doing it by hand:
+4. **Prove every path against live, then one real transaction.** Replay the full automated suite
+   (both phases) pointed at the live key — this alone proves the buy button + all fulfilment and
+   negative paths without manual clicking:
    ```
-   STRIPE_TEST_SECRET_KEY="$Stripe__ApiKey" bash store_platform/scripts/prove_money_path.sh
+   STRIPE_TEST_SECRET_KEY="$Stripe__ApiKey" bash store_platform/scripts/prove_launch.sh
    ```
+   Then do one real low-value card purchase on the live storefront, confirm the download works,
+   refund it in the dashboard, and confirm the download 410s (access revoked).
 
 ## Rollback
 Set `payments__active_provider` back to `paddle` (or stop the deploy). No data migration is involved;

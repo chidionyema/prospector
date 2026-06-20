@@ -182,10 +182,16 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
                 },
             },
             // P5 — Stripe Tax: automatic VAT/sales-tax calculation at checkout.
-            // Requires Stripe Tax to be enabled in the Stripe dashboard. When active,
-            // the buyer sees the tax-inclusive total; the webhook session includes
-            // total_details.amount_tax for the SalesAudit.
-            AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true },
+            // Requires Stripe Tax + a head-office address configured in the Stripe
+            // dashboard (https://dashboard.stripe.com/settings/tax). When active, the
+            // buyer sees the tax-inclusive total and the webhook session includes
+            // total_details.amount_tax for the SalesAudit. Defaults ON (live intent).
+            // Set the Stripe AutomaticTax config key to the string false to turn it off
+            // for a test account that has no tax or head-office address configured yet.
+            AutomaticTax = new SessionAutomaticTaxOptions
+            {
+                Enabled = !string.Equals(config["Stripe:AutomaticTax"], "false", StringComparison.OrdinalIgnoreCase),
+            },
         };
 
         var service = new SessionService();

@@ -48,6 +48,7 @@ echo "==> Booting Store.Api on :5291 (fresh db: $DB_PATH)"
   Stripe__ApiKey="$STRIPE_TEST_SECRET_KEY" \
   Stripe__WebhookSecret="$STRIPE_WEBHOOK_SECRET" \
   payments__active_provider="stripe" \
+  Delivery__MaxDownloadsPerEntitlement="${DELIVERY_MAX_DOWNLOADS:-2}" \
   dotnet "$DLL" >"$TMP_DIR/api.log" 2>&1
 ) &
 API_PID=$!
@@ -66,6 +67,7 @@ done
 echo "==> Driving money-path gates"
 set +e
 STORE_DB_PATH="$DB_PATH" \
+DELIVERY_MAX_DOWNLOADS="${DELIVERY_MAX_DOWNLOADS:-2}" \
 PROOF_FILE="$REPO_ROOT/store/launch/test-card-proof.md" \
 "$PY" "$SCRIPT_DIR/prove_money_path.py"
 RC=$?

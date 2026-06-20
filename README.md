@@ -518,6 +518,16 @@ Layout: `tests/{unit,behavioural,faults,invariants,integration,sim}/`. The fault
 tests assert graceful degradation (outages → DEFER, not crash); the invariant tests
 assert the two loops never merge.
 
+**Storefront (Store.Api/Store.Web).** The £49-pack storefront has its own launch + money-path
+proofs. One command proves every payment path (buy button, fulfilment, refund/dispute, forged
+signature, download cap, expiry) before launch:
+
+```bash
+bash store_platform/scripts/prove_launch.sh   # all money paths (needs STRIPE_TEST_SECRET_KEY + R2_*)
+```
+
+See **[store_platform/README.md](store_platform/README.md)** for the full launch/test guide.
+
 ---
 
 ## Key docs

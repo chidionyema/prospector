@@ -62,3 +62,6 @@ store_platform/src/Store.Api/content_store/
 
 # Throwaway virtualenvs
 .venv*/
+
+# local test stack runtime (logs + pids)
+store_platform/.test-stack/
