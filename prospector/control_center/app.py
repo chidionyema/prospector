@@ -1,6 +1,8 @@
 """Prospector Control Center — Streamlit entrypoint.
 
-Launch: streamlit run prospector/control_center/app.py --server.port 8601
+Launch (loopback-bound, behind the operator gate): scripts/run_control_center.sh
+That requires CONTROL_CENTER_PASSWORD to be set; the portal fails closed without it.
+Remote access is an SSH tunnel to the localhost port, never a public bind. See DEPLOYMENT.md.
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import streamlit as st
 
 from prospector.control_center import state as _state
 from prospector.control_center import pages as _pages_mod
+from prospector.control_center.auth import require_auth
 from prospector.control_center.theme import inject_theme
 
 # Page modules — each exposes a render() function
@@ -49,6 +52,10 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded",
     )
+
+    # Fail-closed operator gate. Must run before any page (config editor, run launcher,
+    # cost data) can render. Halts via st.stop() until authenticated.
+    require_auth()
 
     _state.init_state(
         active_page="overview",

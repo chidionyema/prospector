@@ -1,0 +1,36 @@
+# Protected paths — deleting any file matching these patterns must be DELIBERATE and DOCUMENTED.
+#
+# Why this file exists: account/social-login code (TIE-inherited AuthContext, SocialSignIn,
+# useProtectedRoute) was deleted bundled inside an unrelated "brand: replace logo" commit
+# (d98c38b) with zero mention. A whole capability vanished and nobody decided it. This guard
+# makes that class of accident un-mergeable.
+#
+# How it works (scripts/guard_protected_deletions.py, enforced in CI):
+#   - Each non-comment line is a Python regex matched against deleted file paths (vs the PR base).
+#   - If a protected file is deleted, the PR FAILS unless a commit in the range carries a
+#     `Removes:` trailer in its message acknowledging the removal and why.
+#   - i.e. you CAN still remove these — you just can't do it silently or by accident.
+#
+# Keep this list in sync as the system grows (esp. when accounts/social-login is restored —
+# add its context/components/hooks/endpoints here).
+
+# ── Money rail (founder fence) ────────────────────────────────────────────────
+^store_platform/src/Store\.Api/Payments/
+^store_platform/src/Store\.Api/Endpoints/WebhookEndpoints\.cs$
+^store_platform/src/Store\.Api/Endpoints/DeliveryEndpoints\.cs$
+
+# ── Engine moat (verification / kill filter) ──────────────────────────────────
+^verify\.py$
+^kill_filter\.py$
+^prompts/verdict\.md$
+
+# ── Storefront critical surfaces ──────────────────────────────────────────────
+^store_platform/src/Store\.Web/src/lib/api/client\.ts$
+
+# ── Identity / accounts / social login ────────────────────────────────────────
+# (placeholders for the restore-in-progress; uncomment/extend as each file lands so it can
+#  never be silently dropped again)
+# ^store_platform/src/Store\.Web/src/context/AuthContext\.tsx$
+# ^store_platform/src/Store\.Web/src/components/SocialSignIn\.tsx$
+# ^store_platform/src/Store\.Web/src/hooks/useProtectedRoute\.ts$
+# ^store_platform/src/Store\.Api/Auth/

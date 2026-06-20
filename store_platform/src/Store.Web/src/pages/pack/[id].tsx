@@ -73,6 +73,11 @@ export default function PackPage({ pack }: PackPageProps) {
       throw new Error(`Failed to start checkout: ${text}`);
     }
     const { url } = await res.json();
+    // Defence in depth: only ever redirect to Stripe's hosted checkout. Refuse any other
+    // value so a compromised/buggy API response can't turn this into an open redirect.
+    if (typeof url !== 'string' || !url.startsWith('https://checkout.stripe.com/')) {
+      throw new Error('Unexpected checkout URL');
+    }
     window.location.href = url;
   };
 

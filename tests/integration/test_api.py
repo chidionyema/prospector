@@ -167,15 +167,42 @@ def test_health_check():
     assert response.json()["status"] == "ok"
 
 
-def test_metrics_endpoint(setup_store):
+def test_metrics_endpoint(setup_store, monkeypatch):
     cfg, dossier = setup_store
     from prospector import api
     api.cfg = cfg
     api.store = Store(cfg)
 
-    response = client.get("/v1/metrics")
+    monkeypatch.setenv("PROSPECTOR_ADMIN_API_KEY", "test-admin-key")
+    response = client.get("/v1/metrics", headers={"X-Admin-Key": "test-admin-key"})
     assert response.status_code == 200
     data = response.json()
     assert data["engine"]["total_vetted"] >= 1
     assert "pass_count" in data["engine"]
     assert "gates" in data
+
+
+def test_metrics_requires_admin_key(setup_store, monkeypatch):
+    """Operational metrics fail closed when unconfigured and reject a wrong key."""
+    cfg, dossier = setup_store
+    from prospector import api
+    api.cfg = cfg
+    api.store = Store(cfg)
+
+    monkeypatch.delenv("PROSPECTOR_ADMIN_API_KEY", raising=False)
+    assert client.get("/v1/metrics").status_code == 503
+
+    monkeypatch.setenv("PROSPECTOR_ADMIN_API_KEY", "test-admin-key")
+    assert client.get("/v1/metrics").status_code == 401
+    assert client.get("/v1/metrics", headers={"X-Admin-Key": "wrong"}).status_code == 401
+
+
+def test_listing_id_rejects_path_traversal(setup_store):
+    """A traversal id never reaches the filesystem (400 before any read)."""
+    cfg, dossier = setup_store
+    from prospector import api
+    api.cfg = cfg
+    api.store = Store(cfg)
+
+    assert client.get("/v1/listings/../../etc/passwd").status_code in (400, 404)
+    assert client.get("/v1/listings/not-a-hex-id").status_code == 400

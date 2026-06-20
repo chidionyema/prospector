@@ -52,10 +52,24 @@ public sealed class MoneyRailConfigGateTests
     [Fact]
     public async Task StartAsync_ProductionWithRealInternalKey_Succeeds()
     {
-        var config = StripeConfig(("Store:InternalApiKey", "a-real-rotated-secret"));
+        // Production happy path: BOTH the internal key and the entitlements publish key must be
+        // real secrets (GuardInternalApiKey + GuardEntitlementsApiKey both run in Production).
+        var config = StripeConfig(
+            ("Store:InternalApiKey", "a-real-rotated-secret"),
+            ("Store:EntitlementsApiKey", "a-real-rotated-entitlements-secret"));
         var gate = NewGate(config, "Production");
         var exception = await Record.ExceptionAsync(() => gate.StartAsync(CancellationToken.None));
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public Task StartAsync_ProductionWithMissingEntitlementsKey_Throws()
+    {
+        // Internal key real but entitlements publish key absent: the publish endpoint would be
+        // unprotected. The gate must fail closed at startup.
+        var config = StripeConfig(("Store:InternalApiKey", "a-real-rotated-secret"));
+        var gate = NewGate(config, "Production");
+        return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
     }
 
     [Fact]
@@ -164,6 +178,42 @@ public sealed class MoneyRailConfigGateTests
         var gate = NewGate(config);
 
         return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
+    }
+
+    // --- P1-4: a webhook secret left at its committed dev placeholder is a *present* but
+    // publicly-known HMAC key, so a forged webhook would verify. Fail closed outside Dev. ---
+
+    [Fact]
+    public Task StartAsync_ProductionWithPaddlePlaceholderSecret_Throws()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["payments:active_provider"] = "paddle",
+                // Real publish keys so we reach the provider-secret placeholder check.
+                ["Store:InternalApiKey"] = "a-real-rotated-secret",
+                ["Store:EntitlementsApiKey"] = "a-real-rotated-entitlements-secret",
+                ["Paddle:WebhookSecret"] = "dev-paddle-webhook-secret", // committed dev placeholder
+            })
+            .Build();
+        var gate = NewGate(config, "Production");
+        return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task StartAsync_DevelopmentWithPaddlePlaceholderSecret_Succeeds()
+    {
+        // The committed placeholder is the intended local value; the guard is Dev-skipped.
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["payments:active_provider"] = "paddle",
+                ["Paddle:WebhookSecret"] = "dev-paddle-webhook-secret",
+            })
+            .Build();
+        var gate = NewGate(config, "Development");
+        var exception = await Record.ExceptionAsync(() => gate.StartAsync(CancellationToken.None));
+        Assert.Null(exception);
     }
 
     [Fact]

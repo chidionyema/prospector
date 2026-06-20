@@ -125,6 +125,51 @@ public sealed class FulfilmentServiceTests : IDisposable
         Assert.Null(order.PackId);
     }
 
+    // --- SECURITY (founder fence): fulfilment validates the paid amount and currency against
+    // the catalogue price (Pack.PricePence). The signed webbook body is never trusted to set
+    // the price — coupons, $0 sessions, a mispriced product, or a leaked webhook secret must
+    // not mint a full entitlement. Underpayment/wrong-currency records the Order but grants
+    // nothing, and is reported as unfulfilled for operator reconciliation. ---
+
+    [Fact]
+    public async Task FulfilAsync_PaidBelowCatalogPrice_IsUnfulfilledAndGrantsNothing()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4900);
+
+        var outcome = await RunAsync(Txn("txn-1", new PurchasedItem("prod-1", 3000)));
+
+        Assert.Empty(outcome.EntitlementsCreated);
+        Assert.Contains(outcome.Unfulfilled, u => u.Contains("prod-1"));
+
+        using var verify = NewContext();
+        Assert.Equal(1, await verify.Orders.CountAsync());      // money never dropped
+        Assert.Equal(0, await verify.Entitlements.CountAsync()); // but no free content
+    }
+
+    [Fact]
+    public async Task FulfilAsync_PaidExactlyCatalogPrice_GrantsEntitlement()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4900);
+
+        var outcome = await RunAsync(Txn("txn-1", new PurchasedItem("prod-1", 4900)));
+
+        Assert.Single(outcome.EntitlementsCreated);
+        Assert.Empty(outcome.Unfulfilled);
+    }
+
+    [Fact]
+    public async Task FulfilAsync_WrongCurrency_IsUnfulfilledEvenIfAmountLooksSufficient()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4900);
+
+        // 4900 *USD* cents is not 4900 GBP pence — the comparison is only meaningful in the
+        // store currency, so a non-GBP payment must never grant.
+        var outcome = await RunAsync(TxnInCurrency("txn-1", "USD", new PurchasedItem("prod-1", 4900)));
+
+        Assert.Empty(outcome.EntitlementsCreated);
+        Assert.Contains(outcome.Unfulfilled, u => u.Contains("USD"));
+    }
+
     // --- P0-1: Stripe stamps the catalog pack id (not the provider product id) into
     // checkout metadata, so fulfilment must resolve the pack by Id too. ---
 
@@ -242,7 +287,7 @@ public sealed class FulfilmentServiceTests : IDisposable
         return await svc.RevokeAsync(reversal);
     }
 
-    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "paddle")
+    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "paddle", long pricePence = 0)
     {
         using var ctx = NewContext();
         ctx.Packs.Add(new Pack
@@ -255,12 +300,16 @@ public sealed class FulfilmentServiceTests : IDisposable
             ProviderProductId = productId,
             ContentKey = contentKey,
             ContentVersion = version,
+            PricePence = pricePence,
         });
         await ctx.SaveChangesAsync();
     }
 
     private static PaymentTransaction Txn(string id, params PurchasedItem[] items) =>
         new("paddle", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
+
+    private static PaymentTransaction TxnInCurrency(string id, string currency, params PurchasedItem[] items) =>
+        new("paddle", id, "buyer@example.com", currency, "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
 
     private static PaymentTransaction StripeTxn(string id, params PurchasedItem[] items) =>
         new("stripe", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);

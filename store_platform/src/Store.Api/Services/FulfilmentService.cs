@@ -13,6 +13,12 @@ namespace Store.Api.Services;
 /// </summary>
 public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
 {
+    // The catalogue is priced in GBP pence (see Money). Fulfilment compares the paid amount
+    // against Pack.PricePence, which is only meaningful in the same currency, so a payment in
+    // any other currency is treated as unfulfillable rather than silently honoured.
+    private const string StoreCurrency = "GBP";
+
+
     public async Task<FulfilmentOutcome> FulfilAsync(PaymentTransaction txn)
     {
         ArgumentNullException.ThrowIfNull(txn);
@@ -62,6 +68,26 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
             // Unknown product, or a listed pack with no deliverable content (should be
             // impossible given list-only-after-upload). Record, alert, never drop.
             unfulfilled.Add(item.ProductId ?? "(null product)");
+            return;
+        }
+
+        // SECURITY (founder fence) — the catalogue price is the source of truth, never the
+        // webhook body. A valid signature only proves the payload came from the provider; it
+        // does not prove the buyer paid the listed price. Coupons, a $0/discounted session, a
+        // mispriced provider product, or — if a webhook signing secret ever leaks — a forged
+        // underpayment would otherwise mint a full entitlement. Refuse to grant unless the
+        // paid currency is the store currency and the amount covers Pack.PricePence. Money is
+        // never dropped: the Order is already recorded above; route the item to unfulfilled so
+        // the operator reconciles it instead of the buyer getting paid content for free.
+        if (!string.Equals(txn.Currency, StoreCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            unfulfilled.Add($"{item.ProductId} (currency {txn.Currency} != {StoreCurrency})");
+            return;
+        }
+
+        if (item.AmountPence < pack.PricePence)
+        {
+            unfulfilled.Add($"{item.ProductId} (paid {item.AmountPence}p < price {pack.PricePence}p)");
             return;
         }
 

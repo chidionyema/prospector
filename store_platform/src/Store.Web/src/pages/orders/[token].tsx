@@ -43,6 +43,12 @@ export default function OrderPage() {
     );
   }
 
+  // Only follow a first-party relative path or an explicit https URL. This neutralises a
+  // `javascript:`/`data:` value (which `download` does NOT block) if the API is ever
+  // compromised or buggy. `\/(?!\/)` rejects protocol-relative `//evil.com`.
+  const rawDownload = order?.downloadPath ?? '';
+  const downloadHref = /^(\/(?!\/)|https:\/\/)/.test(rawDownload) ? rawDownload : '#';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full mx-4">
@@ -52,7 +58,7 @@ export default function OrderPage() {
         </p>
 
         <a
-          href={order?.downloadPath ?? '#'}
+          href={downloadHref}
           className="block w-full text-center bg-blue-600 text-white font-medium py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
           download
         >

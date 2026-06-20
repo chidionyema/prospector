@@ -24,6 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Crux.Storage" />
+    <PackageReference Include="Crux.Resilience" />
+    <PackageReference Include="Crux.Observability" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Store.Tests" />
   </ItemGroup>
 

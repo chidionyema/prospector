@@ -6,6 +6,7 @@ Ships the £30 bundle (zip), provisions the product with the active payment prov
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import logging
 import os
@@ -14,11 +15,36 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 from datetime import datetime
+from urllib.parse import urlparse
 
 from .models import Dossier, Decision
 from .pack_validation import validate_pack
 
 logger = logging.getLogger("prospector.bridge")
+
+
+def _validate_store_api_url(url: str) -> str:
+    """Refuse a STORE_API_URL that points anywhere dangerous before we ever forward the
+    internal/entitlements keys to it (SSRF + credential-leak guard). Allows ordinary http(s)
+    hosts (localhost in dev, the private or public store host in prod) but rejects the cloud
+    metadata address and other link-local/unspecified/reserved targets. Fail closed: a
+    misconfigured URL raises here and stops the publish rather than leaking secrets."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"STORE_API_URL must be http(s), got '{parsed.scheme or url}'")
+    host = (parsed.hostname or "").lower()
+    if not host:
+        raise ValueError("STORE_API_URL has no host")
+    if "metadata" in host:
+        raise ValueError(f"STORE_API_URL host looks like a metadata endpoint: {host}")
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None  # a hostname, not a literal IP — allowed
+    if ip is not None and (ip.is_link_local or ip.is_unspecified
+                           or ip.is_multicast or ip.is_reserved):
+        raise ValueError(f"STORE_API_URL points at a disallowed address: {host}")
+    return url
 
 
 class ProvisioningError(Exception):
@@ -41,7 +67,8 @@ class EngineBridge:
     def __init__(self, cfg: Any):
         self.cfg = cfg
         # Store API settings
-        self.store_api_url = os.environ.get("STORE_API_URL", "http://localhost:5291")
+        self.store_api_url = _validate_store_api_url(
+            os.environ.get("STORE_API_URL", "http://localhost:5291"))
         # No default: a committed fallback key in a public repo is a credential anyone can
         # use. Unset -> None, and _update_catalog refuses to publish (fail-closed), mirroring
         # the Store's own 503-when-unconfigured behaviour.
@@ -170,8 +197,8 @@ class EngineBridge:
                 logger.info(f"EngineBridge: Creating {payment_provider} price for {provider_product_id}")
                 provider_price_id = prov.create_price(
                     product_id=provider_product_id,
-                    # P2 — single source of truth: config listing.price_pence (£30 default).
-                    amount_pence=int(self.cfg.listing.get("price_pence", 3000))
+                    # P2 — single source of truth: config listing.price_pence (£49 default).
+                    amount_pence=int(self.cfg.listing.get("price_pence", 4900))
                 )
 
             except Exception as e:
@@ -341,8 +368,8 @@ class EngineBridge:
             "providerProductId": provider_product_id,
             "providerPriceId": provider_price_id,
             "isListed": is_listed,
-            # P2 — single source of truth: config listing.price_pence (£30 default).
-            "pricePence": int(self.cfg.listing.get("price_pence", 3000)),
+            # P2 — single source of truth: config listing.price_pence (£49 default).
+            "pricePence": int(self.cfg.listing.get("price_pence", 4900)),
             "contentVersion": content_version,
         }
         if content_key is not None:
@@ -378,15 +405,22 @@ class R2Uploader:
     """
     Uploads deliverables to Cloudflare R2 (S3-compatible) via boto3. Mirrors the .NET
     R2ContentStorage: if any credential is missing — or boto3 isn't installed — it stays
-    unconfigured and upload() is a no-op returning False, so the engine still runs in dev
-    without R2 wired. The store's list-only-after-upload invariant then keeps such packs
-    unlisted rather than selling something undeliverable.
+    unconfigured and the R2 path is skipped.
+
+    Local dev fallback: when R2 is unconfigured but CONTENT_LOCAL_DIR is set, upload() copies
+    the deliverable into that directory (keyed by the same object_key the Store serves from
+    via LocalContentStorage). This keeps the list-only-after-upload invariant HONEST in dev —
+    the content really is in the shared store the .NET API can deliver — instead of forcing
+    every local pack to publish unlisted. With neither R2 nor a local dir, upload() is a no-op
+    returning False and the invariant keeps the pack unlisted (never sell what we can't deliver).
     """
     def __init__(self) -> None:
         self.account_id = os.environ.get("R2_ACCOUNT_ID")
         self.access_key = os.environ.get("R2_ACCESS_KEY_ID")
         self.secret_key = os.environ.get("R2_SECRET_ACCESS_KEY")
         self.bucket = os.environ.get("R2_BUCKET")
+        # Dev fallback content dir, shared with the .NET LocalContentStorage (Content:LocalDir).
+        self.local_dir = os.environ.get("CONTENT_LOCAL_DIR")
         self._client = None
 
         if not all([self.account_id, self.access_key, self.secret_key, self.bucket]):
@@ -409,22 +443,36 @@ class R2Uploader:
 
     @property
     def is_configured(self) -> bool:
-        return self._client is not None
+        return self._client is not None or bool(self.local_dir)
 
     def upload(self, local_path: Path, object_key: str) -> bool:
-        """Upload a file to R2. Returns False (never raises) if unconfigured or on error."""
-        if self._client is None:
-            return False
-        try:
-            self._client.upload_file(
-                str(local_path), self.bucket, object_key,
-                ExtraArgs={"ContentType": "application/zip"},
-            )
-            logger.info(f"R2Uploader: Uploaded {object_key} to bucket {self.bucket}")
-            return True
-        except Exception as e:
-            logger.error(f"R2Uploader: Upload of {object_key} failed: {e}")
-            return False
+        """Upload a file to content storage. Returns False (never raises) if unconfigured or
+        on error. Uses R2 when configured; otherwise the CONTENT_LOCAL_DIR dev fallback."""
+        if self._client is not None:
+            try:
+                self._client.upload_file(
+                    str(local_path), self.bucket, object_key,
+                    ExtraArgs={"ContentType": "application/zip"},
+                )
+                logger.info(f"R2Uploader: Uploaded {object_key} to bucket {self.bucket}")
+                return True
+            except Exception as e:
+                logger.error(f"R2Uploader: Upload of {object_key} failed: {e}")
+                return False
+
+        if self.local_dir:
+            try:
+                import shutil
+                dest = Path(self.local_dir) / object_key
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(local_path, dest)
+                logger.info(f"R2Uploader: Wrote {object_key} to local content dir {self.local_dir}")
+                return True
+            except Exception as e:
+                logger.error(f"R2Uploader: Local content write of {object_key} failed: {e}")
+                return False
+
+        return False
 
 
 class PaddleClient:

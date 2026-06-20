@@ -19,12 +19,14 @@ the verified state on 2026-06-18.
 - **Stripe server code is implemented**: checkout, webhook, refunds (`StripeProvider`,
   `StripeProvisioner` in bridge.py).
 
-## 1. The single blocker
+## 1. The single blocker — CLEARED 2026-06-19 (TEST mode)
 
-All 11 packs are provisioned as **`PaymentProvider=paddle` with `price_stub_*` price ids**. With
-stub prices the storefront falls back to "Notify me" — it cannot take money. Going live = supplying
-Stripe credentials and **re-provisioning the 11 packs onto real Stripe prices**. Everything else is
-done.
+~~All 11 packs are provisioned as `PaymentProvider=paddle` with `price_stub_*` price ids.~~
+**RESOLVED in Stripe TEST mode:** user supplied test keys; all 11 packs re-provisioned onto real
+Stripe test prices (£49 GBP) via `store_platform/scripts/reprovision_stripe.py`; `0` stubs remain;
+API boots in stripe mode (gate passes) and mints real `cs_test_…` checkout sessions; web buy button
+is live (`.env.local` has the publishable key). **Remaining before money is real: LIVE-mode cutover
+(§8) + the webhook→entitlement→download leg verified with an actual test-card payment (§7).**
 
 ---
 
@@ -58,7 +60,7 @@ prod secret store), NOT in tracked appsettings.
 | `payments:active_provider`  | set to `stripe`                          |
 | `Store:InternalApiKey`      | engine → `/internal/catalog` auth        |
 | `Store:EntitlementsApiKey`  | engine → entitlements auth               |
-| `R2:*` (Account/AccessKey/SecretAccessKey/Bucket) | already set via `R2_*` env |
+| `R2:*` (Account/AccessKey/SecretAccessKey/Bucket) | already set via `R2_*` env (bridged into Keystone.Storage `Storage:*` at startup; no ops change) |
 | Postmark server token       | delivery email (magic download link)     |
 
 > ⚠️ `MoneyRailConfigGate` **fails API startup** if the active provider's keys are missing. So set
@@ -74,12 +76,16 @@ prod secret store), NOT in tracked appsettings.
 
 ## 4. Step 2 — Re-provision the 11 packs onto Stripe
 
-The 11 existing packs were provisioned as Paddle, so they carry no Stripe price ids. There is **no
-existing-pack re-provision CLI yet** — bridge.py's `StripeProvisioner` runs at publish time. A small
-script is needed (≈30 lines): for each listed pack, create a Stripe product + one-time price (£49),
-then update the Store DB (`ProviderProductId`, `ProviderPriceId`, `PaymentProvider='stripe'`) via the
-authenticated `/internal/catalog` upsert. **Claude to write this once keys are in** (founder fence:
-money path).
+Script now exists: **`store_platform/scripts/reprovision_stripe.py`** (stdlib only, idempotent —
+Stripe idempotency keys + skip-if-already-stripe; `--dry-run`, `--force`). For each listed pack it
+creates a Stripe Product + one-time Price (£49 GBP) and updates store.db
+(`ProviderProductId`, `ProviderPriceId`, `PaymentProvider='stripe'`) directly. Reads `STRIPE_API_KEY`
+from `.env`. Test keys → test objects; for live cutover (§8) re-run with live keys.
+
+```bash
+python3 store_platform/scripts/reprovision_stripe.py --dry-run   # preview
+python3 store_platform/scripts/reprovision_stripe.py             # do it (TEST done 2026-06-19)
+```
 
 Verify after:
 
@@ -91,10 +97,12 @@ sqlite3 store_platform/src/Store.Api/store.db \
 
 ## 5. Step 3 — Stripe webhook
 
-- Add a webhook endpoint in the Stripe dashboard → the Store.Api webhook route, events:
-  `checkout.session.completed` (+ refund/dispute events for reconciliation).
-- Put its signing secret into `Stripe:WebhookSecret`.
-- Confirm the gate passes and the API boots.
+- **Route:** `POST /webhooks/stripe`. Events: `checkout.session.completed` (+ `charge.refunded`,
+  `charge.dispute.created` for revoke-on-reversal).
+- **Prod:** add the endpoint in the Stripe dashboard, put its signing secret into `Stripe:WebhookSecret`.
+- **Local/TEST:** `stripe listen --api-key $STRIPE_API_KEY --forward-to localhost:5291/webhooks/stripe`.
+  Its signing secret (`stripe listen --print-secret`) is already in `.env` as `Stripe__WebhookSecret`
+  (`whsec_…`). Confirm the gate passes and the API boots (it does — verified 2026-06-19).
 
 ## 6. Step 4 — Content delivery gate (already green; re-confirm in prod env)
 
@@ -136,6 +144,64 @@ For a **local-only** dev box (no R2), use the local equivalent instead:
 - [ ] Test-mode purchase → email → download verified.
 - [ ] Live-mode purchase + refund verified.
 - [ ] `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` set in the web build.
+
+## 10b. Admin portal (Control Center) — access
+
+The Streamlit Control Center edits config, launches runs, and shows cost data. It is gated by a
+single operator password and bound to loopback. **Never bind it to `0.0.0.0` or expose it
+publicly.**
+
+```bash
+export CONTROL_CENTER_PASSWORD='<a long random secret>'   # required; portal fails closed without it
+scripts/run_control_center.sh                              # serves on 127.0.0.1:8601
+```
+
+Remote access is an SSH tunnel, not a public bind:
+
+```bash
+ssh -L 8601:localhost:8601 <host>     # then open http://localhost:8601 locally
+```
+
+Fail-closed behaviour: with no `CONTROL_CENTER_PASSWORD` set the portal renders only an error and
+stops; a wrong password is rejected with a timing-safe compare and locks out after 5 attempts per
+session.
+
+## 10c. Always-on generation daemon
+
+Generation runs continuously and unattended (founder decision, 2026-06-20). The automated backstop
+replaces human supervision: a daily spend ceiling (`config.yaml` `spend.daily_cap_usd`, read from
+`store/prospector.jsonl`) and a filesystem kill switch.
+
+```bash
+# One bounded batch (manual / cron-style):
+python -m prospector.scheduler.run_scheduled --once
+# Resident daemon (loops on --interval seconds, default 2h):
+python -m prospector.scheduler.run_scheduled --daemon --interval 7200
+# Guards only, no generation:
+python -m prospector.scheduler.run_scheduled --once --dry-run
+```
+
+Resident install via launchd (`KeepAlive` restarts it if it dies):
+
+```bash
+cp deploy/com.prospector.scheduler.plist ~/Library/LaunchAgents/
+launchctl load   ~/Library/LaunchAgents/com.prospector.scheduler.plist   # starts immediately
+launchctl unload ~/Library/LaunchAgents/com.prospector.scheduler.plist   # stop
+```
+
+Kill switch (no unload needed — the daemon re-checks every cycle):
+
+```bash
+touch store/scheduler/PAUSE     # idle
+rm    store/scheduler/PAUSE     # resume
+```
+
+Audit: ticks land in `store/scheduler/ticks.jsonl`; launchd stdio in `store/scheduler/launchd.*.log`.
+
+**Caveat:** the moat (verify) needs the Claude/Gemini CLIs authenticated in the daemon's
+environment. If they are not, generation DEFERs (it does not crash) and the work is recoverable
+with `python -m prospector.run vet --resume`. Confirm CLI auth survives the launchd session before
+relying on unattended PASSes.
 
 ## 11. Explicitly NOT in this launch (deferred, non-blocking)
 

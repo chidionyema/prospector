@@ -25,9 +25,14 @@ const DISALLOW = [
 ];
 
 function originFromReq(headers: { host?: string; 'x-forwarded-proto'?: string }): string {
-  const host = headers.host ?? 'localhost:3000';
-  const proto = headers['x-forwarded-proto'] ?? (host.startsWith('localhost') ? 'http' : 'https');
-  return `${proto}://${host}`;
+  const rawHost = headers.host ?? 'localhost:3000';
+  const proto = headers['x-forwarded-proto'] ?? (rawHost.startsWith('localhost') ? 'http' : 'https');
+  // The Host header is attacker-controllable and is interpolated into the response body, so
+  // only accept a clean hostname[:port]; otherwise fall back to the configured site URL.
+  if (!/^[a-zA-Z0-9.-]+(:\d+)?$/.test(rawHost)) {
+    return (process.env.NEXT_PUBLIC_SITE_URL || 'https://localhost:3000').replace(/\/$/, '');
+  }
+  return `${proto}://${rawHost}`;
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {

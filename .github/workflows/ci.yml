@@ -12,6 +12,23 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────
+  # Guard — protected files (money rail, moat, identity) cannot be
+  # deleted silently. Removing one requires a `Removes:` commit trailer.
+  # Born from: account/social-login deleted unannounced inside a logo commit.
+  # ──────────────────────────────────────────────────────────────────
+  guard:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard against silent deletion of protected files
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=50
+          python3 scripts/guard_protected_deletions.py "origin/${{ github.base_ref }}"
+
+  # ──────────────────────────────────────────────────────────────────
   # Python — full test suite + golden-set hard gate
   # ──────────────────────────────────────────────────────────────────
   python:

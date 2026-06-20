@@ -12,6 +12,17 @@ public sealed class MoneyRailConfigGate(
     // closed if it (or an empty key) is present in any other environment.
     private const string DevPlaceholderInternalKey = "dev-test-key-change-in-production";
 
+    // P1-4 — the dev convenience value for the engine publish-authorization key, committed in
+    // appsettings.Development.json. Same trust class as the internal key: never the effective
+    // entitlements key outside Development.
+    private const string DevPlaceholderEntitlementsKey = "dev-entitlements-key-change-in-production";
+
+    // P1-4 — the dev convenience value for the Paddle webhook signing secret, committed in
+    // appsettings.Development.json. Same trust class as the keys above: a webhook secret left
+    // at this committed value outside Development means anyone who can read this repo knows the
+    // HMAC secret and can forge a valid Paddle webhook (a free entitlement). Fail closed.
+    private const string DevPlaceholderPaddleWebhookSecret = "dev-paddle-webhook-secret";
+
     // Required config keys per provider. The active provider must have every listed key
     // present or the app refuses to start (fail-closed): a money rail missing its webhook
     // secret accepts unsigned webhooks, and one missing its API key boots fine but fails
@@ -26,6 +37,7 @@ public sealed class MoneyRailConfigGate(
     public Task StartAsync(CancellationToken cancellationToken)
     {
         GuardInternalApiKey();
+        GuardEntitlementsApiKey();
 
         var activeProvider = config["payments:active_provider"] ?? "paddle";
 
@@ -43,6 +55,8 @@ public sealed class MoneyRailConfigGate(
             logger.LogCritical("{Message}", msg);
             throw new InvalidOperationException(msg);
         }
+
+        GuardWebhookSecretPlaceholder(activeProvider);
 
         return Task.CompletedTask;
     }
@@ -66,6 +80,50 @@ public sealed class MoneyRailConfigGate(
         {
             var msg = $"CRITICAL: Store:InternalApiKey is missing or set to the dev placeholder "
                 + $"in the '{environment.EnvironmentName}' environment. App refusing to start.";
+            logger.LogCritical("{Message}", msg);
+            throw new InvalidOperationException(msg);
+        }
+    }
+
+    // P1-4 — outside Development, the engine publish-authorization key (checked by the
+    // POST /entitlements gate) must be a real secret: not missing, and not the committed dev
+    // placeholder. In Development we allow the placeholder so local publishes work.
+    private void GuardEntitlementsApiKey()
+    {
+        if (environment.IsDevelopment())
+        {
+            return;
+        }
+
+        var key = config["Store:EntitlementsApiKey"]
+            ?? Environment.GetEnvironmentVariable("PROSPECTOR_ENTITLEMENTS_API_KEY");
+
+        if (string.IsNullOrEmpty(key)
+            || string.Equals(key, DevPlaceholderEntitlementsKey, StringComparison.Ordinal))
+        {
+            var msg = $"CRITICAL: Store:EntitlementsApiKey is missing or set to the dev placeholder "
+                + $"in the '{environment.EnvironmentName}' environment. App refusing to start.";
+            logger.LogCritical("{Message}", msg);
+            throw new InvalidOperationException(msg);
+        }
+    }
+
+    // P1-4 — presence of the webhook secret is checked above; this additionally refuses the
+    // committed dev placeholder outside Development. Unlike a missing key (caught generically),
+    // a placeholder value is a *present* secret that is publicly known, so signature
+    // verification would pass for a forged webhook. Fail closed.
+    private void GuardWebhookSecretPlaceholder(string activeProvider)
+    {
+        if (environment.IsDevelopment())
+        {
+            return;
+        }
+
+        if (string.Equals(activeProvider, "paddle", StringComparison.Ordinal)
+            && string.Equals(config["Paddle:WebhookSecret"], DevPlaceholderPaddleWebhookSecret, StringComparison.Ordinal))
+        {
+            var msg = $"CRITICAL: Paddle:WebhookSecret is set to the dev placeholder in the "
+                + $"'{environment.EnvironmentName}' environment. App refusing to start.";
             logger.LogCritical("{Message}", msg);
             throw new InvalidOperationException(msg);
         }

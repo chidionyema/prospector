@@ -4,8 +4,10 @@ Teasers public, full dossiers entitlement-gated.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import os
+import re
 from typing import Dict, List, Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -51,6 +53,35 @@ def check_entitlement(candidate_id: str, entitlements: List[str]):
     raise HTTPException(status_code=403, detail="Entitlement required for full dossier")
 
 
+# Candidate/dossier/listing ids are the engine's content ids: sha1[:16] (see models._id),
+# i.e. exactly 16 lowercase hex chars. Any id reaching the filesystem MUST match this — an
+# unvalidated `{id}` lets `../` traversal read arbitrary .json files (cached grounding
+# passages, the store db) the process can reach. Validate before touching the store.
+_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+def validate_id(id: str) -> str:
+    """Reject any id that is not a well-formed engine content id (anti path-traversal)."""
+    if not _ID_RE.fullmatch(id):
+        raise HTTPException(status_code=400, detail="Invalid id")
+    return id
+
+
+def require_admin(x_admin_key: Optional[str] = Header(None)) -> None:
+    """Gate operational endpoints (usage/metrics) behind an admin key.
+
+    Fail closed: if PROSPECTOR_ADMIN_API_KEY is unset, the operational endpoints are not
+    exposed at all (503), so leaving it unconfigured in production cannot leak provider mix,
+    token volume, cost, or vetting rates. When set, the X-Admin-Key header must match it
+    (timing-safe compare).
+    """
+    expected = os.environ.get("PROSPECTOR_ADMIN_API_KEY")
+    if not expected:
+        raise HTTPException(status_code=503, detail="Operational API not configured")
+    if not x_admin_key or not hmac.compare_digest(x_admin_key, expected):
+        raise HTTPException(status_code=401, detail="Admin authentication required")
+
+
 # ---------------------------------------------------------------------------
 # Resources (API v1)
 # ---------------------------------------------------------------------------
@@ -83,6 +114,7 @@ async def list_opportunities():
 @app.get("/v1/listings/{id}")
 async def get_listing(id: str):
     """Specific public listing with all available pack info (prices/metadata)."""
+    validate_id(id)
     def _load():
         p = cfg.store_dir / "listings" / f"{id}.json"
         if not p.exists():
@@ -98,6 +130,7 @@ async def get_listing(id: str):
 @app.get("/v1/dossiers/{id}")
 async def get_dossier(id: str, entitlements: List[str] = Depends(get_entitlements)):
     """Full verification audit (gated)."""
+    validate_id(id)
     check_entitlement(id, entitlements)
     
     dossier_data = await run_in_threadpool(store.get, id)
@@ -112,13 +145,13 @@ async def health():
 
 
 @app.get("/v1/usage")
-async def get_usage():
+async def get_usage(_: None = Depends(require_admin)):
     """Token/call audit for this process — calls, tokens, cache hits per phase."""
     return get_usage_summary()
 
 
 @app.get("/v1/metrics")
-async def get_metrics():
+async def get_metrics(_: None = Depends(require_admin)):
     """Aggregated business and engine metrics."""
     def _calc():
         all_dossiers = store.all()

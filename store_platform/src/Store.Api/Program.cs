@@ -9,6 +9,9 @@ using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
 using Store.Api.Services;
 using Store.Api.Payments;
+using Crux.Storage;
+using Crux.Resilience;
+using Crux.Observability;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +37,42 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
 builder.Services.AddScoped<FulfilmentService>();
-builder.Services.AddSingleton<IContentStorage, R2ContentStorage>();
+
+// R2 -> Crux.Storage config bridge. This deployment supplies R2 credentials as R2_* env /
+// R2:* config (see DEPLOYMENT.md); Crux.Storage reads the "Storage:*" section. R2StorageBridge
+// maps them across (endpoint composed from the account id) so deployments keep working unchanged.
+var storageOverrides = R2StorageBridge.BuildStorageOverrides(builder.Configuration);
+if (storageOverrides.Count > 0)
+{
+    builder.Configuration.AddInMemoryCollection(storageOverrides);
+}
+
+// Content storage via Crux.Storage (R2/S3-compatible presigned URLs).
+// Falls back to LocalContentStorage when a dev content directory is set.
+builder.Services.AddCruxStorage(builder.Configuration);
+builder.Services.AddCruxResilience();
+builder.Services.AddCorrelationId();
+
+// Correlation-id propagation on all outbound HTTP calls.
+builder.Services.ConfigureHttpClientDefaults(http =>
+{
+    http.AddHttpMessageHandler<CorrelationIdHttpClientHandler>();
+});
+builder.Services.AddSingleton<IContentStorage>(sp =>
+{
+    var blobStore = sp.GetRequiredService<IBlobStore>();
+    if (blobStore.IsConfigured)
+    {
+        return new CruxContentStorage(blobStore);
+    }
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    var localDir = cfg["Content:LocalDir"] ?? Environment.GetEnvironmentVariable("CONTENT_LOCAL_DIR");
+    if (!string.IsNullOrWhiteSpace(localDir))
+    {
+        return new LocalContentStorage(localDir);
+    }
+    return new CruxContentStorage(blobStore); // unconfigured — IsConfigured=false, callers 503
+});
 builder.Services.AddHttpClient<IEmailSender, PostmarkEmailSender>();
 
 builder.Services.AddKeyedScoped<IPaymentProvider, PaddleProvider>("paddle");
@@ -89,6 +127,9 @@ if (app.Environment.IsDevelopment())
 
 // CORS middleware — must come between routing and endpoints.
 app.UseCors();
+
+// Correlation-id must be early so every log line carries the id.
+app.UseCorrelationId();
 
 // P1-7 — rate limiter must run before endpoints so throttled requests short-circuit.
 app.UseRateLimiter();
@@ -205,7 +246,57 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
 .WithName("PublishPack")
 .WithOpenApi();
 
+// Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a
+// pack to confirm it is entitled to publish. A separate key from the internal-catalog key so
+// the two authorities can be rotated independently. Fail closed: 503 when no key is
+// configured, 401 on mismatch. (MoneyRailConfigGate rejects the dev placeholder outside
+// Development, so a real secret is required in production.)
+app.MapPost("/entitlements", (HttpRequest http, IConfiguration config) =>
+{
+    var expectedKey = config["Store:EntitlementsApiKey"]
+        ?? Environment.GetEnvironmentVariable("PROSPECTOR_ENTITLEMENTS_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Entitlements API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var auth = http.Headers.Authorization.ToString();
+    const string prefix = "Bearer ";
+    var providedKey = auth.StartsWith(prefix, StringComparison.Ordinal) ? auth[prefix.Length..] : string.Empty;
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(new { ok = true });
+})
+.WithName("CheckEntitlement")
+.WithOpenApi();
+
 // --- WEBHOOK + DELIVERY ENDPOINTS ---
+
+// Dev-only deliverable streaming for LocalContentStorage. Mapped ONLY in Development because
+// the URLs LocalContentStorage mints are unsigned. In production, R2 presigned URLs serve
+// content and this endpoint does not exist.
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/dev-content/{**key}", (string key, IContentStorage storage) =>
+    {
+        if (storage is not LocalContentStorage local || !local.IsConfigured)
+        {
+            return Results.NotFound();
+        }
+        var path = local.ResolvePath(key);
+        if (path is null || !File.Exists(path))
+        {
+            return Results.NotFound();
+        }
+        return Results.File(File.OpenRead(path), "application/zip", Path.GetFileName(path));
+    });
+}
 
 // --- CHECKOUT ENDPOINT (P4/P7 — provider-agnostic, hot-reloaded) ---
 // The provider for NEW checkouts is determined by the runtime config

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Always-on Prospector generation daemon (no human in the loop; founder decision 2026-06-20).
+
+  KeepAlive=true => launchd restarts the daemon if it ever exits, so it is truly resident. The
+  daemon loops on its own cadence (--interval) and re-checks the automated backstop every cycle:
+    - daily spend ceiling (config spend.daily_cap_usd, read from store/prospector.jsonl)
+    - the PAUSE kill switch: `touch store/scheduler/PAUSE` to idle, `rm` it to resume
+
+  Install:   cp deploy/com.prospector.scheduler.plist ~/Library/LaunchAgents/
+             launchctl load   ~/Library/LaunchAgents/com.prospector.scheduler.plist
+  Stop:      launchctl unload ~/Library/LaunchAgents/com.prospector.scheduler.plist
+  Pause:     touch store/scheduler/PAUSE     (no unload needed)
+
+  The moat (verify) needs the Claude/Gemini CLIs authenticated in THIS environment; if they are
+  not, generation DEFERs (it does not crash) and the work is recoverable via `vet --resume`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.prospector.scheduler</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
+        <string>-m</string>
+        <string>prospector.scheduler.run_scheduled</string>
+        <string>--daemon</string>
+        <string>--interval</string>
+        <string>7200</string>
+        <string>--config</string>
+        <string>/Users/chidionyema/Documents/code/prospector/config.yaml</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/chidionyema/Documents/code/prospector</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/Users/chidionyema</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd.err.log</string>
+</dict>
+</plist>
