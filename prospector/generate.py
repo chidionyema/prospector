@@ -104,6 +104,7 @@ def generate(
     grid_priorities: Optional[list[str]] = None,
     focus: str | None = None,
     pass_patterns: str = "",
+    prior_titles: Optional[list[str]] = None,
 ) -> list[Candidate]:
     """Generate k raw Candidate opportunities from a signal.
 
@@ -125,6 +126,22 @@ def generate(
 
     if recent_failure_modes is None:
         recent_failure_modes = ""
+
+    # CROSS-RUN MEMORY (anti-duplication). Without this, `avoid` is rebuilt from scratch each
+    # run from only the current run's candidates, so the blue-sky daemon regenerates the same
+    # idea families (e.g. probate clear-out) every wave. We seed the avoid list with titles the
+    # engine has ALREADY produced (kills included — a repeatedly-killed idea is exactly what we
+    # must stop re-proposing). Bounded to the freshest ~120 to keep the prompt small.
+    _prior = [t.strip() for t in (prior_titles or []) if t and t.strip()]
+    # de-dup preserving order, then cap
+    _seen_prior: set[str] = set()
+    _prior_unique: list[str] = []
+    for _t in _prior:
+        key = _t.lower()
+        if key not in _seen_prior:
+            _seen_prior.add(key)
+            _prior_unique.append(_t)
+    _prior_avoid = _prior_unique[:120]
 
     # Models under-deliver on one large "give me k ideas" call, so we batch — but
     # batching SEQUENTIALLY (each round waiting on the prior round's avoid-list) made
@@ -379,7 +396,11 @@ def generate(
         # remainder. Each call asks for a small share so it stays anchored to its form.
         n_calls = max(1, min(len(axis), max(remaining, len(lenses))))
         ask = max(1, min(max_per_call, math.ceil(remaining / n_calls)))
-        avoid = "; ".join(c.title for c in candidates[-40:]) if candidates else ""
+        # Avoid = cross-run memory (prior catalogue/kills) + this run's candidates so far.
+        # Both axes matter: prior_avoid stops re-proposing old families across runs; the
+        # in-run tail stops collapse within this run.
+        _avoid_parts = _prior_avoid + [c.title for c in candidates[-40:]]
+        avoid = "; ".join(_avoid_parts) if _avoid_parts else ""
         # Rotate the form window each wave so later waves try forms earlier waves skipped.
         offset = (wave - 1) * n_calls
 
@@ -515,6 +536,7 @@ def generate_multilane(
     grid_priorities: Optional[dict[str, list[str]]] = None,
     focus: str | None = None,
     pass_patterns: str = "",
+    prior_titles: Optional[list[str]] = None,
 ) -> list[Candidate]:
     """Fan generation OUT across ambition lanes for a mixed-ambition catalogue (Part 14).
 
@@ -531,12 +553,16 @@ def generate_multilane(
         k = (lane_counts or {}).get(tier)
         # ML Improvement: Grid Scheduler (Stage 3)
         priorities = (grid_priorities or {}).get(tier)
+        # Carry cross-run memory PLUS the titles produced by earlier lanes in this same call,
+        # so lanes don't echo each other (a probate idea minted in 'side_hustle' shouldn't be
+        # re-minted in 'venture').
+        lane_prior = (prior_titles or []) + [c.title for c in out]
         cands = generate(
             op, lane_cfg, signal_text=signal_text, sector=sector,
             strategy_lens=strategy_lens, exploration_level=exploration_level,
             target_qualities=target_qualities, recent_failure_modes=recent_failure_modes,
             k=k, gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=pass_patterns)
+            pass_patterns=pass_patterns, prior_titles=lane_prior)
         for c in cands:
             c.ambition_tier = tier
         logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",

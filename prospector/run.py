@@ -539,6 +539,12 @@ def run_signal(
     from .adaptive import get_pass_traits
     patterns = get_pass_traits(store)
 
+    # CROSS-RUN ANTI-DUPLICATION MEMORY. The blue-sky daemon re-runs generation every cycle;
+    # without telling the model what it has ALREADY produced (PASS and KILL alike), it keeps
+    # regenerating the same idea families (the live near-duplicate probate packs). Seed the
+    # generator's `avoid` list from the freshest dossier titles so it explores NEW ground.
+    prior_titles = store.recent_titles(limit=200)
+
     # FIX: MiniMax generation — gen_op (MiniMax) for generation; op (Claude/Gemini) stays
     # for verification.  gen_op falls back to op if MINIMAX_API_KEY is not configured.
     if lanes and len(lanes) > 1:
@@ -553,6 +559,7 @@ def run_signal(
         candidates = generate_multilane(
             op, cfg, lanes=lanes, lane_counts=counts, signal_text=signal_text,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
+            prior_titles=prior_titles,
             gen_op=gen_op, grid_priorities=grid_priorities, focus=focus,
             pass_patterns=patterns)
         # ambition_tier already set inside generate_multilane (c.ambition_tier = tier).
@@ -566,7 +573,7 @@ def run_signal(
             op, cfg.for_lane(tier), signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=patterns)
+            pass_patterns=patterns, prior_titles=prior_titles)
         for c in candidates:
             c.ambition_tier = tier
     else:
@@ -577,7 +584,7 @@ def run_signal(
             op, cfg, signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=patterns,
+            pass_patterns=patterns, prior_titles=prior_titles,
         )
     if not candidates:
         # Generation chain exhausted — save the signal text so the operator can

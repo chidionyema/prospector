@@ -164,6 +164,23 @@ class Store:
             ).fetchall()
         return [f"{row['title']} {row['one_liner']}".strip() for row in rows]
 
+    def recent_titles(self, limit: int = 200) -> list[str]:
+        """Return the most recent dossier titles across ALL decisions (PASS/KILL/DEFER).
+
+        This is generation's CROSS-RUN MEMORY. catalogue_titles() returns PASS only, so an
+        idea that keeps getting KILLed (e.g. a probate-clearance variant) is invisible to it —
+        and the blue-sky daemon happily regenerates the same family every wave because the
+        in-run `avoid` list is wiped between runs. Seeding generation's avoid list from this
+        (kills included) stops the engine from re-spending budget on ideas it has already seen.
+        Ordered newest-first so a bounded slice is the freshest memory.
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT title FROM dossiers ORDER BY created_at DESC LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+        return [row["title"] for row in rows if (row["title"] or "").strip()]
+
     def get(self, candidate_id: str) -> Optional[dict]:
         """Load and return the stored dossier dict, or None if not found."""
         with self._connect() as conn:
