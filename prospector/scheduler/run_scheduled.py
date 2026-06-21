@@ -175,8 +175,24 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         logger.error("Tick generation failed (daemon continues): %s", tick["error"])
 
     _append_tick(cfg, tick)
+    _emit_tick_alerts(cfg, tick)
     _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=tick["error"])
     return tick
+
+
+def _emit_tick_alerts(cfg, tick: dict) -> None:
+    """Fire real-time operator alerts for a bad tick (error / barren / zero-yield).
+
+    This is the missing nerve: the engine already KNOWS when a batch fails or stocks nothing; this
+    pushes that to the founder (desktop + opt-in webhook) instead of leaving it in a log.
+    """
+    from prospector.scheduler.alerts import alerts_for_tick, emit_alert
+
+    for spec in alerts_for_tick(tick):
+        try:
+            emit_alert(cfg, **spec)
+        except Exception:  # noqa: BLE001 — alerting must never break the daemon
+            logger.exception("Failed to emit alert for tick")
 
 
 class _StopFlag:
@@ -334,6 +350,53 @@ def _status_lines(cfg) -> list[str]:
     return out
 
 
+def _liveness(cfg) -> tuple[bool, str]:
+    """Decide whether the daemon looks ALIVE, purely from the heartbeat file.
+
+    Returns (ok, reason). This is deliberately separate from the in-loop alerts: if the daemon
+    crash-loops or hangs, NO tick fires, so only an external check (run on its own schedule) can
+    notice. A `generating` heartbeat older than a long batch (≈45 min) is a stall; a `sleeping`
+    heartbeat older than interval + grace means the loop died; a missing heartbeat means it never
+    started. This is the active form of the "looked alive for 15h" guard.
+    """
+    hb = _heartbeat_path(cfg)
+    if not hb.exists():
+        return False, "no heartbeat file — daemon has never run (not installed/started?)"
+    try:
+        beat = json.loads(hb.read_text(encoding="utf-8"))
+        age_min = (datetime.now(timezone.utc) - datetime.fromisoformat(beat["ts"])).total_seconds() / 60
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        return False, f"unreadable heartbeat ({exc})"
+    phase = beat.get("phase", "?")
+    if phase == "generating" and age_min > 45:
+        return False, f"stuck in 'generating' for {age_min:.0f} min (batch should finish <30 min)"
+    if phase == "sleeping":
+        budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
+        if age_min > budget:
+            return False, f"'sleeping' heartbeat {age_min:.0f} min old (> interval+grace {budget:.0f}); loop likely dead"
+    if phase in ("evaluating", "idle") and age_min > 45:
+        return False, f"stuck in '{phase}' for {age_min:.0f} min"
+    return True, f"alive (phase={phase}, {age_min:.1f} min ago)"
+
+
+def _run_watchdog(cfg) -> int:
+    """One-shot liveness check that ALERTS if the daemon is dark. Run on its own schedule.
+
+    Intended to be invoked every ~15 min by a separate launchd job (com.prospector.watchdog.plist),
+    so a dead/hung daemon is caught even though it emits no ticks. Returns 0 if alive, 1 if not.
+    """
+    from prospector.scheduler.alerts import emit_alert, CRITICAL
+
+    ok, reason = _liveness(cfg)
+    if ok:
+        logger.info("Watchdog: %s", reason)
+        return 0
+    emit_alert(cfg, severity=CRITICAL, key="liveness",
+               title="Generation daemon is DOWN", message=reason, throttle_s=3600)
+    print(f"⚠ daemon DOWN: {reason}")
+    return 1
+
+
 def _print_status(cfg) -> None:
     print("\n".join(_status_lines(cfg)))
 
@@ -369,6 +432,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--status", action="store_true", help="Print daemon health (heartbeat, guard, production, stderr) and exit")
     p.add_argument("--watch", type=int, nargs="?", const=30, default=None, metavar="SECONDS",
                    help="Live-refresh the status readout every SECONDS (default 30); Ctrl-C to stop")
+    p.add_argument("--watchdog", action="store_true",
+                   help="One-shot liveness check; ALERTS if the daemon is down. For a cron/launchd timer.")
     args = p.parse_args(argv)
 
     injected = _load_env_file()
@@ -380,6 +445,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.watch is not None:
         _watch_status(cfg, args.watch)
         return
+
+    if args.watchdog:
+        sys.exit(_run_watchdog(cfg))
 
     if args.status:
         _print_status(cfg)

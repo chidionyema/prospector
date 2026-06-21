@@ -55,6 +55,39 @@ def test_grounding_no_failover_on_legit_empty():
     assert second.calls == 0      # never reached
 
 
+def test_exa_transport_error_raises_not_empty(monkeypatch):
+    """Regression: a bad EXA_API_KEY / transport error must PROPAGATE (so the chain fails over),
+    not be swallowed into [] — an empty list is read by the chain as 'found nothing, success' and
+    halts failover, which is how a dead exa silently zeroed grounding (every check unverifiable)."""
+    from prospector.retrieval import ExaSearchProvider
+    monkeypatch.setenv("EXA_API_KEY", "bad-key")
+
+    class _Boom:
+        def __init__(self, *a, **k): pass
+        def search(self, *a, **k): raise RuntimeError("401 unauthorized")
+
+    monkeypatch.setattr("exa_py.Exa", _Boom)
+    with pytest.raises(Exception):       # must NOT return [] — propagate to trigger failover
+        ExaSearchProvider().search("q")
+
+
+def test_dead_exa_fails_over_to_live_provider(monkeypatch):
+    """End-to-end: exa raising (not returning []) lets the FallbackSearchProvider reach the next
+    grounded provider, restoring evidence instead of producing a hollow unverifiable verdict."""
+    from prospector.retrieval import ExaSearchProvider
+    monkeypatch.setenv("EXA_API_KEY", "bad-key")
+
+    class _Boom:
+        def __init__(self, *a, **k): pass
+        def search(self, *a, **k): raise RuntimeError("transport down")
+
+    monkeypatch.setattr("exa_py.Exa", _Boom)
+    live = _Search(_src())
+    fb = FallbackSearchProvider([("exa", ExaSearchProvider()), ("live", live)])
+    assert fb.search("q") == _src()      # failed over to the working provider
+    assert live.calls == 1
+
+
 def test_grounding_all_exhausted_raises():
     fb = FallbackSearchProvider([
         ("a", _Search(ProviderExhaustedError("out"))),

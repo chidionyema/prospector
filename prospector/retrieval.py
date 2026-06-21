@@ -404,8 +404,13 @@ class ExaSearchProvider(SearchProvider):
                         extra={"query": query, "count": len(results)})
             return results
         except Exception as e:
-            logger.warning(f"Exa search error: {e}")
-            return []
+            # A transport/auth/API error is NOT "zero evidence". Swallowing it into [] makes the
+            # FallbackSearchProvider read a dead provider as a successful empty result and STOP —
+            # never failing over to brave/gemini_cli/claude_cli. That is exactly how a bad
+            # EXA_API_KEY silently zeroed grounding (every check -> unverifiable, conf ~0.40).
+            # Propagate so the chain fails over, and if every provider is down it DEFERs (+alerts).
+            logger.warning(f"Exa search error: {e}; failing over to next provider")
+            raise
 
 
 class _LLMSearchProvider(SearchProvider):
