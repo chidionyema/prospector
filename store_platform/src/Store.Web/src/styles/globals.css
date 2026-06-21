@@ -12,9 +12,9 @@
   --surface2: #ffffff;    /* Deprecated, mapped to white */
   --border: #e2e8f0;      /* Crisp 1px borders */
   --text: #191919;        /* Deeper Slate/Black for high density */
-  --muted: #64748b;       /* Mid-tone Slate for metadata */
-  --faint: #cbd5e1;       /* Decorative faint elements */
-  --eyebrow: #64748b;     /* Monospace metadata */
+  --muted: #475569;       /* Slate 600: >=4.5:1 on white AND on the slate-50 canvas (Lighthouse) */
+  --faint: #cbd5e1;       /* Decorative faint elements (non-text only) */
+  --eyebrow: #475569;     /* Monospace metadata, contrast-safe */
 
   /* Global Transition Standard */
   --transition-standard: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);

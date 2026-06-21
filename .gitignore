@@ -65,3 +65,17 @@ store_platform/src/Store.Api/content_store/
 
 # local test stack runtime (logs + pids)
 store_platform/.test-stack/
+
+# Agent/keystore scratch — NEVER commit (.lux/keys holds a private agent.pem)
+.lux/
+.pi/
+
+# Editor backups + SQLite write-ahead/shared-memory sidecars
+*.save
+*.db-wal
+*.db-shm
+
+# Scheduler runtime state (heartbeat, tick log, kill switch) — machine-local, not source
+store/scheduler/heartbeat.json
+store/scheduler/ticks.jsonl
+store/scheduler/PAUSE

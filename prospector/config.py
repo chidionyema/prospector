@@ -189,6 +189,10 @@ class Config:
     # are treated as duplicates and the later one is dropped. Lifted out of dedup.py so
     # the freshness bar is tunable without a code change.
     dedup_threshold: float = 0.85
+    # Content-word overlap (Jaccard) threshold for the SECOND dedup signal. Char ratio is
+    # blind to the same idea reworded; this catches it. At or above this, two candidates
+    # are duplicates even if the char ratio is low. None disables the token signal.
+    dedup_token_threshold: float = 0.34
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
@@ -363,6 +367,10 @@ def load_config(path: str | Path | None = None) -> Config:
         active_persona=raw.get("active_persona") or "",
         listing=raw.get("listing") or {},
         dedup_threshold=float(raw.get("dedup_threshold", 0.85)),
+        dedup_token_threshold=(
+            None if raw.get("dedup_token_threshold", 0.34) is None
+            else float(raw.get("dedup_token_threshold", 0.34))
+        ),
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},

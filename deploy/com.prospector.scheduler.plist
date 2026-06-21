@@ -21,6 +21,9 @@
 <dict>
     <key>Label</key>
     <string>com.prospector.scheduler</string>
+    <!-- Direct Python invocation: the Homebrew python here has macOS TCC access to ~/Documents,
+         whereas a /bin/bash wrapper does not. The daemon's main() loads the gitignored .env itself
+         (_load_env_file), so API keys reach the process WITHOUT ever living in this tracked plist. -->
     <key>ProgramArguments</key>
     <array>
         <string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
@@ -37,7 +40,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>HOME</key>
         <string>/Users/chidionyema</string>
     </dict>

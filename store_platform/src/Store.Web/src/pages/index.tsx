@@ -3,17 +3,16 @@ import { GetServerSideProps } from 'next';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon, CoverArt, Input, Select, Button } from '@/components/ui';
+import { Icon, IconName, Input, Dropdown, Button } from '@/components/ui';
+import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, FeatureCard, CtaBand } from '@/components/marketing/blocks';
-import { fetchCatalog, fetchCatalogStats, formatPrice, Pack, CatalogStats } from '@/lib/api/client';
-import { coverFor } from '@/lib/cover';
+import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, Pack, CatalogStats } from '@/lib/api/client';
+import { categoryFor, type Category } from '@/lib/category';
 
 interface HomeProps {
   packs: Pack[];
   stats: CatalogStats | null;
 }
-
-const INSIDE = ['Blueprint', 'GTM plan', 'Build kit'] as const;
 
 type PillIcon = 'check' | 'shield' | 'download' | 'lock' | 'money';
 
@@ -28,21 +27,89 @@ function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
   );
 }
 
+// The three deliverables inside every pack, as scannable icon chips.
+const DELIVERABLES: { icon: IconName; label: string }[] = [
+  { icon: 'briefcase', label: 'Blueprint' },
+  { icon: 'handshake', label: 'GTM plan' },
+  { icon: 'code', label: 'Build kit' },
+];
+
+function DeliverableChips() {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {DELIVERABLES.map((d) => (
+        <span
+          key={d.label}
+          className="inline-flex items-center gap-1.5 rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted"
+        >
+          <Icon name={d.icon} size={12} /> {d.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Colour-coded sector label. `onLight` sits on a white card body; the default glass pill sits on the
+// coloured cover.
+function CategoryPill({ cat, onLight = false }: { cat: Category; onLight?: boolean }) {
+  if (onLight) {
+    return (
+      <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide', cat.chip)}>
+        <Icon name={cat.icon} size={12} /> {cat.label}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
+      <Icon name={cat.icon} size={12} className={cat.accent} /> {cat.label}
+    </span>
+  );
+}
+
+// The authority mark: every pack on the shelf cleared all six checks. Reads as a struck seal, not a
+// loose word in a box.
+function SurvivedSeal() {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg bg-text/85 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur">
+      <Icon name="verified" size={13} className="text-emerald-300" /> Survived 6 checks
+    </span>
+  );
+}
+
+// Shared cover backdrop: the sector gradient, a soft top highlight, and a large faint sector icon as
+// distinct per-industry imagery. Children are the badges placed over it.
+function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize: number; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cx('relative overflow-hidden', cat.cover, className)}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_12%_-10%,rgba(255,255,255,0.25),transparent_55%)]" />
+      <Icon
+        name={cat.icon}
+        size={iconSize}
+        className="pointer-events-none absolute -bottom-6 -right-4 text-white/15 transition-transform duration-300 group-hover:scale-105"
+      />
+      {children}
+    </div>
+  );
+}
+
 function PackCard({ pack }: { pack: Pack }) {
+  const cat = categoryFor(pack);
   return (
     <Link
       href={`/pack/${pack.id}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-text/15 hover:shadow-[0_18px_40px_rgba(0,0,0,0.10)]"
     >
-      <div className={`relative h-36 overflow-hidden ${coverFor(pack.id)}`}>
-        <CoverArt title={pack.title} />
-        <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm">
-          <Icon name="verified" size={12} /> Survived
+      <Cover cat={cat} iconSize={132} className="h-36">
+        <span className="absolute left-4 top-4">
+          <CategoryPill cat={cat} />
         </span>
-        <span className="absolute bottom-4 right-4 rounded-lg bg-white px-3 py-1 text-lg font-black tracking-tight text-text shadow-sm">
+        <span className="absolute right-4 top-4 rounded-lg bg-white px-3 py-1 text-lg font-black tracking-tight text-text shadow-sm">
           {formatPrice(pack.price)}
         </span>
-      </div>
+        <span className="absolute bottom-4 left-4">
+          <SurvivedSeal />
+        </span>
+      </Cover>
 
       <div className="flex flex-1 flex-col p-6">
         <h3 className="text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary">
@@ -74,15 +141,16 @@ function PackCard({ pack }: { pack: Pack }) {
                   {pack.sourceCount} sources
                 </span>
               )}
+              {freshnessLabel(pack.verifiedAt) && (
+                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+                  {freshnessLabel(pack.verifiedAt)}
+                </span>
+              )}
             </div>
           </div>
         ) : (
-          <div className="mt-5 flex flex-wrap gap-1.5">
-            {INSIDE.map((chip) => (
-              <span key={chip} className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-                {chip}
-              </span>
-            ))}
+          <div className="mt-5">
+            <DeliverableChips />
           </div>
         )}
 
@@ -94,6 +162,122 @@ function PackCard({ pack }: { pack: Pack }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+// The hero of the shelf: the newest survivor, given real visual weight (full width, horizontal) so
+// the grid is not eleven identical blocks. Anchors the page and breaks the pattern.
+function SpotlightCard({ pack }: { pack: Pack }) {
+  const cat = categoryFor(pack);
+  return (
+    <Link
+      href={`/pack/${pack.id}`}
+      className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] md:flex-row"
+    >
+      <Cover cat={cat} iconSize={240} className="min-h-[210px] md:w-[38%]">
+        <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
+          <Icon name="trending-up" size={12} className={cat.accent} /> Latest to survive
+        </span>
+        <span className="absolute bottom-5 left-5">
+          <SurvivedSeal />
+        </span>
+      </Cover>
+
+      <div className="flex flex-1 flex-col justify-center gap-4 p-7 md:p-9">
+        <div className="flex flex-wrap items-center gap-3">
+          <CategoryPill cat={cat} onLight />
+          <span className="text-sm font-semibold text-muted">Newest in the catalogue</span>
+        </div>
+        <h3 className="text-2xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-3xl">
+          {pack.title}
+        </h3>
+        <p className="max-w-2xl text-base leading-relaxed text-text/75 line-clamp-3">{pack.oneLine}</p>
+        <DeliverableChips />
+        <div className="mt-1 flex flex-wrap items-center gap-4">
+          <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition group-hover:opacity-90">
+            See what is inside <Icon name="arrowRight" size={15} />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Colour-coded sector filter. Turns the catalogue from a list into a discovery tool.
+function FilterPill({
+  active,
+  onClick,
+  label,
+  count,
+  icon,
+  accent,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  icon?: IconName;
+  accent?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cx(
+        'inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition',
+        active
+          ? 'border-text bg-text text-white shadow-sm'
+          : 'border-border bg-white text-text/70 hover:border-text/30 hover:text-text',
+      )}
+    >
+      {icon && <Icon name={icon} size={14} className={active ? 'text-white' : accent} />}
+      {label}
+      <span className={cx('rounded-full px-1.5 text-xs font-bold', active ? 'bg-white/20 text-white' : 'bg-bg text-muted')}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
+// Proof of life: the catalogue is a live, dated database, not a static page. Shows the most
+// recent verification date across the live packs with a quiet pulse. No fabricated scarcity,
+// just the real freshness signal.
+function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null }) {
+  const latest = packs
+    .map((p) => p.verifiedAt)
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1);
+  const label = freshnessLabel(latest);
+  if (!label && !stats) return null;
+  return (
+    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-muted shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <span className="inline-flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+        </span>
+        <span className="text-text">Live database</span>
+      </span>
+      {label && (
+        <>
+          <span aria-hidden className="text-faint">
+            •
+          </span>
+          <span>Last intelligence added {label.replace(/^Verified /, '')}</span>
+        </>
+      )}
+      {stats && (
+        <>
+          <span aria-hidden className="text-faint">
+            •
+          </span>
+          <span>{stats.listed} live now</span>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -114,21 +298,42 @@ type SortKey = (typeof SORTS)[number]['value'];
 function CatalogBrowser({ packs }: { packs: Pack[] }) {
   const [query, setQuery] = React.useState('');
   const [sort, setSort] = React.useState<SortKey>('newest');
+  const [activeCat, setActiveCat] = React.useState<string>('all');
+
+  // Sectors actually present in the catalogue, with counts, in first-appearance order.
+  const cats = React.useMemo(() => {
+    const m = new Map<string, { cat: Category; count: number }>();
+    for (const p of packs) {
+      const c = categoryFor(p);
+      const e = m.get(c.key);
+      if (e) e.count += 1;
+      else m.set(c.key, { cat: c, count: 1 });
+    }
+    return [...m.values()];
+  }, [packs]);
 
   const visible = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = q
-      ? packs.filter(
-          (p) => p.title.toLowerCase().includes(q) || p.oneLine.toLowerCase().includes(q),
-        )
-      : packs;
+    let filtered = packs;
+    if (activeCat !== 'all') filtered = filtered.filter((p) => categoryFor(p).key === activeCat);
+    if (q) {
+      filtered = filtered.filter(
+        (p) => p.title.toLowerCase().includes(q) || p.oneLine.toLowerCase().includes(q),
+      );
+    }
     if (sort === 'newest') return filtered; // server already returns newest-first
     return [...filtered].sort((a, b) => {
       if (sort === 'title') return a.title.localeCompare(b.title);
       const delta = parseFloat(a.price) - parseFloat(b.price);
       return sort === 'price-asc' ? delta : -delta;
     });
-  }, [packs, query, sort]);
+  }, [packs, query, sort, activeCat]);
+
+  // Spotlight the newest survivor only on the unfiltered, unsorted, full view — when it is genuinely
+  // "newest" and there is a grid behind it to anchor. Otherwise every result is an equal grid card.
+  const spotlight =
+    activeCat === 'all' && !query.trim() && sort === 'newest' && visible.length > 2 ? visible[0] : null;
+  const gridPacks = spotlight ? visible.slice(1) : visible;
 
   if (packs.length === 0) {
     return (
@@ -146,6 +351,23 @@ function CatalogBrowser({ packs }: { packs: Pack[] }) {
 
   return (
     <>
+      {cats.length > 1 && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          <FilterPill active={activeCat === 'all'} onClick={() => setActiveCat('all')} label="All sectors" count={packs.length} />
+          {cats.map(({ cat, count }) => (
+            <FilterPill
+              key={cat.key}
+              active={activeCat === cat.key}
+              onClick={() => setActiveCat(cat.key)}
+              label={cat.label}
+              count={count}
+              icon={cat.icon}
+              accent={cat.accent}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:max-w-xs">
           <Input
@@ -161,27 +383,22 @@ function CatalogBrowser({ packs }: { packs: Pack[] }) {
           <span className="whitespace-nowrap text-sm font-semibold text-muted">
             {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
           </span>
-          <div className="w-48">
-            <Select
+          <div className="w-52">
+            <Dropdown<SortKey>
               label="Sort packs"
-              hideLabel
               value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-            >
-              {SORTS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
+              options={SORTS}
+              onChange={setSort}
+            />
           </div>
         </div>
       </div>
 
       {visible.length > 0 ? (
         <>
+          {spotlight && <SpotlightCard pack={spotlight} />}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {visible.map((pack) => (
+            {gridPacks.map((pack) => (
               <PackCard key={pack.id} pack={pack} />
             ))}
           </div>
@@ -232,16 +449,26 @@ export default function Home({ packs, stats }: HomeProps) {
           <TrustPill icon="check" label="Every claim sourced" />
           <TrustPill icon="download" label="Instant download" />
         </div>
+        <p className="mt-7 text-sm font-semibold text-muted">
+          Want proof first?{' '}
+          <Link href="/sample" className="text-primary underline-offset-4 hover:underline">
+            Read a full report free
+          </Link>
+          , every source clickable, zero pence.
+        </p>
       </SectionBand>
 
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-8 !pb-16 md:!pt-10 md:!pb-20">
         <div className="mb-6">
+          <div className="mb-4">
+            <Heartbeat packs={packs} stats={stats} />
+          </div>
           <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
-          <p className="mt-2 max-w-xl text-base text-text/70">
-            We list a pack only when it clears every check. Most ideas never make it. £49 each, yours the
-            moment you pay.
+          <p className="mt-2 max-w-[60ch] text-base text-text/75">
+            We list a pack only when it clears every check, with a clickable source behind every claim.
+            Most ideas never make it. £49 each, yours the moment you pay.
           </p>
           {stats && stats.registered > stats.listed && (
             <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-success/5 px-3 py-1.5 text-xs font-semibold text-success">

@@ -4,8 +4,9 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon, CoverArt } from '@/components/ui';
+import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
-import { fetchPackDetails, formatPrice, freshnessLabel, PackDetails } from '@/lib/api/client';
+import { fetchPackDetails, formatPrice, freshnessLabel, scoreAxes, splitVerdict, PackDetails } from '@/lib/api/client';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { stripeConfigured } from '@/lib/stripe';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
@@ -40,6 +41,9 @@ const INSIDE = [
 export default function PackPage({ pack }: PackPageProps) {
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const axes = scoreAxes(pack.financialSnapshot);
+  const verdict = splitVerdict(pack.qaVerdictSummary);
 
   const provider = pack.paymentProvider || 'paddle';
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
@@ -219,14 +223,14 @@ export default function PackPage({ pack }: PackPageProps) {
             <h1 className="text-4xl font-black leading-tight tracking-tight text-text md:text-5xl">
               {pack.title}
             </h1>
-            <p className="mt-5 text-lg leading-relaxed text-text/80">{pack.oneLine}</p>
+            <p className="mt-5 max-w-[65ch] text-lg leading-relaxed text-text/80">{pack.oneLine}</p>
             {pack.subhead && (
-              <p className="mt-3 text-base leading-relaxed text-text/60">{pack.subhead}</p>
+              <p className="mt-3 max-w-[65ch] text-base leading-relaxed text-text/70">{pack.subhead}</p>
             )}
 
             {(freshnessLabel(pack.verifiedAt) ||
               (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) ||
-              pack.qaVerdictSummary) && (
+              verdict.summary) && (
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-muted">
                 {freshnessLabel(pack.verifiedAt) && (
                   <span className="inline-flex items-center gap-1.5">
@@ -240,7 +244,7 @@ export default function PackPage({ pack }: PackPageProps) {
                     {pack.sourceCount} sources cited
                   </span>
                 )}
-                {pack.qaVerdictSummary && <span>{pack.qaVerdictSummary}</span>}
+                {verdict.summary && <span className="max-w-[60ch]">{verdict.summary}</span>}
               </div>
             )}
 
@@ -278,6 +282,63 @@ export default function PackPage({ pack }: PackPageProps) {
               </Link>
             </div>
 
+            {/* The stress test, scored — show the stress. Real per-pack scores, including the
+                weak axes, plus the surfaced main risk. Hiding the cons would kill the pros. */}
+            {(axes.length > 0 || verdict.risk) && (
+              <div className="mt-12">
+                <h2 className="text-xl font-bold tracking-tight text-text">The stress test, scored</h2>
+                <p className="mt-2 max-w-[60ch] text-sm text-muted">
+                  We score every survivor on six axes, out of five. We show you the weak ones too. A high
+                  bar is a strength, a low bar is a trade you should know about before you build.
+                </p>
+
+                {axes.length > 0 && (
+                  <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+                    {axes.map((a) => {
+                      const tone =
+                        a.value >= 4 ? 'bg-success' : a.value === 3 ? 'bg-primary' : 'bg-warning';
+                      return (
+                        <div key={a.label} className="flex flex-col gap-1.5">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <dt className="text-sm font-semibold text-text">{a.label}</dt>
+                            <dd className="font-mono text-xs font-bold text-muted">
+                              {a.value} / {a.outOf}
+                            </dd>
+                          </div>
+                          <div className="flex gap-1" aria-hidden>
+                            {Array.from({ length: a.outOf }).map((_, i) => (
+                              <span
+                                key={i}
+                                className={cx(
+                                  'h-1.5 flex-1 rounded-full',
+                                  i < a.value ? tone : 'bg-border',
+                                )}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                )}
+
+                {verdict.risk && (
+                  <div className="mt-6 rounded-xl border border-warning/30 bg-warning/5 p-5">
+                    <div className="flex items-center gap-2">
+                      <Icon name="shield" size={15} className="text-warning" />
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-warning">
+                        Where this could break
+                      </span>
+                    </div>
+                    <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-text/80">{verdict.risk}</p>
+                    <p className="mt-2 text-xs text-muted">
+                      We surface the strongest argument against the idea, with its source, inside the pack.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Is this for you? — the concrete fit signals, when the pack carries them */}
             {(pack.whoPays || pack.effortTag || pack.timeToFirstRevenue) && (
               <div className="mt-12">
@@ -313,7 +374,36 @@ export default function PackPage({ pack }: PackPageProps) {
 
             {/* What's inside — per-pack specifics when present, generic cards otherwise */}
             <div className="mt-12">
-              <h2 className="text-xl font-bold tracking-tight text-text">What&apos;s inside</h2>
+              <h2 className="text-xl font-bold tracking-tight text-text">What&apos;s inside the box</h2>
+              <p className="mt-2 max-w-[60ch] text-sm text-muted">
+                The moment you pay, you download the full pack. This is the table of contents, and a blurred
+                look at the document you receive.
+              </p>
+
+              {/* Blurred deliverable preview: a real-looking page you cannot read yet. */}
+              <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+                <div aria-hidden className="select-none space-y-2.5 p-7 blur-[5px]">
+                  <div className="h-3 w-2/5 rounded bg-text/80" />
+                  <div className="h-2 w-full rounded bg-text/15" />
+                  <div className="h-2 w-11/12 rounded bg-text/15" />
+                  <div className="h-2 w-10/12 rounded bg-text/15" />
+                  <div className="mt-4 h-3 w-1/3 rounded bg-primary/70" />
+                  <div className="h-2 w-full rounded bg-text/15" />
+                  <div className="h-2 w-9/12 rounded bg-text/15" />
+                  <div className="mt-4 flex gap-3">
+                    <div className="h-16 flex-1 rounded-lg bg-success/15" />
+                    <div className="h-16 flex-1 rounded-lg bg-primary/15" />
+                    <div className="h-16 flex-1 rounded-lg bg-warning/15" />
+                  </div>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-white via-white/70 to-white/30">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-xs font-bold text-text shadow-sm">
+                    <Icon name="lock" size={14} className="text-muted" />
+                    Unlocks the moment you buy
+                  </span>
+                </div>
+              </div>
+
               {pack.whatYouGet && pack.whatYouGet.length > 0 ? (
                 <ul className="mt-6 list-none space-y-3 p-0">
                   {pack.whatYouGet.map((item, i) => (
@@ -370,11 +460,18 @@ export default function PackPage({ pack }: PackPageProps) {
                 <Icon name="verified" className="text-success" size={18} />
                 <span className="font-mono text-xs font-bold uppercase tracking-widest text-text">The receipts</span>
               </div>
-              <p className="text-sm leading-relaxed text-text/70">
+              <p className="max-w-[64ch] text-sm leading-relaxed text-text/70">
                 Every figure and claim in this pack is traced to external evidence you can open and check.
                 No hand waving, no vibes. Audit reference{' '}
                 <span className="font-mono text-xs text-muted">{pack.dossierRef}</span>.
               </p>
+              <Link
+                href="/sample"
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+              >
+                Want to see the depth first? Read a full report free
+                <Icon name="arrowRight" size={14} />
+              </Link>
             </div>
           </div>
 

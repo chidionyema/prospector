@@ -1,10 +1,47 @@
 import { API_BASE_URL } from '@/lib/config';
 
-/** Python-computed economics snapshot the engine attaches at publish time. */
+/** Python-computed snapshot the engine attaches at publish time. Served as an open
+ *  string -> string map: the current engine fills it with the six scored axes
+ *  ("Pain acuity": "4 of 5"), older packs may carry modelled-economics keys. Both are
+ *  just entries here, so render sites read it generically. */
 export interface FinancialSnapshot {
+  [key: string]: string | undefined;
   month1Revenue?: string;
   ltvCac?: string;
   paybackMonths?: string;
+}
+
+/** One scored axis of the opportunity, parsed from a "N of 5" snapshot entry. */
+export interface ScoreAxis {
+  label: string;
+  value: number;
+  outOf: number;
+}
+
+/** Parse the financial snapshot into 1-to-5 score axes (the stress-test meters).
+ *  Only entries shaped like "4 of 5" become axes; anything else is ignored. */
+export function scoreAxes(snapshot?: FinancialSnapshot): ScoreAxis[] {
+  if (!snapshot) return [];
+  const axes: ScoreAxis[] = [];
+  for (const [label, raw] of Object.entries(snapshot)) {
+    const m = typeof raw === 'string' ? raw.match(/^(\d+)\s+of\s+(\d+)$/i) : null;
+    if (m) axes.push({ label, value: parseInt(m[1], 10), outOf: parseInt(m[2], 10) });
+  }
+  return axes;
+}
+
+/** Split a QA verdict summary into the headline summary and the surfaced main risk, so the
+ *  storefront can show the cons as their own honest callout (not bury them in a grey line).
+ *  Input shape: "...Survived adversarial review. Main risk surfaced: <risk>" */
+export function splitVerdict(summary?: string): { summary: string; risk: string | null } {
+  if (!summary) return { summary: '', risk: null };
+  const marker = 'Main risk surfaced:';
+  const i = summary.indexOf(marker);
+  if (i === -1) return { summary: summary.trim(), risk: null };
+  return {
+    summary: summary.slice(0, i).trim(),
+    risk: summary.slice(i + marker.length).trim() || null,
+  };
 }
 
 export interface Pack {

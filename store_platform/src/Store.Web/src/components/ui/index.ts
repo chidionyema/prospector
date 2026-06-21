@@ -12,6 +12,9 @@ export type { InputProps } from './Input';
 export { Select } from './Select';
 export type { SelectProps } from './Select';
 
+export { Dropdown } from './Dropdown';
+export type { DropdownProps, DropdownOption } from './Dropdown';
+
 export { Checkbox } from './Checkbox';
 export type { CheckboxProps } from './Checkbox';
 

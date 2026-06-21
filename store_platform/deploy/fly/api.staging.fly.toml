@@ -1,0 +1,44 @@
+# Store.Api STAGING on Fly.io. Mirror of api.fly.toml; the daemon auto-publishes PASSes HERE
+# (not prod) until we cut over. See store_platform/deploy/PROD_DEPLOY.md for the runbook.
+#
+# Deploy from store_platform/ so the build context (the `.`) includes local-feed/ + Store.Catalog:
+#   fly deploy . --config deploy/fly/api.staging.fly.toml
+#
+# Secrets (Stripe test keys, R2, internal key) are set with `fly secrets set ... -a
+# prospector-store-api-staging`, NOT here. This file holds only non-secret config.
+
+app = "prospector-store-api-staging"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "../../src/Store.Api/Dockerfile"
+
+[env]
+  # Production behaviour for parity with the real store; only the data + secrets differ.
+  ASPNETCORE_ENVIRONMENT = "Production"
+  ConnectionStrings__DefaultConnection = "Data Source=/data/store.db"
+  payments__active_provider = "stripe"
+
+# Separate persistent SQLite db — staging packs never touch the prod volume. Single-writer:
+# exactly ONE machine.
+[mounts]
+  source = "store_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "get"
+    path = "/catalog"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

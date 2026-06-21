@@ -462,6 +462,13 @@ listing:
 # candidate is dropped as a duplicate. Higher = stricter (fewer dropped); lower = looser.
 dedup_threshold: 0.85
 
+# Second dedup signal: content-word overlap (Jaccard, 0..1). Char ratio above is blind to
+# the SAME idea reworded — that is how the catalogue accumulated 4 "retiree garden harvest"
+# variants + 2 "probate clear-out" variants that all scored well under 0.85. This catches
+# reworded same-idea titles. Calibrated to 0.34 (live dupe pairs >=0.38, distinct ~0.00).
+# Lower = stricter (drops more). Set to null to disable the token signal entirely.
+dedup_token_threshold: 0.34
+
 schedule: { cadence: daily, batch_size: 5 }
 
 spend:

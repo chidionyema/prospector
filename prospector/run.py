@@ -593,7 +593,8 @@ def run_signal(
 
     # --- Dedup against catalogue ---
     catalogue = store.catalogue_titles()
-    unique, dropped = dedup(candidates, catalogue, threshold=cfg.dedup_threshold)
+    unique, dropped = dedup(candidates, catalogue, threshold=cfg.dedup_threshold,
+                            token_threshold=cfg.dedup_token_threshold)
     if dropped:
         logger.info(f"Dedup dropped {len(dropped)} near-duplicate pair(s)")
     if dropped:

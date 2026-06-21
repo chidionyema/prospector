@@ -1,0 +1,133 @@
+{
+  "id": "0f2109fb198341a4",
+  "title": "The Solo Builder's Warranty Audit",
+  "oneLiner": "A solo operator in the UK offers a fixed-price, pre-completion inspection and snagging service specifically for self-build homeowners, using a proprietary checklist and thermal camera to identify defects before the builder's warranty expires, charging per property.",
+  "whoPays": "Self-build homeowners in the UK (approx. 15,000-20,000 completions/year) who have a 10-year warranty (e.g., LABC, NHBC) and a deadline for inspection.",
+  "whyNow": "The UK self-build market is booming (Rightmove data), and warranty providers are tightening defect detection. Homeowners are often first-time builders with no construction expertise, making them vulnerable to hidden issues that become expensive later.",
+  "verifiedAt": "2026-06-15T23:35:04.303416+00:00",
+  "supported": 7,
+  "total": 8,
+  "sourceCount": 8,
+  "scores": {
+    "pain_acuity": 4,
+    "money_provability": 4,
+    "automatability": 1,
+    "distribution": 3,
+    "defensibility": 2,
+    "build_feasibility": 4
+  },
+  "premortem": {
+    "strongestAlternative": "The homeowner can hire a structural engineer (e.g., £500-1000 per inspection) or rely on the warranty provider's own surveyor (often free but superficial).",
+    "whyDurable": ""
+  },
+  "adversarial": {
+    "killCase": "The market for new-build snagging inspections is already highly commoditized and served by established, accredited firms that provide the exact services proposed (thermal imaging, fixed-fee reports, drone inspections) (a95e5536bce78462). The core value proposition of a 'proprietary checklist' is invalidated, as competitors already align their inspections with industry-standard benchmarks like NHQB and NHBC guidelines (e646bf90d84a4530, a95e5536bce78462). Furthermore, potential customers prioritize RPSA accreditation and insurance, creating high barriers to entry for a new solo operator attempting to compete on price alone in an already fixed-price, transparently-marketed landscape (29ee41a1d1cf353d, a95e5536bce78462).",
+    "decisive": false
+  },
+  "checks": [
+    {
+      "name": "Is anyone actually trying to buy this?",
+      "key": "buyer_intent",
+      "verdict": "supported",
+      "confidence": 0.41,
+      "rationale": "The passage confirms the existence of specialized snagging inspection services in the UK, demonstrating that there is an active market where homeowners pay for these checks to identify defects.",
+      "sources": [
+        {
+          "url": "https://snagging-inspections.co.uk/",
+          "label": "Snagging Inspections for New Build Properties , Best Snagging Inspections UK"
+        }
+      ]
+    },
+    {
+      "name": "Can the payer actually pay?",
+      "key": "payer_solvency",
+      "verdict": "supported",
+      "confidence": 0.43,
+      "rationale": "The passage confirms the existence of professional new-build snagging inspection services in the UK with established, transparent pricing packages, indicating a market where homeowners pay for these quality inspections.",
+      "sources": [
+        {
+          "url": "https://snagbusterz.co.uk/packages/",
+          "label": "Snagging Inspection Cost | UK | Snagbusterz"
+        }
+      ]
+    },
+    {
+      "name": "Is there a route to reach the market?",
+      "key": "distribution",
+      "verdict": "supported",
+      "confidence": 0.43,
+      "rationale": "The passage demonstrates that independent snagging services successfully utilize low-friction distribution routes, specifically website-based booking and WhatsApp, to reach and acquire customers.",
+      "sources": [
+        {
+          "url": "https://nwsnagsurveys.com/new-build-snagging-surveys/",
+          "label": "New Build Snagging Surveys, NW Snag Survey, NW Snag Surveys"
+        }
+      ]
+    },
+    {
+      "name": "Is there a legal landmine?",
+      "key": "legality",
+      "verdict": "supported",
+      "confidence": 0.4,
+      "rationale": "The passage explicitly notes that the guidance is provided for a 'customer' to carry out a pre-completion inspection, indicating the activity is not legally restricted to professional surveyors. While it advises that a qualified professional should conduct the inspection to avoid misinterpreting requirements, it does not prohibit others from performing the service.",
+      "sources": [
+        {
+          "url": "https://www.nhqb.org.uk/wp-content/uploads/2026/02/NHQB-PCI-Checklist-house-V2-March-2026.pdf",
+          "label": "INTRODUCTORY NOTES"
+        }
+      ]
+    },
+    {
+      "name": "Is the pain real, or imagined?",
+      "key": "pain_reality",
+      "verdict": "supported",
+      "confidence": 0.46,
+      "rationale": "The existence of professional pre-completion inspection and snagging services, as shown in the passage, confirms that homeowners pay to solve the problem of identifying building defects before finalizing property purchases. This demonstrates that the need to mitigate hidden defects is a real, paid-for service in the current market.",
+      "sources": [
+        {
+          "url": "https://snaglistpro.co.uk/pre-completion-inspection/",
+          "label": "- Sample Report"
+        }
+      ]
+    },
+    {
+      "name": "Is real money flowing here today?",
+      "key": "currency",
+      "verdict": "supported",
+      "confidence": 0.42,
+      "rationale": "The passage documents an active business providing independent snagging surveys with calls to action to 'Book My Snagging Survey', confirming that this type of service is currently operating.",
+      "sources": [
+        {
+          "url": "https://nwsnagsurveys.com/new-build-snagging-surveys/",
+          "label": "New Build Snagging Surveys, NW Snag Survey, NW Snag Surveys"
+        }
+      ]
+    },
+    {
+      "name": "Can it actually reach buyers?",
+      "key": "route_to_market",
+      "verdict": "supported",
+      "confidence": 0.42,
+      "rationale": "The passage confirms that companies already provide snagging inspections for new homes in the UK, demonstrating that a route to market exists and is executable by businesses.",
+      "sources": [
+        {
+          "url": "https://snagging-inspections.co.uk/",
+          "label": "Snagging Inspections for New Build Properties , Best Snagging Inspections UK"
+        }
+      ]
+    },
+    {
+      "name": "Do its own claims hold up to checking?",
+      "key": "claims_verifiable",
+      "verdict": "refuted",
+      "confidence": 0.42,
+      "rationale": "The passage demonstrates the existence of independent snagging survey services for new-build homes, contradicting the hypothesis's implicit claim that there is no existing solution for snagging-level defects in the UK market.",
+      "sources": [
+        {
+          "url": "https://snagged.co.uk/",
+          "label": "Snagged, Independent Snagging Surveys for New-Build Homes"
+        }
+      ]
+    }
+  ]
+}
