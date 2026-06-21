@@ -79,3 +79,8 @@ store_platform/.test-stack/
 store/scheduler/heartbeat.json
 store/scheduler/ticks.jsonl
 store/scheduler/PAUSE
+store/scheduler/alerts.jsonl
+store/scheduler/ALERT.txt
+store/scheduler/alert_state.json
+store/scheduler/watchdog.*.log
+store/scheduler/launchd.*.log
