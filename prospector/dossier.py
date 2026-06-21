@@ -73,8 +73,29 @@ def build_dossier(
         else:
             reason = f"Gate '{gate_fired}' fired."
     elif score is not None and passes_composite(score, cfg):
-        decision = Decision.PASS
-        reason = f"Survived all gates; composite {score.composite:.4f}."
+        # SOURCE-OR-DIE at the pass boundary. Clearing the composite is necessary but NOT
+        # sufficient: the scorer rules on the candidate narrative and will happily score an
+        # ungrounded idea highly. A PASS must rest on actual grounded evidence, or we are
+        # "publishing on silence" — forbidden (CLAUDE.md: verdict-from-retrieval-only;
+        # publish only on PASS). This is the exact class that minted 9 ungrounded "passes"
+        # during the 2026-06-16 grounding outage (every check unverifiable, conf 0.0, 0
+        # sources, yet composite 2.95 -> PASS). A genuine retrieval OUTAGE is caught upstream
+        # (DEFER_GATE) and never reaches here; reaching here with no support means we looked
+        # and found nothing to stand on.
+        floor = cfg.thresholds.confidence_floor
+        min_supported = getattr(cfg.thresholds, "min_supported_to_pass", 1)
+        n_supported = sum(1 for c in checks
+                          if c.verdict.value == "supported" and c.confidence >= floor)
+        if n_supported >= min_supported:
+            decision = Decision.PASS
+            reason = (f"Survived all gates; composite {score.composite:.4f}; "
+                      f"{n_supported} grounded-supported check(s).")
+        else:
+            decision = Decision.KILL
+            gate_fired = "source_or_die"
+            reason = (f"Composite {score.composite:.4f} cleared the bar but only "
+                      f"{n_supported} grounded-supported check(s) (need {min_supported}). "
+                      f"Source-or-die: refuse to publish on unverifiable evidence.")
     else:
         # Composite below threshold (or score missing unexpectedly)
         decision = Decision.KILL

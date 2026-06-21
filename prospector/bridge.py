@@ -190,6 +190,27 @@ class EngineBridge:
             )
             return False
 
+        # SOURCE-OR-DIE GUARD (P0 — moat integrity, last-mile backstop): a PASS dossier must
+        # rest on actual grounded evidence. The decision layer (dossier.py) now enforces this,
+        # but a dossier minted BEFORE that fix — or hand-fed via tools.publish_offline — can
+        # still carry decision=PASS with zero grounding. That is exactly the class that put an
+        # ungrounded "Probate Locker" pack live (every check unverifiable, conf 0.0, 0 sources).
+        # Publishing one ships on silence — forbidden. Fail closed.
+        floor = self.cfg.thresholds.confidence_floor
+        n_supported = sum(
+            1 for c in getattr(dossier, "checks", []) or []
+            if getattr(getattr(c, "verdict", None), "value", None) == "supported"
+            and getattr(c, "confidence", 0.0) >= floor
+        )
+        if n_supported < 1:
+            logger.error(
+                f"EngineBridge: Refusing to publish {dossier.candidate.candidate_id} "
+                f"({dossier.candidate.title}) — 0 grounded-supported checks (source-or-die). "
+                "Ungrounded 'pass'; will NOT list.",
+                extra={"candidate_id": dossier.candidate.candidate_id, "n_supported": 0},
+            )
+            return False
+
         candidate = dossier.candidate
         candidate_id = candidate.candidate_id
 

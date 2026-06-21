@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 # Add the prospector directory to the path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from prospector.models import Candidate, Dossier, Decision, ScoreResult
+from prospector.models import Candidate, Dossier, Decision, ScoreResult, CheckResult, Verdict
 from prospector.bridge import EngineBridge, ProductProvisioner, StripeProvisioner, PaddleClient, ProvisioningError
 
 class TestEngineBridge(unittest.TestCase):
@@ -17,6 +17,8 @@ class TestEngineBridge(unittest.TestCase):
         # publish path must be given one explicitly — exactly as production does via env.
         os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
         self.cfg = MagicMock()
+        # Real numeric floor so the source-or-die guard's `confidence >= floor` is a real compare.
+        self.cfg.thresholds.confidence_floor = 0.0
         self.bridge = EngineBridge(self.cfg)
         # Point to the local test server
         self.bridge.store_api_url = "http://localhost:5050"
@@ -56,7 +58,11 @@ class TestEngineBridge(unittest.TestCase):
         dossier.score.composite = 4.2
         dossier.score.scores = {axis: 4 for axis in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]}
         dossier.score.justification = {axis: "Test justification" for axis in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]}
-        dossier.checks = []
+        # A real PASS rests on grounded evidence (source-or-die): >=1 supported check.
+        dossier.checks = [
+            CheckResult(check_name="pain_reality", verdict=Verdict.SUPPORTED,
+                        confidence=0.8, rationale="grounded"),
+        ]
         dossier.adversarial = None
         dossier.gate_fired = None
         dossier.reason = "Survived all gates; composite 4.2."
@@ -102,6 +108,38 @@ class TestEngineBridge(unittest.TestCase):
 
         self.assertFalse(success, "Bridge must refuse to publish a provisional PASS dossier")
         # Ensure _update_catalog was NEVER called
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    def test_refuse_ungrounded_pass(self, mock_post):
+        """Source-or-die backstop: a PASS with 0 grounded-supported checks must NOT publish.
+
+        This is the exact stale class that put an ungrounded 'Probate Locker' pack live —
+        decision=PASS, every check unverifiable, 0 sources. The bridge is the last fence.
+        """
+        self.bridge.entitlements_check = MagicMock(return_value=True)
+        candidate = Candidate(title="Ungrounded Biz", one_liner="No evidence behind it")
+        candidate.candidate_id = "test-ungrounded-cand"
+
+        dossier = MagicMock(spec=Dossier)
+        dossier.decision = Decision.PASS
+        dossier.candidate = candidate
+        dossier.score = None
+        # Composite-passed but every check is unverifiable -> no grounding to stand on.
+        dossier.checks = [
+            CheckResult(check_name="pain_reality", verdict=Verdict.UNVERIFIABLE,
+                        confidence=0.0, rationale="no passage"),
+        ]
+        dossier.adversarial = None
+        dossier.gate_fired = None
+        dossier.reason = "Survived all gates; composite 2.95."
+        dossier.model_version = "test-model"
+        dossier.created_at = "2026-06-15T00:00:00Z"
+        dossier.provisional = False
+
+        success = self.bridge.publish_pass(dossier)
+
+        self.assertFalse(success, "Bridge must refuse to publish an ungrounded PASS dossier")
         mock_post.assert_not_called()
 
 
