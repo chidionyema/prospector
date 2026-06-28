@@ -82,14 +82,42 @@ def build_dossier(
         # sources, yet composite 2.95 -> PASS). A genuine retrieval OUTAGE is caught upstream
         # (DEFER_GATE) and never reaches here; reaching here with no support means we looked
         # and found nothing to stand on.
-        floor = cfg.thresholds.confidence_floor
+        # PASS-SIDE floor: a SUPPORTED check only counts as grounded toward a PASS when its
+        # confidence clears min_supported_confidence. Decoupled from confidence_floor (the
+        # kill-side lever) so tightening passes never loosens kills. Falls back to
+        # confidence_floor, then 0.0, for configs that predate the split.
+        floor = getattr(cfg.thresholds, "min_supported_confidence", None)
+        if floor is None:
+            floor = cfg.thresholds.confidence_floor
         min_supported = getattr(cfg.thresholds, "min_supported_to_pass", 1)
         n_supported = sum(1 for c in checks
                           if c.verdict.value == "supported" and c.confidence >= floor)
-        if n_supported >= min_supported:
+        # PUBLISH-CRITICAL requirement: at least one lane-declared decisive check must be
+        # grounded-supported. The check set is LANE-AWARE (cfg.thresholds.moat_critical_checks)
+        # so each lane requires its OWN headline evidence (smb: payer_solvency; side_hustle:
+        # buyer_intent; venture/default: value_durability/incumbency). Hardcoding the venture moat
+        # here made the smb/side_hustle PASS path structurally unreachable — those lanes never run
+        # value_durability/incumbency (PROVEN 2026-06-28, Martyn's Law composite 2.95 KILLed on
+        # moat_ungrounded). This still enforces source-or-die — a candidate cannot publish unless
+        # the lane's decisive dimension is grounded in fetched evidence — it asks the RIGHT one.
+        moat_checks = tuple(getattr(cfg.thresholds, "moat_critical_checks",
+                                    ("value_durability", "incumbency")))
+        moat_grounded = sum(1 for c in checks
+                            if c.check_name in moat_checks
+                            and c.verdict.value == "supported"
+                            and c.confidence >= floor)
+        if n_supported >= min_supported and moat_grounded >= 1:
             decision = Decision.PASS
             reason = (f"Survived all gates; composite {score.composite:.4f}; "
-                      f"{n_supported} grounded-supported check(s).")
+                      f"{n_supported} grounded-supported check(s) "
+                      f"(moat grounded: {moat_grounded}).")
+        elif moat_grounded < 1:
+            decision = Decision.KILL
+            gate_fired = "moat_ungrounded"
+            reason = (f"Composite {score.composite:.4f} cleared the bar but no publish-critical "
+                      f"check ({', '.join(moat_checks)}) was grounded-supported. "
+                      f"Source-or-die: refuse to publish without grounded evidence on the lane's "
+                      f"decisive dimension.")
         else:
             decision = Decision.KILL
             gate_fired = "source_or_die"

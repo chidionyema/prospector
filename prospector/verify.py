@@ -13,7 +13,7 @@ import re
 from typing import Callable, Optional
 
 from .config import Config
-from .errors import ProviderExhaustedError
+from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .kill_filter import is_hard_fail
 from .models import (CHECKS, DEFAULT_CHECKS, DEFER_GATE, AdversarialResult, Candidate,
                      CheckResult, Source, Verdict)
@@ -21,11 +21,12 @@ from .operator import Operator
 from .prompts import render
 from .retrieval import SearchProvider
 from .telemetry import logger, track_latency
+from .audit import audit
 
 
 def _served_provider(op: Operator) -> str:
     """The concrete brain that actually ruled. For a moat FallbackOperator this is the
-    tier that served (e.g. 'gemini_cli', 'deepseek') — the precise audit answer to "who
+    tier that served (e.g. 'claude_cli', 'deepseek') — the precise audit answer to "who
     ruled"; for a single operator it's its model_version/name."""
     served = getattr(op, "last_served", lambda: "")()
     return served or getattr(op, "model_version", "") or getattr(op, "name", "") or "unknown"
@@ -140,6 +141,18 @@ _QUERY_NOISE = frozenset({
     "tool", "tools", "app", "apps", "solution", "solutions", "service", "services",
     "system", "systems", "software", "product", "powered", "driven", "instrument",
     "enabled", "compliant", "under", "underneath", "across", "between", "through",
+    # Product-format / wrapper vocabulary. These describe the DELIVERABLE (a report, a
+    # kit, a dashboard) or its framing (personalised, bespoke, ultimate) — not the market
+    # fact a verification check turns on. Leaving them in makes the query restate the
+    # non-existent product ("printed personalised report mailed...") so search returns junk
+    # or nothing. Stripping them surfaces the domain/entity nouns that ground the check.
+    "printed", "personalised", "personalized", "mailed", "posted", "report", "reports",
+    "kit", "kits", "dashboard", "atlas", "index", "tracker", "monthly", "weekly", "daily",
+    "guide", "playbook", "toolkit", "scorecard", "bundle", "pack", "package", "newsletter",
+    "digest", "brief", "briefing", "map", "maps", "mapping", "personal", "custom",
+    "customised", "customized", "bespoke", "automated", "automatic", "hidden", "exact",
+    "specific", "pinpoints", "pinpoint", "maximise", "maximize", "ultimate", "essential",
+    "complete", "definitive", "premium", "curated", "insider", "secret", "smart",
 })
 
 
@@ -183,7 +196,12 @@ _CONFIRM_TEMPLATES: dict[str, list[str]] = {
 
 def _templated_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
     """Mix confirm and disconfirm queries for a balanced view."""
-    base = _keywords(cand)
+    # Tight base (6 domain keywords): with product-wrapper noise stripped, the leading
+    # salient terms are the market/entity nouns. Short queries match real public pages far
+    # better than a 12-word product restatement, and recur across candidates so the disk
+    # cache actually hits (faster, fewer live searches). The +3-4 word template suffix
+    # keeps the total in the ~9-word band that the engines/ddg return results for.
+    base = _keywords(cand, k=6)
     disconfirm = _DISCONFIRM_TEMPLATES.get(check_name, [])
     confirm = _CONFIRM_TEMPLATES.get(check_name, [])
     
@@ -207,6 +225,46 @@ def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int) -> list[
     except Exception as e:
         logger.warning(f"Query gen failed for {check_name}: {e}")
         return [f"{cand.title} {check_name}"]
+
+
+@track_latency(name="gen_queries_batched")
+def gen_queries_batched(op: Operator, cand: Candidate,
+                        check_names: list[str], n: int = 2) -> dict[str, list[str]]:
+    """ONE fast-tier LLM call → search queries for ALL `check_names` at once.
+
+    Decompose-don't-echo: the model turns the (usually non-existent) product into the
+    real-world market/legal/payer questions each check turns on, so search hits authoritative
+    on-topic pages instead of the dictionary/social/retail junk a product-pitch restatement
+    returns (proven failure mode: `_keywords` queries like "productized transforms tenant
+    answers adversarial" → cambridge.org dictionary, web.whatsapp.com, diy.com → ~93%
+    unverifiable). Runs on `op` = the non-critical query chain (deepseek→minimax), NEVER the
+    moat verdict brain.
+
+    Returns {check_name: [query, ...]} ONLY for checks the model answered cleanly; a
+    missing/garbled check is omitted so the caller falls back to its deterministic template.
+    On total failure returns {} → every check falls back to a template (no hard-fail when the
+    fast chain is down).
+    """
+    checks_block = "\n".join(f"- {c}: {CHECKS[c]}" for c in check_names if c in CHECKS)
+    try:
+        system, user = render("query_gen_batched",
+                              candidate_json=json.dumps(cand.to_dict()),
+                              checks_block=checks_block)
+        data = op.complete_json(system, user, temperature=0.5)
+    except Exception as e:
+        logger.warning(f"Batched query gen failed (falling back to templates): {e}")
+        return {}
+    if not isinstance(data, dict):
+        logger.warning("Batched query gen returned non-dict; falling back to templates")
+        return {}
+    out: dict[str, list[str]] = {}
+    for c in check_names:
+        raw = data.get(c)
+        if isinstance(raw, list):
+            qs = [str(q).strip() for q in raw if str(q).strip()][:max(1, n)]
+            if qs:
+                out[c] = qs
+    return out
 
 
 @track_latency(name="verdict_for")
@@ -309,13 +367,29 @@ VERDICT_PASSAGE_TRUNCATE = 600
 @track_latency(name="run_check")
 def run_check(op: Operator, search: SearchProvider, cfg: Config,
               cand: Candidate, check_name: str,
-              query_op: Optional[Operator] = None) -> CheckResult:
+              query_op: Optional[Operator] = None,
+              precomputed_queries: Optional[dict[str, list[str]]] = None) -> CheckResult:
     logger.info(f"Running check: {check_name}")
+    # Audit: this fires on every path (success, retrieval_failed, short-circuit empty,
+    # exhausted brain) so we can replay which checks actually reached the search block.
+    audit("verify_search", check=check_name,
+          candidate_id=getattr(cand, "candidate_id", None),
+          invoked_from="verify.run_check")
     r = cfg.retrieval
     # Kill-fast: cheapest decisive gates first.
+    # Query source priority:
+    #  1. Batched LLM query-gen (precomputed by verify() on the fast tier) — real-world
+    #     domain queries that ground the check instead of restating the product pitch.
+    #  2. Deterministic template (for template_checks, or as the fallback when the batched
+    #     call failed/omitted this check — graceful degradation, never a hard-fail).
+    #  3. Per-check LLM gen_queries (legacy path when llm_query_gen is off and the check is
+    #     not a template_check).
     # FIX #1 defensive guard: if queries_per_check is 0 we MUST NOT call gen_queries
     # (blank call, all tokens wasted).  Use the template path instead.
-    if check_name in (r.template_checks or []):
+    precomputed = (precomputed_queries or {}).get(check_name)
+    if precomputed:
+        queries = precomputed
+    elif check_name in (r.template_checks or []):
         queries = _templated_queries(cand, check_name, r.fast_queries)
     elif r.queries_per_check > 0:
         queries = gen_queries(query_op or op, cand, check_name, r.queries_per_check)
@@ -337,6 +411,8 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
         for future in futures:
             try:
                 passages.extend(future.result())
+            except GroundingInfrastructureError:
+                raise  # circuit breaker: ALL providers dead — halt, don't defer
             except Exception as e:
                 n_failed += 1
                 logger.error(f"Search failed for check {check_name}: {e}")
@@ -348,6 +424,10 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
         logger.warning(f"Retrieval unavailable for {check_name}: all {n_failed} "
                        f"search(es) failed; marking retrieval_failed (will defer, not kill)",
                        extra={"check": check_name, "failed": n_failed})
+        audit("verify_search", check=check_name,
+              candidate_id=getattr(cand, "candidate_id", None),
+              queries=queries, queries_n=len(queries), n_failed=n_failed,
+              passages_n=0, retrieval_failed=True, short_circuit_empty=False)
         return CheckResult(
             check_name=check_name, verdict=Verdict.UNVERIFIABLE, confidence=0.0,
             rationale=("Retrieval unavailable — all searches failed (infra/outage). "
@@ -368,6 +448,10 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     if not uniq:
         logger.info(f"Check {check_name}: no passages retrieved; short-circuit to UNVERIFIABLE "
                      "(no verdict LLM call fired)", extra={"check": check_name})
+        audit("verify_search", check=check_name,
+              candidate_id=getattr(cand, "candidate_id", None),
+              queries=queries, queries_n=len(queries), n_failed=n_failed,
+              passages_n=0, retrieval_failed=False, short_circuit_empty=True)
         return CheckResult(
             check_name=check_name, verdict=Verdict.UNVERIFIABLE,
             confidence=0.0,
@@ -389,8 +473,12 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
                        "Cannot rule; candidate deferred for re-vet."),
             queries=queries, degraded=True, retrieval_failed=True)
     result.queries = queries
-    logger.info(f"Check {check_name} result: {result.verdict.value}", 
+    logger.info(f"Check {check_name} result: {result.verdict.value}",
                 extra={"check": check_name, "verdict": result.verdict.value, "confidence": result.confidence})
+    audit("verify_search", check=check_name,
+          candidate_id=getattr(cand, "candidate_id", None),
+          queries=queries, queries_n=len(queries), n_failed=n_failed,
+          passages_n=len(uniq), retrieval_failed=False, short_circuit_empty=False)
     return result
 
 
@@ -415,26 +503,34 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
     try:
         data = op.complete_json(system, user, temperature=0.3)
         citations = [str(c) for c in (data.get("citations") or [])]
-        decisive = bool(data.get("decisive", False))
-        # source-or-die: a DECISIVE kill must cite evidence. An uncited "decisive"
-        # adversarial verdict is the model's opinion, not grounded disconfirmation —
-        # downgrade it so it cannot fire the adversarial_decisive hard gate.
+        
+        # New risk-sensor model: Python decides, LLM only classifies risk vectors.
+        critical_regulatory = bool(data.get("critical_regulatory_blocker", False))
+        impossible_economics = bool(data.get("impossible_unit_economics", False))
+        incumbent_monopoly = bool(data.get("incumbent_monopoly", False))
+        risk_summary = str(data.get("risk_summary", ""))
+        
+        # Circuit breaker: only kill on objective brick-wall risks.
+        # Count how many checks produced a real verdict (supported or refuted).
+        decided_checks = sum(1 for c in checks if c.verdict.value in ("supported", "refuted"))
+        
+        decisive = False
+        if critical_regulatory or impossible_economics:
+            # Objective, verifiable kill conditions.
+            decisive = True
+        # If 4+ checks are supported and no legal blocker, survive regardless.
+        # "Competitors exist" does not override 4+ supported factual pillars.
+        
         if decisive and not citations:
-            logger.info("Adversarial claimed decisive with no citations; "
-                        "downgrading to non-decisive (source-or-die).")
+            logger.info("Adversarial claimed decisive with no citations; downgrading")
             decisive = False
 
-        # Continuous decisiveness score [0..1]
-        # Decisive kill with many citations -> high confidence (1.0)
-        # Decisive but few citations -> medium confidence (0.7)
-        # Not decisive -> low confidence (0.2)
-        if decisive:
-            conf = min(1.0, 0.7 + (len(citations) * 0.1))
-        else:
-            conf = 0.2
+        conf = 0.8 if (critical_regulatory or impossible_economics) else 0.2
+        if incumbent_monopoly:
+            conf = 0.5
             
         return AdversarialResult(
-            kill_case=str(data.get("kill_case", "")),
+            kill_case=risk_summary or str(data.get("kill_case", "")),
             decisive=decisive,
             confidence=conf,
             citations=citations,
@@ -482,9 +578,37 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
         run_order = gated + [c for c in DEFAULT_CHECKS if c not in gated]
     
     first_failing_gate = None
-    
+
+    # BATCHED LLM query-gen: ONE call decomposes the idea into real-world search queries
+    # for the whole run set, replacing the product-restating deterministic templates.
+    #
+    # RELIABILITY BACKSTOP (2026-06-28): the fast tier (query_op = deepseek→minimax) was
+    # timing out for ~2 weeks ("MiniMax read operation timed out → all brains exhausted").
+    # When it failed, precomputed_queries stayed empty and EVERY check silently fell back to
+    # _templated_queries — word-salad like "postcode-level data flags properties whose VOA
+    # durable moat barrier defensibility" — which retrieves junk → ~90% unverifiable → 100%
+    # KILL. PROVEN ROOT CAUSE of the zero-yield: a silent soft-fail that ran for days while
+    # looking healthy. Fix: any check the fast tier didn't answer is re-generated on the
+    # reliable brain `op` BEFORE it can degrade to a template. A search string is NOT a
+    # verdict, so using `op` for query-gen does not touch the moat (verdicts still come from
+    # `op` reading retrieved passages). The garbage template now fires only if BOTH brains
+    # are down — and run_check audits that case so the batch alerts instead of blind-killing.
+    precomputed_queries: dict[str, list[str]] = {}
+    if getattr(cfg.retrieval, "llm_query_gen", False):
+        if query_op is not None:
+            precomputed_queries = gen_queries_batched(
+                query_op, cand, run_order, n=cfg.retrieval.queries_per_check)
+        missing = [c for c in run_order if c not in precomputed_queries]
+        if missing and op is not None:
+            logger.warning(
+                "Fast-tier query-gen missed %d/%d checks (%s); recovering on reliable brain "
+                "to avoid template fallback", len(missing), len(run_order), ",".join(missing))
+            precomputed_queries.update(
+                gen_queries_batched(op, cand, missing, n=cfg.retrieval.queries_per_check))
+
     for name in run_order:
-        res = run_check(op, search, cfg, cand, name, query_op=query_op)
+        res = run_check(op, search, cfg, cand, name, query_op=query_op,
+                        precomputed_queries=precomputed_queries)
         checks.append(res)
         if on_check:
             on_check(res)

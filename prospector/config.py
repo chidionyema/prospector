@@ -28,30 +28,40 @@ class Retrieval:
     # templates instead (cheap decisive gates that kill most candidates).
     template_checks: list[str] = field(default_factory=list)
     fast_queries: int = 1  # query count used for template_checks
+    # BATCHED LLM query-gen (fast/non-critical tier). When True, verify() makes ONE
+    # query_op call per candidate that decomposes the idea into real-world domain
+    # queries for ALL checks at once (prompts/query_gen_batched.md), overriding the
+    # deterministic templates. Proven necessary: deterministic _keywords restates the
+    # product pitch ("productized transforms tenant answers adversarial") so search
+    # returns off-topic junk (dictionary entries, whatsapp.com, diy.com) → ~93%
+    # unverifiable at batch scale. Query-gen is non-critical (a search string, not a
+    # verdict) so it runs on the deepseek→minimax fast chain — the moat verdict brain is
+    # untouched. Graceful: if the batch call fails or omits a check, that check falls
+    # back to the deterministic template (no hard-fail when the fast chain is down).
+    llm_query_gen: bool = False
     # Model for the web-SEARCH/grounding step (distinct from the verdict `model`).
     # flash-lite returns 0 sources for many queries (poor grounding recall); the
-    # mid-tier `gemini-2.5-flash` recalls far better and is still fast. Empty =>
+    # mid-tier model recalls far better and is still fast. Empty =>
     # fall back to model_fast/model. Verdict ruling still uses `model` (can stay -lite).
     search_model: str = ""
-    # Web-grounding fail-fast budget. The free gemini web-search tool throttles after a
+    # Web-grounding fail-fast budget. The free web-search tiers throttle after a
     # burst and then internally backs off for ~hours, which presents as a 240s hang. A
     # short timeout + few retries makes a throttled search GIVE UP quickly so the candidate
     # DEFERS (re-vet later) instead of blocking the whole run. Verdict calls (no web) are
-    # unaffected — they use run_gemini_cli's normal timeout.
+    # unaffected — they use the CLI's normal timeout.
     search_timeout: int = 75            # base seconds per grounding web-search call (attempt 0)
     search_timeout_max: int = 150       # adaptive ceiling: timeout escalates per retry up to this
     search_timeout_escalation: float = 1.5  # multiply the timeout each retry (slow≠dead: give it room)
     search_retries: int = 1             # in-place retries before failing over to the next provider
-    claude_min_timeout: int = 120       # claude grounding floor (its search is slower than gemini's)
+    claude_min_timeout: int = 120       # claude grounding floor
     # Bounded work queue: a grounding call waits at most this long for a free provider
     # slot before giving up and failing over. Without this the semaphore wait was
     # UNBOUNDED and sat OUTSIDE the timeout, so a saturated provider could block a vet
     # indefinitely. Caps total latency at queue_timeout + search_timeout.
     queue_timeout: int = 45             # seconds to wait for a concurrency slot before failover
     # Physical load governors (decouple logical candidate concurrency from heavy CLI
-    # subprocess load). Config is the single source of truth; PROSPECTOR_{GEMINI,CLAUDE}_
+    # subprocess load). Config is the single source of truth; PROSPECTOR_CLAUDE_
     # CONCURRENCY / PROSPECTOR_VET_WORKERS env vars still override for ops.
-    gemini_concurrency: int = 2         # max concurrent gemini CLI subprocesses
     claude_concurrency: int = 2         # max concurrent claude CLI subprocesses
     vet_workers: int = 3                # candidates vetted in parallel; align to grounding slots
     # Circuit breaker (failover resilience). A provider is retired only after this many
@@ -73,7 +83,25 @@ class Thresholds:
     # above 0 from a guess; the mock/fixture confidence scale (~0.4 flat) is not the live
     # scale. See docs/PIPELINE_REVIEW_2026-06-18.md (P0-2).
     confidence_floor: float = 0.0
+    # min_supported_confidence: PASS-SIDE floor (dossier source-or-die only). A SUPPORTED
+    # check counts as grounded toward a PASS only when its confidence clears this floor.
+    # Decoupled from confidence_floor (kill-side) so tightening passes never loosens kills.
+    # Calibrated 2026-06-25 to 0.3 against the live supported-confidence distribution
+    # (median 0.43); 0.0 default keeps it inert for callers that don't set it.
+    min_supported_confidence: float = 0.0
     min_composite_to_pass: float = 3.2
+    min_supported_to_pass: int = 1  # source-or-die: min grounded-supported checks for PASS
+    # Lane-aware publish gate (source-or-die at the PASS boundary). The check(s) whose grounded
+    # SUPPORTED verdict is REQUIRED before a candidate may publish in this lane; at least one
+    # listed check must be grounded-supported. Default = the venture moat
+    # (value_durability/incumbency). Lanes that DELIBERATELY disable the moat checks
+    # (side_hustle, smb — see config.yaml lane notes) MUST override this to their own headline
+    # evidence (e.g. payer_solvency), otherwise the gate demands checks the lane never runs and
+    # NO candidate can ever PASS. PROVEN 2026-06-28: Martyn's Law cleared composite (2.95) but
+    # was KILLed on `moat_ungrounded` because the smb lane runs neither value_durability nor
+    # incumbency — making the entire smb/side_hustle PASS path structurally unreachable.
+    moat_critical_checks: list[str] = field(
+        default_factory=lambda: ["value_durability", "incumbency"])
 
 
 @dataclass
@@ -102,11 +130,10 @@ class ModelDefaults:
     """
     # Operator defaults (one per provider kind, plus a `_fast` split for the
     # cheap/structured variant where it exists).
-    gemini: str = "gemini-2.0-flash"
     claude: str = "claude-opus-4-8"
     deepseek: str = "deepseek-chat"
     minimax: str = "MiniMax-M3"        # full reasoning model
-    minimax_fast: str = "MiniMax-M2.7"  # cheap/structured
+    minimax_fast: str = "MiniMax-M3"  # also M3 per standing order
     ollama: str = "qwen2.5-coder:7b"
     # Search provider defaults (the LLM that decomposes queries for the
     # function-calling search providers). One per search provider.
@@ -133,7 +160,6 @@ class Pricing:
     `telemetry.PRICING` are the defaults; `config.yaml`'s `pricing` block
     overrides them.
     """
-    gemini: PriceTier = field(default_factory=lambda: PriceTier(0.10, 0.40))
     claude: PriceTier = field(default_factory=lambda: PriceTier(3.00, 15.00))
     deepseek: PriceTier = field(default_factory=lambda: PriceTier(0.27, 1.10))
     minimax: PriceTier = field(default_factory=lambda: PriceTier(0.30, 0.30))
@@ -151,9 +177,9 @@ class Config:
     model_fast: str = ""
     model_version_tag: str = ""
     # Quality chain for the customer-facing £49 deliverable (prose artifacts + listing_page).
-    # CLI-based, in-subscription operators (Gemini CLI primary -> Claude CLI failover) so the
+    # CLI-based, in-subscription operators (AGY CLI primary -> Claude CLI failover) so the
     # product's own copy isn't generated by the cheap non-critical tail. Empty => the moat op.
-    artifact_operator: "str | list[str]" = field(default_factory=lambda: ["gemini_cli", "claude_cli"])
+    artifact_operator: "str | list[str]" = field(default_factory=lambda: ["claude_cli"])
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
     # hard_gates: list of single-key dicts, preserves kill-fast order
@@ -309,7 +335,6 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
     # (nested under `search:`). The shape mirrors ModelDefaults exactly.
     search = raw_md.get("search") or {}
     return ModelDefaults(
-        gemini=raw_md.get("gemini", "gemini-2.0-flash"),
         claude=raw_md.get("claude", "claude-opus-4-8"),
         deepseek=raw_md.get("deepseek", "deepseek-chat"),
         minimax=raw_md.get("minimax", "MiniMax-M3"),
@@ -334,7 +359,6 @@ def _parse_pricing(raw_pr: dict | None) -> Pricing:
             output=float(d.get("output", default.output)),
         )
     return Pricing(
-        gemini=_tier(raw_pr.get("gemini"), Pricing().gemini),
         claude=_tier(raw_pr.get("claude"), Pricing().claude),
         deepseek=_tier(raw_pr.get("deepseek"), Pricing().deepseek),
         minimax=_tier(raw_pr.get("minimax"), Pricing().minimax),
@@ -351,7 +375,7 @@ def load_config(path: str | Path | None = None) -> Config:
         model=raw.get("model", ""),
         model_fast=raw.get("model_fast", ""),
         model_version_tag=raw.get("model_version_tag", ""),
-        artifact_operator=raw.get("artifact_operator") or ["gemini_cli", "claude_cli"],
+        artifact_operator=raw.get("artifact_operator") or ["claude_cli"],
         retrieval=Retrieval(**(raw.get("retrieval") or {})),
         thresholds=Thresholds(**(raw.get("thresholds") or {})),
         hard_gates=raw.get("hard_gates") or [],
