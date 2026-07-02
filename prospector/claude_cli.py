@@ -1,5 +1,5 @@
 """Claude CLI adapters — use the locally-installed `claude` CLI (Claude Code) on
-its subscription, no API key. The failover twin of gemini_cli: when Gemini's
+its subscription, no API key.
 free web-search quota is spent, grounding and/or the verdict brain fall over to
 Claude here, staying entirely within the Claude Code subscription (no hosted
 API-key calls — Prospector's operating rule).
@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 import threading
 import time
 from typing import Optional
@@ -28,7 +30,18 @@ from .telemetry import logger, record_usage, track_latency
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Cap concurrent heavy CLI subprocesses (mirrors gemini_cli's governor).
+# The headless `claude -p` CLI is a completion endpoint for us, NOT an agent working on this
+# repo. Run inside REPO_ROOT it loads the project CLAUDE.md (all about the daemon being broken /
+# relaunching) and goes META on generation ("this is a system-level generation prompt … relaunch,
+# then …") instead of emitting candidate JSON — PROVEN 2026-07-02: same real prompt yields 0 from
+# REPO_ROOT but 3/3 clean candidates from a neutral cwd. It also keeps the daemon's operating rules
+# out of VERDICT calls (verdict-from-retrieval-only). Use a stable empty dir OUTSIDE the repo tree
+# so Claude Code's upward CLAUDE.md walk finds nothing project-specific (~/.claude global still
+# loads — generic, harmless). auth lives in ~/.claude and is cwd-independent.
+_NEUTRAL_CWD = os.path.join(tempfile.gettempdir(), "prospector_cli_cwd")
+os.makedirs(_NEUTRAL_CWD, exist_ok=True)
+
+# Cap concurrent heavy CLI subprocesses.
 _MAX_CLI = max(1, int(os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY", "2") or "2"))
 _CLI_SEM = threading.Semaphore(_MAX_CLI)
 _SEM_LOCK = threading.Lock()
@@ -51,7 +64,7 @@ def configure_concurrency(n: int) -> None:
 
 def _record_claude_usage(data: dict, web: bool) -> None:
     """Log token usage + the CLI's real total_cost_usd against the current phase,
-    mirroring gemini_cli so `report --costs` accounts for Claude calls too."""
+    so `report --costs` accounts for Claude calls too."""
     u = (data or {}).get("usage") or {}
     inp = int(u.get("input_tokens", 0) or 0)
     out = int(u.get("output_tokens", 0) or 0)
@@ -74,11 +87,28 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
     if not _CLI_SEM.acquire(timeout=queue_timeout):
         raise RuntimeError(
             f"claude cli slot acquire timed out after {queue_timeout}s (grounding queue saturated)")
+    # The headless `claude -p` CLI must authenticate via the Claude Code SUBSCRIPTION (OAuth),
+    # not a metered API key. We load ANTHROPIC_API_KEY from .env for the HTTP brains, but if it
+    # is present in the env the CLI PREFERS it and bills it — and an unfunded key returns
+    # api_error 400 "Credit balance is too low" (exit 1), silently killing the trusted moat.
+    # Strip the API-key vars from the child env so the CLI falls back to the subscription seat
+    # (matches CLAUDE.md: "the entire engine runs within your Claude Code subscription").
+    child_env = {k: v for k, v in os.environ.items()
+                 if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
+    # UNIQUE cwd per invocation. Claude Code derives its per-project session slug from the cwd
+    # PATH, so concurrent `claude -p` processes in a SHARED dir clobber each other's session
+    # state and degrade to non-JSON meta output. PROVEN 2026-07-02: parallel generation
+    # (concurrency=2) → 0/3 candidates, but serialized (concurrency=1) → 2/3. A private temp dir
+    # per call gives each process a distinct slug, so parallel generation no longer collides.
+    # Dir lives under _NEUTRAL_CWD (outside the repo) so no project CLAUDE.md is picked up.
+    call_cwd = tempfile.mkdtemp(prefix="c_", dir=_NEUTRAL_CWD)
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True,
-                              cwd=REPO_ROOT, timeout=timeout, stdin=subprocess.DEVNULL)
+                              cwd=call_cwd, timeout=timeout, stdin=subprocess.DEVNULL,
+                              env=child_env)
     finally:
         _CLI_SEM.release()
+        shutil.rmtree(call_cwd, ignore_errors=True)
     if proc.returncode != 0:
         raise RuntimeError(f"claude cli exit {proc.returncode}: {proc.stderr[-300:]}")
     try:

@@ -72,8 +72,8 @@ GOLDEN_EXPECTATIONS = {
 
 def _make_golden_router():
     def router(system: str, user: str) -> Any:
-        # 1. Query generation
-        if "queries most likely" in system or "Write 1-3 queries" in user:
+        # 1. Query generation (balanced: confirmation + refutation per spec/balanced-query-gen.md)
+        if "confirmation query" in system.lower() or "Write exactly 2 queries" in user:
             for idea in GOLDEN_EXPECTATIONS:
                 if idea.lower() in user.lower():
                     return [idea]

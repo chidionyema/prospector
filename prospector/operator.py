@@ -175,7 +175,11 @@ class ClaudeOperator(Operator):
 
 
 class GeminiOperator(Operator):
+    """DEPRECATED — replaced by AgyCliOperator. Google API brain via google-genai SDK.
+    Kept for reference; not wired in the operator factory."""
     def __init__(self, model: str = "gemini-2.0-flash", api_key: Optional[str] = None):
+        import warnings
+        warnings.warn("GeminiOperator is DEPRECATED — use AgyCliOperator instead", DeprecationWarning, stacklevel=2)
         from google import genai
         key = api_key or os.environ.get("GEMINI_API_KEY")
         if not key:
@@ -221,6 +225,38 @@ class GeminiOperator(Operator):
             from .telemetry import logger
             logger.warning(f"Gemini embedding failed: {e}")
             return []
+
+
+def _urlopen_read_bounded(req, *, timeout: float, total_deadline: float) -> bytes:
+    """urlopen + full-body read bounded by a HARD total deadline.
+
+    urllib's `timeout` is a PER-RECV socket timeout only: a server that trickles the response body
+    resets it on every chunk, so `resp.read()` can block forever — this hung the daemon 34+ min on
+    2026-07-01 (MiniMax TLS read wedged; per-recv 240s never fired). The body is read in a helper
+    thread; if `total_deadline` is exceeded the socket is closed to break the wedged read so no
+    thread or fd leaks, and TimeoutError propagates so the fallback chain moves to the next tier.
+    """
+    resp = urllib.request.urlopen(req, timeout=timeout)
+    box: dict = {}
+
+    def _read():
+        try:
+            box["data"] = resp.read()
+        except BaseException as e:  # noqa: BLE001 — surfaced to the caller below
+            box["err"] = e
+
+    t = threading.Thread(target=_read, daemon=True)
+    t.start()
+    t.join(total_deadline)
+    if t.is_alive():
+        try:
+            resp.close()  # break the wedged socket so the reader thread unblocks (no fd leak)
+        except Exception:
+            pass
+        raise TimeoutError(f"response body read exceeded {total_deadline:.0f}s hard deadline")
+    if "err" in box:
+        raise box["err"]
+    return box["data"]
 
 
 class MiniMaxOperator(Operator):
@@ -285,8 +321,13 @@ class MiniMaxOperator(Operator):
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "temperature": temperature,
-            "max_tokens": 32768,  # Increased for reasoning models (M3)
+            # 32768 is REQUIRED, not generous: M3 emits its reasoning in <think>…</think> BEFORE
+            # the JSON, and generation reasoning runs 16k–28k tokens (measured 2026-07-02). A cap
+            # of 16000 truncated the response mid-<think> — 0 JSON, 0 candidates, and the claude_cli
+            # backstop can't catch it (a truncated body is an HTTP success that fails PARSING, which
+            # retries MiniMax rather than failing over). So we keep the full budget and let the rare
+            # runaway call hit the 240s timeout → THAT exception does fail over to claude_cli.
+            "max_tokens": 32768,
         }
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
@@ -299,8 +340,14 @@ class MiniMaxOperator(Operator):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            # MiniMax M3 completions routinely take 75-115s (measured 2026-07-01: 75.7s and 113.4s
+            # succeeded; calls cut at the old 120s cap failed with "read operation timed out",
+            # zeroing whole generation batches when it was the only live brain). 240s gives the
+            # slow-but-alive path headroom so a slow response is not misread as a dead provider.
+            # timeout=240 is per-recv; total_deadline is the HARD ceiling that a trickled body
+            # cannot defeat (see _urlopen_read_bounded). Beyond it the chain fails over to Ollama.
+            raw = _urlopen_read_bounded(req, timeout=240, total_deadline=300)
+            data = json.loads(raw.decode("utf-8"))
         except Exception as e:
             from .errors import ProviderExhaustedError
             if "quota" in str(e).lower() or "limit" in str(e).lower():
@@ -807,10 +854,12 @@ class MockOperator(Operator):
 
 # The TRUSTED moat brains. A verdict/adversarial ruling served by ANY brain outside
 # this set (i.e. the cheap emergency tail — deepseek, minimax) is `provisional`: it
-# keeps throughput up during a Claude+Gemini quota outage but does not publish on PASS
+# keeps throughput up during a moat quota outage but does not publish on PASS
 # and is auto re-vetted by the moat on the next `vet --resume`. Single source of truth
 # for "is this ruling trustworthy as final" — used by verify.py.
-MOAT_PRIMARY: frozenset[str] = frozenset({"gemini_cli", "claude_cli", "gemini", "claude"})
+# deepseek REMOVED 2026-07-02 (founder no-deepseek directive + operating rule: DeepSeek/
+# MiniMax never touch verification verdicts as trusted-final — non-critical chains only).
+MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli", "claude"})
 
 
 def is_provisional_provider(name: str) -> bool:
@@ -857,7 +906,7 @@ class FallbackOperator(Operator):
 
     def last_served(self) -> str:
         """Tier-name of the brain that served this thread's most recent successful call
-        (e.g. 'gemini_cli', 'deepseek'), or '' if none has yet."""
+        (e.g. 'agy_cli', 'deepseek'), or '' if none has yet."""
         return getattr(self._served, "name", "")
 
     def served_is_provisional(self) -> bool:
@@ -906,8 +955,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     # prescreen); falls back to the main model when model_fast is unset.
     #
     # CRITICAL: cfg.model / cfg.model_fast are provider-specific pins.
-    # They must NOT leak to other providers (e.g. a "gemini-2.5-flash" pin
-    # sent to DeepSeek causes HTTP 400). Only apply cfg.model/model_fast
+    # They must NOT leak to other providers. Only apply cfg.model/model_fast
     # when they match the provider being built — determined by the model
     # name prefix or the config's implicit primary operator.
     # An empty string is treated as "unset" — the operator's own config
@@ -918,10 +966,8 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
 
     # Determine if cfg.model/model_fast was set FOR this provider.
     # Heuristic: a model name starting with the provider name or its aliases
-    # (e.g. "gemini-*", "deepseek-*", "claude-*") belongs to that provider.
+    # (e.g. "claude-*", "deepseek-*", "minimax-*") belongs to that provider.
     _PROVIDER_MODEL_PREFIX = {
-        "gemini": ("gemini-",),
-        "gemini_cli": ("gemini-",),
         "claude": ("claude-",),
         "claude_cli": ("claude-",),
         "deepseek": ("deepseek-",),
@@ -932,23 +978,10 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
     model = cfg_model if model_matches else None
     has_cfg_model = model_matches
-    if kind == "gemini_cli":
-        from .gemini_cli import GeminiCliOperator
-        return GeminiCliOperator(model=model)
     if kind == "claude_cli":
-        # model/model_fast are Gemini-specific pins; don't leak them to the claude
-        # CLI — let it use its own configured default.
+        # cfg.model is an API pin; don't leak it to the claude CLI.
         from .claude_cli import ClaudeCliOperator
         return ClaudeCliOperator(model=None)
-    if kind == "gemini":
-        try:
-            if has_cfg_model:
-                return GeminiOperator(model=model)
-            return GeminiOperator(
-                model=md.gemini if md else "gemini-2.0-flash"
-            )
-        except ModuleNotFoundError as e:
-            raise RuntimeError("GEMINI_API_KEY not set or google-genai not installed") from e
     if kind == "claude":
         try:
             if has_cfg_model:
@@ -986,7 +1019,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             default_model=md.ollama if md else None,
         )
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected gemini_cli|gemini|claude|minimax|deepseek|ollama|mock)")
+                     "(expected agy_cli|claude|minimax|deepseek|ollama|mock)")
 
 
 def make_operator(cfg, fast: bool = False) -> Operator:

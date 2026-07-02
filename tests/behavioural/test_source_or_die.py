@@ -176,7 +176,7 @@ def test_adversarial_decisive_with_citations_kept(cand):
     """decisive=True WITH citations is grounded -> stays decisive."""
     cfg = load_config()
     op = MockOperator(router=lambda s, u: {
-        "kill_case": "Statute X bans it", "decisive": True,
+        "critical_regulatory_blocker": True, "impossible_unit_economics": False, "incumbent_monopoly": False, "risk_summary": "Statute X bans it",
         "citations": [REAL_SOURCE.source_id],
     })
     result = adversarial(op, cfg, cand, checks=[])

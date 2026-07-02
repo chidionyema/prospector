@@ -33,7 +33,6 @@ def _anthropic_works() -> bool:
 # Each (kind, default_env_var) pair needs its API key set for the operator
 # to construct. We use patch.dict to set the env var at test time.
 PROVIDERS = [
-    ("gemini", "GEMINI_API_KEY"),
     pytest.param("claude", "ANTHROPIC_API_KEY",
                  marks=pytest.mark.skipif(
                      not _anthropic_works(),
@@ -43,7 +42,7 @@ PROVIDERS = [
 ]
 
 
-PROVIDER_PREFIXES = {"gemini": "gemini-", "claude": "claude-", "deepseek": "deepseek-", "minimax": "minimax-"}
+PROVIDER_PREFIXES = {"claude": "claude-", "deepseek": "deepseek-", "minimax": "minimax-"}
 
 def _make_cfg(model: str, model_fast: str, kind: str):
     cfg = MagicMock()
@@ -52,7 +51,6 @@ def _make_cfg(model: str, model_fast: str, kind: str):
     cfg.operator = kind
     cfg.retrieval = MagicMock()
     cfg.model_defaults = MagicMock()
-    cfg.model_defaults.gemini = "gemini-2.0-flash"
     cfg.model_defaults.claude = "claude-sonnet-4-5"
     return cfg
 

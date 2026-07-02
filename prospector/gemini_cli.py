@@ -1,4 +1,6 @@
-"""Gemini CLI adapters — use the locally-installed `gemini` CLI on its free OAuth
+"""DEPRECATED — replaced by prospector/agy_cli.py.
+
+Gemini CLI adapters — use the locally-installed `gemini` CLI on its free OAuth
 quota (Code Assist), sidestepping the API key whose project has free-tier quota = 0.
 
 Provides BOTH:

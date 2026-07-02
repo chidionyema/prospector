@@ -136,4 +136,4 @@ def test_candidate_reclassified_is_vetted_against_its_classified_lane():
     gates = vet_cfg.gate_map()
     assert "buyer_intent" in gates
     assert "value_durability" not in gates
-    assert vet_cfg.thresholds.min_composite_to_pass == 2.0
+    assert vet_cfg.thresholds.min_composite_to_pass == 2.5

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from prospector.errors import ProviderExhaustedError, looks_exhausted
+from prospector.errors import GroundingInfrastructureError, ProviderExhaustedError, looks_exhausted
 from prospector.models import Source
 from prospector.operator import FallbackOperator, Operator
 from prospector.retrieval import FallbackSearchProvider, SearchProvider
@@ -93,7 +93,7 @@ def test_grounding_all_exhausted_raises():
         ("a", _Search(ProviderExhaustedError("out"))),
         ("b", _Search(RuntimeError("timeout"))),
     ])
-    with pytest.raises(ProviderExhaustedError):
+    with pytest.raises(GroundingInfrastructureError):
         fb.search("q")
 
 

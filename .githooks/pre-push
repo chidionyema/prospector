@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Local mirror of the CI "guard" job: catch silent deletion of protected files BEFORE you push,
+# instead of finding out when the PR goes red.
+#
+# Opt in (one time, per clone):
+#     git config core.hooksPath .githooks
+#
+# It compares your branch against origin/main and blocks the push if a protected path (see
+# .protected-paths) is being deleted without a `Removes:` trailer in a commit message.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+base="origin/main"
+git rev-parse --verify --quiet "$base" >/dev/null || { echo "guard: no $base to compare against; skipping."; exit 0; }
+
+if ! python3 scripts/guard_protected_deletions.py "$base"; then
+  echo ""
+  echo "pre-push blocked by protected-deletion guard. See message above."
+  exit 1
+fi

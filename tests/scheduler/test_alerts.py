@@ -43,6 +43,33 @@ def test_healthy_tick_no_alert():
     assert alerts.alerts_for_tick(tick) == []
 
 
+def test_all_deferred_is_critical_moat_outage():
+    # Every candidate deferred => moat (Claude AND Gemini) down. Must be a distinct CRITICAL
+    # outage alert, NOT mislabeled as a calibration "zero yield".
+    tick = {"allowed": True, "dry_run": False, "error": None,
+            "result": {"dossiers": 4, "passes": 0, "defers": 4}}
+    specs = alerts.alerts_for_tick(tick)
+    assert specs and specs[0]["key"] == "moat_deferred"
+    assert specs[0]["severity"] == alerts.CRITICAL
+
+
+def test_partial_defers_zero_yield_is_defer_aware():
+    # Some deferred, some vetted-and-killed => still zero_yield, but the title says deferral so
+    # the founder isn't pointed only at "calibration".
+    tick = {"allowed": True, "dry_run": False, "error": None,
+            "result": {"dossiers": 5, "passes": 0, "defers": 2}}
+    specs = alerts.alerts_for_tick(tick)
+    assert specs and specs[0]["key"] == "zero_yield"
+    assert "deferred" in specs[0]["title"]
+
+
+def test_missing_defers_field_is_safe():
+    # Old ticks (pre-defers telemetry) must still classify as plain zero_yield, never crash.
+    tick = {"allowed": True, "dry_run": False, "error": None, "result": {"dossiers": 5, "passes": 0}}
+    specs = alerts.alerts_for_tick(tick)
+    assert specs and specs[0]["key"] == "zero_yield"
+
+
 def test_guarded_or_dry_run_never_alerts():
     assert alerts.alerts_for_tick({"allowed": False, "reason": "paused"}) == []
     assert alerts.alerts_for_tick({"allowed": True, "dry_run": True, "result": None}) == []

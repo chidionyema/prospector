@@ -31,7 +31,7 @@ from .retrieval import SearchProvider, make_provider
 from .run import vet_candidate
 
 OPERATOR_CHOICES = [
-    "gemini_cli", "gemini", "claude",
+    "claude",
     "minimax", "deepseek", "mock",
 ]
 

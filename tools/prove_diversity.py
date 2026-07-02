@@ -121,11 +121,13 @@ def d3_cross_run_memory_live(cfg) -> None:
 
 
 def _build_gen_op(cfg):
-    """Replicate run.py's non-critical generation chain (deepseek -> minimax -> gemini)."""
+    """Replicate run.py's non-critical generation chain (same _NONCRITICAL_ORDER, so this
+    proof exercises the chain production actually runs, not a stale copy)."""
     from prospector.operator import _build_operator, FallbackOperator
     from prospector.health import get_noncritical_health
+    from prospector.run import _NONCRITICAL_ORDER
     tiers = []
-    for kind in ("deepseek", "minimax", "gemini"):
+    for kind in _NONCRITICAL_ORDER:
         try:
             tiers.append((kind, _build_operator(kind, cfg, fast=True)))
         except RuntimeError:

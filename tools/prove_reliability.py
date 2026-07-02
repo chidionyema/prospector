@@ -151,6 +151,25 @@ def r5_watchdog_catches_death() -> None:
         record("R5 watchdog catches death", ok, detail)
 
 
+def r6_moat_outage_alert() -> None:
+    """A batch where EVERY candidate deferred (moat down) must fire a CRITICAL outage alert
+    through the real sinks — distinct from a calibration zero-yield, so a moat failure is
+    unmistakable and immediate."""
+    with tempfile.TemporaryDirectory() as td:
+        cfg = types.SimpleNamespace(store_dir=td)
+        tick = {"allowed": True, "dry_run": False, "error": None,
+                "result": {"dossiers": 4, "passes": 0, "defers": 4},
+                "ts": "2026-06-21T00:00:00+00:00"}
+        rs._emit_tick_alerts(cfg, tick)
+        jsonl = Path(td) / "scheduler" / "alerts.jsonl"
+        body = jsonl.read_text() if jsonl.exists() else ""
+        ok = "moat_deferred" in body and "critical" in body.lower()
+        detail = ("all-deferred batch -> CRITICAL moat_deferred alert in real sinks"
+                  if ok else f"moat outage NOT alerted as critical (body has moat_deferred="
+                             f"{'moat_deferred' in body})")
+        record("R6 moat-outage alert", ok, detail)
+
+
 def _make_exa_poisoner():
     """Return a fn that replaces exa_py.Exa with one whose .search raises (no real network)."""
     import exa_py
@@ -180,6 +199,7 @@ def main() -> int:
     r3_outage_defers(cfg)
     r4_alert_path_live()
     r5_watchdog_catches_death()
+    r6_moat_outage_alert()
 
     print()
     passed = sum(1 for _, ok, _ in _RESULTS if ok)

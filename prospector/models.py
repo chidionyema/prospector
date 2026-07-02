@@ -168,7 +168,7 @@ class CheckResult:
     retrieval_failed: bool = False  # ALL searches for this check errored (infra/outage),
                                     # distinct from "searched and found nothing" — must
                                     # NEVER trip a kill gate; the candidate defers instead.
-    # Which operator actually ran this check (e.g. "gemini/2.5-flash-lite" or
+    # Which operator actually ran this check (e.g. "claude-cli/default" or
     # "minimax/MiniMax-M3").  Records the concrete model version used so the audit
     # trail shows exactly which brain ruled, not just the class name.
     provider: str = ""
@@ -232,7 +232,7 @@ class Dossier:
     score: Optional[ScoreResult] = None
     model_version: str = ""
     # The concrete operator chain that ran the moat for this dossier.
-    # Format: "claude/claude-opus → gemini/2.5-flash" or "minimax/MiniMax-M3".
+    # Format: "claude/claude-opus → claude-cli/default" or "minimax/MiniMax-M3".
     # Persisted so the audit trail shows exactly which brains were used, including
     # any failover steps when the primary moat was exhausted mid-run.
     provider_chain: str = ""

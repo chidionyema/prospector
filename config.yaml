@@ -10,13 +10,17 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [deepseek, claude_cli, minimax]   # deepseek FIRST — promoted to TRUSTED moat (verdicts
-                                 # publish on PASS). claude_cli second (free, on Claude Code
-                                 # SUBSCRIPTION). minimax is the guardrailed emergency tail
+operator: [claude_cli, minimax]  # claude_cli FIRST — TRUSTED moat brain (free, on Claude Code
+                                 # SUBSCRIPTION; verdicts publish on PASS). DeepSeek REMOVED
+                                 # 2026-07-01: its account hit HTTP 402 (billing exhausted) and
+                                 # zeroed generation + verdicts; founder decision is to prove
+                                 # reliability on infra we own (subscription + local) before
+                                 # spending again. minimax is the guardrailed emergency tail
                                  # (provisional, never publishes).
-                                 # Single string still works: `operator: deepseek`.
-model: ""                            # verdict brain model (deepseek uses model_defaults).
-model_fast: "deepseek-v4-flash"  # cheap model for query-gen/prescreen
+                                 # Single string still works: `operator: claude_cli`.
+model: ""                            # verdict brain model (claude_cli uses its own default).
+model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
+                                 # own fast default (model_defaults.fast). Was deepseek-v4-flash.
 model_version_tag: ""            # filled at runtime for audit
 
 # Quality chain for the customer-facing £49 deliverable (build_spec / gtm_plan / ops_plan
@@ -41,16 +45,21 @@ model_defaults:
     minimax:     "MiniMax-M3"
 
 retrieval:
-  # Full resilience grounding chain — working providers first:
-  #   1. exa            — real web search via Exa API (1,000-20,000/mo free; needs EXA_API_KEY)
-  #   2. brave          — real web search via Brave API (2,000/mo free; needs BRAVE_API_KEY)
-  #   3. claude_cli     — real web search via Claude CLI (credit-based; claude-3-5-sonnet)
+  # Grounding chain — infra-controlled, no-top-up providers (verified live 2026-07-02):
+  #   1. ddg         — DuckDuckGo real web search, FREE, no API key (needs `pip install ddgs`).
+  #                    Fast primary; may intermittently rate-limit at batch scale → falls to (2).
+  #   2. claude_cli  — real web search via the Claude Code SUBSCRIPTION (no key, no credits).
+  #                    PROVEN reliable 2026-07-02 (returned gov.uk sources). Guaranteed-available
+  #                    backstop: does not depend on ddgs being importable in the daemon env.
   #
-  # NOTE: deepseek/minimax_search/openrouter were REMOVED — they are LLM-synthesis
-  # providers, NOT real search engines. Without a Brave API key they return hallucinated
-  # URLs that _resolve() drops, causing every check to return "unverifiable".
-  # Options: exa | brave | claude_cli | fixture
-  provider: [searxng, ddg]
+  # DEAD on this machine (do NOT reintroduce without restoring the dependency):
+  #   exa    → 402 NO_MORE_CREDITS (out of credits 2026-07-02)
+  #   brave  → no BRAVE_API_KEY
+  #   searxng→ not running (localhost:8888 refused)
+  # deepseek/minimax_search/openrouter are LLM-synthesis, NOT real search — they hallucinate
+  # URLs that _resolve() drops → every check "unverifiable". Never use them for grounding.
+  # Options: ddg | claude_cli | exa | brave | searxng | fixture
+  provider: [ddg, claude_cli]
   queries_per_check: 2              # LLM query-gen: 2 distinct queries per check for grounding depth
   results_per_query: 3             # 3 sources per query (~6 passages/check) so checks can reach 'supported'
   max_passage_chars: 1500
@@ -366,7 +375,17 @@ generation:
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
   max_rounds: 6         # max batching rounds to hit the requested candidate count
   operator_archetype: solo_agent
-  refinement_enabled: true # ML Improvement: enable the cynical analyst critique pass
+  # DISABLED 2026-07-02 — PROVEN zero-yield root cause. The "cynical analyst" refine pass
+  # (prompts/refine_system.md) is an UNGROUNDED opinion-KILL at generation time: it violates
+  # two operating rules — "Nothing is killed at generation time; all gates are downstream" and
+  # "A KILL is grounded in evidence, not the model's opinion." Worse, it silently DROPPED all
+  # survivors: it re-mapped refined items to originals by EXACT title, but refinement rewords
+  # titles → no match → candidate lost; and a dict-wrapped response ({"...":[...]}) fell to `[]`,
+  # wiping the whole wave. PROVEN: k=1 sometimes survived, k=3 → 0/3 (8 claude calls, forms=0).
+  # The same kill-list criteria (middleman wrapper / first-party proxy / commodity core) are
+  # applied GROUNDED downstream by prescreen + verify + kill_filter. _refine_wave is now also
+  # hardened to be non-lossy (defense-in-depth) if ever re-enabled.
+  refinement_enabled: false
   # ORTHOGONALITY AXIS (Part 3 redesign). Generation mode-collapsed: the ONLY diversity
   # axis was the creativity LENS, which varies the ANGLE of attack but not the BUSINESS
   # FORM — so every lens on a regulatory signal converged on the same "central data /

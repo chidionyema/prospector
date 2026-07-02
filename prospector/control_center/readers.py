@@ -208,14 +208,11 @@ def load_provider_health() -> dict[str, Any]:
 def moat_down(health: dict[str, Any]) -> bool:
     """Return True if ALL configured moat operators are dead (dead_until > now).
 
-    The moat is down when both Claude AND Gemini are exhausted. If even one is
-    healthy, the moat can still run.
+    The moat is down when Claude is exhausted.
     """
     now = datetime.now(timezone.utc).timestamp()
-    # Moat operators: Claude (anthropic) and Gemini (google) — both must be dead
-    # for the moat to be down.
-    moat_ops = {"claude", "gemini", "claude_cli", "gemini_cli",
-                "anthropic", "google"}
+    # Moat operators: Claude (anthropic)
+    moat_ops = {"claude", "claude_cli"}
 
     # Collect moat operators found in the health file
     moat_dead = []
@@ -332,7 +329,7 @@ def load_overview_kpis() -> dict[str, Any]:
         
         moat_down = (
             health.get("claude", {}).get("dead_until", 0) > 0
-            and health.get("gemini", {}).get("dead_until", 0) > 0
+            and health.get("claude_cli", {}).get("dead_until", 0) > 0
         )
         
         return {

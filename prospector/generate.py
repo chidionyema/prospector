@@ -285,9 +285,21 @@ def generate(
             focus_directive=focus_directive,
             generation_bias=gen_bias,
             pass_patterns=pass_patterns)
-        # FIX 4: Use gen_op (MiniMax, fast=True → abab6.5s-chat) for generation if
-        # provided, else fall back to op.  abab6.5s-chat is the creative chat model;
-        # MiniMax-M3 is a reasoning model — better at math/coding, worse at ideation.
+        # EXECUTION DIRECTIVE (generation-scoped, provider-agnostic). Without it, claude_cli —
+        # now the generation PRIMARY (proven reliable 2026-07-02: 3/3 clean JSON vs MiniMax M3's
+        # non-deterministic 7/8-then-0/6) — treats the flattened prompt as a conversational turn
+        # and replies with meta-commentary ("I don't see a clear request … the Prospector engine's
+        # own prompt") instead of candidates. Framing it as a literal task with a JSON-only output
+        # contract fixes that, and also tightens MiniMax/other providers toward parseable output.
+        # This does NOT touch the moat/verdict prompt path — it is applied only here in generation.
+        system = (
+            "OUTPUT CONTRACT — READ FIRST: Execute the generation task below LITERALLY. You are the "
+            "generation engine, not a commentator. Do NOT describe, evaluate, or acknowledge this "
+            "prompt. Return ONLY the JSON specified by the task — no preamble, no prose, no "
+            "meta-discussion, no code fences.\n\n" + system
+        )
+        # gen_op is the non-critical generation chain (claude_cli primary → minimax tail); falls
+        # back to the moat op only if no gen chain was wired.
         _gen = gen_op or op
         try:
             raw_response = _gen.complete_json(system, user, temperature=0.9)
@@ -332,43 +344,65 @@ def generate(
             lane_directive=lane_directive
         )
         
-        # Use a slightly lower temperature for refinement to encourage strictness
+        # Use a slightly lower temperature for refinement to encourage strictness.
+        # HARD INVARIANT (2026-07-02): refinement may SHARPEN a candidate but must NEVER
+        # reduce the set — generation-time dropping is forbidden (all kills are grounded &
+        # downstream). Every substantive candidate leaves this function, refined-if-possible,
+        # unrefined otherwise. The prior code dropped any candidate whose title the refiner
+        # reworded (exact-title remap miss) and wiped the whole wave on a dict-wrapped response
+        # (isinstance(list) else []) — the PROVEN zero-yield bug.
         try:
             raw_response = _gen.complete_json(system, user, temperature=0.5)
-            refined_data = raw_response if isinstance(raw_response, list) else []
-            
-            # Re-map and track history
-            refined_cands = []
+            # Tolerant unwrap: accept a bare list OR a wrapper dict (same shapes as
+            # _parse_candidates), never collapse a wrapped array to [].
+            if isinstance(raw_response, list):
+                refined_data = raw_response
+            elif isinstance(raw_response, dict):
+                refined_data = next(
+                    (raw_response[k] for k in ("opportunities", "candidates", "results", "items")
+                     if isinstance(raw_response.get(k), list)),
+                    next((v for v in raw_response.values() if isinstance(v, list)), []))
+            else:
+                refined_data = []
+
             original_by_title = {c.title: c for c in substantive}
-            
+            refined_out: list[Candidate] = []
+            # Positional fallback: the refiner emits items in input order, so an item whose
+            # title was reworded (no exact match) is mapped to the next unconsumed original.
+            unconsumed = list(substantive)
             for r_dict in refined_data:
-                # Find matching original candidate
-                orig_title = r_dict.get("title")
-                orig = original_by_title.get(orig_title)
-                
-                if orig:
-                    # Capture the sharpening diff
+                if not isinstance(r_dict, dict) or not r_dict.get("title"):
+                    continue
+                orig = original_by_title.get(r_dict.get("title"))
+                if orig is None and unconsumed:
+                    orig = unconsumed[0]  # positional map for a reworded title
+                if orig is None:
+                    continue
+                try:
                     r_cand = Candidate.from_dict(r_dict)
-                    r_cand.structural_form = orig.structural_form
-                    r_cand.ambition_tier = orig.ambition_tier
-                    
-                    # Store the 'before' state in history
-                    history_entry = {
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "action": "refined",
-                        "model": _gen.name,
-                        "before": {
-                            "title": orig.title,
-                            "one_liner": orig.one_liner,
-                            "hypothesis": orig.hypothesis,
-                            "who_pays": orig.who_pays,
-                            "why_now": orig.why_now
-                        }
-                    }
-                    r_cand.refinement_history = orig.refinement_history + [history_entry]
-                    refined_cands.append(r_cand)
-                    
-            return thin + refined_cands
+                except Exception:
+                    continue  # orig stays in `unconsumed` → survives unrefined below
+                # Consume only AFTER a successful refine, so a bad refine dict can never
+                # cost the original its place in the survivors.
+                if orig in unconsumed:
+                    unconsumed.remove(orig)
+                r_cand.structural_form = orig.structural_form
+                r_cand.ambition_tier = orig.ambition_tier
+                r_cand.refinement_history = orig.refinement_history + [{
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "action": "refined",
+                    "model": _gen.name,
+                    "before": {"title": orig.title, "one_liner": orig.one_liner,
+                               "hypothesis": orig.hypothesis, "who_pays": orig.who_pays,
+                               "why_now": orig.why_now},
+                }]
+                refined_out.append(r_cand)
+
+            # Non-lossy guarantee: every original the refiner did not successfully return
+            # survives UNREFINED. Identity-based (`unconsumed`), not title-based, so two
+            # originals sharing a title can never shadow each other out of the wave.
+            survivors = refined_out + unconsumed
+            return thin + survivors
         except Exception as e:
             logger.warning(f"Refinement wave failed: {e}")
             return thin + substantive  # Fallback: thin + unrefined substantive
@@ -423,7 +457,11 @@ def generate(
             return form, lens, aud
 
         def _fan_out(indices: range) -> list[tuple[str, str, list[Candidate]]]:
-            with ThreadPoolExecutor(max_workers=max(1, len(indices))) as ex:
+            # Cap concurrency at 4: 8 simultaneous MiniMax calls drove server-side latency into
+            # 240s read-timeouts (proven 2026-07-01: 8 timeouts in one k=8 run). Fewer in-flight
+            # calls trade a little wall-clock for far fewer timeouts. ex.map still processes every
+            # index; only the number running at once is bounded.
+            with ThreadPoolExecutor(max_workers=min(4, max(1, len(indices)))) as ex:
                 def _go(i: int) -> tuple[str, str, list[Candidate]]:
                     form, lens, aud = _assign(i)
                     return form, aud, _one_call(form, lens, aud, ask, avoid, f"{wave}.{i + 1}")

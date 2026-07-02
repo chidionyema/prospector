@@ -337,7 +337,6 @@ def costs_report(jsonl_path: str | Path) -> str:
                 if not provider and "message" in d:
                     msg = d["message"].lower()
                     if "claude cli usage" in msg: provider = "claude"
-                    elif "gemini cli usage" in msg: provider = "gemini"
                 
                 if provider:
                     root = provider.split("/")[0].lower()
@@ -693,8 +692,6 @@ def costs_data(jsonl_path: str | Path) -> dict[str, Any]:
                     msg = d["message"].lower()
                     if "claude cli usage" in msg:
                         provider = "claude"
-                    elif "gemini cli usage" in msg:
-                        provider = "gemini"
                 if provider:
                     root = provider.split("/")[0].lower()
                     s = provider_stats.setdefault(root, {"calls": 0, "input": 0,

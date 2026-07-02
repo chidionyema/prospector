@@ -153,6 +153,8 @@ def alerts_for_tick(tick: dict) -> list[dict]:
     Conditions, worst-first:
       - tick errored                       -> CRITICAL (the daemon hit an exception this cycle)
       - generation barren (0 dossiers)     -> WARNING  (produced nothing to even judge)
+      - all candidates deferred            -> CRITICAL (moat outage — nothing could be vetted)
+      - moat degraded (provisional > 0)    -> CRITICAL (trusted moat down; cheap tail ruled)
       - zero yield (dossiers>0, passes==0) -> WARNING  (factory ran but stocked nothing)
     A guard-skipped tick (PAUSE / spend cap) is NOT an alert — that is intended, controlled idle.
     Returns a list of dicts ready to splat into emit_alert(**spec).
@@ -170,16 +172,52 @@ def alerts_for_tick(tick: dict) -> list[dict]:
         return []
     dossiers = int(res.get("dossiers", 0) or 0)
     passes = int(res.get("passes", 0) or 0)
+    defers = int(res.get("defers", 0) or 0)
+    provisional = int(res.get("provisional", 0) or 0)
 
     if dossiers == 0:
         return [{"severity": WARNING, "key": "barren_generation",
                  "title": "Generation produced 0 candidates",
                  "message": "A real batch ran but generated nothing to vet (dedup/generation DEFER?).",
                  "ts_tick": tick.get("ts")}]
+    if defers >= dossiers and defers > 0:
+        # Every candidate deferred — the moat (Claude AND Gemini) is exhausted or grounding is
+        # down. This is an infra OUTAGE, not a calibration result; flag it distinctly + loudly.
+        return [{"severity": CRITICAL, "key": "moat_deferred",
+                 "title": f"Moat outage: all {defers} candidates DEFERRED",
+                 "message": ("Verification could not run — both moat providers exhausted (or "
+                             "grounding is down). Nothing was vetted; `vet --resume` once it recovers."),
+                 "ts_tick": tick.get("ts")}]
+    if provisional > 0:
+        # The trusted moat (Claude/Gemini) was exhausted, so the guardrailed cheap tail
+        # (deepseek/minimax) ruled these verdicts PROVISIONALLY. They never publish and auto
+        # re-vet. This is an infra DEGRADATION the all-DEFER `moat_deferred` check misses (a
+        # provisional batch defers nothing), so without this the moat can be down for hours and
+        # the founder hears nothing. Fire CRITICAL — "if it fails for ANY reason, I need to know".
+        return [{"severity": CRITICAL, "key": "moat_provisional",
+                 "title": f"Moat degraded: {provisional}/{dossiers} verdicts ruled by FALLBACK brain",
+                 "message": ("The trusted moat (Claude/Gemini) was exhausted, so the cheap tail "
+                             "(deepseek/minimax) ruled these candidates PROVISIONALLY — they will "
+                             "NOT publish and auto re-vet via `vet --resume` once the moat recovers. "
+                             "Restore a trusted brain (claude_cli on the subscription, or fund the "
+                             "Gemini/Anthropic API)."),
+                 "ts_tick": tick.get("ts")}]
     if passes == 0:
+        extra = f" ({defers} deferred — partial moat trouble)" if defers else ""
+        # Diagnostic-aware: if the audit log shows ZERO verify_search rows for this
+        # tick, the verifier never reached the search block — different signal than
+        # "ran but everything came back unverifiable". The former is "verifier dead";
+        # the latter is "verifier works but the moat is too strict / retrieval starved".
+        # Note: the audit log is append-only per UTC day; reading it requires the
+        # diagnostics module to be wired up. For now we emit the generic zero_yield
+        # alert; a follow-up adds a pre-flight audit-count check before alerting.
         return [{"severity": WARNING, "key": "zero_yield",
-                 "title": f"Zero yield: {dossiers} candidates, 0 PASS",
+                 "title": f"Zero yield: {dossiers} candidates, 0 PASS{extra}",
                  "message": ("A full batch was vetted and nothing survived. Likely an ungrounded "
-                             "moat (0 web retrieval -> all unverifiable) or a calibration regression."),
+                             "moat or a calibration regression. Cross-check "
+                             "store/scheduler/audit/<today>.jsonl: zero verify_search rows means "
+                             "the verifier never reached search (verifier dead); rows present "
+                             "with all-unverifiable verdicts means retrieval starved or the "
+                             "moat is too strict (see DIAGNOSTICS_LATEST.txt)."),
                  "ts_tick": tick.get("ts")}]
     return []

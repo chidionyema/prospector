@@ -304,6 +304,15 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
     ``copy`` is missing we assemble a prose fallback from the parts. ``copy`` is always set so
     the completeness gate (which checks copy length) and the bundle keep working unchanged.
     """
+    # Operators occasionally return a JSON array (e.g. [{...}]) instead of the object, or a
+    # bare string. Coerce to the dict the contract expects rather than crashing on .get().
+    if isinstance(data, list):
+        data = next((x for x in data if isinstance(x, dict)), {})
+    elif isinstance(data, str):
+        data = {"copy": data}
+    elif not isinstance(data, dict):
+        data = {}
+
     def _s(key: str) -> str:
         return str(data.get(key) or "").strip()
 

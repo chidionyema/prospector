@@ -96,7 +96,7 @@ def main(argv: list[str]) -> int:
     # now fixed at the root (artifacts.md anchors the requested type; _validate_artifact_shape
     # raises on wrong-type/empty so complete_json's repair loop and then the chain failover
     # fire). So cheap models generate packs fine; no intelligent model required.
-    cfg.operator = ["deepseek", "minimax", "gemini"]
+    cfg.operator = ["claude_cli", "minimax"]  # match run.py _NONCRITICAL_ORDER (deepseek removed 2026-07-01, HTTP 402)
     op = make_operator(cfg)
     fast_op = make_operator(cfg, fast=True)
 

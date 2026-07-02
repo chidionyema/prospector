@@ -25,11 +25,13 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from prospector.config import load_config
+from prospector.errors import GroundingInfrastructureError
 from prospector.scheduler.guard import guard_from_config
 
 logger = logging.getLogger(__name__)
@@ -41,7 +43,7 @@ def _load_env_file(repo_root: Path | None = None) -> int:
     """Populate os.environ from the repo `.env` BEFORE config/operators read keys.
 
     The engine reads API keys straight from the process environment; an interactive shell exports
-    them, but launchd's clean environment does not (hence "GEMINI_API_KEY not set" under launchd).
+    them, but launchd's clean environment does not (hence API keys not found under launchd).
     There is no python-dotenv in the venv, so this is a deliberately tiny stdlib parser: split each
     line on the FIRST '=' only (values may contain '='), skip comments/blanks, and DO NOT override a
     var already set (an explicit env still wins). Returns how many keys were injected. Secrets stay
@@ -128,8 +130,54 @@ def _default_generate(cfg, batch_size: int) -> dict:
     from prospector.run import run_signal
 
     dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True)
-    passes = sum(1 for d in dossiers if str(getattr(d, "verdict", "")).upper() == "PASS")
-    return {"dossiers": len(dossiers), "passes": passes}
+
+    def _decision(d) -> str:
+        # Dossier carries `.decision` (a Decision enum) — NOT `.verdict`. Reading the wrong
+        # attribute made `passes` structurally always 0, so the zero_yield alert cried wolf on
+        # every batch and a real PASS was invisible in telemetry.
+        return str(getattr(getattr(d, "decision", None), "value", "")).lower()
+
+    passes = sum(1 for d in dossiers if _decision(d) == "pass")
+    defers = sum(1 for d in dossiers if _decision(d) == "defer")
+    # A dossier ruled by the EMERGENCY cheap tail (moat exhausted) is `provisional`: it never
+    # publishes and auto re-vets. Surfacing the count lets the tick alerter fire a CRITICAL when
+    # the trusted moat is down but the cheap tail kept ruling — a silent failure mode that the
+    # all-DEFER `moat_deferred` alert misses entirely (provisional batches defer nothing).
+    provisional = sum(1 for d in dossiers if getattr(d, "provisional", False))
+    return {"dossiers": len(dossiers), "passes": passes, "defers": defers,
+            "provisional": provisional}
+
+
+# A trickled LLM response body defeats per-recv socket timeouts (proven 2026-07-01: a MiniMax TLS
+# read hung the daemon 34+ min while the alert-only watchdog watched it sit dead for 8.5h). No
+# single tick may hang the process longer than this; on breach the daemon force-exits and launchd
+# KeepAlive (ThrottleInterval=30) relaunches a clean daemon. Default 45 min (env-overridable): a
+# real batch_size=20 grounded batch legitimately runs 20–35 min, so a tighter deadline would
+# force-exit healthy ticks in a restart loop. Kept BELOW the watchdog's 'generating' stall
+# threshold (55 min, see _liveness) so the process self-heals before the external watchdog acts.
+_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "2700"))  # 45 min
+
+# After an unproductive tick (error or 0 dossiers despite the guard allowing spend) retry soon
+# instead of burning the full 2h cadence idle — one provider blip cost days of ~$0 barren ticks.
+_RETRY_BACKOFF_S = 300  # 5 min
+
+
+def _force_exit_hung_tick(batch_size: int) -> None:
+    logger.critical(
+        "TICK HARD DEADLINE (%ds) exceeded during generation (batch=%s) — force-exiting so "
+        "launchd KeepAlive relaunches a clean daemon.", _TICK_HARD_DEADLINE_S, batch_size)
+    os._exit(2)
+
+
+def _tick_unproductive(tick: dict) -> bool:
+    """True if a real (non-dry, guard-allowed) tick failed or stocked nothing — retry soon."""
+    if tick.get("error"):
+        return True
+    if tick.get("allowed") and not tick.get("dry_run"):
+        res = tick.get("result") or {}
+        if res.get("dossiers", 0) == 0:
+            return True
+    return False
 
 
 def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, generate_fn=None) -> dict:
@@ -137,7 +185,12 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
 
     `generate_fn(cfg, batch_size) -> dict` is injectable so tests never spawn real generation.
     """
-    _write_heartbeat(cfg, phase="evaluating", dry_run=dry_run)
+    # A dry-run is a manual diagnostic, NOT the daemon. Writing the shared liveness heartbeat
+    # here would let a one-shot `--dry-run` reset the watchdog clock (masking a dead daemon) or
+    # leave a stale "evaluating" beat that trips the 45-min stuck check while the daemon sleeps
+    # fine. Only real ticks (the daemon loop) own the liveness heartbeat.
+    if not dry_run:
+        _write_heartbeat(cfg, phase="evaluating", dry_run=dry_run)
     guard = guard_from_config(cfg)
     decision = guard.evaluate()
     batch_size = _batch_size(cfg, candidates)
@@ -166,17 +219,37 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
 
     gen = generate_fn or _default_generate
     _write_heartbeat(cfg, phase="generating", batch_size=batch_size)
+    # Hard wall-clock guard: if generation hangs past _TICK_HARD_DEADLINE_S the timer force-exits
+    # the process (launchd relaunches it). Cancelled the instant generation returns.
+    deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick, args=(batch_size,))
+    deadline.daemon = True
+    deadline.start()
+    halt = False
     try:
         logger.info("Tick: generating %d candidates (%s)", batch_size, decision.reason)
         tick["result"] = gen(cfg, batch_size)
         logger.info("Tick complete: %s", tick["result"])
+    except GroundingInfrastructureError as exc:
+        # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent exit here
+        # leaves no tick row and no alert, so the founder never learns the daemon died.
+        tick["error"] = f"GroundingInfrastructureError: {exc}"
+        halt = True
+        logger.critical("GROUNDING LAYER COLLAPSE: all search providers dead. "
+                        "Halting daemon to prevent runaway LLM spend.")
     except Exception as exc:  # noqa: BLE001 — daemon must survive any single batch failing
         tick["error"] = f"{type(exc).__name__}: {exc}"
         logger.error("Tick generation failed (daemon continues): %s", tick["error"])
+    finally:
+        deadline.cancel()
 
     _append_tick(cfg, tick)
     _emit_tick_alerts(cfg, tick)
     _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=tick["error"])
+    if halt:
+        # launchd KeepAlive relaunches the exited daemon; _startup_grounding_check (run at
+        # daemon startup) then refuses to start on one cheap probe search, so the relaunch
+        # loop costs a probe every ThrottleInterval instead of a full LLM generation batch.
+        sys.exit(1)
     return tick
 
 
@@ -205,6 +278,21 @@ class _StopFlag:
         self.stop = True
 
 
+def _startup_grounding_check(cfg) -> None:
+    """Refuse to start if the grounding layer is dead — one dummy search first."""
+    from prospector.retrieval import make_provider
+    try:
+        provider = make_provider(cfg)
+        provider.search("startup sanity check", k=1)
+        logger.info("Grounding layer healthy — daemon starting")
+    except Exception as e:
+        raise RuntimeError(
+            f"REFUSING TO START: grounding provider is dead on arrival. "
+            f"Fix search API keys/credits before starting Prospector. "
+            f"Error: {e}"
+        ) from e
+
+
 def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn=None,
                max_cycles: int | None = None, sleep_fn=time.sleep) -> int:
     """Loop forever (or `max_cycles` times in tests): tick, then sleep `interval` seconds.
@@ -219,8 +307,9 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
     logger.info("Daemon starting: interval=%ds, store=%s", interval, _store_dir(cfg))
     cycles = 0
     while not flag.stop:
+        tick = None
         try:
-            run_tick(cfg, candidates=candidates, generate_fn=generate_fn)
+            tick = run_tick(cfg, candidates=candidates, generate_fn=generate_fn)
         except Exception:  # noqa: BLE001 — a tick failure (e.g. a transient ledger read error
             # inside the guard, before any spend) must not kill the daemon. Log and continue so
             # the next cycle re-evaluates the guard rather than crash-looping under launchd.
@@ -228,11 +317,18 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
         cycles += 1
         if max_cycles is not None and cycles >= max_cycles:
             break
+        # A healthy tick sleeps the full cadence; a failed/barren one retries in minutes so a
+        # single provider blip can't waste a whole 2h window (root cause of days of $0 ticks).
+        # A guard-blocked tick (spend cap) is intentional, not a failure — full cadence.
+        sleep_target = interval
+        if tick is not None and _tick_unproductive(tick):
+            sleep_target = min(interval, _RETRY_BACKOFF_S)
+            logger.info("Unproductive tick — retrying in %ds instead of %ds", sleep_target, interval)
         # Sleep in short slices so a stop request is honoured promptly mid-cadence.
-        _write_heartbeat(cfg, phase="sleeping", interval_s=interval, cycles=cycles)
+        _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles)
         slept = 0
-        while slept < interval and not flag.stop:
-            chunk = min(5, interval - slept)
+        while slept < sleep_target and not flag.stop:
+            chunk = min(5, sleep_target - slept)
             sleep_fn(chunk)
             slept += chunk
     logger.info("Daemon stopped after %d cycle(s)", cycles)
@@ -368,8 +464,10 @@ def _liveness(cfg) -> tuple[bool, str]:
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return False, f"unreadable heartbeat ({exc})"
     phase = beat.get("phase", "?")
-    if phase == "generating" and age_min > 45:
-        return False, f"stuck in 'generating' for {age_min:.0f} min (batch should finish <30 min)"
+    if phase == "generating" and age_min > 55:
+        # 55 > the 45-min tick hard-deadline (_TICK_HARD_DEADLINE_S) so a hung tick self-exits
+        # first; the watchdog kill is the backstop for when even the in-process deadline wedges.
+        return False, f"stuck in 'generating' for {age_min:.0f} min (batch should finish <45 min)"
     if phase == "sleeping":
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
         if age_min > budget:
@@ -379,11 +477,53 @@ def _liveness(cfg) -> tuple[bool, str]:
     return True, f"alive (phase={phase}, {age_min:.1f} min ago)"
 
 
+def _kill_stale_daemon(cfg) -> None:
+    """SIGKILL the hung daemon pid so launchd KeepAlive relaunches a clean process.
+
+    launchd KeepAlive only restarts on process EXIT — a hung-but-alive process (a wedged socket
+    read) is never restarted on its own. The 2026-07-01 incident was exactly this: the alert-only
+    watchdog watched a wedged pid sit dead for 8.5h. Killing it converts "hung" into "exited",
+    which KeepAlive (ThrottleInterval=30) then heals.
+    """
+    hb = _heartbeat_path(cfg)
+    try:
+        beat = json.loads(hb.read_text(encoding="utf-8"))
+        pid = int(beat["pid"])
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        logger.error("Watchdog: cannot read daemon pid to restart: %s", exc)
+        return
+    if pid == os.getpid():
+        return  # never kill the watchdog process itself
+    # The heartbeat is ≥45 min stale by the time this fires; if the daemon already died,
+    # the OS may have recycled its pid onto an unrelated process. Confirm the pid still
+    # runs prospector before SIGKILLing it.
+    import subprocess
+    try:
+        cmdline = subprocess.run(["ps", "-p", str(pid), "-o", "command="],
+                                 capture_output=True, text=True, timeout=5).stdout
+    except Exception as exc:  # noqa: BLE001 — a broken ps must not crash the watchdog
+        logger.error("Watchdog: could not inspect pid %d (%s); refusing to kill blind.", pid, exc)
+        return
+    if "prospector" not in cmdline:
+        logger.info("Watchdog: pid %d is not a prospector process (%r) — already exited; "
+                    "launchd will relaunch.", pid, cmdline.strip()[:80])
+        return
+    try:
+        os.kill(pid, signal.SIGKILL)
+        logger.critical("Watchdog: SIGKILLed hung daemon pid %d — launchd KeepAlive will relaunch.", pid)
+        print(f"⚠ watchdog killed hung daemon pid {pid}; launchd will relaunch it")
+    except ProcessLookupError:
+        logger.info("Watchdog: daemon pid %d already gone; launchd will relaunch.", pid)
+    except PermissionError as exc:
+        logger.error("Watchdog: not permitted to kill pid %d: %s", pid, exc)
+
+
 def _run_watchdog(cfg) -> int:
-    """One-shot liveness check that ALERTS if the daemon is dark. Run on its own schedule.
+    """One-shot liveness check that RESTARTS the daemon if it is hung. Run on its own schedule.
 
     Intended to be invoked every ~15 min by a separate launchd job (com.prospector.watchdog.plist),
-    so a dead/hung daemon is caught even though it emits no ticks. Returns 0 if alive, 1 if not.
+    so a dead/hung daemon is caught even though it emits no ticks. On a stale heartbeat it alerts
+    AND kills the wedged pid so launchd KeepAlive relaunches it. Returns 0 if alive, 1 if not.
     """
     from prospector.scheduler.alerts import emit_alert, CRITICAL
 
@@ -394,6 +534,7 @@ def _run_watchdog(cfg) -> int:
     emit_alert(cfg, severity=CRITICAL, key="liveness",
                title="Generation daemon is DOWN", message=reason, throttle_s=3600)
     print(f"⚠ daemon DOWN: {reason}")
+    _kill_stale_daemon(cfg)
     return 1
 
 
@@ -456,6 +597,12 @@ def main(argv: list[str] | None = None) -> None:
     _route_ledger(cfg)
 
     if args.daemon:
+        # One cheap probe search before committing to the loop: if grounding is dead on
+        # arrival (all providers 402/keyless/down), refuse to start instead of burning a
+        # full LLM generation batch per launchd relaunch. This is the other half of the
+        # GroundingInfrastructureError halt in run_tick — exit + KeepAlive relaunch lands
+        # here, so the crash loop costs one probe, not one batch.
+        _startup_grounding_check(cfg)
         run_daemon(cfg, interval=args.interval, candidates=args.candidates)
         return
 

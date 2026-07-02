@@ -128,7 +128,7 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
 from .config import Config, load_config
 from .dedup import dedup
 from .dossier import build_dossier, render_markdown
-from .errors import ProviderExhaustedError
+from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .generate import generate
 from .models import Candidate, Decision, Dossier
 from .operator import Operator
@@ -145,6 +145,19 @@ from .telemetry import logger, set_context, track_latency
 def _get_verify():
     from .verify import verify as _verify
     return _verify
+
+
+# Non-critical chain order: claude_cli (subscription, RELIABLE) PRIMARY → minimax emergency tail.
+# Reordered 2026-07-02 after MiniMax M3 was PROVEN non-deterministic as the generation primary:
+# k=8 → +7/8, but k=6 → +0/6 (240s runaway-reasoning timeouts + "no valid JSON in 66k chars" =
+# M3 spent the whole response inside <think> and never emitted the answer). M3 is a reasoning
+# model, wrong for ideation. claude_cli generated 3/3 clean candidate JSON first-try (proven
+# 2026-07-02) once the generation prompt is directive-framed (see generate.py _one_call), and it
+# has no 240s network-timeout failure mode — so it is the reliability guarantee, not the backstop.
+# DeepSeek REMOVED 2026-07-01 (HTTP 402 billing wall). Ollama REJECTED 2026-07-01 (markdown, not JSON).
+# Module-level so run_signal, `operators`, and the proof tools all reference the SAME chain —
+# a stale copy here misdirected incident debugging toward providers that weren't even wired.
+_NONCRITICAL_ORDER = ("claude_cli", "minimax")
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +263,7 @@ def vet_candidate(
 
     verify = _get_verify()
     # Build the moat operator chain string for the audit trail (e.g. "claude/claude-opus-4-8 →
-    # gemini/2.5-flash-lite").  FallbackOperator.name is already in that format.
+    # claude-cli/default").  FallbackOperator.name is already in that format.
     _provider_chain = getattr(op, "name", "") or getattr(op, "model_version", "") or str(op)
     
     # Shadow Moat: Run experimental verification in parallel if requested.
@@ -445,7 +458,7 @@ def run_signal(
     # Gemini-flash exhausted → all three skipped → ProviderExhaustedError → DEFER.
     # A tier's health mark does NOT pollute the moat health file (moat stays clean).
     from .operator import _build_operator, FallbackOperator
-    from .errors import ProviderExhaustedError
+    from .errors import GroundingInfrastructureError, ProviderExhaustedError
     from .telemetry import record_usage
     from .health import get_noncritical_health
 
@@ -474,13 +487,6 @@ def run_signal(
                                 health=_noncritical_health)
         logger.info(f"Chain: {' → '.join(n for n, _ in tiers)}")
         return chain
-
-    # Non-critical chain order = the doctrine in the comment block above: cheapest
-    # structured-JSON tier first, Gemini-flash only as last resort. DeepSeek → MiniMax →
-    # Gemini-flash. Gemini is LAST (not first) so non-critical work doesn't contend with
-    # the moat for Gemini quota; any tier exhaustion is recorded to the non-critical
-    # health file only. A missing/unconfigured tier (e.g. MiniMax) is skipped harmlessly.
-    _NONCRITICAL_ORDER = ("deepseek", "minimax", "gemini")
 
     # gen_op: divergent candidate generation (non-critical).
     gen_op = _build_operator_chain(_NONCRITICAL_ORDER, fast=True)
@@ -590,9 +596,9 @@ def run_signal(
         # Generation chain exhausted — save the signal text so the operator can
         # re-run it later with `generate --resume`.  Never lose a signal.
         _save_pending_signal(signal_text, cfg)
-        logger.warning(f"Generation chain exhausted (deepseek/minimax/gemini all unavailable or "
-                       f"quota depleted). Signal saved for retry. Run `generate --resume` "
-                       f"when generation chain recovers.")
+        logger.warning(f"Generation chain exhausted ({'/'.join(_NONCRITICAL_ORDER)} all "
+                       f"unavailable or quota depleted). Signal saved for retry. Run "
+                       f"`generate --resume` when generation chain recovers.")
         progress.step(f"generation chain exhausted — signal saved, re-run with generate --resume")
         return []
     logger.info(f"Generated {len(candidates)} candidates")
@@ -720,6 +726,8 @@ def run_signal(
                                 gate=d.gate_fired,
                                 composite=(d.score.composite if d.score else None))
                 dossiers.append(d)
+            except GroundingInfrastructureError:
+                raise  # circuit breaker — halt daemon, don't burn credits
             except Exception as e:
                 logger.error(f"ERROR vetting candidate: {e}", extra={"error": str(e)})
                 progress.note(f"[{idx}/{total_submitted}] ⚠ error: {e}")
@@ -747,6 +755,32 @@ def run_signal(
     from .diagnostics import calibration_alarms
     for a in calibration_alarms(store, cfg):
         progress.note(("🚨 " if a["level"] == "alarm" else "⚠️  ") + f"[{a['code']}] {a['message']}")
+
+    # Per-batch funnel diagnostics — emitted on EVERY generation run (founder
+    # requirement 2026-06-22: every generation ships WITH diagnostics). Purely
+    # additive instrumentation: derived from this batch's own dossiers + the
+    # top-of-funnel counts already in scope. Wrapped so a diagnostics failure can
+    # never break a run. Written to store/scheduler/{DIAGNOSTICS_LATEST.txt,
+    # batch_diagnostics.jsonl}.
+    try:
+        from .diagnostics import diagnose_batch, persist_batch_diagnostics, render_batch_diagnostics
+        stage_counts = {
+            "generated": len(candidates),
+            "dedup_dropped": len(dropped),
+            "rejection_fastpath": len(unique) - len(final_candidates),
+            "prescreen_in": len(final_candidates),
+            "prescreened_out": len(final_candidates) - len(prescreened_data),
+            "novelty_selected": len(kept),
+            "vetted": len(dossiers),
+        }
+        _bd = diagnose_batch(dossiers, stage_counts=stage_counts, usage=usage, cfg=cfg)
+        persist_batch_diagnostics(_bd, store)
+        progress.note("📊 batch diagnostics → store/scheduler/DIAGNOSTICS_LATEST.txt")
+        logger.info("batch diagnostics written", extra={"funnel": stage_counts,
+                    "unverifiable_pct": _bd.get("unverifiable_pct"),
+                    "decisions": _bd.get("decisions")})
+    except Exception as _diag_exc:  # never let diagnostics break a run
+        logger.warning(f"batch diagnostics failed (non-fatal): {_diag_exc}")
 
     return dossiers
 
@@ -1156,8 +1190,8 @@ def _cmd_operators(args) -> None:
     available_ops = []  # list of (kind, op, elapsed_or_None)
     cfg = load_config(args.config if args.config else None)
 
-    for kind in ("deepseek", "minimax", "gemini",
-                 "gemini_cli", "claude_cli"):
+    for kind in ("deepseek", "minimax",
+                 "claude_cli"):
         print(f"\n  {kind:15s}", end="", flush=True)
         try:
             op = _build_operator(kind, cfg, fast=True)
@@ -1183,7 +1217,7 @@ def _cmd_operators(args) -> None:
     # fast_op: scoring + prescreen (0-5 axis, simple prompts)
     # Run `python -m prospector.run operators --gen` to measure and update these.
     try:
-        from .errors import ProviderExhaustedError
+        from .errors import GroundingInfrastructureError, ProviderExhaustedError
         r = cfg.retrieval
 
         def build_chain(order, fast_label):
@@ -1205,8 +1239,8 @@ def _cmd_operators(args) -> None:
                                  cooldown_s=r.breaker_cooldown_s)
             return f"{fast_label}: {' → '.join(n for n, _ in tiers)}"
 
-        print(f"  {build_chain(('deepseek', 'minimax', 'gemini_cli'), 'gen_op')}")
-        print(f"  {build_chain(('deepseek', 'minimax', 'gemini_cli'), 'fast_op')}")
+        print(f"  {build_chain(_NONCRITICAL_ORDER, 'gen_op')}")
+        print(f"  {build_chain(_NONCRITICAL_ORDER, 'fast_op')}")
     except Exception as e:
         print(f"  ✗ could not build chains: {e}")
 
@@ -1221,7 +1255,7 @@ def _cmd_operators(args) -> None:
         print(f"  Prompt size: {len(sys_p) + len(usr_p)} chars")
         # Probe the non-critical chain operators only
         gen_ops = [(k, o, b) for k, o, b in available_ops
-                   if o is not None and k in ("deepseek", "minimax", "gemini_cli")]
+                   if o is not None and k in _NONCRITICAL_ORDER]
         for kind, op, baseline in gen_ops:
             print(f"\n  {kind:15s} (baseline {baseline:.1f}s)...", end="", flush=True)
             t0 = time.monotonic()
@@ -1503,7 +1537,7 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    vet_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     vet_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane to judge against (e.g. side_hustle, venture). "
@@ -1521,14 +1555,14 @@ def main() -> None:
     vet_p.add_argument("--resume", action="store_true",
                        help="Re-vet all moat-deferred candidates (decision=defer).  "
                             "Uses the same operator/lane as the original run.  "
-                            "Safe to re-run when the moat (Claude/Gemini) comes back online.")
+                            "Safe to re-run when the moat (Claude) comes back online.")
 
     # ---- signal subcommand ----
     sig_p = sub.add_parser("signal", help="Run the full signal pipeline")
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    sig_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")
@@ -1559,7 +1593,7 @@ def main() -> None:
                        help="Number of candidates to generate (default: config candidates_per_signal)")
     gen_p.add_argument("--exploration", type=float, default=None, metavar="X",
                        help="Override exploration level 0-1 (default: adaptive)")
-    gen_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    gen_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     gen_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -1582,8 +1616,7 @@ def main() -> None:
                        help="Re-run generation for all pending signals that failed due to "
                             "generation chain exhaustion.  Reads signals from "
                             "signals/pending/ and re-runs the full pipeline (generate + vet). "
-                            "Safe to re-run when the non-critical chain (DeepSeek/MiniMax/ "
-                            "Gemini) recovers.")
+                            "Safe to re-run when the non-critical chain (DeepSeek/MiniMax) recovers.")
 
     # ---- discover subcommand (spec EXTENSION: self-sourced signals) ----
     disc_p = sub.add_parser("discover",
@@ -1598,7 +1631,7 @@ def main() -> None:
                         help="Only surface + save signals; do not generate or vet")
     disc_p.add_argument("--no-save", dest="no_save", action="store_true",
                         help="Do not write discovered signals to signals/")
-    disc_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    disc_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
                         help="Override operator from config")
     disc_p.add_argument("--lane", metavar="NAME",
                         help="Pin the sweep to a single ambition lane (default: multi-lane "

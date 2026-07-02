@@ -176,7 +176,7 @@ def _render_vet_form():
             lane = st.selectbox("Lane",
                                ["", "venture", "operator", "founder", "scout"], index=0)
             operator = st.selectbox("Operator",
-                                   ["mock", "gemini_cli", "claude", "gemini"], index=1)
+                                   ["mock", "claude"], index=1)
         with col2:
             persona = st.selectbox("Persona",
                                   ["", "shark", "minimalist", "academic"], index=0,
@@ -209,7 +209,7 @@ def _render_signal_form():
             lane = st.selectbox("Lane",
                                ["", "venture", "operator", "founder", "scout"], index=0)
             operator = st.selectbox("Operator",
-                                   ["mock", "gemini_cli", "claude", "gemini"], index=1)
+                                   ["mock", "claude"], index=1)
         with col2:
             persona = st.selectbox("Persona",
                                   ["", "shark", "minimalist", "academic"], index=0,
@@ -240,7 +240,7 @@ def _render_generate_form():
             lane = st.selectbox("Lane",
                                ["", "venture", "operator", "founder", "scout"], index=0)
             operator = st.selectbox("Operator",
-                                   ["mock", "gemini_cli", "claude", "gemini"], index=1)
+                                   ["mock", "claude"], index=1)
         with col2:
             persona = st.selectbox("Persona",
                                   ["", "shark", "minimalist", "academic"], index=0,
@@ -300,7 +300,7 @@ def _scope_hint(mode: str, candidates: int, operator: str, fixtures: bool):
         latency = "~1–5 min"
 
     # Rough cost estimate
-    cost_per_call = 0.001  # rough estimate for mock/gemini
+    cost_per_call = 0.001  # rough estimate for mock/agy
     if operator in ("claude",):
         cost_per_call = 0.003
     estimated_cost = candidates * checks * cost_per_call

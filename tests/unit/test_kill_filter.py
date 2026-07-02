@@ -218,11 +218,10 @@ def test_clean_set_passes_all_gates(cfg):
 # ---------------------------------------------------------------------------
 
 def test_adversarial_decisive_kills(cfg):
-    checks = _all_passing_checks()  # gates themselves pass
-    killed, gate, reason = apply_gates(checks, cfg, adversarial_decisive=True)
-    assert killed is True
-    assert gate == "adversarial_decisive"
-    assert "adversarial" in reason.lower()
+    """adversarial_decisive now demoted — config has false, gate does not fire."""
+    checks = _all_passing_checks()
+    killed, gate, _ = apply_gates(checks, cfg, adversarial_decisive=True)
+    assert killed is False  # demoted: advisory board, not executioner
 
 
 def test_adversarial_decisive_false_does_not_kill(cfg):
@@ -252,13 +251,16 @@ def test_supported_is_not_a_killing_verdict_for_value_durability(cfg):
     assert is_hard_fail("value_durability", cr, cfg) is False
 
 
-def test_default_floor_zero_lets_grounded_kill_fire(cfg):
-    """With the shipped default floor (0.0, inert), any grounded refuted kills —
-    golden-set / current-catalogue behaviour is preserved."""
-    assert cfg.thresholds.confidence_floor == 0.0
+def test_shipped_floor_lets_grounded_kill_fire(cfg):
+    """A refuted that comfortably clears the shipped (calibrated) floor still hard-kills.
+    Floor was calibrated 0.0 -> 0.3 on 2026-06-25 against the live confidence distribution
+    (supported median 0.43); a well-grounded refutation above the floor still fires, so
+    golden-set / current-catalogue kill behaviour is preserved. Asserted relative to the
+    configured floor so it survives future calibration."""
+    floor = cfg.thresholds.confidence_floor
     cr = CheckResult(
         check_name="incumbency", verdict=Verdict.REFUTED,
-        confidence=0.40, rationale="grounded refutation", citations=["x"])
+        confidence=max(0.40, floor + 0.1), rationale="grounded refutation", citations=["x"])
     assert is_hard_fail("incumbency", cr, cfg) is True
 
 

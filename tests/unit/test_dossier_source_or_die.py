@@ -35,15 +35,52 @@ def test_ungrounded_high_composite_does_not_pass():
     d = build_dossier(Candidate(title="Ungrounded idea"), checks, None, None,
                       _score_passing(cfg), cfg, "test")
     assert d.decision == Decision.KILL
-    assert d.gate_fired == "source_or_die"
+    assert d.gate_fired in ("source_or_die", "moat_ungrounded")
 
 
 def test_one_grounded_supported_check_allows_pass():
-    """A single grounded-supported check (conf >= floor) + passing composite -> PASS."""
+    """A single grounded-supported moat check + 2 total grounded -> PASS."""
     cfg = _cfg()
     floor = cfg.thresholds.confidence_floor
-    checks = [_check("pain_reality", Verdict.SUPPORTED, max(0.5, floor + 0.1)),
-              _check("payer_solvency", Verdict.UNVERIFIABLE, 0.0)]
+    checks = [_check("value_durability", Verdict.SUPPORTED, max(0.5, floor + 0.1)),
+              _check("payer_solvency", Verdict.SUPPORTED, max(0.5, floor + 0.1)),
+              _check("pain_reality", Verdict.UNVERIFIABLE, 0.0)]
+    d = build_dossier(Candidate(title="Grounded idea"), checks, None, None,
+                      _score_passing(cfg), cfg, "test")
+    assert d.decision == Decision.PASS
+    assert d.gate_fired is None
+
+
+def test_low_confidence_supported_does_not_ground_pass():
+    """PASS-SIDE floor (min_supported_confidence): a SUPPORTED check below the pass-side
+    floor does NOT count as grounded, so a coin-flip 'supported' (e.g. conf 0.15) cannot
+    mint a PASS. This is the 2026-06-25 laxness fix. Decoupled from confidence_floor
+    (kill-side) — proven here by leaving confidence_floor at 0.0 (inert) while the
+    pass-side floor alone rejects the weak support."""
+    from dataclasses import replace
+    base = _cfg()
+    cfg = replace(base, thresholds=replace(base.thresholds,
+                  confidence_floor=0.0, min_supported_confidence=0.3))
+    # All supported, but every confidence is below the pass-side floor -> none grounded.
+    checks = [_check("value_durability", Verdict.SUPPORTED, 0.15),
+              _check("incumbency", Verdict.SUPPORTED, 0.20),
+              _check("payer_solvency", Verdict.SUPPORTED, 0.15)]
+    d = build_dossier(Candidate(title="Coin-flip supported"), checks, None, None,
+                      _score_passing(cfg), cfg, "test")
+    assert d.decision == Decision.KILL
+    assert d.gate_fired in ("moat_ungrounded", "source_or_die")
+
+
+def test_supported_at_pass_floor_grounds_pass():
+    """The same checks at confidence AT/above the pass-side floor DO ground a PASS —
+    confirms the floor admits genuine grounded support (no over-restriction)."""
+    from dataclasses import replace
+    base = _cfg()
+    cfg = replace(base, thresholds=replace(base.thresholds,
+                  confidence_floor=0.0, min_supported_confidence=0.3))
+    checks = [_check("value_durability", Verdict.SUPPORTED, 0.45),
+              _check("payer_solvency", Verdict.SUPPORTED, 0.45),
+              _check("pain_reality", Verdict.UNVERIFIABLE, 0.0)]
     d = build_dossier(Candidate(title="Grounded idea"), checks, None, None,
                       _score_passing(cfg), cfg, "test")
     assert d.decision == Decision.PASS

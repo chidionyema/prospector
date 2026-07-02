@@ -281,8 +281,8 @@ def _render_operator_routing(cfg: dict):
     op = cfg.get("operator", "")
     new_op = st.selectbox(
         "Primary operator",
-        ["", "mock", "gemini_cli", "claude", "gemini"],
-        index=["", "mock", "gemini_cli", "claude", "gemini"].index(op) if op in ["", "mock", "gemini_cli", "claude", "gemini"] else 0,
+        ["", "mock", "claude"],
+        index=["", "mock", "claude"].index(op) if op in ["", "mock", "claude"] else 0,
     )
     _update_staged(cfg, "operator", new_op)
 

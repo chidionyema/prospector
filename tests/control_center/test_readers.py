@@ -78,8 +78,7 @@ class TestMoatDown:
     def test_moat_down_true_when_dead_until_in_future(self):
         now = datetime.now(timezone.utc).timestamp()
         health = {
-            "claude": {"dead_until": now + 300, "dead_for_s": 300},
-            "gemini": {"dead_until": now + 300, "dead_for_s": 300},
+            "claude_cli": {"dead_until": now + 300, "dead_for_s": 300},
         }
         assert readers.moat_down(health)
 
@@ -87,14 +86,14 @@ class TestMoatDown:
         now = datetime.now(timezone.utc).timestamp()
         health = {
             "claude": {"dead_until": now + 300, "dead_for_s": 300},
-            "gemini": {"dead_until": 0, "dead_for_s": 0},  # healthy
+            "claude_cli": {"dead_until": 0, "dead_for_s": 0},  # healthy
         }
         assert not readers.moat_down(health)
 
     def test_moat_down_false_when_both_dead_until_is_zero(self):
         health = {
             "claude": {"dead_until": 0, "dead_for_s": 60},
-            "gemini": {"dead_until": 0, "dead_for_s": 60},
+            "claude_cli": {"dead_until": 0, "dead_for_s": 60},
         }
         assert not readers.moat_down(health)
 
@@ -111,7 +110,7 @@ class TestMoatDown:
         """Provider health entries that are not dicts must not crash."""
         health = {
             "claude": {"dead_until": 0},
-            "gemini": "not_a_dict",
+            "claude_cli": "not_a_dict",
             "minimax": 42,
             None: {},
         }

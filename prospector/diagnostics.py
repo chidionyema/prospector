@@ -17,12 +17,196 @@ from __future__ import annotations
 
 import copy
 import json
+import statistics
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 from .config import Config
 from .store import Store
+
+# The six grounded checks, in kill-fast order (matches verify.py run order).
+_CHECKS = ["pain_reality", "value_durability", "incumbency",
+           "payer_solvency", "distribution", "legality"]
+
+
+def _norm_dossier(d: Any) -> dict:
+    """Normalise a Dossier (object OR on-disk dict) into a flat dict the batch
+    diagnostic can read uniformly. Defensive: missing fields degrade to safe defaults."""
+    if isinstance(d, dict):
+        out = dict(d)
+        sc = out.get("score")
+        if sc is not None and not isinstance(sc, dict):
+            out["score"] = {"composite": getattr(sc, "composite", None)}
+        return out
+    dec = getattr(d, "decision", None)
+    sc = getattr(d, "score", None)
+    cand = getattr(d, "candidate", None)
+    checks = []
+    for c in (getattr(d, "checks", None) or []):
+        v = getattr(c, "verdict", None)
+        checks.append({
+            "check_name": getattr(c, "check_name", None),
+            "verdict": getattr(v, "value", v),
+            "confidence": getattr(c, "confidence", 0.0),
+            "sources": list(getattr(c, "sources", []) or []),
+            "provider": getattr(c, "provider", None),
+            "provisional": getattr(c, "provisional", False),
+        })
+    return {
+        "decision": getattr(dec, "value", dec),
+        "gate_fired": getattr(d, "gate_fired", None),
+        "provisional": getattr(d, "provisional", False),
+        "score": {"composite": getattr(sc, "composite", None)} if sc else None,
+        "candidate": {"title": getattr(cand, "title", None)} if cand else {},
+        "checks": checks,
+    }
+
+
+def _stats(xs: list[float]) -> dict:
+    if not xs:
+        return {"n": 0}
+    return {"n": len(xs), "min": round(min(xs), 3),
+            "med": round(statistics.median(xs), 3),
+            "max": round(max(xs), 3),
+            "mean": round(statistics.mean(xs), 3)}
+
+
+def diagnose_batch(dossiers: list[Any], *, stage_counts: Optional[dict] = None,
+                   usage: Any = None, cfg: Optional[Config] = None) -> dict:
+    """Full-funnel diagnostic for ONE batch (one run_signal call).
+
+    Pure: derives every stat from the batch's own dossiers + the optional top-of-funnel
+    `stage_counts` (generated/dedup/prescreen drops, which dossiers don't carry). This is
+    the per-run insight that ships WITH every generation (founder requirement 2026-06-22):
+    where candidates die, how grounded each check was, how far from the PASS bar, on which
+    brain, and at what token cost.
+    """
+    ds = [_norm_dossier(d) for d in dossiers]
+    floor = float(getattr(getattr(cfg, "thresholds", None), "confidence_floor", 0.0) or 0.0)
+    bar = float(getattr(getattr(cfg, "thresholds", None), "min_composite_to_pass", 3.2) or 3.2)
+
+    # ── Decisions + gates ────────────────────────────────────────────────────
+    dec = Counter((x.get("decision") or "?").lower() for x in ds)
+    gates = Counter(x.get("gate_fired") or "min_composite"
+                    for x in ds if (x.get("decision") or "").lower() == "kill")
+    provisional = sum(1 for x in ds if x.get("provisional"))
+
+    # ── Per-check verdict matrix + sources/confidence/provider ───────────────
+    matrix: dict[str, Counter] = {c: Counter() for c in _CHECKS}
+    src_dist: Counter = Counter()
+    conf_by_verdict: dict[str, list[float]] = {"supported": [], "refuted": [], "unverifiable": []}
+    providers: Counter = Counter()
+    retrieval_failed = 0
+    for x in ds:
+        for c in (x.get("checks") or []):
+            name = c.get("check_name") or "?"
+            v = (c.get("verdict") or "").lower()
+            if name in matrix:
+                matrix[name][v] += 1
+            n_src = len(c.get("sources") or [])
+            src_dist[n_src] += 1
+            if n_src == 0:
+                retrieval_failed += 1
+            if v in conf_by_verdict:
+                conf_by_verdict[v].append(float(c.get("confidence") or 0.0))
+            providers[c.get("provider") or "?"] += 1
+
+    total_checks = sum(src_dist.values()) or 1
+    unverif = sum(matrix[c].get("unverifiable", 0) for c in _CHECKS)
+
+    # ── Composite distance to the PASS bar (only scored survivors carry one) ──
+    comps = [x["score"]["composite"] for x in ds
+             if x.get("score") and x["score"].get("composite") is not None]
+    near_bar = sum(1 for c in comps if c >= bar - 0.5)
+
+    # ── Closest-to-pass kills (actionable: what almost made it) ──────────────
+    scored_kills = [(x["score"]["composite"], (x.get("candidate") or {}).get("title"))
+                    for x in ds
+                    if (x.get("decision") or "").lower() == "kill"
+                    and x.get("score") and x["score"].get("composite") is not None]
+    scored_kills.sort(reverse=True)
+    passes = [(x.get("candidate") or {}).get("title") for x in ds
+              if (x.get("decision") or "").lower() == "pass"]
+
+    return {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "thresholds": {"confidence_floor": floor, "min_composite_to_pass": bar},
+        "funnel": stage_counts or {"note": "top-of-funnel counts unavailable (post-hoc run)"},
+        "decisions": {"pass": dec.get("pass", 0), "kill": dec.get("kill", 0),
+                      "defer": dec.get("defer", 0), "vetted": len(ds),
+                      "provisional": provisional},
+        "kill_gates": dict(gates.most_common()),
+        "verdict_matrix": {c: dict(matrix[c]) for c in _CHECKS},
+        "unverifiable_pct": round(100 * unverif / total_checks, 1),
+        "sources_per_check": dict(sorted(src_dist.items())),
+        "retrieval_failed_checks": retrieval_failed,
+        "confidence": {v: _stats(xs) for v, xs in conf_by_verdict.items()},
+        "providers": dict(providers.most_common()),
+        "composite": {**_stats(comps), "near_bar_within_0.5": near_bar},
+        "closest_kills": scored_kills[:5],
+        "passes": passes,
+        "usage": usage,
+    }
+
+
+def render_batch_diagnostics(r: dict) -> str:
+    """Human-readable per-batch funnel report."""
+    L = ["═" * 72, f"BATCH DIAGNOSTICS  ·  {r.get('ts','')}", "═" * 72]
+    f = r.get("funnel") or {}
+    if "note" not in f:
+        L.append("── Funnel (top → bottom) ──")
+        order = ["generated", "dedup_dropped", "rejection_fastpath", "prescreen_in",
+                 "prescreened_out", "novelty_selected", "vetted"]
+        L.append("  " + "  ".join(f"{k}={f[k]}" for k in order if k in f))
+    d = r.get("decisions", {})
+    L.append(f"── Decisions ──  PASS {d.get('pass',0)} · KILL {d.get('kill',0)} · "
+             f"DEFER {d.get('defer',0)} · provisional {d.get('provisional',0)} "
+             f"(of {d.get('vetted',0)} vetted)")
+    if r.get("kill_gates"):
+        L.append("  kill gates: " + ", ".join(f"{k}={v}" for k, v in r["kill_gates"].items()))
+    L.append(f"── Grounding ──  unverifiable {r.get('unverifiable_pct')}%  ·  "
+             f"sources/check {r.get('sources_per_check')}  ·  "
+             f"retrieval-empty checks {r.get('retrieval_failed_checks')}")
+    L.append("── Per-check verdicts (supported / refuted / unverifiable) ──")
+    for c in _CHECKS:
+        m = r.get("verdict_matrix", {}).get(c, {})
+        L.append(f"  {c:18s} sup {m.get('supported',0):2d} | ref {m.get('refuted',0):2d} | "
+                 f"unv {m.get('unverifiable',0):2d}")
+    cf = r.get("confidence", {})
+    def _c(v):
+        s = cf.get(v, {})
+        return f"{v} med={s.get('med','-')} (n={s.get('n',0)})" if s.get("n") else f"{v} n=0"
+    L.append("── Confidence ──  " + "  ·  ".join(_c(v) for v in ("supported", "refuted", "unverifiable")))
+    comp = r.get("composite", {})
+    bar = r.get("thresholds", {}).get("min_composite_to_pass", 3.2)
+    if comp.get("n"):
+        L.append(f"── Composite (need ≥{bar}) ──  n={comp['n']} min={comp.get('min')} "
+                 f"med={comp.get('med')} max={comp.get('max')} · within-0.5-of-bar={comp.get('near_bar_within_0.5')}")
+    else:
+        L.append(f"── Composite (need ≥{bar}) ──  0 candidates reached scoring (all died kill-fast)")
+    L.append("── Brain ──  " + ", ".join(f"{k}={v}" for k, v in (r.get("providers") or {}).items()))
+    if r.get("closest_kills"):
+        L.append("── Closest-to-pass kills ──")
+        for comp_v, title in r["closest_kills"]:
+            L.append(f"  {comp_v:.2f}  {title}")
+    if r.get("passes"):
+        L.append("── PASSES ──  " + "; ".join(t for t in r["passes"] if t))
+    if r.get("usage"):
+        L.append(f"── Cost ──  {r['usage']}")
+    return "\n".join(L)
+
+
+def persist_batch_diagnostics(report: dict, store: Store) -> Path:
+    """Append the batch diagnostic to a jsonl trail and overwrite the latest text report.
+    Lives under store/scheduler/ next to ticks.jsonl so the operator finds it in one place."""
+    base = store._dossier_dir.parent / "scheduler"
+    base.mkdir(parents=True, exist_ok=True)
+    with (base / "batch_diagnostics.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(report, default=str) + "\n")
+    (base / "DIAGNOSTICS_LATEST.txt").write_text(render_batch_diagnostics(report), encoding="utf-8")
+    return base
 
 # An alarm is {level: "alarm"|"warn", code, message, lane: Optional[str]}
 # lane=None means the alarm spans the whole catalogue; lane="X" means it is lane-specific.

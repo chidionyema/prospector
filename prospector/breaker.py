@@ -2,7 +2,7 @@
 
 The failover chain used to RETIRE a provider permanently on its first failure.
 That conflates a transient hiccup (one timeout under contention) with a dead
-provider: a single slow gemini search would retire gemini for the whole run, so
+provider: a single slow search would retire the provider for the whole run, so
 every later search piled onto the slower claude fallback, saturated it, and the
 run cascaded into DEFER. The breaker fixes that by separating two things the old
 code merged:
