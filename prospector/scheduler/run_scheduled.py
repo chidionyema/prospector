@@ -151,21 +151,36 @@ def _default_generate(cfg, batch_size: int) -> dict:
 # A trickled LLM response body defeats per-recv socket timeouts (proven 2026-07-01: a MiniMax TLS
 # read hung the daemon 34+ min while the alert-only watchdog watched it sit dead for 8.5h). No
 # single tick may hang the process longer than this; on breach the daemon force-exits and launchd
-# KeepAlive (ThrottleInterval=30) relaunches a clean daemon. Default 45 min (env-overridable): a
-# real batch_size=20 grounded batch legitimately runs 20–35 min, so a tighter deadline would
-# force-exit healthy ticks in a restart loop. Kept BELOW the watchdog's 'generating' stall
-# threshold (55 min, see _liveness) so the process self-heals before the external watchdog acts.
-_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "2700"))  # 45 min
+# KeepAlive (ThrottleInterval=30) relaunches a clean daemon. Default 75 min (env-overridable):
+# measured 2026-07-02 a fully-grounded vetted candidate takes ~10 min on the claude_cli chain,
+# so a batch of 5 legitimately runs ~55-60 min incl. generation — a tighter deadline force-exits
+# healthy ticks in a relaunch livelock (proven live: batch_size=20 + 45 min deadline meant NO
+# tick ever completed; dossiers survived but tick rows/diagnostics were lost every cycle).
+# The watchdog's 'generating' stall threshold is derived from this constant (see _liveness) so
+# the in-process deadline always fires first and the process self-heals before the watchdog acts.
+_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "4500"))  # 75 min
 
 # After an unproductive tick (error or 0 dossiers despite the guard allowing spend) retry soon
 # instead of burning the full 2h cadence idle — one provider blip cost days of ~$0 barren ticks.
 _RETRY_BACKOFF_S = 300  # 5 min
 
 
-def _force_exit_hung_tick(batch_size: int) -> None:
+def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -> None:
     logger.critical(
         "TICK HARD DEADLINE (%ds) exceeded during generation (batch=%s) — force-exiting so "
         "launchd KeepAlive relaunches a clean daemon.", _TICK_HARD_DEADLINE_S, batch_size)
+    # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent os._exit leaves no
+    # tick row and no alert, so a repeating deadline breach looks like the daemon never ran
+    # (proven live 2026-07-02: 4h of relaunch loops with zero tick rows). The main thread is
+    # hung, so writing from this timer thread is safe; any bookkeeping failure must still exit.
+    if cfg is not None and tick is not None:
+        try:
+            tick["error"] = (f"tick_hard_deadline: exceeded {_TICK_HARD_DEADLINE_S}s during "
+                             f"generation (batch={batch_size}); force-exited for relaunch")
+            _append_tick(cfg, tick)
+            _emit_tick_alerts(cfg, tick)
+        except Exception:  # noqa: BLE001 — bookkeeping must never block the force-exit
+            logger.exception("Deadline bookkeeping failed; force-exiting anyway")
     os._exit(2)
 
 
@@ -221,7 +236,8 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     _write_heartbeat(cfg, phase="generating", batch_size=batch_size)
     # Hard wall-clock guard: if generation hangs past _TICK_HARD_DEADLINE_S the timer force-exits
     # the process (launchd relaunches it). Cancelled the instant generation returns.
-    deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick, args=(batch_size,))
+    deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
+                               args=(batch_size, cfg, tick))
     deadline.daemon = True
     deadline.start()
     halt = False
@@ -464,10 +480,14 @@ def _liveness(cfg) -> tuple[bool, str]:
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return False, f"unreadable heartbeat ({exc})"
     phase = beat.get("phase", "?")
-    if phase == "generating" and age_min > 55:
-        # 55 > the 45-min tick hard-deadline (_TICK_HARD_DEADLINE_S) so a hung tick self-exits
-        # first; the watchdog kill is the backstop for when even the in-process deadline wedges.
-        return False, f"stuck in 'generating' for {age_min:.0f} min (batch should finish <45 min)"
+    # Derived from the tick hard deadline (+10 min grace) so the in-process deadline always
+    # self-exits a hung tick FIRST; the watchdog kill is the backstop for when even the
+    # in-process timer wedges. A fixed number here silently strands the coupling when the
+    # deadline changes (proven: the old hardcoded 55 assumed the old 45-min deadline).
+    stall_min = _TICK_HARD_DEADLINE_S / 60 + 10
+    if phase == "generating" and age_min > stall_min:
+        return False, (f"stuck in 'generating' for {age_min:.0f} min "
+                       f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
     if phase == "sleeping":
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
         if age_min > budget:

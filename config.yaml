@@ -528,7 +528,12 @@ dedup_threshold: 0.85
 # Lower = stricter (drops more). Set to null to disable the token signal entirely.
 dedup_token_threshold: 0.34
 
-schedule: { cadence: daily, batch_size: 20 }
+# batch_size 5 (was 20): measured 2026-07-02 on the claude_cli-grounded chain — a vetted
+# candidate takes ~10 min, so a 20-batch can NEVER finish inside the 45-min tick hard
+# deadline; the daemon force-exited every tick in a relaunch livelock (dossiers survived,
+# tick rows/diagnostics did not). 5 also matches the operating rule "bounded batches,
+# default 5 candidates per signal". Deadline re-sized to fit in run_scheduled.py.
+schedule: { cadence: daily, batch_size: 5 }
 
 spend:
   daily_cap_usd: 20.0
