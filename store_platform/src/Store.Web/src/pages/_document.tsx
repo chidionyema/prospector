@@ -14,7 +14,7 @@ import { SITE_URL, BRAND } from "@/lib/config";
 const SITE = BRAND.name;
 const ORG_DESCRIPTION =
   "Prospector Store sells grounded business opportunity packs. Each is a vetted idea with a " +
-  "Blueprint, GTM plan, and Build Kit, sourced and ready to build.";
+  "build spec, a GTM plan, operations and unit economics, and a sourced QA report.";
 
 const siteJsonLd = SITE_URL
   ? JSON.stringify({

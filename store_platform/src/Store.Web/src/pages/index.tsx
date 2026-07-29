@@ -5,7 +5,8 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon, IconName, Input, Dropdown, Button } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
-import { SectionBand, Section, FeatureCard, CtaBand } from '@/components/marketing/blocks';
+import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
+import { PackContentsSection } from '@/components/marketing/PackContents';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { categoryFor, type Category } from '@/lib/category';
 
@@ -27,12 +28,36 @@ function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
   );
 }
 
-// The three deliverables inside every pack, as scannable icon chips.
+// The four deliverables inside every pack, as scannable icon chips. Matches the real bundle
+// manifest — see the audit note in components/marketing/PackContents.tsx.
 const DELIVERABLES: { icon: IconName; label: string }[] = [
   { icon: 'briefcase', label: 'Blueprint' },
   { icon: 'handshake', label: 'GTM plan' },
-  { icon: 'code', label: 'Build kit' },
+  { icon: 'code', label: 'Ops & numbers' },
+  { icon: 'verified', label: 'Sources' },
 ];
+
+/** Titles arrive as "Brand — long descriptive subtitle". Split them so a card leads with a name a
+ *  buyer can hold in their head, and demotes the descriptor to a supporting line. Falls back to the
+ *  whole string when there is no em dash. */
+function splitTitle(title: string): { name: string; descriptor: string | null } {
+  const i = title.indexOf('—');
+  if (i === -1) return { name: title, descriptor: null };
+  const name = title.slice(0, i).trim();
+  const descriptor = title.slice(i + 1).trim();
+  return name && descriptor ? { name, descriptor } : { name: title, descriptor: null };
+}
+
+/** One scannable label/value row on a card. Clamped hard: a card is read in three seconds, so a
+ *  long engine-written sentence has to truncate rather than push the CTA off the shelf. */
+function CardFact({ label, children, clamp = 'line-clamp-2' }: { label: string; children: React.ReactNode; clamp?: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">{label}</span>
+      <span className={cx('text-xs leading-relaxed text-text/75', clamp)}>{children}</span>
+    </div>
+  );
+}
 
 function DeliverableChips() {
   return (
@@ -94,6 +119,10 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
 
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
+  const { name, descriptor } = splitTitle(pack.title);
+  // `theGap` is the engine's problem statement and is the right line here; until publish emits it,
+  // fall back to `oneLine` (which describes the solution) and label it honestly as such.
+  const gap = pack.theGap || pack.oneLine;
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -112,51 +141,55 @@ function PackCard({ pack }: { pack: Pack }) {
       </Cover>
 
       <div className="flex flex-1 flex-col p-6">
+        {/* Name first, engine-written descriptor demoted: eleven 25-word titles is not a shelf. */}
         <h3 className="text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary">
-          {pack.title}
+          {name}
         </h3>
-        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-text/70">{pack.oneLine}</p>
+        {descriptor && (
+          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-muted">{descriptor}</p>
+        )}
 
-        {pack.whoPays || pack.effortTag || pack.timeToFirstRevenue ? (
-          // Per-pack specifics out-sell generic deliverable chips: name the buyer and the shape.
-          <div className="mt-4 space-y-2.5">
-            {pack.whoPays && (
-              <p className="line-clamp-2 text-xs leading-relaxed text-text/70">
-                <span className="font-semibold text-text">Who pays.</span> {pack.whoPays}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-1.5">
-              {pack.effortTag && (
-                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold capitalize text-muted">
-                  {pack.effortTag} effort
-                </span>
-              )}
-              {pack.timeToFirstRevenue && (
-                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-                  Revenue in {pack.timeToFirstRevenue}
-                </span>
-              )}
-              {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
-                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-                  {pack.sourceCount} sources
-                </span>
-              )}
-              {freshnessLabel(pack.verifiedAt) && (
-                <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-                  {freshnessLabel(pack.verifiedAt)}
-                </span>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="mt-5">
+        {/* Scannable label/value rows, not a paragraph. */}
+        <div className="mt-4 space-y-3">
+          {gap && <CardFact label={pack.theGap ? 'The gap' : 'The opportunity'}>{gap}</CardFact>}
+          {pack.whoPays && <CardFact label="Who pays">{pack.whoPays}</CardFact>}
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">Deliverables</span>
             <DeliverableChips />
+          </div>
+        </div>
+
+        {(pack.effortTag || pack.timeToFirstRevenue || pack.sourceCount || freshnessLabel(pack.verifiedAt)) && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {pack.effortTag && (
+              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold capitalize text-muted">
+                {pack.effortTag} effort
+              </span>
+            )}
+            {pack.timeToFirstRevenue && (
+              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+                Revenue in {pack.timeToFirstRevenue}
+              </span>
+            )}
+            {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
+              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+                {pack.sourceCount} sources
+              </span>
+            )}
+            {freshnessLabel(pack.verifiedAt) && (
+              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+                {freshnessLabel(pack.verifiedAt)}
+              </span>
+            )}
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between border-t border-border/70 pt-4">
-          <span className="text-sm font-bold text-text transition-colors group-hover:text-primary">See what is inside</span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-text transition-all group-hover:bg-primary group-hover:text-white">
+        {/* Active CTA at the price, not a passive "see what is inside". */}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/70 pt-4">
+          <span className="text-sm font-bold text-text transition-colors group-hover:text-primary">
+            View vetted blueprint ({formatPrice(pack.price)})
+          </span>
+          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg text-text transition-all group-hover:bg-primary group-hover:text-white">
             <Icon name="arrowRight" size={15} />
           </span>
         </div>
@@ -169,6 +202,7 @@ function PackCard({ pack }: { pack: Pack }) {
 // the grid is not eleven identical blocks. Anchors the page and breaks the pattern.
 function SpotlightCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
+  const { name, descriptor } = splitTitle(pack.title);
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -189,14 +223,18 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           <span className="text-sm font-semibold text-muted">Newest in the catalogue</span>
         </div>
         <h3 className="text-2xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-3xl">
-          {pack.title}
+          {name}
         </h3>
-        <p className="max-w-2xl text-base leading-relaxed text-text/75 line-clamp-3">{pack.oneLine}</p>
+        {descriptor && <p className="max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{descriptor}</p>}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <CardFact label={pack.theGap ? 'The gap' : 'The opportunity'}>{pack.theGap || pack.oneLine}</CardFact>
+          {pack.whoPays && <CardFact label="Who pays">{pack.whoPays}</CardFact>}
+        </div>
         <DeliverableChips />
         <div className="mt-1 flex flex-wrap items-center gap-4">
           <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
           <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition group-hover:opacity-90">
-            See what is inside <Icon name="arrowRight" size={15} />
+            View vetted blueprint <Icon name="arrowRight" size={15} />
           </span>
         </div>
       </div>
@@ -425,6 +463,79 @@ function CatalogBrowser({ packs }: { packs: Pack[] }) {
   );
 }
 
+/**
+ * Why £49 once beats a subscription, side by side. Justifies the impulse price by anchoring against
+ * the category the buyer is actually comparing us to.
+ *
+ * Deliberately no competitor is named and no capability is denied on their behalf: the left column
+ * states only the two things that are true by definition of a subscription idea feed (it recurs, and
+ * it hands you leads you still have to vet). The "$300 to $1,000 a year" range is the figure this
+ * page already carried before this rewrite — it is unsourced, so it is hedged as "typically".
+ */
+function ComparisonBlock() {
+  const rows: { label: string; feed: string; pack: string }[] = [
+    { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
+    { label: 'What arrives', feed: 'A stream of raw leads and trend signals', pack: 'One finished opportunity, four documents' },
+    { label: 'Who does the vetting', feed: 'You do, on every idea in the feed', pack: 'Already done: six checks, every claim sourced' },
+    { label: 'Launch assets', feed: 'None. The idea is the product', pack: 'Build spec, GTM plan, ops and unit economics' },
+    { label: 'If you cancel', feed: 'Access ends, you keep nothing', pack: 'Yours forever, plus 14 day money back' },
+  ];
+  return (
+    <div className="mt-14">
+      <h2 className="text-xl font-bold tracking-tight text-text md:text-2xl">Why £49 once, not another subscription</h2>
+      <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted md:text-base">
+        Idea feeds and trend tools sell you the search. We sell you the answer to one.
+      </p>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Left: the category being compared against */}
+        <div className="flex flex-col rounded-2xl border border-border bg-bg/50 p-6">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-text/5 text-muted">
+              <Icon name="close" size={14} />
+            </span>
+            <span className="text-base font-bold text-text/70">Subscription idea feeds</span>
+          </div>
+          <p className="mt-1.5 text-sm font-semibold text-muted">Typically $300 to $1,000 a year</p>
+          <dl className="mt-5 space-y-3.5">
+            {rows.map((r) => (
+              <div key={r.label} className="flex flex-col gap-0.5">
+                <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{r.label}</dt>
+                <dd className="text-sm leading-relaxed text-text/65">{r.feed}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        {/* Right: the offer */}
+        <div className="flex flex-col rounded-2xl border-2 border-success/40 bg-white p-6 shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-success/10 text-success">
+              <Icon name="check" size={14} />
+            </span>
+            <span className="text-base font-bold text-text">A Prospector Pack</span>
+          </div>
+          <p className="mt-1.5 text-sm font-semibold text-success">£49 one time, yours forever</p>
+          <dl className="mt-5 space-y-3.5">
+            {rows.map((r) => (
+              <div key={r.label} className="flex flex-col gap-0.5">
+                <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">{r.label}</dt>
+                <dd className="text-sm font-medium leading-relaxed text-text/85">{r.pack}</dd>
+              </div>
+            ))}
+          </dl>
+          <Link
+            href="#catalog"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-text px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5"
+          >
+            Browse the packs <Icon name="arrowRight" size={15} />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home({ packs, stats }: HomeProps) {
   return (
     <MarketingLayout>
@@ -435,13 +546,14 @@ export default function Home({ packs, stats }: HomeProps) {
         <p className="mb-5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
-        <h1 className="mx-auto max-w-[18ch] text-balance text-4xl font-bold leading-[1.08] tracking-tight text-text md:text-6xl">
-          We tried to kill these business ideas. They survived.
+        <h1 className="mx-auto max-w-[22ch] text-balance text-4xl font-bold leading-[1.08] tracking-tight text-text md:text-6xl">
+          Skip 6 months of research. Launch a business that&apos;s already vetted.
         </h1>
-        <p className="mx-auto mt-6 max-w-[54ch] text-base leading-relaxed text-text/75 md:text-lg">
-          Each pack is one fully researched business opportunity that cleared six brutal checks, with a
-          clickable source behind every claim. Pick one below and start building something that already holds
-          up.
+        <p className="mx-auto mt-6 max-w-[60ch] text-base leading-relaxed text-text/75 md:text-lg">
+          Stop wasting weekends building ideas nobody will pay for. Each £49 Prospector Pack gives you a fully
+          researched, market-validated business blueprint: who the buyer is, what they pay, the pricing and
+          unit economics, and a step-by-step go-to-market plan. Every claim backed by a real source you can
+          open.
         </p>
         <div className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-x-7 gap-y-3">
           <TrustPill icon="money" label="£49, one payment" />
@@ -449,12 +561,24 @@ export default function Home({ packs, stats }: HomeProps) {
           <TrustPill icon="check" label="Every claim sourced" />
           <TrustPill icon="download" label="Instant download" />
         </div>
-        <p className="mt-7 text-sm font-semibold text-muted">
-          Want proof first?{' '}
-          <Link href="/sample" className="text-primary underline-offset-4 hover:underline">
-            Read a full report free
+        {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
+        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            href="#catalog"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
+          >
+            Browse vetted blueprints — £49
           </Link>
-          , every source clickable, zero pence.
+          <Link
+            href="/sample"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-8 py-4 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
+          >
+            <Icon name="download" size={15} className="text-primary" />
+            Read the free sample report
+          </Link>
+        </div>
+        <p className="mt-4 text-sm font-medium text-muted">
+          One whole verification dossier, unredacted, every source clickable. Zero pence, no email needed.
         </p>
       </SectionBand>
 
@@ -481,28 +605,17 @@ export default function Home({ packs, stats }: HomeProps) {
         <CatalogBrowser packs={packs} />
       </Section>
 
-      {/* 3. WHAT YOU GET — product detail, the three deliverables inside every pack. */}
+      {/* 3. WHAT YOU GET — the deliverable breakdown. Format ambiguity is the biggest killer on a
+             digital download page: the buyer's real fear is paying £49 for a two-page Google Doc. */}
       <Section
         bg="white"
         width="6xl"
         title={<span className="font-black">What you get for £49</span>}
-        intro="Idea feeds and trend tools charge a subscription, often $300 to $1,000 a year, for a stream of leads you still have to vet yourself. This is the opposite. One finished idea, already vetted, one payment of £49, yours to keep."
+        intro="One finished opportunity, already vetted, in four documents you own outright. No subscription, no drip feed, no upsell."
         className="!py-14 md:!py-20"
       >
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <FeatureCard icon="briefcase" title="The Blueprint">
-            The opportunity and the evidence behind it. The market, the gap, and why it is worth your time,
-            with every claim backed by a real source.
-          </FeatureCard>
-          <FeatureCard icon="handshake" title="The GTM plan">
-            Who actually pays, where to find them, and how to reach them, so you start with a real route to a
-            paying customer instead of a guess.
-          </FeatureCard>
-          <FeatureCard icon="code" title="The Build Kit">
-            The concrete steps to ship. The stack, the sequence, and the first moves to get from idea to first
-            revenue without guesswork.
-          </FeatureCard>
-        </div>
+        <PackContentsSection heading="What’s inside your download" />
+        <ComparisonBlock />
       </Section>
 
       {/* 4. WHY TRUST IT — condensed reassurance, sits below the shelf, not above it. */}

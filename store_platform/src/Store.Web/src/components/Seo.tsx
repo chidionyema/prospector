@@ -20,7 +20,8 @@ import { SITE_URL, BRAND } from '@/lib/config';
 const SITE = BRAND.name;
 const DEFAULT_DESCRIPTION =
   'Prospector Store sells £49 business opportunity packs. Each is a grounded idea passed by the ' +
-  'Prospector engine, with a Blueprint, GTM plan, and Build Kit. Cited sources, instant download.';
+  'Prospector engine: build spec, GTM plan, operations and unit economics, and a QA report with ' +
+  'every claim sourced. Instant download.';
 
 export interface SeoProps {
   /** Page-specific title; composed as "Title · {BRAND.name}". Omit for the site default. */

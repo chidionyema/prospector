@@ -54,6 +54,9 @@ export interface Pack {
   // Per-pack conversion specifics. Optional: only packs published by the newer engine carry
   // them, so every render site must degrade gracefully when they are absent.
   headline?: string;
+  /** The problem statement in one sentence ("the gap"). Not yet emitted by the publish step: card
+   *  render sites fall back to `oneLine` (which describes the solution) and relabel accordingly. */
+  theGap?: string;
   whoPays?: string;
   effortTag?: string;
   proofPoint?: string;
@@ -131,6 +134,30 @@ export async function fetchOrder(token: string): Promise<OrderDetails> {
   const res = await fetch(`${API_BASE_URL}/api/orders/${token}`);
   if (res.status === 404) throw new Error('not_found');
   if (!res.ok) throw new Error('Failed to fetch order');
+  return res.json();
+}
+
+/** One purchased pack resolved from a checkout session. */
+export interface SessionOrderItem {
+  packId: string;
+  packTitle: string;
+  orderPath: string;
+  downloadPath: string;
+}
+
+/** What a checkout session resolved to. `pending` is normal, not an error: the browser
+ *  usually gets back from the payment provider before the fulfilment webhook lands, so
+ *  the caller polls until the status turns `ready`. */
+export interface SessionOrder {
+  status: 'pending' | 'ready';
+  items: SessionOrderItem[];
+}
+
+/** Resolve the checkout session the buyer just completed into real download links.
+ *  This is what makes the purchase deliverable on-screen rather than only by email. */
+export async function fetchOrderBySession(sessionId: string): Promise<SessionOrder> {
+  const res = await fetch(`${API_BASE_URL}/api/orders/by-session/${encodeURIComponent(sessionId)}`);
+  if (!res.ok) throw new Error('Failed to resolve checkout session');
   return res.json();
 }
 

@@ -10,7 +10,7 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     q: 'What am I actually buying?',
     a: (
       <>
-        A £49 pack: a grounded business opportunity dossier with a Blueprint, a go to market plan, and a Build Kit. It&apos;s a digital download, yours to read and build from as soon as payment clears.
+        A £49 pack: a grounded business opportunity dossier in four parts — a build spec, a go to market plan, an operations and financial model, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears.
       </>
     ),
   },

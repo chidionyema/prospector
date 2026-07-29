@@ -48,7 +48,7 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl space-y-6">
           <p className="text-lg font-normal leading-relaxed text-text/80">
-            Each pack bundles a Blueprint (the opportunity, the evidence, and why it clears the bar), a GTM plan (who pays, where they are, and how to reach them), and a Build Kit (the concrete steps to ship). You pay £49, checkout runs through Stripe, and the pack downloads instantly.
+            Each pack bundles a build spec (what to build, in what order, on what stack), a GTM plan (who pays, where they are, and how to reach them), an operations and financial model (how it runs, what it charges, what it earns), and a QA report carrying every check, every verdict, and a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words. You pay £49, checkout runs through Stripe, and the pack downloads instantly.
           </p>
         </div>
       </Section>

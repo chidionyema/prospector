@@ -6,9 +6,9 @@ import { Seo } from '@/components/Seo';
 import { Icon, CoverArt } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
+import { PackContentsSection } from '@/components/marketing/PackContents';
 import { fetchPackDetails, formatPrice, freshnessLabel, scoreAxes, splitVerdict, PackDetails } from '@/lib/api/client';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
-import { stripeConfigured } from '@/lib/stripe';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { coverFor } from '@/lib/cover';
 
@@ -31,12 +31,8 @@ const CHECKS = [
   'We tried to find a legal landmine. It came back clean.',
 ];
 
-const INSIDE = [
-  { label: 'Blueprint', desc: 'The opportunity, the evidence, and why it is worth building.' },
-  { label: 'GTM plan', desc: 'Who pays, where to find them, and how to reach them.' },
-  { label: 'Build Kit', desc: 'The stack, the sequence, and the first moves to revenue.' },
-  { label: 'The receipts', desc: 'Every claim traced to a source you can open.' },
-];
+// The deliverable list lives in one shared place (PackContents) so this page and the homepage can
+// never drift into promising different things for the same £49.
 
 export default function PackPage({ pack }: PackPageProps) {
   const [checkingOut, setCheckingOut] = useState(false);
@@ -90,8 +86,18 @@ export default function PackPage({ pack }: PackPageProps) {
     openPaddleCheckout(pack.providerPriceId);
   };
 
+  // Stripe checkout is a server-issued redirect to Stripe's HOSTED page (handleStripeCheckout
+  // above); it never boots Stripe.js, so the publishable key has no bearing on whether a pack
+  // can be bought. Gating on it silently hid every buy button in production once the key was
+  // left out of the web build args — a sales outage with no error anywhere. Gate instead on the
+  // one thing that must actually be true: the pack points at a real provisioned price.
+  const hasProvisionedPrice =
+    typeof pack.providerPriceId === 'string' &&
+    pack.providerPriceId.length > 0 &&
+    !pack.providerPriceId.startsWith('price_stub');
+
   const canCheckout =
-    (provider === 'stripe' && stripeConfigured) ||
+    (provider === 'stripe' && hasProvisionedPrice) ||
     (provider !== 'stripe' && paddleConfigured);
 
   const notifyHref =
@@ -159,7 +165,7 @@ export default function PackPage({ pack }: PackPageProps) {
           disabled={checkingOut}
           className="mt-4 w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
         >
-          {checkingOut ? 'Redirecting…' : `Get this pack for ${priceLabel}`}
+          {checkingOut ? 'Redirecting…' : `Get instant access — ${priceLabel}`}
         </button>
       ) : (
         <>
@@ -251,6 +257,16 @@ export default function PackPage({ pack }: PackPageProps) {
             {/* Mobile purchase bar — keeps price + CTA above the fold on small screens */}
             <div className="mt-8 rounded-2xl border border-border bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
               <CheckoutBody />
+            </div>
+
+            {/* Deliverables first: "what do I actually receive for £49" is the question that stalls a
+                digital purchase, and it has to be answered before the trust argument. */}
+            <div className="mt-12">
+              <PackContentsSection
+                heading="What’s inside your download"
+                lead="The moment you pay, you download the whole pack. Four documents, no drip feed, no login."
+                sourceCount={pack.sourceCount}
+              />
             </div>
 
             {/* Cleared all six checks — the proof block */}
@@ -372,12 +388,11 @@ export default function PackPage({ pack }: PackPageProps) {
               </div>
             )}
 
-            {/* What's inside — per-pack specifics when present, generic cards otherwise */}
+            {/* The per-pack table of contents. The generic four-asset breakdown is higher up the page. */}
             <div className="mt-12">
-              <h2 className="text-xl font-bold tracking-tight text-text">What&apos;s inside the box</h2>
+              <h2 className="text-xl font-bold tracking-tight text-text">The table of contents</h2>
               <p className="mt-2 max-w-[60ch] text-sm text-muted">
-                The moment you pay, you download the full pack. This is the table of contents, and a blurred
-                look at the document you receive.
+                Exactly what this pack covers, plus a blurred look at the document you receive.
               </p>
 
               {/* Blurred deliverable preview: a real-looking page you cannot read yet. */}
@@ -404,7 +419,9 @@ export default function PackPage({ pack }: PackPageProps) {
                 </div>
               </div>
 
-              {pack.whatYouGet && pack.whatYouGet.length > 0 ? (
+              {/* Per-pack contents only. The generic four-asset list now lives once, above, so it
+                  cannot contradict this section. */}
+              {pack.whatYouGet && pack.whatYouGet.length > 0 && (
                 <ul className="mt-6 list-none space-y-3 p-0">
                   {pack.whatYouGet.map((item, i) => (
                     <li
@@ -415,18 +432,6 @@ export default function PackPage({ pack }: PackPageProps) {
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <span className="text-sm leading-relaxed text-text/80">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <ul className="mt-6 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
-                  {INSIDE.map((item, i) => (
-                    <li key={i} className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <span className="mt-1 text-base font-bold text-text">{item.label}</span>
-                      <span className="mt-1.5 text-sm leading-relaxed text-text/70">{item.desc}</span>
                     </li>
                   ))}
                 </ul>
@@ -469,7 +474,7 @@ export default function PackPage({ pack }: PackPageProps) {
                 href="/sample"
                 className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
               >
-                Want to see the depth first? Read a full report free
+                Want to see the depth first? Read the free sample report
                 <Icon name="arrowRight" size={14} />
               </Link>
             </div>
