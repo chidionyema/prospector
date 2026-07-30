@@ -23,8 +23,14 @@ export const LEGAL = {
   legalName: 'Prospector Platform',
   address: 'Registered address available on request',
   governingLaw: 'England & Wales',
-  contactEmail: 'privacy@prospector.store',
-  supportEmail: 'support@prospector.store',
+  // These must be a mailbox the operator actually reads: they are the only refund and privacy
+  // contact a buyer is given, and they render on refund.tsx, terms.tsx, privacy.tsx, the footer
+  // and every pack page. They previously pointed at prospector.store — a domain registered to
+  // someone else and parked on a resale service — so every refund request went to a stranger.
+  // Swap to support@/privacy@ on an owned domain once that domain has MX records; an address on
+  // a domain with no mail routing bounces, which is the same silent failure in a new costume.
+  contactEmail: 'chidionyema@gmail.com',
+  supportEmail: 'chidionyema@gmail.com',
 } as const;
 
 export const PADDLE_SETTINGS = {

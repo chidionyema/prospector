@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import type { OrderDetails } from '@/lib/api/client';
 import { fetchOrder } from '@/lib/api/client';
+import { API_BASE_URL } from '@/lib/config';
 
 export default function OrderPage() {
   const router = useRouter();
@@ -46,8 +47,16 @@ export default function OrderPage() {
   // Only follow a first-party relative path or an explicit https URL. This neutralises a
   // `javascript:`/`data:` value (which `download` does NOT block) if the API is ever
   // compromised or buggy. `\/(?!\/)` rejects protocol-relative `//evil.com`.
+  //
+  // The API returns downloadPath as a root-relative path ("/download/<token>"), but /download
+  // is served by the API, not by this storefront and not proxied to it — using the bare path
+  // resolved against the web origin and 404'd. Relative paths are resolved against the API.
   const rawDownload = order?.downloadPath ?? '';
-  const downloadHref = /^(\/(?!\/)|https:\/\/)/.test(rawDownload) ? rawDownload : '#';
+  const downloadHref = /^https:\/\//.test(rawDownload)
+    ? rawDownload
+    : /^\/(?!\/)/.test(rawDownload)
+      ? `${API_BASE_URL}${rawDownload}`
+      : '#';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
