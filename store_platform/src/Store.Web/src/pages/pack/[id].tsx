@@ -7,7 +7,7 @@ import { Icon, CoverArt } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection } from '@/components/marketing/PackContents';
-import { fetchPackDetails, formatPrice, freshnessLabel, scoreAxes, splitVerdict, PackDetails } from '@/lib/api/client';
+import { fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, PackDetails } from '@/lib/api/client';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { coverFor } from '@/lib/cover';
@@ -356,10 +356,26 @@ export default function PackPage({ pack }: PackPageProps) {
             )}
 
             {/* Is this for you? — the concrete fit signals, when the pack carries them */}
-            {(pack.whoPays || pack.effortTag || pack.timeToFirstRevenue) && (
+            {(pack.market || pack.whoPays || pack.effortTag || pack.timeToFirstRevenue) && (
               <div className="mt-12">
                 <h2 className="text-xl font-bold tracking-tight text-text">Is this for you?</h2>
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {pack.market && (
+                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+                        Market
+                      </span>
+                      <span className="mt-1.5 text-sm font-semibold text-text">
+                        {marketLabel(pack.market)}
+                      </span>
+                      {/* State it plainly: the research is about this jurisdiction, and the
+                          pack is still sold in GBP. Leaving that implicit invites a refund. */}
+                      <span className="mt-1.5 text-xs leading-relaxed text-muted">
+                        The opportunity, its evidence and its economics are researched for this
+                        market. The pack itself is priced and sold in GBP.
+                      </span>
+                    </div>
+                  )}
                   {pack.whoPays && (
                     <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">

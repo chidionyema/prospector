@@ -15,7 +15,7 @@ from typing import Any, Optional
 from .config import Config
 from .models import Candidate
 from .operator import Operator
-from .prompts import render
+from .prompts import ALL_MARKET_KEYS, market_kwargs, render
 from .telemetry import logger, track_latency
 
 
@@ -251,6 +251,15 @@ def generate(
     automatability_floor: Optional[float] = (
         float(_floor_raw) if _floor_raw is not None else None)
 
+    # The jurisdiction this run generates for (Epic D). Empty when no markets are
+    # configured => candidates carry no market => byte-for-byte pre-Epic-D behaviour.
+    try:
+        run_market = cfg.active_market or cfg.default_market
+        market_vars = market_kwargs(cfg)
+    except AttributeError:  # a Config built before Epic D (e.g. a stubbed test double)
+        run_market = ""
+        market_vars = {k: "" for k in ALL_MARKET_KEYS}
+
     # Audience forms loaded and rotated AFTER structural forms so both are ready here.
     logger.info("Generation started", extra={
         "sector": sector,
@@ -284,7 +293,8 @@ def generate(
             lane_directive=lane_directive,
             focus_directive=focus_directive,
             generation_bias=gen_bias,
-            pass_patterns=pass_patterns)
+            pass_patterns=pass_patterns,
+            **market_vars)
         # EXECUTION DIRECTIVE (generation-scoped, provider-agnostic). Without it, claude_cli —
         # now the generation PRIMARY (proven reliable 2026-07-02: 3/3 clean JSON vs MiniMax M3's
         # non-deterministic 7/8-then-0/6) — treats the flattened prompt as a conversational turn
@@ -312,6 +322,14 @@ def generate(
             for c in cands:
                 # Categorical field (survives asdict() into the dossier), not a boolean tag.
                 c.structural_form = form
+        # Stamp the jurisdiction the run is generating for, BEFORE dedup so market-scoped
+        # dedup (dedup.py) can tell "same idea, different market" from a real duplicate.
+        # Setting it here also fixes the candidate_id derivation (models.Candidate) at
+        # construction time rather than after a dossier already references the old id.
+        if run_market:
+            for c in cands:
+                if not c.market:
+                    c.market = run_market
         return cands
 
     def _refine_wave(candidates: list[Candidate], _gen: Operator, lane_directive: str) -> list[Candidate]:

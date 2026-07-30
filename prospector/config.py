@@ -10,6 +10,28 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# Keys a market block may NEVER contain. A market configures the EVIDENCE TERRAIN
+# (where to look, in what language, under whose authority) and the FRAMING — never the
+# BAR. Only an ambition LANE moves the bar. Allowing a market to set these would make
+# "open a low-evidence market by lowering its threshold" a one-line config edit, which
+# is exactly the failure the two-loops rule forbids: demand never overrides truth.
+MARKET_FORBIDDEN_KEYS = ("hard_gates", "thresholds", "weights")
+
+_MARKET_STATUSES = ("open", "probing", "closed")
+
+
+class MarketConfigError(ValueError):
+    """The `markets:` block is malformed or attempts to move the bar."""
+
+
+class UnknownMarketError(ValueError):
+    """A market code was requested that is not defined in config.
+
+    Deliberately louder than the unknown-LANE behaviour (`for_lane` returns self):
+    silently running "us" as the UK default would stamp dossiers with a market whose
+    evidence chain never ran — fabricated provenance. Fail closed instead.
+    """
+
 
 @dataclass
 class Retrieval:
@@ -198,6 +220,14 @@ class Config:
     active_lanes: list[str] = field(default_factory=list)
     # Candidates generated per tier per multi-lane run (fan-out for coverage).
     lane_quota: dict[str, int] = field(default_factory=dict)
+    # Markets (Epic D): the JURISDICTION an opportunity lives in. Orthogonal to both the
+    # ambition lane (which sets the bar) and the buyer's locale (packs sell in GBP
+    # regardless). A market supplies the evidence terrain — authority domains, search
+    # region, legality corpus — and the prompt framing. It may not touch the bar; see
+    # MARKET_FORBIDDEN_KEYS. `active_market` empty => markets["default"] => byte-for-byte
+    # today's behaviour.
+    markets: dict[str, Any] = field(default_factory=dict)
+    active_market: str = ""
     generation: dict[str, Any] = field(default_factory=dict)
     # Generation PROFILES (Part 16 — targeted steering): a named, reusable bundle of
     # `generation` overrides (restricted structural_forms + a free-text `focus` directive)
@@ -285,6 +315,93 @@ class Config:
             resolved = resolved.for_persona(self.active_persona)
         return resolved
 
+    # ------------------------------------------------------------------
+    # Markets (Epic D)
+    # ------------------------------------------------------------------
+
+    @property
+    def default_market(self) -> str:
+        """The market a candidate belongs to when none is declared."""
+        return str((self.markets or {}).get("default", "") or "")
+
+    def resolve_market(self, name: str | None) -> str:
+        """Resolve a possibly-empty market name to a concrete code.
+
+        Empty => the configured default. Raises UnknownMarketError for a name that has
+        no definition (directly or via a parent, e.g. "us-tx" resolves through "us").
+        """
+        code = str(name or "").strip().lower() or self.default_market
+        if not code:
+            return ""
+        if not self._market_chain(code):
+            raise UnknownMarketError(
+                f"unknown market {code!r}; defined: "
+                f"{sorted(k for k in (self.markets or {}) if k != 'default')}")
+        return code
+
+    def _market_chain(self, code: str) -> list[str]:
+        """Ancestry of `code`, nearest-first: 'us-tx' -> ['us-tx', 'us'].
+
+        Only codes that are actually defined appear. Empty list => undefined market.
+        A subdivision inherits everything its parent declares (spec DD4), so opening
+        "us-tx" needs no config beyond "us" unless it genuinely differs.
+        """
+        markets = self.markets or {}
+        parts = code.split("-")
+        chain = []
+        for i in range(len(parts), 0, -1):
+            candidate = "-".join(parts[:i])
+            if isinstance(markets.get(candidate), dict):
+                chain.append(candidate)
+        return chain
+
+    def market_config(self, name: str | None = None) -> dict[str, Any]:
+        """The resolved market block, with parent values inherited by a subdivision.
+
+        Nearest ancestor wins per key. Returns {} when no markets are configured at all
+        (a config predating Epic D), so every caller degrades to today's behaviour.
+        """
+        if not self.markets:
+            return {}
+        code = self.resolve_market(name if name is not None else self.active_market)
+        if not code:
+            return {}
+        resolved: dict[str, Any] = {}
+        for ancestor in reversed(self._market_chain(code)):  # furthest first
+            resolved.update(self.markets.get(ancestor) or {})
+        resolved["code"] = code
+        return resolved
+
+    def market_status(self, name: str | None = None) -> str:
+        """'open' | 'probing' | 'closed'. Unconfigured markets read as 'open' so a
+        pre-Epic-D config keeps working unchanged."""
+        mc = self.market_config(name)
+        return str(mc.get("status", "open") or "open") if mc else "open"
+
+    def for_market(self, name: str | None) -> "Config":
+        """Return a Config resolved to market `name`.
+
+        Merges ONLY `retrieval` and `generation` overrides from the market block and
+        records `active_market`. Gates, thresholds and weights are structurally
+        untouchable (MARKET_FORBIDDEN_KEYS, enforced at load): a market changes where
+        the engine LOOKS, never how strictly it JUDGES.
+
+        Unknown name raises (UnknownMarketError) — see that class for why this diverges
+        from for_lane's silent no-op.
+        """
+        if not self.markets:
+            return self
+        code = self.resolve_market(name)
+        if not code:
+            return self
+        block = self.market_config(code)
+        new_retrieval = self.retrieval
+        if block.get("retrieval"):
+            new_retrieval = replace(self.retrieval, **block["retrieval"])
+        new_generation = {**self.generation, **(block.get("generation") or {})}
+        return replace(self, retrieval=new_retrieval, generation=new_generation,
+                       active_market=code)
+
     def for_profile(self, name: str | None) -> "Config":
         """Return a Config with generation PROFILE `name` merged over `generation`.
 
@@ -367,6 +484,47 @@ def _parse_pricing(raw_pr: dict | None) -> Pricing:
     )
 
 
+def _validate_markets(raw_markets: dict | None) -> dict:
+    """Fail closed on a malformed `markets:` block.
+
+    The load-time refusal of MARKET_FORBIDDEN_KEYS is the structural guarantee behind
+    "the bar never moves per market" — it makes the tempting shortcut in a low-evidence
+    market impossible rather than merely discouraged.
+    """
+    if not raw_markets:
+        return {}
+    if not isinstance(raw_markets, dict):
+        raise MarketConfigError("`markets` must be a mapping")
+
+    default = raw_markets.get("default")
+    if not default:
+        raise MarketConfigError("`markets.default` is required when `markets` is set")
+
+    defined = {k: v for k, v in raw_markets.items() if k != "default"}
+    if default not in defined:
+        raise MarketConfigError(
+            f"`markets.default` is {default!r} but no such market is defined "
+            f"(defined: {sorted(defined)})")
+
+    for code, block in defined.items():
+        if not isinstance(block, dict):
+            raise MarketConfigError(f"market {code!r} must be a mapping")
+        offending = [k for k in MARKET_FORBIDDEN_KEYS if k in block]
+        if offending:
+            raise MarketConfigError(
+                f"market {code!r} may not set {offending} — a market configures the "
+                f"evidence terrain, never the bar. Move it to a lane if the BAR must "
+                f"change; see MARKET_FORBIDDEN_KEYS.")
+        if not str(block.get("label", "")).strip():
+            raise MarketConfigError(f"market {code!r} needs a `label`")
+        status = str(block.get("status", "open") or "open")
+        if status not in _MARKET_STATUSES:
+            raise MarketConfigError(
+                f"market {code!r} has status {status!r}; expected one of "
+                f"{list(_MARKET_STATUSES)}")
+    return raw_markets
+
+
 def load_config(path: str | Path | None = None) -> Config:
     p = Path(path) if path else REPO_ROOT / "config.yaml"
     raw = yaml.safe_load(p.read_text()) if p.exists() else {}
@@ -384,6 +542,8 @@ def load_config(path: str | Path | None = None) -> Config:
         active_lane=raw.get("active_lane") or "",
         active_lanes=raw.get("active_lanes") or [],
         lane_quota=raw.get("lane_quota") or {},
+        markets=_validate_markets(raw.get("markets")),
+        active_market=raw.get("active_market") or "",
         generation=raw.get("generation") or {},
         profiles=raw.get("profiles") or {},
         active_profile=raw.get("active_profile") or "",
@@ -407,6 +567,11 @@ def load_config(path: str | Path | None = None) -> Config:
             or os.environ.get("PROSPECTOR_ENTITLEMENTS_API_KEY", "")
         ),
     )
+    # Market resolves FIRST: it is the outermost context (which evidence terrain the run
+    # searches), and the lane/profile/persona resolvers below use dataclasses.replace, so
+    # active_market and the market-merged retrieval survive them untouched.
+    if cfg.active_market:
+        cfg = cfg.for_market(cfg.active_market)
     # Resolve the configured active lane (if any) into the operative gate/threshold/weight
     # fields. Empty active_lane => the top-level defaults stand unchanged (today's behaviour).
     # A config-pinned active_profile (if any) is applied too; for_lane re-applies it so it

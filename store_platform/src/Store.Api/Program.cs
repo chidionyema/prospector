@@ -167,7 +167,9 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
             p.ProofPoint,
             p.TimeToFirstRevenue,
             p.SourceCount,
-            p.VerifiedAt
+            p.VerifiedAt,
+            // Jurisdiction of the opportunity — a browse facet. Price stays GBP.
+            p.Market
         })
         .ToListAsync()
         .ConfigureAwait(false);
@@ -205,6 +207,7 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
         pack.EffortTag,
         pack.TimeToFirstRevenue,
         pack.QaVerdictSummary,
+        pack.Market,
         pack.SourceCount,
         pack.VerifiedAt,
         WhatYouGet = Rehydrate<string[]>(pack.WhatYouGetJson),
@@ -299,6 +302,7 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     if (request.EffortTag is not null) pack.EffortTag = request.EffortTag;
     if (request.TimeToFirstRevenue is not null) pack.TimeToFirstRevenue = request.TimeToFirstRevenue;
     if (request.QaVerdictSummary is not null) pack.QaVerdictSummary = request.QaVerdictSummary;
+    if (request.Market is not null) pack.Market = request.Market;
     if (request.SourceCount is { } sources) pack.SourceCount = sources;
     if (request.VerifiedAt is { } verifiedAt) pack.VerifiedAt = verifiedAt;
     if (request.WhatYouGet is not null) pack.WhatYouGetJson = JsonSerializer.Serialize(request.WhatYouGet);

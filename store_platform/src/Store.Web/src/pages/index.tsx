@@ -7,7 +7,7 @@ import { Icon, IconName, Input, Dropdown, Button } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection } from '@/components/marketing/PackContents';
-import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, Pack, CatalogStats } from '@/lib/api/client';
+import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { categoryFor, type Category } from '@/lib/category';
 
 interface HomeProps {
@@ -159,8 +159,13 @@ function PackCard({ pack }: { pack: Pack }) {
           </div>
         </div>
 
-        {(pack.effortTag || pack.timeToFirstRevenue || pack.sourceCount || freshnessLabel(pack.verifiedAt)) && (
+        {(pack.market || pack.effortTag || pack.timeToFirstRevenue || pack.sourceCount || freshnessLabel(pack.verifiedAt)) && (
           <div className="mt-4 flex flex-wrap gap-1.5">
+            {pack.market && (
+              <span className="rounded-md bg-primary/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                {marketLabel(pack.market)}
+              </span>
+            )}
             {pack.effortTag && (
               <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold capitalize text-muted">
                 {pack.effortTag} effort

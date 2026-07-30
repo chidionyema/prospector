@@ -184,7 +184,7 @@ def get_recent_failure_modes(store: Store, cfg: Optional[Config] = None,
         if not dossier:
             continue
         reason = (dossier.get("reason") or "").strip()
-        # Drop the "Gate '...' fired — verdict (conf X):" prefix; keep the substance.
+        # Drop the "It failed on:" / legacy "Gate '...' fired — …:" prefix; keep substance.
         if ":" in reason:
             reason = reason.split(":", 1)[1].strip()
         if reason:

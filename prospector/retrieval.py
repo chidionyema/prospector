@@ -15,6 +15,8 @@ import json
 import os
 import time
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Optional
 import re
@@ -75,6 +77,9 @@ _RESOLVE_TIMEOUT = 4.0
 # the best evidence due to transient latency.
 _HIGH_AUTHORITY_TIMEOUT = 15.0
 
+# Globally authoritative sources — the wire services, journals and multilaterals that
+# carry weight in any jurisdiction. Per-MARKET authorities (gov.uk, sec.gov, CAC…) are
+# NOT listed here; they come from the active market's config and are unioned in below.
 _HIGH_AUTHORITY_DOMAINS = {
     "ft.com", "reuters.com", "bloomberg.com", "wsj.com", "economist.com",
     "nytimes.com", "theguardian.com", "bbc.co.uk", "bbc.com", "hbr.org",
@@ -82,6 +87,30 @@ _HIGH_AUTHORITY_DOMAINS = {
     "gov.uk", "europa.eu", "un.org", "worldbank.org", "imf.org", "nih.gov",
     "who.int", "gartner.com", "forrester.com", "mckinsey.com", "deloitte.com",
 }
+
+# The active market's authority domains, unioned with the base set above.
+#
+# A ContextVar rather than a module global on purpose: a plain global would be shared by
+# every worker thread, so the moment vetting runs more than one market concurrently
+# (vet_workers > 1) one market's authority list would silently apply to another's
+# fetches. ContextVar keeps it per-execution-context, so that cannot happen.
+_market_authority_domains: ContextVar[frozenset[str]] = ContextVar(
+    "market_authority_domains", default=frozenset())
+
+
+@contextmanager
+def market_retrieval(cfg):
+    """Scope retrieval to a market's evidence terrain for the duration of the block."""
+    domains = frozenset(
+        str(d).lower().lstrip(".")
+        for d in ((cfg.market_config() or {}).get("authority_domains") or [])
+    ) if getattr(cfg, "markets", None) else frozenset()
+    token = _market_authority_domains.set(domains)
+    try:
+        yield
+    finally:
+        _market_authority_domains.reset(token)
+
 
 def _get_timeout(url: str) -> float:
     """Determine timeout based on domain authority (Domain-Aware Patience)."""
@@ -95,8 +124,9 @@ def _get_timeout(url: str) -> float:
         if netloc.endswith(".gov") or netloc.endswith(".edu") or netloc.endswith(".int"):
             return _HIGH_AUTHORITY_TIMEOUT
             
-        # Domain-list authority
-        if any(netloc == d or netloc.endswith("." + d) for d in _HIGH_AUTHORITY_DOMAINS):
+        # Domain-list authority: global base + the active market's own authorities.
+        authorities = _HIGH_AUTHORITY_DOMAINS | _market_authority_domains.get()
+        if any(netloc == d or netloc.endswith("." + d) for d in authorities):
             return _HIGH_AUTHORITY_TIMEOUT
     except Exception:
         pass
@@ -608,7 +638,16 @@ class DuckDuckGoSearchProvider(SearchProvider):
     bottom-rung fallback for a personal daemon this is acceptable.
 
     Returns real URLs with snippets. No API key, no credits, no expiration.
+
+    `region` selects the locale ddgs searches in ("uk-en", "us-en", …). Note that ddgs
+    DEFAULTS to "us-en" when the argument is omitted, which is what this provider did
+    for its whole life — so a UK-only engine has been grounding on US-biased results.
+    The uk market therefore pins "us-en" to preserve that behaviour exactly; changing it
+    is a measured yield decision that must move the market's cache_salt with it.
     """
+    def __init__(self, region: Optional[str] = None) -> None:
+        self.region = region or None
+
     @track_latency(name="ddg_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
         record_usage(web=True, provider="ddg")
@@ -625,8 +664,11 @@ class DuckDuckGoSearchProvider(SearchProvider):
             last_exc: Optional[Exception] = None
             for attempt in range(3):
                 try:
+                    kw = {"max_results": min(k, 10)}
+                    if self.region:
+                        kw["region"] = self.region
                     with DDGS() as ddgs:
-                        raw = list(ddgs.text(query, max_results=min(k, 10)))
+                        raw = list(ddgs.text(query, **kw))
                     last_exc = None
                     break
                 except Exception as e:  # noqa: BLE001 — transient primp/UA flakiness
@@ -1154,16 +1196,24 @@ class DiskCache(SearchProvider):
     """Content-addressed cache over any provider (Part 9). Misses delegate; hits
     are served from store/_cache/<sha>.json."""
     def __init__(self, inner: SearchProvider, cache_dir: Path = CACHE_DIR,
-                 ttl_s: int = 0):
+                 ttl_s: int = 0, key_salt: str = ""):
         self.inner = inner
         self.cache_dir = cache_dir
         # 0 disables expiry; otherwise a cache file older than ttl_s is a miss and
         # the page is re-grounded so a verdict never rules on stale evidence.
         self.ttl_s = ttl_s
+        # Per-market salt. Without it, the identical query text run under two different
+        # search regions collides on one cache file, so a US check would be served the
+        # UK's cached evidence — a silent grounding corruption no test would notice.
+        # The default market's salt is "" so the existing cache stays valid.
+        self.key_salt = key_salt or ""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, query: str, k: int, max_chars: int) -> Path:
-        h = hashlib.sha1(f"{query}|{k}|{max_chars}".encode()).hexdigest()[:20]
+        base = f"{query}|{k}|{max_chars}"
+        if self.key_salt:
+            base = f"{base}|{self.key_salt}"
+        h = hashlib.sha1(base.encode()).hexdigest()[:20]
         return self.cache_dir / f"{h}.json"
 
     def _is_fresh(self, p: Path) -> bool:
@@ -1299,6 +1349,14 @@ class FallbackSearchProvider(SearchProvider):
             f"Last error: {last_err}")
 
 
+def _market_block(cfg) -> dict:
+    """The active market's config block, or {} for a config predating Epic D."""
+    try:
+        return cfg.market_config() or {}
+    except Exception:  # noqa: BLE001 — a stubbed cfg in a test must never break search
+        return {}
+
+
 def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
     r = cfg.retrieval
     if name == "fixture":
@@ -1318,7 +1376,7 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
     if name == "searxng":
         return SearXNGSearcher()
     if name == "ddg":
-        return DuckDuckGoSearchProvider()
+        return DuckDuckGoSearchProvider(region=_market_block(cfg).get("search_region"))
     if name == "tavily":
         return TavilySearchProvider()
     if name == "exa":
@@ -1353,4 +1411,7 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
         else FallbackSearchProvider(built,
                                     failure_threshold=r.breaker_failure_threshold,
                                     cooldown_s=r.breaker_cooldown_s))
-    return DiskCache(base, ttl_s=cfg.retrieval.cache_ttl_s) if cfg.retrieval.cache else base
+    if not cfg.retrieval.cache:
+        return base
+    return DiskCache(base, ttl_s=cfg.retrieval.cache_ttl_s,
+                     key_salt=str(_market_block(cfg).get("cache_salt", "") or ""))

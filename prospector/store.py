@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS dossiers (
     dense_reward    REAL,
     adversarial_confidence REAL,
     persona         TEXT,
-    retrieval_degraded INTEGER DEFAULT 0
+    retrieval_degraded INTEGER DEFAULT 0,
+    market          TEXT
 );
 """
 
@@ -45,14 +46,16 @@ CREATE INDEX IF NOT EXISTS idx_ambition_tier ON dossiers(ambition_tier);
 CREATE INDEX IF NOT EXISTS idx_structural_form ON dossiers(structural_form);
 CREATE INDEX IF NOT EXISTS idx_dense_reward ON dossiers(dense_reward);
 CREATE INDEX IF NOT EXISTS idx_persona ON dossiers(persona);
+CREATE INDEX IF NOT EXISTS idx_market ON dossiers(market);
 """
 
 _UPSERT = """
 INSERT OR REPLACE INTO dossiers
     (candidate_id, title, one_liner, decision, gate_fired, composite,
      created_at, reverify_due_at, path, ambition_tier, structural_form,
-     provisional, dense_reward, adversarial_confidence, persona, retrieval_degraded)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     provisional, dense_reward, adversarial_confidence, persona, retrieval_degraded,
+     market)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 
@@ -89,7 +92,8 @@ class Store:
                                ("dense_reward", "REAL"),
                                ("adversarial_confidence", "REAL"),
                                ("persona", "TEXT"),
-                               ("retrieval_degraded", "INTEGER DEFAULT 0")]:
+                               ("retrieval_degraded", "INTEGER DEFAULT 0"),
+                               ("market", "TEXT")]:
                 if col not in cols:
                     conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
             
@@ -152,17 +156,34 @@ class Store:
                 # evidence, independent of the DEFER decision and provisional flag.
                 int(any(getattr(c, "degraded", False) or getattr(c, "retrieval_failed", False)
                         for c in getattr(dossier, "checks", []) or [])),
+                getattr(dossier.candidate, "market", "") or "",
             ))
         return path
 
-    def catalogue_titles(self) -> list[str]:
-        """Return fingerprints of all PASS dossiers (used by dedup)."""
+    def catalogue_titles(self) -> list[tuple[str, str]]:
+        """Return (market, fingerprint) for all PASS dossiers (used by dedup).
+
+        The market travels with the fingerprint because the same idea in a different
+        jurisdiction is NOT a duplicate — "mobile notary bond, Texas" and the UK version
+        are different opportunities with different evidence. Pre-Epic-D rows carry '' and
+        are treated as the default market by dedup.
+        """
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT title, one_liner FROM dossiers WHERE decision = ?",
+                "SELECT title, one_liner, market FROM dossiers WHERE decision = ?",
                 (Decision.PASS.value,),
             ).fetchall()
-        return [f"{row['title']} {row['one_liner']}".strip() for row in rows]
+        return [(row["market"] or "", f"{row['title']} {row['one_liner']}".strip())
+                for row in rows]
+
+    def markets_present(self) -> dict[str, int]:
+        """Dossier counts keyed by market ('' = pre-Epic-D rows). Feeds diagnostics."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT COALESCE(market, '') AS m, COUNT(*) AS n "
+                "FROM dossiers GROUP BY m ORDER BY n DESC"
+            ).fetchall()
+        return {row["m"]: row["n"] for row in rows}
 
     def recent_titles(self, limit: int = 200) -> list[str]:
         """Return the most recent dossier titles across ALL decisions (PASS/KILL/DEFER).

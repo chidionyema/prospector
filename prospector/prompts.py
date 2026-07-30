@@ -15,6 +15,34 @@ from functools import lru_cache
 from pathlib import Path
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+MARKET_PROMPTS_DIR = PROMPTS_DIR / "markets"
+STYLE_PROMPTS_DIR = PROMPTS_DIR / "style"
+
+# House voice, held in one place so tone is tuned in one file rather than restated in
+# six prompts that then drift apart. `voice` is the buyer-facing spine (generation,
+# artifacts, listing copy); `rationale` is its moat-safe sibling — it governs the
+# WORDING of a verdict line and is explicit that the ruling itself is untouched.
+STYLE_KEYS = {"style_guide": "voice", "rationale_style": "rationale"}
+
+# The market whose flavour the base prompts were originally written in. Used ONLY when a
+# config predates Epic D and defines no `markets:` block, so such a config still renders
+# exactly the prompts it always did. Any config with markets resolves through its own
+# default instead.
+_BASELINE_MARKET = "uk"
+
+# Market variables the MOAT may see. Deliberately tiny: the verdict and adversarial
+# passes rule from retrieved passages only, so they get the jurisdiction's NAME (to
+# disambiguate "notary bond" in Texas from the UK one) and the relevance-judgement
+# precedents — never the evidence-landscape prose, which would invite ruling from prior
+# knowledge about the market. See specs/multi-market-dimension.md DD6.
+MOAT_MARKET_KEYS = ("market_scope", "market_verdict_exemplars")
+
+# Market variables for the non-moat stages (generation, query-gen, prescreen, scoring,
+# artifact copy). These may carry rich framing: none of them rules a verdict.
+OPEN_MARKET_KEYS = ("market_context", "market_label", "currency_hint",
+                    "market_exemplars", "market_batched_exemplars")
+
+ALL_MARKET_KEYS = MOAT_MARKET_KEYS + OPEN_MARKET_KEYS
 
 
 @lru_cache(maxsize=None)
@@ -35,6 +63,87 @@ def split_system_user(raw: str) -> tuple[str, str]:
     system = sys_part.replace("SYSTEM:", "", 1).strip()
     user = user_part.strip()
     return system, user
+
+
+@lru_cache(maxsize=None)
+def _fragment(chain: tuple[str, ...], name: str) -> str:
+    """First existing `prompts/markets/<code>/<name>.md` along `chain`, else ''.
+
+    Inheritance is why a market can open with one config entry: "us-tx" falls back to
+    "us", and a market that never writes its own verdict precedents inherits the default
+    market's — those precedents teach RELEVANCE JUDGEMENT, not market facts, so sharing
+    them is correct rather than merely convenient.
+    """
+    for code in chain:
+        p = MARKET_PROMPTS_DIR / code / f"{name}.md"
+        if p.exists():
+            return p.read_text().strip()
+    return ""
+
+
+@lru_cache(maxsize=None)
+def _style_text(fname: str) -> str:
+    p = STYLE_PROMPTS_DIR / f"{fname}.md"
+    return p.read_text().strip() if p.exists() else ""
+
+
+def style_kwargs() -> dict[str, str]:
+    """The house-voice variables, injected into every render.
+
+    Auto-injected rather than passed by each caller on purpose: the market work proved
+    that a placeholder depending on call-site discipline eventually ships to a model
+    verbatim. These depend on nothing but the files, so there is no reason for a call
+    site to be involved at all.
+    """
+    return {key: _style_text(fname) for key, fname in STYLE_KEYS.items()}
+
+
+def _fragment_chain(cfg) -> tuple[str, ...]:
+    """Market codes to search for prompt fragments, nearest-first."""
+    markets = getattr(cfg, "markets", None)
+    if not markets:
+        return (_BASELINE_MARKET,)
+    code = cfg.resolve_market(getattr(cfg, "active_market", "") or None)
+    if not code:
+        return (_BASELINE_MARKET,)
+    parts = code.split("-")
+    chain = ["-".join(parts[:i]) for i in range(len(parts), 0, -1)]
+    default = cfg.default_market
+    if default and default not in chain:
+        chain.append(default)
+    return tuple(chain)
+
+
+def market_kwargs(cfg, *, for_moat: bool = False) -> dict[str, str]:
+    """The market variables a render site must pass.
+
+    `for_moat=True` returns only MOAT_MARKET_KEYS — the restricted set for the verdict
+    and adversarial prompts. Passing the rich set to those prompts would hand the moat
+    substantive knowledge about the market, which is exactly the prior-knowledge leak
+    that verdict-from-retrieval-only forbids.
+    """
+    chain = _fragment_chain(cfg)
+    block = cfg.market_config() if getattr(cfg, "markets", None) else {}
+    label = str(block.get("label", "") or "")
+
+    # market_scope is derived from the LABEL alone — a name, never a fact. That makes it
+    # structurally impossible for the moat's market variable to carry market claims.
+    scope = f"Jurisdiction under evaluation: {label}." if label else ""
+
+    moat = {
+        "market_scope": scope,
+        "market_verdict_exemplars": _fragment(chain, "verdict_exemplars"),
+    }
+    if for_moat:
+        return moat
+    return {
+        **moat,
+        "market_context": str(block.get("market_context", "") or "").strip(),
+        "market_label": label,
+        "currency_hint": str(block.get("currency_hint", "") or ""),
+        "market_exemplars": _fragment(chain, "query_gen_exemplars"),
+        "market_batched_exemplars": _fragment(chain, "query_gen_batched_exemplars"),
+    }
 
 
 def render(name: str, **kwargs) -> tuple[str, str]:
@@ -60,8 +169,19 @@ def render(name: str, **kwargs) -> tuple[str, str]:
     # Substitute placeholders in BOTH sections.  The user section always varies per-call
     # (signal, form, lens, k).  The system section also varies when dynamic variables
     # (e.g. audience_persona / audience_description) are threaded through.
-    for k, v in kwargs.items():
+    # House voice goes in first so an explicit caller value still wins.
+    for k, v in {**style_kwargs(), **kwargs}.items():
         system = system.replace("{" + k + "}", str(v))
         user = user.replace("{" + k + "}", str(v))
+
+    # Substitution is a blind str.replace, so a {market_*} placeholder whose call site
+    # forgot the kwarg is shipped to the model VERBATIM — a silent quality regression
+    # with no error anywhere. Shout about it instead.
+    if "{market_" in system or "{market_" in user:
+        from .telemetry import logger
+        logger.error(
+            f"prompt {name!r} rendered with an unsubstituted market placeholder — the "
+            f"literal token will reach the model. Pass prompts.market_kwargs(cfg).",
+            extra={"prompt": name})
 
     return system, user

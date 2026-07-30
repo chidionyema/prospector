@@ -187,6 +187,9 @@ namespace Store.Catalog.Migrations
                     b.Property<bool>("IsListed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Market")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OneLine")
                         .IsRequired()
                         .HasMaxLength(500)

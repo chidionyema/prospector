@@ -36,4 +36,10 @@ public class Pack
     public string? WhatYouGetJson { get; set; }
     public string? SampleExtractJson { get; set; }
     public string? FinancialSnapshotJson { get; set; }
+
+    // The jurisdiction the OPPORTUNITY is in ("uk", "us", "us-tx"), not the buyer's
+    // locale. A US-market pack is still sold in GBP through the existing rail; this is a
+    // browse/filter facet and a disclosure, never a pricing or tax input. Null on every
+    // pack published before the engine had a market dimension.
+    public string? Market { get; set; }
 }

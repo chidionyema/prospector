@@ -17,6 +17,8 @@ RISK CATEGORIES (be precise — cite source_ids for every True):
 
 A risk is ONLY True when the passages contain explicit evidence of that
 specific condition. "The market has competitors" is NOT incumbent_monopoly.
+
+{rationale_style}
 USER: Candidate: {candidate_json}   All claims + passages: {verification_json}
 Identify which objective risk vectors are present in the evidence. Be precise.
 Output ONLY: {{"critical_regulatory_blocker":bool, "impossible_unit_economics":bool,

@@ -370,6 +370,92 @@ lanes:
         - marketplace_thin       # a focused marketplace seeding one liquid niche first
         - vertical_service_scaled # a service productised toward a scalable delivery model
 
+# ---- Markets (Epic D) ----
+# A market is the JURISDICTION an opportunity lives in. It is orthogonal to BOTH the
+# ambition lane (which sets the bar) and the buyer's locale — a Texas-arbitrage pack is
+# still sold in GBP through the existing Stripe rail (opportunity-market != buyer-market).
+#
+# A market configures the EVIDENCE TERRAIN (authority domains, search region, legality
+# corpus) and the PROMPT FRAMING. It may NOT configure the bar: hard_gates / thresholds /
+# weights inside a market block are a LOAD ERROR (config.py::_validate_markets). A market
+# with no evidence gets no catalogue — never a lowered threshold.
+#
+# Codes are hierarchical: "us-tx" inherits everything "us" declares. A market is CLOSED
+# until a readiness probe writes a passing store/markets/<code>/READINESS.json.
+active_market: ""                  # "" => markets.default
+markets:
+  default: uk
+  uk:
+    label: "United Kingdom"
+    status: open                   # the pre-existing baseline market
+    readiness_ref: ""              # no probe required: this is the calibration anchor
+    # "us-en" is the ddgs 9.14.4 DEFAULT that UK grounding has silently run under
+    # (ddgs/ddgs.py:357 — DuckDuckGoSearchProvider never passed a region). Pinned here to
+    # preserve current behaviour EXACTLY. Flipping this to "uk-en" is a measured yield
+    # change that must move cache_salt with it — see specs/multi-market-dimension.md D4.2.
+    search_region: "us-en"
+    currency_hint: "GBP"
+    cache_salt: ""                 # MUST stay "" so the existing store/_cache stays valid
+    authority_domains:             # UNIONED with the global base set in retrieval.py
+      - gov.uk
+      - legislation.gov.uk
+      - ons.gov.uk
+      - hse.gov.uk
+      - companieshouse.gov.uk
+      - fca.org.uk
+    legality_corpus: [legislation.gov.uk, gov.uk]
+    market_context: >
+      Jurisdiction: the United Kingdom. Money in GBP (£). Authoritative public evidence
+      includes gov.uk guidance, legislation.gov.uk, ONS statistics, HSE, Companies House
+      filings, and FCA registers.
+    exemplars:
+      query_gen:
+        - "NHS nurse pension additional voluntary contributions take-up UK"
+        - "medication fridge temperature monitoring market vendors UK"
+      verdict_irrelevant_candidate: "Probate clearance services in the UK."
+      verdict_irrelevant_passage: "The UK housing market saw a 2% rise in mortgage rates in Q3."
+      verdict_irrelevant_why: >
+        The text mentions UK and housing but has ZERO conceptual overlap with death,
+        estates, executors, or clearance.
+      verdict_relevant_candidate: "Fixed-fee probate clearance for UK Executors."
+    persona_overlay:
+      retiree_cohort: >
+        UK state pension plus private pension drawdown; ISA/property wealth; NHS-funded
+        care assessed by the local authority.
+  us:
+    label: "United States"
+    status: closed                 # opened only by a passing readiness probe
+    readiness_ref: "store/markets/us/READINESS.json"
+    search_region: "us-en"
+    currency_hint: "USD"
+    cache_salt: "us"
+    # US law is federal PLUS 50 states. Without state-level scoping the legality check
+    # drowns in irrelevant federal/other-state material (story risk 3).
+    require_subdivision: true
+    authority_domains:
+      - sec.gov
+      - census.gov
+      - bls.gov
+      - federalregister.gov
+      - ftc.gov
+      - courtlistener.com
+      - usa.gov
+    legality_corpus: [federalregister.gov, law.cornell.edu, usa.gov]
+    market_context: >
+      Jurisdiction: the United States. Money in USD ($). Law is federal PLUS state-level —
+      always name the state. Authoritative public evidence includes SEC EDGAR, Census, BLS,
+      the Federal Register, state Secretary-of-State registries, and CourtListener.
+    exemplars:
+      query_gen:
+        - "Texas mobile notary bond requirement filings count"
+        - "Medicare durable medical equipment supplier enrollment volume BLS"
+      # Verdict exemplars deliberately omitted: they teach RELEVANCE JUDGEMENT, not market
+      # facts, so this market inherits the uk set until its probe justifies its own.
+    persona_overlay:
+      retiree_cohort: >
+        Social Security plus 401(k)/IRA drawdown; Medicare at 65 with supplemental
+        coverage; state-variable long-term-care funding.
+
 generation:
   candidates_per_signal: 20
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k

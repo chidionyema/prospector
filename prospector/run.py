@@ -126,7 +126,7 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
     return results
 
 from .config import Config, load_config
-from .dedup import dedup
+from .dedup import dedup, drops_by_market
 from .dossier import build_dossier, render_markdown
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .generate import generate
@@ -352,7 +352,7 @@ def vet_candidate(
             # must never be judged by the cheap model that wrote the copy).
             quality_op = _build_artifact_op(cfg, op)
             cand.tags["artifacts"] = generate_artifacts(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op)
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg)
             cand.tags["marketing"] = generate_marketing_content(
                 op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op)
 
@@ -604,14 +604,17 @@ def run_signal(
     logger.info(f"Generated {len(candidates)} candidates")
     progress.step(f"generated {len(candidates)} candidates")
 
-    # --- Dedup against catalogue ---
+    # --- Dedup against catalogue (per market: the same idea elsewhere is not a dupe) ---
     catalogue = store.catalogue_titles()
     unique, dropped = dedup(candidates, catalogue, threshold=cfg.dedup_threshold,
-                            token_threshold=cfg.dedup_token_threshold)
+                            token_threshold=cfg.dedup_token_threshold,
+                            default_market=_default_market(cfg))
     if dropped:
-        logger.info(f"Dedup dropped {len(dropped)} near-duplicate pair(s)")
-    if dropped:
-        progress.note(f"dedup dropped {len(dropped)} near-duplicate(s)")
+        by_market = drops_by_market(dropped)
+        logger.info(f"Dedup dropped {len(dropped)} near-duplicate pair(s)",
+                    extra={"dropped_by_market": by_market})
+        detail = " ".join(f"{m or 'unset'}:{n}" for m, n in sorted(by_market.items()))
+        progress.note(f"dedup dropped {len(dropped)} near-duplicate(s) [{detail}]")
 
     # --- Rejection fast-path (Part 8) ---
     # If an exact near-duplicate was KILLED within the SLA window, return that dossier immediately.
@@ -790,6 +793,38 @@ def run_signal(
 # CLI
 # ---------------------------------------------------------------------------
 
+def _default_market(cfg: Config) -> str:
+    """The market unmarked candidates and legacy catalogue rows belong to."""
+    try:
+        return cfg.active_market or cfg.default_market
+    except AttributeError:  # Config predating Epic D
+        return ""
+
+
+def _guard_market_open(cfg: Config, args: argparse.Namespace) -> None:
+    """Refuse to run against a market that has not passed its readiness probe.
+
+    A market is CLOSED until a calibration probe demonstrates the engine can actually
+    see it (specs/multi-market-dimension.md §4). Generating into an unproven market
+    would mint dossiers whose grounding nobody has measured — the exact thing the gate
+    exists to prevent. `--probe` is the one sanctioned way past this, and it is what
+    `markets probe` uses to run the calibration itself.
+    """
+    if getattr(args, "probe", False):
+        return
+    status = cfg.market_status(cfg.active_market)
+    if status != "open":
+        code = cfg.active_market
+        ref = cfg.market_config(code).get("readiness_ref") or f"store/markets/{code}/READINESS.json"
+        print(f"error: market {code!r} is {status}, not open.\n"
+              f"  Run the readiness probe first:\n"
+              f"    python -m prospector.run markets probe --market {code} "
+              f"--set markets/calibration/{code.split('-')[0]}.jsonl\n"
+              f"  Then, if it passes: markets open {code}  (reads {ref})",
+              file=sys.stderr)
+        sys.exit(2)
+
+
 def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     """Load config and apply CLI overrides (operator, retrieval provider)."""
     cfg = load_config(args.config if args.config else None)
@@ -800,6 +835,18 @@ def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     # If fixtures provided, switch retrieval provider to fixture mode
     if hasattr(args, "fixtures") and args.fixtures:
         cfg.retrieval.provider = "fixture"
+
+    # Market override (Epic D): which JURISDICTION this run generates/vets for. Applied
+    # BEFORE the lane because it is the outer context (the evidence terrain), and because
+    # for_lane/for_profile/for_persona preserve active_market through dataclasses.replace.
+    if getattr(args, "market", None):
+        cfg = cfg.for_market(args.market)
+    # Guard the EFFECTIVE market, not just an explicit --market. A closed market can
+    # also arrive via `active_market:`/`markets.default:` in config.yaml, and that
+    # route must not be the one way to mint dossiers into an unproven jurisdiction.
+    # hasattr, not truthiness: only the market-aware commands own this dimension.
+    if hasattr(args, "market"):
+        _guard_market_open(cfg, args)
 
     # Ambition-lane override (config-pinned): judge against THIS lane's gates/thresholds
     # instead of the default. Applied last (returns a resolved copy). Empty => unchanged.
@@ -830,6 +877,17 @@ def _make_search(cfg: Config, args: argparse.Namespace) -> SearchProvider:
             fixtures = json.load(fh)
 
     return make_provider(cfg, fixtures=fixtures)
+
+
+def _add_market_args(p: argparse.ArgumentParser) -> None:
+    """Attach the market flags shared by vet/signal/generate/discover."""
+    p.add_argument("--market", metavar="CODE",
+                   help="Jurisdiction to generate/vet for (e.g. uk, us, us-tx). "
+                        "Default: config active_market, else markets.default. "
+                        "A market that has not passed its readiness probe is refused.")
+    p.add_argument("--probe", action="store_true",
+                   help="Calibration run: permit a non-open market. Used by "
+                        "`markets probe`; results never publish.")
 
 
 def _resolve_board(args: argparse.Namespace) -> Optional[list[str]]:
@@ -874,6 +932,92 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
         n_defer=1 if d.decision == Decision.DEFER else 0)
     print(render_markdown(d))
     usage = get_usage_summary()
+    from .report import costs_report
+    print(f"\n{costs_report(log_path or '')}")
+
+
+def _cmd_replicate(args: argparse.Namespace, log_path: Path) -> None:
+    """Re-vet proven PASSes from one market as candidates in another.
+
+    The cheapest high-quality generation channel available: an idea that already cleared
+    the bar somewhere is a better-than-random hypothesis elsewhere. What does NOT carry
+    over is the evidence — every verdict, source and score is re-earned from scratch
+    against the target market's own chain. A replicated PASS is a new PASS, or it is a
+    KILL with its own cited reason.
+    """
+    from .operator import make_operator
+    from .telemetry import get_usage_summary, reset_usage
+    from . import progress
+
+    source_market = args.source_market.lower()
+    cfg = _build_config_and_overrides(args)  # --market is the TARGET (gate-checked)
+    target_market = cfg.active_market or _default_market(cfg)
+    if source_market == target_market:
+        print(f"error: --from and --market are both {target_market!r}; nothing to replicate.",
+              file=sys.stderr)
+        sys.exit(2)
+
+    store = Store(cfg)
+    # The index carries `market`, so filter there rather than opening 1,000+ JSON files.
+    rows = [r for r in store.all(decision=Decision.PASS.value)
+            if (r.get("market") or "").lower() == source_market]
+    min_composite = getattr(args, "min_composite", None)
+    if min_composite is not None:
+        rows = [r for r in rows
+                if float(r.get("composite") or 0.0) >= min_composite]
+    rows = sorted(rows, key=lambda r: float(r.get("composite") or 0.0), reverse=True)
+    rows = rows[: (args.n or len(rows))]
+
+    if not rows:
+        print(f"No PASS dossiers in market {source_market!r} to replicate.")
+        return
+
+    print(f"Replicating {len(rows)} PASS candidate(s): {source_market} → {target_market}")
+    clones: list[Candidate] = []
+    for row in rows:
+        full = store.get(row.get("candidate_id", "")) or {}
+        if not full:
+            continue
+        src = Candidate.from_dict(full.get("candidate", {}))
+        clone = Candidate(
+            title=src.title, one_liner=src.one_liner, hypothesis=src.hypothesis,
+            who_pays=src.who_pays, why_now=src.why_now,
+            tags={**dict(src.tags or {}), "replicated_from": src.candidate_id,
+                  "replicated_from_market": source_market},
+            automatability=src.automatability,
+            structural_form=src.structural_form, ambition_tier=src.ambition_tier,
+            market=target_market)  # candidate_id left blank => re-derived WITH the market
+        if clone.candidate_id == src.candidate_id:
+            # Cannot happen once market participates in the hash, but if it ever did the
+            # save would overwrite the source dossier — refuse rather than destroy it.
+            print(f"error: clone of {src.candidate_id} collides with its source; aborting.",
+                  file=sys.stderr)
+            sys.exit(3)
+        clones.append(clone)
+
+    if getattr(args, "dry_run", False):
+        for c in clones:
+            print(f"  {c.candidate_id}  {c.title[:60]}")
+        print("\nDRY RUN — nothing vetted. Drop --dry-run to run the full vet.")
+        return
+
+    reset_usage()
+    op = make_operator(cfg)
+    fast_op = make_operator(cfg, fast=True)
+    search = _make_search(cfg, args)
+
+    n_pass = n_kill = n_defer = 0
+    for clone in clones:
+        progress.banner(f"Replicating into {target_market}: {clone.title!r}")
+        d = vet_candidate(clone, op, search, cfg, store=store, query_op=fast_op,
+                          publish=getattr(args, "publish", False), show_checks=False)
+        n_pass += d.decision == Decision.PASS
+        n_kill += d.decision == Decision.KILL
+        n_defer += d.decision == Decision.DEFER
+        print(f"  {d.decision.value.upper():5s}  {clone.title[:56]}"
+              f"{'  gate=' + d.gate_fired if d.gate_fired else ''}")
+
+    progress.summary(n_pass=n_pass, n_kill=n_kill, n_defer=n_defer)
     from .report import costs_report
     print(f"\n{costs_report(log_path or '')}")
 
@@ -1247,11 +1391,14 @@ def _cmd_operators(args) -> None:
     # ── 4. Generation prompt probe (optional) ─────────────────────────────
     if getattr(args, "gen", False):
         print("\n▸ Generation prompt probe (~7000 chars)")
-        from .prompts import render
+        from .prompts import market_kwargs, render
+        # Market vars included so the probe measures the REAL prompt size and never
+        # sends a literal {market_context} to a live operator below.
         sys_p, usr_p = render("generate",
-                               signal_text="AI tools for UK small businesses",
+                               signal_text="AI tools for small businesses",
                                sector="", strategy_lens="broaden",
-                               exploration_level=0.5)
+                               exploration_level=0.5,
+                               **market_kwargs(cfg))
         print(f"  Prompt size: {len(sys_p) + len(usr_p)} chars")
         # Probe the non-critical chain operators only
         gen_ops = [(k, o, b) for k, o, b in available_ops
@@ -1392,6 +1539,165 @@ def _cmd_lanes(args: argparse.Namespace, log_path: Path) -> None:
         print(f"error: config file not found at {path}", file=sys.stderr)
         sys.exit(1)
     _manage_lanes(action, lane_name, path)
+
+
+def _cmd_markets(args: argparse.Namespace, cfg: Config, log_path: Path) -> None:
+    """list | show | probe | open | close — the Market-Readiness Gate."""
+    from . import markets as mk
+
+    action = getattr(args, "markets_action", "list") or "list"
+
+    if action == "list":
+        store = Store(cfg)
+        try:
+            counts = store.markets_present()
+        except Exception:  # noqa: BLE001 — a fresh install has no catalogue yet
+            counts = {}
+        default = cfg.default_market
+        print(f"{'code':<10}{'status':<10}{'dossiers':>9}  label")
+        for code in sorted(c for c in (cfg.markets or {}) if c != "default"):
+            block = cfg.market_config(code)
+            flag = " (default)" if code == default else ""
+            print(f"{code:<10}{cfg.market_status(code):<10}{counts.get(code, 0):>9}  "
+                  f"{block.get('label', '')}{flag}")
+        unknown = {m: n for m, n in counts.items() if m and m not in (cfg.markets or {})}
+        if unknown:
+            print(f"\nnot in config: {unknown}")
+        if counts.get(""):
+            print(f"\n{counts['']} dossier(s) predate the market dimension "
+                  f"(market unset). See tools/backfill_market.py.")
+        return
+
+    market = getattr(args, "market", None) or cfg.default_market
+
+    if action == "show":
+        r = mk.load_readiness(cfg, market)
+        if r is None:
+            print(f"market {market!r}: status={cfg.market_status(market)}, "
+                  f"no readiness probe recorded at {mk.readiness_path(cfg, market)}")
+            return
+        print(mk.format_readiness(r))
+        current = mk.config_fingerprint(cfg, market)
+        if current != r.config_fingerprint:
+            print(f"\n  STALE: config has changed since this probe "
+                  f"({r.config_fingerprint} → {current}). Re-probe before opening.")
+        return
+
+    if action == "probe":
+        _run_market_probe(args, cfg, market, log_path)
+        return
+
+    if action == "open":
+        r = mk.load_readiness(cfg, market)
+        if r is None:
+            print(f"error: cannot open {market!r} — no readiness probe at "
+                  f"{mk.readiness_path(cfg, market)}. Run `markets probe` first.",
+                  file=sys.stderr)
+            sys.exit(2)
+        if not r.ready:
+            print(f"error: cannot open {market!r} — the probe says NOT READY:\n"
+                  + "\n".join(f"  - {f}" for f in r.failures)
+                  + "\n\nFix the evidence terrain (queries, authority domains, "
+                    "calibration set). Do NOT lower the bar.", file=sys.stderr)
+            sys.exit(2)
+        current = mk.config_fingerprint(cfg, market)
+        if current != r.config_fingerprint:
+            print(f"error: cannot open {market!r} — the probe measured a different "
+                  f"configuration ({r.config_fingerprint}, now {current}). Re-probe.",
+                  file=sys.stderr)
+            sys.exit(2)
+        _set_market_status(args, market, "open")
+        return
+
+    if action == "close":
+        _set_market_status(args, market, "closed")
+        return
+
+    print(f"error: unknown markets action {action!r}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _set_market_status(args: argparse.Namespace, market: str, status: str) -> None:
+    """Rewrite `status:` for one market in config.yaml, preserving comments."""
+    import re
+    from .config import REPO_ROOT
+
+    path = Path(args.config) if getattr(args, "config", None) else REPO_ROOT / "config.yaml"
+    text = path.read_text()
+    # Match the market's own `status:` line: the key at 2-space indent inside `markets:`,
+    # then its `status:` at 4-space indent. The body pattern only crosses lines that are
+    # indented four or more (or blank), so it can never walk out of this market's block
+    # and flip a SIBLING market's status — a market missing `status:` must fail loudly
+    # below, not silently open the next market in the file.
+    pattern = re.compile(
+        rf"(^  {re.escape(market)}:\n(?:(?:[ \t]{{4,}}.*)?\n)*?    status:[ \t]*)(\S+)",
+        re.MULTILINE)
+    new_text, n = pattern.subn(rf"\g<1>{status}", text, count=1)
+    if n != 1:
+        print(f"error: could not find a `status:` line for market {market!r} in {path}. "
+              f"Edit it by hand.", file=sys.stderr)
+        sys.exit(1)
+    path.write_text(new_text)
+    print(f"market {market!r} is now {status} in {path}")
+
+
+def _run_market_probe(args: argparse.Namespace, cfg: Config, market: str,
+                      log_path: Path) -> None:
+    """Run the calibration set through the real pipeline and record the measurement."""
+    from . import markets as mk
+    from . import progress
+    from .operator import make_operator
+    from .telemetry import reset_usage
+
+    if not getattr(args, "set", None):
+        print("error: --set PATH is required (a JSONL calibration set)", file=sys.stderr)
+        sys.exit(2)
+    entries = mk.load_calibration_set(args.set)
+
+    # The probe is the ONE sanctioned way to run a closed market. Two containments keep
+    # a calibration run from being mistaken for real output: publishing is refused, and
+    # the dossiers land in an isolated store under the market's own probe directory
+    # rather than the live catalogue. Without the second, a probe of a closed market
+    # would write catalogue rows that the market_not_open alarm then flags as a breach.
+    from dataclasses import replace as _replace
+
+    args.probe = True
+    # `real_cfg` keeps the live store dir so the READINESS artifact lands where the rest
+    # of the engine looks for it; only the DOSSIER writes are diverted.
+    real_cfg = _build_config_and_overrides(args).for_market(market)
+    probe_dir = Path(real_cfg.store_dir) / "markets" / market / "probe"
+    probe_dir.mkdir(parents=True, exist_ok=True)
+    probe_cfg = _replace(real_cfg, store={**real_cfg.store, "dir": str(probe_dir)})
+    store = Store(probe_cfg)
+    reset_usage()
+    op = make_operator(probe_cfg)
+    fast_op = make_operator(probe_cfg, fast=True)
+    search = _make_search(probe_cfg, args)
+
+    print(f"Probing market {market!r} with {len(entries)} calibration candidate(s)…")
+    outcomes = []
+    for entry in entries:
+        cand = Candidate(title=entry["title"], one_liner=entry.get("one_liner", ""),
+                         why_now=entry.get("why_now", ""), market=market)
+        progress.banner(f"[probe {market}] {cand.title!r}")
+        d = vet_candidate(cand, op, search, probe_cfg, store=store, query_op=fast_op,
+                          publish=False, show_checks=False)
+        outcome = mk.outcome_from_dossier(entry["expected"], d)
+        outcomes.append(outcome)
+        print(f"  expected={outcome.expected:<5} actual={outcome.actual:<5} "
+              f"grounded={outcome.grounded_checks}/{outcome.total_checks}  {cand.title[:44]}")
+
+    readiness = mk.evaluate(real_cfg, market, outcomes)
+    path = mk.save_readiness(real_cfg, readiness)
+    print("\n" + mk.format_readiness(readiness))
+    print(f"\nwritten: {path}")
+    print(f"probe dossiers (not catalogue): {probe_dir}")
+    if readiness.ready:
+        print(f"\nThis market is ready. To open it:\n"
+              f"  python -m prospector.run markets open --market {market}")
+    else:
+        print("\nNot ready. Improve the evidence terrain (authority domains, query "
+              "exemplars in prompts/markets/<code>/), then re-probe. Never lower the bar.")
 
 
 def _save_discovered_signals(signals: list[dict]) -> list[str]:
@@ -1542,6 +1848,7 @@ def main() -> None:
     vet_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane to judge against (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    _add_market_args(vet_p)
     vet_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1573,6 +1880,7 @@ def main() -> None:
     sig_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    _add_market_args(sig_p)
     sig_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1602,6 +1910,7 @@ def main() -> None:
     gen_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    _add_market_args(gen_p)
     gen_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1617,6 +1926,28 @@ def main() -> None:
                             "generation chain exhaustion.  Reads signals from "
                             "signals/pending/ and re-runs the full pipeline (generate + vet). "
                             "Safe to re-run when the non-critical chain (DeepSeek/MiniMax) recovers.")
+
+    # ---- replicate subcommand (Epic D: cross-market replication) ----
+    rep_p = sub.add_parser(
+        "replicate",
+        help="Re-vet proven PASSes from one market as fresh candidates in another")
+    rep_p.add_argument("--from", dest="source_market", required=True, metavar="CODE",
+                       help="Source market to take PASS dossiers from (e.g. uk)")
+    rep_p.add_argument("-n", type=int, default=None, metavar="N",
+                       help="Max candidates to replicate (default: all)")
+    rep_p.add_argument("--min-composite", dest="min_composite", type=float, default=None,
+                       metavar="X", help="Only replicate PASSes scoring at or above X")
+    rep_p.add_argument("--dry-run", dest="dry_run", action="store_true",
+                       help="List what would be replicated; run no checks")
+    rep_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
+                       help="Override operator from config")
+    rep_p.add_argument("--fixtures", metavar="PATH",
+                       help="Path to fixtures JSON (uses FixtureProvider)")
+    rep_p.add_argument("--publish", action="store_true",
+                       help="Generate listing artifacts + publish on PASS")
+    rep_p.add_argument("--lane", metavar="NAME", help="Ambition lane to judge against")
+    rep_p.add_argument("--persona", metavar="NAME", help="Analytical persona")
+    _add_market_args(rep_p)
 
     # ---- discover subcommand (spec EXTENSION: self-sourced signals) ----
     disc_p = sub.add_parser("discover",
@@ -1636,6 +1967,7 @@ def main() -> None:
     disc_p.add_argument("--lane", metavar="NAME",
                         help="Pin the sweep to a single ambition lane (default: multi-lane "
                              "across config active_lanes).")
+    _add_market_args(disc_p)
     disc_p.add_argument("--persona", metavar="NAME",
                         help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                              "Default: config active_persona.")
@@ -1695,6 +2027,34 @@ def main() -> None:
 
     lanes_act.add_parser("unset", help="Clear active_lane (return to multi-lane mode)")
 
+    # ---- markets subcommand (Epic D: the Market-Readiness Gate) ----
+    markets_p = sub.add_parser(
+        "markets", help="Manage jurisdictions (list, show, probe, open, close)")
+    markets_act = markets_p.add_subparsers(dest="markets_action", required=True)
+
+    markets_act.add_parser("list", help="Show defined markets, status and dossier counts")
+
+    show_p = markets_act.add_parser("show", help="Show a market's readiness measurement")
+    show_p.add_argument("--market", metavar="CODE", required=True)
+
+    probe_p = markets_act.add_parser(
+        "probe", help="Run the calibration set through the real pipeline and measure")
+    probe_p.add_argument("--market", metavar="CODE", required=True)
+    probe_p.add_argument("--set", metavar="PATH", required=True,
+                         help="JSONL calibration set: one "
+                              '{"title","one_liner","expected":"pass|kill"} per line')
+    probe_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"])
+    probe_p.add_argument("--fixtures", metavar="PATH",
+                         help="Path to fixtures JSON (offline probe)")
+    probe_p.add_argument("--lane", metavar="NAME")
+
+    open_p = markets_act.add_parser(
+        "open", help="Open a market — refused unless a current probe says READY")
+    open_p.add_argument("--market", metavar="CODE", required=True)
+
+    close_p = markets_act.add_parser("close", help="Close a market")
+    close_p.add_argument("--market", metavar="CODE", required=True)
+
     args = parser.parse_args()
 
     # Keep the verbose JSON audit log out of the way (it goes to a tail-able file);
@@ -1722,6 +2082,10 @@ def main() -> None:
         _cmd_operators(args)
     elif args.command == "lanes":
         _cmd_lanes(args, log_path)
+    elif args.command == "markets":
+        _cmd_markets(args, cfg_for_log, log_path)
+    elif args.command == "replicate":
+        _cmd_replicate(args, log_path)
     else:
         parser.print_help()
         sys.exit(1)

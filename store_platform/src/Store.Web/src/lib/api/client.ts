@@ -63,6 +63,10 @@ export interface Pack {
   timeToFirstRevenue?: string;
   sourceCount?: number;
   verifiedAt?: string;
+  /** Jurisdiction the OPPORTUNITY is in ("uk", "us", "us-tx"). Not the buyer's locale:
+   *  every pack is priced and sold in GBP regardless of this value. Absent on packs
+   *  published before the engine tracked markets. */
+  market?: string;
 }
 
 export interface PackDetails extends Pack {
@@ -97,6 +101,21 @@ export function freshnessLabel(iso?: string): string | null {
   if (days < 30) return `Verified ${days} days ago`;
   const months = Math.floor(days / 30);
   return months <= 1 ? 'Verified last month' : `Verified ${months} months ago`;
+}
+
+const MARKET_LABELS: Record<string, string> = {
+  uk: 'UK',
+  us: 'US',
+};
+
+/** Display label for a market code. Falls back to the code itself (upper-cased) so a
+ *  newly opened market renders sensibly without a front-end deploy. A subdivision like
+ *  "us-tx" renders as "US · TX". */
+export function marketLabel(code?: string): string {
+  if (!code) return '';
+  const [root, sub] = code.toLowerCase().split('-');
+  const base = MARKET_LABELS[root] ?? root.toUpperCase();
+  return sub ? `${base} · ${sub.toUpperCase()}` : base;
 }
 
 export async function fetchCatalog(): Promise<Pack[]> {

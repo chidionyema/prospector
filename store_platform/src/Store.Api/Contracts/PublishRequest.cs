@@ -33,6 +33,9 @@ public record PublishRequest(
     string[]? WhatYouGet = null,
     string[]? SampleExtract = null,
     IReadOnlyDictionary<string, string>? FinancialSnapshot = null,
+    // Jurisdiction of the opportunity ("uk", "us", "us-tx"). Independent of the currency
+    // the pack sells in — the store stays GBP-only.
+    string? Market = null,
     // Legacy fields — accepted for backward compatibility when the provider-agnostic
     // fields above are not present.
     string? PaddleProductId = null,

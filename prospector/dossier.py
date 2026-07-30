@@ -9,6 +9,7 @@ dossiers render their cited reason prominently (a cited KILL is first-class).
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 from .models import (DEFER_GATE, Decision, Dossier, ScoreResult, CheckResult,
@@ -59,19 +60,22 @@ def build_dossier(
         gate_fired = None  # no real gate fired; keep the audit honest
     elif gate_fired is not None:
         decision = Decision.KILL
-        # Build a cited reason from the failing check
+        # Plain-English reason with the internal gate name kept for audit.
+        # adaptive.py strips on the first ":" — keep that contract so the
+        # substance after the colon still feeds generation feedback.
         failing = next((c for c in checks if c.check_name == gate_fired), None)
+        labelled = _labelled(gate_fired, _CHECK_LABEL)
         if failing is not None:
             reason = (
-                f"Gate '{gate_fired}' fired — "
+                f"It failed on: {labelled} — "
                 f"{failing.verdict.value} (conf {failing.confidence:.2f}): "
                 f"{failing.rationale}"
             )
         elif gate_fired == "adversarial_decisive":
-            adv_text = adversarial.kill_case if adversarial else "adversarial decisive kill"
-            reason = f"Gate 'adversarial_decisive' fired — {adv_text}"
+            adv_text = adversarial.kill_case if adversarial else "the case against it was decisive"
+            reason = f"It failed on: {labelled} — {adv_text}"
         else:
-            reason = f"Gate '{gate_fired}' fired."
+            reason = f"It failed on: {labelled}."
     elif score is not None and passes_composite(score, cfg):
         # SOURCE-OR-DIE at the pass boundary. Clearing the composite is necessary but NOT
         # sufficient: the scorer rules on the candidate narrative and will happily score an
@@ -130,8 +134,9 @@ def build_dossier(
         gate_fired = "min_composite"
         comp = score.composite if score else 0.0
         reason = (
-            f"Composite {comp:.4f} below threshold "
-            f"{cfg.thresholds.min_composite_to_pass} — gate 'min_composite' fired."
+            f"It failed on: {_labelled('min_composite', _CHECK_LABEL)} — "
+            f"composite {comp:.4f} below the bar of "
+            f"{cfg.thresholds.min_composite_to_pass}."
         )
 
     # Provisional rollup: the decision is real but untrusted if ANY ruling that fed it
@@ -169,11 +174,67 @@ _VERDICT_EMOJI = {
     "unverifiable": "⚠️",
 }
 
-_DECISION_BADGE = {
-    Decision.PASS: "## ✅ DECISION: PASS",
-    Decision.KILL: "## ❌ DECISION: KILL",
-    Decision.DEFER: "## ⏸️ DECISION: DEFER (retrieval unavailable — re-vet)",
+_VERDICT_LABEL = {
+    "supported": "Yes — the sources back this",
+    "refuted": "No — the sources contradict this",
+    "unverifiable": "Can't tell — the sources don't say",
 }
+
+# A plain-English question for each check, for the person reading the dossier. The
+# CHECKS text in models.py stays as it is: that is the verifier's contract with the
+# moat, and rewording it would change what actually gets ruled on. This is a label.
+_CHECK_LABEL = {
+    "pain_reality": "Is the problem real?",
+    "value_durability": "Will this still be worth money later?",
+    "incumbency": "Is someone already doing this well?",
+    "payer_solvency": "Can the customer afford it?",
+    "distribution": "Can you actually reach the customer?",
+    "legality": "Is it legal?",
+    "buyer_intent": "Are people already looking for this?",
+    "route_to_market": "Could a beginner reach buyers?",
+    "currency": "Is this live right now?",
+    "claims_verifiable": "Can the claims be checked?",
+    "adversarial_decisive": "The case against it was decisive",
+    "min_composite": "The overall score was too low",
+    "moat_ungrounded": "The decisive checks weren't backed by evidence",
+    "source_or_die": "Not enough grounded evidence to publish",
+    DEFER_GATE: "We couldn't fetch enough evidence to rule",
+}
+
+# Legacy dossiers still carry a "Gate 'x' fired — " prefix. Strip it for the
+# reader; new reasons are already plain English (see build_dossier).
+_GATE_PREFIX = re.compile(r"^Gate '[^']+' fired(?: — |\.\s*)")
+
+_AXIS_LABEL = {
+    "pain_acuity": "How badly it hurts",
+    "money_provability": "How provable the money is",
+    "distribution": "How easy buyers are to reach",
+    "defensibility": "How hard it is to copy",
+    "build_feasibility": "How buildable it is",
+    "automatability": "How much one person can automate",
+}
+
+_DECISION_BADGE = {
+    Decision.PASS: "## ✅ PASS",
+    Decision.KILL: "## ❌ KILL",
+    Decision.DEFER: "## ⏸️ DEFER — no verdict yet",
+}
+
+_DECISION_GLOSS = {
+    Decision.PASS: ("This cleared every check we hold it to, on evidence we fetched "
+                    "and cited below."),
+    Decision.KILL: "We stopped on this one. The reason and the evidence are below.",
+    Decision.DEFER: ("We could not fetch enough evidence to rule either way, so this "
+                     "waits for another run. Not knowing is not the same as a no."),
+}
+
+
+def _labelled(name: str, labels: dict[str, str]) -> str:
+    """Plain label with the internal name kept alongside it. The token stays because a
+    dossier is an audit document: someone has to be able to match this line to a gate
+    in config.yaml. Clarity is added, never substituted."""
+    label = labels.get(name)
+    return f"{label} (`{name}`)" if label else f"`{name}`"
 
 
 def render_markdown(dossier: Dossier) -> str:
@@ -193,45 +254,49 @@ def render_markdown(dossier: Dossier) -> str:
     # --- Decision badge (prominent) ---
     lines.append(_DECISION_BADGE[dossier.decision])
     lines.append("")
+    lines.append(f"_{_DECISION_GLOSS[dossier.decision]}_")
+    lines.append("")
 
     # Provisional banner: this verdict was reached by the cheap emergency fallback tail
     # because the trusted moat was exhausted. Real-but-untrusted — never publishes on
     # PASS, auto re-vetted by the moat on the next `vet --resume`.
     if dossier.provisional:
-        lines.append("> ⚠️ **PROVISIONAL** — ruled by the emergency fallback tail "
-                     "(trusted moat exhausted). Not final: awaiting moat re-vet via "
-                     "`vet --resume`; will not publish while provisional.")
+        lines.append("> ⚠️ **This verdict is not final.** The models we trust to judge "
+                     "were unavailable, so a cheaper backup ruled instead. We don't "
+                     "trust that enough to publish on. It gets judged again properly "
+                     "on the next `vet --resume`.")
         lines.append("")
 
     # KILL reason gets its own highlighted block
     if dossier.decision == Decision.KILL:
-        lines.append("> **Why killed:**")
-        lines.append(f"> {dossier.reason}")
+        lines.append("> **Why we stopped:**")
+        lines.append(f"> {_GATE_PREFIX.sub('', dossier.reason or '').strip()}")
         if dossier.gate_fired:
             lines.append(f">")
-            lines.append(f"> Gate fired: `{dossier.gate_fired}`")
+            lines.append(f"> It failed on: {_labelled(dossier.gate_fired, _CHECK_LABEL)}")
         lines.append("")
 
     # --- Candidate details ---
     if cand.why_now:
-        lines.append("### Why Now")
+        lines.append("### Why this is possible now")
         lines.append(cand.why_now)
         lines.append("")
     if cand.who_pays:
-        lines.append("### Who Pays")
+        lines.append("### Who pays for it")
         lines.append(cand.who_pays)
         lines.append("")
     if cand.hypothesis:
-        lines.append("### Hypothesis")
+        lines.append("### How it works")
         lines.append(cand.hypothesis)
         lines.append("")
 
     # --- Generation Refinement (Diff) ---
     if cand.refinement_history:
         lines.append("---")
-        lines.append("## Generation Refinement (Diff)")
+        lines.append("## How the idea was sharpened")
         lines.append("")
-        lines.append("> How the **Cynical Analyst** sharpened the raw brainstormed idea.")
+        lines.append("> A second pass narrowed and toughened the first draft. "
+                     "Here's what changed.")
         lines.append("")
         for entry in cand.refinement_history:
             before = entry.get("before", {})
@@ -241,36 +306,41 @@ def render_markdown(dossier: Dossier) -> str:
             if before.get("one_liner") != cand.one_liner:
                 lines.append(f"- **One-liner**: ~~{before.get('one_liner')}~~ → {cand.one_liner}")
             if before.get("hypothesis") != cand.hypothesis:
-                lines.append(f"- **Hypothesis**: ~~{before.get('hypothesis')}~~ → {cand.hypothesis}")
+                lines.append(f"- **How it works**: ~~{before.get('hypothesis')}~~ → {cand.hypothesis}")
             if before.get("who_pays") != cand.who_pays:
-                lines.append(f"- **Who Pays**: ~~{before.get('who_pays')}~~ → {cand.who_pays}")
+                lines.append(f"- **Who pays**: ~~{before.get('who_pays')}~~ → {cand.who_pays}")
             if before.get("why_now") != cand.why_now:
-                lines.append(f"- **Why Now**: ~~{before.get('why_now')}~~ → {cand.why_now}")
+                lines.append(f"- **Why now**: ~~{before.get('why_now')}~~ → {cand.why_now}")
         lines.append("")
 
     # --- Per-check verdicts ---
     if dossier.checks:
         lines.append("---")
-        lines.append("## Gate Checks")
+        lines.append("## What we checked")
         lines.append("")
         for chk in dossier.checks:
             emoji = _VERDICT_EMOJI.get(chk.verdict.value, "?")
-            degraded_note = " *(degraded — search failed)*" if chk.degraded else ""
-            lines.append(
-                f"### {emoji} `{chk.check_name}` — "
-                f"{chk.verdict.value.upper()} (conf {chk.confidence:.2f}){degraded_note}"
-            )
+            label = _CHECK_LABEL.get(chk.check_name, chk.check_name)
+            verdict = _VERDICT_LABEL.get(chk.verdict.value, chk.verdict.value)
+            lines.append(f"### {emoji} {label}")
             lines.append("")
+            lines.append(f"**{verdict}.** Confidence {chk.confidence:.2f}. "
+                         f"*(check: `{chk.check_name}`)*")
+            lines.append("")
+            if chk.degraded:
+                lines.append("> Some searches failed here, so this rests on thinner "
+                             "evidence than usual.")
+                lines.append("")
             lines.append(chk.rationale)
             lines.append("")
-            
+
             if chk.citations:
-                lines.append("**Citations:** " + ", ".join(f"`{c}`" for c in chk.citations))
+                lines.append("**Sources used:** " + ", ".join(f"`{c}`" for c in chk.citations))
                 lines.append("")
 
             # --- Chain-of-Evidence (Contextual Snippets) ---
             if chk.sources:
-                lines.append("**Evidence from sources:**")
+                lines.append("**What those sources said:**")
                 for src in chk.sources:
                     snippet = src.text[:300].replace("\n", " ")
                     lines.append(f"- [{src.source_id}] *\"{snippet}...\"* — [{src.url}]({src.url})")
@@ -280,36 +350,41 @@ def render_markdown(dossier: Dossier) -> str:
     if dossier.adversarial:
         adv = dossier.adversarial
         lines.append("---")
-        lines.append("## Adversarial Case")
+        lines.append("## The case against")
         lines.append("")
-        decisive_label = "**DECISIVE**" if adv.decisive else "Non-decisive"
-        lines.append(f"*{decisive_label}*")
+        lines.append("> We argue against every idea on purpose. This is the strongest "
+                     "case we could build for walking away.")
+        lines.append("")
+        lines.append("**Decisive on its own — this is enough to stop the idea.**"
+                     if adv.decisive else
+                     "**Not decisive.** Worth knowing, but it doesn't sink the idea.")
         lines.append("")
         lines.append(adv.kill_case)
         if adv.citations:
             lines.append("")
-            lines.append("**Citations:** " + ", ".join(f"`{c}`" for c in adv.citations))
-        lines.append("")
+            lines.append("**Sources used:** " + ", ".join(f"`{c}`" for c in adv.citations))
+            lines.append("")
 
     # --- Scores table (PASS only, but render for KILLs that have a score too) ---
     if dossier.score:
         sc = dossier.score
         lines.append("---")
-        lines.append("## Scores")
+        lines.append("## How it scored")
         lines.append("")
-        lines.append(f"**Composite: {sc.composite:.4f}**")
+        lines.append(f"**Overall: {sc.composite:.4f}** (each line is rated out of 5, "
+                     f"then weighted)")
         lines.append("")
-        lines.append("| Axis | Score | Justification |")
-        lines.append("|------|------:|---------------|")
+        lines.append("| What we rated | Score | Why |")
+        lines.append("|---------------|------:|-----|")
         for ax, val in sc.scores.items():
             just = sc.justification.get(ax, "")
-            lines.append(f"| {ax} | {val}/5 | {just} |")
+            lines.append(f"| {_labelled(ax, _AXIS_LABEL)} | {val}/5 | {just} |")
         lines.append("")
 
     # PASS reason
     if dossier.decision == Decision.PASS:
         lines.append("---")
-        lines.append("## Verdict")
+        lines.append("## Why this passed")
         lines.append("")
         lines.append(dossier.reason)
         lines.append("")
@@ -318,7 +393,10 @@ def render_markdown(dossier: Dossier) -> str:
     all_src = dossier.all_sources
     if all_src:
         lines.append("---")
-        lines.append("## Chain-of-Evidence (Full Sources)")
+        lines.append("## Every source we used")
+        lines.append("")
+        lines.append("Every claim above traces back to one of these. Follow any of "
+                     "them and check us.")
         lines.append("")
         for src in all_src:
             pub = f" ({src.published_at})" if src.published_at else ""
@@ -331,15 +409,17 @@ def render_markdown(dossier: Dossier) -> str:
 
     # --- Metadata footer ---
     lines.append("---")
-    lines.append("## Metadata")
+    lines.append("## Run details")
     lines.append("")
     if dossier.persona:
         lines.append(f"- **Persona:** {dossier.persona}")
-    lines.append(f"- **Model:** {dossier.model_version}")
+    lines.append(f"- **Judged by:** {dossier.model_version}")
+    if getattr(cand, "market", ""):
+        lines.append(f"- **Market:** {cand.market}")
     lines.append(f"- **Candidate ID:** `{cand.candidate_id}`")
     lines.append(f"- **Created:** {dossier.created_at}")
     if dossier.reverify_due_at:
-        lines.append(f"- **Reverify by:** {dossier.reverify_due_at}")
+        lines.append(f"- **Evidence goes stale after:** {dossier.reverify_due_at}")
     lines.append("")
 
     return "\n".join(lines)

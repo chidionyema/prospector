@@ -78,59 +78,92 @@ def _fingerprint(cand: Candidate) -> str:
     return f"{cand.title} {cand.one_liner}".strip()
 
 
+def _normalise_catalogue(
+    catalogue_titles: "list[str] | list[tuple[str, str]]",
+    default_market: str,
+) -> list[tuple[str, str]]:
+    """Accept either the legacy list[str] or list[(market, fingerprint)].
+
+    Keeping both shapes is deliberate: the legacy form is used across the existing
+    tests and by any caller that has no market context, and rewriting them would be
+    churn with no benefit. A legacy entry is attributed to the default market.
+    """
+    out: list[tuple[str, str]] = []
+    for entry in catalogue_titles or []:
+        if isinstance(entry, (tuple, list)) and len(entry) == 2:
+            market, text = entry
+        else:
+            market, text = default_market, entry
+        out.append(((market or default_market or "").lower(), str(text).lower()))
+    return out
+
+
 @track_latency(name="dedup")
 def dedup(
     candidates: list[Candidate],
-    catalogue_titles: list[str],
+    catalogue_titles: "list[str] | list[tuple[str, str]]",
     threshold: float = 0.85,
     token_threshold: float | None = 0.34,
+    default_market: str = "",
 ) -> tuple[list[Candidate], list[tuple[Candidate, str]]]:
-    """Remove near-duplicates from candidates.
+    """Remove near-duplicates from candidates, WITHIN each market.
 
     Each candidate is compared against:
-      1. Every entry in catalogue_titles (existing catalogue, cross-batch dedup).
-      2. Every candidate already accepted in this batch (intra-batch dedup).
+      1. Every catalogue entry in the SAME market (cross-batch dedup).
+      2. Every candidate already accepted in this batch, in the same market.
 
     Catalogue dedup runs BOTH signals (char ratio + content-word overlap): char
     ratio alone is blind to the same idea reworded, which is exactly how the live
     catalogue accumulated 4 "retiree garden harvest" variants + 2 "probate
     clear-out" variants that all scored well under the char threshold.
 
+    MARKET SCOPING: the same idea in a different jurisdiction is NOT a duplicate —
+    "mobile notary bond, Texas" and the UK equivalent are different opportunities
+    resting on different evidence. Without this, opening a market would be silently
+    throttled by the dedup gate: the second market's candidates would collide with the
+    first's and vanish, with nothing in the logs to say why.
+
     Args:
         candidates: Incoming candidates in priority order (order is preserved).
-        catalogue_titles: Titles (or title+one_liner strings) of already-stored
-            opportunities.
+        catalogue_titles: Either (market, fingerprint) pairs, or bare fingerprint
+            strings (legacy), which are attributed to `default_market`.
         threshold: Char-ratio at or above which two entries are duplicates.
         token_threshold: Content-word Jaccard at or above which two entries are
             duplicates (None disables the token signal). Calibrated to 0.34 so
             same-idea-reworded clusters collapse but distinct ideas survive.
+        default_market: Market assigned to entries/candidates carrying no market.
 
     Returns:
         (unique_candidates, dropped_pairs) where dropped_pairs is a list of
         (dropped_candidate, matched_existing_title) tuples.
     """
     logger.info(f"Dedup started for {len(candidates)} candidates", extra={"batch_size": len(candidates)})
-    
+
     unique: list[Candidate] = []
     dropped: list[tuple[Candidate, str]] = []
 
-    # Pre-compute fingerprints for the catalogue to avoid repeated concatenation.
-    catalogue_fps: list[str] = [t.lower() for t in catalogue_titles]
+    default_market = (default_market or "").lower()
+    catalogue_fps = _normalise_catalogue(catalogue_titles, default_market)
 
     for cand in candidates:
         fp = _fingerprint(cand)
+        cand_market = (getattr(cand, "market", "") or default_market).lower()
 
         matched: str | None = None
 
-        # 1. Compare against existing catalogue.
-        for cat_fp in catalogue_fps:
+        # 1. Compare against existing catalogue entries in the SAME market.
+        for cat_market, cat_fp in catalogue_fps:
+            if cat_market != cand_market:
+                continue
             if is_near_duplicate(fp, cat_fp, threshold, token_threshold):
                 matched = cat_fp
                 break
 
-        # 2. Compare against already-accepted candidates in this batch.
+        # 2. Compare against already-accepted candidates in this batch, same market.
         if matched is None:
             for kept in unique:
+                if (getattr(kept, "market", "") or default_market).lower() != cand_market:
+                    continue
                 kept_fp = _fingerprint(kept)
                 if is_near_duplicate(fp, kept_fp, threshold, token_threshold):
                     matched = kept_fp
@@ -142,5 +175,16 @@ def dedup(
             unique.append(cand)
 
     logger.info(f"Dedup complete: {len(unique)} unique, {len(dropped)} dropped", 
-                extra={"unique": len(unique), "dropped": len(dropped)})
+                extra={"unique": len(unique), "dropped": len(dropped),
+                       "dropped_by_market": drops_by_market(dropped)})
     return unique, dropped
+
+
+def drops_by_market(dropped: list[tuple[Candidate, str]]) -> dict[str, int]:
+    """Dedup drops keyed by market — the diagnostic that makes a market being
+    throttled by dedup visible instead of silent."""
+    out: dict[str, int] = {}
+    for cand, _ in dropped:
+        key = getattr(cand, "market", "") or ""
+        out[key] = out.get(key, 0) + 1
+    return out

@@ -269,6 +269,9 @@ class EngineBridge:
             "sampleExtract": _sample_excerpts(artifacts.get("build_spec", ""), listing.get("proof_point", "")),
             "financialSnapshot": _financial_snapshot(artifacts.get("financial_model", "")),
             "verifiedAt": getattr(dossier, "created_at", "") or "",
+            # The jurisdiction the OPPORTUNITY is in — a browse facet and a disclosure,
+            # never a pricing input. The pack still sells for £49 through the same rail.
+            "market": getattr(candidate, "market", "") or "",
         }
         catalog_meta.update(_trust_fields(dossier))
         # Drop empties so the payload (and the Store API) only ever see populated fields.

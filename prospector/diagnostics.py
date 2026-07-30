@@ -59,7 +59,8 @@ def _norm_dossier(d: Any) -> dict:
         "gate_fired": getattr(d, "gate_fired", None),
         "provisional": getattr(d, "provisional", False),
         "score": {"composite": getattr(sc, "composite", None)} if sc else None,
-        "candidate": {"title": getattr(cand, "title", None)} if cand else {},
+        "candidate": {"title": getattr(cand, "title", None),
+                      "market": getattr(cand, "market", "") or ""} if cand else {},
         "checks": checks,
     }
 
@@ -71,6 +72,40 @@ def _stats(xs: list[float]) -> dict:
             "med": round(statistics.median(xs), 3),
             "max": round(max(xs), 3),
             "mean": round(statistics.mean(xs), 3)}
+
+
+def _market_breakdown(ds: list[dict]) -> dict:
+    """Decisions and grounding per market.
+
+    Returned only when the batch actually spans markets or carries a market at all, so a
+    single-market run's report is unchanged.
+    """
+    markets = {(x.get("candidate") or {}).get("market") or "" for x in ds}
+    if not markets or markets == {""}:
+        return {}
+
+    out: dict[str, dict] = {}
+    for market in sorted(markets):
+        rows = [x for x in ds
+                if ((x.get("candidate") or {}).get("market") or "") == market]
+        checks = [c for x in rows for c in (x.get("checks") or [])]
+        unverifiable = sum(1 for c in checks
+                           if (c.get("verdict") or "").lower() == "unverifiable")
+        empty = sum(1 for c in checks if not (c.get("sources") or []))
+        dec = Counter((x.get("decision") or "?").lower() for x in rows)
+        out[market or "(unset)"] = {
+            "vetted": len(rows),
+            "pass": dec.get("pass", 0),
+            "kill": dec.get("kill", 0),
+            "defer": dec.get("defer", 0),
+            "checks": len(checks),
+            "unverifiable_pct": round(100 * unverifiable / len(checks), 1) if checks else 0.0,
+            "retrieval_empty_checks": empty,
+            "kill_gates": dict(Counter(
+                x.get("gate_fired") or "min_composite" for x in rows
+                if (x.get("decision") or "").lower() == "kill").most_common()),
+        }
+    return out
 
 
 def diagnose_batch(dossiers: list[Any], *, stage_counts: Optional[dict] = None,
@@ -133,6 +168,9 @@ def diagnose_batch(dossiers: list[Any], *, stage_counts: Optional[dict] = None,
     return {
         "ts": datetime.now(timezone.utc).isoformat(),
         "thresholds": {"confidence_floor": floor, "min_composite_to_pass": bar},
+        # Aggregate numbers hide a dead market: 40% unverifiable across two markets can be
+        # a healthy one averaged with one that grounds nothing. Break it out.
+        "by_market": _market_breakdown(ds),
         "funnel": stage_counts or {"note": "top-of-funnel counts unavailable (post-hoc run)"},
         "decisions": {"pass": dec.get("pass", 0), "kill": dec.get("kill", 0),
                       "defer": dec.get("defer", 0), "vetted": len(ds),
@@ -166,6 +204,14 @@ def render_batch_diagnostics(r: dict) -> str:
              f"(of {d.get('vetted',0)} vetted)")
     if r.get("kill_gates"):
         L.append("  kill gates: " + ", ".join(f"{k}={v}" for k, v in r["kill_gates"].items()))
+    by_market = r.get("by_market") or {}
+    if len(by_market) > 1:
+        L.append("── Per market (aggregates above span ALL markets) ──")
+        for market, m in by_market.items():
+            L.append(f"  {market:<10} vetted {m['vetted']:3d} · PASS {m['pass']:2d} "
+                     f"KILL {m['kill']:2d} DEFER {m['defer']:2d} · "
+                     f"unverifiable {m['unverifiable_pct']}% · "
+                     f"retrieval-empty {m['retrieval_empty_checks']}")
     L.append(f"── Grounding ──  unverifiable {r.get('unverifiable_pct')}%  ·  "
              f"sources/check {r.get('sources_per_check')}  ·  "
              f"retrieval-empty checks {r.get('retrieval_failed_checks')}")
@@ -268,6 +314,18 @@ def calibration_alarms(store: Store, cfg: Config, *,
     for lane, rows in sorted(by_lane.items()):
         alarms.extend(_lane_alarms(rows, lane, cfg, dominance_threshold, min_sample))
 
+    # ── Per-market breakdown ───────────────────────────────────────────────
+    # Keyed separately from lanes: a market failing is an EVIDENCE problem (the engine
+    # cannot see that jurisdiction), whereas a lane failing is a CALIBRATION problem.
+    # Averaged together they cancel out and neither is visible.
+    by_market: dict[str, list[dict]] = {}
+    for r in all_rows:
+        by_market.setdefault(r.get("market") or "", []).append(r)
+    if len([m for m in by_market if m]) > 1:
+        for market, rows in sorted(by_market.items()):
+            if market:
+                alarms.extend(_market_alarms(rows, market, cfg, min_sample))
+
     # ── Catalogue-wide structural quality alarms ───────────────────────────────
     # These span all lanes and flag generation quality, not calibration.
     alarms.extend(_generation_quality_alarms(store))
@@ -357,6 +415,66 @@ def calculate_yield(store: Store, window: int = 50) -> float:
     passes = sum(1 for r in recent if r.get("decision") == "pass")
     # This is a proxy: higher survival = higher yield
     return passes / len(recent)
+
+
+def _market_alarms(rows: list[dict], market: str, cfg: Config,
+                   min_sample: int) -> list[Alarm]:
+    """Alarms for one market. A market failing means the engine cannot SEE that
+    jurisdiction — the fix is evidence terrain (authority domains, query exemplars),
+    never a lower bar."""
+    alarms: list[Alarm] = []
+    if len(rows) < min_sample:
+        return alarms
+
+    dec = Counter((r.get("decision") or "?").lower() for r in rows)
+    n_pass, n_kill, n_defer = dec.get("pass", 0), dec.get("kill", 0), dec.get("defer", 0)
+    ruled = n_pass + n_kill
+
+    if ruled >= min_sample and n_pass == 0:
+        alarms.append({
+            "level": "alarm", "code": "market_zero_yield",
+            "message": (
+                f"[{market}] 0 PASS across {ruled} ruled candidates. This market's "
+                f"evidence terrain is likely wrong (authority domains, search region, "
+                f"query exemplars in prompts/markets/{market}/) — fix the grounding, "
+                f"not the bar."),
+            "lane": None, "market": market, "n_ruled": ruled, "n_pass": n_pass,
+        })
+
+    if rows and n_defer / len(rows) >= 0.5:
+        alarms.append({
+            "level": "warn", "code": "market_defer_rate",
+            "message": (
+                f"[{market}] {n_defer}/{len(rows)} candidates DEFERRED — that is an "
+                f"infrastructure signal, not a market signal. Re-run `vet --resume` "
+                f"before reading anything into this market's numbers."),
+            "lane": None, "market": market, "defer_rate": n_defer / len(rows),
+        })
+
+    degraded = sum(1 for r in rows if r.get("retrieval_degraded"))
+    if rows and degraded / len(rows) >= 0.3:
+        alarms.append({
+            "level": "warn", "code": "market_retrieval_degraded",
+            "message": (
+                f"[{market}] {degraded}/{len(rows)} candidates vetted with degraded "
+                f"retrieval. Verdicts here rest on thin evidence."),
+            "lane": None, "market": market,
+        })
+
+    try:
+        if cfg.market_status(market) != "open":
+            alarms.append({
+                "level": "alarm", "code": "market_not_open",
+                "message": (
+                    f"[{market}] {len(rows)} dossier(s) exist but the market is "
+                    f"{cfg.market_status(market)}. Either a probe run leaked into the "
+                    f"catalogue or the readiness gate was bypassed."),
+                "lane": None, "market": market,
+            })
+    except Exception:  # noqa: BLE001 — an unconfigured market simply has no status
+        pass
+
+    return alarms
 
 
 def _lane_alarms(rows: list[dict], lane: str, cfg: Config,

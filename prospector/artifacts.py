@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from .models import Candidate, CheckResult, Verdict
 from .operator import Operator
-from .prompts import render
+from .prompts import ALL_MARKET_KEYS, market_kwargs, render
 from .telemetry import logger
 
 
@@ -213,10 +213,12 @@ def _validate_artifact_shape(t: str, data: Any) -> Any:
 
 
 def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
-                      t: str) -> tuple[str, str]:
+                      t: str, market_vars: Optional[Dict[str, str]] = None
+                      ) -> tuple[str, str]:
     """Generate one artifact type. Runs in a thread; returns (type, content)."""
     system, user = render("artifacts", candidate_json=cand_json,
-                          claims_json=claims_json, type=t)
+                          claims_json=claims_json, type=t,
+                          **(market_vars or {}))
     data = op.complete_json(system, user, temperature=0.3,
                             validate=lambda d: _validate_artifact_shape(t, d))
 
@@ -239,6 +241,7 @@ def generate_artifacts(
     *,
     fast_op: Optional[Operator] = None,
     quality_op: Optional[Operator] = None,
+    cfg: Optional[Any] = None,
 ) -> Dict[str, str]:
     """Generate build_spec, gtm_plan, ops_plan, financial_model in parallel.
 
@@ -260,11 +263,15 @@ def generate_artifacts(
     types = ["build_spec", "gtm_plan", "ops_plan", "financial_model"]
     results: Dict[str, str] = {}
 
+    # Money figures in the pack must be denominated in the OPPORTUNITY's market currency
+    # (a US pack quoting £ is wrong), independently of the £49 the pack itself sells for.
+    market_vars = market_kwargs(cfg) if cfg is not None else {k: "" for k in ALL_MARKET_KEYS}
+
     with ThreadPoolExecutor(max_workers=len(types)) as ex:
         futures = {
             ex.submit(_gen_one_artifact,
                       cheap_op if t == "financial_model" else prose_op,
-                      cand_json, claims_json, t): t
+                      cand_json, claims_json, t, market_vars): t
             for t in types
         }
         for future in as_completed(futures):

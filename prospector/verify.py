@@ -8,6 +8,7 @@ passages). Source-or-die and graceful degradation are enforced here:
 """
 from __future__ import annotations
 
+import contextvars
 import json
 import re
 from typing import Callable, Optional
@@ -18,8 +19,8 @@ from .kill_filter import is_hard_fail
 from .models import (CHECKS, DEFAULT_CHECKS, DEFER_GATE, AdversarialResult, Candidate,
                      CheckResult, Source, Verdict)
 from .operator import Operator
-from .prompts import render
-from .retrieval import SearchProvider
+from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
+from .retrieval import SearchProvider, market_retrieval
 from .telemetry import logger, track_latency
 from .audit import audit
 
@@ -214,10 +215,25 @@ def _templated_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
     return out[:max(1, n)] or [f"{base} {check_name}"]
 
 
+def _market_vars(cfg: Config | None, *, for_moat: bool = False) -> dict[str, str]:
+    """Market prompt variables, tolerating a None cfg (several call paths allow it).
+
+    A missing cfg yields EMPTY values rather than no keys: an absent key leaves the
+    literal `{market_context}` in the prompt sent to the model, which is worse than
+    rendering nothing. The moat/open split is preserved in both cases.
+    """
+    if cfg is None:
+        keys = MOAT_MARKET_KEYS if for_moat else ALL_MARKET_KEYS
+        return {k: "" for k in keys}
+    return market_kwargs(cfg, for_moat=for_moat)
+
+
 @track_latency(name="gen_queries")
-def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int) -> list[str]:
+def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int,
+                cfg: Config | None = None) -> list[str]:
     system, user = render("query_gen", candidate_json=json.dumps(cand.to_dict()),
-                          check_name=check_name, check_question=CHECKS[check_name])
+                          check_name=check_name, check_question=CHECKS[check_name],
+                          **_market_vars(cfg))
     try:
         data = op.complete_json(system, user, temperature=0.5)
         qs = data if isinstance(data, list) else data.get("queries", [])
@@ -229,7 +245,8 @@ def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int) -> list[
 
 @track_latency(name="gen_queries_batched")
 def gen_queries_batched(op: Operator, cand: Candidate,
-                        check_names: list[str], n: int = 2) -> dict[str, list[str]]:
+                        check_names: list[str], n: int = 2,
+                        cfg: Config | None = None) -> dict[str, list[str]]:
     """ONE fast-tier LLM call → search queries for ALL `check_names` at once.
 
     Decompose-don't-echo: the model turns the (usually non-existent) product into the
@@ -249,7 +266,8 @@ def gen_queries_batched(op: Operator, cand: Candidate,
     try:
         system, user = render("query_gen_batched",
                               candidate_json=json.dumps(cand.to_dict()),
-                              checks_block=checks_block)
+                              checks_block=checks_block,
+                              **_market_vars(cfg))
         data = op.complete_json(system, user, temperature=0.5)
     except Exception as e:
         logger.warning(f"Batched query gen failed (falling back to templates): {e}")
@@ -309,9 +327,13 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     # Format: [source_id] <truncated_text>  (url and title are in the prompt template).
     passages = "\n".join(
         f"[{s.source_id}] {s.text[:VERDICT_PASSAGE_TRUNCATE]}" for s in sources)
+    # for_moat=True: the verdict brain gets the jurisdiction's NAME and the relevance
+    # precedents, never the market's evidence-landscape prose. Handing the moat market
+    # knowledge is the prior-knowledge leak that verdict-from-retrieval-only forbids.
     system, user = render("verdict", candidate_json=json.dumps(cand.to_dict()),
                           check_name=check_name, check_question=CHECKS[check_name],
-                          verdict_bias=verdict_bias)
+                          verdict_bias=verdict_bias,
+                          **_market_vars(cfg, for_moat=True))
     user = user.replace("{for each: [source_id] (url, published_at) text}", passages)
     user += f"\n\nPassages:\n{passages}"
     try:
@@ -392,7 +414,8 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     elif check_name in (r.template_checks or []):
         queries = _templated_queries(cand, check_name, r.fast_queries)
     elif r.queries_per_check > 0:
-        queries = gen_queries(query_op or op, cand, check_name, r.queries_per_check)
+        queries = gen_queries(query_op or op, cand, check_name, r.queries_per_check,
+                              cfg=cfg)
     else:
         # FIX #1: queries_per_check=0 means skip LLM query-gen entirely;
         # fall back to the deterministic template (no token cost, no latency).
@@ -403,8 +426,12 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     n_failed = 0
 
     with ThreadPoolExecutor(max_workers=len(queries)) as executor:
-        # Launch searches in parallel
-        futures = [executor.submit(search.search, q, k=r.results_per_query,
+        # Launch searches in parallel, each carrying a copy of THIS context. A worker
+        # thread otherwise starts on a blank context, so the active market's authority
+        # domains (set by market_retrieval, read during the fetch) would never reach the
+        # code that fetches. Copy per submit: a Context cannot be entered twice at once.
+        futures = [executor.submit(contextvars.copy_context().run,
+                                   search.search, q, k=r.results_per_query,
                                    max_chars=r.max_passage_chars)
                    for q in queries]
 
@@ -499,7 +526,8 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
     system, user = render("adversarial", candidate_json=json.dumps(cand.to_dict()),
                           verification_json=verification_json,
                           lane_directive=lane_directive,
-                          adversarial_bias=adv_bias)
+                          adversarial_bias=adv_bias,
+                          **_market_vars(cfg, for_moat=True))
     try:
         data = op.complete_json(system, user, temperature=0.3)
         citations = [str(c) for c in (data.get("citations") or [])]
@@ -562,6 +590,21 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
         full_vet: When True, bypasses the kill-fast short-circuit and runs ALL checks.
             Used to gather a complete failure surface for adaptive learning.
     """
+    # Scope every fetch in this vet to the active market's authority domains, so a
+    # market's own institutions get the patient high-authority timeout instead of being
+    # dropped as slow. Context-local, so concurrent vets of different markets can never
+    # borrow each other's authority list.
+    with market_retrieval(cfg):
+        return _verify_inner(op, search, cfg, cand, on_check=on_check, query_op=query_op,
+                             skip_adversarial=skip_adversarial, full_vet=full_vet)
+
+
+def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
+                  on_check: Optional[Callable[[CheckResult], None]] = None,
+                  query_op: Optional[Operator] = None,
+                  skip_adversarial: bool = False,
+                  full_vet: bool = False,
+                  ) -> tuple[list[CheckResult], Optional[AdversarialResult], Optional[str]]:
     checks: list[CheckResult] = []
     # Kill-fast order is driven by config (cheapest decisive gates first), so config
     # is the single source of truth: gated checks in hard_gates order, then any rest.
@@ -597,14 +640,15 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
     if getattr(cfg.retrieval, "llm_query_gen", False):
         if query_op is not None:
             precomputed_queries = gen_queries_batched(
-                query_op, cand, run_order, n=cfg.retrieval.queries_per_check)
+                query_op, cand, run_order, n=cfg.retrieval.queries_per_check, cfg=cfg)
         missing = [c for c in run_order if c not in precomputed_queries]
         if missing and op is not None:
             logger.warning(
                 "Fast-tier query-gen missed %d/%d checks (%s); recovering on reliable brain "
                 "to avoid template fallback", len(missing), len(run_order), ",".join(missing))
             precomputed_queries.update(
-                gen_queries_batched(op, cand, missing, n=cfg.retrieval.queries_per_check))
+                gen_queries_batched(op, cand, missing,
+                                    n=cfg.retrieval.queries_per_check, cfg=cfg))
 
     for name in run_order:
         res = run_check(op, search, cfg, cand, name, query_op=query_op,

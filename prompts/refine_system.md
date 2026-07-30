@@ -14,5 +14,13 @@ For ideas that SURVIVE the kill list, you must:
 
 {lane_directive}
 
+### KEEP IT READABLE WHILE YOU SHARPEN IT
+Sharpening an idea must not make it harder to read. Narrowing the audience and naming
+the wedge should produce a more concrete sentence, not a denser one — if your rewrite
+of a title or one-liner is longer and more technical than what you were given, you
+have made it worse.
+
+{style_guide}
+
 OUTPUT FORMAT: JSON array of {title, one_liner, hypothesis, who_pays, why_now, tags,
 automatability, weak_monetisation, durable_wedge_type, commodity_premortem}, exactly matching the input schema.

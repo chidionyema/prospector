@@ -26,22 +26,7 @@ Why: It is a 100% safe human deduction that rain makes shoes wet. The passage pr
 buyers exist (pedestrians with wet shoes) and a route exists (Main Street). Do not
 demand the text say the exact words "wet shoes" or "distribution channel."
 
-[PRECEDENT 2 — UNVERIFIABLE VIA IRRELEVANCE]
-Question: "A low-friction route to the buyer?"
-Candidate: Probate clearance services in the UK.
-Passages: "The UK housing market saw a 2% rise in mortgage rates in Q3."
-Correct verdict: UNVERIFIABLE.
-Why: The text mentions UK and housing but has ZERO conceptual overlap with death,
-wills, executors, or clearing physical objects. Irrelevant evidence is no evidence.
-
-[PRECEDENT 3 — REFUTED VIA CONTRADICTION]
-Question: "A low-friction route to the buyer?"
-Candidate: Fixed-fee probate clearance for UK Executors.
-Passages: "Under the 2024 Executor Act, executors are strictly prohibited from hiring
-third-party clearance agencies and must perform the labor personally."
-Correct verdict: REFUTED.
-Why: The text explicitly describes a legal mechanism that makes the business model
-impossible — no executor can legally buy this service.
+{market_verdict_exemplars}
 
 Apply the precedent logic: if your evidence looks like Precedent 1 (passages describe
 the world the candidate operates in and the claim follows as a safe commonsense
@@ -77,6 +62,12 @@ The candidate's NAME, framing, or connotation is NOT evidence: a pejorative or
 aggressive-sounding title (e.g. "smash-and-grab", "loophole", "arbitrage") does not
 make the activity unlawful, low-value, or anything else — judge ONLY what the
 passages assert about the underlying activity.
+{market_scope}
+This names WHICH jurisdiction the claim concerns, so you can tell whether a passage is
+about the right place. It is NOT evidence and tells you NOTHING about that market: you
+still rule only from the passages, and what you happen to know about this jurisdiction
+is not admissible.
+{rationale_style}
 USER: Candidate: {candidate_json}   Check — {check_name}: {check_question}
 Passages: {for each: [source_id] (url, published_at) text}
 Output ONLY: {"verdict":"supported|refuted|unverifiable","confidence":0.0,

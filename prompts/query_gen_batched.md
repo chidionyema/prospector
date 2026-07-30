@@ -20,16 +20,11 @@ For EACH check produce exactly 2 queries:
      owns it, a reform removed the need, the buyer segment is insolvent, the channel is
      saturated or banned, the activity is regulated/illegal).
 
-Worked examples (note: the product name NEVER appears in the query):
-- Product "a mailed pension-optimisation report for NHS nurses", check payer_solvency →
-  ["NHS nurse pension additional voluntary contributions take-up UK",
-   "free public sector pension guidance MoneyHelper Pension Wise 2026"]
-- Product "secret-shopper report on freelance client hiring", check pain_reality →
-  ["freelancers time wasted bidding proposals win rate survey",
-   "Upwork freelancer success free resources existing guides"]
-- Product "cold-chain audit kit for home medication", check incumbency →
-  ["medication fridge temperature monitoring market vendors UK",
-   "Sensitech Berlinger pharma cold chain monitoring incumbents"]
+MARKET CONTEXT — the jurisdiction this candidate operates in. Queries must target
+evidence from THIS market's institutions, statutes, and press:
+{market_context}
+
+{market_batched_exemplars}
 
 Output ONLY a JSON object mapping each check name to its [confirmation_query, refutation_query]
 pair. Use the EXACT check names given. No prose, no markdown fences. Example shape:
