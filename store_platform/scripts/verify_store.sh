@@ -158,7 +158,11 @@ if ! command -v fly >/dev/null 2>&1; then
   skp "Mailjet config — fly CLI not available here"
 # An unauthenticated `fly` also prints nothing, which would read as "the secret is missing" and
 # send someone chasing a config bug that does not exist. Separate "could not ask" from "not set".
-elif ! secrets=$(fly secrets list -a "$FLY_API_APP" 2>/dev/null); then
+# Retry once: fly's GraphQL layer intermittently dies with "context canceled" even when logged in
+# (observed 2026-07-30, one call after a successful one). Without the retry that blip downgrades a
+# hard FAIL to SKIP/unproven, so the probe UNDER-reports at exactly the moment we trust it most.
+elif ! secrets=$(fly secrets list -a "$FLY_API_APP" 2>/dev/null) \
+  && ! secrets=$(fly secrets list -a "$FLY_API_APP" 2>/dev/null); then
   skp "Mailjet config — 'fly secrets list -a $FLY_API_APP' failed (not logged in, or no such app)"
 elif printf '%s' "$secrets" | grep -q MAILJET_API_KEY \
   && printf '%s' "$secrets" | grep -q MAILJET_API_SECRET; then
