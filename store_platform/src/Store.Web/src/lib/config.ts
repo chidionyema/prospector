@@ -28,18 +28,18 @@ export const LEGAL = {
   // and every pack page. They previously pointed at prospector.store — a domain registered to
   // someone else and parked on a resale service — so every refund request went to a stranger.
   //
-  // HARD DEPENDENCY — mumchimp.com had NO MX records when these were set
-  // (`dig +short MX mumchimp.com` returned empty; NS = ns03/ns04.domaincontrol.com, i.e. GoDaddy).
-  // Mail to these addresses BOUNCES until MX records exist. Do not deploy this file until
-  // `dig +short MX mumchimp.com` returns at least one host. An address on a domain with no mail
-  // routing is the same silent failure as the prospector.store address, in a new costume.
+  // RESOLVED 2026-07-30 — the MX dependency this block used to warn about is satisfied:
+  //   $ dig +short MX mumchimp.com @8.8.8.8   ->   5 smtp.google.com.
+  // So support@mumchimp.com RECEIVES; a buyer's refund or privacy request arrives. The probe
+  // re-checks this every run (`verify_store.sh` step 5) — do not re-assert it in prose here.
   //
-  // 2026-07-30 — FOUNDER DECISION: support@mumchimp.com is the address, and it ships now.
-  // The MX warning above is NOT resolved: `dig +short MX mumchimp.com` and the same query against
-  // 8.8.8.8 both returned empty at 01:35 BST, NS still ns03/ns04.domaincontrol.com. Until MX
-  // records exist on that zone, mail sent to this address bounces at the sender, so a buyer's
-  // refund or privacy request never arrives. Adding the MX records at GoDaddy (or pointing the
-  // zone at a mail provider) is the outstanding action — no code change is needed once they exist.
+  // DNS is managed at 123-reg (dcc.123-reg.co.uk -> DNS Management), NOT GoDaddy, even though
+  // the nameservers are ns03/ns04.domaincontrol.com. Three docs said GoDaddy and sent the
+  // founder to the wrong control panel; the nameserver host is not the registrar.
+  //
+  // STILL OPEN, and it is the *sending* direction, not this constant: the apex has no SPF and
+  // no DKIM at any selector, while _dmarc is already `p=quarantine`. Mail sent AS @mumchimp.com
+  // therefore fails DMARC. Receiving is unaffected. See verify_store.sh step 6.
   contactEmail: 'support@mumchimp.com',
   supportEmail: 'support@mumchimp.com',
 } as const;

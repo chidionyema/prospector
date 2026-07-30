@@ -16,33 +16,64 @@ All 4 failures are AC-2 email identity. **None of them need an agent — they ar
 > **Provider changed 2026-07-30 (founder's call): Postmark → Mailjet.** The DNS shape is
 > unchanged — SPF + DKIM TXT only, no MX either way — so the work below is the same size it
 > always was; only the record values and the selector differ. `PostmarkEmailSender.cs` is
-> deleted; `MailjetEmailSender.cs` replaces it and is covered by 8 tests. The tree is no longer
-> clean at HEAD: this change is uncommitted.
+> deleted; `MailjetEmailSender.cs` replaces it and is covered by 8 tests. Committed at `e3dc9d9`;
+> `store_platform/` is clean, so `predeploy_guard.sh` passes and a deploy ships exactly that tree.
 
 | FAIL line | Fix | Where |
 |---|---|---|
-| `NO SPF on mumchimp.com` / `SPF … does not contain include:spf.mailjet.com` | add Mailjet's SPF TXT | GoDaddy DNS |
-| `NO DKIM at mailjet._domainkey` | add Mailjet's DKIM TXT | GoDaddy DNS |
-| `DMARC still points at the GoDaddy default rua` | repoint `rua=` to a mailbox you read | GoDaddy DNS |
+| `NO SPF on mumchimp.com` / `SPF … does not contain include:spf.mailjet.com` | add Mailjet's SPF TXT | 123-reg DNS |
+| `NO DKIM at mailjet._domainkey` | add Mailjet's DKIM TXT | 123-reg DNS |
+| `DMARC still points at the registrar default rua` | repoint `rua=` to a mailbox you read | 123-reg DNS |
 | `MAILJET_API_KEY absent from fly secrets` | `fly secrets set` | terminal |
 
 ## Step 1 — Mailjet (~10 min)
 
 1. Create a Mailjet account (free tier: 6k/mo, 200/day, no KYC) and add the sending domain
    `mumchimp.com`, then the sender `orders@mumchimp.com`.
-2. Mailjet shows an SPF and a DKIM record. Add both as TXT in the GoDaddy zone
-   (NS = `ns03/ns04.domaincontrol.com`):
-   - SPF on the apex must contain `include:spf.mailjet.com`. If a `v=spf1` record already
-     exists, **edit it — do not add a second one.** Two SPF records is a permerror, and every
-     order email then fails SPF even though both records look correct in the dashboard.
-   - DKIM at `mailjet._domainkey` with the value Mailjet generates for this account.
-     (Selector confirmed against the live records on `theintroexchange.com`, which has run
-     Mailjet in production since 2026-06-12.)
+2. Add the records at **123-reg**: <https://dcc.123-reg.co.uk/control/dnsmanagement?domainName=mumchimp.com>
+   → *Add New Record*. Not GoDaddy — the nameservers are `ns03/ns04.domaincontrol.com`, but the
+   nameserver host is not the registrar, and three docs used to send you to the wrong panel.
 
-   **DO NOT TOUCH MX.** `5 smtp.google.com` is live and receiving today; breaking it silently
-   loses refund and privacy-request mail, which is a chargeback feeder. Mailjet needs no MX.
-3. While in the zone, fix DMARC off the GoDaddy default
-   (`rua=mailto:dmarc_rua@onsecureserver.net` — nobody reads those) to a mailbox you monitor.
+   Zone as observed 2026-07-30 (`dig`, and the 9-record 123-reg listing): `A @`, `AAAA @`,
+   `NS @` ×2, `SOA @`, `CNAME api` → `prospector-store-api.fly.dev.`, `CNAME www` →
+   `prospector-store-web.fly.dev.`, `MX @` `5 smtp.google.com.`, `TXT _dmarc`.
+   **There is NO `TXT @` record at all** — `dig +short TXT mumchimp.com @8.8.8.8` is empty.
+
+   | Action | Type | Name | Data |
+   |---|---|---|---|
+   | **Add** | TXT | `@` | `v=spf1 include:_spf.google.com include:spf.mailjet.com ~all` |
+   | **Add** | TXT | `mailjet._domainkey` | the `k=rsa; p=MIIB…` value Mailjet generates for this account |
+   | **Edit** | TXT | `_dmarc` | `v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:support@mumchimp.com;` |
+
+   The SPF value is **not** the one Mailjet's wizard will show you. Mailjet shows
+   `v=spf1 include:spf.mailjet.com ?all`. Pasting that verbatim authorises Mailjet and
+   **de-authorises Google** — and `MX 5 smtp.google.com` means you send from Google Workspace as
+   `@mumchimp.com`. Today there is no SPF at all, so Google mail is merely unauthenticated;
+   a Mailjet-only record makes it an explicit SPF **fail** under the live `p=quarantine`. Both
+   includes, one record. (`theintroexchange.com` runs `include:spf.mailjet.com ?all` — it has no
+   Google MX, so it does not need the second include. Don't copy it here.)
+
+   **Add, don't append a second `v=spf1`.** Two SPF records is a permerror. There is none today,
+   so this is a clean create — but re-check `dig +short TXT mumchimp.com` at the moment you edit,
+   in case Mailjet's verification wizard added one first.
+
+   **DO NOT TOUCH MX, A, AAAA, or the api/www CNAMEs.** `5 smtp.google.com` is live and receiving
+   today; breaking it silently loses refund and privacy-request mail, which is a chargeback
+   feeder. Mailjet needs no MX. The A/AAAA/CNAMEs are what serve the shop: apex and www both
+   answer 200 from `66.241.124.37`, which is `prospector-store-web`'s shared v4 ingress
+   (`fly ips list -a prospector-store-web`).
+3. DMARC `rua` currently goes to `dmarc_rua@onsecureserver.net`, a registrar default nobody
+   reads. `support@mumchimp.com` receives (MX verified above), so it is the obvious target.
+   Keep `p=quarantine` — do not relax it to `p=none` to make bring-up easier; quarantine is why
+   the missing SPF matters, and lowering it hides the problem instead of fixing it.
+
+   HYPOTHESIS, untested: SPF alone may not be enough for order email to pass DMARC, making the
+   DKIM record load-bearing rather than merely good hygiene. Mailjet sends with its own bounce
+   domain as the envelope-from, and DMARC SPF alignment (even relaxed, `aspf=r`) compares the
+   *envelope-from* domain to the header `From:` domain — so an SPF pass for a Mailjet bounce
+   domain does not align with `mumchimp.com`, and DKIM becomes the only path to a DMARC pass.
+   Check: after adding the records, send one order email to a Gmail address and read
+   `Authentication-Results` under *Show original* — `dmarc=pass` is the answer either way.
 4. ```
    fly secrets set MAILJET_API_KEY=… MAILJET_API_SECRET=… \
      MAILJET_FROM_EMAIL=orders@mumchimp.com -a prospector-store-api

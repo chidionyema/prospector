@@ -40,7 +40,7 @@ if [ "$MODE" != "--check" ]; then
 fi
 
 echo
-bld "==> DNS records to create at your registrar (123-Reg / GoDaddy panel)"
+bld "==> DNS records to create at your registrar (123-reg panel: dcc.123-reg.co.uk -> DNS Management)"
 echo
 
 # An apex name cannot be a CNAME in ordinary DNS, so it needs literal A/AAAA records pointing

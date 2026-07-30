@@ -144,7 +144,7 @@ fi
 
 dmarc=$(dig +short TXT "_dmarc.$DOMAIN" @8.8.8.8 2>/dev/null)
 case "$dmarc" in
-  *onsecureserver.net*) bad "DMARC still points at the GoDaddy default rua — nobody reads those reports" ;;
+  *onsecureserver.net*) bad "DMARC still points at the registrar default rua — nobody reads those reports" ;;
   "")                   bad "no DMARC record on $DOMAIN" ;;
   *)                    ok "DMARC set to a policy we control" ;;
 esac
