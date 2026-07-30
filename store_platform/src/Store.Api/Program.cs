@@ -21,16 +21,27 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<StoreDbContext>(options =>
     options.UseSqlite(connectionString));
 
-// CORS — locked to the storefront origin so the browser accepts cross-origin
-// requests from the Next.js storefront to this API. Configure via Store:AllowedOrigin
-// or STORE_ALLOWED_ORIGIN env var. Defaults to localhost:3000 for development.
+// CORS — locked to the storefront origins so the browser accepts cross-origin requests from the
+// Next.js storefront to this API. Configure via Store:AllowedOrigin or STORE_ALLOWED_ORIGIN.
+// Defaults to localhost:3000 for development.
+//
+// Comma-separated, because a site on a custom domain has more than one origin: https://example.com
+// and https://www.example.com are distinct to the browser, as is the .fly.dev hostname the apps
+// keep. With a single value, a visitor who types the www. form gets a storefront that renders
+// perfectly and whose every API call is blocked — visible only in the devtools console. The same
+// gap opens during a domain cutover, between the storefront rebuild and the API restart.
 var allowedOrigin = builder.Configuration["Store:AllowedOrigin"]
     ?? Environment.GetEnvironmentVariable("STORE_ALLOWED_ORIGIN")
     ?? "http://localhost:3000";
+// Trailing slashes are trimmed: the browser's Origin header never carries one, so
+// "https://example.com/" would silently match nothing.
+var allowedOrigins = Array.ConvertAll(
+    allowedOrigin.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+    o => o.TrimEnd('/'));
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins(allowedOrigin)
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
@@ -400,9 +411,18 @@ app.MapPost("/packs/{id}/checkout", async (
         }
     }
 
-    var storeUrl = config["Store:PublicUrl"] ?? Environment.GetEnvironmentVariable("STORE_PUBLIC_URL")
-        ?? $"{request.Scheme}://{request.Host}";
-    var baseUrl = storeUrl.TrimEnd('/');
+    // The post-checkout redirect must land on the STOREFRONT, not on this API. /orders/success
+    // and /pack/{id} are Next.js pages; this API serves neither, so pointing the redirect at
+    // Store:PublicUrl (which PROD_DEPLOY.md sets to the API host, correctly, for magic links)
+    // sent every paying buyer to a 404. Resolution order: an explicit storefront URL, else the
+    // CORS origin — which is by definition the storefront and is already set in the runbook —
+    // else this host, which is only ever right for a single-origin local run.
+    var baseUrl = DeliveryUrls.ResolveStorefrontBaseUrl(
+        config["Store:StorefrontUrl"],
+        Environment.GetEnvironmentVariable("STORE_STOREFRONT_URL"),
+        config["Store:AllowedOrigin"],
+        Environment.GetEnvironmentVariable("STORE_ALLOWED_ORIGIN"),
+        $"{request.Scheme}://{request.Host}");
 
     var handle = await paymentProvider.CreateCheckoutAsync(
         id,

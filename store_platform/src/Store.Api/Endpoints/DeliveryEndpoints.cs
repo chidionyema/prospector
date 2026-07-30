@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
+using Store.Api.Payments;
 using Store.Api.Services;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
@@ -27,7 +28,91 @@ public static class DeliveryEndpoints
     {
         app.MapGet("/orders/{token}", ShowOrder);
         app.MapGet("/api/orders/{token}", GetOrderJson);
+        app.MapGet("/api/orders/by-session/{sessionId}", GetOrderBySession);
         app.MapGet("/download/{token}", Download);
+    }
+
+    /// <summary>
+    /// Resolve a payment-provider checkout session to the entitlements it granted, so the
+    /// storefront's success page can show the buyer a working download link the moment they
+    /// return from payment.
+    ///
+    /// This exists because email was the ONLY delivery path: the success page told buyers to
+    /// check their inbox, and an unconfigured mail sender failed silently, so a buyer could pay
+    /// and have no route at all to what they bought. Email is now a convenience.
+    ///
+    /// "pending" is a normal, expected answer, not an error — the browser usually returns from
+    /// the provider before the fulfilment webhook lands, so the page polls until entitlements
+    /// appear. Authorisation rests on the session id being unguessable AND on the provider
+    /// independently confirming the session is paid (see ResolvePaidTransactionIdAsync).
+    /// </summary>
+    private static async Task<IResult> GetOrderBySession(
+        string sessionId,
+        StoreDbContext db,
+        IConfiguration config,
+        IServiceProvider sp,
+        ILogger<Program> logger,
+        CancellationToken ct)
+    {
+        var providerName = config["payments:active_provider"] ?? "paddle";
+        var provider = sp.GetKeyedService<IPaymentProvider>(providerName);
+        if (provider is null)
+        {
+            return Results.NotFound();
+        }
+
+        var transactionId = await provider.ResolvePaidTransactionIdAsync(sessionId, ct)
+            .ConfigureAwait(false);
+        if (string.IsNullOrEmpty(transactionId))
+        {
+            return Pending();
+        }
+
+        var order = await db.Orders
+            .FirstOrDefaultAsync(o => o.ProviderTransactionId == transactionId, ct)
+            .ConfigureAwait(false);
+        if (order is null)
+        {
+            // Paid at the provider but the webhook has not been processed yet.
+            return Pending();
+        }
+
+        var entitlements = await db.Entitlements
+            .Where(e => e.OrderId == order.Id && e.Status == EntitlementStatus.Active)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        if (entitlements.Count == 0)
+        {
+            // Payment recorded but nothing granted. Either the webhook is mid-flight, or this
+            // is the paid-without-fulfilment case the webhook handler logs as an error.
+            logger.LogWarning(
+                "Order {OrderId} for session {SessionId} has no active entitlements.",
+                order.Id, sessionId);
+            return Pending();
+        }
+
+        var items = new List<object>(entitlements.Count);
+        foreach (var ent in entitlements)
+        {
+            var title = await db.Packs
+                .Where(p => p.Id == ent.PackId)
+                .Select(p => p.Title)
+                .FirstOrDefaultAsync(ct)
+                .ConfigureAwait(false) ?? ent.PackId;
+
+            items.Add(new
+            {
+                packId = ent.PackId,
+                packTitle = title,
+                orderPath = $"/orders/{ent.GrantToken}",
+                downloadPath = $"/download/{ent.GrantToken}",
+            });
+        }
+
+        return Results.Ok(new { status = "ready", items });
+
+        static IResult Pending() => Results.Ok(new { status = "pending", items = Array.Empty<object>() });
     }
 
     private static async Task<IResult> GetOrderJson(string token, StoreDbContext db)

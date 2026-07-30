@@ -57,8 +57,53 @@ public sealed class MoneyRailConfigGate(
         }
 
         GuardWebhookSecretPlaceholder(activeProvider);
+        ReportDeliveryConfig();
 
         return Task.CompletedTask;
+    }
+
+    // Delivery config is reported loudly at boot but does NOT refuse startup. A missing mail
+    // token is degraded, not fatal: the storefront success page resolves the buyer's download
+    // directly from the checkout session, so a purchase is still deliverable without email.
+    // The reason this is here at all is that it previously failed *silently* — no token, no
+    // email, no log, and a fulfilment path that looked healthy while buyers got nothing.
+    private void ReportDeliveryConfig()
+    {
+        if (environment.IsDevelopment())
+        {
+            return;
+        }
+
+        var mailToken = config["Postmark:ServerToken"]
+            ?? Environment.GetEnvironmentVariable("POSTMARK_SERVER_TOKEN");
+        var mailFrom = config["Postmark:FromEmail"]
+            ?? Environment.GetEnvironmentVariable("POSTMARK_FROM_EMAIL");
+
+        if (string.IsNullOrWhiteSpace(mailToken) || string.IsNullOrWhiteSpace(mailFrom))
+        {
+            logger.LogCritical(
+                "DELIVERY-DEGRADED: Postmark is not fully configured (ServerToken set: {HasToken}, "
+                + "FromEmail set: {HasFrom}). Buyers will receive NO fulfilment email; delivery "
+                + "depends entirely on the success page. Set POSTMARK_SERVER_TOKEN and "
+                + "POSTMARK_FROM_EMAIL to restore email delivery.",
+                !string.IsNullOrWhiteSpace(mailToken), !string.IsNullOrWhiteSpace(mailFrom));
+        }
+
+        // The post-payment redirect must reach the storefront. With neither of these set it
+        // falls back to this API's own host, where /orders/success does not exist — which is
+        // exactly the 404-after-paying failure this check exists to make visible.
+        var storefront = config["Store:StorefrontUrl"]
+            ?? Environment.GetEnvironmentVariable("STORE_STOREFRONT_URL")
+            ?? config["Store:AllowedOrigin"]
+            ?? Environment.GetEnvironmentVariable("STORE_ALLOWED_ORIGIN");
+
+        if (string.IsNullOrWhiteSpace(storefront))
+        {
+            logger.LogCritical(
+                "DELIVERY-DEGRADED: neither Store:StorefrontUrl nor Store:AllowedOrigin is set, so the "
+                + "post-payment redirect will target this API instead of the storefront and every "
+                + "paying buyer will land on a 404. Set STORE_STOREFRONT_URL to the storefront origin.");
+        }
     }
 
     // P1-4 — outside Development, the engine→store publish key must be a real secret: not

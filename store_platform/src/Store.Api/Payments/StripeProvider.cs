@@ -6,6 +6,24 @@ namespace Store.Api.Payments;
 
 public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider> logger) : IPaymentProvider
 {
+    /// <summary>
+    /// Suffix appended to the buyer's card statement line, which renders as "&lt;prefix&gt;* &lt;suffix&gt;".
+    /// </summary>
+    /// <remarks>
+    /// Verified 2026-07-30 against the live account acct_1TjzYHPMafoirYBF:
+    /// <c>settings.card_payments.statement_descriptor_prefix</c> is <c>PROSPECTOR</c>, so with no
+    /// suffix the statement reads only PROSPECTOR for a purchase made on mumchimp.com — the classic
+    /// "I don't recognise this charge" chargeback trigger. This makes it "PROSPECTOR* MUMCHIMP".
+    /// <para>
+    /// The prefix itself cannot be changed from code: <c>POST /v1/accounts/{id}</c> returns
+    /// "You cannot use this method on your own account: you may only use it on connected accounts."
+    /// It is Dashboard-only — https://dashboard.stripe.com/settings/public — set the public business
+    /// name and the card statement descriptor to MUMCHIMP there. Once done this suffix is redundant
+    /// but stays harmless. Stripe caps prefix+suffix at 22 chars and rejects &lt; &gt; \ " ' *.
+    /// </para>
+    /// </remarks>
+    private const string StatementDescriptorSuffix = "MUMCHIMP";
+
     public string Name => "stripe";
 
     public async Task<WebhookVerifyResult> VerifyAndParseAsync(HttpRequest request, string rawBody, IConfiguration config, ILogger logger)
@@ -163,7 +181,10 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             ],
             Mode = "payment",
             CustomerEmail = buyerEmail,
-            SuccessUrl = successUrl,
+            // Stripe substitutes the literal {CHECKOUT_SESSION_ID} template on redirect. The
+            // storefront uses it to resolve the buyer's entitlement and render a real download
+            // link on the success page, so fulfilment no longer depends on an email arriving.
+            SuccessUrl = AppendSessionIdTemplate(successUrl),
             CancelUrl = cancelUrl,
             // P0-1 — stamp the pack id so the inbound webhook (ExtractItems) can resolve
             // which pack was bought and grant the entitlement. Without this every payment
@@ -180,6 +201,8 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
                 {
                     ["pack_id"] = packId,
                 },
+                // Brand the buyer's card statement — see StatementDescriptorSuffix.
+                StatementDescriptorSuffix = StatementDescriptorSuffix,
             },
             // P5 — Stripe Tax: automatic VAT/sales-tax calculation at checkout.
             // Requires Stripe Tax + a head-office address configured in the Stripe
@@ -198,6 +221,40 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
         var session = await service.CreateAsync(options, cancellationToken: ct).ConfigureAwait(false);
 
         return new CheckoutHandle(session.Url, session.ClientSecret);
+    }
+
+    // Stripe expands the literal token {CHECKOUT_SESSION_ID} in the success URL. Applied here
+    // rather than by the caller because the token is Stripe-specific — Paddle would receive it
+    // verbatim and hand the buyer a broken link.
+    private static string AppendSessionIdTemplate(string successUrl)
+        => DeliveryUrls.AppendSessionIdTemplate(successUrl);
+
+    // Resolve a checkout-session id to the transaction id stamped on the Order. Deliberately
+    // refuses to resolve an unpaid session: the session id travels in the buyer's URL, so
+    // treating it as proof of purchase without re-checking payment status with Stripe would
+    // let an abandoned checkout mint a download link.
+    public async Task<string?> ResolvePaidTransactionIdAsync(string sessionId, CancellationToken ct)
+    {
+        EnsureStripeConfigured();
+
+        try
+        {
+            var session = await new SessionService().GetAsync(sessionId, cancellationToken: ct)
+                .ConfigureAwait(false);
+
+            if (!string.Equals(session.PaymentStatus, "paid", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            // Must match how the webhook records the Order: session.PaymentIntentId ?? session.Id.
+            return session.PaymentIntentId ?? session.Id;
+        }
+        catch (StripeException ex)
+        {
+            logger.LogWarning(ex, "Could not resolve Stripe checkout session {SessionId}.", sessionId);
+            return null;
+        }
     }
 
     private void EnsureStripeConfigured()

@@ -171,8 +171,29 @@ public static class WebhookEndpoints
         string? storeUrl,
         ILogger logger)
     {
-        if (entitlements.Count == 0 || string.IsNullOrEmpty(storeUrl) || !emailSender.IsConfigured)
+        if (entitlements.Count == 0)
         {
+            return;
+        }
+
+        // Both of these used to be part of a single silent early return, so a live deployment
+        // with no mail token dispatched nothing and logged nothing — the fulfilment path stayed
+        // green while buyers received no link. Never fail quiet on a path a buyer has paid for.
+        if (string.IsNullOrEmpty(storeUrl))
+        {
+            logger.LogError(
+                "FULFILMENT-EMAIL-SKIPPED for {Count} entitlement(s): Store:PublicUrl / STORE_PUBLIC_URL "
+                + "is not set, so no magic link can be addressed. Buyers must use the success page.",
+                entitlements.Count);
+            return;
+        }
+
+        if (!emailSender.IsConfigured)
+        {
+            logger.LogError(
+                "FULFILMENT-EMAIL-SKIPPED for {Count} entitlement(s): the email sender is not configured "
+                + "(POSTMARK_SERVER_TOKEN / POSTMARK_FROM_EMAIL). Buyers must use the success page.",
+                entitlements.Count);
             return;
         }
 
@@ -190,9 +211,12 @@ public static class WebhookEndpoints
                 .ConfigureAwait(false);
             if (!sent)
             {
-                logger.LogWarning(
-                    "Magic-link email not sent for {PackId} to {Email}; link can be re-issued.",
-                    ent.PackId, ent.BuyerEmail);
+                // A buyer has paid and their delivery email did not go out. Raised at error
+                // level so it surfaces alongside the paid-without-fulfilment alarm, and it
+                // carries the order URL so an operator can re-issue the link by hand.
+                logger.LogError(
+                    "FULFILMENT-EMAIL-FAILED for {PackId} to {Email}; re-issue manually: {OrderUrl}",
+                    ent.PackId, ent.BuyerEmail, orderUrl);
             }
         }
     }
