@@ -11,6 +11,7 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
     public DbSet<Entitlement> Entitlements => Set<Entitlement>();
     public DbSet<IdempotencyJournalEntry> IdempotencyJournal => Set<IdempotencyJournalEntry>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
+    public DbSet<WaitlistSignup> WaitlistSignups => Set<WaitlistSignup>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,6 +21,23 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
             entity.HasIndex(e => e.IsListed);
             entity.Property(e => e.Title).HasMaxLength(200);
             entity.Property(e => e.OneLine).HasMaxLength(500);
+            // Facets are the browse filters, so they are read on every catalogue query.
+            // Indexed individually rather than composite: filters combine in any order.
+            entity.HasIndex(e => e.Sector);
+            entity.HasIndex(e => e.Payer);
+            entity.HasIndex(e => e.Effort);
+            entity.HasIndex(e => e.Mechanism);
+        });
+
+        modelBuilder.Entity<WaitlistSignup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Not unique: the same person may legitimately ask about several different gaps,
+            // and each ask carries its own consent evidence and its own demand signal.
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.Email).HasMaxLength(320);   // RFC 5321 max address length
+            entity.Property(e => e.Query).HasMaxLength(500);
         });
 
         modelBuilder.Entity<SalesAudit>(entity =>

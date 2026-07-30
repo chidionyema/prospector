@@ -98,6 +98,7 @@ builder.Services.AddSwaggerGen();
 // guessing on /download, checkout spam). Webhooks are exempt: providers retry on non-2xx
 // and a 429'd webhook would drop fulfilment. Limits are overridable via RateLimiting:*.
 var rlPermit = builder.Configuration.GetValue<int?>("RateLimiting:PermitPerMinute") ?? 120;
+var rlWaitlistPermit = builder.Configuration.GetValue<int?>("RateLimiting:WaitlistPermitPerMinute") ?? 5;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -111,6 +112,21 @@ builder.Services.AddRateLimiter(options =>
         }
 
         var clientKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        // The waitlist writes an email address to the database on an unauthenticated
+        // endpoint, so it gets a much tighter partition than the general 120/min. A
+        // separate partition key ("waitlist:" prefix) keeps this budget from being spent
+        // by, or spending, the caller's ordinary browsing allowance.
+        if (path.StartsWith("/catalog/waitlist", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitPartition.GetFixedWindowLimiter($"waitlist:{clientKey}", _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rlWaitlistPermit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            });
+        }
+
         return RateLimitPartition.GetFixedWindowLimiter(clientKey, _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = rlPermit,
@@ -148,31 +164,53 @@ app.UseRateLimiter();
 
 // --- PUBLIC CATALOG ENDPOINTS ---
 
+// Rehydrate a JSON-text array column. Parse defensively: a malformed value yields an empty
+// array rather than a 500, so one bad row never takes down the whole catalogue. Empty is
+// also the correct representation of "not tagged" for a multi-valued facet.
+static string[] RehydrateStringArray(string? json)
+{
+    if (string.IsNullOrWhiteSpace(json)) return [];
+    try { return JsonSerializer.Deserialize<string[]>(json) ?? []; }
+    catch (JsonException) { return []; }
+}
+
 app.MapGet("/catalog", async (StoreDbContext db) =>
 {
-    return await db.Packs
+    // Materialise first, then shape: AdvantagesJson is JSON text (SQLite has no array
+    // column) and must be rehydrated in memory — EF cannot translate the parse into SQL.
+    var packs = await db.Packs
         .Where(p => p.IsListed)
         .OrderByDescending(p => p.CreatedAt)
-        .Select(p => new {
-            p.Id,
-            p.Title,
-            p.OneLine,
-            Price = Money.ToDisplayString(p.PricePence, "£"),
-            p.PaymentProvider,
-            p.ProviderPriceId,
-            // Per-pack card specifics so the catalogue sells each pack on its own merits.
-            p.Headline,
-            p.WhoPays,
-            p.EffortTag,
-            p.ProofPoint,
-            p.TimeToFirstRevenue,
-            p.SourceCount,
-            p.VerifiedAt,
-            // Jurisdiction of the opportunity — a browse facet. Price stays GBP.
-            p.Market
-        })
         .ToListAsync()
         .ConfigureAwait(false);
+
+    return packs.Select(p => new {
+        p.Id,
+        p.Title,
+        p.OneLine,
+        Price = Money.ToDisplayString(p.PricePence, "£"),
+        p.PaymentProvider,
+        p.ProviderPriceId,
+        // Per-pack card specifics so the catalogue sells each pack on its own merits.
+        p.Headline,
+        p.WhoPays,
+        p.EffortTag,
+        p.ProofPoint,
+        p.TimeToFirstRevenue,
+        p.SourceCount,
+        p.VerifiedAt,
+        // Jurisdiction of the opportunity — a browse facet. Price stays GBP.
+        p.Market,
+        // Discovery facets. An absent facet serialises as null and advantages as [] —
+        // never as a default value, because a defaulted facet is a claim the engine never
+        // made, and the buyer would filter on it believing it was real.
+        p.Sector,
+        p.Payer,
+        p.Effort,
+        p.Commitment,
+        p.Mechanism,
+        Advantages = RehydrateStringArray(p.AdvantagesJson)
+    }).ToList();
 })
 .WithName("GetCatalog")
 .WithOpenApi();
@@ -210,6 +248,13 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
         pack.Market,
         pack.SourceCount,
         pack.VerifiedAt,
+        // Discovery facets — same null rule as the list endpoint.
+        pack.Sector,
+        pack.Payer,
+        pack.Effort,
+        pack.Commitment,
+        pack.Mechanism,
+        Advantages = RehydrateStringArray(pack.AdvantagesJson),
         WhatYouGet = Rehydrate<string[]>(pack.WhatYouGetJson),
         SampleExtract = Rehydrate<string[]>(pack.SampleExtractJson),
         FinancialSnapshot = Rehydrate<Dictionary<string, string>>(pack.FinancialSnapshotJson)
@@ -249,6 +294,28 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
             Encoding.UTF8.GetBytes(expectedKey)))
     {
         return Results.Unauthorized();
+    }
+
+    // Validate facets BEFORE touching the database, so a publish carrying an unknown value
+    // writes nothing at all. Junk in a facet column would surface as a filter that lies,
+    // which is the one failure this whole feature exists to prevent.
+    foreach (var (field, value, allowed) in new (string, string?, IReadOnlySet<string>)[]
+             {
+                 ("sector", request.Sector, PackFacets.Sector),
+                 ("payer", request.Payer, PackFacets.Payer),
+                 ("effort", request.Effort, PackFacets.Effort),
+                 ("commitment", request.Commitment, PackFacets.Commitment),
+                 ("mechanism", request.Mechanism, PackFacets.Mechanism),
+             })
+    {
+        if (!PackFacets.TryValidate(field, value, allowed, out var facetError))
+        {
+            return Results.BadRequest(new { error = facetError });
+        }
+    }
+    if (!PackFacets.TryValidateAdvantages(request.Advantages, out var advantageError))
+    {
+        return Results.BadRequest(new { error = advantageError });
     }
 
     var pack = await db.Packs.FindAsync(request.Id).ConfigureAwait(false);
@@ -308,6 +375,15 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     if (request.WhatYouGet is not null) pack.WhatYouGetJson = JsonSerializer.Serialize(request.WhatYouGet);
     if (request.SampleExtract is not null) pack.SampleExtractJson = JsonSerializer.Serialize(request.SampleExtract);
     if (request.FinancialSnapshot is not null) pack.FinancialSnapshotJson = JsonSerializer.Serialize(request.FinancialSnapshot);
+
+    // Discovery facets. Same only-overwrite-when-sent rule as the metadata above, so a
+    // facet-light republish never silently untags a pack that was tagged by the backfill.
+    if (request.Sector is not null) pack.Sector = request.Sector;
+    if (request.Payer is not null) pack.Payer = request.Payer;
+    if (request.Effort is not null) pack.Effort = request.Effort;
+    if (request.Commitment is not null) pack.Commitment = request.Commitment;
+    if (request.Mechanism is not null) pack.Mechanism = request.Mechanism;
+    if (request.Advantages is not null) pack.AdvantagesJson = JsonSerializer.Serialize(request.Advantages);
 
     // List-only-after-upload: a pack may only go live once it has deliverable content.
     // Selling something we cannot deliver is the cardinal sin of this layer.

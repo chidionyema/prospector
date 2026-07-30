@@ -42,4 +42,19 @@ public class Pack
     // browse/filter facet and a disclosure, never a pricing or tax input. Null on every
     // pack published before the engine had a market dimension.
     public string? Market { get; set; }
+
+    // Discovery facets — the closed vocabulary in PackFacets, emitted by the engine from a
+    // verified dossier and validated at the publish boundary. All nullable on purpose: an
+    // untagged pack lists under "All" and never under a specific value. Nothing here may be
+    // inferred from pack text (that is what the deleted browser-side sector regex did, and
+    // it labelled a metal fabricator a gardening business in public).
+    public string? Sector { get; set; }
+    public string? Payer { get; set; }
+    public string? Effort { get; set; }
+    public string? Commitment { get; set; }
+    public string? Mechanism { get; set; }
+
+    // Multi-valued (0-3 of PackFacets.Advantage) stored as JSON text — SQLite has no array
+    // column, same convention as WhatYouGetJson above.
+    public string? AdvantagesJson { get; set; }
 }
