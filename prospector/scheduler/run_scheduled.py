@@ -269,6 +269,32 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     return tick
 
 
+def _trailing_barren_count(cfg, window: int = 50) -> int:
+    """Count the trailing streak of barren real ticks in ticks.jsonl, EXCLUDING the
+    just-appended current tick (callers run after _append_tick). Guard-skipped and
+    dry-run rows are ignored entirely (controlled idle is not evidence either way);
+    the streak breaks on any real tick with dossiers > 0 or an error (errors alert
+    on their own key). Never raises."""
+    streak = 0
+    try:
+        with open(_ticks_path(cfg), encoding="utf-8") as f:
+            rows = f.readlines()[-window:]
+        for line in reversed(rows[:-1]):  # rows[-1] is the current tick
+            try:
+                t = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not t.get("allowed") or t.get("dry_run"):
+                continue
+            res = t.get("result") or {}
+            if t.get("error") or int(res.get("dossiers", 0) or 0) > 0:
+                break
+            streak += 1
+    except OSError:
+        pass
+    return streak
+
+
 def _emit_tick_alerts(cfg, tick: dict) -> None:
     """Fire real-time operator alerts for a bad tick (error / barren / zero-yield).
 
@@ -277,7 +303,7 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
     """
     from prospector.scheduler.alerts import alerts_for_tick, emit_alert
 
-    for spec in alerts_for_tick(tick):
+    for spec in alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg)):
         try:
             emit_alert(cfg, **spec)
         except Exception:  # noqa: BLE001 — alerting must never break the daemon
@@ -296,9 +322,14 @@ class _StopFlag:
 
 def _startup_grounding_check(cfg) -> None:
     """Refuse to start if the grounding layer is dead — one dummy search first."""
-    from prospector.retrieval import make_provider
+    from prospector.retrieval import DiskCache, make_provider
     try:
         provider = make_provider(cfg)
+        # Probe the LIVE stack, not the cache: the fixed probe query is cached after
+        # the first-ever run, so a DiskCache hit "passes" a dead retrieval stack
+        # (observed 2026-07-28: audit row provider=cache, cache_hit=true).
+        if isinstance(provider, DiskCache):
+            provider = provider.inner
         provider.search("startup sanity check", k=1)
         logger.info("Grounding layer healthy — daemon starting")
     except Exception as e:

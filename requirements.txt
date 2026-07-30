@@ -16,7 +16,8 @@ httpx>=0.27
 boto3>=1.34
 # Operator control center (supervised dashboard) + its tests
 streamlit>=1.40
-# LUX packages (local path until published)
-lux-popdd @ file:///Users/chidionyema/Documents/code/popdd-py
-lux-spec @ file:///Users/chidionyema/Documents/code/lux-spec-py
-lux-spec-cli @ file:///Users/chidionyema/Documents/code/lux-spec-cli
+# NOTE: the LUX packages (lux-popdd / lux-spec / lux-spec-cli) are NOT listed here.
+# They were pinned to absolute file:/// paths on one developer's machine, which made this
+# file uninstallable anywhere else — including CI and any deploy host. Nothing in
+# prospector/ or tests/ imports them; only run_v2.py and scripts/popdd_verify.py do.
+# They now live in requirements-local.txt, which is optional. See that file to install them.

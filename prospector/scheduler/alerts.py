@@ -147,16 +147,23 @@ def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
     return record
 
 
-def alerts_for_tick(tick: dict) -> list[dict]:
+def alerts_for_tick(tick: dict, consecutive_barren: int = 0) -> list[dict]:
     """Derive zero or more alert specs from a completed tick dict (pure — easy to unit-test).
 
     Conditions, worst-first:
       - tick errored                       -> CRITICAL (the daemon hit an exception this cycle)
-      - generation barren (0 dossiers)     -> WARNING  (produced nothing to even judge)
+      - generation barren (0 dossiers)     -> WARNING  (produced nothing to even judge);
+                                              CRITICAL once `consecutive_barren` >= 3 — a barren
+                                              STREAK means the generation chain is dead (expired
+                                              `claude /login`, exhausted provider credits), not a
+                                              one-off dedup/DEFER blip. Proven 2026-07-28: 26 days
+                                              of hourly-throttled WARNINGs while the engine was down.
       - all candidates deferred            -> CRITICAL (moat outage — nothing could be vetted)
       - moat degraded (provisional > 0)    -> CRITICAL (trusted moat down; cheap tail ruled)
       - zero yield (dossiers>0, passes==0) -> WARNING  (factory ran but stocked nothing)
     A guard-skipped tick (PAUSE / spend cap) is NOT an alert — that is intended, controlled idle.
+    `consecutive_barren` is the number of ticks in the CURRENT barren streak BEFORE this one
+    (the caller counts trailing dossiers==0 rows in ticks.jsonl).
     Returns a list of dicts ready to splat into emit_alert(**spec).
     """
     if not tick.get("allowed") or tick.get("dry_run"):
@@ -176,6 +183,17 @@ def alerts_for_tick(tick: dict) -> list[dict]:
     provisional = int(res.get("provisional", 0) or 0)
 
     if dossiers == 0:
+        if consecutive_barren >= 3:
+            return [{"severity": CRITICAL, "key": "barren_streak",
+                     "title": f"Generation DEAD: {consecutive_barren + 1} consecutive barren ticks",
+                     "message": ("The generation chain has produced nothing for "
+                                 f"{consecutive_barren + 1} ticks in a row — this is an outage, not "
+                                 "a blip. Check, in order: (1) `claude -p \"OK\"` works — an expired "
+                                 "subscription login fails instantly with api_error; fix with "
+                                 "`claude /login`. (2) Tail-provider credits (minimax status_code "
+                                 "2056 = token plan exhausted). (3) launchd.err.log for "
+                                 "'generation chain exhausted'."),
+                     "ts_tick": tick.get("ts")}]
         return [{"severity": WARNING, "key": "barren_generation",
                  "title": "Generation produced 0 candidates",
                  "message": "A real batch ran but generated nothing to vet (dedup/generation DEFER?).",

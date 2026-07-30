@@ -1,0 +1,18 @@
+# Optional developer dependencies that are NOT published to any package index.
+#
+# These are sibling repositories checked out alongside this one. They are required only by
+# run_v2.py (the POPDD proof-trail runner) and scripts/popdd_verify.py. The engine itself
+# (prospector/), the scheduler, the API and the whole test suite run without them, which is
+# why they are kept out of requirements.txt — pinning absolute local paths there made the
+# project impossible to install on any other machine, CI included.
+#
+# Install (only if you need the POPDD tooling, and only if the sibling repos are checked out
+# next to this one):
+#   pip install -r requirements-local.txt
+#
+# The paths below assume the layout ../popdd-py, ../lux-spec-py, ../lux-spec-cli relative to
+# this repository. Adjust them if your checkout differs.
+
+lux-popdd @ file:../popdd-py
+lux-spec @ file:../lux-spec-py
+lux-spec-cli @ file:../lux-spec-cli

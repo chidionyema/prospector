@@ -1,16 +1,16 @@
 [
   {
-    "job_id": "20260618T092159752",
-    "pid": 15782,
+    "job_id": "20260730T114138274",
+    "pid": 91601,
     "argv": [
-      "python",
+      "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
       "-c",
       "import time; time.sleep(60)"
     ],
-    "start_ts": 1781774519.752627,
+    "start_ts": 1785411698.274848,
     "status": "failed",
-    "log_file": "/private/var/folders/gq/jbt0858s1g99w05n7k7531040000gn/T/pytest-of-chidionyema/pytest-1090/test_second_launch_raises_runt0/cc/runs/20260618T092159752.log",
-    "elapsed_s": 1,
+    "log_file": "/private/var/folders/gq/jbt0858s1g99w05n7k7531040000gn/T/pytest-of-chidionyema/pytest-6/test_second_launch_raises_runt0/cc/runs/20260730T114138274.log",
+    "elapsed_s": 0,
     "cost_usd": null,
     "exit_code": -9
   }

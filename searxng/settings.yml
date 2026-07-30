@@ -1,0 +1,37 @@
+use_default_settings: true
+
+server:
+  secret_key: "7df4f96409c1b278127a1979c136dc28ae5135a7f1ac6641cc18f09ce298a887"
+  limiter: false
+  bind_address: "0.0.0.0:8080"
+
+search:
+  formats:
+    - html
+    - json
+  safe_search: 0
+
+# Fail fast on blocked/hanging upstream engines. Public engines (google/bing/brave)
+# frequently rate-limit or captcha a self-hosted scraper under continuous daemon load;
+# without a tight timeout SearXNG waits the full default (~5s) on every dead engine,
+# stalling every verification check. 2.5s soft / 5s hard lets it give up quickly and
+# return so the chain can fail over to ddg (see retrieval.SearXNGSearcher).
+outgoing:
+  request_timeout: 2.5
+  max_request_timeout: 5.0
+  pool_connections: 100
+  pool_maxsize: 20
+
+# Keyless engines. Big three (duckduckgo/bing/brave) block scrapers under load; wikipedia
+# is a real keyless API that does NOT block and reliably grounds factual/entity claims.
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: brave
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  - name: mojeek
+    disabled: false

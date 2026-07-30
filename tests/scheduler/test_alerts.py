@@ -144,3 +144,52 @@ def test_watchdog_emits_alert_when_down(tmp_path, monkeypatch):
     rc = rs._run_watchdog(_cfg(tmp_path))   # no heartbeat => down
     assert rc == 1 and len(fired) == 1
     assert "DOWN" in fired[0][0]
+
+
+def test_barren_streak_escalates_to_critical():
+    tick = {"allowed": True, "dry_run": False, "error": None, "result": {"dossiers": 0, "passes": 0}}
+    specs = alerts.alerts_for_tick(tick, consecutive_barren=3)
+    assert len(specs) == 1 and specs[0]["severity"] == alerts.CRITICAL
+    assert specs[0]["key"] == "barren_streak"
+    assert "claude /login" in specs[0]["message"]
+
+
+def test_barren_below_streak_threshold_stays_warning():
+    tick = {"allowed": True, "dry_run": False, "error": None, "result": {"dossiers": 0, "passes": 0}}
+    specs = alerts.alerts_for_tick(tick, consecutive_barren=2)
+    assert specs and specs[0]["key"] == "barren_generation"
+    assert specs[0]["severity"] == alerts.WARNING
+
+
+def _write_ticks(cfg, rows):
+    p = Path(cfg.store_dir) / "scheduler"
+    p.mkdir(parents=True, exist_ok=True)
+    (p / "ticks.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+
+def _barren(dossiers=0, **kw):
+    return {"allowed": True, "dry_run": False, "error": None,
+            "result": {"dossiers": dossiers, "passes": 0}, **kw}
+
+
+def test_trailing_barren_count_excludes_current_and_breaks_on_yield(tmp_path):
+    cfg = _cfg(tmp_path)
+    # oldest → newest: productive, barren, barren, barren(current)
+    _write_ticks(cfg, [_barren(dossiers=5), _barren(), _barren(), _barren()])
+    assert rs._trailing_barren_count(cfg) == 2  # current row excluded, streak stops at dossiers=5
+
+
+def test_trailing_barren_count_skips_guard_rows_and_breaks_on_error(tmp_path):
+    cfg = _cfg(tmp_path)
+    _write_ticks(cfg, [
+        _barren(error="boom"),                     # breaks the streak
+        _barren(),
+        {"allowed": False, "dry_run": False, "result": None},  # guard-skip: ignored
+        _barren(dry_run=True),                     # dry-run: ignored
+        _barren(),                                 # current tick
+    ])
+    assert rs._trailing_barren_count(cfg) == 1
+
+
+def test_trailing_barren_count_missing_file_is_zero(tmp_path):
+    assert rs._trailing_barren_count(_cfg(tmp_path)) == 0
