@@ -32,8 +32,12 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-ENV_PATH = Path("/Users/chidionyema/Documents/code/prospector/.env")
-API_BASE = "https://api.mumchimp.com"
+# Both of these were hardcoded — the API base to the live store, and the env path to one
+# developer's home directory. That meant this script could only ever be pointed at production
+# from one machine: no staging dry-run, and a silent failure for anyone else. Resolve the repo
+# root relative to this file instead, and take the API base from the environment.
+ENV_PATH = Path(os.environ.get("PROSPECTOR_ENV_PATH", Path(__file__).resolve().parents[2] / ".env"))
+API_BASE = os.environ.get("STORE_API_BASE", "https://api.mumchimp.com").rstrip("/")
 STRIPE_API = "https://api.stripe.com/v1"
 CURRENCY = "gbp"
 # Bumped when a re-provision must create NEW Stripe objects rather than return the cached

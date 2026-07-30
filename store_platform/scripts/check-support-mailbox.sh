@@ -13,9 +13,23 @@
 #   bash store_platform/scripts/check-support-mailbox.sh --live   # also assert the live pages agree
 set -uo pipefail
 
-DOMAIN="${SUPPORT_DOMAIN:-mumchimp.com}"
+DEFAULT_DOMAIN="mumchimp.com"
+DOMAIN="${SUPPORT_DOMAIN:-$DEFAULT_DOMAIN}"
 ADDR="${SUPPORT_ADDR:-support@$DOMAIN}"
-SITE="${SITE_URL:-https://mumchimp.com}"
+
+# Fail closed on a half-configured probe. SITE_URL used to default to the live mumchimp.com
+# site unconditionally, so overriding SUPPORT_DOMAIN alone produced a run that reported on one
+# domain's DNS while asserting against a DIFFERENT domain's pages — and could return PASS for a
+# domain it never actually checked. A probe that can green-light the wrong target is worse than
+# no probe, so refuse to run rather than guess.
+if [ "$DOMAIN" != "$DEFAULT_DOMAIN" ] && [ -z "${SITE_URL:-}" ]; then
+  printf '  FAIL  SUPPORT_DOMAIN is set to %s but SITE_URL is unset.\n' "$DOMAIN" >&2
+  printf '        The page assertions would probe %s instead — refusing to report on a\n' "https://$DEFAULT_DOMAIN" >&2
+  printf '        domain this run never checked. Set SITE_URL explicitly.\n' >&2
+  exit 2
+fi
+
+SITE="${SITE_URL:-https://$DEFAULT_DOMAIN}"
 fail=0
 
 hr() { printf '%s\n' "------------------------------------------------------------"; }

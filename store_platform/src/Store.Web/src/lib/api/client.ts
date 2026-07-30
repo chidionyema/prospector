@@ -164,8 +164,8 @@ export async function fetchOrderBySession(sessionId: string): Promise<SessionOrd
 // Stub TIE-compat exports — the Store.Web is being repurposed from TIE to Prospector.
 // These APIs don't exist in the Store context but several components still import them.
 // Each stub returns safe defaults so the app type-checks without the TIE backend.
-export const bountiesApi = { mine: async () => [] as any[] };
-export const proposalsApi = { listMine: async () => [] as any[] };
+export const bountiesApi = { mine: async () => [] as unknown[] };
+export const proposalsApi = { listMine: async () => [] as unknown[] };
 export const authApi = {
   login: async () => ({ token: '', user: null }),
   register: async () => ({ token: '', user: null }),
@@ -173,7 +173,7 @@ export const authApi = {
   logout: async () => {},
 };
 export const externalAuthApi = {
-  providers: async () => ({ providers: [] as any[] }),
+  providers: async () => ({ providers: [] as unknown[] }),
   callback: async () => ({ token: '' }),
   challengeUrl: (_provider: string, _redirectUrl: string) => '',
 };

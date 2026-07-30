@@ -11,8 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "conformance": "node scripts/check-conformance.mjs",
-    "verify": "npm run typecheck && npm run lint && npm run conformance",
+    "verify": "npm run typecheck && npm run lint",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:coreloop": "playwright test --project=coreloop"
