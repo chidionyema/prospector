@@ -19,12 +19,17 @@ All 4 failures are AC-2 email identity. **None of them need an agent — they ar
 > deleted; `MailjetEmailSender.cs` replaces it and is covered by 8 tests. Committed at `e3dc9d9`;
 > `store_platform/` is clean, so `predeploy_guard.sh` passes and a deploy ships exactly that tree.
 
-| FAIL line | Fix | Where |
-|---|---|---|
-| `NO SPF on mumchimp.com` / `SPF … does not contain include:spf.mailjet.com` | add Mailjet's SPF TXT | 123-reg DNS |
-| `NO DKIM at mailjet._domainkey` | add Mailjet's DKIM TXT | 123-reg DNS |
-| `DMARC still points at the registrar default rua` | repoint `rua=` to a mailbox you read | 123-reg DNS |
-| `MAILJET_API_KEY absent from fly secrets` | `fly secrets set` | terminal |
+| FAIL line | Fix | Where | Status |
+|---|---|---|---|
+| `NO SPF on mumchimp.com` / `SPF … does not contain include:spf.mailjet.com` | add the SPF TXT | 123-reg DNS | **DONE 2026-07-30** — probe PASSes |
+| `DMARC still points at the registrar default rua` | repoint `rua=` to a mailbox you read | 123-reg DNS | **DONE 2026-07-30** — probe PASSes |
+| `NO DKIM at mailjet._domainkey` | add Mailjet's DKIM TXT | 123-reg DNS | blocked: value only exists after the Mailjet account does |
+| `MAILJET_API_KEY absent from fly secrets` | `fly secrets set` | terminal | blocked: same |
+
+Both remaining failures are downstream of one thing that cannot be delegated to Claude: **creating
+the Mailjet account.** Claude is barred from creating accounts or entering passwords regardless of
+authorisation, so the DKIM value and the API key pair must come from the founder. Everything after
+that point — the DKIM DNS record, `fly secrets set`, deploy, re-probe — Claude can do.
 
 ## Step 1 — Mailjet (~10 min)
 
@@ -39,11 +44,15 @@ All 4 failures are AC-2 email identity. **None of them need an agent — they ar
    `prospector-store-web.fly.dev.`, `MX @` `5 smtp.google.com.`, `TXT _dmarc`.
    **There is NO `TXT @` record at all** — `dig +short TXT mumchimp.com @8.8.8.8` is empty.
 
-   | Action | Type | Name | Data |
-   |---|---|---|---|
-   | **Add** | TXT | `@` | `v=spf1 include:_spf.google.com include:spf.mailjet.com ~all` |
-   | **Add** | TXT | `mailjet._domainkey` | the `k=rsa; p=MIIB…` value Mailjet generates for this account |
-   | **Edit** | TXT | `_dmarc` | `v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:support@mumchimp.com;` |
+   | Action | Type | Name | Data | |
+   |---|---|---|---|---|
+   | **Add** | TXT | `@` | `v=spf1 include:_spf.google.com include:spf.mailjet.com ~all` | ✅ done 2026-07-30 |
+   | **Edit** | TXT | `_dmarc` | `v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:support@mumchimp.com;` | ✅ done 2026-07-30 |
+   | **Add** | TXT | `mailjet._domainkey` | the `k=rsa; p=MIIB…` value Mailjet generates for this account | ⬜ needs the account |
+
+   The zone now holds **10** records. Do not re-add the SPF row — a second `v=spf1` is a permerror.
+   If Mailjet's verification wizard offers to add SPF for you, **decline it** and point the wizard
+   at the existing record; its suggested value omits `include:_spf.google.com`.
 
    The SPF value is **not** the one Mailjet's wizard will show you. Mailjet shows
    `v=spf1 include:spf.mailjet.com ?all`. Pasting that verbatim authorises Mailjet and

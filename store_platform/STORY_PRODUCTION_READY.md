@@ -68,11 +68,12 @@ Today the `MAILJET_*` secrets are **absent from fly secrets** and mumchimp.com h
 fulfilment email sends, and no sender domain can even be verified. Close a browser tab and the
 purchase is recoverable only through support. Done means:
 
-- [ ] Mailjet account created; sending domain `mumchimp.com` + sender `orders@mumchimp.com` verified — this requires adding the SPF + DKIM TXT records Mailjet specifies to the 123-reg zone (MX for Google receiving already exists; do not touch it — Mailjet needs no MX).
+- [x] **SPF added 2026-07-30** — `TXT @` = `v=spf1 include:_spf.google.com include:spf.mailjet.com ~all`, live and verified at `ns03.domaincontrol.com`, `8.8.8.8` and `1.1.1.1`. Both includes resolve (2 of the 10 permitted lookups). NOT the value Mailjet's wizard shows: a Mailjet-only record would de-authorise Google Workspace, which holds the live `MX 5 smtp.google.com`.
+- [ ] Mailjet account created; sending domain `mumchimp.com` + sender `orders@mumchimp.com` verified — remaining DNS work is the DKIM TXT at `mailjet._domainkey` only, whose value exists only after the account does (MX for Google receiving already exists; do not touch it — Mailjet needs no MX). Registrar is **123-reg** (dcc.123-reg.co.uk), not GoDaddy.
 - [ ] `fly secrets set MAILJET_API_KEY=… MAILJET_API_SECRET=… MAILJET_FROM_EMAIL=orders@mumchimp.com -a prospector-store-api` and machine restarted. Both halves of the key pair are required; one alone reads as unconfigured.
 - [ ] Startup log no longer prints `DELIVERY-DEGRADED` (`MoneyRailConfigGate.cs:82-90`).
 - [ ] AC-1's test purchase receives the email with a working order link (this orders AC-2 before AC-1, or do a second £49 round trip).
-- [ ] DMARC updated from the registrar default (`rua=mailto:dmarc_rua@onsecureserver.net`, LIVE) to a policy we monitor.
+- [x] **DMARC repointed 2026-07-30** — `rua=mailto:support@mumchimp.com` (that mailbox receives; MX verified). `p=quarantine` deliberately kept, NOT relaxed to `p=none` to ease bring-up: quarantine is precisely why the missing DKIM still matters, and lowering it would hide the gap instead of closing it. Rollback value: `rua=mailto:dmarc_rua@onsecureserver.net`.
 
 ### AC-3 — git can rebuild the code that takes money *(P0)*
 Prod runs uncommitted code: the whole Mumchimp rebrand, all of `Store.Api/**` money-path
