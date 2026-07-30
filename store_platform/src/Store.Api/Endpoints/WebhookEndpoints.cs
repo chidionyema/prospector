@@ -34,7 +34,7 @@ public static class WebhookEndpoints
         var paymentProvider = sp.GetKeyedService<IPaymentProvider>(provider);
         if (paymentProvider is null)
         {
-            return Results.NotFound();
+            return UnknownProvider(provider, logger);
         }
 
         using var reader = new StreamReader(request.Body);
@@ -84,6 +84,24 @@ public static class WebhookEndpoints
             entitlements = outcome.EntitlementsCreated.Count,
             unfulfilled = outcome.Unfulfilled,
         });
+    }
+
+    // AC-5 — a bare 404 here is indistinguishable from a typo'd URL, so a provider
+    // misconfiguration (or a webhook registered against a provider this build does not have)
+    // looked like routine noise while every payment event was silently dropped. 503 tells the
+    // provider to RETRY rather than treat the endpoint as gone, so the events stay recoverable
+    // once the misconfiguration is fixed.
+    private static IResult UnknownProvider(string provider, ILogger logger)
+    {
+        logger.LogError(
+            "WEBHOOK-PROVIDER-UNKNOWN: received a webhook for '{Provider}', which is not a "
+            + "registered payment provider in this build. The event was NOT processed. If this "
+            + "is the active provider, payments are being dropped right now.",
+            provider);
+
+        return Results.Problem(
+            detail: $"'{provider}' is not a registered payment provider.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 
     // Records the inbound webhook for dedup. Returns true if this event was already
