@@ -33,6 +33,10 @@ class UnknownMarketError(ValueError):
     """
 
 
+class UnknownArchetypeError(ValueError):
+    """`operator_archetype` names a binding that is not defined under generation.archetypes."""
+
+
 @dataclass
 class Retrieval:
     # str (single provider) or list[str] (ordered failover chain, Part 9).
@@ -240,6 +244,9 @@ class Config:
     # A persona provides analytical bias/voice for generation, verdict, and adversarial.
     personas: dict[str, Any] = field(default_factory=dict)
     active_persona: str = ""
+    # Run-level archetype pin (`--archetype`). Empty => each lane's generation.operator_archetype
+    # (or the top-level default). When set, re-applied after for_lane so it wins over lane defaults.
+    active_archetype: str = ""
     listing: dict[str, Any] = field(default_factory=dict)
     # Near-duplicate similarity ratio (Part 3 dedup). At or above this, two candidates
     # are treated as duplicates and the later one is dropped. Lifted out of dedup.py so
@@ -267,7 +274,15 @@ class Config:
 
     @property
     def store_dir(self) -> Path:
-        d = Path(self.store.get("dir", "store"))
+        # PROSPECTOR_STORE_DIR redirects every store read/write, including those made
+        # by a CLI subprocess that loads its own Config. Without it a subprocess-driven
+        # test has no way to avoid the operator's real store/: on 2026-07-30 the market
+        # CLI tests both read and DELETED the live store/markets/us/READINESS.json while
+        # an actual `markets probe us` run was writing it, which made
+        # test_opening_without_a_probe_is_refused fail non-deterministically against a
+        # tree whose tests pass in isolation. Absent the var, behaviour is unchanged.
+        override = os.environ.get("PROSPECTOR_STORE_DIR", "").strip()
+        d = Path(override) if override else Path(self.store.get("dir", "store"))
         return d if d.is_absolute() else REPO_ROOT / d
 
     def gate_map(self) -> dict[str, list[str]]:
@@ -313,7 +328,25 @@ class Config:
         # A persona also composes OVER the lane.
         if self.active_persona:
             resolved = resolved.for_persona(self.active_persona)
+        # A run-level --archetype pin wins over the lane's default operator_archetype.
+        if self.active_archetype:
+            resolved = resolved.for_archetype(self.active_archetype)
         return resolved
+
+    def for_archetype(self, name: str | None) -> "Config":
+        """Pin `generation.operator_archetype` for this run (generation-only; never a gate).
+
+        The named binding must exist under `generation.archetypes` (binding + forbid text
+        injected into the generate prompt). Empty/None => unchanged. Unknown name raises.
+        """
+        if not name:
+            return self
+        archetypes = (self.generation or {}).get("archetypes") or {}
+        if name not in archetypes:
+            raise UnknownArchetypeError(
+                f"unknown archetype {name!r}; defined: {sorted(archetypes)}")
+        new_generation = {**self.generation, "operator_archetype": name}
+        return replace(self, generation=new_generation, active_archetype=name)
 
     # ------------------------------------------------------------------
     # Markets (Epic D)
@@ -484,6 +517,33 @@ def _parse_pricing(raw_pr: dict | None) -> Pricing:
     )
 
 
+def _validate_generation(raw_generation: dict | None) -> dict:
+    """Fail closed when operator_archetype names a missing binding.
+
+    Archetypes are prompt fragments only — they never touch gates/thresholds. Validation
+    catches a typo that would silently drop the binding (empty operator_constraints).
+    """
+    if not raw_generation:
+        return {}
+    if not isinstance(raw_generation, dict):
+        raise ValueError("`generation` must be a mapping")
+    archetypes = raw_generation.get("archetypes") or {}
+    if archetypes and not isinstance(archetypes, dict):
+        raise ValueError("`generation.archetypes` must be a mapping")
+    for code, block in archetypes.items():
+        if not isinstance(block, dict):
+            raise ValueError(f"generation.archetypes.{code!r} must be a mapping")
+        if not str(block.get("binding", "")).strip():
+            raise ValueError(
+                f"generation.archetypes.{code!r} needs a non-empty `binding` string")
+    pin = str(raw_generation.get("operator_archetype", "") or "").strip()
+    if pin and pin not in archetypes:
+        raise UnknownArchetypeError(
+            f"generation.operator_archetype is {pin!r} but no such entry under "
+            f"generation.archetypes (defined: {sorted(archetypes)})")
+    return raw_generation
+
+
 def _validate_markets(raw_markets: dict | None) -> dict:
     """Fail closed on a malformed `markets:` block.
 
@@ -544,7 +604,7 @@ def load_config(path: str | Path | None = None) -> Config:
         lane_quota=raw.get("lane_quota") or {},
         markets=_validate_markets(raw.get("markets")),
         active_market=raw.get("active_market") or "",
-        generation=raw.get("generation") or {},
+        generation=_validate_generation(raw.get("generation")),
         profiles=raw.get("profiles") or {},
         active_profile=raw.get("active_profile") or "",
         personas=raw.get("personas") or {},
@@ -567,6 +627,17 @@ def load_config(path: str | Path | None = None) -> Config:
             or os.environ.get("PROSPECTOR_ENTITLEMENTS_API_KEY", "")
         ),
     )
+    # Lane-level operator_archetype pins must resolve against the shared archetypes map.
+    archetypes = (cfg.generation or {}).get("archetypes") or {}
+    for lane_name, lane in (cfg.lanes or {}).items():
+        if not isinstance(lane, dict):
+            continue
+        pin = str((lane.get("generation") or {}).get("operator_archetype", "") or "").strip()
+        if pin and pin not in archetypes:
+            raise UnknownArchetypeError(
+                f"lanes.{lane_name}.generation.operator_archetype is {pin!r} but no such "
+                f"entry under generation.archetypes (defined: {sorted(archetypes)})")
+
     # Market resolves FIRST: it is the outermost context (which evidence terrain the run
     # searches), and the lane/profile/persona resolvers below use dataclasses.replace, so
     # active_market and the market-merged retrieval survive them untouched.

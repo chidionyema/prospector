@@ -37,7 +37,7 @@ class TestLaunchPersist:
         assert len(jobs) == 1
         assert jobs[0]["job_id"] == job_id
         assert jobs[0]["argv"] == ["echo", "test"]
-        assert jobs[0]["status"] in ("queued", "running")
+        assert jobs[0]["status"] in ("queued", "running", "succeeded")
 
     def test_launch_creates_log_file(self, tmp_path, monkeypatch):
         cc = tmp_path / "cc"
@@ -237,3 +237,58 @@ class TestGetLogLines:
         assert "line one" in lines
         assert "line two" in lines
         assert "line three" in lines
+
+    def test_get_log_lines_finished_failed_job(self, tmp_path, monkeypatch):
+        """Regression: finished/failed jobs must still yield on-disk log content."""
+        cc = tmp_path / "cc"
+        cc.mkdir()
+        runs = cc / "runs"
+        runs.mkdir()
+        monkeypatch.setattr(runner, "_JOBS_FILE", cc / "jobs.json")
+        monkeypatch.setattr(runner, "_RUNS_DIR", runs)
+        monkeypatch.setattr(runner, "_CC_DIR", cc)
+        runner._RING_BUFFERS.clear()
+
+        job_id = "20260730T184428678"
+        log_file = runs / f"{job_id}.log"
+        log_file.write_text(
+            "Signal pipeline starting\n"
+            "generated 20 candidates\n"
+            "[Errno 32] Broken pipe\n",
+            encoding="utf-8",
+        )
+        (cc / "jobs.json").write_text(json.dumps([{
+            "job_id": job_id,
+            "pid": None,
+            "argv": [sys.executable, "-u", "-m", "prospector.run",
+                     "generate", "--candidates", "20"],
+            "start_ts": time.time() - 1000,
+            "status": "failed",
+            "log_file": str(log_file.resolve()),
+            "elapsed_s": 987,
+            "exit_code": 1,
+        }]), encoding="utf-8")
+
+        # Simulate Streamlit restart: ring buffer empty, only disk remains.
+        assert runner._RING_BUFFERS.get(job_id) in (None, [])
+        lines = runner.get_log_lines(job_id, n=50)
+        assert lines, "finished failed job must return log lines from disk"
+        assert any("Broken pipe" in ln for ln in lines)
+        assert any("generated 20" in ln for ln in lines)
+
+    def test_launch_injects_python_u(self, tmp_path, monkeypatch):
+        cc = tmp_path / "cc"
+        cc.mkdir()
+        (cc / "runs").mkdir()
+        monkeypatch.setattr(runner, "_JOBS_FILE", cc / "jobs.json")
+        monkeypatch.setattr(runner, "_RUNS_DIR", cc / "runs")
+        monkeypatch.setattr(runner, "_CC_DIR", cc)
+        runner._RING_BUFFERS.clear()
+
+        job_id = runner.launch(
+            [sys.executable, "-c", "import time; time.sleep(30)"]
+        )
+        jobs = json.loads((cc / "jobs.json").read_text())
+        j = next(j for j in jobs if j["job_id"] == job_id)
+        assert j["argv"][1] == "-u"
+        runner.cancel_job(job_id)

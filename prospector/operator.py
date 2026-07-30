@@ -859,7 +859,9 @@ class MockOperator(Operator):
 # for "is this ruling trustworthy as final" — used by verify.py.
 # deepseek REMOVED 2026-07-02 (founder no-deepseek directive + operating rule: DeepSeek/
 # MiniMax never touch verification verdicts as trusted-final — non-critical chains only).
-MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli", "claude"})
+# cursor_cli is subscription-backed (Cursor Agent), the same class of brain as claude_cli:
+# not a metered DeepSeek/MiniMax API. Founder 2026-07-30: run independent of Claude Code.
+MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli", "claude", "cursor_cli"})
 
 
 def is_provisional_provider(name: str) -> bool:
@@ -970,6 +972,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     _PROVIDER_MODEL_PREFIX = {
         "claude": ("claude-",),
         "claude_cli": ("claude-",),
+        "cursor_cli": ("gpt-", "claude-", "sonnet", "opus", "composer"),
         "deepseek": ("deepseek-",),
         "minimax": ("minimax-", "MiniMax-"),
         "ollama": (),
@@ -978,6 +981,10 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
     model = cfg_model if model_matches else None
     has_cfg_model = model_matches
+    if kind == "cursor_cli":
+        from .cursor_cli import CursorCliOperator
+        md_model = getattr(md, "cursor_cli", None) if md else None
+        return CursorCliOperator(model=model or md_model or None)
     if kind == "claude_cli":
         # cfg.model is an API pin; don't leak it to the claude CLI.
         from .claude_cli import ClaudeCliOperator
@@ -1019,7 +1026,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             default_model=md.ollama if md else None,
         )
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected agy_cli|claude|minimax|deepseek|ollama|mock)")
+                     "(expected cursor_cli|claude_cli|claude|minimax|deepseek|ollama|mock)")
 
 
 def make_operator(cfg, fast: bool = False) -> Operator:

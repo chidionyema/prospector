@@ -182,6 +182,17 @@ time.sleep(300)
             assert cancelled[0]["status"] in ("cancelled", "failed"), \
                 f"Expected cancelled/failed, got {cancelled[0]['status']}"
         finally:
+            # Kill any leftover child BEFORE restoring production paths so the
+            # daemon cannot finalize into store/control_center/jobs.json.
+            for j in runner._load_jobs():
+                pid = j.get("pid")
+                if pid:
+                    try:
+                        import os, signal
+                        os.kill(pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+            time.sleep(0.1)
             runner._JOBS_FILE = saved_jobs
             runner._CC_DIR = saved_dir
             runner._RUNS_DIR = saved_runs

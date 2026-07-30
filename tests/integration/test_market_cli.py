@@ -17,6 +17,20 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PY = str(REPO_ROOT / ".venv" / "bin" / "python")
 
 
+@pytest.fixture(autouse=True)
+def _isolate_store(tmp_path, monkeypatch):
+    """Point every store read/write in this module — parent process AND the CLI
+    subprocesses `_run` spawns — at a scratch directory.
+
+    These tests assert on the presence or absence of store/markets/<code>/READINESS.json.
+    Against the real store that is a race with the operator: a live `markets probe us`
+    writes that file, and `test_open_refuses_a_not_ready_artifact` unlinks it in its
+    teardown, so the suite both failed spuriously and destroyed a real artifact. The
+    env var is read by Config.store_dir, so the subprocess inherits the redirect.
+    """
+    monkeypatch.setenv("PROSPECTOR_STORE_DIR", str(tmp_path / "store"))
+
+
 def _run(*args: str, expect_ok: bool = True) -> subprocess.CompletedProcess:
     proc = subprocess.run([PY, "-m", "prospector.run", *args],
                           cwd=REPO_ROOT, capture_output=True, text=True, timeout=180)

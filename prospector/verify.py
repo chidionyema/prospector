@@ -349,6 +349,13 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
                            confidence=0.0, rationale="Verdict call failed; fail-safe.",
                            sources=sources, degraded=True,
                            provider=_served_provider(op))
+    # Cheap-tail models sometimes wrap the object in a one-element list or emit a bare
+    # list of claims. Coerce before .get — otherwise vetting crashes mid-batch
+    # ('list' object has no attribute 'get') and burns the rest of the run.
+    if isinstance(data, list):
+        data = next((x for x in data if isinstance(x, dict)), {}) if data else {}
+    if not isinstance(data, dict):
+        data = {}
     # Who ACTUALLY ruled, and was it the guardrailed cheap tail (-> provisional)?
     _provider_used = _served_provider(op)
     _provisional = _served_is_provisional(op)
@@ -530,6 +537,10 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
                           **_market_vars(cfg, for_moat=True))
     try:
         data = op.complete_json(system, user, temperature=0.3)
+        if isinstance(data, list):
+            data = next((x for x in data if isinstance(x, dict)), {}) if data else {}
+        if not isinstance(data, dict):
+            data = {}
         citations = [str(c) for c in (data.get("citations") or [])]
         
         # New risk-sensor model: Python decides, LLM only classifies risk vectors.

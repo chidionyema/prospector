@@ -147,17 +147,13 @@ def _get_verify():
     return _verify
 
 
-# Non-critical chain order: claude_cli (subscription, RELIABLE) PRIMARY → minimax emergency tail.
-# Reordered 2026-07-02 after MiniMax M3 was PROVEN non-deterministic as the generation primary:
-# k=8 → +7/8, but k=6 → +0/6 (240s runaway-reasoning timeouts + "no valid JSON in 66k chars" =
-# M3 spent the whole response inside <think> and never emitted the answer). M3 is a reasoning
-# model, wrong for ideation. claude_cli generated 3/3 clean candidate JSON first-try (proven
-# 2026-07-02) once the generation prompt is directive-framed (see generate.py _one_call), and it
-# has no 240s network-timeout failure mode — so it is the reliability guarantee, not the backstop.
-# DeepSeek REMOVED 2026-07-01 (HTTP 402 billing wall). Ollama REJECTED 2026-07-01 (markdown, not JSON).
-# Module-level so run_signal, `operators`, and the proof tools all reference the SAME chain —
-# a stale copy here misdirected incident debugging toward providers that weren't even wired.
-_NONCRITICAL_ORDER = ("claude_cli", "minimax")
+# Non-critical chain order: DeepSeek (cheap structured JSON) → cursor_cli (subscription
+# reliability) → minimax emergency tail. DeepSeek restored 2026-07-30 after billing recovery.
+# cursor_cli replaced claude_cli here 2026-07-30 so generation can run without Claude Code.
+# Ollama REJECTED 2026-07-01 (markdown, not JSON). NEVER put DeepSeek/MiniMax on the moat
+# (verdict/adversarial) — non-critical only. Module-level so run_signal, `operators`, and the
+# proof tools all reference the SAME chain.
+_NONCRITICAL_ORDER = ("deepseek", "cursor_cli", "minimax")
 
 
 # ---------------------------------------------------------------------------
@@ -864,6 +860,16 @@ def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     if getattr(args, "persona", None):
         cfg = cfg.for_persona(args.persona)
 
+    # Founder-archetype override (generation-only). Applied last so it wins over lane
+    # defaults; for_lane re-applies active_archetype for multi-lane fan-out.
+    if getattr(args, "archetype", None):
+        from .config import UnknownArchetypeError
+        try:
+            cfg = cfg.for_archetype(args.archetype)
+        except UnknownArchetypeError as e:
+            print(f"error: {e}", file=sys.stderr)
+            sys.exit(2)
+
     return cfg
 
 
@@ -888,6 +894,14 @@ def _add_market_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--probe", action="store_true",
                    help="Calibration run: permit a non-open market. Used by "
                         "`markets probe`; results never publish.")
+
+
+def _add_archetype_arg(p: argparse.ArgumentParser) -> None:
+    """Attach --archetype (generation-only founder-capacity pin)."""
+    p.add_argument("--archetype", metavar="NAME",
+                   help="Founder archetype for generation (solo_agent, small_team, "
+                        "startup). Overrides the lane default. Generation-only — "
+                        "never moves gates or thresholds.")
 
 
 def _resolve_board(args: argparse.Namespace) -> Optional[list[str]]:
@@ -1335,7 +1349,7 @@ def _cmd_operators(args) -> None:
     cfg = load_config(args.config if args.config else None)
 
     for kind in ("deepseek", "minimax",
-                 "claude_cli"):
+                 "cursor_cli", "claude_cli"):
         print(f"\n  {kind:15s}", end="", flush=True)
         try:
             op = _build_operator(kind, cfg, fast=True)
@@ -1843,12 +1857,13 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
+    vet_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     vet_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane to judge against (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
     _add_market_args(vet_p)
+    _add_archetype_arg(vet_p)
     vet_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1869,7 +1884,7 @@ def main() -> None:
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
+    sig_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")
@@ -1881,6 +1896,7 @@ def main() -> None:
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
     _add_market_args(sig_p)
+    _add_archetype_arg(sig_p)
     sig_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1901,7 +1917,7 @@ def main() -> None:
                        help="Number of candidates to generate (default: config candidates_per_signal)")
     gen_p.add_argument("--exploration", type=float, default=None, metavar="X",
                        help="Override exploration level 0-1 (default: adaptive)")
-    gen_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
+    gen_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     gen_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -1911,6 +1927,7 @@ def main() -> None:
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
     _add_market_args(gen_p)
+    _add_archetype_arg(gen_p)
     gen_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1939,7 +1956,7 @@ def main() -> None:
                        metavar="X", help="Only replicate PASSes scoring at or above X")
     rep_p.add_argument("--dry-run", dest="dry_run", action="store_true",
                        help="List what would be replicated; run no checks")
-    rep_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
+    rep_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     rep_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -1962,7 +1979,7 @@ def main() -> None:
                         help="Only surface + save signals; do not generate or vet")
     disc_p.add_argument("--no-save", dest="no_save", action="store_true",
                         help="Do not write discovered signals to signals/")
-    disc_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"],
+    disc_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                         help="Override operator from config")
     disc_p.add_argument("--lane", metavar="NAME",
                         help="Pin the sweep to a single ambition lane (default: multi-lane "
@@ -2043,7 +2060,7 @@ def main() -> None:
     probe_p.add_argument("--set", metavar="PATH", required=True,
                          help="JSONL calibration set: one "
                               '{"title","one_liner","expected":"pass|kill"} per line')
-    probe_p.add_argument("--operator", choices=["claude", "minimax", "deepseek", "mock"])
+    probe_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"])
     probe_p.add_argument("--fixtures", metavar="PATH",
                          help="Path to fixtures JSON (offline probe)")
     probe_p.add_argument("--lane", metavar="NAME")

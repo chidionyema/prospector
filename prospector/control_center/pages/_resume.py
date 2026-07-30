@@ -1,212 +1,221 @@
-"""Resume & Queue — manage pending signals and DEFER backlog."""
+"""Resume & Queue — DEFER backlog, pending signals, run history + logs."""
 from __future__ import annotations
+
+import sys as _sys
+from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 
-import sys as _sys
-from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_ROOT))
 
-from prospector.control_center import runner as _runner
 from prospector.control_center import readers
+from prospector.control_center import runner as _runner
+from prospector.control_center.components.chrome import (
+    job_log_path,
+    log_panel,
+    page_hero,
+    resolve_log_text,
+    tone_from_job_status,
+)
 
 
 def render():
-    st.title("⏳ Resume & Queue")
-
-    # ── Moat health gate ───────────────────────────────────────────────────
     health = readers.load_provider_health()
-    moat_down = readers.moat_down(health)
-
-    if moat_down:
-        st.error("🚨 Moat is down — re-vet buttons are disabled. "
-                 "Retry when Claude+Gemini recover.")
-
-    # ── DEFER queue ────────────────────────────────────────────────────────
-    st.subheader("⏸ DEFER queue (moat exhausted at verdict time)")
+    moat_is_down = readers.moat_down(health)
     defer_rows = readers.catalogue_index(decision="defer")
-    if not defer_rows:
-        st.success("No DEFER candidates — the queue is clear.")
-    else:
-        st.info(f"{len(defer_rows)} candidate(s) deferred. Re-vet them when the moat recovers.")
-
-        display = []
-        for r in defer_rows:
-            display.append({
-                "id": (r.get("candidate_id") or "")[:8],
-                "title": r.get("title") or "(untitled)",
-                "gate_fired": r.get("gate_fired") or "moat_exhausted",
-                "created_at": r.get("created_at") or "—",
-                "full_id": r.get("candidate_id") or "",
-            })
-
-        st.dataframe(
-            display,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "id": st.column_config.TextColumn("id", width="small"),
-                "title": st.column_config.TextColumn("title", width="large"),
-                "gate_fired": st.column_config.TextColumn("gate", width="medium"),
-                "created_at": st.column_config.TextColumn("created", width="medium"),
-                "full_id": st.column_config.TextColumn("candidate_id", width="small"),
-            },
-        )
-
-        col1, col2 = st.columns(2)
-        with col1:
-            disabled = moat_down
-            tooltip = "Disabled while moat is down" if disabled \
-                      else "Launch vet --resume for all DEFER candidates"
-            if st.button("🔄 Re-vet all DEFER",
-                        disabled=disabled,
-                        help=tooltip):
-                _launch_resume("vet")
-        with col2:
-            if st.button("🗑 Clear DEFER queue",
-                        help="Remove DEFER markers without re-vetting (use with care — "
-                             "candidates will be silently dropped)"):
-                _clear_defer_queue()
-                st.rerun()
-
-    st.divider()
-
-    # ── Pending signals ────────────────────────────────────────────────────
-    st.subheader("⏳ Pending signals (generation chain exhausted)")
     pending = readers.load_pending_signals()
-    if not pending:
-        st.success("No pending signals — the generation chain is healthy.")
+
+    try:
+        from prospector.control_center.runner import filter_production_jobs
+        jobs = filter_production_jobs(_runner.load_jobs())
+    except Exception:
+        jobs = _runner.load_jobs()
+
+    active = next((j for j in jobs if j.get("status") == "running"), None)
+    finished = [j for j in jobs if j.get("status") not in ("running", "queued")]
+    latest = max(finished, key=lambda j: j.get("start_ts", 0)) if finished else None
+
+    n_def = len(defer_rows)
+    n_pend = len(pending)
+    if moat_is_down:
+        glance = f"Moat down · {n_def} DEFER · {n_pend} pending — re-vet locked"
+        tone = "fail"
+    elif n_def or n_pend:
+        glance = f"{n_def} DEFER · {n_pend} pending signals · ready to resume"
+        tone = "warn"
     else:
-        st.info(f"{len(pending)} signal(s) saved for resume.")
+        glance = readers.glance_status(active, latest) if (active or latest) else "Queues clear"
+        tone = tone_from_job_status((active or latest or {}).get("status")) if (active or latest) else "ok"
+
+    page_hero("Resume & Queue", glance, tone=tone)
+
+    if moat_is_down:
+        st.error("Moat down — re-vet disabled until Claude/Gemini recover.")
+
+    # Primary actions
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button(
+            f"Re-vet all DEFER ({n_def})",
+            type="primary",
+            disabled=moat_is_down or n_def == 0,
+            use_container_width=True,
+            key="revet_all",
+        ):
+            _launch_resume("vet")
+    with c2:
+        if st.button(
+            f"Resume generation ({n_pend})",
+            disabled=n_pend == 0,
+            use_container_width=True,
+            key="resume_gen",
+        ):
+            _launch_resume("generate")
+    with c3:
+        if st.button("Open Launch", use_container_width=True, key="resume_to_launch"):
+            from prospector.control_center.components.chrome import go_page
+            go_page("launcher")
+
+    # DEFER table
+    st.markdown("**DEFER queue**")
+    if not defer_rows:
+        st.caption("Empty.")
+    else:
+        display = [{
+            "id": (r.get("candidate_id") or "")[:8],
+            "title": r.get("title") or "(untitled)",
+            "gate": r.get("gate_fired") or "moat_exhausted",
+            "created": (r.get("created_at") or "—")[:19],
+            "candidate_id": r.get("candidate_id") or "",
+        } for r in defer_rows]
+        st.dataframe(display, use_container_width=True, hide_index=True, height=220)
+        if st.button("Clear DEFER markers", key="clear_defer", help="Drops DEFER index rows; JSON kept"):
+            _clear_defer_queue()
+            st.rerun()
+
+    # Pending signals
+    st.markdown("**Pending signals**")
+    if not pending:
+        st.caption("Empty.")
+    else:
         for p in pending:
             key = p.get("key") or p.get("_filename", "?").replace(".json", "")
-            signal_text = p.get("signal_text", "")[:80]
-            with st.expander(f"📌 `{key[:8]}` — {signal_text[:50]}…"):
+            signal_text = p.get("signal_text", "") or ""
+            with st.expander(f"{key[:10]} — {signal_text[:60]}"):
                 st.text(signal_text)
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button(f"🔄 Retry generation",
-                               key=f"retry_{key}"):
+                b1, b2 = st.columns(2)
+                with b1:
+                    if st.button("Retry", key=f"retry_{key}"):
                         _retry_pending_signal(p)
-                with col2:
-                    st.button(f"🗑 Discard",
-                             key=f"discard_{key}",
-                             help="Delete this pending signal without resuming")
+                with b2:
+                    if st.button("Discard", key=f"discard_{key}"):
+                        _discard_one_pending(p)
+                        st.rerun()
+        if st.button("Discard all pending", key="discard_all_pending"):
+            _clear_pending_signals()
+            st.rerun()
 
-        st.divider()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Resume all generation"):
-                _launch_resume("generate")
-        with col2:
-            if st.button("🗑 Discard all pending",
-                        help="Delete all pending signals without resuming"):
-                _clear_pending_signals()
-                st.rerun()
-
-    st.divider()
-
-    # ── Run history ────────────────────────────────────────────────────────
-    st.subheader("📋 Run history")
-    jobs = _runner.load_jobs()
+    # Run history + log (production jobs only)
+    st.markdown("**Run history**")
     if not jobs:
-        st.info("No run history yet. Launch a run from the **Launch** page.")
+        st.caption("No production runs yet.")
         return
 
     sorted_jobs = sorted(jobs, key=lambda j: j.get("start_ts", 0), reverse=True)
     display = []
-    for j in sorted_jobs[:50]:
+    for j in sorted_jobs[:40]:
         status = j.get("status", "?")
-        label = {
-            "running": "🟡 Running",
-            "succeeded": "✅ Succeeded",
-            "failed": "❌ Failed",
-            "cancelled": "⚠️ Cancelled",
-            "deferred": "⏸ Deferred",
-            "queued": "⏳ Queued",
-            "unknown": "❓ Unknown",
-        }.get(status, status)
-        from datetime import datetime
         ts = j.get("start_ts", 0)
         dt = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M") if ts else "—"
         display.append({
-            "job_id": (j.get("job_id", "") or "")[:8],
-            "status": label,
-            "command": " ".join(j.get("argv", []))[:55],
+            "job_id": j.get("job_id", ""),
+            "status": status,
+            "command": readers.summarize_job_command(j.get("argv")),
             "started": dt,
             "elapsed_s": j.get("elapsed_s", "—"),
-            "cost_usd": f"${j.get('cost_usd', 0):.4f}" if isinstance(j.get("cost_usd"), float) else "—",
+            "outcome": readers.job_outcome_summary(j),
         })
+    st.dataframe(display, use_container_width=True, hide_index=True, height=240)
 
-    st.dataframe(
-        display,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "job_id": st.column_config.TextColumn("job", width="small"),
-            "status": st.column_config.TextColumn("status", width="small"),
-            "command": st.column_config.TextColumn("command"),
-            "started": st.column_config.TextColumn("started", width="medium"),
-            "elapsed_s": st.column_config.TextColumn("elapsed (s)", width="small"),
-            "cost_usd": st.column_config.TextColumn("cost", width="small"),
-        },
+    job_options = {j.get("job_id", ""): j for j in sorted_jobs if j.get("job_id")}
+    ids = list(job_options.keys())
+    default_id = (active or latest or {}).get("job_id") or (ids[0] if ids else "")
+    default_idx = ids.index(default_id) if default_id in ids else 0
+    selected_id = st.selectbox(
+        "Job log",
+        ids,
+        index=default_idx if ids else 0,
+        format_func=lambda x: (
+            f"{x} · {readers.summarize_job_command(job_options[x].get('argv'))} · "
+            f"{job_options[x].get('status')}"
+        ),
     )
-
-    # ── Log viewer for selected job ─────────────────────────────────────────
-    st.subheader("📄 Job log viewer")
-    job_options = {j.get("job_id", ""): j for j in sorted_jobs}
-    if job_options:
-        selected_id = st.selectbox("Select a job to view its log",
-                                  [""] + list(job_options.keys()),
-                                  format_func=lambda x: x[:8] if x else "—")
-        if selected_id:
-            log_lines = _runner.get_log_lines(selected_id, n=500)
-            if log_lines:
-                st.code("\n".join(log_lines), language="bash", height=300)
-            else:
-                st.info("No log available for this job.")
+    if selected_id:
+        job = job_options[selected_id]
+        log_panel(
+            resolve_log_text(job, n=400),
+            path=job_log_path(job),
+            height=320,
+            key=f"resume_log_{selected_id}",
+            empty_hint="No log available for this job.",
+        )
 
 
 def _launch_resume(mode: str):
-    """Launch a resume run via the runner module."""
     try:
         if mode == "vet":
-            argv = ["python", "-m", "prospector.run", "vet", "--resume"]
+            argv = [_sys.executable, "-m", "prospector.run", "vet", "--resume"]
         else:
-            argv = ["python", "-m", "prospector.run", "generate", "--resume"]
+            argv = [_sys.executable, "-m", "prospector.run", "generate", "--resume"]
         job_id = _runner.launch(argv)
-        st.success(f"Resume run launched: `{job_id}`. Live log will appear on the Launch page.")
+        st.success(f"Launched `{job_id}` — watch Launch for live log.")
         st.rerun()
     except RuntimeError as e:
-        st.error(f"❌ {e}")
+        st.error(str(e))
     except Exception as e:
         st.error(f"Failed to launch resume: {e}")
 
 
 def _retry_pending_signal(p: dict):
-    """Retry a single pending signal by launching generate with its key."""
     try:
         key = p.get("key") or ""
-        argv = ["python", "-m", "prospector.run", "generate", "--resume"]
+        argv = [_sys.executable, "-m", "prospector.run", "generate", "--resume"]
         if key:
             argv += ["--key", key]
         job_id = _runner.launch(argv)
-        st.success(f"Resume run launched: `{job_id}`")
+        st.success(f"Launched `{job_id}`")
         st.rerun()
     except RuntimeError as e:
-        st.error(f"❌ {e}")
+        st.error(str(e))
     except Exception as e:
         st.error(f"Retry failed: {e}")
 
 
-def _clear_defer_queue():
-    """Remove DEFER markers from the catalogue (set decision='' in SQLite).
+def _discard_one_pending(p: dict):
+    pending_dir = Path("signals/pending")
+    name = p.get("_filename") or ""
+    key = p.get("key") or ""
+    targets = []
+    if name:
+        targets.append(pending_dir / name)
+    if key:
+        targets.append(pending_dir / f"{key}.json")
+    for t in targets:
+        try:
+            if t.exists():
+                t.unlink()
+        except OSError:
+            pass
+    try:
+        readers.load_pending_signals.clear()
+    except Exception:
+        pass
 
-    This is a safety-unpleasant operation — candidates are silently dropped from
-    the DEFER view. They still exist as JSON files. Invalidate the catalogue index cache.
-    """
+
+def _clear_defer_queue():
     import sqlite3
     db_path = Path("store/prospector.db")
     if not db_path.exists():
@@ -216,16 +225,13 @@ def _clear_defer_queue():
         conn.execute("UPDATE dossiers SET decision='' WHERE decision='defer'")
         conn.commit()
         conn.close()
-        # Invalidate cache
         readers.catalogue_index.clear()
-        st.success("DEFER markers cleared from the catalogue index. "
-                   "Dossier JSON files are preserved.")
+        st.success("DEFER markers cleared. Dossier JSON preserved.")
     except Exception as e:
         st.error(f"Failed to clear DEFER queue: {e}")
 
 
 def _clear_pending_signals():
-    """Delete all pending signal files from signals/pending/."""
     pending_dir = Path("signals/pending")
     if not pending_dir.exists():
         return
@@ -236,6 +242,5 @@ def _clear_pending_signals():
             count += 1
         except OSError:
             pass
-    # Invalidate cache
     readers.load_pending_signals.clear()
     st.success(f"Discarded {count} pending signal(s).")

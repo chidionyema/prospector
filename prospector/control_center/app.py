@@ -67,32 +67,39 @@ def main():
 
     # ── Sidebar nav ─────────────────────────────────────────────────────────
     with st.sidebar:
-        st.title("🛰 Prospector")
-        st.caption("Control Center")
+        st.markdown("**Prospector**")
+        st.caption("Operator console")
 
-        # Radio persists selected index in session_state
         labels = [p[0] for p in _PAGES_LIST]
-        idx = next((i for i, p in enumerate(_PAGES_LIST) if p[1] == st.session_state.active_page), 0)
+        # Radio is source of truth for sidebar clicks. Programmatic nav (go_page)
+        # sets _sync_nav_radio so we align the widget *before* it is instantiated —
+        # never overwrite a fresh radio click with a stale active_page.
+        if st.session_state.pop("_sync_nav_radio", False) or "nav_radio" not in st.session_state:
+            want = next(
+                (p[0] for p in _PAGES_LIST if p[1] == st.session_state.active_page),
+                labels[0],
+            )
+            st.session_state["nav_radio"] = want
+
         selected_label = st.radio(
-            "Navigate", labels, index=idx,
+            "Navigate",
+            labels,
+            key="nav_radio",
             format_func=lambda p: p,
         )
         key = next((p[1] for p in _PAGES_LIST if p[0] == selected_label), _DEFAULT_KEY)
-
-        if st.session_state.active_page != key:
-            st.session_state.active_page = key
-            st.rerun()
+        st.session_state.active_page = key
 
         st.divider()
         st.caption(f"Project: `{_ROOT.name}`")
         st.caption(f"Store: `store/`")
 
     # ── Active page ──────────────────────────────────────────────────────────
-    mod = _PAGE_MODULES.get(st.session_state.active_page, _PAGE_MODULES[_DEFAULT_KEY])
+    mod = _PAGE_MODULES.get(key, _PAGE_MODULES[_DEFAULT_KEY])
     try:
         mod.render()
     except Exception as e:
-        st.error(f"Error rendering {st.session_state.active_page}: {e}")
+        st.error(f"Error rendering {key}: {e}")
         import traceback
         st.code(traceback.format_exc(), language="python")
 

@@ -10,6 +10,7 @@ Usage:
     python scripts/popdd_verify.py
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -18,6 +19,14 @@ from pathlib import Path
 from popdd_agent import PopddAgent
 
 ROOT = Path(__file__).parent.parent
+
+# Wall-clock ceiling for the whole suite. This is a HANG detector, not a performance
+# budget — set it well above the real runtime so a merely-slow suite never reads as a
+# failure. Measured 2026-07-30: 679 tests, 168.81s pytest-internal / 174.65s process.
+# The previous 180s ceiling left 3% headroom, so commits failed non-deterministically
+# under load once the control-center detach tests (+58 tests) landed. Override with
+# POPDD_TEST_TIMEOUT for a slower machine.
+TEST_TIMEOUT_SECONDS = int(os.environ.get("POPDD_TEST_TIMEOUT", "600"))
 
 
 def main() -> int:
@@ -33,13 +42,38 @@ def main() -> int:
     # -rf forces the "short test summary info" section listing every FAILED/ERROR node id.
     # Without it a failure was recorded only as a COUNT, which made a flake unattributable:
     # the 517/518 run of 2026-07-29 could not be traced to a test name after the fact.
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "--tb=no", "-rf"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "--tb=no", "-rf"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=TEST_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        # A timeout used to propagate as an uncaught traceback, which killed the process
+        # before "test-run:complete" was ever signed. The chain was then left with a
+        # dangling STARTED entry (receipts seq 24 and 25 of 2026-07-30) that looked like
+        # a crashed run rather than a timeout. Sign the verdict, then fail closed.
+        agent.sign_generic(
+            action="test-run:complete",
+            target="prospector:test-suite",
+            **{
+                "verdict": "TIMEOUT",
+                "passed": 0,
+                "failed": 0,
+                "failedTests": [],
+                "exitCode": None,
+                "timeoutSeconds": TEST_TIMEOUT_SECONDS,
+            },
+        )
+        print(
+            f"\n❌ Test suite exceeded {TEST_TIMEOUT_SECONDS}s and was killed.\n"
+            "   This is a hang, not a slow suite — find it with:\n"
+            "     .venv/bin/python -m pytest -q --tb=no -rf --durations=15\n"
+            "   If the suite is legitimately this slow, raise POPDD_TEST_TIMEOUT.\n"
+        )
+        return 1
 
     passed, failed = 0, 0
     failed_tests = []
