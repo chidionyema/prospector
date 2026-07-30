@@ -101,16 +101,18 @@ fi
 [ -n "${STORE_PUBLIC_URL:-}" ] && grn "  ok       STORE_PUBLIC_URL (magic-link email base)" \
   || { red "  MISSING  STORE_PUBLIC_URL — fulfilment emails cannot be addressed"; fail=1; }
 
-# Postmark is a WARNING, not a failure: the success page now delivers the download directly
+# Mailjet is a WARNING, not a failure: the success page now delivers the download directly
 # from the checkout session, so a purchase is still fulfillable without email. But the buyer
 # gets no receipt and no way back to their pack, so going live without it is a real cost.
-if [ -z "${POSTMARK_SERVER_TOKEN:-}" ] || [ -z "${POSTMARK_FROM_EMAIL:-}" ] \
-   || printf '%s' "${POSTMARK_SERVER_TOKEN:-}" | grep -qi "REPLACE_ME"; then
-  ylw "  WARNING  Postmark is not configured — buyers get NO confirmation email."
-  ylw "           Delivery falls back entirely to the success page. Set POSTMARK_SERVER_TOKEN"
-  ylw "           and POSTMARK_FROM_EMAIL (a verified Postmark sender signature) to fix."
+# All three parts are required — Mailjet authenticates with a key PAIR, so a key without its
+# secret is not "partly configured", it is a guaranteed 401 on every send.
+if [ -z "${MAILJET_API_KEY:-}" ] || [ -z "${MAILJET_API_SECRET:-}" ] || [ -z "${MAILJET_FROM_EMAIL:-}" ] \
+   || printf '%s' "${MAILJET_API_KEY:-}${MAILJET_API_SECRET:-}" | grep -qi "REPLACE_ME"; then
+  ylw "  WARNING  Mailjet is not configured — buyers get NO confirmation email."
+  ylw "           Delivery falls back entirely to the success page. Set MAILJET_API_KEY,"
+  ylw "           MAILJET_API_SECRET and MAILJET_FROM_EMAIL (a Mailjet-verified sender) to fix."
 else
-  grn "  ok       Postmark fulfilment email configured"
+  grn "  ok       Mailjet fulfilment email configured"
 fi
 
 if [ "$fail" -ne 0 ]; then red "==> Validation failed. Fix the above in $ENV_FILE and re-run."; exit 1; fi

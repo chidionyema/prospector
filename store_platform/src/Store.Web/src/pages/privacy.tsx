@@ -13,7 +13,7 @@ import { LEGAL } from '@/lib/config';
 /**
  * Privacy Policy for the Mumchimp digital-download storefront.
  * Covers: data collected (email, payment via Stripe/Paddle, download tokens),
- * lawful basis, retention, sub-processors (Stripe/Paddle, Postmark, storage),
+ * lawful basis, retention, sub-processors (Stripe/Paddle, Mailjet, storage),
  * UK GDPR data subject rights, contact.
  * Pending review by qualified legal counsel before go-live.
  */
@@ -95,8 +95,14 @@ export default function PrivacyPage() {
             payment processing. Acting as independent data controller for card and payment
             data; data may be transferred outside the UK under appropriate safeguards.
           </>,
+          // Brand + group only, deliberately. mailjet.com/legal/terms names a DIFFERENT
+          // contracting entity per jurisdiction — Mailjet SaaS Ltd (UK), Mailjet SAS (FR),
+          // Mailjet GmbH (DE), Mailjet Emailing SL (ES), Mailgun Technologies, Inc. (US) —
+          // and which one binds us is fixed by the Service Order at signup, not by the brand.
+          // Naming the wrong one is a false statement in a UK GDPR notice. Once the Mailjet
+          // account exists, read the entity off the Service Order and name it here.
           <>
-            <strong>Postmark (Wildbit LLC / ActiveCampaign)</strong> — transactional email
+            <strong>Mailjet</strong> (a Sinch Email brand) — transactional email
             (order confirmations, download links). Processes your email address and message
             metadata on our behalf; data may be transferred outside the UK.
           </>,

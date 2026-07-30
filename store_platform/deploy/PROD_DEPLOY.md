@@ -64,8 +64,9 @@ fly secrets set --app prospector-store-api \
   STORE_ALLOWED_ORIGIN="https://prospector-store-web.fly.dev" \
   STORE_STOREFRONT_URL="https://prospector-store-web.fly.dev" \
   STORE_PUBLIC_URL="https://prospector-store-api.fly.dev" \
-  POSTMARK_SERVER_TOKEN="..." \
-  POSTMARK_FROM_EMAIL="orders@your-verified-domain" \
+  MAILJET_API_KEY="..." \
+  MAILJET_API_SECRET="..." \
+  MAILJET_FROM_EMAIL="orders@your-verified-domain" \
   R2_ACCOUNT_ID="..." \
   R2_ACCESS_KEY_ID="..." \
   R2_SECRET_ACCESS_KEY="..." \
@@ -80,12 +81,17 @@ fly secrets set --app prospector-store-api \
 > proceed if these two are equal, and the API logs `DELIVERY-DEGRADED` at boot if neither
 > storefront value is present.
 
-> **Postmark is optional but you will feel its absence.** Without it the money rail still works
+> **Mailjet is optional but you will feel its absence.** Without it the money rail still works
 > and the success page still hands the buyer their download (it resolves the entitlement from
 > the checkout session directly), but no confirmation email goes out, so a buyer who closes the
 > tab has no way back to their purchase. The API logs `DELIVERY-DEGRADED` at boot when it is
-> unset, and `FULFILMENT-EMAIL-SKIPPED` per order. The From address must be a verified Postmark
-> sender signature or Postmark rejects the send.
+> unset, and `FULFILMENT-EMAIL-SKIPPED` per order. The From address must be a Mailjet-verified
+> sender on a verified domain, or Mailjet rejects the send.
+>
+> Mailjet authenticates with a key **pair**: `MAILJET_API_KEY` (public) is the Basic-auth
+> username and `MAILJET_API_SECRET` (private) is the password. Setting one without the other
+> reads as unconfigured by design — a half-set pair 401s on every send, and that failure is
+> much harder to diagnose from the outside than "not configured".
 
 > Keep the two `Store__*` key values — the **local engine** uses the SAME values to authenticate
 > to `/internal/catalog` and `/entitlements` (step 6). `MoneyRailConfigGate` is fail-closed: if

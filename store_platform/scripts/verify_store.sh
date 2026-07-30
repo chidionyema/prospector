@@ -25,7 +25,8 @@ DOMAIN="${STORE_DOMAIN:-mumchimp.com}"
 SITE="${SITE_URL:-https://$DOMAIN}"
 API="${STORE_API_BASE:-https://api.$DOMAIN}"
 ENV_FILE="${PROSPECTOR_ENV_PATH:-$REPO_ROOT/.env}"
-DKIM_SELECTOR="${POSTMARK_DKIM_SELECTOR:-pm}"
+DKIM_SELECTOR="${MAILJET_DKIM_SELECTOR:-mailjet}"
+SPF_INCLUDE="${MAILJET_SPF_INCLUDE:-include:spf.mailjet.com}"
 FLY_API_APP="${FLY_API_APP:-prospector-store-api}"
 
 QUICK=0
@@ -124,9 +125,16 @@ else
 fi
 
 # ---------------------------------------------------------------- 6. SPF / DKIM (can we send?)
-spf=$(dig +short TXT "$DOMAIN" @8.8.8.8 2>/dev/null | grep -c 'v=spf1')
-if [ "${spf:-0}" -ge 1 ]; then ok "SPF present on $DOMAIN"
-else bad "NO SPF on $DOMAIN — Postmark cannot send as @$DOMAIN, so no order emails"; fi
+# An SPF record that exists but does not authorise Mailjet is the false-green this check exists
+# to stop: the domain looks configured, and every order email still fails SPF at the recipient.
+spf_txt=$(dig +short TXT "$DOMAIN" @8.8.8.8 2>/dev/null | grep 'v=spf1')
+if [ -z "$spf_txt" ]; then
+  bad "NO SPF on $DOMAIN — Mailjet cannot send as @$DOMAIN, so no order emails"
+elif printf '%s' "$spf_txt" | grep -q "$SPF_INCLUDE"; then
+  ok "SPF present on $DOMAIN and authorises Mailjet ($SPF_INCLUDE)"
+else
+  bad "SPF on $DOMAIN does not contain $SPF_INCLUDE — Mailjet sends will fail SPF at the recipient"
+fi
 
 if [ -n "$(dig +short TXT "${DKIM_SELECTOR}._domainkey.$DOMAIN" @8.8.8.8 2>/dev/null)" ]; then
   ok "DKIM present (${DKIM_SELECTOR}._domainkey.$DOMAIN)"
@@ -142,18 +150,23 @@ case "$dmarc" in
 esac
 
 # ---------------------------------------------------------------- 7. fulfilment email configured
-# Proven from the outside: the API logs DELIVERY-DEGRADED at boot when Postmark is unset. The
+# Proven from the outside: the API logs DELIVERY-DEGRADED at boot when Mailjet is unset. The
 # storefront cannot report this, so use the deploy's own secret list when fly is available.
+# Mailjet authenticates with a key PAIR — a key without its secret 401s on every send, so both
+# must be present or this is not configured.
 if ! command -v fly >/dev/null 2>&1; then
-  skp "Postmark config — fly CLI not available here"
+  skp "Mailjet config — fly CLI not available here"
 # An unauthenticated `fly` also prints nothing, which would read as "the secret is missing" and
 # send someone chasing a config bug that does not exist. Separate "could not ask" from "not set".
 elif ! secrets=$(fly secrets list -a "$FLY_API_APP" 2>/dev/null); then
-  skp "Postmark config — 'fly secrets list -a $FLY_API_APP' failed (not logged in, or no such app)"
-elif printf '%s' "$secrets" | grep -q POSTMARK_SERVER_TOKEN; then
-  ok "POSTMARK_SERVER_TOKEN present in fly secrets"
+  skp "Mailjet config — 'fly secrets list -a $FLY_API_APP' failed (not logged in, or no such app)"
+elif printf '%s' "$secrets" | grep -q MAILJET_API_KEY \
+  && printf '%s' "$secrets" | grep -q MAILJET_API_SECRET; then
+  ok "MAILJET_API_KEY + MAILJET_API_SECRET present in fly secrets"
+elif printf '%s' "$secrets" | grep -q MAILJET_API_KEY; then
+  bad "MAILJET_API_SECRET absent (key is set) — Mailjet 401s on every send; buyers get NO email"
 else
-  bad "POSTMARK_SERVER_TOKEN absent from fly secrets — buyers get NO email, only the browser tab"
+  bad "MAILJET_API_KEY absent from fly secrets — buyers get NO email, only the browser tab"
 fi
 
 # ---------------------------------------------------------------- 8. deployable from git

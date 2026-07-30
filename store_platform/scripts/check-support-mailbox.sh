@@ -53,14 +53,14 @@ else
     info "     live site is unaffected. Re-run this script; it flips to PASS within the TTL."
 fi
 
-# 2. SPF/DKIM TXT. Not required to RECEIVE, but required for Postmark to SEND as this domain,
-#    which is the other half of the order-delivery chain (POSTMARK_FROM_EMAIL in .env.production).
+# 2. SPF/DKIM TXT. Not required to RECEIVE, but required for Mailjet to SEND as this domain,
+#    which is the other half of the order-delivery chain (MAILJET_FROM_EMAIL in .env.production).
 txt=$(dig +short TXT "$DOMAIN" @8.8.8.8 2>/dev/null)
 if printf '%s' "$txt" | grep -qi 'v=spf1'; then
     ok "SPF present"
 else
-    info "no SPF TXT on $DOMAIN — Postmark cannot verify this sender, so order emails will not send"
-    info "     (POSTMARK_FROM_EMAIL=orders@$DOMAIN). Not fatal for RECEIVING; fatal for SENDING."
+    info "no SPF TXT on $DOMAIN — Mailjet cannot verify this sender, so order emails will not send"
+    info "     (MAILJET_FROM_EMAIL=orders@$DOMAIN). Not fatal for RECEIVING; fatal for SENDING."
 fi
 
 # 3. Optional: assert the deployed pages actually show this address. Catches the reverse drift —

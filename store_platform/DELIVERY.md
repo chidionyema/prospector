@@ -9,30 +9,47 @@ Exit 3 is not success. A check that could not run is not a check that passed.
 ## Status 2026-07-30 — `NOT SELLABLE`, exit 1, 4 failures
 
 Green already (do not redo): mints `cs_live_` · `/catalog` 15 packs · MX `5 smtp.google.com`
-present · Playwright smoke passes live · `store_platform` clean at HEAD · 518 pytest · 91/91 .NET.
+present · Playwright smoke passes live · 518 pytest · 99/99 .NET.
 
 All 4 failures are AC-2 email identity. **None of them need an agent — they are DNS and dashboards.**
 
+> **Provider changed 2026-07-30 (founder's call): Postmark → Mailjet.** The DNS shape is
+> unchanged — SPF + DKIM TXT only, no MX either way — so the work below is the same size it
+> always was; only the record values and the selector differ. `PostmarkEmailSender.cs` is
+> deleted; `MailjetEmailSender.cs` replaces it and is covered by 8 tests. The tree is no longer
+> clean at HEAD: this change is uncommitted.
+
 | FAIL line | Fix | Where |
 |---|---|---|
-| `NO SPF on mumchimp.com` | add Postmark's SPF TXT | GoDaddy DNS |
-| `NO DKIM at pm._domainkey` | add Postmark's DKIM TXT | GoDaddy DNS |
+| `NO SPF on mumchimp.com` / `SPF … does not contain include:spf.mailjet.com` | add Mailjet's SPF TXT | GoDaddy DNS |
+| `NO DKIM at mailjet._domainkey` | add Mailjet's DKIM TXT | GoDaddy DNS |
 | `DMARC still points at the GoDaddy default rua` | repoint `rua=` to a mailbox you read | GoDaddy DNS |
-| `POSTMARK_SERVER_TOKEN absent from fly secrets` | `fly secrets set` | terminal |
+| `MAILJET_API_KEY absent from fly secrets` | `fly secrets set` | terminal |
 
-## Step 1 — Postmark (~10 min)
+## Step 1 — Mailjet (~10 min)
 
-1. Create a Postmark server; verify sender signature / domain for `orders@mumchimp.com`.
-2. Postmark shows an SPF and a DKIM record. Add both as TXT in the GoDaddy zone
-   (NS = `ns03/ns04.domaincontrol.com`).
+1. Create a Mailjet account (free tier: 6k/mo, 200/day, no KYC) and add the sending domain
+   `mumchimp.com`, then the sender `orders@mumchimp.com`.
+2. Mailjet shows an SPF and a DKIM record. Add both as TXT in the GoDaddy zone
+   (NS = `ns03/ns04.domaincontrol.com`):
+   - SPF on the apex must contain `include:spf.mailjet.com`. If a `v=spf1` record already
+     exists, **edit it — do not add a second one.** Two SPF records is a permerror, and every
+     order email then fails SPF even though both records look correct in the dashboard.
+   - DKIM at `mailjet._domainkey` with the value Mailjet generates for this account.
+     (Selector confirmed against the live records on `theintroexchange.com`, which has run
+     Mailjet in production since 2026-06-12.)
+
    **DO NOT TOUCH MX.** `5 smtp.google.com` is live and receiving today; breaking it silently
-   loses refund and privacy-request mail, which is a chargeback feeder.
+   loses refund and privacy-request mail, which is a chargeback feeder. Mailjet needs no MX.
 3. While in the zone, fix DMARC off the GoDaddy default
    (`rua=mailto:dmarc_rua@onsecureserver.net` — nobody reads those) to a mailbox you monitor.
 4. ```
-   fly secrets set POSTMARK_SERVER_TOKEN=… POSTMARK_FROM_EMAIL=orders@mumchimp.com \
-     -a prospector-store-api
+   fly secrets set MAILJET_API_KEY=… MAILJET_API_SECRET=… \
+     MAILJET_FROM_EMAIL=orders@mumchimp.com -a prospector-store-api
    ```
+   Mailjet authenticates with a key PAIR — the public API key and the private secret. Setting
+   only one leaves the sender reading as unconfigured (deliberate: a half-set pair 401s on every
+   send, which would otherwise look like a provider outage rather than a config mistake).
    The machine restarts on secret set. Confirm the startup log no longer prints
    `DELIVERY-DEGRADED` (`MoneyRailConfigGate.cs`).
 5. `bash store_platform/scripts/verify_store.sh --quick` → expect 0 failures.

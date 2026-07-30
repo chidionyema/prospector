@@ -189,19 +189,29 @@ public sealed class MoneyRailConfigGate(
             return;
         }
 
-        var mailToken = config["Postmark:ServerToken"]
-            ?? Environment.GetEnvironmentVariable("POSTMARK_SERVER_TOKEN");
-        var mailFrom = config["Postmark:FromEmail"]
-            ?? Environment.GetEnvironmentVariable("POSTMARK_FROM_EMAIL");
+        // Mailjet authenticates with a key PAIR, so all three parts must be present — a key
+        // without its secret is as dead as no key at all, and reporting only on the key would
+        // hide exactly that half-configured case.
+        var mailKey = config["Mailjet:ApiKey"]
+            ?? Environment.GetEnvironmentVariable("MAILJET_API_KEY");
+        var mailSecret = config["Mailjet:ApiSecret"]
+            ?? Environment.GetEnvironmentVariable("MAILJET_API_SECRET");
+        var mailFrom = config["Mailjet:FromEmail"]
+            ?? Environment.GetEnvironmentVariable("MAILJET_FROM_EMAIL");
 
-        if (string.IsNullOrWhiteSpace(mailToken) || string.IsNullOrWhiteSpace(mailFrom))
+        if (string.IsNullOrWhiteSpace(mailKey)
+            || string.IsNullOrWhiteSpace(mailSecret)
+            || string.IsNullOrWhiteSpace(mailFrom))
         {
             logger.LogCritical(
-                "DELIVERY-DEGRADED: Postmark is not fully configured (ServerToken set: {HasToken}, "
-                + "FromEmail set: {HasFrom}). Buyers will receive NO fulfilment email; delivery "
-                + "depends entirely on the success page. Set POSTMARK_SERVER_TOKEN and "
-                + "POSTMARK_FROM_EMAIL to restore email delivery.",
-                !string.IsNullOrWhiteSpace(mailToken), !string.IsNullOrWhiteSpace(mailFrom));
+                "DELIVERY-DEGRADED: Mailjet is not fully configured (ApiKey set: {HasKey}, "
+                + "ApiSecret set: {HasSecret}, FromEmail set: {HasFrom}). Buyers will receive NO "
+                + "fulfilment email; delivery depends entirely on the success page. Set "
+                + "MAILJET_API_KEY, MAILJET_API_SECRET and MAILJET_FROM_EMAIL to restore "
+                + "email delivery.",
+                !string.IsNullOrWhiteSpace(mailKey),
+                !string.IsNullOrWhiteSpace(mailSecret),
+                !string.IsNullOrWhiteSpace(mailFrom));
         }
 
         // The post-payment redirect target used to be reported here as DELIVERY-DEGRADED and

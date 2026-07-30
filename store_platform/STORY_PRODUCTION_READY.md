@@ -57,13 +57,19 @@ Probe: `bash store_platform/scripts/prove_launch.sh` first (local), then the liv
 The receipt is the Stripe charge id + refund id, pasted into this file under "Sign-off".
 
 ### AC-2 — The buyer gets an email, not just a tab *(P0)*
-Today `POSTMARK_SERVER_TOKEN` is **absent from fly secrets** (LIVE) and mumchimp.com has
-**zero TXT records** (LIVE: `dig +short TXT mumchimp.com` empty) — so no fulfilment email
-sends, and no sender domain can even be verified. Close a browser tab and the purchase is
-recoverable only through support. Done means:
+**Provider changed 2026-07-30 (founder's call): Postmark → Mailjet.** The DNS shape is identical
+(SPF + DKIM TXT only, no MX), so this AC did not get bigger or smaller — only the record values
+and the DKIM selector changed, `pm._domainkey` → `mailjet._domainkey`. `PostmarkEmailSender.cs`
+is deleted and `MailjetEmailSender.cs` replaces it, wired at `Program.cs:88` and covered by 8
+tests in `src/Store.Tests/Services/MailjetEmailSenderTests.cs`.
 
-- [ ] Postmark server created; sender signature/domain `orders@mumchimp.com` verified — this requires adding the SPF + DKIM TXT records Postmark specifies to the GoDaddy zone (MX for Google receiving already exists; do not touch it).
-- [ ] `fly secrets set POSTMARK_SERVER_TOKEN=… POSTMARK_FROM_EMAIL=orders@mumchimp.com -a prospector-store-api` and machine restarted.
+Today the `MAILJET_*` secrets are **absent from fly secrets** and mumchimp.com has
+**no SPF and no DKIM** (LIVE: `dig +short TXT mumchimp.com` returns no `v=spf1`) — so no
+fulfilment email sends, and no sender domain can even be verified. Close a browser tab and the
+purchase is recoverable only through support. Done means:
+
+- [ ] Mailjet account created; sending domain `mumchimp.com` + sender `orders@mumchimp.com` verified — this requires adding the SPF + DKIM TXT records Mailjet specifies to the GoDaddy zone (MX for Google receiving already exists; do not touch it — Mailjet needs no MX).
+- [ ] `fly secrets set MAILJET_API_KEY=… MAILJET_API_SECRET=… MAILJET_FROM_EMAIL=orders@mumchimp.com -a prospector-store-api` and machine restarted. Both halves of the key pair are required; one alone reads as unconfigured.
 - [ ] Startup log no longer prints `DELIVERY-DEGRADED` (`MoneyRailConfigGate.cs:82-90`).
 - [ ] AC-1's test purchase receives the email with a working order link (this orders AC-2 before AC-1, or do a second £49 round trip).
 - [ ] DMARC updated from the GoDaddy default (`rua=mailto:dmarc_rua@onsecureserver.net`, LIVE) to a policy we monitor.
@@ -103,9 +109,9 @@ tree**, so any other session's half-edits ship silently (this happened on 2026-0
 - [ ] **`lint` NOT yet in the CI gate — deferred, with reason.** `npm run lint` is currently **9 errors / 5 warnings** (was 12 errors; the 3 `no-explicit-any` in `lib/api/client.ts` are fixed). The remaining errors sit in `pages/pack/[id].tsx` (5: two `no-explicit-any`, one `no-restricted-syntax` for a direct `fetch`, two `Cannot create components during render`), `pages/orders/success.tsx` (2: `setState` synchronously within an effect) and `components/ui/Dropdown.tsx` (2). Wiring lint in before fixing those makes CI permanently red, and fixing them means restructuring **the buy button and the post-payment delivery poller** — the two files a first real sale depends on — at a moment when **no live purchase has ever completed** (see the headline gap). `[id].tsx:96-99` records that key-gating this file once caused a silent sales outage. The correct order is AC-1 first, then this refactor against a known-good baseline. Falsifiable check that it is safe to proceed: a passing AC-1 receipt plus `e2e-live-smoke` green.
 
 ### AC-7 — "is the store production-ready?" is a command *(P1, the standing probe)*
-- [x] `store_platform/scripts/verify_store.sh` (committed `6d2783f`): read-only, prints PASS/FAIL for — web 200 + Playwright smoke, `/catalog` 200 with ≥1 pack, checkout session mints (`cs_live_`), webhook registered+enabled with the 3 events, MX present, SPF/DKIM present, Postmark configured (via startup-log or a `/internal` config-status check), `git status` clean on `store_platform`, reconcile (AC-4) clean. Exit 0 = sellable.
+- [x] `store_platform/scripts/verify_store.sh` (committed `6d2783f`): read-only, prints PASS/FAIL for — web 200 + Playwright smoke, `/catalog` 200 with ≥1 pack, checkout session mints (`cs_live_`), webhook registered+enabled with the 3 events, MX present, SPF/DKIM present, Mailjet configured (via startup-log or a `/internal` config-status check), `git status` clean on `store_platform`, reconcile (AC-4) clean. Exit 0 = sellable.
   Two design points worth keeping: **SKIP is never folded into PASS** — a check that could not run is not a check that passed, so exit 3 means "unproven" and is distinct from exit 0 "sellable"; and the checkout gate asserts **`cs_live_`** specifically, because a `cs_test_` session looks identical to a buyer, takes fake cards, and pays us nothing, so "a Stripe URL came back" is not proof of a live rail. Negative-tested: a bad `FLY_API_APP` yields SKIP not FAIL, and an unreachable API says "not serving" rather than "no packs".
-  **Current verdict — `NOT SELLABLE`, exit 1, 4 failures** (after `6d2783f` cleared the dirty-tree gate): no SPF, no DKIM at `pm._domainkey`, DMARC still on the GoDaddy default `rua`, `POSTMARK_SERVER_TOKEN` absent from fly secrets. All four are AC-2's founder-hands work. The money rail itself is green: mints `cs_live_`, `/catalog` serves 15 packs, MX present, Playwright smoke passes against the live site.
+  **Current verdict — `NOT SELLABLE`, exit 1**: no SPF, no DKIM at `mailjet._domainkey`, DMARC still on the GoDaddy default `rua`, `MAILJET_API_KEY`/`MAILJET_API_SECRET` absent from fly secrets — plus the dirty-tree gate, which the Mailjet change itself re-opened until it is committed. The four email failures are AC-2's founder-hands work. The SPF check was tightened with the provider swap: it now requires `include:spf.mailjet.com` in the record, not merely that some `v=spf1` exists, because an SPF record that does not authorise the sender is the exact false-green this probe is for. The money rail itself is green: mints `cs_live_`, `/catalog` serves 15 packs, MX present, Playwright smoke passes against the live site.
 - [x] Registered in `~/.claude/projects/-Users-chidionyema/.state-probe` as a `STORE_MONEY_RAIL` line. Appended, not substituted — the existing MX/SPF/storefront/descriptor checks were left intact, and only the two cheap non-duplicative facts were added (`cs_live_` mint + `store_platform` clean), because that file is re-billed on every request of every session and blocks the prompt at SessionStart. Live output: `STORE_MONEY_RAIL PASS:mints_cs_live_  git_store_platform=clean`.
 
 ## Non-goals of this story (tracked, deliberately out)

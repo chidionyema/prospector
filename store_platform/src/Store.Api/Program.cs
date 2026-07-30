@@ -85,7 +85,7 @@ builder.Services.AddSingleton<IContentStorage>(sp =>
     }
     return new CruxContentStorage(blobStore); // unconfigured — IsConfigured=false, callers 503
 });
-builder.Services.AddHttpClient<IEmailSender, PostmarkEmailSender>();
+builder.Services.AddHttpClient<IEmailSender, MailjetEmailSender>();
 
 builder.Services.AddKeyedScoped<IPaymentProvider, PaddleProvider>("paddle");
 builder.Services.AddKeyedScoped<IPaymentProvider, StripeProvider>("stripe");

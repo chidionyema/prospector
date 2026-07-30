@@ -210,7 +210,8 @@ public static class WebhookEndpoints
         {
             logger.LogError(
                 "FULFILMENT-EMAIL-SKIPPED for {Count} entitlement(s): the email sender is not configured "
-                + "(POSTMARK_SERVER_TOKEN / POSTMARK_FROM_EMAIL). Buyers must use the success page.",
+                + "(MAILJET_API_KEY / MAILJET_API_SECRET / MAILJET_FROM_EMAIL). Buyers must use the "
+                + "success page.",
                 entitlements.Count);
             return;
         }

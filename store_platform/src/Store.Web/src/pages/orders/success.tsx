@@ -104,10 +104,10 @@ export default function OrderSuccess() {
                   Download {item.packTitle}
                 </a>
               ))}
-              {/* No confirmation email is sent while POSTMARK_SERVER_TOKEN is unset in production,
-                  so this page is currently the buyer's ONLY route back to what they paid for.
-                  Promising an inbox link we do not send is what turns a lost tab into a refund.
-                  When Postmark is configured, restore the "we emailed you a copy" line HERE. */}
+              {/* No confirmation email is sent while MAILJET_API_KEY / MAILJET_API_SECRET are unset
+                  in production, so this page is currently the buyer's ONLY route back to what they
+                  paid for. Promising an inbox link we do not send is what turns a lost tab into a
+                  refund. When Mailjet is configured, restore the "we emailed you a copy" line HERE. */}
               {items[0]?.orderPath && (
                 <div className="rounded-xl border border-border bg-surface2 p-4 text-left">
                   <p className="text-sm font-semibold text-text">Save this link now</p>
@@ -147,7 +147,7 @@ export default function OrderSuccess() {
           {(phase === 'no-session' || phase === 'timed-out') && (
             <div className="bg-surface2 border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-4">
               {/* Do NOT tell the buyer to check their inbox: no fulfilment email is sent while
-                  POSTMARK_SERVER_TOKEN is unset. Sending them to an empty inbox loses the sale.
+                  the MAILJET_* secrets are unset. Sending them to an empty inbox loses the sale.
                   Give them the one reference that actually lets support find the order. */}
               <div className="flex items-start gap-3">
                 <Icon name="shield" size={16} className="text-primary mt-0.5 shrink-0" />
