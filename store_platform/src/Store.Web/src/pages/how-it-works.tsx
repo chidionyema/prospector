@@ -8,7 +8,7 @@ export default function HowItWorks() {
     <MarketingLayout>
       <Seo
         title="How it works"
-        description="How the Prospector Store works: every £49 pack is a grounded business opportunity, vetted against six checks and sourced to retrievable evidence before it can be listed."
+        description="How the Mumchimp works: every £49 pack is a grounded business opportunity, vetted against six checks and sourced to retrievable evidence before it can be listed."
       />
 
       <PageHero

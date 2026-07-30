@@ -19,8 +19,8 @@ import { SITE_URL, BRAND } from '@/lib/config';
 
 const SITE = BRAND.name;
 const DEFAULT_DESCRIPTION =
-  'Prospector Store sells £49 business opportunity packs. Each is a grounded idea passed by the ' +
-  'Prospector engine: build spec, GTM plan, operations and unit economics, and a QA report with ' +
+  'Mumchimp sells £49 business opportunity packs. Each is a grounded idea passed by the ' +
+  'Mumchimp engine: build spec, GTM plan, operations and unit economics, and a QA report with ' +
   'every claim sourced. Instant download.';
 
 export interface SeoProps {

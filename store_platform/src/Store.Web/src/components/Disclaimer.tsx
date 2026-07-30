@@ -10,7 +10,7 @@ export default function Disclaimer() {
   return (
     <aside className="rounded-lg border border-border bg-bg/50 px-6 py-5 text-sm leading-relaxed text-muted shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
       <strong className="text-text font-bold">Not financial, investment, or professional advice.</strong>{' '}
-      Prospector Packs are research and information products produced for general informational
+      Mumchimp Packs are research and information products produced for general informational
       purposes only. Nothing in any Pack constitutes, or should be construed as, financial
       advice, investment advice, legal advice, tax advice, or any other form of regulated or
       professional advice. AI-generated content may contain errors, omissions, or outdated

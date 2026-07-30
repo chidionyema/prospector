@@ -513,7 +513,7 @@ function ComparisonBlock() {
             <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-success/10 text-success">
               <Icon name="check" size={14} />
             </span>
-            <span className="text-base font-bold text-text">A Prospector Pack</span>
+            <span className="text-base font-bold text-text">A Mumchimp Pack</span>
           </div>
           <p className="mt-1.5 text-sm font-semibold text-success">£49 one time, yours forever</p>
           <dl className="mt-5 space-y-3.5">
@@ -550,7 +550,7 @@ export default function Home({ packs, stats }: HomeProps) {
           Skip 6 months of research. Launch a business that&apos;s already vetted.
         </h1>
         <p className="mx-auto mt-6 max-w-[60ch] text-base leading-relaxed text-text/75 md:text-lg">
-          Stop wasting weekends building ideas nobody will pay for. Each £49 Prospector Pack gives you a fully
+          Stop wasting weekends building ideas nobody will pay for. Each £49 Mumchimp Pack gives you a fully
           researched, market-validated business blueprint: who the buyer is, what they pay, the pricing and
           unit economics, and a step-by-step go-to-market plan. Every claim backed by a real source you can
           open.

@@ -74,8 +74,13 @@ export default function OrderPage() {
           Download now
         </a>
 
-        <p className="text-xs text-gray-400 mt-4 text-center">
-          This link expires after 5 minutes. Your download will be available once.
+        {/* The old copy here ("expires after 5 minutes… available once") described the presigned
+            R2 URL that /download mints internally, NOT this page. The buyer's grant token has
+            ExpiresAt = null and a 50-download cap (DeliveryEndpoints.cs:25). Telling a paying
+            customer their permanent recovery link is already dead is how a sale becomes a refund. */}
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          Bookmark this page — it is your permanent access link and does not expire. You can
+          re-download your pack here whenever you need it.
         </p>
       </div>
     </div>

@@ -96,7 +96,7 @@ def main() -> int:
     ).fetchall()
     conn.close()
 
-    uploaded = present = missing = mismatch = 0
+    uploaded = present = missing = mismatch = drift = 0
     failed_listed = False
 
     for pack_id, is_listed, content_key in rows:
@@ -119,9 +119,32 @@ def main() -> int:
         src = candidates[0]
         local_size = src.stat().st_size
         if sha256(src) != expected_hash:
-            print(f"  !! {pack_id[:8]}  [{tag}] local hash != key hash — re-provision needed")
-            mismatch += 1
-            failed_listed |= bool(is_listed)
+            # The local bundle no longer hashes to the key the catalogue points at. That alone
+            # says NOTHING about whether buyers can download: the entitlement snapshots the
+            # ContentKey, so what matters is whether THAT object is in R2. Rebuilding a zip
+            # locally changes its bytes (timestamps), so this drift is routine and expected.
+            #
+            # Reporting it as a failure without checking R2 was itself the bug — it made a
+            # perfectly deliverable pack look broken and sent an operator hunting a
+            # non-existent launch blocker. Ask R2 before crying wolf.
+            try:
+                client.head_object(Bucket=bucket, Key=content_key)
+            except ClientError as e:
+                if e.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
+                    print(f"  !! {pack_id[:8]}  [{tag}] local hash != key hash AND key absent "
+                          f"from R2 — UNDELIVERABLE, re-provision needed")
+                    mismatch += 1
+                    failed_listed |= bool(is_listed)
+                else:
+                    print(f"  !! {pack_id[:8]}  [{tag}] head_object error: {e} — skipped")
+                    failed_listed |= bool(is_listed)
+                continue
+
+            # The published object is present and content-addressed, so it is exactly what
+            # buyers paid for. Local drift is informational only.
+            drift += 1
+            print(f"  ~~ {pack_id[:8]}  [{tag}] deliverable from R2; local bundle has drifted "
+                  f"(rebuilt since publish) — no action needed")
             continue
 
         # Already in R2 with the right size?
@@ -152,11 +175,12 @@ def main() -> int:
             failed_listed |= bool(is_listed)
 
     verb = "would-upload" if args.dry_run else "uploaded"
-    print(f"\nDone. {verb}={uploaded} already-present={present} "
-          f"missing={missing} mismatch={mismatch} (of {len(rows)} packs)")
+    print(f"\nDone. {verb}={uploaded} already-present={present} local-drift={drift} "
+          f"missing={missing} undeliverable={mismatch} (of {len(rows)} packs)")
     if failed_listed:
         print("FAIL: one or more LISTED packs are not downloadable from R2.", file=sys.stderr)
         return 1
+    print("OK: every listed pack is downloadable from R2.")
     return 0
 
 

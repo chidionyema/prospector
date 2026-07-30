@@ -13,7 +13,7 @@ import { SITE_URL, BRAND } from "@/lib/config";
 // ASCII (apostrophes are fine), so this is safe; keep it that way if you edit the description.
 const SITE = BRAND.name;
 const ORG_DESCRIPTION =
-  "Prospector Store sells grounded business opportunity packs. Each is a vetted idea with a " +
+  "Mumchimp sells grounded business opportunity packs. Each is a vetted idea with a " +
   "build spec, a GTM plan, operations and unit economics, and a sourced QA report.";
 
 const siteJsonLd = SITE_URL

@@ -13,7 +13,7 @@ import { LEGAL } from '@/lib/config';
 import Disclaimer from '@/components/Disclaimer';
 
 /**
- * Refund Policy for the Prospector digital-download storefront.
+ * Refund Policy for the Mumchimp digital-download storefront.
  * Statutory basis: UK Consumer Contracts (Information, Cancellation and Additional Charges)
  * Regulations 2013, Regulation 37 — cancellation right is lost once digital content delivery
  * begins with the consumer's prior express consent and acknowledgement of loss of cancellation right.

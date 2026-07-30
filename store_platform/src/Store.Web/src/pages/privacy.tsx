@@ -11,7 +11,7 @@ import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/Legal
 import { LEGAL } from '@/lib/config';
 
 /**
- * Privacy Policy for the Prospector digital-download storefront.
+ * Privacy Policy for the Mumchimp digital-download storefront.
  * Covers: data collected (email, payment via Stripe/Paddle, download tokens),
  * lawful basis, retention, sub-processors (Stripe/Paddle, Postmark, storage),
  * UK GDPR data subject rights, contact.

@@ -12,7 +12,7 @@ import { LEGAL } from '@/lib/config';
 import Disclaimer from '@/components/Disclaimer';
 
 /**
- * Terms of Service for the Prospector digital-download storefront.
+ * Terms of Service for the Mumchimp digital-download storefront.
  * Covers: what is sold (AI-generated business-analysis dossier, digital download),
  * licence grant, delivery, buyer obligations, limitation of liability,
  * no-warranty on AI output quality, governing law E&W.

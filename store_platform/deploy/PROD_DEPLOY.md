@@ -62,12 +62,30 @@ fly secrets set --app prospector-store-api \
   Store__InternalApiKey="$(openssl rand -hex 32)" \
   Store__EntitlementsApiKey="$(openssl rand -hex 32)" \
   STORE_ALLOWED_ORIGIN="https://prospector-store-web.fly.dev" \
+  STORE_STOREFRONT_URL="https://prospector-store-web.fly.dev" \
   STORE_PUBLIC_URL="https://prospector-store-api.fly.dev" \
+  POSTMARK_SERVER_TOKEN="..." \
+  POSTMARK_FROM_EMAIL="orders@your-verified-domain" \
   R2_ACCOUNT_ID="..." \
   R2_ACCESS_KEY_ID="..." \
   R2_SECRET_ACCESS_KEY="..." \
   R2_BUCKET="..."
 ```
+
+> **The two URL secrets are different hosts on purpose.** `STORE_STOREFRONT_URL` is where a
+> buyer is sent after paying — it must be the **web** app, because `/orders/success` and
+> `/pack/{id}` are Next.js pages this API does not serve. `STORE_PUBLIC_URL` is this **API**,
+> because the magic-link email points at the API's own `/orders/{token}` route. Setting the
+> redirect to the API host sends every paying customer to a 404. `go_live.sh` now refuses to
+> proceed if these two are equal, and the API logs `DELIVERY-DEGRADED` at boot if neither
+> storefront value is present.
+
+> **Postmark is optional but you will feel its absence.** Without it the money rail still works
+> and the success page still hands the buyer their download (it resolves the entitlement from
+> the checkout session directly), but no confirmation email goes out, so a buyer who closes the
+> tab has no way back to their purchase. The API logs `DELIVERY-DEGRADED` at boot when it is
+> unset, and `FULFILMENT-EMAIL-SKIPPED` per order. The From address must be a verified Postmark
+> sender signature or Postmark rejects the send.
 
 > Keep the two `Store__*` key values — the **local engine** uses the SAME values to authenticate
 > to `/internal/catalog` and `/entitlements` (step 6). `MoneyRailConfigGate` is fail-closed: if
@@ -75,11 +93,21 @@ fly secrets set --app prospector-store-api \
 
 ## 3. Deploy the API
 
+> **HARD RULE — a dirty `store_platform/` tree aborts the deploy.** `fly deploy` builds the
+> **working tree**, not `HEAD`. Any uncommitted edit — including one left by another session
+> that you never saw — ships to production silently and cannot be rebuilt or rolled back from
+> git, because it was never committed. This happened on 2026-07-30. Every `fly deploy` below is
+> therefore prefixed with the guard; do not run one without it.
+>
+> ```bash
+> bash scripts/predeploy_guard.sh   # exit 0 = clean; exit 1 = commit or stash first
+> ```
+
 ```bash
 # from store_platform/ — the `.` sets the build context (must include local-feed/ + Store.Catalog).
 # Without the `.`, fly uses the config file's directory (deploy/fly/) as the context and the build
 # fails. The dockerfile path inside the toml is config-dir-relative for the same reason.
-fly deploy . --config deploy/fly/api.fly.toml
+bash scripts/predeploy_guard.sh && fly deploy . --config deploy/fly/api.fly.toml
 ```
 
 First boot runs EF `MigrateAsync` and creates an EMPTY schema on the volume. The catalogue is
@@ -97,6 +125,7 @@ curl -fsS https://prospector-store-api.fly.dev/catalog/stats  # {"listed":0,"reg
 `NEXT_PUBLIC_API_URL` is inlined at build time, so pass the real API URL as a build arg:
 
 ```bash
+bash scripts/predeploy_guard.sh   # same hard rule as step 3 — never skip it
 cd src/Store.Web
 # The `.` sets the build context to src/Store.Web (Next's self-contained build).
 fly deploy . --config ../../deploy/fly/web.fly.toml \
@@ -107,16 +136,37 @@ Open `https://prospector-store-web.fly.dev` — the page renders but lists nothi
 
 ## 5. Register the Stripe live webhook
 
-In the Stripe dashboard (LIVE mode) add an endpoint:
-
-- URL: `https://prospector-store-api.fly.dev/webhooks/stripe`
-- Events: `checkout.session.completed`, `charge.refunded`, `charge.dispute.created`
-
-Copy its signing secret and update the API secret if it differs from step 2:
+Run the script — it registers the endpoint over the Stripe API and writes the signing secret
+into `.env.production` for you. The secret is never printed, so it does not end up in
+scrollback or shell history.
 
 ```bash
-fly secrets set --app prospector-store-api Stripe__WebhookSecret="whsec_..."
+bash store_platform/scripts/register_stripe_webhook.sh
 ```
+
+It derives the URL from `STORE_PUBLIC_URL` (the API host — **not** the storefront) and
+registers exactly the three events `StripeProvider` handles:
+`checkout.session.completed` grants the entitlement, `charge.refunded` and
+`charge.dispute.created` revoke it. Registering fewer means a refund silently leaves the buyer
+with a working download link.
+
+If an endpoint for that URL already exists the script stops and says so, because Stripe reveals
+a signing secret only at creation and it cannot be read back. Re-run with `--recreate` to
+delete and re-issue. Safe while no live traffic is flowing; mid-flight it drops any event
+Stripe is retrying against the old endpoint.
+
+Then push the captured secret to the API:
+
+```bash
+fly secrets set --app prospector-store-api Stripe__WebhookSecret="$(grep '^Stripe__WebhookSecret=' store_platform/.env.production | cut -d= -f2-)"
+```
+
+<details><summary>Doing it by hand in the dashboard instead</summary>
+
+In the Stripe dashboard (LIVE mode) add an endpoint with the URL and the three events above,
+copy its signing secret into `Stripe__WebhookSecret` in `.env.production`, then run the
+`fly secrets set` command above.
+</details>
 
 ## 6. Seed the catalogue (engine → Fly, the chosen seam)
 
@@ -175,6 +225,7 @@ Fly, deploy it with no `[http_service]` and reach it via `fly proxy` / WireGuard
 
 ## Updating later
 
-- API code change: `fly deploy . --config deploy/fly/api.fly.toml` (from `store_platform/`).
+- API code change: `bash scripts/predeploy_guard.sh && fly deploy . --config deploy/fly/api.fly.toml`
+  (from `store_platform/`). The guard is not optional — see the hard rule in step 3.
 - Web change: re-run the step-4 command (the build arg must always be the live API URL).
 - Rotate a secret: `fly secrets set --app prospector-store-api KEY=value` (triggers a restart).

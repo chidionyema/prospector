@@ -59,17 +59,59 @@ need_real "R2_ACCESS_KEY_ID"        "${R2_ACCESS_KEY_ID:-}"        "REPLACE_ME"
 need_real "R2_SECRET_ACCESS_KEY"    "${R2_SECRET_ACCESS_KEY:-}"    "REPLACE_ME"
 need_real "R2_BUCKET"               "${R2_BUCKET:-}"               "REPLACE_ME"
 
-case "${Stripe__ApiKey:-}" in
-  sk_live_*) grn "  ok       Stripe__ApiKey is a LIVE key" ;;
-  sk_test_*) ylw "  WARNING  Stripe__ApiKey is a TEST key — this will provision TEST prices, not live" ;;
-  *) red "  Stripe__ApiKey is neither sk_live_ nor sk_test_"; fail=1 ;;
-esac
-case "${Stripe__WebhookSecret:-}" in
-  whsec_*) grn "  ok       Stripe__WebhookSecret shape" ;;
-  *) red "  Stripe__WebhookSecret must start with whsec_"; fail=1 ;;
-esac
+# The template values are sk_live_REPLACE_ME / whsec_REPLACE_ME, so a shape check alone
+# reports "ok" on a key nobody has filled in yet. Skip the shape line entirely when the
+# value is still a placeholder — need_real above has already failed it, and a green "is a
+# LIVE key" next to a red PLACEHOLDER is exactly the kind of misleading-green this script
+# exists to prevent.
+is_placeholder() { printf '%s' "${1:-}" | grep -qiE "REPLACE_ME|change-me"; }
+
+if ! is_placeholder "${Stripe__ApiKey:-}"; then
+  case "${Stripe__ApiKey:-}" in
+    sk_live_*) grn "  ok       Stripe__ApiKey is a LIVE key" ;;
+    sk_test_*) ylw "  WARNING  Stripe__ApiKey is a TEST key — this will provision TEST prices, not live" ;;
+    *) red "  Stripe__ApiKey is neither sk_live_ nor sk_test_"; fail=1 ;;
+  esac
+fi
+if ! is_placeholder "${Stripe__WebhookSecret:-}"; then
+  case "${Stripe__WebhookSecret:-}" in
+    whsec_*) grn "  ok       Stripe__WebhookSecret shape" ;;
+    *) red "  Stripe__WebhookSecret must start with whsec_"; fail=1 ;;
+  esac
+fi
 [ "${payments__active_provider:-}" = "stripe" ] && grn "  ok       payments__active_provider=stripe" \
   || { red "  payments__active_provider must be 'stripe' for the Stripe cutover"; fail=1; }
+
+# ---- delivery: where the buyer is sent, and how they are told about it ----
+# The post-payment redirect must land on the storefront. If it points at the API host the
+# buyer pays and lands on a 404, because /orders/success is a Next.js page the API never
+# serves. STORE_STOREFRONT_URL wins; STORE_ALLOWED_ORIGIN is the fallback the API also uses.
+STOREFRONT="${STORE_STOREFRONT_URL:-${STORE_ALLOWED_ORIGIN:-}}"
+if [ -z "$STOREFRONT" ]; then
+  red "  MISSING  STORE_STOREFRONT_URL (and STORE_ALLOWED_ORIGIN) — buyers would be redirected to a 404 after paying"
+  fail=1
+elif [ -n "${STORE_PUBLIC_URL:-}" ] && [ "$STOREFRONT" = "$STORE_PUBLIC_URL" ]; then
+  red "  STORE_STOREFRONT_URL must be the STOREFRONT host, not the API host ($STORE_PUBLIC_URL)."
+  red "  As set, every buyer lands on a 404 after paying. See .env.production.example."
+  fail=1
+else
+  grn "  ok       storefront redirect target ($STOREFRONT)"
+fi
+
+[ -n "${STORE_PUBLIC_URL:-}" ] && grn "  ok       STORE_PUBLIC_URL (magic-link email base)" \
+  || { red "  MISSING  STORE_PUBLIC_URL — fulfilment emails cannot be addressed"; fail=1; }
+
+# Postmark is a WARNING, not a failure: the success page now delivers the download directly
+# from the checkout session, so a purchase is still fulfillable without email. But the buyer
+# gets no receipt and no way back to their pack, so going live without it is a real cost.
+if [ -z "${POSTMARK_SERVER_TOKEN:-}" ] || [ -z "${POSTMARK_FROM_EMAIL:-}" ] \
+   || printf '%s' "${POSTMARK_SERVER_TOKEN:-}" | grep -qi "REPLACE_ME"; then
+  ylw "  WARNING  Postmark is not configured — buyers get NO confirmation email."
+  ylw "           Delivery falls back entirely to the success page. Set POSTMARK_SERVER_TOKEN"
+  ylw "           and POSTMARK_FROM_EMAIL (a verified Postmark sender signature) to fix."
+else
+  grn "  ok       Postmark fulfilment email configured"
+fi
 
 if [ "$fail" -ne 0 ]; then red "==> Validation failed. Fix the above in $ENV_FILE and re-run."; exit 1; fi
 grn "==> Validation passed."

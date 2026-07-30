@@ -22,6 +22,12 @@ export default function OrderSuccess() {
 
   const [phase, setPhase] = React.useState<Phase>('resolving');
   const [items, setItems] = React.useState<SessionOrderItem[]>([]);
+  const [copied, setCopied] = React.useState(false);
+
+  // Resolved after mount, never during SSR: reading window on the server would either throw or
+  // bake the build machine's origin into the HTML and cause a hydration mismatch.
+  const [origin, setOrigin] = React.useState('');
+  React.useEffect(() => setOrigin(window.location.origin), []);
 
   React.useEffect(() => {
     if (!isReady) return;
@@ -65,7 +71,7 @@ export default function OrderSuccess() {
 
   return (
     <MarketingLayout>
-      <Seo title="Order Confirmed – Prospector Store" />
+      <Seo title="Order Confirmed – Mumchimp" />
 
       <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-bg px-6 py-16">
         <div className="flex w-full max-w-2xl flex-col items-center text-center gap-8">
@@ -82,7 +88,7 @@ export default function OrderSuccess() {
                 ? 'Your payment was received. Your download is ready below.'
                 : phase === 'resolving'
                   ? 'Your payment was received. Preparing your download…'
-                  : 'Your payment was received. A download link is on its way to your inbox.'}
+                  : 'Your payment was received and your purchase is safe.'}
             </p>
           </div>
 
@@ -98,9 +104,33 @@ export default function OrderSuccess() {
                   Download {item.packTitle}
                 </a>
               ))}
-              <p className="text-xs text-muted">
-                We have also emailed you a personal link, so you can come back to this any time.
-              </p>
+              {/* No confirmation email is sent while POSTMARK_SERVER_TOKEN is unset in production,
+                  so this page is currently the buyer's ONLY route back to what they paid for.
+                  Promising an inbox link we do not send is what turns a lost tab into a refund.
+                  When Postmark is configured, restore the "we emailed you a copy" line HERE. */}
+              {items[0]?.orderPath && (
+                <div className="rounded-xl border border-border bg-surface2 p-4 text-left">
+                  <p className="text-sm font-semibold text-text">Save this link now</p>
+                  <p className="mt-1 text-xs text-muted">
+                    It is your permanent access link — it does not expire. Bookmark it or copy it
+                    somewhere safe before closing this page.
+                  </p>
+                  <code className="mt-2 block break-all rounded-lg bg-bg px-3 py-2 font-mono text-[11px] text-text">
+                    {origin}
+                    {items[0].orderPath}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(`${origin}${items[0].orderPath}`);
+                      setCopied(true);
+                    }}
+                    className="mt-2 text-xs font-semibold text-primary underline"
+                  >
+                    {copied ? 'Copied ✓' : 'Copy link'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -116,26 +146,30 @@ export default function OrderSuccess() {
 
           {(phase === 'no-session' || phase === 'timed-out') && (
             <div className="bg-surface2 border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-4">
-              <div className="flex items-start gap-3">
-                <Icon name="mail" size={16} className="text-primary mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-text">Check your email</p>
-                  <p className="text-xs text-muted mt-0.5">
-                    {phase === 'timed-out'
-                      ? 'This is taking longer than usual. Your purchase is safe and your link will arrive by email shortly.'
-                      : 'We have sent a magic download link to the email you used at checkout. It may take a minute or two to arrive.'}
-                  </p>
-                </div>
-              </div>
+              {/* Do NOT tell the buyer to check their inbox: no fulfilment email is sent while
+                  POSTMARK_SERVER_TOKEN is unset. Sending them to an empty inbox loses the sale.
+                  Give them the one reference that actually lets support find the order. */}
               <div className="flex items-start gap-3">
                 <Icon name="shield" size={16} className="text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-text">Secure, expiring link</p>
+                  <p className="text-sm font-semibold text-text">
+                    {phase === 'timed-out' ? 'Your purchase is safe' : 'No order found on this page'}
+                  </p>
                   <p className="text-xs text-muted mt-0.5">
-                    The link is personal to you. Your pack is ready to download immediately.
+                    {phase === 'timed-out'
+                      ? 'Payment went through, but we could not show your download here in time. Send us the reference below and we will get your pack to you straight away.'
+                      : 'This page was opened without a checkout reference, so there is nothing to show. If you have paid, contact us with your payment receipt and we will sort it out.'}
                   </p>
                 </div>
               </div>
+              {sessionId && (
+                <div>
+                  <p className="text-xs font-semibold text-text">Your order reference</p>
+                  <code className="mt-1 block break-all rounded-lg bg-bg px-3 py-2 font-mono text-[11px] text-text">
+                    {sessionId}
+                  </code>
+                </div>
+              )}
             </div>
           )}
 

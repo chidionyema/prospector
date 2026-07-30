@@ -18,7 +18,7 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     q: 'What makes a pack "grounded"?',
     a: (
       <>
-        Every pack passed the Prospector engine&apos;s six checks (real pain, durable value, room past incumbents, a solvent payer, a distribution route, and legality) and survived an adversarial review. Every claim and number cites a retrievable source, or it isn&apos;t in the pack.
+        Every pack passed the Mumchimp engine&apos;s six checks (real pain, durable value, room past incumbents, a solvent payer, a distribution route, and legality) and survived an adversarial review. Every claim and number cites a retrievable source, or it isn&apos;t in the pack.
       </>
     ),
   },
@@ -26,7 +26,7 @@ const FAQS: { q: string; a: React.ReactNode }[] = [
     q: 'How do I get the pack after I pay?',
     a: (
       <>
-        Checkout runs through Stripe. As soon as payment succeeds you get a time-limited download link, so the pack is in your hands within seconds.
+        Checkout runs through Stripe. As soon as payment succeeds you get your download link on screen, so the pack is in your hands within seconds. The link is permanent — bookmark it and you can re-download whenever you need to.
       </>
     ),
   },
@@ -90,7 +90,7 @@ export default function Faq() {
     <MarketingLayout>
       <Seo
         title="FAQ"
-        description="The packs, the payment, and the guarantees. Common questions about the Prospector Store."
+        description="The packs, the payment, and the guarantees. Common questions about Mumchimp."
       />
 
       <PageHero

@@ -5,7 +5,7 @@ import { LEGAL, BRAND } from '@/lib/config';
 import { useDisclosure } from '@/lib/useDisclosure';
 
 /**
- * High-fidelity shell for the Prospector Store marketing pages. Purely presentational.
+ * High-fidelity shell for the Mumchimp marketing pages. Purely presentational.
  * Standardises the pure-white canvas with the noise grain filter (0.02 opacity).
  *
  * IDENTITY-BLINDNESS: never carries or fetches user identity.
@@ -169,7 +169,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
 
           {/* Digital-goods disclaimer */}
           <p className="mt-12 md:mt-16 text-[10px] font-medium text-muted/50 leading-relaxed text-left max-w-5xl tracking-wide">
-            Prospector packs are digital research products sold for information only, not financial, legal, or investment advice. Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
+            Mumchimp packs are digital research products sold for information only, not financial, legal, or investment advice. Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
           </p>
 
         </div>
