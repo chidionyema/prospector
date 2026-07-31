@@ -310,6 +310,33 @@ export async function fetchCatalogStats(): Promise<CatalogStats | null> {
   }
 }
 
+/** Analytics beacon payload — the client half of the server-side allowlist contract
+ *  (AnalyticsEndpoints.cs). Event-name typing lives in src/lib/analytics.ts. */
+export interface AnalyticsEventBody {
+  name: string;
+  path: string | null;
+  sessionId: string | null;
+  meta: string | null;
+}
+
+/** Fire-and-forget analytics beacon. keepalive lets the request survive a same-instant
+ *  navigation (the hero CTAs navigate on click). Failures are swallowed: an uncounted
+ *  event is the correct failure mode — analytics must never break the page. */
+export function recordAnalyticsEvent(body: AnalyticsEventBody): void {
+  try {
+    void fetch(`${API_BASE_URL}/events`, {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {
+      /* swallowed */
+    });
+  } catch {
+    /* swallowed */
+  }
+}
+
 export interface OrderDetails {
   packId: string;
   packTitle: string;

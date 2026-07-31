@@ -12,6 +12,7 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
     public DbSet<IdempotencyJournalEntry> IdempotencyJournal => Set<IdempotencyJournalEntry>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
     public DbSet<WaitlistSignup> WaitlistSignups => Set<WaitlistSignup>();
+    public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,10 +69,26 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
             entity.HasIndex(e => e.ExpiresAt);
         });
 
+        ConfigureEventTables(modelBuilder);
+    }
+
+    private static void ConfigureEventTables(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<WebhookEvent>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.Provider, e.ProviderEventId }).IsUnique();
+        });
+
+        modelBuilder.Entity<AnalyticsEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // The only read path is the summary endpoint: counts by name over a date window.
+            entity.HasIndex(e => new { e.Name, e.CreatedAt });
+            entity.Property(e => e.Name).HasMaxLength(64);
+            entity.Property(e => e.Path).HasMaxLength(256);
+            entity.Property(e => e.SessionId).HasMaxLength(64);
+            entity.Property(e => e.Meta).HasMaxLength(512);
         });
     }
 }

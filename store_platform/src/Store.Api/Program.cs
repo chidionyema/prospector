@@ -646,6 +646,9 @@ app.MapCheckoutEndpoints();
 app.MapWebhookEndpoints();
 app.MapDeliveryEndpoints();
 
+// First-party storefront analytics (ingest + key-gated summary) — see Endpoints/AnalyticsEndpoints.cs.
+app.MapAnalyticsEndpoints();
+
 await app.RunAsync().ConfigureAwait(false);
 
 // Top-level statements compile to an internal Program, which WebApplicationFactory<T> cannot
