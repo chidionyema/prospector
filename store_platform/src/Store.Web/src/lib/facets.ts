@@ -117,19 +117,37 @@ const LABELS: Record<FacetKind, Record<string, string>> = {
     picks_and_shovels: 'Picks and shovels',
     data_intelligence: 'Data intelligence',
   },
+  /**
+   * Sector display copy. The old set read as a government directory ("Licensing and admin",
+   * "Employment and pay", "Other") — accurate, but it described the paperwork rather than the
+   * opportunity, and a buyer scanning a shelf of £49 packs has no reason to click "Other".
+   *
+   * These are LABELS ONLY. The codes below are the closed cross-language contract shared with
+   * `prospector/facets.py` and `PackFacets.cs`; nothing here renames, merges or splits a code.
+   * That matters because the obvious "improvement" is to merge — e.g. one "worker justice" tag
+   * over both `employment_pay` and `care_benefits`. That would silently make the three
+   * vocabularies disagree and break the filter contract, so it is not done here: two codes stay
+   * two labels.
+   *
+   * The bar every string had to clear: punchier tone, but still only describing WHAT THE SECTOR
+   * IS. No label may assert an outcome the dossier has not proven. "Niche cash cows" for `other`
+   * and "Lucrative" anything are rejected on exactly that basis — profitability is a claim, and
+   * on a storefront whose position is "every claim sourced", a category cannot be the one place
+   * we assert something with no source behind it.
+   */
   sector: {
-    licensing_admin: 'Licensing and admin',
-    employment_pay: 'Employment and pay',
-    housing_rental: 'Housing and rental',
-    care_benefits: 'Care and benefits',
-    trades_construction: 'Trades and construction',
-    pets_animals: 'Pets and animals',
-    creative_rights: 'Creative rights',
+    licensing_admin: 'Red-tape and licensing',
+    employment_pay: 'Pay and worker rights',
+    housing_rental: 'Housing and tenancy',
+    care_benefits: 'Care and benefits claims',
+    trades_construction: 'Trades and site work',
+    pets_animals: 'The pet economy',
+    creative_rights: 'Creator rights',
     property_probate: 'Property and probate',
     energy_planning: 'Energy and planning',
-    retail_inventory: 'Retail and inventory',
+    retail_inventory: 'Retail and stock',
     professional_services: 'Professional services',
-    other: 'Other',
+    other: 'Specialist niches',
   },
 };
 

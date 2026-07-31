@@ -150,8 +150,14 @@ function PackCard({ pack }: { pack: Pack }) {
         <h3 className="text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary">
           {name}
         </h3>
+        {/* Given real weight (sm/text-80, not xs/muted). The name stays the H3 — a live
+            descriptor runs to 90+ chars ("PitchCall Forensics — The Under-27 Gig Driver's
+            Insurance-Refusal Reversal & Telematics-Data Subject-Access Round"), so promoting it
+            to the heading gives twenty cards of wrapped bold text instead of a scannable shelf.
+            But "PitchBrief" alone means nothing to a first-time visitor, so what the thing
+            actually DOES can no longer be the quietest line on the card. */}
         {descriptor && (
-          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-muted">{descriptor}</p>
+          <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-relaxed text-text/80">{descriptor}</p>
         )}
 
         {/* Scannable label/value rows, not a paragraph. `Who pays` is gone: the payer facet chip
