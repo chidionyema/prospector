@@ -50,6 +50,19 @@ const eslintConfig = defineConfig([
     files: ["src/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
+      // A leading underscore is how this codebase already says "deliberately unused" — the stub
+      // signatures in lib/api/client.ts keep named parameters so the shape of the real API stays
+      // readable. The convention was written but never configured, so it produced warnings for
+      // saying exactly what the rule wanted said. Anything NOT underscored still reports.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
       "@typescript-eslint/ban-ts-comment": [
         "error",
         { "ts-expect-error": true, "ts-ignore": true, "ts-nocheck": true, "ts-check": false },

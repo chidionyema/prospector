@@ -623,13 +623,19 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
         {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
             "0", so it means a different number of pixels in every font: the old max-w-[24ch]
             measured 576px in SF Pro but 819px in Verdana. That made the headline's line count a
-            function of which font the platform happened to pick — and since --font-sans names
-            "Inter", which this site never loads (globals.css), every OS picks a different one.
-            macOS landed on 2 lines and CI Linux on 3, putting the first card at y=718.5 with
-            1.5px showing. Measured minimum width for 2 lines: SF Pro 652px, Arial/Liberation
-            736px, Tahoma 768px, Verdana 872px — 56rem (896px) clears all of them. It does not
-            widen the headline, because text-balance shortens the lines to even them up: the
-            longest rendered line is 677px, narrower than the 736px box this replaces. */}
+            function of which font the platform happened to pick, back when --font-sans named
+            "Inter" and nothing ever downloaded it, so every OS picked a different one. macOS
+            landed on 2 lines and CI Linux on 3, putting the first card at y=718.5 with 1.5px
+            showing. Measured minimum width for 2 lines: SF Pro 652px, Arial/Liberation 736px,
+            Tahoma 768px, Verdana 872px — 56rem (896px) clears all of them. It does not widen the
+            headline, because text-balance shortens the lines to even them up: the longest
+            rendered line is 677px, narrower than the 736px box this replaces.
+
+            globals.css now really does load and apply Hanken Grotesk, so the platform no longer
+            gets a vote — but the absolute cap stays, and stays the thing under test. It is what
+            makes this headline survive the font being slow, blocked, or swapped: measured with
+            the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
+            is still 2 and the first card still clears the fold by 88px at worst. */}
         <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           Skip 6 months of research. Launch a business that&apos;s already vetted.
         </h1>

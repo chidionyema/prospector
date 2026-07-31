@@ -37,13 +37,17 @@ describe('isStripeApiReachable', () => {
 
   it('fails safe — reports reachable when there is no fetch to probe with', async () => {
     // Never block a sale on the probe's own unavailability.
-    const original = globalThis.fetch;
-    // @ts-expect-error deliberately removing the global to simulate an environment without it
-    delete globalThis.fetch;
+    // `delete globalThis.fetch` is a type error only because lib.dom declares `fetch` as
+    // required. Narrowing the view of globalThis to one optional property says the same thing to
+    // the compiler without suppressing it — a ts-expect-error here would also swallow any real
+    // type error this line grew later.
+    const globalWithFetch = globalThis as { fetch?: typeof globalThis.fetch };
+    const original = globalWithFetch.fetch;
+    delete globalWithFetch.fetch;
     try {
       await expect(isStripeApiReachable()).resolves.toBe(true);
     } finally {
-      globalThis.fetch = original;
+      globalWithFetch.fetch = original;
     }
   });
 });
