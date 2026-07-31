@@ -224,6 +224,27 @@
     "payer": "b2b",
     "sector": "trades_construction"
   },
+  "65d1d898e62cf5b9": {
+    "_evidence": {
+      "advantages": "candidate.structural_form = \"productized_service\" delivered per claimant on contingency — the buyer runs recovery cases, rather than shipping a built artefact.",
+      "effort": "candidate.automatability = 0.8 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
+      "mechanism": "candidate.structural_form = \"productized_service\"",
+      "payer": "candidate.who_pays: \"Gen Z semi-pro esports players, online-poker and skill-game competitors, and creator-competitors aged 18-27\" — individuals, \"paid on contingency (a percentage of recovered cash)\".",
+      "sector": "No SECTOR member covers cross-border withholding-tax reclaim on prize money (tags: esports, cross_border_tax, prize_money). \"other\" is the explicit catch-all; the alternatives would be coercion to nearest."
+    },
+    "_title": "WithholdBack — The Prize-Money Withholding Reclaim Desk for Young Competitors",
+    "_unresolved": {
+      "commitment": "no dossier field; decide from candidate.hypothesis = \"Lens: analogical — lift the touring-musician / travelling-athlete withholding-tax reclaim model (specialists who recover the 15–30% that foreign tax authorities skim from cross-border performance income) and drop it onto competitive gaming,\". Allowed: ['evenings', 'part_time', 'full_time']"
+    },
+    "advantages": [
+      "ops"
+    ],
+    "commitment": null,
+    "effort": "automatable",
+    "mechanism": "productized_service",
+    "payer": "b2c",
+    "sector": "other"
+  },
   "7fc5a381ad82c1ed": {
     "_evidence": {
       "advantages": "productized_service run against local authorities needs the certification workflow operated (ops) and electricians won one at a time (sales) — the same pair as PlateStart, the other licensing_admin productized_service",

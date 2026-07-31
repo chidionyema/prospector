@@ -145,6 +145,37 @@ class TestVocabularyMatchesTheOtherTwoCopies:
             assert f'"{value}"' in source, f"{value} missing from PackFacets.cs"
 
 
+class TestThePromptAsksForTheKeysNormalizeReads:
+    """The fourth copy of the contract is prompts/content_gen.md, and it is the only one no
+    type checker sees. It shipped asking the model for "advantage" while normalize reads
+    "advantages" — a mismatch that loses no test and throws no error, it just silently drops
+    the multi-valued facet the spec calls "the primary router input" on every pack the engine
+    publishes. Nothing else in the suite would have caught it.
+    """
+
+    @pytest.fixture(scope="class")
+    def prompt(self):
+        return (REPO_ROOT / "prompts" / "content_gen.md").read_text(encoding="utf-8")
+
+    @pytest.mark.parametrize("key", list(facets.SINGLE_VALUED) + ["advantages"])
+    def test_every_key_normalize_reads_is_a_key_the_prompt_asks_for(self, prompt, key):
+        assert f'"{key}"' in prompt, f'content_gen.md never asks the model for "{key}"'
+
+    def test_the_singular_spelling_is_gone(self, prompt):
+        # normalize reads raw.get("advantages"); "advantage" would be discarded in silence.
+        assert '"advantage"' not in prompt
+
+    @pytest.mark.parametrize(
+        "vocabulary", [facets.ADVANTAGE, facets.PAYER, facets.EFFORT,
+                       facets.COMMITMENT, facets.MECHANISM, facets.SECTOR],
+    )
+    def test_every_allowed_value_is_offered_to_the_model(self, prompt, vocabulary):
+        # A member the prompt never lists is a member the model will never emit, so the
+        # facet would look "decided" in code and be unreachable in production.
+        for value in vocabulary:
+            assert value in prompt, f"content_gen.md never offers {value!r}"
+
+
 class TestBackfillFile:
     """AC-4 — the reviewed backfill covers every live pack and never guesses."""
 

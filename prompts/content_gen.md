@@ -45,8 +45,38 @@ parentheses.
   "proof_point": "<the single strongest verified claim, quoting its figure and naming the source>",
   "who_pays": "<one line naming the specific buyer and how they are reached>",
   "effort_tag": "<exactly one of: low | medium | high>",
+  "facets": {
+    "advantages": ["<0-3 of: code | nocode | sales | ops | audience>"],
+    "payer": "<one of: b2b | b2c | b2g>",
+    "effort": "<one of: automatable | part_automatable | hands_on>",
+    "commitment": "<one of: evenings | part_time | full_time>",
+    "mechanism": "<one of: productized_service | vertical_tool | transaction_broker | risk_financing | physical_ops | audience_media | picks_and_shovels | data_intelligence>",
+    "sector": "<one of: licensing_admin | employment_pay | housing_rental | care_benefits | trades_construction | pets_animals | creative_rights | property_probate | energy_planning | retail_inventory | professional_services | other>"
+  },
   "time_to_first_revenue": "<a time range ONLY if a verified claim states one; otherwise \"\">",
   "cta_text": "<5-8 word buy-button label>",
   "copy": "<full prose version combining the above, for fallback rendering>"
 }
+
+FACET RULES — these route a real buyer to a real purchase, so they are held to the same bar
+as every other claim in this system.
+
+- OMIT ANY FACET YOU CANNOT JUSTIFY FROM THE DOSSIER. NEVER GUESS. An absent facet is a
+  correct answer: the storefront lists an untagged pack under "All" and says plainly that it
+  is not tagged yet. A guessed facet is a filter that lies, and a filter that lies is worse
+  than no filter on a catalogue whose whole position is that every claim is sourced.
+- Use EXACTLY the tokens above, lower-case with underscores. Anything else is discarded.
+- `advantage` is what the BUYER must already have to run this well — not what the business
+  sells. A no-code tool built for a seller-operator is `["sales"]`, not `["nocode"]`, if
+  selling is the hard part.
+- `effort` is how much of DELIVERY a machine can do. `commitment` is how many HOURS running
+  it takes. They are independent: a hands-on service can be evenings-only, and an automatable
+  tool can still be a full-time sales grind. Do not derive one from the other.
+- `effort` is NOT a translation of `effort_tag`. `low | medium | high` was never defined to
+  mean machine-doability; decide `effort` from the delivery description in the dossier alone.
+- `mechanism` is how it MAKES MONEY, the structural form. It must be one of the eight above.
+  If the idea's form is not in that list, omit `mechanism` rather than picking the nearest.
+- `payer` is who signs the cheque, not who benefits. A tool a council buys to serve residents
+  is `b2g`.
+
 Output NOTHING except that one JSON object.
