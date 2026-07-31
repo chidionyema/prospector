@@ -37,6 +37,13 @@ export default function TermsPage() {
         products only</strong> — they are not financial advice, investment advice, legal advice,
         or any other form of professional advisory service.
       </LegalText>
+      <LegalText>
+        Some Packs research an opportunity in a jurisdiction other than the United Kingdom (for
+        example, the United States). This is research and informational content only, sold to you
+        wherever you are purchasing from; it does not make us subject to that jurisdiction&rsquo;s
+        law, and it does not change the governing law of these Terms, which remains {LEGAL.governingLaw}
+        (clause&nbsp;10).
+      </LegalText>
 
       <LegalHeading>2. Licence to use</LegalHeading>
       <LegalText>

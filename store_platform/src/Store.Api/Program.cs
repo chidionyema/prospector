@@ -148,7 +148,7 @@ static string[] RehydrateStringArray(string? json)
     catch (JsonException) { return []; }
 }
 
-app.MapGet("/catalog", async (StoreDbContext db) =>
+app.MapGet("/catalog", async (StoreDbContext db, string? market) =>
 {
     // Materialise first, then shape: AdvantagesJson is JSON text (SQLite has no array
     // column) and must be rehydrated in memory — EF cannot translate the parse into SQL.
@@ -160,6 +160,18 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
         .OrderByDescending(p => p.CreatedAt)
         .ToListAsync()
         .ConfigureAwait(false);
+
+    // ?market= is a boost-don't-block filter for the storefront's geo-aware shelf, not a second
+    // sellability fence: an absent param returns every listed pack, unchanged from before this
+    // existed. Many rows predate the engine tracking markets at all, so a null Market is treated
+    // as "uk" here — the same rule the storefront applies when it groups packs for display.
+    if (!string.IsNullOrWhiteSpace(market))
+    {
+        var wanted = market.Trim();
+        packs = packs
+            .Where(p => string.Equals(p.Market ?? "uk", wanted, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
 
     return packs.Select(p => new {
         p.Id,
