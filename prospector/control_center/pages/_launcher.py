@@ -115,8 +115,9 @@ def _lane_select(key: str):
         _readers.launch_lane_choices(),
         index=0,
         key=key,
-        format_func=lambda x: "(multi-lane / config)" if x == "" else x,
-        help="side_hustle / smb / growth / venture. Empty = multi-lane fan-out.",
+        format_func=lambda x: "(MIX multi-lane — not catalogue default)" if x == "" else x,
+        help="Catalogue default: side_hustle. MIX (empty) fans across active_lanes — "
+             "use only for deliberate mix jobs, not catalogue yield.",
     )
 
 
@@ -141,6 +142,19 @@ def _archetype_select(key: str):
         key=key,
         format_func=lambda x: "(lane default)" if x == "" else x,
         help="Founder capacity: solo_agent / small_team / startup. Generation-only.",
+    )
+
+
+def _profile_select(key: str):
+    from prospector.control_center import readers as _readers
+    return st.selectbox(
+        "Profile",
+        _readers.launch_profile_choices(),
+        index=0,
+        key=key,
+        format_func=lambda x: "(none — research / unsteered)" if x == "" else x,
+        help="Catalogue default: statutory_compliance_pack. "
+             "Generation steering only (forms + focus); never a gate.",
     )
 
 
@@ -250,10 +264,18 @@ def _render_completion(job: dict):
 # Forms
 # ---------------------------------------------------------------------------
 
+# Catalogue yield: keep k small. Multi-lane MIX is a separate job — not this slider's job.
+_CATALOGUE_K_MAX = 5
+
+
 def _render_generate_form():
     with st.form("generate_form"):
-        st.markdown("**Generate + vet** — usual operator action")
-        candidates = st.slider("Candidates (k)", 1, 20, 5)
+        st.markdown("**Generate + vet (catalogue)** — side_hustle · statutory pack · publish")
+        st.caption(
+            "Default path for sellable UK packs. Multi-lane MIX is a separate research job "
+            "(pick “(MIX multi-lane…)” under Lane) — do not grind MIX at high k for catalogue."
+        )
+        candidates = st.slider("Candidates (k)", 1, _CATALOGUE_K_MAX, 5)
         exploration = st.slider("Exploration", 0.2, 0.9, 0.5, 0.1)
 
         col1, col2, col3 = st.columns(3)
@@ -262,6 +284,7 @@ def _render_generate_form():
             market = _market_select("generate_market")
         with col2:
             archetype = _archetype_select("generate_archetype")
+            profile = _profile_select("generate_profile")
             operator = _operator_select("generate_operator")
         with col3:
             persona = st.selectbox(
@@ -271,11 +294,24 @@ def _render_generate_form():
         fixtures = st.checkbox(
             "Offline fixtures (dry rehearsal)", value=False,
             help="Leave OFF for live runs.")
+        publish = st.checkbox(
+            "Publish on PASS", key="gen_pub", value=True,
+            help="Catalogue default ON. Artifacts + Store listing on PASS. "
+                 "Provisional PASSes never publish.")
+        if not lane:
+            st.warning(
+                "MIX multi-lane selected — this is not the catalogue default. "
+                f"k is still capped at {_CATALOGUE_K_MAX}. Prefer side_hustle + "
+                "statutory_compliance_pack + publish for yield."
+            )
         _scope_hint("generate", candidates, operator, fixtures)
         if st.form_submit_button("Launch generate", type="primary"):
+            if candidates > _CATALOGUE_K_MAX:
+                st.error(f"Catalogue generate caps k at {_CATALOGUE_K_MAX}.")
+                return
             _launch_generate(
                 candidates, exploration, lane, operator, fixtures, persona, board,
-                market=market, archetype=archetype)
+                market=market, archetype=archetype, profile=profile, publish=publish)
 
 
 def _render_vet_form():
@@ -373,13 +409,15 @@ def _maybe_operator(argv: list[str], operator: str) -> list[str]:
 
 
 def _maybe_scope(argv: list[str], *, lane: str = "", market: str = "",
-                 archetype: str = "") -> list[str]:
+                 archetype: str = "", profile: str = "") -> list[str]:
     if lane:
         argv += ["--lane", lane]
     if market:
         argv += ["--market", market]
     if archetype:
         argv += ["--archetype", archetype]
+    if profile:
+        argv += ["--profile", profile]
     return argv
 
 
@@ -421,18 +459,21 @@ def _launch_signal(text, count, lane, operator, fixtures, publish, persona, boar
 
 
 def _launch_generate(candidates, exploration, lane, operator, fixtures, persona, board,
-                     market="", archetype=""):
+                     market="", archetype="", profile="", publish=False):
     argv = [_sys.executable, "-m", "prospector.run", "generate",
             "--candidates", str(candidates),
             "--exploration", str(exploration)]
     argv = _maybe_operator(argv, operator)
-    argv = _maybe_scope(argv, lane=lane, market=market, archetype=archetype)
+    argv = _maybe_scope(argv, lane=lane, market=market, archetype=archetype,
+                        profile=profile)
     if persona:
         argv += ["--persona", persona]
     if board:
         argv += ["--board"]
     if fixtures:
         argv += ["--fixtures", "fixtures/golden_fixtures.json"]
+    if publish:
+        argv += ["--publish"]
     _do_launch(argv)
 
 

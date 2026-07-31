@@ -74,6 +74,27 @@ def build_dossier(
         elif gate_fired == "adversarial_decisive":
             adv_text = adversarial.kill_case if adversarial else "the case against it was decisive"
             reason = f"It failed on: {labelled} — {adv_text}"
+        elif gate_fired == "moat_ungrounded":
+            moat_checks = tuple(getattr(cfg.thresholds, "moat_critical_checks",
+                                        ("value_durability", "incumbency")))
+            reason = (f"It failed on: {labelled} — no publish-critical check "
+                      f"({', '.join(moat_checks)}) was grounded-supported. "
+                      f"Source-or-die: refuse to publish without grounded evidence "
+                      f"on the lane's decisive dimension.")
+        elif gate_fired == "source_or_die":
+            floor = getattr(cfg.thresholds, "min_supported_confidence", None)
+            if floor is None:
+                floor = cfg.thresholds.confidence_floor
+            min_supported = getattr(cfg.thresholds, "min_supported_to_pass", 1)
+            n_supported = sum(1 for c in checks
+                              if c.verdict.value == "supported" and c.confidence >= floor)
+            reason = (f"It failed on: {labelled} — only {n_supported} "
+                      f"grounded-supported check(s) (need {min_supported}). "
+                      f"Source-or-die: refuse to publish on unverifiable evidence.")
+        elif gate_fired == "min_composite":
+            reason = (f"It failed on: {labelled} — even the theoretical maximum "
+                      f"composite cannot clear "
+                      f"{cfg.thresholds.min_composite_to_pass}.")
         else:
             reason = f"It failed on: {labelled}."
     elif score is not None and passes_composite(score, cfg):

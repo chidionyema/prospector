@@ -18,10 +18,38 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
+from . import facets
 from .models import Candidate, CheckResult, Verdict
-from .operator import Operator
+from .operator import Operator, ParseError, _extract_json
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
 from .telemetry import logger
+
+# Prose pack bodies: schema is {"type", "content"} where content is markdown.
+# cursor_cli often emits the markdown body without the JSON envelope.
+_PROSE_ARTIFACT_TYPES = frozenset({"build_spec", "gtm_plan", "ops_plan"})
+
+
+def _coerce_bare_markdown_artifact(text: str, t: str) -> dict:
+    """Wrap a bare-markdown CLI reply into the prose artifact JSON envelope."""
+    content = (text or "").strip()
+    if not content:
+        raise ParseError(f"empty response for artifact '{t}'")
+    if content.startswith("```"):
+        lines = content.split("\n")
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        content = "\n".join(lines).strip()
+        try:
+            return _extract_json(content)
+        except ParseError:
+            pass
+    if content.startswith("#") or ("\n## " in content and len(content) >= 400):
+        logger.info("Coerced bare-markdown CLI reply into artifact JSON envelope",
+                    extra={"type": t, "chars": len(content)})
+        return {"type": t, "content": content}
+    raise ParseError(f"cannot coerce response into artifact '{t}'")
 
 
 # ---------------------------------------------------------------------------
@@ -219,8 +247,11 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
     system, user = render("artifacts", candidate_json=cand_json,
                           claims_json=claims_json, type=t,
                           **(market_vars or {}))
+    coerce = ((lambda text: _coerce_bare_markdown_artifact(text, t))
+              if t in _PROSE_ARTIFACT_TYPES else None)
     data = op.complete_json(system, user, temperature=0.3,
-                            validate=lambda d: _validate_artifact_shape(t, d))
+                            validate=lambda d: _validate_artifact_shape(t, d),
+                            coerce=coerce)
 
     # FIX #3: financial_model returns structured JSON — perform arithmetic in Python.
     if t == "financial_model" and isinstance(data, dict):
@@ -291,14 +322,24 @@ def generate_artifacts(
 # Marketing content + claim check
 # ---------------------------------------------------------------------------
 
-def verify_claims(op: Operator, copy: str, claims: List[Dict[str, Any]]) -> bool:
+def verify_claims(op: Operator, copy: str, claims: List[Dict[str, Any]]
+                  ) -> bool:
     """Check marketing/listing copy for claim-consistency (Part 5)."""
+    ok, _ = verify_claims_detail(op, copy, claims)
+    return ok
+
+
+def verify_claims_detail(op: Operator, copy: str, claims: List[Dict[str, Any]]
+                         ) -> tuple[bool, List[Dict[str, Any]]]:
+    """Like verify_claims, but also returns violation rows for regeneration feedback."""
     system, user = render("claim_check", copy=copy, claims_json=json.dumps(claims))
     try:
         data = op.complete_json(system, user, temperature=0.0)
-        return bool(data.get("pass", False))
+        ok = bool(data.get("pass", False))
+        viol = data.get("violations") if isinstance(data.get("violations"), list) else []
+        return ok, [v for v in viol if isinstance(v, dict)]
     except Exception:
-        return False
+        return False, []
 
 
 def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -341,7 +382,14 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
         "what_you_get": what,
         "proof_point": _s("proof_point"),
         "who_pays": _s("who_pays"),
+        # Legacy. Kept on the wire for one release so nothing that still reads it breaks;
+        # it is NOT the source of the `effort` facet below (spec 2.3 — low|medium|high was
+        # never defined to mean machine-doability, so mapping it would be a guess).
         "effort_tag": effort if effort in ("low", "medium", "high") else "",
+        # Discovery facets, validated against the closed vocabulary. Anything the operator
+        # invented is dropped to None here rather than coerced to the nearest member: the
+        # storefront routes buyers on these, and a coerced value is a claim nobody made.
+        "facets": facets.normalize(data.get("facets")),
         "time_to_first_revenue": _s("time_to_first_revenue"),
         "cta_text": _s("cta_text"),
     }
@@ -358,17 +406,22 @@ def _listing_check_text(piece: Dict[str, Any]) -> str:
 
 def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claims_json: str,
                      claims: List[Dict[str, Any]], t: str) -> Optional[Dict[str, Any]]:
-    """Generate one marketing piece with one regeneration attempt.
+    """Generate one marketing piece with regeneration that feeds claim-check violations.
 
     ``gen_op`` drafts the copy (cheap for ancillary pieces, the quality chain for the
     listing_page); ``check_op`` runs the claim-check — always the moat, because a verification
     gate must never be judged by the same cheap model that produced the copy. Returns None if
     the piece fails claim-check after the regeneration loop. Runs in a thread.
     """
-    for attempt in range(2):
+    feedback = ""
+    # listing_page is required for publish; give it one extra repair turn with violations.
+    attempts = 3 if t == "listing_page" else 2
+    for attempt in range(attempts):
         system, user = render("content_gen", candidate_json=cand_json,
                               claims_json=claims_json, type=t)
-        data = gen_op.complete_json(system, user, temperature=0.7)
+        if feedback:
+            user = f"{user}\n\n{feedback}"
+        data = gen_op.complete_json(system, user, temperature=0.7 if attempt == 0 else 0.3)
         if t == "listing_page":
             piece = _normalize_listing(data)
             check_text = _listing_check_text(piece)
@@ -376,10 +429,18 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
             piece = {"type": t, "copy": str(data.get("copy", ""))}
             check_text = piece["copy"]
 
-        if verify_claims(check_op, check_text, claims):
+        ok, violations = verify_claims_detail(check_op, check_text, claims)
+        if ok:
             return piece
-        logger.debug(f"Content {t} failed claim-check, regenerating (attempt {attempt + 1}/2)",
-                     extra={"type": t})
+        logger.info(
+            f"Content {t} failed claim-check, regenerating (attempt {attempt + 1}/{attempts})",
+            extra={"type": t, "violations_n": len(violations)})
+        feedback = (
+            "Your previous draft FAILED claim-check. Rewrite so every factual statement "
+            "is supported by the verified claims. Do NOT invent mechanics, tools, prices, "
+            "or channels. Empty optional fields are safer than invention. Violations:\n"
+            f"{json.dumps(violations, ensure_ascii=False)}"
+        )
 
     logger.warning(f"Dropping unverified marketing piece: {t}", extra={"type": t})
     return None

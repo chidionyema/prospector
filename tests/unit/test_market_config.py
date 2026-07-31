@@ -229,7 +229,43 @@ def test_active_market_in_config_is_applied_at_load(tmp_path):
     assert cfg.generation["candidates_per_signal"] == 7
 
 
-def test_status_reads_open_for_uk_and_closed_for_us_in_shipped_config():
+def test_status_reads_open_for_uk_and_us_in_shipped_config():
+    """UK baseline + US after readiness probe + markets open (2026-07-30)."""
     cfg = load_config()
     assert cfg.market_status("uk") == "open"
-    assert cfg.market_status("us") == "closed"
+    assert cfg.market_status("us") == "open"
+
+
+# MVP fields every closed stub must carry so `markets probe` is a config+calibration
+# exercise, not a scramble to invent authority domains after the fact.
+_STUB_REQUIRED = (
+    "label", "status", "readiness_ref", "search_region", "currency_hint",
+    "cache_salt", "authority_domains", "market_context",
+)
+_CLOSED_STUBS = ("africa", "nigeria", "europe", "asia")
+
+
+def test_closed_market_stubs_have_mvp_evidence_terrain():
+    """Closed markets are openable later only if the evidence terrain is defined now."""
+    cfg = load_config()
+    for code in _CLOSED_STUBS:
+        block = cfg.market_config(code)
+        assert cfg.market_status(code) == "closed", code
+        for key in _STUB_REQUIRED:
+            assert block.get(key) not in (None, "", []), f"{code} missing/empty {key}"
+        assert str(block["cache_salt"]).strip(), f"{code} cache_salt must be non-empty"
+        assert isinstance(block["authority_domains"], list) and block["authority_domains"]
+        assert len(str(block["market_context"]).strip()) >= 40
+        # Exemplars may live in config or prompts/markets/<code>/ — at least one path.
+        exemplars = block.get("exemplars") or {}
+        qg = exemplars.get("query_gen") if isinstance(exemplars, dict) else None
+        from pathlib import Path
+        frag = Path("prompts/markets") / code / "query_gen_exemplars.md"
+        assert (qg and len(qg) >= 1) or frag.exists(), (
+            f"{code} needs query_gen exemplars in config or {frag}")
+
+
+def test_uk_baseline_keeps_empty_cache_salt():
+    """UK salt '' preserves the pre-market store/_cache; must not be 'fixed' away."""
+    cfg = load_config()
+    assert cfg.market_config("uk").get("cache_salt", None) == ""

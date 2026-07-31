@@ -120,6 +120,21 @@ def test_fingerprint_changes_when_the_market_config_changes():
     assert mk.config_fingerprint(cfg, "us") != before
 
 
+def test_fingerprint_stable_across_status_flip():
+    """Opening a market must not invalidate the readiness fingerprint.
+
+    `status` is operational state, not measurement config. Hashing it made every
+    successful `markets open` immediately STALE.
+    """
+    cfg = load_config()
+    cfg.markets = {**cfg.markets,
+                   "us": {**cfg.markets["us"], "status": "closed"}}
+    before = mk.config_fingerprint(cfg, "us")
+    cfg.markets = {**cfg.markets,
+                   "us": {**cfg.markets["us"], "status": "open"}}
+    assert mk.config_fingerprint(cfg, "us") == before
+
+
 def test_fingerprint_changes_when_the_bar_changes():
     """A probe measured under different thresholds does not describe this engine."""
     import dataclasses
@@ -150,6 +165,97 @@ def test_shipped_us_calibration_set_is_valid():
     entries = mk.load_calibration_set(CALIBRATION_DIR / "us.jsonl")
     assert len(entries) >= 4
     assert {e["expected"] for e in entries} == {"pass", "kill"}
+
+
+def test_lane_resolved_fingerprint_differs_from_market_only():
+    """`probe --lane` must NOT hash lane gates into READINESS fingerprint.
+
+    show/open load config with no lane pin; a lane-resolved fingerprint would make
+    every successful pack probe look STALE. Probe code evaluates fingerprint on
+    load_config().for_market(market) only — this test pins why that matters.
+    """
+    base = load_config().for_market("us")
+    lane = base.for_lane("side_hustle")
+    assert mk.config_fingerprint(base, "us") != mk.config_fingerprint(lane, "us")
+    assert mk.config_fingerprint(base, "us") == mk.config_fingerprint(
+        load_config().for_market("us"), "us")
+
+
+def test_shipped_us_calibration_is_sole_state_pack_shaped():
+    """PASS rows are regulator-named packs; KILLs name FinCEN/FCRA/SEC illegality.
+
+    Shape guards the failure mode where a venture-scale idea is judged on the pack
+    lane (or vice versa). Does not touch readiness bars.
+    """
+    entries = mk.load_calibration_set(CALIBRATION_DIR / "us.jsonl")
+    passes = [e for e in entries if e["expected"] == "pass"]
+    kills = [e for e in entries if e["expected"] == "kill"]
+    assert len(passes) >= 2 and len(kills) >= 2
+    for e in passes:
+        blob = f"{e['title']} {e.get('one_liner', '')}".lower()
+        assert "pack" in blob, e["title"]
+        assert e.get("ambition_tier") == "side_hustle", e["title"]
+    pass_blob = " ".join(f"{e['title']} {e.get('one_liner', '')}".lower() for e in passes)
+    # Needles track regulator-named packs that are factually decidable on public
+    # US evidence. Do NOT require CSLB CE — California does not mandate contractor CE.
+    for needle in ("tdlr", "cosmetology", "2290", "cms", "dme"):
+        assert needle in pass_blob, needle
+    kill_blob = " ".join(f"{e['title']} {e.get('one_liner', '')}".lower() for e in kills)
+    assert "fincen" in kill_blob or "money" in kill_blob
+    assert "credit" in kill_blob or "fcra" in kill_blob
+    assert "broker" in kill_blob or "sec" in kill_blob
+
+
+def test_probe_honors_lane_on_calibration_candidates(monkeypatch, tmp_path):
+    """`markets probe --lane X` must stamp ambition_tier and vet under for_lane(X)."""
+    import argparse
+    from types import SimpleNamespace
+
+    from prospector import operator as operator_mod
+    from prospector import run as run_mod
+    from prospector.models import Decision, Dossier
+
+    cal = tmp_path / "cal.jsonl"
+    cal.write_text(
+        '{"title": "Pack A", "one_liner": "a pack", "expected": "pass"}\n'
+        '{"title": "Illegal B", "one_liner": "bad", "expected": "kill"}\n'
+    )
+    seen: list[tuple[str, str]] = []
+
+    def _gate_names(cfg) -> set[str]:
+        names = set()
+        for g in (cfg.hard_gates or []):
+            if isinstance(g, dict):
+                names.update(g.keys())
+            else:
+                names.add(str(g))
+        return names
+
+    def fake_vet(cand, op, search, cfg, **kwargs):
+        seen.append((cand.title, cand.ambition_tier))
+        assert "incumbency" not in _gate_names(cfg), cfg.hard_gates
+        return Dossier(candidate=cand, decision=Decision.KILL if "Illegal" in cand.title
+                       else Decision.PASS, checks=[])
+
+    monkeypatch.setattr(run_mod, "vet_candidate", fake_vet)
+    monkeypatch.setattr(operator_mod, "make_operator",
+                        lambda *a, **k: SimpleNamespace(name="mock"))
+    monkeypatch.setattr(run_mod, "_make_search", lambda *a, **k: SimpleNamespace())
+    monkeypatch.setattr(run_mod, "_build_config_and_overrides",
+                        lambda args: load_config().for_lane(args.lane).for_market(args.market))
+    monkeypatch.setattr(run_mod, "Store", lambda cfg: SimpleNamespace())
+    from prospector import progress, telemetry
+    monkeypatch.setattr(progress, "banner", lambda *a, **k: None)
+    monkeypatch.setattr(telemetry, "reset_usage", lambda: None)
+    monkeypatch.setattr(mk, "save_readiness",
+                        lambda cfg, readiness: tmp_path / "READINESS.json")
+    monkeypatch.setattr(mk, "format_readiness", lambda r: "ok")
+
+    args = argparse.Namespace(
+        set=str(cal), market="us", lane="side_hustle", probe=False,
+        operator=None, fixtures=None, config=None)
+    run_mod._run_market_probe(args, load_config(), "us", tmp_path / "log.jsonl")
+    assert seen == [("Pack A", "side_hustle"), ("Illegal B", "side_hustle")]
 
 
 def test_one_sided_calibration_set_is_rejected(tmp_path):

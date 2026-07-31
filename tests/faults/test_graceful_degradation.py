@@ -75,22 +75,28 @@ def test_empty_provider_yields_unverifiable_not_crash(cfg, cand):
 
 
 def test_verify_with_empty_provider_does_not_kill_or_raise(cfg, cand):
-    """verify() with an empty provider should terminate cleanly, never raise. Every
-    check comes back unverifiable (degraded), and because silence is not evidence NO
-    hard gate may fire — the candidate falls through to scoring rather than being
-    silence-killed."""
+    """verify() with an empty provider should terminate cleanly, never raise.
+
+    Silence is not cited disconfirming evidence — no HARD gate (refuted kill) may
+    fire. Soft PASS-floor early-exit (moat_ungrounded / source_or_die) is allowed:
+    same final KILL as finishing the suite then failing those floors in
+    build_dossier, without paying for adversarial/score on a dead idea.
+    """
+    from prospector.pass_ceiling import SOFT_EXIT_GATES
+
     op = MockOperator(router=_query_router)
     provider = _EmptyProvider()
 
     # Must not raise
     checks, adv, gate = verify(op, provider, cfg, cand)
 
-    # All six checks run to completion (no kill-fast short-circuit on silence).
     assert len(checks) >= 1
 
-    # No gate fires on an all-unverifiable candidate: a KILL must be grounded in
-    # cited disconfirming evidence, never in the absence of passages.
-    assert gate is None, "Silence must not fire a hard gate"
+    # Hard gates must not fire on silence; soft PASS-floor exit is OK.
+    hard = set(cfg.gate_map())
+    assert gate is None or gate in SOFT_EXIT_GATES, (
+        f"Silence must not fire a hard gate, got {gate!r}")
+    assert gate not in hard
 
     # All returned checks should be degraded (no passages retrieved)
     for check in checks:

@@ -136,9 +136,23 @@ def market_kwargs(cfg, *, for_moat: bool = False) -> dict[str, str]:
     }
     if for_moat:
         return moat
+
+    # require_subdivision (spec D2.5): a bare parent like "us" with the flag set must
+    # still push state/country naming into generation framing. The moat never sees this
+    # — only market_scope reaches verdict/adversarial.
+    context = str(block.get("market_context", "") or "").strip()
+    code = str(block.get("code", "") or "")
+    if block.get("require_subdivision") and code and "-" not in code:
+        reminder = (
+            f"SUBDIVISION REQUIRED: opportunities in {label or code} must name a "
+            f"specific sub-jurisdiction (e.g. {code}-xx). Do not leave the claim at "
+            f"the bare parent market."
+        )
+        context = f"{context}\n\n{reminder}".strip() if context else reminder
+
     return {
         **moat,
-        "market_context": str(block.get("market_context", "") or "").strip(),
+        "market_context": context,
         "market_label": label,
         "currency_hint": str(block.get("currency_hint", "") or ""),
         "market_exemplars": _fragment(chain, "query_gen_exemplars"),

@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Protocol
 from datetime import datetime
 from urllib.parse import urlparse
 
+from . import facets as facets_mod
 from .models import Dossier, Decision
 from .pack_validation import validate_pack
 
@@ -236,6 +237,13 @@ class EngineBridge:
         # 1. Prepare pack files
         artifacts = candidate.tags.get("artifacts", {})
         marketing = candidate.tags.get("marketing", [])
+        # Epic C lite: claim-safe listing floor so catalog metadata is never an empty stub
+        # when content_gen dropped marketing. validate_pack still requires real artifacts.
+        from .pack_floors import ensure_marketing_floor
+        marketing = ensure_marketing_floor(
+            marketing, candidate, getattr(dossier, "checks", []) or []
+        )
+        candidate.tags["marketing"] = marketing
 
         # AUTO-VERIFICATION GATE (FENCED): a pack may only be LISTED when its deliverable
         # is actually complete. Generation is non-critical and flaky — a tier can return
@@ -273,6 +281,11 @@ class EngineBridge:
             # never a pricing input. The pack still sells for £49 through the same rail.
             "market": getattr(candidate, "market", "") or "",
         }
+        # Discovery facets — the closed vocabulary the storefront routes buyers on. Already
+        # validated by artifacts._normalize_listing, so anything the operator invented is
+        # gone by here; to_wire drops the empties so a facet-light republish never untags a
+        # pack the backfill tagged (the Store API only overwrites what it was sent).
+        catalog_meta.update(facets_mod.to_wire(facets_mod.normalize(listing.get("facets"))))
         catalog_meta.update(_trust_fields(dossier))
         # Drop empties so the payload (and the Store API) only ever see populated fields.
         catalog_meta = {k: v for k, v in catalog_meta.items() if v not in ("", [], {}, None)}
@@ -315,9 +328,15 @@ class EngineBridge:
                 logger.error(f"EngineBridge: {payment_provider} provisioning failed: {e}")
                 return False
         else:
-            logger.warning(
-                f"EngineBridge: No {payment_provider} API key set. "
-                f"Using stubs for {candidate_id}"
+            # No provisioner for the active provider (no API key, or active_provider names
+            # a rail we hold no key for). The pack keeps its `price_stub_*` id, which the
+            # Store's checkout cannot bill against — so it must NOT go live. See the
+            # `priced` guard below; this branch only records why.
+            logger.error(
+                f"EngineBridge: No {payment_provider} provisioner available for "
+                f"{candidate_id} (keys: stripe={'set' if self.stripe_api_key else 'unset'}, "
+                f"paddle={'set' if self.paddle_api_key else 'unset'}). Pack will be "
+                f"published UNLISTED — a stub price id cannot take money."
             )
 
         # 3.5 Upload the deliverable to R2 (content-addressed by hash, so a later republish
@@ -338,10 +357,23 @@ class EngineBridge:
                     f"publishing UNLISTED (no deliverable in storage)."
                 )
 
-        # 4. Update Catalog via Store API. is_listed requires BOTH a complete pack AND the
-        # content in storage; the Store enforces the upload half server-side (defence in
-        # depth). The completeness half is enforced here at the only place packs are minted.
-        is_listed = uploaded and pack_complete
+        # 4. Update Catalog via Store API. is_listed requires a complete pack, the content
+        # in storage, AND a real provider price id; the Store enforces the upload half
+        # server-side (defence in depth). The other halves are enforced here at the only
+        # place packs are minted.
+        #
+        # The `priced` half is not theoretical: checkout builds a Stripe Checkout Session
+        # from ProviderPriceId, so a `price_stub_*` pack renders a buy button that returns
+        # HTTP 500. Listing an unbuyable pack is strictly worse than not listing it — the
+        # buyer's trust is spent before they learn we can't sell them anything. Same
+        # fail-closed rule as "no deliverable in storage".
+        priced = bool(provider_price_id) and not provider_price_id.startswith("price_stub_")
+        if not priced:
+            logger.error(
+                f"EngineBridge: {candidate_id} has no billable price id "
+                f"({provider_price_id!r}); publishing UNLISTED."
+            )
+        is_listed = uploaded and pack_complete and priced
 
         # Determine the content version: for a new pack, start at 1. For a republish
         # (content_hash differs from existing), increment. Query the store's current
@@ -429,6 +461,15 @@ class EngineBridge:
         zip_path = publish_dir / f"prospector_pack_{candidate_id[:8]}.zip"
         
         try:
+            from .pack_floors import (
+                ensure_marketing_floor,
+                exec_summary_md,
+                first_week_checklist_md,
+            )
+            marketing = ensure_marketing_floor(
+                marketing, dossier.candidate, getattr(dossier, "checks", []) or []
+            )
+
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # 1. Blueprint (Build Spec)
                 self._add_to_zip(zipf, "01_Blueprint_BuildSpec.md", artifacts.get("build_spec", ""))
@@ -449,6 +490,15 @@ class EngineBridge:
                         "language model performed any calculation, so the arithmetic is exact.\n\n"
                         + financials
                     )
+                else:
+                    # Claim-safe stub: never invent unit economics. Completeness gate still
+                    # refuses to LIST empty financials; this only prevents a 0-byte zip entry
+                    # when registering an unlisted retry bundle.
+                    financials = (
+                        "# Financial model\n\n"
+                        "_No verified numeric inputs were available to compute a model. "
+                        "Prospector does not invent revenue, cost, or TAM figures._\n"
+                    )
                 self._add_to_zip(zipf, "04_Financial_Model.md", financials)
 
                 # 5. QA Report
@@ -456,11 +506,24 @@ class EngineBridge:
                 qa_report = render_markdown(dossier)
                 self._add_to_zip(zipf, "QA_Report.md", qa_report)
                 
-                # 6. Marketing Assets (Social, Email, SEO)
+                # 6. Marketing Assets (Social, Email, SEO) — never a bare header stub
                 marketing_text = "# Marketing Assets\n\n"
                 for m in marketing:
-                    marketing_text += f"## {m['type'].replace('_', ' ').title()}\n\n{m['copy']}\n\n"
+                    marketing_text += (
+                        f"## {str(m.get('type', 'asset')).replace('_', ' ').title()}\n\n"
+                        f"{m.get('copy') or ''}\n\n"
+                    )
                 self._add_to_zip(zipf, "Marketing_Assets.md", marketing_text)
+
+                # 7–8. Epic C lite floors (deterministic, claim-safe)
+                self._add_to_zip(
+                    zipf, "00_Executive_Summary.md",
+                    exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or []),
+                )
+                self._add_to_zip(
+                    zipf, "05_First_Week_Checklist.md",
+                    first_week_checklist_md(dossier.candidate),
+                )
 
             return zip_path
         except Exception as e:

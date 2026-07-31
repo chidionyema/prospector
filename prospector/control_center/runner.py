@@ -314,7 +314,17 @@ def _finalize_job(
     pid: int | None,
 ) -> str:
     """Mark a dead/finished job in jobs.json. Idempotent."""
+    # Cancel may have been written by another process (CC UI / CLI cancel_job);
+    # the detached supervisor has an empty in-memory _JOB_STATUS and must honor disk.
     cancelled = _JOB_STATUS.get(job_id) == "cancelled"
+    if not cancelled:
+        try:
+            for j in _load_jobs_from(jobs_file):
+                if j.get("job_id") == job_id and j.get("status") == "cancelled":
+                    cancelled = True
+                    break
+        except Exception:
+            pass
     exit_code = _read_exit_code(exit_file)
 
     proc = _LIVE_PROCS.pop(job_id, None)

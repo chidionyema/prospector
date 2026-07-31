@@ -26,6 +26,7 @@ from .models import Source
 from .operator import Operator, _extract_json
 from .retrieval import SearchProvider
 from .telemetry import logger, record_usage, track_latency
+from .cli_governor import make_governor
 
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,7 +44,10 @@ os.makedirs(_NEUTRAL_CWD, exist_ok=True)
 
 # Cap concurrent heavy CLI subprocesses.
 _MAX_CLI = max(1, int(os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY", "2") or "2"))
-_CLI_SEM = threading.Semaphore(_MAX_CLI)
+# Machine-wide, not per-process — see prospector/cli_governor.py. The 45s "grounding queue
+# saturated" tail that killed job 20260730T212901866 was oversubscription across pipelines,
+# not a too-small limit here.
+_CLI_SEM = make_governor(_MAX_CLI, "claude")
 _SEM_LOCK = threading.Lock()
 _BACKOFFS = (2, 5, 10)
 
@@ -59,7 +63,7 @@ def configure_concurrency(n: int) -> None:
     with _SEM_LOCK:
         if n != _MAX_CLI:
             _MAX_CLI = n
-            _CLI_SEM = threading.Semaphore(n)
+            _CLI_SEM = make_governor(n, "claude")
 
 
 def _record_claude_usage(data: dict, web: bool) -> None:

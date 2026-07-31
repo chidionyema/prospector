@@ -92,8 +92,13 @@ def config_fingerprint(cfg: Config, market: str) -> str:
 
     If any of it changes, the stored measurement no longer describes the running system
     and must not be used to justify opening the market.
+
+    Operational `status` is excluded: `markets open` flips closed→open and must not
+    make a just-used READY probe look STALE (same class of bug as lane-resolved
+    fingerprints — see test_fingerprint_stable_across_status_flip).
     """
-    block = cfg.market_config(market)
+    block = dict(cfg.market_config(market) or {})
+    block.pop("status", None)
     material = json.dumps({
         "market": block,
         "hard_gates": cfg.hard_gates,
@@ -104,10 +109,23 @@ def config_fingerprint(cfg: Config, market: str) -> str:
 
 
 def readiness_path(cfg: Config, market: str) -> Path:
+    """Where the readiness artifact lives for `market`.
+
+    `readiness_ref` in config is store-relative (e.g. `store/markets/us/READINESS.json`).
+    Resolve it under `cfg.store_dir` so `PROSPECTOR_STORE_DIR` isolation cannot be
+    bypassed by a repo-relative string (CLI tests previously raced the live artifact).
+    """
     ref = (cfg.market_config(market) or {}).get("readiness_ref")
-    if ref:
-        return Path(ref)
-    return cfg.store_dir / "markets" / market / READINESS_FILENAME
+    if not ref:
+        return cfg.store_dir / "markets" / market / READINESS_FILENAME
+    path = Path(ref)
+    if path.is_absolute():
+        return path
+    parts = path.parts
+    # Strip a leading `store/` so the path joins onto whatever store_dir resolves to.
+    if parts and parts[0] == "store":
+        parts = parts[1:]
+    return cfg.store_dir.joinpath(*parts) if parts else cfg.store_dir / READINESS_FILENAME
 
 
 def load_readiness(cfg: Config, market: str) -> Optional[Readiness]:

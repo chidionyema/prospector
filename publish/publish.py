@@ -21,15 +21,25 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
     """
     Publish a dossier on PASS (Part 6, 11).
     Now uses EngineBridge to bundle artifacts and push to the Track 1 Store.
+    On success, also writes a local ``store/listings/<id>.json`` receipt so the
+    Control Center catalogue can show Pub=Y. Sellable source of truth remains
+    the Store Catalog API.
     """
     # Handle both Dossier object and dict
     if hasattr(dossier, "decision"):
         decision = dossier.decision
         candidate_id = dossier.candidate.candidate_id
+        title = getattr(dossier.candidate, "title", "") or ""
+        market = getattr(dossier.candidate, "market", "") or ""
+        created_at = getattr(dossier, "created_at", "") or ""
     elif isinstance(dossier, dict):
         decision_val = str(dossier.get("decision", "kill")).lower()
         decision = Decision.PASS if decision_val == "pass" else Decision.KILL
-        candidate_id = dossier.get("candidate", {}).get("candidate_id", "unknown")
+        cand = dossier.get("candidate") or {}
+        candidate_id = cand.get("candidate_id", "unknown")
+        title = cand.get("title", "") or ""
+        market = cand.get("market", "") or ""
+        created_at = dossier.get("created_at", "") or ""
     else:
         return {"status": "error", "reason": "Invalid dossier type"}
 
@@ -41,10 +51,24 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
     success = bridge.publish_pass(dossier)
 
     if success:
+        listing_path = _write_listing(
+            candidate_id,
+            {
+                "candidate_id": candidate_id,
+                "title": title,
+                "market": market,
+                "verified_at": created_at,
+                "published_via": "EngineBridge",
+                # Thin receipt — full sellable pack lives in the Store Catalog.
+                "catalog": True,
+            },
+            cfg,
+        )
         return {
             "status": "published",
             "candidate_id": candidate_id,
-            "method": "EngineBridge (Track 1)"
+            "method": "EngineBridge (Track 1)",
+            "listing_path": str(listing_path),
         }
     else:
         return {
@@ -55,12 +79,15 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
 
 
 def _write_listing(candidate_id: str, listing: Dict[str, Any], cfg: Any) -> Path:
-    # Use store_dir from config if available
-    store_dir_path = getattr(cfg, "store_dir", "store")
+    """Write a local listing receipt under ``store/listings/`` (CC Pub badge)."""
     if isinstance(cfg, dict):
-        store_dir_path = cfg.get("store_dir", "store")
-    
-    store_dir = Path(store_dir_path)
+        store_dir_path = (cfg.get("store") or {}).get("dir") or cfg.get("store_dir", "store")
+    else:
+        store = getattr(cfg, "store", None) or {}
+        store_dir_path = (
+            store.get("dir") if isinstance(store, dict) else None
+        ) or getattr(cfg, "store_dir", "store")
+    store_dir = Path(store_dir_path or "store")
     listings_dir = store_dir / "listings"
     listings_dir.mkdir(parents=True, exist_ok=True)
 

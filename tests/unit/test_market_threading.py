@@ -121,6 +121,12 @@ def test_additive_migration_applies_to_the_live_catalogue(tmp_path):
     shutil.copy(LIVE_DB, tmp_path / "prospector.db")
     before = sqlite3.connect(str(tmp_path / "prospector.db"))
     n_before = before.execute("SELECT COUNT(*) FROM dossiers").fetchone()[0]
+    # How many rows already carry a market BEFORE the migration runs. If the live DB
+    # predates the column entirely this is 0, which restores the original assertion.
+    cols_before = {r[1] for r in before.execute("PRAGMA table_info(dossiers)")}
+    marked_before = 0 if "market" not in cols_before else before.execute(
+        "SELECT COUNT(*) FROM dossiers WHERE market IS NOT NULL AND market != ''"
+    ).fetchone()[0]
     before.close()
 
     store = Store(_cfg(tmp_path))  # _init_db runs the additive migration
@@ -129,10 +135,20 @@ def test_additive_migration_applies_to_the_live_catalogue(tmp_path):
     cols = {r[1] for r in conn.execute("PRAGMA table_info(dossiers)")}
     assert "market" in cols
     assert conn.execute("SELECT COUNT(*) FROM dossiers").fetchone()[0] == n_before
-    # Pre-existing rows read as '' (unknown), never as a fabricated 'uk'.
-    assert conn.execute(
+    marked_after = conn.execute(
         "SELECT COUNT(*) FROM dossiers WHERE market IS NOT NULL AND market != ''"
-    ).fetchone()[0] == 0
+    ).fetchone()[0]
+    # Pre-existing rows read as unknown, never as a fabricated 'uk'.
+    #
+    # This used to assert the count was 0 outright. That premise expired once the engine
+    # started writing market-tagged dossiers into the live DB: it now holds 1289 unmarked
+    # rows plus 29 legitimately tagged 'uk', so a bare `== 0` fails on real data while the
+    # migration is behaving perfectly. The invariant that actually matters is that the
+    # migration INVENTS nothing — whatever was tagged before is tagged after, and nothing
+    # else acquires a market. Snapshot it rather than hardcoding a number that drifts.
+    assert marked_after == marked_before, (
+        f"additive migration fabricated a market on {marked_after - marked_before} row(s); "
+        f"pre-existing rows must stay unknown")
 
     # And the store still writes correctly afterwards.
     store.save(_dossier("us"))

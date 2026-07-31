@@ -23,6 +23,7 @@ from typing import Optional
 from .errors import ProviderExhaustedError, looks_exhausted
 from .operator import Operator
 from .telemetry import logger, track_latency
+from .cli_governor import make_governor
 
 # Prefer `agent` (what the official installer symlinks); allow override / legacy name.
 CURSOR_BIN = os.environ.get("CURSOR_BIN") or os.environ.get("AGENT_BIN") or "agent"
@@ -34,7 +35,10 @@ _NEUTRAL_CWD = os.path.join(tempfile.gettempdir(), "prospector_cursor_cli_cwd")
 os.makedirs(_NEUTRAL_CWD, exist_ok=True)
 
 _MAX_CLI = max(1, int(os.environ.get("PROSPECTOR_CURSOR_CONCURRENCY", "2") or "2"))
-_CLI_SEM = threading.Semaphore(_MAX_CLI)
+# Machine-wide, not per-process: several prospector pipelines (daemon, backfill, manual
+# generate) run concurrently, and a threading.Semaphore in each of them multiplied the real
+# ceiling by the number of processes. See prospector/cli_governor.py for the measurements.
+_CLI_SEM = make_governor(_MAX_CLI, "cursor")
 _SEM_LOCK = threading.Lock()
 _BACKOFFS = (2, 5, 10)
 
@@ -48,7 +52,7 @@ def configure_concurrency(n: int) -> None:
     with _SEM_LOCK:
         if n != _MAX_CLI:
             _MAX_CLI = n
-            _CLI_SEM = threading.Semaphore(n)
+            _CLI_SEM = make_governor(n, "cursor")
 
 
 def _resolve_bin() -> str:
@@ -170,12 +174,25 @@ def run_cursor_cli(prompt: str, *, model: Optional[str] = None,
 class CursorCliOperator(Operator):
     """Verification / generation brain via the Cursor agent CLI. No tools, no web."""
 
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None,
+                 timeout: int = 120, timeout_max: Optional[int] = None,
+                 escalation: float = 1.0, retries: int = 1,
+                 queue_timeout: Optional[float] = None):
         self.model = model
         self.name = f"cursor-cli/{model or 'default'}"
+        self.timeout = int(timeout)
+        self.timeout_max = int(timeout_max if timeout_max is not None else timeout)
+        self.escalation = float(escalation)
+        self.retries = int(retries)
+        self.queue_timeout = queue_timeout
 
     @track_latency(name="cursor_cli_raw")
     def _raw(self, system: str, user: str, temperature: float) -> str:
         # temperature is unused — the CLI has no temperature flag; kept for Operator parity.
         _ = temperature
-        return run_cursor_cli(f"{system}\n\n{user}", model=self.model)
+        return run_cursor_cli(
+            f"{system}\n\n{user}", model=self.model,
+            timeout=self.timeout, timeout_max=self.timeout_max,
+            escalation=self.escalation, retries=self.retries,
+            queue_timeout=self.queue_timeout,
+        )

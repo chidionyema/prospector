@@ -36,21 +36,33 @@ model_defaults:
     minimax:     "MiniMax-M3"
 
 retrieval:
-  # Grounding chain — infra-controlled, no-top-up providers (verified live 2026-07-02):
+  # Grounding chain — infra-controlled providers (re-verified live 2026-07-31):
   #   1. ddg         — DuckDuckGo real web search, FREE, no API key (needs `pip install ddgs`).
-  #                    Fast primary; may intermittently rate-limit at batch scale → falls to (2).
-  #   2. claude_cli  — real web search via the Claude Code SUBSCRIPTION (no key, no credits).
-  #                    PROVEN reliable 2026-07-02 (returned gov.uk sources). Guaranteed-available
-  #                    backstop: does not depend on ddgs being importable in the daemon env.
+  #                    Fast primary (5.7s mean over 81 calls, audit 2026-07-30); rate-limits at
+  #                    batch scale (15/96 errors that day) → falls through to (2).
+  #   2. exa         — real web search API, ~2-4s, EXA_API_KEY. Credits are BACK: the
+  #                    "402 NO_MORE_CREDITS" note below was true on 2026-07-02 and is no longer.
+  #                    Live probe 2026-07-31: 5/5 queries, 3 results each, 2.1-4.2s.
+  #   3. claude_cli  — real web search via the Claude Code SUBSCRIPTION (no key, no credits).
+  #                    Guaranteed-available backstop; kept LAST so grounding coverage is
+  #                    unchanged if both (1) and (2) are down. It is correct but SLOW.
   #
-  # DEAD on this machine (do NOT reintroduce without restoring the dependency):
-  #   exa    → 402 NO_MORE_CREDITS (out of credits 2026-07-02)
+  # Why exa was inserted at position 2 (job 20260730T212901866, generate k=5, FAILED at 1731s):
+  # 112 grounding calls; 81 resolved on ddg costing 460s total, but the 31 that fell through to
+  # claude_cli cost ~3028s — 87% of all grounding time on 28% of the calls, 97.7s mean, 262s max.
+  # At claude_concurrency=2 that queue alone is ~1514s of the 1731s wall, and the run finally died
+  # on "claude cli slot acquire timed out after 45s (grounding queue saturated)". Replaying the
+  # five most expensive of those queries through exa: 14.0s total vs 900s on claude_cli (64x),
+  # identical result counts. This changes only HOW FAST the passages arrive — same real web
+  # search, same results_per_query, same verdict rules, same publish gate. The moat is untouched.
+  #
+  # STILL DEAD on this machine (do NOT reintroduce without restoring the dependency):
   #   brave  → no BRAVE_API_KEY
   #   searxng→ not running (localhost:8888 refused)
   # deepseek/minimax_search/openrouter are LLM-synthesis, NOT real search — they hallucinate
   # URLs that _resolve() drops → every check "unverifiable". Never use them for grounding.
   # Options: ddg | claude_cli | exa | brave | searxng | fixture
-  provider: [ddg, claude_cli]
+  provider: [ddg, exa, claude_cli]
   queries_per_check: 2              # LLM query-gen: 2 distinct queries per check for grounding depth
   results_per_query: 3             # 3 sources per query (~6 passages/check) so checks can reach 'supported'
   max_passage_chars: 1500
@@ -77,11 +89,50 @@ retrieval:
   search_timeout_escalation: 1.5 # slow≠dead — give each retry more headroom before giving up
   search_retries: 1              # in-place retries before failing over to the next provider
   claude_min_timeout: 120        # claude grounding floor (its search is slower)
-  queue_timeout: 45              # max wait for a free provider slot before failing over (bounds
-                                 # total latency at queue_timeout + search_timeout; was UNBOUNDED)
-  claude_concurrency: 2          # max concurrent claude CLI subprocesses
-  vet_workers: 2                 # parallel candidates; pair with PROSPECTOR_CURSOR_CONCURRENCY=2
-                                 # keep within Claude concurrency so workers do not self-induce timeouts
+  # Raised from 45/2/2/2 on 2026-07-31. These were pinned low DEFENSIVELY because the CLI
+  # semaphores were a per-process threading.Semaphore: with the daemon, a backfill and a manual
+  # generate all live at once, "2" meant a real machine-wide ceiling of ~8, and the resulting
+  # oversubscription is what produced the 45s "grounding queue saturated" death in job
+  # 20260730T212901866. prospector/cli_governor.py now enforces the cap machine-wide via fcntl
+  # flock slot files (two-process proof: A acquired 2, B acquired 0, TOTAL 2 at limit=2), so a
+  # higher number can no longer multiply across pipelines — surplus workers block on the
+  # governor instead of thrashing the CLI. That is what makes raising these safe.
+  #
+  # 8 is the measured KNEE, not a guess. Concurrent `agent` subprocess probe, 2026-07-31:
+  #   N=1  (at rest)  8.9s
+  #   N=8   8/8 ok, p50  9.2s, max 15.5s, 5.3x throughput   <-- latency essentially flat
+  #   N=14 14/14 ok, p50 13.1s, max 34.7s, 6.0x throughput  <-- p50 +42% to buy +13% throughput
+  # No rate-limit or auth failure at either level; past 8 you pay latency for almost nothing.
+  #
+  # Vetting was 68% of the 1481s wall on the post-parallel-lane run (generation ~473s, vetting
+  # ~1008s for 5 candidates in 3 sequential waves of 2). vet_workers 5 makes k=5 a single wave.
+  # Kept BELOW cursor_concurrency so the daemon/backfill keep headroom under the shared cap.
+  queue_timeout: 90              # max wait for a free provider slot before failing over. Raised
+                                 # from 45: failing over now means falling to claude_cli at 97.7s
+                                 # mean, so waiting up to 90s for a fast slot strictly beats it.
+                                 # Bounds total latency at queue_timeout + search_timeout.
+  claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
+                                 # now that grounding resolves on ddg/exa — see chain above)
+  cursor_concurrency: 8          # max concurrent Cursor agent CLI subprocesses = the knee above
+                                 # (PROSPECTOR_CURSOR_CONCURRENCY env overrides when set)
+  vet_workers: 5                 # parallel candidates. Must stay <= cursor_concurrency: each vet
+                                 # holds at most one CLI slot at a time (checks run sequentially
+                                 # for kill-fast), so 5 workers draw 5 of the 8 slots.
+  # Sized from the observed SUCCESS distribution, not a guess (317 logged run_cursor_cli
+  # successes as of 2026-07-31: mean 46.9s, p50 41.7s, max 279.3s; run_claude_cli n=63,
+  # p50 76.8s, max 283.0s). The old 120/180 pair sat *inside* that distribution, so long-but-
+  # healthy calls were killed mid-flight — all 4 logged cursor errors have p50 exactly 120.0s,
+  # i.e. the guillotine, not a hang. Each kill cost 2 x 120s and returned nothing, which is how
+  # packs ended up held back on `artifact 'build_spec' is empty (generation produced nothing)`
+  # and `marketing 'listing_page' is missing or empty`. Raising the ceiling does NOT slow the
+  # median (p50 is 41.7s — the timeout only binds on the tail); it converts 240s of wasted
+  # retry into a completed artifact.
+  cli_timeout: 180               # completion-brain attempt 0 (verdict / adversarial; no web)
+  cli_timeout_max: 300           # completion ceiling across retries — covers the observed max
+  cli_retries: 1
+  query_gen_timeout: 90          # non-critical query-gen cap — fail over / template, don't wedge
+  query_gen_timeout_max: 90      # no escalation on query-gen
+  query_gen_retries: 0           # template fallback is the retry path
   breaker_failure_threshold: 3   # CONSECUTIVE transient fails before a provider is retired (one
                                  # timeout under load no longer permanently dead-lists it)
   breaker_cooldown_s: 60         # seconds a retired provider stays out before a half-open recovery probe
@@ -422,7 +473,7 @@ markets:
         care assessed by the local authority.
   us:
     label: "United States"
-    status: closed                 # opened only by a passing readiness probe
+    status: open                 # opened only by a passing readiness probe
     readiness_ref: "store/markets/us/READINESS.json"
     search_region: "us-en"
     currency_hint: "USD"
@@ -430,33 +481,51 @@ markets:
     # US law is federal PLUS 50 states. Without state-level scoping the legality check
     # drowns in irrelevant federal/other-state material (story risk 3).
     require_subdivision: true
+    # Retrieval overlay — evidence terrain only (DD2). Slightly deeper fetch so state
+    # .gov / CMS / SEC pages are likelier to land in the passage set; does NOT touch bars.
+    retrieval:
+      results_per_query: 5
     authority_domains:
       - sec.gov
       - census.gov
       - bls.gov
       - federalregister.gov
       - ftc.gov
+      - cms.gov
+      - sba.gov
+      - dol.gov
+      - fincen.gov
+      - consumerfinance.gov
       - courtlistener.com
       - usa.gov
-    legality_corpus: [federalregister.gov, law.cornell.edu, usa.gov]
+      - law.cornell.edu
+      # State / program regulators used by the US calibration packs (authority_rate).
+      - irs.gov
+      - tdlr.texas.gov
+      - texas.gov
+      - sos.texas.gov
+    legality_corpus: [federalregister.gov, law.cornell.edu, usa.gov, sec.gov, cms.gov, fincen.gov, consumerfinance.gov, irs.gov]
     market_context: >
       Jurisdiction: the United States. Money in USD ($). Law is federal PLUS state-level —
       always name the state. Authoritative public evidence includes SEC EDGAR, Census, BLS,
-      the Federal Register, state Secretary-of-State registries, and CourtListener.
+      CMS, FinCEN, CFPB, the Federal Register, IRS, state Secretary-of-State and licensing
+      boards (.gov such as TDLR), and CourtListener. Prefer primary .gov pages over vendor blogs.
     exemplars:
       query_gen:
-        - "Texas mobile notary bond requirement filings count"
-        - "Medicare durable medical equipment supplier enrollment volume BLS"
+        - "Texas TDLR cosmetology operator license renewal continuing education hours site:tdlr.texas.gov"
+        - "IRS Form 2290 heavy highway vehicle use tax due date owner operator site:irs.gov"
+        - "CMS DMEPOS supplier standards accreditation survey checklist site:cms.gov"
+        - "FinCEN money services business registration requirement site:fincen.gov"
+        - "FCRA consumer report resale prohibition site:consumerfinance.gov"
       # Verdict exemplars deliberately omitted: they teach RELEVANCE JUDGEMENT, not market
       # facts, so this market inherits the uk set until its probe justifies its own.
     persona_overlay:
       retiree_cohort: >
         Social Security plus 401(k)/IRA drawdown; Medicare at 65 with supplemental
         coverage; state-variable long-term-care funding.
-  # Closed stubs (config-only). Operator-named expansion set 2026-07-30: africa, nigeria,
-  # europe, asia. Status stays closed until each clears a readiness probe — no catalogue
-  # writes, no lowered bars. Authority domains / exemplars are placeholders to be filled
-  # before `markets probe`; opening without a passing READINESS.json is refused.
+  # Closed stubs — MVP evidence terrain so each is probe-openable later via the same
+  # gate. Status stays closed until a passing READINESS.json; no catalogue writes, no
+  # lowered bars. Fill country-specific authority/exemplars before probing a subdivision.
   africa:
     label: "Africa (regional)"
     status: closed
@@ -464,18 +533,27 @@ markets:
     search_region: "wt-wt"
     currency_hint: "USD"
     cache_salt: "africa"
-    authority_domains: []
-    legality_corpus: []
+    require_subdivision: true      # always name the country (africa-ng, africa-ke, …)
+    authority_domains:
+      - afdb.org                   # African Development Bank
+      - uneca.org                  # UN Economic Commission for Africa
+      - au.int                     # African Union
+      - worldbank.org
+    legality_corpus: [africanlii.org, au.int]
     market_context: >
       Jurisdiction: African markets (regional framing). Prefer country-specific evidence
-      when a subdivision is named. Money often quoted in USD or local currency — always
-      name the country. Authoritative evidence varies by country (national statistics
-      offices, central banks, company registries).
+      when a subdivision is named — always name the country. Money often quoted in USD
+      or local currency. Authoritative public evidence includes AfDB, UNECA, AU instruments,
+      national statistics offices, central banks, and company registries.
+    exemplars:
+      query_gen:
+        - "SME company registry filings volume West Africa"
+        - "mobile money agent liquidity regulation central bank Africa"
   nigeria:
     label: "Nigeria"
     status: closed
     readiness_ref: "store/markets/nigeria/READINESS.json"
-    search_region: "wt-wt"
+    search_region: "wt-wt"         # ddgs has no stable ng-en; keep worldwide until measured
     currency_hint: "NGN"
     cache_salt: "nigeria"
     authority_domains:
@@ -483,11 +561,16 @@ markets:
       - cbn.gov.ng
       - nigerianstat.gov.ng
       - ncc.gov.ng
-    legality_corpus: [nigerialii.org, placng.org]
+      - fmcide.gov.ng
+    legality_corpus: [nigerialii.org, placng.org, cac.gov.ng]
     market_context: >
       Jurisdiction: Nigeria. Money in Naira (₦) unless a contract is USD-denominated.
       Authoritative public evidence includes CAC company filings, CBN circulars, NBS
       statistics, and NCC regs. Prefer .gov.ng and primary regulator sources.
+    exemplars:
+      query_gen:
+        - "CAC company registration filings count Nigeria SMEs"
+        - "CBN agent banking guidelines compliance burden"
   europe:
     label: "Europe (regional)"
     status: closed
@@ -495,14 +578,22 @@ markets:
     search_region: "wt-wt"
     currency_hint: "EUR"
     cache_salt: "europe"
+    require_subdivision: true      # prefer a member state (europe-de, europe-fr, …)
     authority_domains:
       - europa.eu
       - ec.europa.eu
-    legality_corpus: [eur-lex.europa.eu]
+      - eurostat.ec.europa.eu
+      - eea.europa.eu
+    legality_corpus: [eur-lex.europa.eu, europa.eu]
     market_context: >
       Jurisdiction: Europe (EU/EEA regional framing). Prefer a named member state when
       the opportunity is local. Money in EUR unless the state uses another currency.
-      Authoritative evidence includes EUR-Lex, Eurostat, and national registries.
+      Authoritative evidence includes EUR-Lex, Eurostat, Commission guidance, and
+      national company/regulator registries.
+    exemplars:
+      query_gen:
+        - "EU GDPR SME compliance cost survey Eurostat"
+        - "cross-border VAT OSS registration volume EU"
   asia:
     label: "Asia (regional)"
     status: closed
@@ -510,12 +601,22 @@ markets:
     search_region: "wt-wt"
     currency_hint: "USD"
     cache_salt: "asia"
-    authority_domains: []
-    legality_corpus: []
+    require_subdivision: true      # always name the country (asia-sg, asia-in, …)
+    authority_domains:
+      - adb.org                    # Asian Development Bank
+      - asean.org
+      - unescap.org
+      - worldbank.org
+    legality_corpus: [asianlii.org, asean.org]
     market_context: >
       Jurisdiction: Asian markets (regional framing). Prefer country-specific evidence
-      when a subdivision is named. Money in local currency or USD — always name the
-      country. Authoritative evidence varies by country.
+      when a subdivision is named — always name the country. Money in local currency or
+      USD. Authoritative public evidence includes ADB, ASEAN instruments, UNESCAP, and
+      national statistics / company registries.
+    exemplars:
+      query_gen:
+        - "ASEAN SME digital trade compliance burden survey"
+        - "company registry filings volume Southeast Asia startups"
 
 generation:
   candidates_per_signal: 20
@@ -590,6 +691,33 @@ generation:
 # The `focus` string is injected into the generate prompt as a binding TARGETING CONSTRAINT;
 # `--focus "..."` at the CLI overrides it for one-off experiments.
 profiles:
+  # Evidence-steered toward shapes that historically clear the UK moat (store/dossiers
+  # PASSes 2026-07): sole-operator / named-regulator compliance packs and statutory
+  # income micro-brokers — NOT generic SaaS trackers. Generation-only; moat untouched.
+  statutory_compliance_pack:
+    generation:
+      operator_archetype: solo_agent
+      structural_forms:
+        - productized_service   # a fixed-scope compliance / filing / appeal pack
+        - vertical_tool         # narrow per-lease / per-suite / per-truck helper
+        - transaction_broker    # backdate / refund / entitlement recovery desk
+        - risk_financing        # stand-down / suspension income micro-bond
+      audience_forms:
+        - manual_tradesperson
+        - primary_carer
+        - smb_owner
+        - freelancer_creative
+        - gen_z_worker
+      focus: >
+        TARGET the shapes that historically PASS this filter: a SPECIFIC sole-operator
+        (or primary carer) facing a NAMED regulator or statutory chore — HSE, DVSA, MCS,
+        local-authority licensing, Universal Credit/PIP/Attendance Allowance, Companies
+        House, FCA — and selling a concrete pack/broker/desk that walks ONE recurring
+        filing, renewal, stand-down, tribunal, or recovery step. Each idea MUST name
+        (1) the exact operator niche, (2) the exact statutory/regulator trigger, and
+        (3) the exact deliverable. REJECT generic SaaS dashboards, weekly bulletins,
+        marketplaces, and vague "AI assistants". Commoditised niches with real search
+        demand are GOOD. Prefer UK evidence terrain unless --market says otherwise.
   online_autonomous_predator:
     generation:
       # Hard floor: "no human in the loop" is a GUARANTEE here, not a preference. Candidates
@@ -674,6 +802,15 @@ listing:
   exclusivity: true
   subscription: true
   pricing: { driver: composite, premium_axis: automatability }
+
+# Storefront payment rail. MUST match the provider the Store API bills through: checkout
+# builds a Stripe Checkout Session from the pack's ProviderPriceId, so a pack provisioned
+# under any other rail lists with a `price_stub_*` id and its checkout returns HTTP 500.
+# This was unset before 2026-07-31, so EngineBridge defaulted to `paddle`, found no
+# PADDLE_API_KEY, and shipped six listed-but-unbuyable packs. Explicit now, and
+# bridge.py refuses to LIST anything still carrying a stub price id.
+store_payments:
+  active_provider: stripe
 
 # Near-duplicate similarity ratio for Part 3 dedup (0..1). At or above this, the later
 # candidate is dropped as a duplicate. Higher = stricter (fewer dropped); lower = looser.

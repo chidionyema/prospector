@@ -114,10 +114,14 @@ def catalogue_index(decision: Optional[str] = None) -> list[dict[str, Any]]:
 @st.cache_data(ttl=15)
 def catalogue_stats() -> dict[str, Any]:
     """Aggregate counts via SQL — do not load every dossier row into Python."""
-    empty = {"total": 0, "n_pass": 0, "n_kill": 0, "n_defer": 0, "n_provisional": 0,
-             "pass": 0, "kill": 0, "defer": 0}
+    empty = {
+        "total": 0, "n_pass": 0, "n_kill": 0, "n_defer": 0, "n_provisional": 0,
+        "n_pass_non_prov": 0, "n_pass_provisional": 0, "n_listed": 0,
+        "pass": 0, "kill": 0, "defer": 0,
+    }
     db_path = Path("store/prospector.db")
     if not db_path.exists():
+        empty["n_listed"] = _count_listings()
         return empty
     conn = sqlite3.connect(str(db_path), timeout=5.0)
     try:
@@ -128,18 +132,44 @@ def catalogue_stats() -> dict[str, Any]:
         dec = {"pass": 0, "kill": 0, "defer": 0}
         prov = 0
         total = 0
+        pass_prov = 0
         for d, n, p in cur.fetchall():
             n = int(n or 0)
+            p = int(p or 0)
             total += n
-            prov += int(p or 0)
+            prov += p
             if d in dec:
                 dec[d] = n
-        return {**dec, "n_pass": dec["pass"], "n_kill": dec["kill"],
-                "n_defer": dec["defer"], "n_provisional": prov, "total": total}
+            if d == "pass":
+                pass_prov = p
+        n_pass = dec["pass"]
+        return {
+            **dec,
+            "n_pass": n_pass,
+            "n_kill": dec["kill"],
+            "n_defer": dec["defer"],
+            "n_provisional": prov,
+            "n_pass_non_prov": max(0, n_pass - pass_prov),
+            "n_pass_provisional": pass_prov,
+            "n_listed": _count_listings(),
+            "total": total,
+        }
     except sqlite3.Error:
+        empty["n_listed"] = _count_listings()
         return empty
     finally:
         conn.close()
+
+
+def _count_listings() -> int:
+    """Local listing receipts under store/listings/ (CC Pub badge source)."""
+    listings = Path("store/listings")
+    if not listings.is_dir():
+        return 0
+    try:
+        return sum(1 for p in listings.glob("*.json") if p.is_file())
+    except OSError:
+        return 0
 
 
 @st.cache_data(ttl=15)
@@ -295,6 +325,27 @@ def parse_job_progress(log_text: str) -> tuple[int, int] | None:
     return int(n), int(m)
 
 
+def _log_in_vetting_phase(log_text: str) -> bool:
+    """True when a generate run log has entered candidate vetting.
+
+    Generation finishes in seconds; almost all wall-clock is vetting. Glance must
+    not keep saying "Generating N/M" once the vet loop has started.
+    """
+    import re
+
+    if not log_text:
+        return False
+    clean = re.sub(r"\x1b\[[0-9;]*m", "", log_text)
+    if re.search(r"vetting\s+\d+\s+candidate", clean, re.IGNORECASE):
+        return True
+    if re.search(r"▸\s*vetting started", clean, re.IGNORECASE):
+        return True
+    # Per-candidate result lines only appear after vetting begins.
+    if re.search(r"\[\d+/\d+\].*(?:KILL|PASS|DEFER)", clean):
+        return True
+    return False
+
+
 def read_job_log_tail(job: dict[str, Any], n: int = 80) -> str:
     """Last N lines of a job log (disk). Empty string if missing."""
     path = job.get("log_file") or ""
@@ -336,6 +387,9 @@ def glance_status(
             "discover": "Discovering",
         }.get(verb, verb.capitalize() if verb else "Running")
         tail = read_job_log_tail(active, n=120)
+        # generate spends most wall-clock in vetting; don't label that as "Generating".
+        if verb == "generate" and _log_in_vetting_phase(tail):
+            pretty = "Vetting"
         prog = parse_job_progress(tail)
         lane = argv_lane(active.get("argv"))
         parts = [pretty]
@@ -503,7 +557,11 @@ def launch_operator_choices() -> list[str]:
 
 
 def launch_lane_choices() -> list[str]:
-    """Ambition lanes for Launch forms — empty = multi-lane / config default."""
+    """Ambition lanes for Launch forms.
+
+    Catalogue default is ``side_hustle`` first. Empty string = multi-lane MIX job
+    (explicit, not the catalogue default) — kept at the end of the list.
+    """
     cfg = load_config_dict()
     lanes = cfg.get("lanes") or {}
     active = cfg.get("active_lanes") or []
@@ -512,7 +570,11 @@ def launch_lane_choices() -> list[str]:
     for name in sorted(lanes):
         if name not in names:
             names.append(name)
-    return [""] + names
+    preferred = "side_hustle"
+    if preferred in names:
+        names = [preferred] + [n for n in names if n != preferred]
+    # "" (multi-lane mix) is last — catalogue Launch must not default into a grind.
+    return names + [""]
 
 
 def launch_market_choices() -> list[str]:
@@ -545,6 +607,22 @@ def launch_archetype_choices() -> list[str]:
     if default in names:
         names = [default] + [n for n in names if n != default]
     return [""] + names
+
+
+def launch_profile_choices() -> list[str]:
+    """Generation profiles for Launch — catalogue default first.
+
+    Profiles are generation-only (forms + focus); they never touch the moat.
+    ``statutory_compliance_pack`` is the UK catalogue preset; empty (no profile)
+    is available at the end for research / unsteered runs.
+    """
+    cfg = load_config_dict()
+    profiles = cfg.get("profiles") or {}
+    names = sorted(profiles) if isinstance(profiles, dict) else []
+    preferred = "statutory_compliance_pack"
+    if preferred in names:
+        names = [preferred] + [n for n in names if n != preferred]
+    return names + [""]
 
 
 @st.cache_data(ttl=15)
@@ -808,6 +886,9 @@ def load_overview_kpis() -> dict[str, Any]:
             "kill_count": stats.get("n_kill", 0),
             "defer_count": stats.get("n_defer", 0),
             "n_provisional": stats.get("n_provisional", 0),
+            "n_pass_non_prov": stats.get("n_pass_non_prov", 0),
+            "n_pass_provisional": stats.get("n_pass_provisional", 0),
+            "n_listed": stats.get("n_listed", 0),
             "total": stats.get("total", 0),
             "today_spend": today_spend_data.get("total_usd", 0.0),
             "daily_cap": daily_cap,

@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Optional
 
@@ -603,25 +603,58 @@ def generate_multilane(
     framing and quota differ. Returns the concatenated, tier-tagged candidate list. Generation
     still judges nothing — the per-tier moat downstream does that.
     """
-    out: list[Candidate] = []
-    for tier in lanes:
+    # Lanes run CONCURRENTLY. They were sequential until 2026-07-31, which cost a full
+    # multiple of the slowest lane for no gate strength: measured `generate` p50 280.9s /
+    # max 654.0s (n=5), so a 4-lane run spent ~19 min in generation before vetting saw a
+    # single candidate — the dominant term in the 1731s failure of job 20260730T212901866.
+    #
+    # What sequencing actually bought, and why losing it is safe: the old code threaded
+    # `[c.title for c in out]` into each later lane's `prior_titles` so a lane could see
+    # what earlier lanes had just minted. That is a SOFT prompt hint, not a gate. The HARD
+    # gate is `dedup()` (dedup.py:113 — "every candidate already accepted in this batch, in
+    # the same market"), which runs on the concatenated batch in run.py immediately after
+    # this returns and applies both signals (char ratio + content-word Jaccard at 0.34,
+    # calibrated for same-idea-reworded). So no cross-lane duplicate can ship either way;
+    # dropping the hint can only cost some wasted generation, never catalogue quality.
+    # Cross-RUN memory (`prior_titles`, the last 200 catalogue titles) is still passed to
+    # every lane in full — that is the echo suppression that actually carries weight.
+    #
+    # Lanes are independent by construction: each gets its own `cfg.for_lane(tier)` and
+    # writes only to its own result slot, so there is no shared mutable state to race.
+    # Order is reconstructed from `lanes` so the returned list stays deterministic.
+    lane_list = list(lanes)
+    results: dict[str, list[Candidate]] = {}
+
+    def _run_lane(tier: str) -> tuple[str, list[Candidate]]:
         lane_cfg = cfg.for_lane(tier)
         k = (lane_counts or {}).get(tier)
         # ML Improvement: Grid Scheduler (Stage 3)
         priorities = (grid_priorities or {}).get(tier)
-        # Carry cross-run memory PLUS the titles produced by earlier lanes in this same call,
-        # so lanes don't echo each other (a probate idea minted in 'side_hustle' shouldn't be
-        # re-minted in 'venture').
-        lane_prior = (prior_titles or []) + [c.title for c in out]
         cands = generate(
             op, lane_cfg, signal_text=signal_text, sector=sector,
             strategy_lens=strategy_lens, exploration_level=exploration_level,
             target_qualities=target_qualities, recent_failure_modes=recent_failure_modes,
             k=k, gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=pass_patterns, prior_titles=lane_prior)
+            pass_patterns=pass_patterns, prior_titles=list(prior_titles or []))
         for c in cands:
             c.ambition_tier = tier
-        logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",
-                    extra={"lane": tier, "count": len(cands)})
-        out.extend(cands)
+        return tier, cands
+
+    with ThreadPoolExecutor(max_workers=max(1, len(lane_list))) as pool:
+        futures = {pool.submit(_run_lane, t): t for t in lane_list}
+        for fut in as_completed(futures):
+            tier = futures[fut]
+            try:
+                tier, cands = fut.result()
+            except Exception as e:  # noqa: BLE001 — one lane failing must not void the rest
+                logger.warning(f"Lane {tier!r} generation failed: {e}",
+                               extra={"lane": tier})
+                cands = []
+            results[tier] = cands
+            logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",
+                        extra={"lane": tier, "count": len(cands)})
+
+    out: list[Candidate] = []
+    for tier in lane_list:
+        out.extend(results.get(tier, []))
     return out

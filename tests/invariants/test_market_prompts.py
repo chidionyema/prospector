@@ -132,9 +132,23 @@ def test_rendered_uk_verdict_prompt_still_contains_all_three_precedents():
 def test_us_market_swaps_the_exemplars_and_context():
     cfg = load_config().for_market("us")
     kw = prompts.market_kwargs(cfg)
-    assert "Texas notary public surety bond" in kw["market_exemplars"]
+    assert "CMS DMEPOS supplier standards" in kw["market_exemplars"]
+    assert "tdlr.texas.gov" in kw["market_exemplars"]
     assert "NHS nurse" not in kw["market_exemplars"]
     assert kw["currency_hint"] == "USD"
+    assert "United States" in kw["market_context"]
+    # require_subdivision on bare "us" injects the naming reminder into framing only.
+    assert "SUBDIVISION REQUIRED" in kw["market_context"]
+    # Moat never sees the reminder (or any market_context).
+    moat = prompts.market_kwargs(cfg, for_moat=True)
+    assert "SUBDIVISION REQUIRED" not in moat.get("market_scope", "")
+    assert "market_context" not in moat
+
+
+def test_subdivision_code_skips_bare_parent_reminder():
+    """us-tx already names the state — no SUBDIVISION REQUIRED nag."""
+    kw = prompts.market_kwargs(load_config().for_market("us-tx"))
+    assert "SUBDIVISION REQUIRED" not in kw["market_context"]
     assert "United States" in kw["market_context"]
 
 
@@ -151,7 +165,8 @@ def test_us_inherits_uk_verdict_precedents_when_it_defines_none():
 
 def test_subdivision_inherits_parent_fragments():
     tx = prompts.market_kwargs(load_config().for_market("us-tx"))
-    assert "Texas notary public surety bond" in tx["market_exemplars"]
+    assert "CMS DMEPOS supplier standards" in tx["market_exemplars"]
+    assert "tdlr.texas.gov" in tx["market_exemplars"]
 
 
 def test_config_without_markets_falls_back_to_the_baseline_prompts(tmp_path):

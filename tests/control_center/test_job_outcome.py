@@ -12,6 +12,7 @@ from prospector.control_center.readers import (
     glance_status,
     job_outcome_summary,
     launch_archetype_choices,
+    launch_profile_choices,
     launch_lane_choices,
     launch_market_choices,
     launch_operator_choices,
@@ -108,7 +109,8 @@ class TestGlanceStatus:
 
     def test_running_with_progress(self, tmp_path):
         log = tmp_path / "run.log"
-        log.write_text("  [12/20] ✓ PASS  Idea\n")
+        # Still in generation (no vetting markers) — glance stays "Generating".
+        log.write_text("  ▸ generated 20 candidates\n")
         active = {
             "status": "running",
             "argv": [
@@ -119,9 +121,28 @@ class TestGlanceStatus:
             "start_ts": 1_000_000,
         }
         out = glance_status(active, None, now=1_000_340)
-        assert out.startswith("Generating 12/20")
+        assert out.startswith("Generating")
         assert "lane smb" in out
         assert "340s" in out
+
+    def test_running_generate_shows_vetting_once_vet_starts(self, tmp_path):
+        log = tmp_path / "run.log"
+        log.write_text(
+            "  ▸ vetting 20 candidate(s) diverse subset live (max 2 in parallel)…\n"
+            "  [12/20] ✓ PASS  Idea\n"
+        )
+        active = {
+            "status": "running",
+            "argv": [
+                "python", "-m", "prospector.run", "generate",
+                "--candidates", "20", "--lane", "smb",
+            ],
+            "log_file": str(log),
+            "start_ts": 1_000_000,
+        }
+        out = glance_status(active, None, now=1_000_340)
+        assert out.startswith("Vetting 12/20")
+        assert "lane smb" in out
 
     def test_parse_progress(self):
         assert parse_job_progress("[1/5] x\n[3/5] y\n") == (3, 5)
@@ -138,7 +159,9 @@ class TestLaunchOperatorChoices:
 class TestLaunchScopeChoices:
     def test_lanes_are_ambition_tiers_not_stale_labels(self):
         choices = launch_lane_choices()
-        assert choices[0] == ""
+        # Catalogue default first; MIX (empty) last — not the yield default.
+        assert choices[0] == "side_hustle"
+        assert choices[-1] == ""
         for lane in ("side_hustle", "smb", "growth", "venture"):
             assert lane in choices
         for stale in ("operator", "founder", "scout"):
@@ -148,13 +171,23 @@ class TestLaunchScopeChoices:
         choices = launch_market_choices()
         assert choices[0] == ""
         assert "uk" in choices
-        assert "us" not in choices  # closed until readiness passes
+        assert "us" in choices  # opened 2026-07-30 on a passing readiness probe
+        # Still-closed stubs must never reach the launcher.
+        for closed in ("africa", "nigeria", "europe", "asia"):
+            assert closed not in choices
 
     def test_archetypes(self):
         choices = launch_archetype_choices()
         assert choices[0] == ""
         for name in ("solo_agent", "small_team", "startup"):
             assert name in choices
+
+    def test_profiles_include_statutory_pack(self):
+        choices = launch_profile_choices()
+        # Catalogue preset first; empty (research / unsteered) last.
+        assert choices[0] == "statutory_compliance_pack"
+        assert choices[-1] == ""
+        assert "statutory_compliance_pack" in choices
 
 
 class TestTodaySpendFromEvents:

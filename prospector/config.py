@@ -86,10 +86,22 @@ class Retrieval:
     # indefinitely. Caps total latency at queue_timeout + search_timeout.
     queue_timeout: int = 45             # seconds to wait for a concurrency slot before failover
     # Physical load governors (decouple logical candidate concurrency from heavy CLI
-    # subprocess load). Config is the single source of truth; PROSPECTOR_CLAUDE_
-    # CONCURRENCY / PROSPECTOR_VET_WORKERS env vars still override for ops.
+    # subprocess load). Config is the single source of truth; env overrides for ops:
+    #   PROSPECTOR_CLAUDE_CONCURRENCY, PROSPECTOR_CURSOR_CONCURRENCY, PROSPECTOR_VET_WORKERS.
+    # Keep vet_workers ≈ cursor_concurrency ≈ claude_concurrency so parallel vets do not
+    # self-induce queue_timeout / CLI hangs.
     claude_concurrency: int = 2         # max concurrent claude CLI subprocesses
+    cursor_concurrency: int = 2         # max concurrent Cursor agent CLI subprocesses
     vet_workers: int = 3                # candidates vetted in parallel; align to grounding slots
+    # Completion-brain CLI budgets (CursorCliOperator / non-web Claude CLI). Distinct from
+    # search_timeout (web-grounding). query_gen_* is the tight cap for non-critical
+    # query-gen so one hung agent call cannot burn 6+ minutes per check.
+    cli_timeout: int = 120              # verdict / adversarial completion (attempt 0)
+    cli_timeout_max: int = 180          # completion ceiling across retries
+    cli_retries: int = 1                # in-place retries for completion brains
+    query_gen_timeout: int = 90         # batched/per-check query-gen (attempt 0)
+    query_gen_timeout_max: int = 90     # no escalation — fail over / template fast
+    query_gen_retries: int = 0          # template fallback is the retry
     # Circuit breaker (failover resilience). A provider is retired only after this many
     # CONSECUTIVE transient failures (or immediately on a quota wall), and recovers via a
     # half-open probe after the cooldown — never permanently dead-listed for the run.
@@ -263,6 +275,14 @@ class Config:
     # PROSPECTOR_ENTITLEMENTS_API_KEY env var at config load time. No default
     # — if unset, the entitlements check will fail clearly (fail-closed).
     entitlements_api_key: str = ""
+    # Storefront payment rail. `active_provider` selects which ProductProvisioner
+    # EngineBridge uses at publish time (bridge.py `provisioner`). This MUST match the
+    # provider the Store API's checkout endpoint bills through: checkout builds a Stripe
+    # Checkout Session from `pack.ProviderPriceId`, so a pack provisioned under any other
+    # provider lists with a `price_stub_*` id and its checkout 500s. Config-driven (not
+    # env-only) so the value is version-controlled and identical across environments.
+    store_payments: dict[str, Any] = field(
+        default_factory=lambda: {"active_provider": "stripe"})
     # Per-provider default model identifiers (see ModelDefaults docstring).
     # This is the canonical home for "what model does provider X use by default".
     # Operators / search providers consume this; the historical `_DEFAULT_MODEL`
@@ -626,6 +646,18 @@ def load_config(path: str | Path | None = None) -> Config:
             raw.get("entitlements_api_key")
             or os.environ.get("PROSPECTOR_ENTITLEMENTS_API_KEY", "")
         ),
+        # Payment rail: config.yaml wins, then PAYMENTS_ACTIVE_PROVIDER, then the
+        # dataclass default (stripe). Never silently falls back to a provider we hold
+        # no key for — that is what shipped six unbuyable packs.
+        store_payments={
+            "active_provider": (
+                (raw.get("store_payments") or {}).get("active_provider")
+                or os.environ.get("PAYMENTS_ACTIVE_PROVIDER")
+                or "stripe"
+            ),
+            **{k: v for k, v in (raw.get("store_payments") or {}).items()
+               if k != "active_provider"},
+        },
     )
     # Lane-level operator_archetype pins must resolve against the shared archetypes map.
     archetypes = (cfg.generation or {}).get("archetypes") or {}

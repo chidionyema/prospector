@@ -44,13 +44,19 @@ def _run(*args: str, expect_ok: bool = True) -> subprocess.CompletedProcess:
 # ---------------------------------------------------------------------------
 
 def test_markets_list_shows_status_per_market():
+    """Status is asserted on the market's OWN line. The previous form was
+    `"us" in out and "closed" in out`, which passed on any output containing some
+    closed market anywhere — it would not have noticed `us` opening."""
     out = _run("markets", "list").stdout
-    assert "uk" in out and "open" in out
-    assert "us" in out and "closed" in out
+    status = {line.split()[0]: line for line in out.splitlines() if line.split()}
+    assert "open" in status["uk"]
+    assert "open" in status["us"]
+    assert "closed" in status["nigeria"]
 
 
 def test_running_a_closed_market_is_refused():
-    proc = _run("generate", "--market", "us", "--candidates", "1", expect_ok=False)
+    proc = _run("generate", "--market", "nigeria", "--candidates", "1",
+                expect_ok=False)
     assert proc.returncode == 2
     assert "is closed, not open" in proc.stderr
     assert "markets probe" in proc.stderr
@@ -137,7 +143,7 @@ def test_open_refuses_a_not_ready_artifact():
 # ---------------------------------------------------------------------------
 
 def test_replicate_into_a_closed_market_is_refused():
-    proc = _run("replicate", "--from", "uk", "--market", "us", "--dry-run",
+    proc = _run("replicate", "--from", "uk", "--market", "nigeria", "--dry-run",
                 expect_ok=False)
     assert proc.returncode == 2
     assert "is closed, not open" in proc.stderr

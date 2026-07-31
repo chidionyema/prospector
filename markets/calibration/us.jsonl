@@ -1,14 +1,17 @@
 # US market calibration set (Market-Readiness Gate).
-# One candidate per line with a KNOWN outcome. The probe runs these through the real
-# pipeline in the US market and measures whether the engine can (a) find evidence there
-# and (b) read it correctly. Expected outcomes are chosen to be decidable from public
-# US evidence alone — if an entry needs UK knowledge to judge, it belongs in uk.jsonl.
+# Sole-operator / info-product PACK shape with a named US regulator and a decidable
+# public-evidence trail. PASS rows need a costly compliance failure mode that free .gov
+# checklists do not fully dissolve. Probe with --lane side_hustle (also stamped on each
+# entry). Half PASS / half KILL. Do NOT lower readiness bars.
 #
-# Half must be expected-PASS and half expected-KILL, or discrimination is satisfied by
-# an engine that answers the same way every time (enforced in markets.load_calibration_set).
-{"title": "Fixed-fee Texas notary surety bond filing service", "one_liner": "Prepares and files the $10,000 surety bond and oath package Texas requires of new notaries public, for a flat fee.", "why_now": "Texas notary commissions renew on a four-year cycle and the filing steps are unchanged but poorly documented.", "expected": "pass"}
-{"title": "Medicare DME supplier accreditation readiness audit", "one_liner": "A pre-survey audit that walks a durable medical equipment supplier through the CMS supplier standards before their accreditation survey.", "why_now": "CMS supplier standards are published and enforced, and a failed survey costs the supplier their billing privileges.", "expected": "pass"}
-{"title": "State-by-state contractor licence renewal tracker", "one_liner": "Tracks licence renewal deadlines and CE requirements for contractors operating across multiple US states.", "why_now": "Multi-state contractors miss renewals because every state board publishes its own calendar.", "expected": "pass"}
-{"title": "Unlicensed interstate money transmission clearinghouse", "one_liner": "Moves customer funds across state lines for a fee without registering as a money services business.", "why_now": "Cross-border payment demand is growing among small importers.", "expected": "kill"}
-{"title": "Scraped-credit-report resale service", "one_liner": "Resells consumer credit file data scraped from bureau portals to landlords who do not want to pay for a compliant screening product.", "why_now": "Landlords complain that compliant tenant screening is slow and expensive.", "expected": "kill"}
-{"title": "General-purpose US web search engine for consumers", "one_liner": "A consumer search engine indexing the open web, monetised by advertising.", "why_now": "Consumers report dissatisfaction with the quality of existing search results.", "expected": "kill"}
+# 2026-07-30 — packs chosen from probe evidence (not bar-lowering):
+# - Texas TDLR cosmetology CE renewal: earned PASS (composite 2.55) on side_hustle.
+# - IRS Form 2290 HVUT e-file pack: annual federal filing with clear due date + paid
+#   e-file market; irs.gov already in authority_domains / exemplars.
+# - Kept one CMS DME pre-survey pack (previously earned PASS once; terrain proven).
+{"title": "Texas TDLR cosmetology operator license renewal CE hours documentation pack", "one_liner": "A sole-operator info pack that assembles Texas Department of Licensing and Regulation continuing-education hour certificates and the renewal checklist a licensed cosmetology operator must file before the TDLR renewal deadline.", "why_now": "TDLR requires documented CE hours for cosmetology operator renewals; solo stylists lose the license when certificates are missing at renewal.", "expected": "pass", "ambition_tier": "side_hustle"}
+{"title": "Owner-operator IRS Form 2290 heavy highway vehicle use tax e-file pack", "one_liner": "A sole owner-operator pack that walks through IRS Form 2290 HVUT due dates, Schedule 1 evidence, and the e-file steps required before state registration renewals for trucks at or above 55,000 pounds.", "why_now": "Form 2290 is due annually by the end of the month following first highway use; missed filings block plate renewals and accrue penalties.", "expected": "pass", "ambition_tier": "side_hustle"}
+{"title": "Independent DME supplier CMS DMEPOS accreditation pre-survey gap pack", "one_liner": "A pre-survey binder pack that walks an independent durable medical equipment supplier through the CMS DMEPOS supplier standards before their accreditation survey.", "why_now": "CMS supplier standards are published and enforced; a failed survey costs the supplier their Medicare billing privileges.", "expected": "pass", "ambition_tier": "side_hustle"}
+{"title": "Unlicensed interstate money transmission clearinghouse", "one_liner": "Moves customer funds across state lines for a fee without registering as a money services business with FinCEN or any state regulator.", "why_now": "Cross-border payment demand is growing among small importers.", "expected": "kill", "ambition_tier": "side_hustle"}
+{"title": "Scraped-credit-report resale service", "one_liner": "Resells consumer credit file data scraped from bureau portals to landlords who do not want to pay for a compliant FCRA screening product.", "why_now": "Landlords complain that compliant tenant screening is slow and expensive.", "expected": "kill", "ambition_tier": "side_hustle"}
+{"title": "Unregistered retail broker matching buyers to private placements", "one_liner": "Solicits retail investors and matches them to private-placement securities for a commission without SEC broker-dealer registration.", "why_now": "Retail interest in private markets is rising and founders want cheaper capital introductions.", "expected": "kill", "ambition_tier": "side_hustle"}

@@ -92,6 +92,41 @@ class TestCancel:
         j = next(j for j in jobs if j["job_id"] == job_id)
         assert j["status"] == "cancelled"
 
+    def test_finalize_honors_cancelled_written_by_other_process(self, tmp_path, monkeypatch):
+        """Detached supervisor must not overwrite cancel with failed/unknown."""
+        cc = tmp_path / "cc"
+        runs = cc / "runs"
+        runs.mkdir(parents=True)
+        monkeypatch.setattr(runner, "_JOBS_FILE", cc / "jobs.json")
+        monkeypatch.setattr(runner, "_RUNS_DIR", runs)
+        runner._JOB_STATUS.clear()
+        runner._LIVE_PROCS.clear()
+
+        job_id = "cross_proc_cancel"
+        log_file = runs / f"{job_id}.log"
+        exit_file = runs / f"{job_id}.exit"
+        log_file.write_text("cancelled mid-run\n", encoding="utf-8")
+        exit_file.write_text("143\n", encoding="utf-8")
+        start_ts = time.time() - 30
+        (cc / "jobs.json").write_text(json.dumps([{
+            "job_id": job_id,
+            "pid": None,
+            "argv": ["true"],
+            "start_ts": start_ts,
+            "status": "cancelled",
+            "log_file": str(log_file),
+            "exit_code": None,
+        }]), encoding="utf-8")
+
+        status = runner._finalize_job(
+            cc / "jobs.json", job_id,
+            log_file=log_file, exit_file=exit_file,
+            start_ts=start_ts, pid=None,
+        )
+        assert status == "cancelled"
+        jobs = json.loads((cc / "jobs.json").read_text())
+        assert jobs[0]["status"] == "cancelled"
+
 
 class TestLoadJobs:
     """load_jobs() must read jobs back from jobs.json and reap dead PIDs."""

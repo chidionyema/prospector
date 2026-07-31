@@ -20,15 +20,36 @@ from pathlib import Path
 from typing import Optional
 
 # Max candidates vetted in parallel. Each vet drives slow CLI subprocesses, so the
-# real throughput ceiling is the grounding concurrency; this caps how many candidate
-# vets are in flight at once. Sourced from config (retrieval.vet_workers, aligned to
-# grounding slots) so 5 workers no longer oversubscribe 2+2 slots and self-induce
-# timeouts; PROSPECTOR_VET_WORKERS still overrides for ops. Not a verdict knob.
+# real throughput ceiling is the grounding / Cursor concurrency; this caps how many
+# candidate vets are in flight at once. Sourced from config (retrieval.vet_workers).
+# Align with retrieval.cursor_concurrency + retrieval.claude_concurrency (and export
+# PROSPECTOR_CURSOR_CONCURRENCY= that same value in ops shells / queue_yield_batch.sh)
+# so workers do not self-induce queue_timeout. PROSPECTOR_VET_WORKERS overrides for ops.
+# Not a verdict knob.
 def _vet_workers(cfg) -> int:
     env = os.environ.get("PROSPECTOR_VET_WORKERS")
     if env:
         return max(1, int(env))
     return max(1, int(getattr(cfg.retrieval, "vet_workers", 3)))
+
+
+def _sync_cli_concurrency(cfg) -> None:
+    """Apply retrieval.*_concurrency to CLI governors (env vars still win when set)."""
+    r = getattr(cfg, "retrieval", None)
+    if r is None:
+        return
+    try:
+        from .claude_cli import configure_concurrency as _claude_conc
+        _claude_conc(int(getattr(r, "claude_concurrency", 2) or 2))
+    except Exception:
+        pass
+    try:
+        from .cursor_cli import configure_concurrency as _cursor_conc
+        _cursor_conc(int(getattr(r, "cursor_concurrency", None)
+                         or getattr(r, "claude_concurrency", 2)
+                         or 2))
+    except Exception:
+        pass
 
 
 def _resolve_lanes(cfg, args) -> Optional[list]:
@@ -435,6 +456,7 @@ def run_signal(
     # --- Load defaults ---
     if cfg is None:
         cfg = load_config()
+    _sync_cli_concurrency(cfg)
 
     if op is None:
         from .operator import make_operator
@@ -1679,6 +1701,12 @@ def _run_market_probe(args: argparse.Namespace, cfg: Config, market: str,
     # `real_cfg` keeps the live store dir so the READINESS artifact lands where the rest
     # of the engine looks for it; only the DOSSIER writes are diverted.
     real_cfg = _build_config_and_overrides(args).for_market(market)
+    # Pack-shaped calibration ideas must be judged on the lane that matches them
+    # (usually side_hustle). `--lane` already resolves gates via for_lane above; also
+    # stamp ambition_tier on each candidate so dossiers/audit trail show the bar used,
+    # and so any later for_lane(cand.ambition_tier) path cannot silently revert to the
+    # venture default (which kills packs on incumbency — the wrong bar for £30 packs).
+    lane = (getattr(args, "lane", None) or "").strip()
     probe_dir = Path(real_cfg.store_dir) / "markets" / market / "probe"
     probe_dir.mkdir(parents=True, exist_ok=True)
     probe_cfg = _replace(real_cfg, store={**real_cfg.store, "dir": str(probe_dir)})
@@ -1688,21 +1716,31 @@ def _run_market_probe(args: argparse.Namespace, cfg: Config, market: str,
     fast_op = make_operator(probe_cfg, fast=True)
     search = _make_search(probe_cfg, args)
 
-    print(f"Probing market {market!r} with {len(entries)} calibration candidate(s)…")
+    lane_note = f" lane={lane!r}" if lane else " (default lane — pack sets usually want --lane side_hustle)"
+    print(f"Probing market {market!r} with {len(entries)} calibration candidate(s){lane_note}…")
     outcomes = []
     for entry in entries:
+        # Entry-level ambition_tier/lane wins when present; else CLI --lane; else unset.
+        entry_lane = (entry.get("ambition_tier") or entry.get("lane") or lane or "").strip()
         cand = Candidate(title=entry["title"], one_liner=entry.get("one_liner", ""),
-                         why_now=entry.get("why_now", ""), market=market)
+                         why_now=entry.get("why_now", ""), market=market,
+                         ambition_tier=entry_lane)
         progress.banner(f"[probe {market}] {cand.title!r}")
-        d = vet_candidate(cand, op, search, probe_cfg, store=store, query_op=fast_op,
+        vet_cfg = probe_cfg.for_lane(entry_lane) if entry_lane else probe_cfg
+        d = vet_candidate(cand, op, search, vet_cfg, store=store, query_op=fast_op,
                           publish=False, show_checks=False)
         outcome = mk.outcome_from_dossier(entry["expected"], d)
         outcomes.append(outcome)
         print(f"  expected={outcome.expected:<5} actual={outcome.actual:<5} "
               f"grounded={outcome.grounded_checks}/{outcome.total_checks}  {cand.title[:44]}")
 
-    readiness = mk.evaluate(real_cfg, market, outcomes)
-    path = mk.save_readiness(real_cfg, readiness)
+    # Fingerprint against the market-scoped config WITHOUT --lane applied.
+    # `markets show|open` load config with no lane pin; hashing the lane-resolved
+    # hard_gates/thresholds here made every successful `probe --lane side_hustle`
+    # look STALE immediately. Outcomes still reflect the lane used for vetting.
+    fp_cfg = load_config().for_market(market)
+    readiness = mk.evaluate(fp_cfg, market, outcomes)
+    path = mk.save_readiness(fp_cfg, readiness)
     print("\n" + mk.format_readiness(readiness))
     print(f"\nwritten: {path}")
     print(f"probe dossiers (not catalogue): {probe_dir}")

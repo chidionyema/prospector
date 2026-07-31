@@ -220,12 +220,28 @@ def _render_kpi_cards():
     spend = float(kpis.get("today_spend") or 0.0)
     cap = float(kpis.get("daily_cap") or 50.0)
     c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("PASS", kpis.get("pass_count", 0))
-    c2.metric("KILL", kpis.get("kill_count", 0))
-    c3.metric("DEFER", kpis.get("defer_count", 0))
-    c4.metric("Pending", kpis.get("pending_count", 0))
+    c1.metric(
+        "PASS (sellable)",
+        kpis.get("n_pass_non_prov", kpis.get("pass_count", 0)),
+        help="Non-provisional PASSes (may publish).",
+    )
+    c2.metric(
+        "Provisional",
+        kpis.get("n_pass_provisional", kpis.get("n_provisional", 0)),
+        help="PASS ruled by emergency fallback — never publish until re-vet.",
+    )
+    c3.metric(
+        "Listed",
+        kpis.get("n_listed", 0),
+        help="Local store/listings receipts (Pub=Y). Store Catalog is sellable SoT.",
+    )
+    c4.metric("KILL", kpis.get("kill_count", 0))
     c5.metric("Spend", f"${spend:.2f}")
     c6.metric("Cap", f"${cap:.0f}")
+    st.caption(
+        f"All PASS={kpis.get('pass_count', 0)} · DEFER={kpis.get('defer_count', 0)} · "
+        f"Pending signals={kpis.get('pending_count', 0)}"
+    )
 
     rows = readers.recent_dossier_rows(6)
     if rows:

@@ -121,9 +121,14 @@ def test_degraded_retrieval_is_flagged():
 
 
 def test_dossiers_in_a_closed_market_are_an_alarm():
-    """Either a probe leaked into the catalogue or the readiness gate was bypassed."""
-    rows = _rows(6, decision="pass")
-    codes = {a["code"] for a in _market_alarms(rows, "us", load_config(), min_sample=5)}
+    """Either a probe leaked into the catalogue or the readiness gate was bypassed.
+
+    Uses `nigeria` rather than `us`: `us` opened on 2026-07-30, so it no longer
+    exercises this branch. The alarm itself is unchanged.
+    """
+    rows = _rows(6, decision="pass", market="nigeria")
+    codes = {a["code"] for a in _market_alarms(rows, "nigeria", load_config(),
+                                               min_sample=5)}
     assert "market_not_open" in codes
 
 

@@ -235,7 +235,9 @@ def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int,
                           check_name=check_name, check_question=CHECKS[check_name],
                           **_market_vars(cfg))
     try:
-        data = op.complete_json(system, user, temperature=0.5)
+        # retries=0: query-gen already falls back to a template on failure; do not
+        # burn multi-minute CLI retries on a non-verdict call.
+        data = op.complete_json(system, user, temperature=0.5, retries=0)
         qs = data if isinstance(data, list) else data.get("queries", [])
         return [str(q) for q in qs][:n] or [f"{cand.title} {check_name}"]
     except Exception as e:
@@ -268,7 +270,9 @@ def gen_queries_batched(op: Operator, cand: Candidate,
                               candidate_json=json.dumps(cand.to_dict()),
                               checks_block=checks_block,
                               **_market_vars(cfg))
-        data = op.complete_json(system, user, temperature=0.5)
+        # retries=0: total failure → {} → every check uses its template; hanging
+        # Cursor/CLI retries here wedged candidates for 6+ minutes per batch.
+        data = op.complete_json(system, user, temperature=0.5, retries=0)
     except Exception as e:
         logger.warning(f"Batched query gen failed (falling back to templates): {e}")
         return {}
@@ -661,7 +665,7 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
                 gen_queries_batched(op, cand, missing,
                                     n=cfg.retrieval.queries_per_check, cfg=cfg))
 
-    for name in run_order:
+    for idx, name in enumerate(run_order):
         res = run_check(op, search, cfg, cand, name, query_op=query_op,
                         precomputed_queries=precomputed_queries)
         checks.append(res)
@@ -683,6 +687,55 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
         if gate_fired and not full_vet:
             logger.info(f"Kill-fast triggered by gate: {name}", extra={"gate": name})
             return checks, None, first_failing_gate
+
+        # Soft early-exit: PASS already impossible (same decision as finishing the
+        # run then failing source_or_die / moat_ungrounded / min_composite). Does NOT
+        # replace hard-gate kill-fast — only fires when no hard fail tripped above.
+        #
+        # DEFER-safe: never soft-kill when any check already retrieval_failed, and
+        # never skip remaining hard gates (a later gate outage must still DEFER).
+        # When remaining is empty, only soft-exit if adversarial would still run
+        # (otherwise no savings — leave gate=None for golden-set / skip_adversarial).
+        if not full_vet and first_failing_gate not in (DEFER_GATE, "moat_exhausted"):
+            from .pass_ceiling import pass_impossible_reason
+            remaining = list(run_order[idx + 1:])
+            gate_names = cfg.gate_map()
+            remaining_hard = [n for n in remaining if n in gate_names]
+            infra_failed = any(getattr(c, "retrieval_failed", False) for c in checks)
+            saves_work = bool(remaining) or not skip_adversarial
+            if not infra_failed and not remaining_hard and saves_work:
+                soft = pass_impossible_reason(checks, remaining, cfg)
+                if soft:
+                    checks_run = len(checks)
+                    checks_skipped = len(remaining)
+                    logger.info(
+                        f"Soft early-exit: PASS impossible ({soft}) after {name}; "
+                        f"checks_run={checks_run} checks_skipped_soft_exit={checks_skipped}",
+                        extra={
+                            "gate": soft,
+                            "after_check": name,
+                            "checks_run": checks_run,
+                            "checks_skipped_soft_exit": checks_skipped,
+                            "skipped_checks": remaining,
+                        },
+                    )
+                    audit(
+                        "soft_early_exit",
+                        candidate_id=getattr(cand, "candidate_id", None),
+                        gate=soft,
+                        after_check=name,
+                        checks_run=checks_run,
+                        checks_skipped_soft_exit=checks_skipped,
+                        skipped_checks=remaining,
+                    )
+                    if getattr(cand, "tags", None) is not None:
+                        cand.tags["verify_throughput"] = {
+                            "checks_run": checks_run,
+                            "checks_skipped_soft_exit": checks_skipped,
+                            "soft_exit_gate": soft,
+                            "after_check": name,
+                        }
+                    return checks, None, soft
 
     # adversarial() calls op.complete_json — if the moat chain (Claude → Gemini) is
     # exhausted, it raises ProviderExhaustedError.  Catch it here so the candidate

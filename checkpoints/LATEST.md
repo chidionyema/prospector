@@ -1,65 +1,50 @@
-# Checkpoint — 2026-07-30 · Multi-market + house voice leftovers closed
+# Checkpoint — 2026-07-30 · US market OPEN (prod-ready)
 
 ## Active task
-Branch `multi-market-dimension-2026-07-30` (cut from `launch-hardening-2026-06-18`).
+**US multi-market open** — readiness READY; opened for generate/publish. Bars NOT lowered. No yield batch started.
 
-**Status: Epic D (multi-market) + Monzo-style house-voice leftovers are DONE.**
-Branch is not committed. Do not start the next task in this context.
+## Done this session
+1. Confirmed `store/markets/us/READINESS.json` **verdict: ready** (probe 2026-07-30T21:58:31Z).
+2. Ran `.venv/bin/python -m prospector.run markets open --market us` → success.
+3. `config.yaml` `markets.us.status: open` (us-tx inherits open).
+4. Generate gate: `_guard_market_open` for `--market us` and `--market us-tx` → **not refused**.
+5. Fingerprint fix: hashing full market block included `status`, so open immediately made show STALE. **`config_fingerprint` now excludes `status`**; READINESS restamped `994b3aa186c35d4e`; show READY + current (no STALE).
+6. Tests: expect US open; `test_fingerprint_stable_across_status_flip`. `pytest -q tests/unit/test_market_readiness.py tests/unit/test_market_config.py` → **38 passed**.
 
-## Verification (observed this session)
-| Gate | Result |
-|---|---|
-| `tests/invariants/test_house_voice.py` + market retrieval + market CLI | **32 passed** |
-| `.venv/bin/python -m pytest tests/ -k golden -q` | **14 passed**, 610 deselected |
-| `.venv/bin/python -m pytest -q` (full suite) | **621 passed, 3 skipped** |
+### Probe metrics (bars unchanged)
+| metric | measured | bar |
+|---|---:|---:|
+| grounding_rate | 0.73 | 0.55 |
+| authority_rate | 0.53 | 0.25 |
+| discrimination | 0.83 | 0.70 |
+| pass_rate | 0.33 | 0.05 |
 
-Known flake (do not fix): `tests/control_center/test_runner.py::TestLaunchPersist::test_launch_writes_job_to_jobs_json` — did not fire this run.
+## Exact US pack yield command (bounded + publish)
+Prefer `us-tx` (`require_subdivision: true` on us). Mirror UK catalogue preset:
 
-## What landed on this branch (summary)
+```bash
+.venv/bin/python -m prospector.run generate \
+  --candidates 5 \
+  --lane side_hustle \
+  --market us-tx \
+  --archetype solo_agent \
+  --profile statutory_compliance_pack \
+  --publish
+```
 
-### Epic D — multi-market dimension
-`market` is a config-driven dimension (jurisdiction of the OPPORTUNITY), orthogonal to
-ambition lane and buyer locale. `uk` open; `us` closed until probe passes.
-See `specs/multi-market-dimension.md`. Prior session closed D0–D7 + readiness gate.
+`--market us` also accepted. Optional: Control Center `runner.launch` with the same argv.
 
-### Reliability fixes (already shipped earlier this session — do not redo)
-- `prospector/verify.py` — ContextVar copy in the search pool (market authority domains
-  survive thread hops).
-- Market guard without `--market` (closed markets still blocked when active_market is set).
-- Status rewrite regex fix (scheduler/control-center status lines).
+PASS backfill without re-vet:
+```bash
+.venv/bin/python -m tools.publish_passes store/dossiers/<id>.pass.json
+```
 
-### House voice (Monzo-style dossier tone) — DONE
-- `prompts/style/voice.md` + `prompts/style/rationale.md` exist; `prompts.py` auto-injects
-  `style_kwargs`. Moat prompts get fenced `rationale_style` only (never buyer `style_guide`).
-- Prose prompts updated: content_gen, artifacts, verdict, adversarial, generate_system,
-  refine_system, score.
-- `prospector/dossier.py` renderer chrome restyled (PASS/KILL gloss, check labels, etc.).
-- **Leftover closed this turn:** `build_dossier` kill reasons no longer say
-  `Gate '…' fired — …`. They now read
-  `It failed on: Is it legal? (\`legality\`) — …` (plain label + backtick gate for audit).
-  `adversarial_decisive` / `min_composite` / `moat_ungrounded` / `source_or_die` in
-  `_CHECK_LABEL`. adaptive.py still strips on first `:` (comment updated).
-- `tests/invariants/test_house_voice.py` asserts kill reasons never start with `Gate '`.
+## Files touched
+- `config.yaml` — us status open (via markets open)
+- `prospector/markets.py` — fingerprint excludes status
+- `store/markets/us/READINESS.json` — fingerprint restamp under status-neutral hash
+- `tests/unit/test_market_readiness.py` — status-flip stability
+- `tests/unit/test_market_config.py` — US open expectations; us removed from closed stubs
 
-### Cursor operator
-**Owned by another agent — status unknown here.** Do not touch `prospector/operator.py`.
-
-## Files touched this leftover turn
-- `prospector/dossier.py` — plain-English kill reasons in `build_dossier`; extra `_CHECK_LABEL`
-  entries; `_GATE_PREFIX` kept only for legacy stored dossiers.
-- `prospector/adaptive.py` — comment only (stripper behaviour unchanged).
-- `tests/invariants/test_house_voice.py` — `test_kill_reasons_no_longer_start_with_gate_jargon`.
-
-## Exact next steps
-1. Review the branch, then commit (still uncommitted).
-2. **Founder decision — backfill.** 1,287 pre-cutover dossiers carry `market=''`.
-   `python -m tools.backfill_market` (dry run) → `--apply`. Requires the `.bak` to exist.
-3. To open US: live `markets probe --market us --set markets/calibration/us.jsonl`, then
-   `markets open --market us` if READY.
-4. Cursor operator work stays with its owning agent (unknown status from this session).
-
-## Open problems
-- None failing in the suite this run.
-- US calibration expected outcomes still soft (judgement, not measured) — review before
-  trusting a probe result.
-- Control-center launch-persist flake remains known and unfixed by design.
+## Exact next step
+Launch the bounded US yield command above when ready for spend. Do not re-probe unless measuring config (authority domains / bars / gates) changes.

@@ -113,9 +113,15 @@ class Operator(ABC):
     @track_latency(name="operator_complete_json")
     def complete_json(self, system: str, user: str, *,
                       temperature: float = 0.7, retries: int = 2,
-                      validate: Optional[Callable[[Any], Any]] = None) -> Any:
+                      validate: Optional[Callable[[Any], Any]] = None,
+                      coerce: Optional[Callable[[str], Any]] = None) -> Any:
         """Strict-JSON call with repair-retries. Raises ParseError only if all
-        attempts fail (callers decide fail-safe behaviour, e.g. -> unverifiable)."""
+        attempts fail (callers decide fail-safe behaviour, e.g. -> unverifiable).
+
+        ``coerce`` (optional) runs when ``_extract_json`` fails — e.g. wrap bare
+        markdown into a known JSON envelope for prose artifacts. It must raise
+        ParseError/ValueError if the text cannot be coerced.
+        """
         from .telemetry import logger
         logger.info(f"LLM completion started: {self.name}", extra={"retries_allowed": retries})
         
@@ -124,7 +130,12 @@ class Operator(ABC):
         for attempt in range(retries + 1):
             try:
                 text = self._raw(sys, user, temperature)
-                data = _extract_json(text)
+                try:
+                    data = _extract_json(text)
+                except ParseError:
+                    if coerce is None:
+                        raise
+                    data = coerce(text)
                 
                 # If we succeeded after a repair turn, record it as a self-correction
                 if attempt > 0:
@@ -982,8 +993,34 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     model = cfg_model if model_matches else None
     has_cfg_model = model_matches
     if kind == "cursor_cli":
-        from .cursor_cli import CursorCliOperator
+        from .cursor_cli import CursorCliOperator, configure_concurrency
+        r = getattr(cfg, "retrieval", None)
+        if r is not None:
+            # Align Cursor slots with config unless PROSPECTOR_CURSOR_CONCURRENCY is set.
+            configure_concurrency(
+                int(getattr(r, "cursor_concurrency", None)
+                    or getattr(r, "claude_concurrency", 2)
+                    or 2))
         md_model = getattr(md, "cursor_cli", None) if md else None
+        if r is not None and fast:
+            # Query-gen / non-critical: tight cap so a hung agent call cannot wedge a vet.
+            return CursorCliOperator(
+                model=model or md_model or None,
+                timeout=int(getattr(r, "query_gen_timeout", 90) or 90),
+                timeout_max=int(getattr(r, "query_gen_timeout_max", 90) or 90),
+                escalation=1.0,
+                retries=int(getattr(r, "query_gen_retries", 0) or 0),
+                queue_timeout=float(getattr(r, "queue_timeout", 45) or 45),
+            )
+        if r is not None:
+            return CursorCliOperator(
+                model=model or md_model or None,
+                timeout=int(getattr(r, "cli_timeout", 120) or 120),
+                timeout_max=int(getattr(r, "cli_timeout_max", 180) or 180),
+                escalation=float(getattr(r, "search_timeout_escalation", 1.0) or 1.0),
+                retries=int(getattr(r, "cli_retries", 1) or 1),
+                queue_timeout=float(getattr(r, "queue_timeout", 45) or 45),
+            )
         return CursorCliOperator(model=model or md_model or None)
     if kind == "claude_cli":
         # cfg.model is an API pin; don't leak it to the claude CLI.
@@ -1031,6 +1068,20 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
 
 def make_operator(cfg, fast: bool = False) -> Operator:
     # operator may be a single name or an ordered fallback chain.
+    # Sync CLI concurrency governors from config (env overrides still win).
+    r0 = getattr(cfg, "retrieval", None)
+    if r0 is not None:
+        try:
+            from .cursor_cli import configure_concurrency as _cursor_conc
+            _cursor_conc(int(getattr(r0, "cursor_concurrency", None)
+                             or getattr(r0, "claude_concurrency", 2) or 2))
+        except Exception:
+            pass
+        try:
+            from .claude_cli import configure_concurrency as _claude_conc
+            _claude_conc(int(getattr(r0, "claude_concurrency", 2) or 2))
+        except Exception:
+            pass
     kinds = cfg.operator
     kinds = [kinds] if isinstance(kinds, str) else list(kinds)
     built = [(k, _build_operator(k, cfg, fast)) for k in kinds]

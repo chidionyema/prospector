@@ -4,6 +4,7 @@ Archetypes reframe WHO can build the idea. They must never move gates/thresholds
 """
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
@@ -89,6 +90,25 @@ def test_generate_prompt_injects_archetype_binding():
 
 def test_closed_market_stubs_exist_and_stay_closed():
     cfg = load_config()
-    for code in ("africa", "nigeria", "europe", "asia", "us"):
+    for code in ("africa", "nigeria", "europe", "asia"):
         assert cfg.market_status(code) == "closed"
     assert cfg.market_status("uk") == "open"
+
+
+def test_an_open_market_is_backed_by_a_passing_readiness_probe():
+    """`us` moved closed -> open on 2026-07-30. The invariant that matters is not which
+    markets are open — that list grows — but that nothing is open without a probe that
+    actually passed. This is the assertion the old hardcoded `us == closed` was really
+    standing in for, and it keeps binding as more markets open."""
+    cfg = load_config()
+    for code in ("uk", "us"):
+        assert cfg.market_status(code) == "open"
+
+    ref = cfg.markets["us"].get("readiness_ref")
+    assert ref, "an open market must name its readiness_ref"
+    readiness = json.loads((Path(__file__).resolve().parents[2] / ref).read_text())
+    assert readiness["verdict"] == "ready"
+    assert readiness["failures"] == []
+    for bar, floor in readiness["bars"].items():
+        metric = bar.removeprefix("min_")
+        assert readiness["metrics"][metric] >= floor, f"{metric} below {bar}"
