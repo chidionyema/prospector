@@ -332,11 +332,19 @@ export interface SessionOrderItem {
   downloadPath: string;
 }
 
-/** What a checkout session resolved to. `pending` is normal, not an error: the browser
- *  usually gets back from the payment provider before the fulfilment webhook lands, so
- *  the caller polls until the status turns `ready`. */
+/** What a checkout session resolved to.
+ *
+ *  `pending` is normal, not an error: the browser usually gets back from the payment provider
+ *  before the fulfilment webhook lands, so the caller polls until the status turns `ready`.
+ *
+ *  `unfulfilled` and `revoked` are TERMINAL — the caller must stop polling. Both used to be
+ *  reported as `pending`, so a buyer whose order could never resolve watched the same spinner
+ *  as one whose webhook was half a second away, until the poll timeout gave up on their behalf.
+ *  `unfulfilled` means payment was recorded but fulfilment granted nothing (the API can prove
+ *  this because the Order is written in the same transaction as any entitlement); `revoked`
+ *  means it was granted and later withdrawn by a refund or dispute. */
 export interface SessionOrder {
-  status: 'pending' | 'ready';
+  status: 'pending' | 'ready' | 'unfulfilled' | 'revoked';
   items: SessionOrderItem[];
 }
 

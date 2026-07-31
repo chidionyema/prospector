@@ -56,14 +56,21 @@ Everything else (validation, reprovisioning prices, proving the fail-closed boot
    ```
    STRIPE_TEST_SECRET_KEY="$Stripe__ApiKey" bash store_platform/scripts/prove_launch.sh
    ```
-   Then do one real low-value card purchase on the live storefront, confirm the download works,
-   refund it in the dashboard, and confirm the download 410s (access revoked).
+   Then do **one real purchase at full list price** on the live storefront, confirm the download
+   arrives, refund it in the dashboard, and confirm the download 410s (access revoked). Refund
+   it and the money comes back, so the true cost of this step is the card fee, not the price.
 
-   "Low-value" is literal: `scripts/smoke_checkout.sh` opens the real live overlay on a real
-   pack at a 50p token price, so this step costs 50p rather than the £49 list price. The
-   server-side gate that makes that safe — and why a buyer cannot reach the cheap price — is
-   documented in `LIVE_RAIL_SMOKE_TEST.md`. That doc also records what the smoke test does
-   *not* prove, which is exactly the part this step still has to cover by hand.
+   ⚠️ **Full price is required, and this step used to say otherwise.** It previously said to pay
+   50p via `scripts/smoke_checkout.sh`. That is wrong and it was tried: the payment left the
+   account and no download ever arrived, because `FulfilmentService.cs:88` refuses to grant an
+   entitlement when the amount paid is below the pack's list price. The fence is correct — it is
+   what stops the 50p mechanism minting free packs — so a 50p purchase *cannot* prove delivery,
+   by design.
+
+   `scripts/smoke_checkout.sh` is still the right tool for the step before this one: it opens the
+   real live overlay on a real pack at a 50p token price, which proves render → card → charge →
+   webhook → `Order` row for 50p. It stops there. `LIVE_RAIL_SMOKE_TEST.md` documents the gate
+   that makes the cheap price unreachable to buyers, and exactly where its proof ends.
 
 ## Rollback
 Set `payments__active_provider` back to `paddle` (or stop the deploy). No data migration is involved;

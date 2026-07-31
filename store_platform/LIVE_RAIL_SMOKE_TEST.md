@@ -21,8 +21,12 @@ is a bill for looking at a form. This mechanism makes that render cost 50p.
 
 `POST /packs/{id}/checkout` accepts an `X-Smoke-Test-Key` header. When it matches the
 server-side `Store:InternalApiKey`, every checkout line is repriced to
-`Stripe:SmokeTestPriceId` before the session is opened. `PackId` is untouched, so entitlement
-and fulfilment still resolve the real pack — the test exercises delivery too, not just render.
+`Stripe:SmokeTestPriceId` before the session is opened. `PackId` is untouched, so the session
+still names the real pack.
+
+> ⚠️ **It does NOT exercise delivery.** An earlier version of this line said it did. That was
+> wrong, and it cost a real 50p that delivered nothing — see "The 50p purchase that delivered
+> nothing" below.
 
 | Piece | Where |
 | --- | --- |
@@ -49,8 +53,8 @@ These are properties of the code, each verifiable at the cited line:
    length mismatch, which leaks the key length. Equal-length digests remove that.
 4. **The key never reaches the browser.** `Store:InternalApiKey` appears nowhere in
    `src/Store.Web/src` — the client bundle cannot produce it.
-5. **Repricing preserves `PackId`**, so a smoke purchase grants the genuine pack and the
-   fulfilment path is exercised rather than bypassed.
+5. **Repricing preserves `PackId`**, so the session names the genuine pack — and the
+   underpayment fence then refuses to grant it (see below). The cheap price cannot buy a pack.
 6. **Absent header = ordinary sale.** `SmokeTestPricing.cs:74` returns `NotRequested` with the
    lines untouched.
 
@@ -132,8 +136,49 @@ That is the live publishable key driving a live session through Stripe Elements.
 - **The line-item text a real buyer sees.** The overlay shows the smoke product name,
   "ZZ SMOKE TEST — do not sell (live-rail render check)". Correct for a test, but it means the
   buyer-facing line item is the one element not exercised.
-- **A completed payment.** Nothing above submits a card. Charge, webhook, entitlement, and
-  download still need one real 50p purchase + refund (`GO_LIVE_RUNBOOK.md` step 4).
+- **A completed payment.** Nothing above submits a card.
+- **Fulfilment or delivery, at any price below list.** See below — this is structural, not a gap
+  that a more careful smoke test could close.
+
+## The 50p purchase that delivered nothing (2026-07-31)
+
+A real 50p live purchase went through and no download ever appeared. Not lag, not a webhook
+failure. Stripe reported `paid`, `livemode`, `pending_webhooks=0` (event
+`evt_1TzDiQPMafoirYBFWt3dsBL8`); the webhook was delivered and Order 2 was written. The
+entitlement was then **refused on purpose**:
+
+```csharp
+// src/Store.Api/Services/FulfilmentService.cs:88
+if (item.AmountPence < pack.PricePence)
+{
+    unfulfilled.Add($"{item.ProductId} (paid {item.AmountPence}p < price {pack.PricePence}p)");
+    return;
+}
+```
+
+Pack `f71ad0c4cf8b5344` lists at 4900p, the smoke session paid 50p, so `50 < 4900` and nothing
+was granted. **The fence is correct** — it is what stops a repriced session from minting free
+packs, and it is exactly the guard that makes the 50p mechanism safe to have at all. The error
+was the documentation: this doc and `GO_LIVE_RUNBOOK.md` step 4 both told the operator to pay
+50p and "confirm the download arrives", which the fence guarantees can never happen.
+
+**So the smoke purchase proves:** overlay renders → card accepted → charge captured → webhook
+delivered and verified → `Order` row written. **It cannot prove:** entitlement grant, download
+link, or refund revocation. Those need a purchase at or above list price.
+
+Two things came out of it, both shipped:
+
+- The success page no longer blames lag for this. `/api/orders/by-session/{id}` used to answer
+  `pending` for any order with no active entitlement, so a buyer who could never be fulfilled
+  watched the same spinner as one whose webhook was half a second out, then got "we could not
+  show your download **in time**". It now returns `unfulfilled` (order committed, zero
+  entitlement rows — terminal, because fulfilment writes the order and its entitlements in one
+  `SaveChangesAsync`) or `revoked`, and logs `PAID-WITHOUT-FULFILMENT` at error level.
+  Covered by `src/Store.Tests/Endpoints/OrderBySessionTests.cs`; both new cases return
+  `pending` against the pre-fix endpoint, which is the proof they would have caught this.
+- If repeatable end-to-end delivery testing is wanted, the way to get it is a £1 **unlisted**
+  pack with real content — not a bypass in the fence. A bypass would upgrade a leaked
+  `Store:InternalApiKey` from "can open 50p sessions" to "can take packs for free".
 - **Express Checkout (Apple Pay / Link).** Stripe's
   `elements-inner-express-checkout-*.html` iframe repeatedly `ERR_ABORTED`s in the probe.
   HYPOTHESIS: headless Chromium has no Apple Pay, so Stripe tears the frame down; card and the

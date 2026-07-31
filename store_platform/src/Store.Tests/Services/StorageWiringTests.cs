@@ -119,7 +119,7 @@ public sealed class StorageWiringTests
         Assert.Contains("X-Amz-Signature=", url, StringComparison.Ordinal);
         Assert.Contains("X-Amz-Algorithm=AWS4-HMAC-SHA256", url, StringComparison.Ordinal);
         // 5-minute TTL == 300 seconds.
-        Assert.Contains("X-Amz-Expires=300", url, StringComparison.Ordinal);
+        AssertExpiresApprox(300, url);
         // THE money-path regression proof: the credential scope must sign with region "auto".
         // If AuthenticationRegion="auto" did not take effect, this scope would read a real region
         // (e.g. us-east-1) and R2 would reject the signature. The scope's slashes are percent-encoded
@@ -134,10 +134,40 @@ public sealed class StorageWiringTests
 
         var url = await storage.CreatePresignedGetUrlAsync(ObjectKey, TimeSpan.FromMinutes(10));
 
-        Assert.Contains("X-Amz-Expires=600", url, StringComparison.Ordinal);
+        AssertExpiresApprox(600, url);
     }
 
     // ---- helpers ----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Asserts the presigned URL's lifetime is the requested one, allowing a one-second shortfall.
+    /// </summary>
+    /// <remarks>
+    /// Exact equality here was flaky: measured 1 run in 6 of the full suite, and captured as
+    /// <c>X-Amz-Expires=599</c> for a 10-minute request. The TTL crosses two clock reads — an
+    /// absolute expiry instant is derived from the first, and the signer then re-derives
+    /// seconds-from-now against a later one — so any millisecond boundary between them costs a
+    /// second. It only shows under load (300 uncontended presigns in a row all gave exactly 600),
+    /// which is what made it look like cross-test interference rather than a timing artifact.
+    /// <para>
+    /// A URL that expires a second early is not a defect, so the tolerance is the correct
+    /// assertion. It stays tight (1s) because a real regression here — the TTL argument being
+    /// ignored, or a unit mix-up between minutes and seconds — is off by minutes, not seconds.
+    /// </para>
+    /// </remarks>
+    private static void AssertExpiresApprox(int expectedSeconds, string url)
+    {
+        var marker = url.IndexOf("X-Amz-Expires=", StringComparison.Ordinal);
+        Assert.True(marker >= 0, $"No X-Amz-Expires in URL: {url}");
+
+        var raw = url[(marker + "X-Amz-Expires=".Length)..].Split('&')[0];
+        Assert.True(
+            int.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out var actual),
+            $"X-Amz-Expires was not a number: '{raw}' in {url}");
+        Assert.True(
+            actual == expectedSeconds || actual == expectedSeconds - 1,
+            $"X-Amz-Expires was {actual}, expected {expectedSeconds} (or {expectedSeconds - 1}). URL: {url}");
+    }
 
     private static IConfiguration BuildR2Config() =>
         new ConfigurationBuilder()

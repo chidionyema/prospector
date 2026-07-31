@@ -39,7 +39,17 @@ public sealed class FakePaymentProvider : IPaymentProvider
     /// <summary>Return urls the embedded path was given, to prove the session-id template survives.</summary>
     public IList<string> EmbeddedReturnUrls { get; } = [];
 
+    /// <summary>
+    /// Checkout-session id → the paid transaction id the rail reports for it. A session that is
+    /// absent resolves to null, which is the real provider's answer for "unknown, or not paid
+    /// yet" — so the not-yet-paid case needs no opt-in and is the default.
+    /// </summary>
+    public IDictionary<string, string> PaidTransactions { get; } = new Dictionary<string, string>(StringComparer.Ordinal);
+
     public string Name => "stripe";
+
+    public Task<string?> ResolvePaidTransactionIdAsync(string sessionId, CancellationToken ct) =>
+        Task.FromResult(PaidTransactions.TryGetValue(sessionId, out var txn) ? txn : null);
 
     public Task<bool> CanBillPriceAsync(string providerPriceId, CancellationToken ct)
     {
