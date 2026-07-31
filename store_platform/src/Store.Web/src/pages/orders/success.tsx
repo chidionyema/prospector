@@ -6,14 +6,19 @@ import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { fetchOrderBySession, type SessionOrderItem } from '@/lib/api/client';
+import { trackOnce } from '@/lib/analytics';
 
 // The buyer lands here the instant the payment provider redirects, which is normally BEFORE
 // the fulfilment webhook has been processed. So "not ready yet" is the expected first answer
 // and we poll rather than treat it as failure.
 const POLL_INTERVAL_MS = 2000;
-const MAX_POLL_ATTEMPTS = 20; // ~40s, then fall back to the email/support path.
+// ~24s. Was 20 (~40s), which was tuned for a webhook delay we have never actually observed —
+// Stripe delivers effectively instantly after payment. The long ceiling only ever prolonged the
+// cases that were never going to resolve, and those now end the poll immediately on their own
+// (see 'unfulfilled'/'revoked' below) rather than waiting for it.
+const MAX_POLL_ATTEMPTS = 12;
 
-type Phase = 'resolving' | 'ready' | 'no-session' | 'timed-out';
+type Phase = 'resolving' | 'ready' | 'no-session' | 'timed-out' | 'unfulfilled' | 'revoked';
 
 /** window.location.origin never changes for the life of the document, so there is nothing to
  *  subscribe to. useSyncExternalStore still needs a subscribe function; this one registers no
@@ -63,6 +68,14 @@ export default function OrderSuccess() {
           setPollPhase('ready');
           return;
         }
+        // Terminal answers: nothing further is coming, so stop rather than spend the remaining
+        // attempts implying something is still on its way. This is the whole point of the API
+        // distinguishing them — a buyer who cannot be fulfilled gets their reference at once
+        // instead of watching a spinner for the full timeout first.
+        if (result.status === 'unfulfilled' || result.status === 'revoked') {
+          setPollPhase(result.status);
+          return;
+        }
       } catch {
         // Network hiccup or the API is briefly unavailable. Keep polling — the buyer's
         // entitlement exists regardless of whether this particular request succeeded.
@@ -81,6 +94,14 @@ export default function OrderSuccess() {
       clearTimeout(timer);
     };
   }, [isReady, sessionId]);
+
+  // Count the purchase once the order actually resolved — not on page load, which also happens
+  // on refresh and on redirects that never fulfil. trackOnce dedups reloads by session id.
+  React.useEffect(() => {
+    if (phase === 'ready' && sessionId) {
+      trackOnce(`checkout_${sessionId}`, 'checkout_completed', sessionId);
+    }
+  }, [phase, sessionId]);
 
   return (
     <MarketingLayout>
@@ -101,7 +122,9 @@ export default function OrderSuccess() {
                 ? 'Your payment was received. Your download is ready below.'
                 : phase === 'resolving'
                   ? 'Your payment was received. Preparing your download…'
-                  : 'Your payment was received and your purchase is safe.'}
+                  : phase === 'revoked'
+                    ? 'This order has been refunded, so its download is no longer active.'
+                    : 'Your payment was received and your purchase is safe.'}
             </p>
           </div>
 
@@ -157,7 +180,10 @@ export default function OrderSuccess() {
             </div>
           )}
 
-          {(phase === 'no-session' || phase === 'timed-out') && (
+          {(phase === 'no-session' ||
+            phase === 'timed-out' ||
+            phase === 'unfulfilled' ||
+            phase === 'revoked') && (
             <div className="bg-surface2 border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-4">
               {/* Do NOT tell the buyer to check their inbox: no fulfilment email is sent while
                   the MAILJET_* secrets are unset. Sending them to an empty inbox loses the sale.
@@ -166,12 +192,24 @@ export default function OrderSuccess() {
                 <Icon name="shield" size={16} className="text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-text">
-                    {phase === 'timed-out' ? 'Your purchase is safe' : 'No order found on this page'}
+                    {phase === 'no-session'
+                      ? 'No order found on this page'
+                      : phase === 'revoked'
+                        ? 'This order was refunded'
+                        : 'Your purchase is safe'}
                   </p>
+                  {/* Each of these is a genuinely different situation, and saying so is the
+                      point. 'unfulfilled' in particular is not a timeout: we KNOW the pack did
+                      not go out, so it promises a person rather than implying the page might
+                      still come good. */}
                   <p className="text-xs text-muted mt-0.5">
-                    {phase === 'timed-out'
-                      ? 'Payment went through, but we could not show your download here in time. Send us the reference below and we will get your pack to you straight away.'
-                      : 'This page was opened without a checkout reference, so there is nothing to show. If you have paid, contact us with your payment receipt and we will sort it out.'}
+                    {phase === 'unfulfilled'
+                      ? 'Your payment went through, but this order did not release its download. That is our fault, not yours. Send us the reference below and we will get your pack to you — or refund you in full, whichever you prefer.'
+                      : phase === 'revoked'
+                        ? 'This order was refunded, so its download has been withdrawn. Nothing further is owed. If that is unexpected, send us the reference below.'
+                        : phase === 'timed-out'
+                          ? 'Payment went through, but we could not show your download here in time. Send us the reference below and we will get your pack to you straight away.'
+                          : 'This page was opened without a checkout reference, so there is nothing to show. If you have paid, contact us with your payment receipt and we will sort it out.'}
                   </p>
                 </div>
               </div>
@@ -181,6 +219,24 @@ export default function OrderSuccess() {
                   <code className="mt-1 block break-all rounded-lg bg-bg px-3 py-2 font-mono text-[11px] text-text">
                     {sessionId}
                   </code>
+                  {/* Telling someone to "send us the reference" and then leaving them to scroll,
+                      select a 60-character opaque string and compose the mail themselves is
+                      where a recoverable order quietly turns into a refund request. The
+                      reference is already in the subject and body here, so it takes one tap and
+                      arrives in a form support can actually search on. */}
+                  <a
+                    href={
+                      `mailto:${LEGAL.supportEmail}` +
+                      `?subject=${encodeURIComponent(`Order ${sessionId}`)}` +
+                      `&body=${encodeURIComponent(
+                        `My payment went through but I have not received my download.\n\nOrder reference: ${sessionId}\n`,
+                      )}`
+                    }
+                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                  >
+                    <Icon name="mail" size={16} />
+                    Email us about this order
+                  </a>
                 </div>
               )}
             </div>

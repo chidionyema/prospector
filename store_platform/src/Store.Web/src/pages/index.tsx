@@ -15,6 +15,7 @@ import { FacetBar } from '@/components/discovery/FacetBar';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { Matchmaker, MatchmakerTrigger } from '@/components/discovery/Matchmaker';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
+import { track } from '@/lib/analytics';
 import { categoryFor, type Category } from '@/lib/category';
 import {
   cardHeading,
@@ -626,12 +627,14 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
         <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="#catalog"
+            onClick={() => track('catalog_cta_clicked')}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
           >
             {survived > 0 ? `See the ${survived} that survived` : 'Browse vetted blueprints'} — £49
           </Link>
           <Link
             href="/sample"
+            onClick={() => track('sample_cta_clicked')}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-8 py-3.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
           >
             <Icon name="download" size={15} className="text-primary" />

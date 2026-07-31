@@ -78,22 +78,62 @@ public static class DeliveryEndpoints
         }
 
         var entitlements = await db.Entitlements
-            .Where(e => e.OrderId == order.Id && e.Status == EntitlementStatus.Active)
+            .Where(e => e.OrderId == order.Id)
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
-        if (entitlements.Count == 0)
+        var active = entitlements.Where(e => e.Status == EntitlementStatus.Active).ToList();
+
+        if (active.Count == 0)
         {
-            // Payment recorded but nothing granted. Either the webhook is mid-flight, or this
-            // is the paid-without-fulfilment case the webhook handler logs as an error.
-            logger.LogWarning(
-                "Order {OrderId} for session {SessionId} has no active entitlements.",
-                order.Id, sessionId);
-            return Pending();
+            return TerminalNoDownload(order.Id, sessionId, entitlements.Count, logger);
         }
 
-        var items = new List<object>(entitlements.Count);
-        foreach (var ent in entitlements)
+        return Results.Ok(new { status = "ready", items = await ToDownloadItemsAsync(db, active, ct).ConfigureAwait(false) });
+
+        static IResult Pending() => Results.Ok(new { status = "pending", items = Array.Empty<object>() });
+    }
+
+    /// <summary>
+    /// The order is paid but has no active entitlement, and which of the two reasons it is
+    /// matters to the buyer. The distinction is knowable here and used to be thrown away as
+    /// "pending", so someone whose order could NEVER be fulfilled watched the same "almost
+    /// ready" spinner as someone whose webhook was half a second out — for the page's full
+    /// timeout, and then got a failure message that blamed lag.
+    ///
+    /// FulfilmentService writes the Order in the SAME SaveChangesAsync as any entitlement it
+    /// grants (FulfilmentService.cs:63-64, :105, :114), so an order with no entitlement row AT
+    /// ALL is not a webhook in flight: fulfilment ran and granted nothing. Both answers here
+    /// are terminal — the caller must stop polling on either.
+    /// </summary>
+    private static IResult TerminalNoDownload(
+        long orderId, string sessionId, int entitlementCount, ILogger<Program> logger)
+    {
+        if (entitlementCount == 0)
+        {
+            logger.LogError(
+                "PAID-WITHOUT-FULFILMENT shown to buyer: order {OrderId}, session {SessionId}. "
+                + "Fulfilment committed with no entitlement — check the webhook handler's "
+                + "unfulfilled list (underpaid line, unknown product, or missing ContentKey).",
+                orderId, sessionId);
+            return Results.Ok(new { status = "unfulfilled", items = Array.Empty<object>() });
+        }
+
+        // Entitlements exist but none is active: granted and later revoked by a refund or
+        // dispute. Not a failure, and emphatically not "pending" — nothing further is coming.
+        logger.LogInformation(
+            "Order {OrderId} for session {SessionId} has only revoked entitlements.",
+            orderId, sessionId);
+        return Results.Ok(new { status = "revoked", items = Array.Empty<object>() });
+    }
+
+    private static async Task<List<object>> ToDownloadItemsAsync(
+        StoreDbContext db,
+        List<Entitlement> active,
+        CancellationToken ct)
+    {
+        var items = new List<object>(active.Count);
+        foreach (var ent in active)
         {
             var title = await db.Packs
                 .Where(p => p.Id == ent.PackId)
@@ -110,9 +150,7 @@ public static class DeliveryEndpoints
             });
         }
 
-        return Results.Ok(new { status = "ready", items });
-
-        static IResult Pending() => Results.Ok(new { status = "pending", items = Array.Empty<object>() });
+        return items;
     }
 
     private static async Task<IResult> GetOrderJson(string token, StoreDbContext db)
