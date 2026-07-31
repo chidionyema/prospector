@@ -98,20 +98,51 @@ def pence_from_price(label: str) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--stripe-key-var", default="STRIPE_API_KEY")
+    # Default was STRIPE_API_KEY, which in this repo's .env is a sk_test key on the
+    # "Prospector sandbox" account (acct_1TjzZAApGKuq3dvg) — while the deployed Store bills
+    # against acct_1TjzYHPMafoirYBF. On 2026-07-31 that mismatch left packs 1990c975d0a46ea8
+    # and 397f72ef3015a833 carrying real-LOOKING price ids that returned HTTP 500 on checkout,
+    # because a price minted with a test key does not exist to a live requestor. Prefer the
+    # live var, same order as tools/reprice_live_packs.py:55.
+    ap.add_argument("--stripe-key-var", default=None,
+                    help="env var holding the Stripe secret key "
+                         "(default: STRIPE_LIVE_API_KEY, falling back to STRIPE_API_KEY)")
     args = ap.parse_args()
 
     env = load_env(ENV_PATH)
-    skey = os.environ.get(args.stripe_key_var) or env.get(args.stripe_key_var)
+
+    def _get(var: str) -> str:
+        return os.environ.get(var) or env.get(var) or ""
+
+    if args.stripe_key_var:
+        key_var, skey = args.stripe_key_var, _get(args.stripe_key_var)
+    else:
+        for key_var in ("STRIPE_LIVE_API_KEY", "STRIPE_API_KEY"):
+            skey = _get(key_var)
+            if skey:
+                break
     ikey = os.environ.get("STORE_INTERNAL_API_KEY") or env.get("STORE_INTERNAL_API_KEY")
     if not skey:
-        print(f"FATAL: {args.stripe_key_var} not set", file=sys.stderr)
+        print(f"FATAL: {key_var} not set", file=sys.stderr)
         return 1
     if not ikey:
         print("FATAL: STORE_INTERNAL_API_KEY not set", file=sys.stderr)
         return 1
     mode = "TEST" if skey.startswith("sk_test") else "LIVE"
-    print(f"Stripe key mode: {mode}   idempotency version: {IDEM_VERSION}")
+    print(f"Stripe key: {key_var} ({mode})   idempotency version: {IDEM_VERSION}")
+
+    # Printing the mode was not enough — it warned and provisioned anyway. A test key writing
+    # into the production catalog is the exact defect above, so refuse it. A test key against a
+    # local Store is legitimate (prove_publish_loop.sh drives that), hence the host check
+    # rather than a blanket ban.
+    host = urllib.parse.urlparse(API_BASE).hostname or ""
+    if mode == "TEST" and host not in ("localhost", "127.0.0.1", "::1"):
+        print(f"FATAL: refusing to write TEST prices into {API_BASE}.\n"
+              f"       {key_var} is a sk_test key on the sandbox account; the deployed Store\n"
+              f"       cannot bill it, so every pack it touches becomes an HTTP 500 buy button.\n"
+              f"       Use STRIPE_LIVE_API_KEY, or point STORE_API_BASE at a local Store.",
+              file=sys.stderr)
+        return 2
 
     status, listed = http_json(f"{API_BASE}/catalog")
     if status != 200:
