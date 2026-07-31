@@ -255,7 +255,10 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
             disabled={checkingOut}
             className="mt-4 w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
           >
-            {checkingOut ? 'Redirecting…' : `Get instant access — ${priceLabel}`}
+            {/* Not "Redirecting…": the embedded path opens a panel in place and never navigates,
+                so that label promised a page change that never came. This wording is true of both
+                routes — the overlay and the hosted redirect. */}
+            {checkingOut ? 'Opening secure checkout…' : `Get instant access — ${priceLabel}`}
           </button>
           {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
               only a gain for someone who wants several, so it never sits in front of the direct path. */}

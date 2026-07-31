@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   EmbeddedCheckoutProvider,
   EmbeddedCheckout as StripeEmbeddedCheckout,
@@ -49,6 +49,7 @@ export function EmbeddedCheckoutPanel({
   const stripe = getStripe();
   const closeRef = useRef<HTMLButtonElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
 
   // Escape closes, and the background does not scroll underneath an open checkout. Both are
   // undone on unmount — a checkout that leaves the page permanently unscrollable after the
@@ -97,6 +98,27 @@ export function EmbeddedCheckoutPanel({
     };
   }, [onUnreachable, clientSecret]);
 
+  // Stripe mounts asynchronously, so without this the buyer clicks pay and gets an empty white
+  // box for as long as the SDK takes — the single clunkiest moment in the purchase. The iframe
+  // appearing is the only same-origin signal available (react-stripe-js exposes no ready
+  // callback), so this tracks "Stripe has rendered something", not "the card fields are
+  // interactive". It errs early rather than late: a skeleton that lingers past a usable form
+  // would be worse than one that clears a fraction of a second before the fields paint.
+  useEffect(() => {
+    const node = mountRef.current;
+    if (!node) return;
+    if (node.querySelector('iframe')) return; // Remount of an already-mounted secret.
+    setReady(false);
+    const observer = new MutationObserver(() => {
+      if (node.querySelector('iframe')) {
+        setReady(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(node, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [clientSecret]);
+
   // The caller only opens this panel once the API has returned a client secret, which a provider
   // without Stripe.js configured can never produce. Guarding anyway: rendering the provider with
   // a null stripe promise throws inside the SDK, and a throw here is a lost sale.
@@ -128,12 +150,30 @@ export function EmbeddedCheckoutPanel({
           </button>
         </div>
 
-        <div className="p-2 sm:p-4" ref={mountRef}>
-          {/* Keyed on the secret so a new session mounts a fresh Stripe instance. The SDK does
-              not accept a changed clientSecret on an existing provider. */}
-          <EmbeddedCheckoutProvider key={clientSecret} stripe={stripe} options={{ clientSecret }}>
-            <StripeEmbeddedCheckout />
-          </EmbeddedCheckoutProvider>
+        <div className="relative p-2 sm:p-4" ref={mountRef}>
+          {/* Overlaid, never a conditional around the provider: Stripe needs its container in the
+              DOM to mount into, so swapping it out for a skeleton would stop the thing we are
+              waiting for from ever happening. */}
+          {!ready && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white">
+              <span
+                className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-text"
+                aria-hidden="true"
+              />
+              <p className="text-xs font-medium text-muted" role="status">
+                Loading secure card form…
+              </p>
+            </div>
+          )}
+          {/* Holds the panel open at roughly the card form's height while Stripe mounts, so the
+              overlay does not snap from a thin strip to full size under the buyer's cursor. */}
+          <div className={ready ? undefined : 'min-h-[420px]'}>
+            {/* Keyed on the secret so a new session mounts a fresh Stripe instance. The SDK does
+                not accept a changed clientSecret on an existing provider. */}
+            <EmbeddedCheckoutProvider key={clientSecret} stripe={stripe} options={{ clientSecret }}>
+              <StripeEmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          </div>
         </div>
       </div>
     </div>

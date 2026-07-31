@@ -190,18 +190,66 @@ already worked.
 | Copy of the founder's profile launched fresh, extensions **on** | `api.stripe.com` **ok** |
 | …same copy, `--disable-extensions` | `api.stripe.com` **ok** |
 
-**Conclusion.** The failure is scoped to the *running Chrome process*, and to the single host
-`api.stripe.com`. It is not our code, not the session, not the storefront, not the network, not
-an extension, and not the profile's on-disk state — a copy of that same profile reaches Stripe
-fine with extensions enabled. `/Library/Keychains/System.keychain` was modified at
-**08:52:36 today**, before the failing session was created (~09:19); a long-lived Chrome process
-holding a stale view of the platform trust store fits every observation, though the causal link
-is unproven because confirming it means restarting the founder's browser.
+**Conclusion (interim, later SUPERSEDED — see below).** The failure was scoped to `api.stripe.com`
+and, on this evidence, to the *running Chrome process*: a stale platform-trust view in a
+long-lived process fitted every observation above. That was explicitly labelled unproven, and it
+turned out to be wrong. The probes in the table are all still valid; the inference drawn from
+them was not.
 
-**Fix to try first: quit Chrome completely (⌘Q, not just the window) and reopen.** If it
-recurs, capture the offending certificate — `chrome://net-export` ▸ record ▸ reproduce ▸ inspect
-the `CERT_VERIFIER_JOB` entry — rather than re-running the probes above, which are already
-answered.
+### SUPERSEDED — the real cause was Chrome's own root store, in a two-year-old Chrome
+
+Restarting Chrome did not fix it, and the error recurred. A `--log-net-log` capture from a
+**clean profile I launched myself** reproduced it, which killed the stale-process theory outright.
+The netlog verified `api.stripe.com` twice in one session, with two different root stores, and
+they disagreed:
+
+| Chrome Root Store | crlset | `CERT_VERIFY_PROC_PATH_BUILT` |
+| --- | --- | --- |
+| `version_major: 15` (compiled into the binary, answers at startup) | 0 | `is_valid: true`, `TRUSTED_ANCHOR`, `cert_status: 65536` — **passes** |
+| `version_major: 36` (component-updated, loads seconds later) | 10685 | `ERROR: Path does not satisfy CRS constraints` → `net_error: -202` — **fails** |
+
+CRS is the Chrome Root Store. Chrome *trusted* the anchor (`last_cert_trust: TRUSTED_ANCHOR`) but
+a constraint on `DigiCert Assured ID Root G2` rejected Stripe's leaf, issued `Jun 10 2026`. The
+fallback path via `DigiCert High Assurance EV Root CA` then hit `ERROR: No matching issuer found`;
+the builder backtracked, logged `CertPathIter exhausted all paths...`, and returned
+`ERR_CERT_AUTHORITY_INVALID`.
+
+The chain on the wire was never the problem. `openssl verify` on **the exact bytes Chrome
+rejected** (extracted from the netlog's `CERT_VERIFY_PROC_INPUT_CERT` events) returns `0.pem: OK`,
+and both IPs `api.stripe.com` resolves to — `198.202.176.21` and `198.137.150.21` — return
+`Verify return code: 0 (ok)`.
+
+**Root cause: the browser was `Google Chrome 125.0.6422.142` (May 2024), and
+`ksadmin --print-tickets` returned `No tickets` — Chrome had never been registered with Keystone,
+so it had not auto-updated since install (`/Applications/Google Chrome.app`, dated 10 May 2024).**
+An ancient binary paired with current component data is what produced the constraint mismatch.
+
+This also explains what the earlier theory could not:
+
+- **The intermittency** — root store v15 answers for the first moments after launch, v36 takes
+  over once the component loads. A fresh Chrome that worked and then broke is exactly this.
+- **Why only `api.stripe.com`** — in the same capture `js.stripe.com` (501 requests),
+  `r.stripe.com` (204), `b.stripecdn.com` (22), `m.stripe.com` (14) all completed with zero
+  errors. Only that host chains through the constrained anchor.
+- **Why the hosted `checkout.stripe.com` page failed too** — same API, same browser.
+- **Why nothing ever reached Stripe** — the session showed `payment_intent: None` and the account
+  had no charges at all. TLS never completed, so there was nothing to charge.
+
+**Fix: update Chrome.** Nothing on our side. Verified on the same machine, host and certificate
+after installing `151.0.7922.72`:
+
+```
+root store version: 35
+PATH_BUILT is_valid=True  trust=TRUSTED_ANCHOR  errors=none
+>>> RESULT cert_status=65536  net_error=NONE (success)  ct=COMPLIES_VIA_SCTS
+cert errors (-200/-201/-202) anywhere in this log: 0
+```
+
+**Two retracted conclusions, recorded so neither is drawn again:** it was not a stale trust view
+in a long-lived process (it reproduces in a clean profile), and it was not the macOS keychain
+(Chrome has not used the platform trust store since v105 — its own store is the whole mechanism).
+The general lesson: when Chrome and `openssl` disagree about a certificate, the disagreement
+*is* the finding, and only `--log-net-log` can adjudicate it.
 
 ### The gap it exposed, and the fix
 
@@ -239,10 +287,36 @@ fires only when the overlay genuinely cannot work. Unit tests: `stripeReachable.
 alongside `checkoutRoute.test.ts` and `preopenedCheckout.test.ts` — 26 passing; `tsc --noEmit`
 clean; `npm run build` green.
 
-**Honest limit:** if `api.stripe.com` is unreachable for the whole browser, Stripe's *hosted*
-page may fail too — the handoff is not a guaranteed rescue for that specific cause. It is a
-guaranteed rescue for the larger class of embedded-only failures (blocked iframes, partitioned
-storage, SDK errors), and it turns a dead end into a different surface worth trying.
+**Honest limit — since CONFIRMED in the field:** if `api.stripe.com` is unreachable for the whole
+browser, Stripe's *hosted* page fails too. That is no longer a caveat but an observation: the
+Chrome-root-store fault above took out `checkout.stripe.com` in exactly this way. The handoff is
+not a rescue for a browser-wide TLS failure. It is a rescue for the larger class of embedded-only
+failures (blocked iframes, partitioned storage, SDK errors), and it turns a dead end into a
+different surface worth trying.
+
+### Checkout UX — the click-to-card-form gap (2026-07-31)
+
+Three things made paying feel clunky, all in the seconds between clicking buy and getting a card
+field. None affects whether a sale completes; all three affect whether the buyer believes it is
+working.
+
+1. **The button said `Redirecting…`** while the embedded path opens a panel in place and never
+   navigates — it promised a page change that never came. Now `Opening secure checkout…`, which
+   is true of both the overlay and the hosted redirect (`src/pages/pack/[id].tsx`).
+2. **The panel opened empty.** Stripe mounts asynchronously, so the buyer got a blank white box
+   with a close button until the iframe appeared. `EmbeddedCheckoutPanel` now overlays a spinner
+   and `Loading secure card form…` until an `<iframe>` shows up in its container, and holds
+   `min-h-[420px]` while empty so the panel does not snap open under the cursor.
+3. The skeleton is **overlaid, never a conditional around the provider** — Stripe needs its
+   container in the DOM to mount into, so replacing it with a skeleton would prevent the very
+   thing being waited for.
+
+The readiness signal is iframe presence, because `@stripe/react-stripe-js` exposes no ready
+callback. It therefore means "Stripe rendered something", not "the fields are interactive", and
+it errs early — a skeleton lingering over a usable form would be worse than one clearing a
+fraction of a second early. `tsc --noEmit` clean, `npm run build` exit 0, 21 checkout unit tests
+pass. **Not proven at runtime:** the project has no `@testing-library/react`, and adding a test
+dependency mid-ship was not worth it for a spinner. The next real purchase is the proof.
 
 Two claims made earlier in this section's history were wrong and are retracted: extensions are
 not implicated (proven above), and the extension-driven probe tab was **not** an unreliable
