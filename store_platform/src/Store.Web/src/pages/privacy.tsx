@@ -89,9 +89,18 @@ export default function PrivacyPage() {
       <LegalHeading>2. Cookies and local storage</LegalHeading>
       <LegalText>
         We use only the cookies and browser storage strictly necessary to process your order
-        (for example, to maintain a checkout session). We do not use advertising, analytics, or
-        third-party tracking cookies. Our payment processor may set cookies on the checkout
+        (for example, to remember what is in your basket). We do not use advertising, analytics,
+        or third-party tracking cookies. Our payment processor may set cookies on the checkout
         page; those are governed by its own cookie policy.
+      </LegalText>
+      <LegalText>
+        We do count page views and clicks on our own site, so that we know whether it is working.
+        Those counts are kept as running totals only — we record the page address, the date, and
+        nothing else. No cookie or other identifier is stored on your device for this, we do not
+        record your IP address or browser alongside these counts, and there is no way for us to
+        single you out from them or to follow you between visits. Because nothing is stored on
+        your device and nothing identifies you, this needs no cookie banner and there is nothing
+        for you to opt out of.
       </LegalText>
 
       <LegalHeading>3. Who we share data with</LegalHeading>
