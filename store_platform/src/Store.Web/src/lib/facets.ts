@@ -184,12 +184,38 @@ export function shortLabel(kind: FacetKind, value: string | null | undefined): s
   return SHORT_LABELS[kind]?.[value] ?? label(kind, value);
 }
 
-/** Heading copy for a facet's group in the filter bar. */
+/**
+ * Heading copy for a facet's group in the filter bar. Each one names the question the buyer is
+ * answering about themselves, not the database column — "Sector" told a buyer nothing about what
+ * clicking would do, and "What you already have" left "have of what?" unanswered.
+ *
+ * These are HEADINGS ONLY: they sit above a group of chips and are never dropped into a sentence.
+ * Use `KIND_NOUN` for that — see below for why the distinction is not cosmetic.
+ */
 export const KIND_LABEL: Record<FacetKind, string> = {
-  advantage: 'What you already have',
-  payer: 'Who pays',
+  advantage: 'Skills you already have',
+  payer: 'Who the customer is',
   effort: 'How much is automated',
-  commitment: 'Time it needs',
+  commitment: 'Hours it needs from you',
   mechanism: 'How it makes money',
-  sector: 'Sector',
+  sector: 'Sector it serves',
+};
+
+/**
+ * The same six facets as a noun phrase that survives being embedded in a sentence.
+ *
+ * This exists because `KIND_LABEL` was being used in two sentence slots it cannot fit, and both
+ * rendered broken English on a live page: `pages/index.tsx` builds the near-miss relax button as
+ * `Show any ${...}` — "Show any what you already have", "Show any time it needs" — and
+ * `components/discovery/EmptyState.tsx` builds "Not tagged for ${...}". A heading is a fragment
+ * chosen to read well ABOVE a control; a noun is chosen to read well INSIDE a clause. One string
+ * cannot be both, and trying made the copy worse every time a heading improved.
+ */
+export const KIND_NOUN: Record<FacetKind, string> = {
+  advantage: 'skill set',
+  payer: 'customer type',
+  effort: 'automation level',
+  commitment: 'time commitment',
+  mechanism: 'revenue model',
+  sector: 'sector',
 };

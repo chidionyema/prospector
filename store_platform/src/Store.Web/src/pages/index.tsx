@@ -25,7 +25,7 @@ import {
   nearMisses,
   type DiscoveryState,
 } from '@/lib/discovery';
-import { KIND_LABEL } from '@/lib/facets';
+import { KIND_NOUN } from '@/lib/facets';
 
 interface HomeProps {
   packs: Pack[];
@@ -350,9 +350,10 @@ const SORTS = [
 
 type SortKey = (typeof SORTS)[number]['value'];
 
-/** Buyer-facing name for the one filter a near-miss pack fails. */
-function relaxLabelFor(kind: keyof typeof KIND_LABEL): string {
-  return `Show any ${KIND_LABEL[kind].toLowerCase()}`;
+/** Buyer-facing name for the one filter a near-miss pack fails. KIND_NOUN, not KIND_LABEL: the
+ *  heading form produced "Show any what you already have" (see the note in `lib/facets.ts`). */
+function relaxLabelFor(kind: keyof typeof KIND_NOUN): string {
+  return `Show any ${KIND_NOUN[kind]}`;
 }
 
 /**
@@ -425,7 +426,13 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
 
   return (
     <>
-      <div className="grid gap-8 lg:grid-cols-[15rem_1fr]">
+      {/* One column below `lg`, so this <aside> stacks ABOVE the first card on every phone.
+          It used to stack the whole filter bar there — six groups of chips before a buyer saw a
+          single product. FacetBar now collapses itself into one "Filters" button under `lg`
+          (`components/discovery/FacetBar.tsx`), so the mobile cost is one row, and the desktop
+          sidebar is unchanged. The gap shrinks with it: 32px of air above the fold bought
+          nothing when the thing above is a single button. */}
+      <div className="grid gap-4 lg:gap-8 lg:grid-cols-[15rem_1fr]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <FacetBar packs={packs} state={state} onChange={apply} />
         </aside>

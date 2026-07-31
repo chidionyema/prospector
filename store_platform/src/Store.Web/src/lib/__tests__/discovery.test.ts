@@ -4,6 +4,7 @@ import {
   EMPTY_DISCOVERY_STATE,
   EMPTY_MATCH_ANSWERS,
   activeConstraintCount,
+  activeFacetSelectionCount,
   decodeDiscoveryState,
   encodeDiscoveryState,
   facetCounts,
@@ -11,6 +12,7 @@ import {
   isFiltered,
   matchesQuery,
   nearMisses,
+  offeredFacetValues,
   rankMatches,
   scoreMatch,
   scoreSimilar,
@@ -388,5 +390,68 @@ describe('nearMisses — the rescue before the email form (AC-16)', () => {
 
   it('never returns a pack that already matches everything', () => {
     expect(nearMisses(packs, state).map((m) => m.pack.id)).not.toContain('target');
+  });
+});
+
+describe('offeredFacetValues — which controls are worth rendering', () => {
+  // Three packs carry `evenings`, one carries `full_time` — the shape the live catalogue had on
+  // 2026-07-31 (part_time 13 / evenings 6 / full_time 1 of 42).
+  const packs = [
+    pack('a', { commitment: 'evenings', payer: 'b2b' }),
+    pack('b', { commitment: 'evenings', payer: 'b2b' }),
+    pack('c', { commitment: 'evenings', payer: 'b2c' }),
+    pack('rare', { commitment: 'full_time', payer: 'b2c' }),
+    untagged,
+  ];
+
+  it('drops a value only one pack in the catalogue carries', () => {
+    expect(offeredFacetValues(packs, EMPTY_DISCOVERY_STATE, 'commitment')).toEqual(['evenings']);
+  });
+
+  it('keeps that value once it is selected, so the buyer can switch it back off', () => {
+    // The shared-link case: ?commitment=full_time must not render a chip-less group the buyer
+    // is trapped in.
+    const state: DiscoveryState = { ...EMPTY_DISCOVERY_STATE, commitment: 'full_time' };
+    expect(offeredFacetValues(packs, state, 'commitment')).toEqual(['evenings', 'full_time']);
+  });
+
+  it('does not let another active filter delete an option — the threshold is catalogue-wide', () => {
+    // Under payer=b2c only ONE pack carries `evenings`. A pool-relative threshold would remove
+    // the control the buyer is looking at mid-click; a catalogue-relative one does not.
+    const state: DiscoveryState = { ...EMPTY_DISCOVERY_STATE, payer: 'b2c' };
+    expect(facetCounts(packs, state, 'commitment').evenings).toBe(1);
+    expect(offeredFacetValues(packs, state, 'commitment')).toEqual(['evenings']);
+  });
+
+  it('does not let a search query delete an option either', () => {
+    const state: DiscoveryState = { ...EMPTY_DISCOVERY_STATE, q: 'Pack a' };
+    expect(offeredFacetValues(packs, state, 'commitment')).toEqual(['evenings']);
+  });
+
+  it('offers nothing for a facet the engine has tagged nowhere (AC-12)', () => {
+    expect(offeredFacetValues(packs, EMPTY_DISCOVERY_STATE, 'sector')).toEqual([]);
+  });
+
+  it('still drops a value no pack in the current pool carries at all', () => {
+    const state: DiscoveryState = { ...EMPTY_DISCOVERY_STATE, payer: 'b2b' };
+    expect(offeredFacetValues(packs, state, 'commitment')).toEqual(['evenings']);
+  });
+});
+
+describe('activeFacetSelectionCount — the "Filters (n)" badge', () => {
+  it('counts every lit chip, not every AND-ed constraint', () => {
+    const state: DiscoveryState = {
+      ...EMPTY_DISCOVERY_STATE,
+      advantage: ['code', 'sales'],
+      payer: 'b2b',
+    };
+    // activeConstraintCount collapses advantage to 1 because the near-miss rule needs it to.
+    // A badge reading "1" beside three lit chips is a visible lie, hence the second function.
+    expect(activeConstraintCount(state)).toBe(2);
+    expect(activeFacetSelectionCount(state)).toBe(3);
+  });
+
+  it('ignores the text query, which has its own visible control', () => {
+    expect(activeFacetSelectionCount({ ...EMPTY_DISCOVERY_STATE, q: 'pets' })).toBe(0);
   });
 });
