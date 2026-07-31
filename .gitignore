@@ -44,6 +44,19 @@ store/dossiers/
 store/runs/
 store/listings/
 store/*.db
+# `store/*.db` does not catch a suffixed backup: store/prospector.db.pre-market.bak is a
+# 920K sqlite index of 1286 candidate titles + kill decisions. It is not the paid pack
+# content (that lives in store/dossiers/, ignored above), but it is the whole idea
+# pipeline and it embeds local absolute paths — and this repo is public.
+store/*.db.*
+store/*.bak
+
+# Per-run local state, regenerated on every run; never source.
+store/.cli_slots/
+store/control_center/runs/
+store/markets/*/probe/
+store/markets/*/probe.pid
+store/markets/*/probe_run.log
 
 # Logs
 *.log
