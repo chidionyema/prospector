@@ -6,7 +6,9 @@ import { Icon } from '@/components/ui';
  *
  * Deliberately shared by the homepage and every pack page: when this claim lives in two places it
  * drifts, and a drifted claim on a paid product is a refund. Every line below is checked against
- * the real bundles in `publish/bundles/<id>/prospector_pack_<short>.zip` for all 15 live packs:
+ * the real bundles in `publish/bundles/<id>/prospector_pack_<short>.zip`. The counts below are an
+ * audit of the 15 packs live on 2026-07-27, not a statement about catalogue size — the catalogue
+ * grows on every PASS, so re-run the audit rather than trusting the numbers:
  *
  *   - 01_Blueprint_BuildSpec.md   present in 15/15
  *   - 02_Marketing_Plan_GTM.md    present in 15/15

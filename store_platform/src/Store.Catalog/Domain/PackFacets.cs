@@ -83,6 +83,40 @@ public static class PackFacets
     }
 
     /// <summary>
+    /// Validate a whole facet payload in one call — the single entry point both
+    /// <c>POST /internal/catalog</c> and <c>PATCH /internal/catalog/{id}/facets</c> use, so
+    /// the two write paths cannot drift apart in what they accept. Returns false on the first
+    /// offending field, with an error naming the field and its allowed set.
+    ///
+    /// Callers must run this <b>before</b> touching the database: a rejected payload must
+    /// write nothing at all, or a publish carrying one bad value would half-tag a pack and the
+    /// filter would start making a claim the engine never made.
+    /// </summary>
+    public static bool TryValidateAll(
+        string? sector,
+        string? payer,
+        string? effort,
+        string? commitment,
+        string? mechanism,
+        IEnumerable<string>? advantages,
+        out string? error)
+    {
+        foreach (var (field, value, allowed) in new (string, string?, IReadOnlySet<string>)[]
+                 {
+                     ("sector", sector, Sector),
+                     ("payer", payer, Payer),
+                     ("effort", effort, Effort),
+                     ("commitment", commitment, Commitment),
+                     ("mechanism", mechanism, Mechanism),
+                 })
+        {
+            if (!TryValidate(field, value, allowed, out error)) return false;
+        }
+
+        return TryValidateAdvantages(advantages, out error);
+    }
+
+    /// <summary>
     /// Validate the multi-valued advantage list. Null is valid; an empty array is valid;
     /// any unknown member fails the whole request so a partial write can never happen.
     /// </summary>

@@ -7,13 +7,18 @@ import { Icon, CoverArt } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection } from '@/components/marketing/PackContents';
-import { fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, PackDetails } from '@/lib/api/client';
+import { fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { FacetChips } from '@/components/discovery/FacetChips';
+import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { coverFor } from '@/lib/cover';
 
 interface PackPageProps {
   pack: PackDetails;
+  /** The rest of the catalogue, for the "same mechanics" row. Empty when that fetch failed —
+   *  a catalogue outage must never take down a page someone is trying to buy from. */
+  catalog: Pack[];
 }
 
 /**
@@ -34,7 +39,7 @@ const CHECKS = [
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
 
-export default function PackPage({ pack }: PackPageProps) {
+export default function PackPage({ pack, catalog }: PackPageProps) {
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -356,9 +361,13 @@ export default function PackPage({ pack }: PackPageProps) {
             )}
 
             {/* Is this for you? — the concrete fit signals, when the pack carries them */}
-            {(pack.market || pack.whoPays || pack.effortTag || pack.timeToFirstRevenue) && (
+            {(pack.market || pack.whoPays || pack.timeToFirstRevenue) && (
               <div className="mt-12">
                 <h2 className="text-xl font-bold tracking-tight text-text">Is this for you?</h2>
+                {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
+                    "Effort to build" used to print the legacy `effortTag` string, which was never
+                    defined to mean how much of delivery is machine-doable (spec 2.3). */}
+                <FacetChips pack={pack} className="mt-4" />
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {pack.market && (
                     <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
@@ -382,14 +391,6 @@ export default function PackPage({ pack }: PackPageProps) {
                         Who pays
                       </span>
                       <span className="mt-1.5 text-sm leading-relaxed text-text/80">{pack.whoPays}</span>
-                    </div>
-                  )}
-                  {pack.effortTag && (
-                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
-                        Effort to build
-                      </span>
-                      <span className="mt-1.5 text-sm font-semibold capitalize text-text">{pack.effortTag}</span>
                     </div>
                   )}
                   {pack.timeToFirstRevenue && (
@@ -462,16 +463,31 @@ export default function PackPage({ pack }: PackPageProps) {
                   Real, sourced lines taken straight from the pack. This is the level of grounding behind
                   every claim you are buying.
                 </p>
-                <ul className="mt-6 list-none space-y-3 p-0">
-                  {pack.sampleExtract.map((line, i) => (
-                    <li
-                      key={i}
-                      className="rounded-xl border border-border border-l-2 border-l-success bg-white px-5 py-4 text-sm leading-relaxed text-text/80 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
-                    >
-                      {line}
-                    </li>
-                  ))}
-                </ul>
+                {/* Peek inside: a page you are looking at the top of. The fade is over the page
+                    itself, never over invented text — every line below is really in the pack, and
+                    nothing is blurred to imply content that does not exist. */}
+                <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_18px_40px_rgba(0,0,0,0.07)]">
+                  <div className="flex items-center gap-2 border-b border-border bg-bg/60 px-5 py-3">
+                    <Icon name="briefcase" size={14} className="text-primary" />
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+                      Extract · verification dossier
+                    </span>
+                  </div>
+                  <ul className="list-none space-y-3 p-6 pb-16">
+                    {pack.sampleExtract.map((line, i) => (
+                      <li
+                        key={i}
+                        className="border-l-2 border-l-success pl-4 text-sm leading-relaxed text-text/80"
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent" />
+                  <span className="absolute inset-x-0 bottom-4 text-center text-xs font-semibold text-muted">
+                    The rest of this section, and three more documents, are in the pack.
+                  </span>
+                </div>
               </div>
             )}
 
@@ -494,6 +510,9 @@ export default function PackPage({ pack }: PackPageProps) {
                 <Icon name="arrowRight" size={14} />
               </Link>
             </div>
+
+            {/* Hides itself unless at least two packs genuinely score (AC-21). */}
+            <SimilarPacks pack={pack} all={catalog} />
           </div>
 
           {/* Right: Checkout (desktop sticky) */}
@@ -511,9 +530,15 @@ export default function PackPage({ pack }: PackPageProps) {
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
   try {
     const id = params?.id as string;
-    const pack = await fetchPackDetails(id);
+    // Fetched together, not in series: the "same mechanics" row needs the catalogue, and paying
+    // two sequential round trips before first byte would be a real cost for a decorative row.
+    // The catalogue is best-effort — a failure there must not 404 a page someone is buying from.
+    const [pack, catalog] = await Promise.all([
+      fetchPackDetails(id),
+      fetchCatalog().catch(() => [] as Pack[]),
+    ]);
     return {
-      props: { pack },
+      props: { pack, catalog },
     };
   } catch (error) {
     console.error('Error fetching pack details:', error);

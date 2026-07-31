@@ -1,4 +1,12 @@
 import { API_BASE_URL } from '@/lib/config';
+import type {
+  Advantage,
+  Commitment,
+  Effort,
+  Mechanism,
+  Payer,
+  Sector,
+} from '@/lib/facets';
 
 /** Python-computed snapshot the engine attaches at publish time. Served as an open
  *  string -> string map: the current engine fills it with the six scored axes
@@ -54,15 +62,25 @@ export interface Pack {
   // Per-pack conversion specifics. Optional: only packs published by the newer engine carry
   // them, so every render site must degrade gracefully when they are absent.
   headline?: string;
-  /** The problem statement in one sentence ("the gap"). Not yet emitted by the publish step: card
-   *  render sites fall back to `oneLine` (which describes the solution) and relabel accordingly. */
-  theGap?: string;
   whoPays?: string;
+  /** The legacy `low | medium | high` string. Superseded by `effort`, and deliberately NOT
+   *  mapped into it: those three values were never defined to mean "how much of delivery is
+   *  machine-doable", so a mapping would be a guess wearing the costume of a migration
+   *  (spec 2.3). Kept only until no render site reads it. */
   effortTag?: string;
   proofPoint?: string;
   timeToFirstRevenue?: string;
   sourceCount?: number;
   verifiedAt?: string;
+  /** Discovery facets, straight from the engine's verified dossier. `null`/absent means the
+   *  engine could not justify a value — the browser must render nothing rather than a guess,
+   *  and such a pack appears only under "All". Vocabularies: `src/lib/facets.ts`. */
+  sector?: Sector | null;
+  payer?: Payer | null;
+  effort?: Effort | null;
+  commitment?: Commitment | null;
+  mechanism?: Mechanism | null;
+  advantages?: Advantage[] | null;
   /** Jurisdiction the OPPORTUNITY is in ("uk", "us", "us-tx"). Not the buyer's locale:
    *  every pack is priced and sold in GBP regardless of this value. Absent on packs
    *  published before the engine tracked markets. */
@@ -122,6 +140,41 @@ export async function fetchCatalog(): Promise<Pack[]> {
   const res = await fetch(`${API_BASE_URL}/catalog`);
   if (!res.ok) throw new Error('Failed to fetch catalog');
   return res.json();
+}
+
+export interface WaitlistSignup {
+  email: string;
+  /** Must be explicitly true. The server rejects false — an unticked box is not consent. */
+  consent: boolean;
+  /** The exact sentence the person was shown. The server hashes this, not a client-supplied
+   *  hash, so the stored evidence is of what was actually rendered. */
+  consentText: string;
+  consentVersion: string;
+  /** What they were searching for when the catalogue came back empty. */
+  query?: string;
+  source?: string;
+}
+
+/**
+ * POST /catalog/waitlist — the honest end of a catalogue-wide miss.
+ *
+ * Returns the server's error string on rejection rather than throwing, because every rejection
+ * here is a message the buyer needs to read (bad address, consent missing, rate limited).
+ */
+export async function joinWaitlist(
+  signup: WaitlistSignup,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(`${API_BASE_URL}/catalog/waitlist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(signup),
+  });
+  if (res.ok) return { ok: true };
+  if (res.status === 429) {
+    return { ok: false, error: 'Too many attempts from here. Give it a minute and try again.' };
+  }
+  const body = (await res.json().catch(() => null)) as { error?: string } | null;
+  return { ok: false, error: body?.error ?? 'That did not go through. Try again in a moment.' };
 }
 
 export async function fetchPackDetails(id: string): Promise<PackDetails> {

@@ -67,6 +67,17 @@ export default function PrivacyPage() {
             ensuring delivery of purchased goods.
           </>,
           <>
+            <strong>Waitlist sign-ups</strong> — if you ask us to tell you when a pack ships in a
+            space we do not yet cover, we store your email address, the search term that came
+            back empty, which page you signed up from, the date and time, a version identifier
+            and a SHA-256 hash of the exact consent sentence you were shown, and a salted
+            SHA-256 hash of your IP address (never the address itself) so that abuse of the
+            form is investigable. Lawful basis: your consent (UK GDPR Art.&nbsp;6(1)(a)). The
+            box is never pre-ticked, and we hash the sentence you actually saw so that what you
+            agreed to is provable later. You can withdraw at any time by emailing us — see
+            section 6.
+          </>,
+          <>
             <strong>Technical and security logs</strong> — server access logs (IP address,
             user-agent, request path, timestamp) retained for a short period for fraud
             detection and infrastructure security. Lawful basis: legitimate interests in
@@ -133,6 +144,7 @@ export default function PrivacyPage() {
           'Security and access logs: retained for up to 90 days, then deleted.',
           'Transactional email metadata: retained for up to 12 months, then deleted.',
           'Download tokens: expired tokens are purged within 30 days of expiry.',
+          'Waitlist sign-ups (email, search term, consent evidence, IP hash): retained for up to 24 months from sign-up, then deleted. We delete your record sooner if you withdraw consent.',
         ]}
       />
 
@@ -153,7 +165,7 @@ export default function PrivacyPage() {
           <><strong>Right to restriction</strong> — to ask us to suspend processing while a dispute is resolved.</>,
           <><strong>Right to data portability</strong> — to receive your data in a structured, machine-readable format.</>,
           <><strong>Right to object</strong> — to object to processing based on legitimate interests.</>,
-          <><strong>Right to withdraw consent</strong> — where we rely on consent as a lawful basis (currently we do not), you may withdraw it at any time.</>,
+          <><strong>Right to withdraw consent</strong> — we rely on consent for waitlist sign-ups only. You may withdraw it at any time by emailing us, and we will delete your waitlist record. Withdrawing does not affect anything we did before you withdrew, and it does not affect your order records, which we keep under a separate lawful basis.</>,
         ]}
       />
       <LegalText>

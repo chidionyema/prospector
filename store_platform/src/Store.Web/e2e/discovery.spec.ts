@@ -1,0 +1,114 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * Discovery UX smoke (spec `specs/discovery-ux-2026-07-30.md`).
+ *
+ * These run against a REAL catalogue, which is why almost nothing here asserts a number. The
+ * catalogue grows on every PASS and packs are only tagged once the engine can justify a value,
+ * so a test that expects "15 packs" or "the effort filter exists" would fail on a Tuesday for
+ * reasons that are not bugs. What is asserted is behaviour that must hold at any catalogue size
+ * and any tagging level: the shelf renders, search finds by more than the title, filters go into
+ * the URL, and a filtered URL comes back filtered.
+ */
+
+const cards = 'a[href^="/pack/"]';
+
+test('the shelf renders and every card is a link to a pack', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator(cards).first()).toBeVisible();
+  expect(await page.locator(cards).count()).toBeGreaterThan(0);
+});
+
+test('the three-question router refuses to route until the first two are answered', async ({ page }) => {
+  await page.goto('/');
+  const submit = page.getByRole('button', { name: 'Show me mine' });
+  await expect(submit).toBeDisabled();
+
+  // Q1 then Q2. Copy is verbatim from the spec, so these labels are part of the contract.
+  await page.getByRole('button', { name: 'I can build software' }).click();
+  await expect(submit).toBeDisabled(); // Q2 still unanswered
+  await page.getByRole('button', { name: 'Evenings and weekends' }).click();
+  await expect(submit).toBeEnabled();
+
+  await submit.click();
+  // Either outcome is a pass. On an untagged catalogue nothing scores, and saying so is the
+  // required behaviour (AC-8) — a winner appearing there would be the bug.
+  await expect(
+    page
+      .getByText('Build this one.')
+      .or(page.getByText("We haven't built yours yet", { exact: false })),
+  ).toBeVisible();
+});
+
+test('the command palette opens by click and by ⌘K, and searches as you type', async ({ page }) => {
+  await page.goto('/');
+  const dialog = page.getByRole('dialog');
+
+  // Click first, deliberately. The ⌘K listener is attached on hydration, so pressing the key
+  // straight after `goto` is a race against React, not a test of the shortcut. Clicking a button
+  // waits for actionability, which puts us safely past hydration for the keyboard check below.
+  await page.getByRole('button', { name: /Search the catalogue/ }).first().click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(dialog).toBeVisible();
+
+  // Results respond to typing — no Enter, no results page (spec Part 6).
+  const search = dialog.getByRole('combobox');
+  const before = await dialog.getByRole('option').count();
+  expect(before).toBeGreaterThan(0);
+  await search.fill('zzzzz-no-such-pack');
+  await expect(dialog.getByText(/Nothing in the catalogue matches/)).toBeVisible();
+  await search.fill('');
+  await expect.poll(async () => dialog.getByRole('option').count()).toBe(before);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});
+
+test('a facet click lands in the URL, and that URL comes back filtered', async ({ page }) => {
+  await page.goto('/');
+
+  // "All" is the one control guaranteed to exist in every rendered group — a group with no data
+  // does not render at all (AC-12), so this test picks whatever the catalogue actually offers.
+  const firstValue = page
+    .locator('aside button[aria-pressed]')
+    .filter({ hasNotText: /^All$/ })
+    .first();
+  const count = await page.locator('aside button[aria-pressed]').count();
+  test.skip(count === 0, 'No facet is populated in this catalogue yet — nothing to click.');
+
+  await firstValue.click();
+  await expect(page).toHaveURL(/\?(q|adv|sector|payer|effort|commitment|mechanism)=/);
+
+  // The same URL, loaded cold: server-rendered HTML must already be filtered, not flash the
+  // whole catalogue and then filter on the client.
+  const url = page.url();
+  const filteredCount = await page.locator(cards).count();
+  await page.goto(url);
+  await expect(page.locator('aside button[aria-pressed="true"]').first()).toBeVisible();
+  expect(await page.locator(cards).count()).toBe(filteredCount);
+});
+
+test('the waitlist refuses to submit without consent, and the box starts unticked', async ({ page }) => {
+  // A query no pack can match forces the catalogue-wide empty state.
+  await page.goto('/?q=zzzzz-no-such-pack-anywhere');
+
+  const consent = page.getByRole('checkbox', { name: /Email me if a pack in this space survives/ });
+  await expect(consent).toBeVisible();
+  // Pre-ticked is not consent under UK GDPR. This is the assertion that keeps it that way.
+  await expect(consent).not.toBeChecked();
+
+  await page.getByRole('textbox', { name: /^Email/ }).fill('e2e@example.com');
+  await page.getByRole('button', { name: 'Put it in the queue' }).click();
+  await expect(page.getByText(/Without it we have no lawful basis/)).toBeVisible();
+});
+
+test('the privacy notice states the waitlist basis and its retention', async ({ page }) => {
+  await page.goto('/privacy');
+  await expect(page.getByText(/Waitlist sign-ups/).first()).toBeVisible();
+  await expect(page.getByText(/Art\.\s*6\(1\)\(a\)/)).toBeVisible();
+  await expect(page.getByText(/24 months from sign-up/)).toBeVisible();
+});

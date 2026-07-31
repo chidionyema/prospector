@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Store.Api.Endpoints;
 using Store.Api.Contracts;
+using Store.Api.Infrastructure;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
 using Store.Api.Services;
@@ -97,43 +98,16 @@ builder.Services.AddSwaggerGen();
 // P1-7 — rate limiting. A global per-IP fixed-window limiter caps abusive bursts (token
 // guessing on /download, checkout spam). Webhooks are exempt: providers retry on non-2xx
 // and a 429'd webhook would drop fulfilment. Limits are overridable via RateLimiting:*.
-var rlPermit = builder.Configuration.GetValue<int?>("RateLimiting:PermitPerMinute") ?? 120;
-var rlWaitlistPermit = builder.Configuration.GetValue<int?>("RateLimiting:WaitlistPermitPerMinute") ?? 5;
+// The partitioning itself lives in RateLimitPolicy so the policy can be exercised by a test
+// against a real limiter instead of only asserted about in a comment.
+var rlPermit = builder.Configuration.GetValue<int?>("RateLimiting:PermitPerMinute")
+    ?? RateLimitPolicy.DefaultPermitPerMinute;
+var rlWaitlistPermit = builder.Configuration.GetValue<int?>("RateLimiting:WaitlistPermitPerMinute")
+    ?? RateLimitPolicy.DefaultWaitlistPermitPerMinute;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-    {
-        // Webhooks must never be throttled — exempt them with a no-limit partition.
-        var path = httpContext.Request.Path.Value ?? string.Empty;
-        if (path.StartsWith("/webhooks", StringComparison.OrdinalIgnoreCase))
-        {
-            return RateLimitPartition.GetNoLimiter("webhooks");
-        }
-
-        var clientKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-        // The waitlist writes an email address to the database on an unauthenticated
-        // endpoint, so it gets a much tighter partition than the general 120/min. A
-        // separate partition key ("waitlist:" prefix) keeps this budget from being spent
-        // by, or spending, the caller's ordinary browsing allowance.
-        if (path.StartsWith("/catalog/waitlist", StringComparison.OrdinalIgnoreCase))
-        {
-            return RateLimitPartition.GetFixedWindowLimiter($"waitlist:{clientKey}", _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = rlWaitlistPermit,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-            });
-        }
-
-        return RateLimitPartition.GetFixedWindowLimiter(clientKey, _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = rlPermit,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-        });
-    });
+    options.GlobalLimiter = RateLimitPolicy.Create(rlPermit, rlWaitlistPermit);
 });
 
 var app = builder.Build();
@@ -275,6 +249,51 @@ app.MapGet("/catalog/stats", async (StoreDbContext db) =>
 .WithName("GetCatalogStats")
 .WithOpenApi();
 
+// The honest end of a catalogue-wide miss: someone searched for a space we have not vetted a
+// pack in, and asked to be told if one ever survives the six checks. This endpoint CAPTURES
+// ONLY — it wires no marketing send, deliberately. The sub-processor list in the privacy
+// notice still carries an open question about the correct Mailjet contracting entity, and
+// naming the wrong one would be a false statement in a UK GDPR notice.
+//
+// Validation, consent hashing, and IP hashing all live in WaitlistService so they can be
+// tested. This lambda is only the HTTP shell. Rate limited to 5 a minute per IP by
+// RateLimitPolicy, because it is the one unauthenticated endpoint that writes personal data.
+app.MapPost("/catalog/waitlist", async (
+    WaitlistRequest request,
+    HttpContext http,
+    StoreDbContext db,
+    IConfiguration config,
+    CancellationToken cancellationToken) =>
+{
+    // No salt configured means no IP hash is stored. Hashing an IPv4 address without a secret
+    // salt is not pseudonymisation — the whole space is brute-forceable in seconds — so the
+    // fail-closed choice is to hold less data, not to hold a hash that pretends to protect.
+    var salt = config["Store:IpHashSalt"]
+        ?? Environment.GetEnvironmentVariable("STORE_IP_HASH_SALT");
+    var clientIp = string.IsNullOrEmpty(salt)
+        ? null
+        : http.Connection.RemoteIpAddress?.ToString();
+
+    var service = new WaitlistService(db, salt ?? string.Empty);
+    var result = await service.SignUpAsync(request, clientIp, cancellationToken).ConfigureAwait(false);
+
+    if (!result.Succeeded)
+    {
+        return Results.BadRequest(new { error = result.Error });
+    }
+
+    // Echo nothing back that could be used to enumerate or confirm an address, and say
+    // plainly what will and will not happen next — the success copy on the storefront makes
+    // the same promise, and the two must not drift.
+    return Results.Accepted(value: new
+    {
+        status = "queued",
+        message = "You're in the queue. We'll email you from support@mumchimp.com if one ships."
+    });
+})
+.WithName("JoinCatalogWaitlist")
+.WithOpenApi();
+
 // --- INTERNAL/ENGINE ENDPOINTS ---
 
 app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http, StoreDbContext db, IConfiguration config) =>
@@ -299,23 +318,11 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     // Validate facets BEFORE touching the database, so a publish carrying an unknown value
     // writes nothing at all. Junk in a facet column would surface as a filter that lies,
     // which is the one failure this whole feature exists to prevent.
-    foreach (var (field, value, allowed) in new (string, string?, IReadOnlySet<string>)[]
-             {
-                 ("sector", request.Sector, PackFacets.Sector),
-                 ("payer", request.Payer, PackFacets.Payer),
-                 ("effort", request.Effort, PackFacets.Effort),
-                 ("commitment", request.Commitment, PackFacets.Commitment),
-                 ("mechanism", request.Mechanism, PackFacets.Mechanism),
-             })
+    if (!PackFacets.TryValidateAll(
+            request.Sector, request.Payer, request.Effort,
+            request.Commitment, request.Mechanism, request.Advantages, out var facetError))
     {
-        if (!PackFacets.TryValidate(field, value, allowed, out var facetError))
-        {
-            return Results.BadRequest(new { error = facetError });
-        }
-    }
-    if (!PackFacets.TryValidateAdvantages(request.Advantages, out var advantageError))
-    {
-        return Results.BadRequest(new { error = advantageError });
+        return Results.BadRequest(new { error = facetError });
     }
 
     var pack = await db.Packs.FindAsync(request.Id).ConfigureAwait(false);
@@ -393,6 +400,85 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     return Results.Ok(pack);
 })
 .WithName("PublishPack")
+.WithOpenApi();
+
+// Tag an already-published pack with discovery facets, without touching anything else about
+// it. This is what the facet backfill calls: the 15 packs live today were published before the
+// vocabulary existed, and re-publishing them just to add a tag would put a tagging job in a
+// position to rewrite price, content hash, and listing state. It cannot reach those fields.
+//
+// Same fail-closed key check as POST /internal/catalog — an unauthenticated write to the
+// facets would let anyone make the filter lie, which is the exact failure the facet contract
+// exists to prevent.
+app.MapPatch("/internal/catalog/{id}/facets", async (
+    string id,
+    FacetPatchRequest request,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    // Same validator as publish, run before the lookup as well as before the write, so a
+    // request carrying junk gets the same 400 whether or not the pack happens to exist.
+    if (!PackFacets.TryValidateAll(
+            request.Sector, request.Payer, request.Effort,
+            request.Commitment, request.Mechanism, request.Advantages, out var facetError))
+    {
+        return Results.BadRequest(new { error = facetError });
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    // null = leave alone, "" = clear back to untagged. Without the second case a wrong tag
+    // could never be withdrawn through this endpoint, and "untag it" is a legitimate
+    // correction — the null rule is only trustworthy if it is reachable.
+    static string? Applied(string? incoming, string? current)
+    {
+        if (incoming is null) return current;
+        return incoming.Length == 0 ? null : incoming;
+    }
+
+    pack.Sector = Applied(request.Sector, pack.Sector);
+    pack.Payer = Applied(request.Payer, pack.Payer);
+    pack.Effort = Applied(request.Effort, pack.Effort);
+    pack.Commitment = Applied(request.Commitment, pack.Commitment);
+    pack.Mechanism = Applied(request.Mechanism, pack.Mechanism);
+    if (request.Advantages is not null)
+    {
+        pack.AdvantagesJson = request.Advantages.Length == 0
+            ? null
+            : JsonSerializer.Serialize(request.Advantages);
+    }
+
+    await db.SaveChangesAsync().ConfigureAwait(false);
+
+    return Results.Ok(new
+    {
+        pack.Id,
+        pack.Sector,
+        pack.Payer,
+        pack.Effort,
+        pack.Commitment,
+        pack.Mechanism,
+        Advantages = RehydrateStringArray(pack.AdvantagesJson)
+    });
+})
+.WithName("PatchPackFacets")
 .WithOpenApi();
 
 // Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a

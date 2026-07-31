@@ -1,18 +1,37 @@
 import React from 'react';
 import { GetServerSideProps } from 'next';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon, IconName, Input, Dropdown, Button } from '@/components/ui';
+import { Icon, IconName, Dropdown } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection } from '@/components/marketing/PackContents';
+import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
+import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
+import { FacetBar } from '@/components/discovery/FacetBar';
+import { FacetChips } from '@/components/discovery/FacetChips';
+import { Matchmaker } from '@/components/discovery/Matchmaker';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { categoryFor, type Category } from '@/lib/category';
+import {
+  decodeDiscoveryState,
+  encodeDiscoveryState,
+  filterPacks,
+  isFiltered,
+  nearMisses,
+  splitTitle,
+  type DiscoveryState,
+} from '@/lib/discovery';
+import { KIND_LABEL } from '@/lib/facets';
 
 interface HomeProps {
   packs: Pack[];
   stats: CatalogStats | null;
+  /** Discovery state decoded from the query string on the server, so a shared filtered link
+   *  renders filtered in the HTML rather than flashing the whole catalogue first. */
+  initialState: DiscoveryState;
 }
 
 type PillIcon = 'check' | 'shield' | 'download' | 'lock' | 'money';
@@ -36,17 +55,6 @@ const DELIVERABLES: { icon: IconName; label: string }[] = [
   { icon: 'code', label: 'Ops & numbers' },
   { icon: 'verified', label: 'Sources' },
 ];
-
-/** Titles arrive as "Brand — long descriptive subtitle". Split them so a card leads with a name a
- *  buyer can hold in their head, and demotes the descriptor to a supporting line. Falls back to the
- *  whole string when there is no em dash. */
-function splitTitle(title: string): { name: string; descriptor: string | null } {
-  const i = title.indexOf('—');
-  if (i === -1) return { name: title, descriptor: null };
-  const name = title.slice(0, i).trim();
-  const descriptor = title.slice(i + 1).trim();
-  return name && descriptor ? { name, descriptor } : { name: title, descriptor: null };
-}
 
 /** One scannable label/value row on a card. Clamped hard: a card is read in three seconds, so a
  *  long engine-written sentence has to truncate rather than push the CTA off the shelf. */
@@ -119,10 +127,7 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
 
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
-  const { name, descriptor } = splitTitle(pack.title);
-  // `theGap` is the engine's problem statement and is the right line here; until publish emits it,
-  // fall back to `oneLine` (which describes the solution) and label it honestly as such.
-  const gap = pack.theGap || pack.oneLine;
+  const { name, descriptor } = splitTitle(pack.title, pack.headline);
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -149,26 +154,25 @@ function PackCard({ pack }: { pack: Pack }) {
           <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-muted">{descriptor}</p>
         )}
 
-        {/* Scannable label/value rows, not a paragraph. */}
+        {/* Scannable label/value rows, not a paragraph. `Who pays` is gone: the payer facet chip
+            says the same thing in two words, and the engine's sentence pushed the CTA off the card. */}
         <div className="mt-4 space-y-3">
-          {gap && <CardFact label={pack.theGap ? 'The gap' : 'The opportunity'}>{gap}</CardFact>}
-          {pack.whoPays && <CardFact label="Who pays">{pack.whoPays}</CardFact>}
+          {pack.oneLine && <CardFact label="The opportunity">{pack.oneLine}</CardFact>}
           <div className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">Deliverables</span>
             <DeliverableChips />
           </div>
         </div>
 
-        {(pack.market || pack.effortTag || pack.timeToFirstRevenue || pack.sourceCount || freshnessLabel(pack.verifiedAt)) && (
+        {/* Renders nothing at all when the engine could not justify a facet — an untagged pack
+            shows no chips rather than a guessed one. */}
+        <FacetChips pack={pack} compact max={4} className="mt-4" />
+
+        {(pack.market || pack.timeToFirstRevenue || pack.sourceCount || freshnessLabel(pack.verifiedAt)) && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {pack.market && (
               <span className="rounded-md bg-primary/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
                 {marketLabel(pack.market)}
-              </span>
-            )}
-            {pack.effortTag && (
-              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold capitalize text-muted">
-                {pack.effortTag} effort
               </span>
             )}
             {pack.timeToFirstRevenue && (
@@ -207,7 +211,7 @@ function PackCard({ pack }: { pack: Pack }) {
 // the grid is not eleven identical blocks. Anchors the page and breaks the pattern.
 function SpotlightCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
-  const { name, descriptor } = splitTitle(pack.title);
+  const { name, descriptor } = splitTitle(pack.title, pack.headline);
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -232,9 +236,9 @@ function SpotlightCard({ pack }: { pack: Pack }) {
         </h3>
         {descriptor && <p className="max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{descriptor}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <CardFact label={pack.theGap ? 'The gap' : 'The opportunity'}>{pack.theGap || pack.oneLine}</CardFact>
-          {pack.whoPays && <CardFact label="Who pays">{pack.whoPays}</CardFact>}
+          <CardFact label="The opportunity">{pack.oneLine}</CardFact>
         </div>
+        <FacetChips pack={pack} />
         <DeliverableChips />
         <div className="mt-1 flex flex-wrap items-center gap-4">
           <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
@@ -244,43 +248,6 @@ function SpotlightCard({ pack }: { pack: Pack }) {
         </div>
       </div>
     </Link>
-  );
-}
-
-// Colour-coded sector filter. Turns the catalogue from a list into a discovery tool.
-function FilterPill({
-  active,
-  onClick,
-  label,
-  count,
-  icon,
-  accent,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count: number;
-  icon?: IconName;
-  accent?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cx(
-        'inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition',
-        active
-          ? 'border-text bg-text text-white shadow-sm'
-          : 'border-border bg-white text-text/70 hover:border-text/30 hover:text-text',
-      )}
-    >
-      {icon && <Icon name={icon} size={14} className={active ? 'text-white' : accent} />}
-      {label}
-      <span className={cx('rounded-full px-1.5 text-xs font-bold', active ? 'bg-white/20 text-white' : 'bg-bg text-muted')}>
-        {count}
-      </span>
-    </button>
   );
 }
 
@@ -333,49 +300,60 @@ const SORTS = [
 
 type SortKey = (typeof SORTS)[number]['value'];
 
-/**
- * Client-side catalog browser: search (title + one-line) and sort over the packs the server already
- * sent. Pure client filtering is right while the catalogue is small (tens of packs); a server-side
- * query (`/catalog?q=&sort=`) and lane/sector filters are the next step once packs carry taxonomy.
- */
-function CatalogBrowser({ packs }: { packs: Pack[] }) {
-  const [query, setQuery] = React.useState('');
-  const [sort, setSort] = React.useState<SortKey>('newest');
-  const [activeCat, setActiveCat] = React.useState<string>('all');
+/** Buyer-facing name for the one filter a near-miss pack fails. */
+function relaxLabelFor(kind: keyof typeof KIND_LABEL): string {
+  return `Show any ${KIND_LABEL[kind].toLowerCase()}`;
+}
 
-  // Sectors actually present in the catalogue, with counts, in first-appearance order.
-  const cats = React.useMemo(() => {
-    const m = new Map<string, { cat: Category; count: number }>();
-    for (const p of packs) {
-      const c = categoryFor(p);
-      const e = m.get(c.key);
-      if (e) e.count += 1;
-      else m.set(c.key, { cat: c, count: 1 });
-    }
-    return [...m.values()];
-  }, [packs]);
+/**
+ * The shelf, driven by the discovery state (spec Parts 4, 6, 7).
+ *
+ * Filtering is client-side over the packs the server already sent, and the state round-trips
+ * through the URL so a filtered shelf is a link someone can send. The URL update is `shallow`:
+ * the packs are already here, so re-running `getServerSideProps` would be a network round trip
+ * that changes nothing on screen.
+ */
+function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: DiscoveryState }) {
+  const router = useRouter();
+  const [state, setState] = React.useState<DiscoveryState>(initialState);
+  const [sort, setSort] = React.useState<SortKey>('newest');
+  const { open, setOpen, close, triggerRef } = useCommandPalette();
+
+  const apply = React.useCallback(
+    (next: DiscoveryState) => {
+      setState(next);
+      const qs = encodeDiscoveryState(next);
+      void router.replace(qs ? `/?${qs}` : '/', undefined, { shallow: true, scroll: false });
+    },
+    [router],
+  );
 
   const visible = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let filtered = packs;
-    if (activeCat !== 'all') filtered = filtered.filter((p) => categoryFor(p).key === activeCat);
-    if (q) {
-      filtered = filtered.filter(
-        (p) => p.title.toLowerCase().includes(q) || p.oneLine.toLowerCase().includes(q),
-      );
-    }
+    const filtered = filterPacks(packs, state);
     if (sort === 'newest') return filtered; // server already returns newest-first
     return [...filtered].sort((a, b) => {
       if (sort === 'title') return a.title.localeCompare(b.title);
       const delta = parseFloat(a.price) - parseFloat(b.price);
       return sort === 'price-asc' ? delta : -delta;
     });
-  }, [packs, query, sort, activeCat]);
+  }, [packs, state, sort]);
 
-  // Spotlight the newest survivor only on the unfiltered, unsorted, full view — when it is genuinely
-  // "newest" and there is a grid behind it to anchor. Otherwise every result is an equal grid card.
-  const spotlight =
-    activeCat === 'all' && !query.trim() && sort === 'newest' && visible.length > 2 ? visible[0] : null;
+  // Only computed when the shelf came back empty — the near-miss row exists to rescue that case.
+  const candidates: NearMissCandidate[] = React.useMemo(() => {
+    if (visible.length > 0) return [];
+    return nearMisses(packs, state).map((miss) => ({
+      pack: miss.pack,
+      missLabel: missLabelFor(miss.kind, miss.wanted, miss.actual),
+      relaxedState: miss.relaxedState,
+      relaxLabel: relaxLabelFor(miss.kind),
+    }));
+  }, [visible.length, packs, state]);
+
+  const filtered = isFiltered(state);
+
+  // Spotlight the newest survivor only on the unfiltered, unsorted, full view — when it is
+  // genuinely "newest" and there is a grid behind it to anchor.
+  const spotlight = !filtered && sort === 'newest' && visible.length > 2 ? visible[0] : null;
   const gridPacks = spotlight ? visible.slice(1) : visible;
 
   if (packs.length === 0) {
@@ -394,76 +372,66 @@ function CatalogBrowser({ packs }: { packs: Pack[] }) {
 
   return (
     <>
-      {cats.length > 1 && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          <FilterPill active={activeCat === 'all'} onClick={() => setActiveCat('all')} label="All sectors" count={packs.length} />
-          {cats.map(({ cat, count }) => (
-            <FilterPill
-              key={cat.key}
-              active={activeCat === cat.key}
-              onClick={() => setActiveCat(cat.key)}
-              label={cat.label}
-              count={count}
-              icon={cat.icon}
-              accent={cat.accent}
-            />
-          ))}
-        </div>
-      )}
+      <div className="mb-10">
+        <Matchmaker packs={packs} onShowAll={apply} onNoMatch={apply} />
+      </div>
 
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full sm:max-w-xs">
-          <Input
-            label="Search packs"
-            hideLabel
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or idea…"
-          />
-        </div>
-        <div className="flex items-center gap-3 sm:justify-end">
-          <span className="whitespace-nowrap text-sm font-semibold text-muted">
-            {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
-          </span>
-          <div className="w-52">
-            <Dropdown<SortKey>
-              label="Sort packs"
-              value={sort}
-              options={SORTS}
-              onChange={setSort}
-            />
+      <div className="grid gap-8 lg:grid-cols-[15rem_1fr]">
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <FacetBar packs={packs} state={state} onChange={apply} />
+        </aside>
+
+        <div>
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="w-full sm:max-w-xs">
+              <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
+            </div>
+            <div className="flex items-center gap-3 sm:justify-end">
+              <span className="whitespace-nowrap text-sm font-semibold text-muted">
+                {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
+              </span>
+              <div className="w-52">
+                <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
+              </div>
+            </div>
           </div>
+
+          {visible.length > 0 ? (
+            <>
+              {spotlight && <SpotlightCard pack={spotlight} />}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {gridPacks.map((pack) => (
+                  <PackCard key={pack.id} pack={pack} />
+                ))}
+              </div>
+              <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
+                <Icon name="shield" size={15} className="text-success" />
+                Every pack carries a 14 day money back guarantee.
+              </p>
+            </>
+          ) : candidates.length > 0 ? (
+            /* A. Something is one facet away — sell that before asking for an email address. */
+            <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
+              <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
+                {candidates.map((candidate) => {
+                  const pack = packs.find((p) => p.id === candidate.pack.id);
+                  return pack ? <PackCard key={pack.id} pack={pack} /> : null;
+                })}
+              </div>
+            </DiscoveryNearMiss>
+          ) : (
+            /* B. Nothing in the catalogue comes close. Only now is an email address the honest ask. */
+            <DiscoveryWaitlist query={state.q} />
+          )}
         </div>
       </div>
 
-      {visible.length > 0 ? (
-        <>
-          {spotlight && <SpotlightCard pack={spotlight} />}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {gridPacks.map((pack) => (
-              <PackCard key={pack.id} pack={pack} />
-            ))}
-          </div>
-          <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
-            <Icon name="shield" size={15} className="text-success" />
-            Every pack carries a 14 day money back guarantee.
-          </p>
-        </>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-border bg-white py-16 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-bg text-muted">
-            <Icon name="search" size={20} />
-          </div>
-          <p className="font-semibold text-text">No packs match “{query.trim()}”.</p>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-muted">Try a broader word, or clear the search.</p>
-          <div className="mt-4">
-            <Button variant="secondary" onClick={() => setQuery('')}>
-              Clear search
-            </Button>
-          </div>
-        </div>
-      )}
+      <CommandPalette
+        packs={packs}
+        open={open}
+        onClose={close}
+        onSeeAll={(q) => apply({ ...state, q })}
+      />
     </>
   );
 }
@@ -541,7 +509,10 @@ function ComparisonBlock() {
   );
 }
 
-export default function Home({ packs, stats }: HomeProps) {
+export default function Home({ packs, stats, initialState }: HomeProps) {
+  // Never a literal. The catalogue grows on every PASS, so the only honest number is the one the
+  // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
+  const survived = stats?.listed ?? packs.length;
   return (
     <MarketingLayout>
       <Seo title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each" />
@@ -572,7 +543,7 @@ export default function Home({ packs, stats }: HomeProps) {
             href="#catalog"
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
           >
-            Browse vetted blueprints — £49
+            {survived > 0 ? `See the ${survived} that survived` : 'Browse vetted blueprints'} — £49
           </Link>
           <Link
             href="/sample"
@@ -607,7 +578,7 @@ export default function Home({ packs, stats }: HomeProps) {
           )}
         </div>
 
-        <CatalogBrowser packs={packs} />
+        <CatalogBrowser packs={packs} initialState={initialState} />
       </Section>
 
       {/* 3. WHAT YOU GET — the deliverable breakdown. Format ambiguity is the biggest killer on a
@@ -671,16 +642,19 @@ export default function Home({ packs, stats }: HomeProps) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  // Decoded server-side: out-of-vocabulary values in a hand-edited URL are dropped rather than
+  // filtering the shelf down to nothing on a value no pack can ever carry.
+  const initialState = decodeDiscoveryState(context.query);
   try {
     const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
     return {
-      props: { packs, stats },
+      props: { packs, stats, initialState },
     };
   } catch (error) {
     console.error('Error fetching catalog:', error);
     return {
-      props: { packs: [], stats: null },
+      props: { packs: [], stats: null, initialState },
     };
   }
 };
