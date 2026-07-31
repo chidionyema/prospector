@@ -25,7 +25,7 @@ import {
   nearMisses,
   type DiscoveryState,
 } from '@/lib/discovery';
-import { KIND_NOUN } from '@/lib/facets';
+import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
 
 interface HomeProps {
   packs: Pack[];
@@ -48,10 +48,13 @@ function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
   );
 }
 
-// A card has room for four chips, and the bundle carries eight files (PACK_CONTENTS, pinned to
-// prospector/bridge.py::BUNDLE_FILES by a drift test). So the chips name the four a buyer decides
-// on and the count chip carries the rest — `PACK_CONTENTS.length - DELIVERABLES.length` rather
-// than a literal, because a hardcoded "+4" is exactly how this claim drifted the first time.
+// The deliverable chips are identical for every pack (the bundle is the bundle), so they render
+// once — on the spotlight card — not on all forty grid cards, where measured on the live shelf
+// they cost ~90px per card and said nothing a buyer could compare on. The bundle carries
+// PACK_CONTENTS files (pinned to prospector/bridge.py::BUNDLE_FILES by a drift test): the chips
+// name the four a buyer decides on and the count chip carries the rest —
+// `PACK_CONTENTS.length - DELIVERABLES.length` rather than a literal, because a hardcoded "+4"
+// is exactly how this claim drifted the first time.
 const DELIVERABLES: { icon: IconName; label: string }[] = [
   { icon: 'briefcase', label: 'Blueprint' },
   { icon: 'handshake', label: 'GTM plan' },
@@ -138,27 +141,78 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
   );
 }
 
+/** The single metadata row on a grid card: market, the strongest facets, sources, freshness.
+ *  One capped row replaces the three stacked chip sections the card used to carry — measured on
+ *  the live shelf those sections were the whole size problem (cards ran 585–660px tall depending
+ *  on which sections a pack happened to have). A pack with nothing to claim renders no row at
+ *  all: a chip is a claim, and absence stays absence (same rule as FacetChips). */
+const CARD_META_MAX = 5;
+
+function CardMeta({ pack }: { pack: Pack }) {
+  const chips: { key: string; text: string; primary?: boolean }[] = [];
+  if (pack.market) chips.push({ key: 'market', text: marketLabel(pack.market), primary: true });
+  const facets: [FacetKind, string | null | undefined][] = [
+    ['payer', pack.payer],
+    ['effort', pack.effort],
+    ['commitment', pack.commitment],
+    ['mechanism', pack.mechanism],
+  ];
+  for (const [kind, value] of facets) {
+    const text = shortLabel(kind, value);
+    if (text) chips.push({ key: kind, text });
+  }
+  if (pack.timeToFirstRevenue) {
+    chips.push({ key: 'revenue', text: `Revenue in ${pack.timeToFirstRevenue}` });
+  }
+  if (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) {
+    chips.push({ key: 'sources', text: `${pack.sourceCount} sources` });
+  }
+  const fresh = freshnessLabel(pack.verifiedAt);
+  if (fresh) chips.push({ key: 'fresh', text: fresh });
+  if (chips.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {chips.slice(0, CARD_META_MAX).map((chip) => (
+        <span
+          key={chip.key}
+          className={cx(
+            'rounded-md px-2 py-1 text-[11px] font-semibold',
+            chip.primary ? 'bg-primary/10 uppercase tracking-wide text-primary' : 'bg-bg text-muted',
+          )}
+        >
+          {chip.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
+  // One description, not two. `oneLine` (the engine's opportunity line) wins; the title
+  // descriptor is the fallback for packs published before the engine emitted one.
+  const line = pack.oneLine || sub;
   return (
     <Link
       href={`/pack/${pack.id}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-text/15 hover:shadow-[0_18px_40px_rgba(0,0,0,0.10)]"
     >
-      <Cover cat={cat} iconSize={132} className="h-36">
-        <span className="absolute left-4 top-4">
+      <Cover cat={cat} iconSize={104} className="h-28">
+        <span className="absolute left-3.5 top-3.5">
           <CategoryPill cat={cat} />
         </span>
-        <span className="absolute right-4 top-4 rounded-lg bg-white px-3 py-1 text-lg font-black tracking-tight text-text shadow-sm">
+        {/* The only price on the card. It was printed twice (here and in the footer), and at
+            42 cards the duplicate was pure height. */}
+        <span className="absolute right-3.5 top-3.5 rounded-lg bg-white px-2.5 py-1 text-base font-black tracking-tight text-text shadow-sm">
           {formatPrice(pack.price)}
         </span>
-        <span className="absolute bottom-4 left-4">
+        <span className="absolute bottom-3.5 left-3.5">
           <SurvivedSeal />
         </span>
       </Cover>
 
-      <div className="flex flex-1 flex-col p-6">
+      <div className="flex flex-1 flex-col p-5">
         {/* What it DOES leads; the brand name is the eyebrow. Nobody can buy from "PitchBrief"
             on a first visit, so the name is not the heading whenever the engine gave us a short
             line to use instead. `cardHeading` falls back to the old name-first hierarchy for
@@ -168,70 +222,34 @@ function PackCard({ pack }: { pack: Pack }) {
         )}
         <h3
           className={cx(
-            'text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
+            'line-clamp-2 text-base font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
             eyebrow && 'mt-1',
           )}
         >
           {heading}
         </h3>
-        {sub && (
-          <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-relaxed text-text/80">{sub}</p>
-        )}
+        {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-text/75">{line}</p>}
 
-        {/* Scannable label/value rows, not a paragraph. `Who pays` is gone: the payer facet chip
-            says the same thing in two words, and the engine's sentence pushed the CTA off the card. */}
-        <div className="mt-4 space-y-3">
-          {pack.oneLine && <CardFact label="The opportunity">{pack.oneLine}</CardFact>}
-          <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">Deliverables</span>
-            <DeliverableChips />
-          </div>
-        </div>
+        <CardMeta pack={pack} />
 
-        {/* Renders nothing at all when the engine could not justify a facet — an untagged pack
-            shows no chips rather than a guessed one. */}
-        <FacetChips pack={pack} compact max={4} className="mt-4" />
-
-        {(pack.market || pack.timeToFirstRevenue || pack.sourceCount || freshnessLabel(pack.verifiedAt)) && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {pack.market && (
-              <span className="rounded-md bg-primary/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                {marketLabel(pack.market)}
-              </span>
-            )}
-            {pack.timeToFirstRevenue && (
-              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-                Revenue in {pack.timeToFirstRevenue}
-              </span>
-            )}
-            {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
-              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-                {pack.sourceCount} sources
-              </span>
-            )}
-            {freshnessLabel(pack.verifiedAt) && (
-              <span className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-                {freshnessLabel(pack.verifiedAt)}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Active CTA at the price, not a passive "see what is inside". The basket toggle sits
-            beside it rather than replacing it: opening the pack stays the primary action, and a
-            shelf where every card demands a cart decision is a worse shelf. */}
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/70 pt-4">
-          <span className="text-sm font-bold text-text transition-colors group-hover:text-primary">
-            View vetted blueprint ({formatPrice(pack.price)})
-          </span>
-          <div className="flex flex-none items-center gap-2">
-            <AddToCartButton
-              size="compact"
-              line={{ id: pack.id, title: name, price: pack.price }}
-            />
-            <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg text-text transition-all group-hover:bg-primary group-hover:text-white">
-              <Icon name="arrowRight" size={15} />
+        {/* Active CTA, basket beside it rather than replacing it: opening the pack stays the
+            primary action, and a shelf where every card demands a cart decision is a worse
+            shelf. `mt-auto` pins the footer to the card's bottom edge (grid rows stretch), and
+            the wrapper's `pt-4` guarantees the gap above the rule never collapses to zero. */}
+        <div className="mt-auto pt-4">
+          <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-3.5">
+            <span className="text-sm font-bold text-text transition-colors group-hover:text-primary">
+              View blueprint
             </span>
+            <div className="flex flex-none items-center gap-2">
+              <AddToCartButton
+                size="compact"
+                line={{ id: pack.id, title: name, price: pack.price }}
+              />
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg text-text transition-all group-hover:bg-primary group-hover:text-white">
+                <Icon name="arrowRight" size={15} />
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -249,7 +267,7 @@ function SpotlightCard({ pack }: { pack: Pack }) {
       href={`/pack/${pack.id}`}
       className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] md:flex-row"
     >
-      <Cover cat={cat} iconSize={240} className="min-h-[210px] md:w-[38%]">
+      <Cover cat={cat} iconSize={200} className="min-h-[180px] md:w-[36%]">
         <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
           <Icon name="trending-up" size={12} className={cat.accent} /> Latest to survive
         </span>
@@ -258,31 +276,26 @@ function SpotlightCard({ pack }: { pack: Pack }) {
         </span>
       </Cover>
 
-      <div className="flex flex-1 flex-col justify-center gap-4 p-7 md:p-9">
+      <div className="flex flex-1 flex-col justify-center gap-3.5 p-6 md:p-8">
+        {/* The cover pill already says this is the newest; a second "Newest in the catalogue"
+            line said it again, so the row now carries the sector and the brand name instead. */}
         <div className="flex flex-wrap items-center gap-3">
           <CategoryPill cat={cat} onLight />
-          <span className="text-sm font-semibold text-muted">Newest in the catalogue</span>
-        </div>
-        <div>
           {eyebrow && (
             <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
           )}
-          <h3
-            className={cx(
-              'text-2xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-3xl',
-              eyebrow && 'mt-1.5',
-            )}
-          >
+        </div>
+        <div>
+          <h3 className="text-2xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-[1.75rem]">
             {heading}
           </h3>
+          {sub && <p className="mt-2 max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
         </div>
-        {sub && <p className="max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <CardFact label="The opportunity">{pack.oneLine}</CardFact>
-        </div>
-        <FacetChips pack={pack} />
+        {pack.oneLine && <CardFact label="The opportunity" clamp="line-clamp-3">{pack.oneLine}</CardFact>}
+        <FacetChips pack={pack} compact max={5} />
+        {/* The one place on the shelf the deliverable chips render — see the note on DELIVERABLES. */}
         <DeliverableChips />
-        <div className="mt-1 flex flex-wrap items-center gap-4">
+        <div className="mt-0.5 flex flex-wrap items-center gap-4">
           <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
           <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition group-hover:opacity-90">
             View vetted blueprint <Icon name="arrowRight" size={15} />
@@ -441,7 +454,7 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
           {/* Search, the router and sort on one row. The router used to be a full-width panel
               above this, which is 80px of the only screen space that decides whether a buyer
               sees a product before scrolling; as a control beside the other two it costs none. */}
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
               <div className="w-full sm:w-64">
                 <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
@@ -469,7 +482,7 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
           {visible.length > 0 ? (
             <>
               {spotlight && <SpotlightCard pack={spotlight} />}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {gridPacks.map((pack) => (
                   <PackCard key={pack.id} pack={pack} />
                 ))}
@@ -482,7 +495,7 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
           ) : candidates.length > 0 ? (
             /* A. Something is one facet away — sell that before asking for an email address. */
             <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
-              <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                 {candidates.map((candidate) => {
                   const pack = packs.find((p) => p.id === candidate.pack.id);
                   return pack ? <PackCard key={pack.id} pack={pack} /> : null;
@@ -598,19 +611,19 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
              guarantee that also sits under the grid. What is left is the claim, the price, and
              the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
              next block added above the grid fails a test instead of quietly undoing this. */}
-      <SectionBand bg="white" width="6xl" className="pt-6 pb-5 md:pt-8 md:pb-6 text-center animate-rise">
-        <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
+      <SectionBand bg="white" width="6xl" className="pt-5 pb-4 md:pt-7 md:pb-5 text-center animate-rise">
+        <p className="mb-2.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
         <h1 className="mx-auto max-w-[24ch] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           Skip 6 months of research. Launch a business that&apos;s already vetted.
         </h1>
-        <p className="mx-auto mt-4 max-w-[64ch] text-base leading-relaxed text-text/75">
+        <p className="mx-auto mt-3 max-w-[64ch] text-base leading-relaxed text-text/75">
           Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics
           and a step-by-step go-to-market plan — every claim backed by a source you can open.
         </p>
         {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
-        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="#catalog"
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
@@ -627,18 +640,18 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
         </div>
         {/* One line, and it carries the two facts that decide whether the second button is
             clicked: the sample is the whole thing, and it costs nothing — not even an address. */}
-        <p className="mt-3 text-sm font-medium text-muted">
+        <p className="mt-2.5 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
       </SectionBand>
 
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
-      <Section bg="bg" width="7xl" className="!pt-6 !pb-16 md:!pt-7 md:!pb-20">
+      <Section bg="bg" width="7xl" className="!pt-5 !pb-16 md:!pt-6 md:!pb-20">
         {/* Heading and heartbeat share a row. Stacked, with the survivorship ratio in a third
             pill below them, this block was 206px of preamble sitting directly on top of the
             shelf — the same fold problem as the hero, in miniature. */}
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
             <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
             <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">
