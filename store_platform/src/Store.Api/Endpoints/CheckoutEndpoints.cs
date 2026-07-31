@@ -29,7 +29,7 @@ public static class CheckoutEndpoints
             HttpRequest request) =>
         {
             var body = await ReadBodyAsync<CheckoutRequest>(request).ConfigureAwait(false);
-            return await CreateCheckoutAsync([id], body?.Email, db, sp, config, request).ConfigureAwait(false);
+            return await CreateCheckoutAsync([id], body?.Email, body?.Embedded ?? false, db, sp, config, request).ConfigureAwait(false);
         })
         .WithName("CreateCheckout")
         .WithOpenApi();
@@ -52,7 +52,7 @@ public static class CheckoutEndpoints
                 return Results.BadRequest(new { error = rejection });
             }
 
-            return await CreateCheckoutAsync(packIds, body?.Email, db, sp, config, request).ConfigureAwait(false);
+            return await CreateCheckoutAsync(packIds, body?.Email, body?.Embedded ?? false, db, sp, config, request).ConfigureAwait(false);
         })
         .WithName("CreateCartCheckout")
         .WithOpenApi();
@@ -88,6 +88,7 @@ public static class CheckoutEndpoints
     private static async Task<IResult> CreateCheckoutAsync(
         string[] packIds,
         string? buyerEmail,
+        bool embedded,
         StoreDbContext db,
         IServiceProvider sp,
         IConfiguration config,
@@ -135,10 +136,44 @@ public static class CheckoutEndpoints
             .Select(id => new CheckoutLine(id, packs[id].ProviderPriceId!))
             .ToArray();
 
+        return await OpenSessionAsync(
+            paymentProvider, lines, buyerEmail, embedded, successUrl, cancelUrl).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Open the session on the surface the storefront asked for, falling back to hosted.
+    /// </summary>
+    /// <remarks>
+    /// Embedded first when requested; hosted otherwise, and hosted ALSO when the provider has no
+    /// embedded surface (the ordinary case for Paddle, and the failure case for a Stripe account
+    /// without it). The fallback is not an error path — a buyer must never be unable to pay
+    /// because the nicer surface was unavailable.
+    /// </remarks>
+    private static async Task<IResult> OpenSessionAsync(
+        IPaymentProvider paymentProvider,
+        CheckoutLine[] lines,
+        string? buyerEmail,
+        bool embedded,
+        string successUrl,
+        string cancelUrl)
+    {
+        if (embedded)
+        {
+            var embeddedHandle = await paymentProvider.CreateEmbeddedCheckoutAsync(
+                lines, buyerEmail, successUrl, CancellationToken.None).ConfigureAwait(false);
+
+            if (embeddedHandle?.ClientSecret is { Length: > 0 } secret)
+            {
+                return Results.Ok(new { url = embeddedHandle.Url, clientSecret = secret });
+            }
+        }
+
         var handle = await paymentProvider.CreateCheckoutAsync(
             lines, buyerEmail, successUrl, cancelUrl, CancellationToken.None).ConfigureAwait(false);
 
-        return Results.Ok(new { url = handle.Url });
+        // `clientSecret` is always present on the wire, null on the hosted path. A field that
+        // appears and disappears is how a client ends up branching on `undefined` by accident.
+        return Results.Ok(new { url = handle.Url, clientSecret = (string?)null });
     }
 
     /// <summary>

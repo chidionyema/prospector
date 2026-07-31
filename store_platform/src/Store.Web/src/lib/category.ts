@@ -20,6 +20,14 @@ export interface Category {
   /** The engine's sector code, or `unlabelled` when the pack carries no sector. */
   key: string;
   label: string;
+  /**
+   * False only for `UNLABELLED`. Callers must not render `label` when this is false: the
+   * absence of a sector is shown by showing nothing, exactly as `FacetChips` already does for
+   * an untagged facet. A pill reading "Not yet tagged" is a status message about our own
+   * pipeline printed on a £49 product, and buyers read it as an unfinished listing rather than
+   * as the honesty it was meant to be.
+   */
+  tagged: boolean;
   icon: IconName;
   /** Full-height card cover gradient. */
   cover: string;
@@ -97,13 +105,20 @@ const PALETTE: Record<Sector, Palette> = {
 };
 
 /**
- * The untagged treatment. Named "Not yet tagged" rather than given a plausible-sounding label,
- * because "Opportunity" reads like a category the engine assigned when it is really the absence
- * of one.
+ * The untagged treatment: a neutral cover, and NO label.
+ *
+ * This used to render a pill reading "Not yet tagged" — chosen over inventing a plausible
+ * category, which was the right call, but the wrong end of the choice. The pack is on the shelf
+ * at £49; a badge announcing that our own tagging is incomplete is a defect notice, not candour,
+ * and it appeared on four of the twenty-six packs live on 2026-07-31.
+ *
+ * `label` is retained only so the key is self-describing in a debugger; `tagged: false` is what
+ * callers branch on, and `__tests__/category.test.ts` holds the two apart.
  */
 export const UNLABELLED: Category = {
   key: 'unlabelled',
   label: 'Not yet tagged',
+  tagged: false,
   icon: 'briefcase',
   cover: 'bg-[linear-gradient(135deg,#0f172a_0%,#334155_100%)]',
   chip: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20',
@@ -113,7 +128,7 @@ export const UNLABELLED: Category = {
 const CATEGORIES: Record<string, Category> = Object.fromEntries(
   SECTOR.map((sector) => [
     sector,
-    { key: sector, label: facetLabel('sector', sector) ?? sector, ...PALETTE[sector] },
+    { key: sector, label: facetLabel('sector', sector) ?? sector, tagged: true, ...PALETTE[sector] },
   ]),
 );
 

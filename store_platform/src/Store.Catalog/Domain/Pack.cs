@@ -31,6 +31,14 @@ public class Pack
     // Storefront conversion metadata, set by the engine at publish time from the verified
     // dossier. All optional — a pack lists without them. Arrays and the financial snapshot
     // are stored as JSON text and re-hydrated by the read API (SQLite has no array column).
+    /// <summary>
+    /// The engine's own short (max 60 char) description of what the business DOES, written for
+    /// the shelf card's heading. Distinct from <see cref="Headline"/>, which is the outcome
+    /// promise and runs to 10-15 words. Length is enforced engine-side by DISCARDING an
+    /// over-length line rather than truncating it, so a value present here is one the engine
+    /// stood behind whole; null simply means the card falls back to the title.
+    /// </summary>
+    public string? CardLine { get; set; }
     public string? Headline { get; set; }
     public string? Subhead { get; set; }
     public string? ProofPoint { get; set; }

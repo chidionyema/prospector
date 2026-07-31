@@ -51,5 +51,10 @@ public record PublishRequest(
     string? Effort = null,
     string? Commitment = null,
     string? Mechanism = null,
-    string[]? Advantages = null
+    string[]? Advantages = null,
+    // The shelf card's heading: at most 60 characters of what the business DOES. Appended
+    // last for the same append-only reason as the facets above. Length is enforced by the
+    // engine, which DISCARDS an over-length line rather than truncating it, so anything
+    // arriving here is a whole sentence the engine stood behind.
+    string? CardLine = null
 );

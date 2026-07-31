@@ -7,22 +7,22 @@ import { Seo } from '@/components/Seo';
 import { Icon, IconName, Dropdown } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
-import { PackContentsSection } from '@/components/marketing/PackContents';
+import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { FacetBar } from '@/components/discovery/FacetBar';
 import { FacetChips } from '@/components/discovery/FacetChips';
-import { Matchmaker } from '@/components/discovery/Matchmaker';
+import { Matchmaker, MatchmakerTrigger } from '@/components/discovery/Matchmaker';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { categoryFor, type Category } from '@/lib/category';
 import {
+  cardHeading,
   decodeDiscoveryState,
   encodeDiscoveryState,
   filterPacks,
   isFiltered,
   nearMisses,
-  splitTitle,
   type DiscoveryState,
 } from '@/lib/discovery';
 import { KIND_LABEL } from '@/lib/facets';
@@ -48,14 +48,18 @@ function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
   );
 }
 
-// The four deliverables inside every pack, as scannable icon chips. Matches the real bundle
-// manifest — see the audit note in components/marketing/PackContents.tsx.
+// A card has room for four chips, and the bundle carries eight files (PACK_CONTENTS, pinned to
+// prospector/bridge.py::BUNDLE_FILES by a drift test). So the chips name the four a buyer decides
+// on and the count chip carries the rest — `PACK_CONTENTS.length - DELIVERABLES.length` rather
+// than a literal, because a hardcoded "+4" is exactly how this claim drifted the first time.
 const DELIVERABLES: { icon: IconName; label: string }[] = [
   { icon: 'briefcase', label: 'Blueprint' },
   { icon: 'handshake', label: 'GTM plan' },
   { icon: 'code', label: 'Ops & numbers' },
   { icon: 'verified', label: 'Sources' },
 ];
+
+const EXTRA_DELIVERABLES = PACK_CONTENTS.length - DELIVERABLES.length;
 
 /** One scannable label/value row on a card. Clamped hard: a card is read in three seconds, so a
  *  long engine-written sentence has to truncate rather than push the CTA off the shelf. */
@@ -79,6 +83,11 @@ function DeliverableChips() {
           <Icon name={d.icon} size={12} /> {d.label}
         </span>
       ))}
+      {EXTRA_DELIVERABLES > 0 && (
+        <span className="inline-flex items-center rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
+          +{EXTRA_DELIVERABLES} more
+        </span>
+      )}
     </div>
   );
 }
@@ -86,6 +95,9 @@ function DeliverableChips() {
 // Colour-coded sector label. `onLight` sits on a white card body; the default glass pill sits on the
 // coloured cover.
 function CategoryPill({ cat, onLight = false }: { cat: Category; onLight?: boolean }) {
+  // An untagged pack shows no pill at all — same rule as FacetChips below, and for the same
+  // reason: absence is rendered as absence, never as a badge about the state of our pipeline.
+  if (!cat.tagged) return null;
   if (onLight) {
     return (
       <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide', cat.chip)}>
@@ -128,7 +140,7 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
 
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
-  const { name, descriptor } = splitTitle(pack.title, pack.headline);
+  const { name, heading, eyebrow, sub } = cardHeading(pack);
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -147,18 +159,23 @@ function PackCard({ pack }: { pack: Pack }) {
       </Cover>
 
       <div className="flex flex-1 flex-col p-6">
-        {/* Name first, engine-written descriptor demoted: eleven 25-word titles is not a shelf. */}
-        <h3 className="text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary">
-          {name}
+        {/* What it DOES leads; the brand name is the eyebrow. Nobody can buy from "PitchBrief"
+            on a first visit, so the name is not the heading whenever the engine gave us a short
+            line to use instead. `cardHeading` falls back to the old name-first hierarchy for
+            packs published before the engine emitted one — see lib/discovery.ts. */}
+        {eyebrow && (
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
+        )}
+        <h3
+          className={cx(
+            'text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
+            eyebrow && 'mt-1',
+          )}
+        >
+          {heading}
         </h3>
-        {/* Given real weight (sm/text-80, not xs/muted). The name stays the H3 — a live
-            descriptor runs to 90+ chars ("PitchCall Forensics — The Under-27 Gig Driver's
-            Insurance-Refusal Reversal & Telematics-Data Subject-Access Round"), so promoting it
-            to the heading gives twenty cards of wrapped bold text instead of a scannable shelf.
-            But "PitchBrief" alone means nothing to a first-time visitor, so what the thing
-            actually DOES can no longer be the quietest line on the card. */}
-        {descriptor && (
-          <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-relaxed text-text/80">{descriptor}</p>
+        {sub && (
+          <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-relaxed text-text/80">{sub}</p>
         )}
 
         {/* Scannable label/value rows, not a paragraph. `Who pays` is gone: the payer facet chip
@@ -226,7 +243,7 @@ function PackCard({ pack }: { pack: Pack }) {
 // the grid is not eleven identical blocks. Anchors the page and breaks the pattern.
 function SpotlightCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
-  const { name, descriptor } = splitTitle(pack.title, pack.headline);
+  const { name, heading, eyebrow, sub } = cardHeading(pack);
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -246,10 +263,20 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           <CategoryPill cat={cat} onLight />
           <span className="text-sm font-semibold text-muted">Newest in the catalogue</span>
         </div>
-        <h3 className="text-2xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-3xl">
-          {name}
-        </h3>
-        {descriptor && <p className="max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{descriptor}</p>}
+        <div>
+          {eyebrow && (
+            <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
+          )}
+          <h3
+            className={cx(
+              'text-2xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-3xl',
+              eyebrow && 'mt-1.5',
+            )}
+          >
+            {heading}
+          </h3>
+        </div>
+        {sub && <p className="max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <CardFact label="The opportunity">{pack.oneLine}</CardFact>
         </div>
@@ -300,7 +327,14 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
           <span aria-hidden className="text-faint">
             •
           </span>
-          <span>{stats.listed} live now</span>
+          {/* The survivorship ratio lives here rather than in a second pill under the heading.
+              It used to be both, and the duplicate row cost ~50px directly above the shelf —
+              which is the one place on this page where vertical space is the scarce resource. */}
+          <span>
+            {stats.registered > stats.listed
+              ? `${stats.listed} live now, of ${stats.registered} that reached final packaging`
+              : `${stats.listed} live now`}
+          </span>
         </>
       )}
     </div>
@@ -333,6 +367,9 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
   const router = useRouter();
   const [state, setState] = React.useState<DiscoveryState>(initialState);
   const [sort, setSort] = React.useState<SortKey>('newest');
+  // The three-question router, closed on load. Owned here rather than inside `Matchmaker` because
+  // the control that opens it lives in the toolbar row below, not in the panel it opens.
+  const [matchOpen, setMatchOpen] = React.useState(false);
   const { open, setOpen, close, triggerRef } = useCommandPalette();
 
   const apply = React.useCallback(
@@ -388,19 +425,21 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
 
   return (
     <>
-      <div className="mb-10">
-        <Matchmaker packs={packs} onShowAll={apply} onNoMatch={apply} />
-      </div>
-
       <div className="grid gap-8 lg:grid-cols-[15rem_1fr]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <FacetBar packs={packs} state={state} onChange={apply} />
         </aside>
 
         <div>
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="w-full sm:max-w-xs">
-              <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
+          {/* Search, the router and sort on one row. The router used to be a full-width panel
+              above this, which is 80px of the only screen space that decides whether a buyer
+              sees a product before scrolling; as a control beside the other two it costs none. */}
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+              <div className="w-full sm:w-64">
+                <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
+              </div>
+              {!matchOpen && <MatchmakerTrigger onOpen={() => setMatchOpen(true)} />}
             </div>
             <div className="flex items-center gap-3 sm:justify-end">
               <span className="whitespace-nowrap text-sm font-semibold text-muted">
@@ -411,6 +450,14 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
               </div>
             </div>
           </div>
+
+          {/* Mounted only once opened, and never unmounted after — "Change my answers" on the
+              result screen has to land back on the form, not on the trigger they already used. */}
+          {matchOpen && (
+            <div className="mb-6">
+              <Matchmaker packs={packs} onShowAll={apply} onNoMatch={apply} />
+            </div>
+          )}
 
           {visible.length > 0 ? (
             <>
@@ -464,9 +511,12 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
 function ComparisonBlock() {
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
-    { label: 'What arrives', feed: 'A stream of raw leads and trend signals', pack: 'One finished opportunity, four documents' },
+    // Counted, never typed. This row said "four documents" while the bundle had grown to eight —
+    // the same drift `PACK_CONTENTS` was made the single source of truth to end, surviving in a
+    // table two hundred lines away from it.
+    { label: 'What arrives', feed: 'A stream of raw leads and trend signals', pack: `One finished opportunity, ${PACK_CONTENTS.length} documents` },
     { label: 'Who does the vetting', feed: 'You do, on every idea in the feed', pack: 'Already done: six checks, every claim sourced' },
-    { label: 'Launch assets', feed: 'None. The idea is the product', pack: 'Build spec, GTM plan, ops and unit economics' },
+    { label: 'Launch assets', feed: 'None. The idea is the product', pack: 'Build spec, GTM plan, ops, unit economics and launch copy' },
     { label: 'If you cancel', feed: 'Access ends, you keep nothing', pack: 'Yours forever, plus 14 day money back' },
   ];
   return (
@@ -533,65 +583,63 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
     <MarketingLayout>
       <Seo title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each" />
 
-      {/* 1. HERO — short. A storefront states what it sells and moves you to the shelf. */}
-      <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10 text-center animate-rise">
-        <p className="mb-5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
+      {/* 1. HERO — deliberately short enough that the shelf starts above the fold.
+             It was 606px tall at 1280x720 (measured), which put the first pack card at y=1094:
+             a storefront whose entire argument is "here is what survived" opened on an argument
+             and no product. Nothing here was deleted outright — the long pitch paragraph is the
+             "What you get for £49" section further down, and the trust pills restate the
+             guarantee that also sits under the grid. What is left is the claim, the price, and
+             the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
+             next block added above the grid fails a test instead of quietly undoing this. */}
+      <SectionBand bg="white" width="6xl" className="pt-6 pb-5 md:pt-8 md:pb-6 text-center animate-rise">
+        <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
-        <h1 className="mx-auto max-w-[22ch] text-balance text-4xl font-bold leading-[1.08] tracking-tight text-text md:text-6xl">
+        <h1 className="mx-auto max-w-[24ch] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           Skip 6 months of research. Launch a business that&apos;s already vetted.
         </h1>
-        <p className="mx-auto mt-6 max-w-[60ch] text-base leading-relaxed text-text/75 md:text-lg">
-          Stop wasting weekends building ideas nobody will pay for. Each £49 Mumchimp Pack gives you a fully
-          researched, market-validated business blueprint: who the buyer is, what they pay, the pricing and
-          unit economics, and a step-by-step go-to-market plan. Every claim backed by a real source you can
-          open.
+        <p className="mx-auto mt-4 max-w-[64ch] text-base leading-relaxed text-text/75">
+          Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics
+          and a step-by-step go-to-market plan — every claim backed by a source you can open.
         </p>
-        <div className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-x-7 gap-y-3">
-          <TrustPill icon="money" label="£49, one payment" />
-          <TrustPill icon="shield" label="14 day money back" />
-          <TrustPill icon="check" label="Every claim sourced" />
-          <TrustPill icon="download" label="Instant download" />
-        </div>
         {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="#catalog"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
           >
             {survived > 0 ? `See the ${survived} that survived` : 'Browse vetted blueprints'} — £49
           </Link>
           <Link
             href="/sample"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-8 py-4 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-8 py-3.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
           >
             <Icon name="download" size={15} className="text-primary" />
             Read the free sample report
           </Link>
         </div>
-        <p className="mt-4 text-sm font-medium text-muted">
-          One whole verification dossier, unredacted, every source clickable. Zero pence, no email needed.
+        {/* One line, and it carries the two facts that decide whether the second button is
+            clicked: the sample is the whole thing, and it costs nothing — not even an address. */}
+        <p className="mt-3 text-sm font-medium text-muted">
+          A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
       </SectionBand>
 
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
-      <Section bg="bg" width="7xl" className="!pt-8 !pb-16 md:!pt-10 md:!pb-20">
-        <div className="mb-6">
-          <div className="mb-4">
-            <Heartbeat packs={packs} stats={stats} />
-          </div>
-          <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
-          <p className="mt-2 max-w-[60ch] text-base text-text/75">
-            We list a pack only when it clears every check, with a clickable source behind every claim.
-            Most ideas never make it. £49 each, yours the moment you pay.
-          </p>
-          {stats && stats.registered > stats.listed && (
-            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-success/5 px-3 py-1.5 text-xs font-semibold text-success">
-              <Icon name="shield" size={13} />
-              {stats.listed} live now, of {stats.registered} that reached final packaging.
+      <Section bg="bg" width="7xl" className="!pt-6 !pb-16 md:!pt-7 md:!pb-20">
+        {/* Heading and heartbeat share a row. Stacked, with the survivorship ratio in a third
+            pill below them, this block was 206px of preamble sitting directly on top of the
+            shelf — the same fold problem as the hero, in miniature. */}
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
+            <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">
+              A pack is listed only once it clears every check, with a clickable source behind every
+              claim. Most ideas never make it.
             </p>
-          )}
+          </div>
+          <Heartbeat packs={packs} stats={stats} />
         </div>
 
         <CatalogBrowser packs={packs} initialState={initialState} />
@@ -603,9 +651,18 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
         bg="white"
         width="6xl"
         title={<span className="font-black">What you get for £49</span>}
-        intro="One finished opportunity, already vetted, in four documents you own outright. No subscription, no drip feed, no upsell."
+        intro={`One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`}
         className="!py-14 md:!py-20"
       >
+        {/* The four terms of the sale. They were in the hero, where they cost ~75px directly
+            above the shelf; they answer "what am I actually buying and what if it's wrong?",
+            which is a question asked at the deliverable list, not at the headline. */}
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
+          <TrustPill icon="money" label="£49, one payment" />
+          <TrustPill icon="shield" label="14 day money back" />
+          <TrustPill icon="check" label="Every claim sourced" />
+          <TrustPill icon="download" label="Instant download" />
+        </div>
         <PackContentsSection heading="What’s inside your download" />
         <ComparisonBlock />
       </Section>

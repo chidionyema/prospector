@@ -62,6 +62,12 @@ export interface Pack {
   // Per-pack conversion specifics. Optional: only packs published by the newer engine carry
   // them, so every render site must degrade gracefully when they are absent.
   headline?: string;
+  /** The engine's own ≤60-char description of what the business DOES, written for the shelf.
+   *  Absent on every pack published before the engine emitted it, and deliberately empty when
+   *  the operator could not write a truthful short line — so the card must always be able to
+   *  fall back to the title. Length is enforced engine-side by dropping, never truncating
+   *  (`prospector/artifacts.py::_card_line`). */
+  cardLine?: string;
   whoPays?: string;
   /** The legacy `low | medium | high` string. Superseded by `effort`, and deliberately NOT
    *  mapped into it: those three values were never defined to mean "how much of delivery is
@@ -196,6 +202,41 @@ export async function createStripeCheckout(packId: string): Promise<string> {
   }
   const { url } = await res.json();
   return assertStripeCheckoutUrl(url);
+}
+
+/** What the API opened. `clientSecret` present means the card form can render on our own page;
+ *  null means the server fell back to the hosted page and `url` is where the buyer must go. The
+ *  caller must handle both — the server decides, not the client. */
+export interface CheckoutSession {
+  clientSecret: string | null;
+  url: string | null;
+}
+
+/**
+ * Open a checkout session for a pack, asking for the embedded surface.
+ *
+ * Asking is not getting: the API answers with a hosted URL whenever the provider cannot render
+ * embedded (Paddle, or a Stripe account without it). That is why this returns a session rather
+ * than a client secret — there is no failure to report when the answer is "use the hosted page",
+ * and turning it into one would block a buyer from paying over a cosmetic difference.
+ */
+export async function createEmbeddedCheckout(packId: string): Promise<CheckoutSession> {
+  const res = await fetch(`${API_BASE_URL}/packs/${packId}/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embedded: true }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to start checkout: ${text}`);
+  }
+  const { clientSecret, url } = await res.json();
+  return {
+    clientSecret: typeof clientSecret === 'string' && clientSecret ? clientSecret : null,
+    // The hosted URL keeps its allow-list check. A session that came back embedded has no URL at
+    // all, which is not an error — only a NON-Stripe URL is.
+    url: typeof url === 'string' && url ? assertStripeCheckoutUrl(url) : null,
+  };
 }
 
 /** Raised when the API refuses specific packs — sold out, withdrawn, or not yet priced. Carries

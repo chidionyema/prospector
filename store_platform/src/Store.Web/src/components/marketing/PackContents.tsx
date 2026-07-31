@@ -5,47 +5,90 @@ import { Icon } from '@/components/ui';
  * The single source of truth for "what is in the £49 download".
  *
  * Deliberately shared by the homepage and every pack page: when this claim lives in two places it
- * drifts, and a drifted claim on a paid product is a refund. Every line below is checked against
- * the real bundles in `publish/bundles/<id>/prospector_pack_<short>.zip`. The counts below are an
- * audit of the 15 packs live on 2026-07-27, not a statement about catalogue size — the catalogue
- * grows on every PASS, so re-run the audit rather than trusting the numbers:
+ * drifts, and a drifted claim on a paid product is a refund. It drifted anyway — this list said
+ * FOUR documents while `prospector/bridge.py::BUNDLE_FILES` had grown to eight, so three real
+ * deliverables (executive summary, first-week checklist, marketing assets) were shipped to buyers
+ * without ever being advertised. A prose audit note dated to one afternoon could not catch that.
  *
- *   - 01_Blueprint_BuildSpec.md   present in 15/15
- *   - 02_Marketing_Plan_GTM.md    present in 15/15
- *   - operations + financials     present in 15/15, in one of two shapes: either
- *                                 03_Operations_Plan.md + 04_Financial_Model.md (10 packs), or
- *                                 03_Build_Launch_Kit.md, which carries an "Operational Plan"
- *                                 and a "Financial Model" section (5 packs)
- *   - QA_Report.md                present in 15/15
+ * So the note is replaced by a mechanism. `filename` on each entry below is the real zip entry,
+ * and `__tests__/packContents.test.ts` reads `BUNDLE_FILES` out of the Python source and asserts
+ * this list covers exactly those files, in that order. Adding a file to the bundle without
+ * telling buyers about it now fails `npm test`.
  *
- * Measured across those same 15 bundles: smallest is 5,069 words, median 7,523; smallest link
- * count is 23, median 119. Hence "5,000+ words" and a per-pack source count rather than a flat
- * "20+ pages" — the floor has to be true of the weakest pack, not the best one.
+ * The other half of the guarantee is engine-side: `bridge.py` re-audits the written zip and ANDs
+ * the result into `is_listed`, so a pack missing any of these files cannot be listed for sale.
+ * Together they are what makes the eight-document claim true of every pack on the shelf rather
+ * than true on average.
+ *
+ * Word and link floors are measured, not aspirational: across the bundles live on 2026-07-27 the
+ * smallest was 5,069 words and the smallest link count 23 (median 7,523 / 119). The floor has to
+ * be true of the weakest pack, not the best one.
  *
  * Format is Markdown in a zip, not PDF. Said plainly, and framed as the advantage it actually is.
  */
-export const PACK_CONTENTS: { emoji: string; title: string; desc: string }[] = [
+export const PACK_CONTENTS: {
+  emoji: string;
+  title: string;
+  /** The real entry in the bundle zip. Pinned to BUNDLE_FILES by the drift test. */
+  filename: string;
+  desc: string;
+  /** Appends the pack's real cited-source count. Only the QA report earns it. */
+  showSourceCount?: boolean;
+}[] = [
+  {
+    emoji: '🧭',
+    title: 'Executive Summary',
+    filename: '00_Executive_Summary.md',
+    desc:
+      'The opportunity in one page: what it is, the grounded signals that survived the checks, and an explicit list of what the pack does NOT claim. Read this first to decide if it is for you.',
+  },
   {
     emoji: '📄',
     title: 'The Blueprint (Build Spec)',
+    filename: '01_Blueprint_BuildSpec.md',
     desc:
       'What is actually being built, and in what order. Phased build plan, the recommended stack, the explicit non-goals for v1, and a straight section on what would kill this.',
   },
   {
     emoji: '🎯',
     title: 'The Go-To-Market Plan',
+    filename: '02_Marketing_Plan_GTM.md',
     desc:
       'Where your first customers come from. The named channels and the communities behind them, the positioning you lead with, the beachhead to start in, and the kill criteria that tell you to stop.',
   },
   {
     emoji: '🛠️',
-    title: 'Operations and the Numbers',
+    title: 'The Operations Plan',
+    filename: '03_Operations_Plan.md',
     desc:
-      'How it runs and what it earns. Delivery workflow, capacity, compliance gates, pricing mechanics and unit economics, with the figures the engine refuses to forecast marked as such.',
+      'How the thing actually runs once someone pays. Delivery workflow, capacity limits, the compliance gates you cannot skip, and where the manual work really sits.',
+  },
+  {
+    emoji: '📊',
+    title: 'The Financial Model',
+    filename: '04_Financial_Model.md',
+    desc:
+      'Pricing mechanics and unit economics. Figures the engine could not ground are marked as absent rather than filled in — no invented revenue, cost or TAM.',
+  },
+  {
+    emoji: '✅',
+    title: 'First-Week Checklist',
+    filename: '05_First_Week_Checklist.md',
+    desc:
+      'Six concrete steps for days one to seven: confirm the buyer, sketch the smallest paid offer, pick one channel and ignore the rest, and log what you could not verify.',
+  },
+  {
+    emoji: '✍️',
+    title: 'Marketing Assets',
+    filename: 'Marketing_Assets.md',
+    desc:
+      'Launch copy you can send today — listing page, outreach and social drafts. Every asset passes the same claim-check as the research, so nothing here overstates the product.',
   },
   {
     emoji: '🔗',
     title: 'The QA Report, with the receipts',
+    filename: 'QA_Report.md',
+    showSourceCount: true,
     desc:
       'All six checks, each verdict, and a clickable source behind every claim. This is the file that proves the rest of the pack is not invented.',
   },
@@ -86,9 +129,15 @@ export function PackContentsSection({
             <span className="flex flex-col">
               <span className="text-base font-bold leading-snug text-text">
                 {item.title}
-                {hasCount && item.emoji === '🔗' && (
+                {hasCount && item.showSourceCount && (
                   <span className="ml-1.5 font-normal text-muted">({sourceCount} sources)</span>
                 )}
+              </span>
+              {/* The real zip entry. A buyer's fear at £49 is a thin Google Doc, and a filename
+                  they can check against the download they receive is a falsifiable answer to it
+                  in a way another adjective is not. */}
+              <span className="mt-1 font-mono text-[11px] font-semibold text-muted">
+                {item.filename}
               </span>
               <span className="mt-1.5 text-sm leading-relaxed text-text/70">{item.desc}</span>
             </span>

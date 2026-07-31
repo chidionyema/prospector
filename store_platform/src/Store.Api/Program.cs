@@ -166,6 +166,7 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
         p.PaymentProvider,
         p.ProviderPriceId,
         // Per-pack card specifics so the catalogue sells each pack on its own merits.
+        p.CardLine,
         p.Headline,
         p.WhoPays,
         p.EffortTag,
@@ -222,6 +223,7 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
         pack.ProviderPriceId,
         pack.DossierRef,
         // Conversion surfaces for the product page.
+        pack.CardLine,
         pack.Headline,
         pack.Subhead,
         pack.ProofPoint,
@@ -306,7 +308,7 @@ app.MapPost("/catalog/waitlist", async (
 
 // --- INTERNAL/ENGINE ENDPOINTS ---
 
-app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http, StoreDbContext db, IConfiguration config) =>
+app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http, StoreDbContext db, IConfiguration config, IServiceProvider sp, ILoggerFactory loggerFactory) =>
 {
     // Authenticate the engine→store publish call. Fail closed if no key is configured
     // (an unauthenticated internal endpoint would let anyone publish to the catalogue).
@@ -379,6 +381,7 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
 
     // Storefront conversion metadata (optional, additive). Only overwrite when the engine
     // sent a value, so a metadata-light republish never wipes existing copy.
+    if (request.CardLine is not null) pack.CardLine = request.CardLine;
     if (request.Headline is not null) pack.Headline = request.Headline;
     if (request.Subhead is not null) pack.Subhead = request.Subhead;
     if (request.ProofPoint is not null) pack.ProofPoint = request.ProofPoint;
@@ -402,9 +405,38 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     if (request.Mechanism is not null) pack.Mechanism = request.Mechanism;
     if (request.Advantages is not null) pack.AdvantagesJson = JsonSerializer.Serialize(request.Advantages);
 
-    // List-only-after-upload: a pack may only go live once it has deliverable content.
-    // Selling something we cannot deliver is the cardinal sin of this layer.
-    pack.IsListed = request.IsListed && !string.IsNullOrEmpty(pack.ContentKey);
+    // Two conditions gate going live, and both are about not taking money we cannot honour.
+    //
+    // List-only-after-upload: a pack may only go live once it has deliverable content. Selling
+    // something we cannot deliver is the cardinal sin of this layer.
+    //
+    // List-only-if-billable: the price must be one THIS deployment can actually charge. The
+    // publisher cannot establish that — it does not hold the key we bill through — and a price
+    // id looks identical whichever account minted it. On 2026-07-31 a publisher holding a
+    // sandbox key listed 10 packs whose ids were well-formed and unchargeable, so every buy
+    // button returned HTTP 500 until someone noticed. Asking our own money rail is the only
+    // answer that cannot drift, so the check lives here rather than in the publisher.
+    var logger = loggerFactory.CreateLogger("PublishPack");
+    var wantsListing = request.IsListed && !string.IsNullOrEmpty(pack.ContentKey);
+    if (wantsListing)
+    {
+        var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "paddle");
+        if (provider is null)
+        {
+            logger.LogError(
+                "Refusing to list {PackId}: no payment provider registered for {Provider}.",
+                pack.Id, pack.PaymentProvider);
+            wantsListing = false;
+        }
+        else if (!await provider.CanBillPriceAsync(pack.ProviderPriceId ?? "", http.HttpContext?.RequestAborted ?? CancellationToken.None).ConfigureAwait(false))
+        {
+            logger.LogError(
+                "Refusing to list {PackId}: {Provider} cannot bill price {PriceId}. Stored UNLISTED.",
+                pack.Id, pack.PaymentProvider, pack.ProviderPriceId);
+            wantsListing = false;
+        }
+    }
+    pack.IsListed = wantsListing;
 
     await db.SaveChangesAsync().ConfigureAwait(false);
     return Results.Ok(pack);
@@ -606,3 +638,15 @@ app.MapWebhookEndpoints();
 app.MapDeliveryEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
+
+// Top-level statements compile to an internal Program, which WebApplicationFactory<T> cannot
+// name. Declaring it public here is the whole handshake that lets the tests boot this exact
+// app — same DI, same middleware, same endpoint wiring — rather than a re-declared stand-in
+// that could drift from it.
+public partial class Program
+{
+    // Never instantiated — the class exists only so WebApplicationFactory<Program> can name it.
+    // Protected rather than suppressing S1118: the analyzer's point (nobody should construct a
+    // holder of static members) is correct, and this satisfies it honestly.
+    protected Program() { }
+}

@@ -63,6 +63,12 @@ public sealed class PaddleProvider : IPaymentProvider
         throw new NotSupportedException("Paddle provisioning is handled by the Python bridge; Paddle checkout is a frontend overlay.");
     }
 
+    // Paddle billing lives in the Python bridge and the frontend overlay, so this Store holds no
+    // Paddle credential to check a price against. Answering "true" is therefore not a claim that
+    // the price is billable — it is a refusal to veto on a question we cannot see. The guard this
+    // feeds only genuinely binds the Stripe rail, which is the rail that takes money today.
+    public Task<bool> CanBillPriceAsync(string providerPriceId, CancellationToken ct) => Task.FromResult(true);
+
     private static PaymentTransaction ParsePaddleTransaction(JsonElement root)
     {
         var data = root.GetProperty("data");

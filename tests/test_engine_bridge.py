@@ -221,6 +221,62 @@ class TestProviderSelection(unittest.TestCase):
             self.assertIsNone(b.provisioner)
 
 
+class TestStripeKeySelection(unittest.TestCase):
+    """The publisher must mint prices in the account the deployed Store bills through.
+
+    On 2026-07-31 it did not: STRIPE_API_KEY was a sandbox test key while the Store billed
+    live, so 10 packs listed with well-formed price ids that account could not charge and
+    every buy button returned HTTP 500. Shape checks cannot catch that — a test price id looks
+    exactly like a live one — so the rule is enforced on key MODE against the target.
+    """
+
+    def _bridge(self, env):
+        cfg = MagicMock()
+        cfg.store_payments = {"active_provider": "stripe"}
+        with patch.dict(os.environ, env, clear=True):
+            return EngineBridge(cfg)
+
+    def test_remote_catalog_refuses_a_test_key(self):
+        # The exact production failure. No provisioner => the `priced` guard publishes the
+        # pack UNLISTED, which is the safe end of the trade: invisible beats unbuyable.
+        b = self._bridge({
+            "STORE_API_URL": "https://api.mumchimp.com",
+            "STRIPE_API_KEY": "sk_test_abc",
+        })
+        self.assertIsNone(b.stripe_api_key)
+        self.assertIsNone(b.stripe)
+        self.assertIsNone(b.provisioner)
+        self.assertIn("without a live key", b.stripe_key_reason)
+
+    def test_remote_catalog_prefers_the_live_key_even_when_both_are_set(self):
+        # Both vars set is the normal developer state; the live catalogue must not get the
+        # test one just because STRIPE_API_KEY is the older, more familiar name.
+        b = self._bridge({
+            "STORE_API_URL": "https://api.mumchimp.com",
+            "STRIPE_API_KEY": "sk_test_abc",
+            "STRIPE_LIVE_API_KEY": "sk_live_xyz",
+        })
+        self.assertEqual(b.stripe_api_key, "sk_live_xyz")
+        self.assertIsNotNone(b.provisioner)
+
+    def test_remote_catalog_accepts_a_live_key_under_the_legacy_name(self):
+        b = self._bridge({
+            "STORE_API_URL": "https://api.mumchimp.com",
+            "STRIPE_API_KEY": "sk_live_only",
+        })
+        self.assertEqual(b.stripe_api_key, "sk_live_only")
+
+    def test_local_store_still_takes_a_test_key(self):
+        # Developing against localhost with a sandbox key is the normal case, not a fault;
+        # the guard must not make local work impossible.
+        b = self._bridge({
+            "STORE_API_URL": "http://localhost:5291",
+            "STRIPE_API_KEY": "sk_test_abc",
+        })
+        self.assertEqual(b.stripe_api_key, "sk_test_abc")
+        self.assertIsNotNone(b.provisioner)
+
+
 class TestStripeProvisionerHardening(unittest.TestCase):
     """The former known gaps are now closed: create_product/create_price pass an
     idempotency_key (retry-safe — a publish retry reuses the Stripe-side object instead of

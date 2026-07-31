@@ -12,10 +12,16 @@ Two proven failure modes this pins:
 from __future__ import annotations
 
 import zipfile
+from pathlib import Path
 
 import pytest
 
-from prospector.bridge import BUNDLE_FILES, EngineBridge, _MIN_BUNDLE_ENTRY_BYTES
+from prospector.bridge import (
+    BUNDLE_FILES,
+    EngineBridge,
+    _MIN_BUNDLE_ENTRY_BYTES,
+    audit_bundle,
+)
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict
 
 
@@ -126,3 +132,170 @@ class TestMarketingAssetsNeverAStub:
             text = zf.read("Marketing_Assets.md").decode()
         assert "## Launch Email" in text
         assert "Real email body with substance." in text
+
+
+class TestAuditBundle:
+    """The audit the LISTING decision is made on.
+
+    `validate_pack` reads the in-memory artifacts, so it cannot see a file that never reached
+    the zip. That is not hypothetical: a03a2ba029b408a7 shipped 3 of 8 files with a 20-byte
+    Marketing_Assets.md and was listed for sale anyway. `audit_bundle` reads the written
+    artefact instead, and `publish_pass` ANDs it into `is_listed`.
+    """
+
+    def test_complete_bundle_audits_clean(self, bridge):
+        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
+        assert audit_bundle(path) == ([], [])
+
+    def test_missing_file_is_reported(self, tmp_path):
+        path = tmp_path / "pack.zip"
+        with zipfile.ZipFile(path, "w") as zf:
+            for name in BUNDLE_FILES:
+                if name == "05_First_Week_Checklist.md":
+                    continue
+                zf.writestr(name, "x" * (_MIN_BUNDLE_ENTRY_BYTES + 1))
+        missing, stubs = audit_bundle(str(path))
+        assert missing == ["05_First_Week_Checklist.md"]
+        assert stubs == []
+
+    def test_stub_entry_is_reported(self, tmp_path):
+        """The exact a03a2ba0 shape: the file is present, and 20 bytes of it."""
+        path = tmp_path / "pack.zip"
+        with zipfile.ZipFile(path, "w") as zf:
+            for name in BUNDLE_FILES:
+                body = "# Marketing Assets\n\n" if name == "Marketing_Assets.md" else "x" * 500
+                zf.writestr(name, body)
+        missing, stubs = audit_bundle(str(path))
+        assert missing == []
+        assert stubs == ["Marketing_Assets.md=20b"]
+
+    def test_absent_zip_counts_as_wholly_missing_rather_than_raising(self, tmp_path):
+        # The caller uses this to decide listing; an audit that throws would take down the
+        # register-unlisted retry path it exists to protect.
+        missing, stubs = audit_bundle(str(tmp_path / "does-not-exist.zip"))
+        assert missing == list(BUNDLE_FILES)
+        assert stubs == []
+
+    def test_corrupt_zip_counts_as_wholly_missing(self, tmp_path):
+        path = tmp_path / "corrupt.zip"
+        path.write_bytes(b"not a zip file at all")
+        assert audit_bundle(str(path)) == (list(BUNDLE_FILES), [])
+
+
+class _FakeProvisioner:
+    def create_product(self, name, description, metadata):
+        return "prod_real_123"
+
+    def create_price(self, product_id, amount_pence, currency="gbp"):
+        return "price_real_123"
+
+
+@pytest.fixture
+def publishing_bridge(monkeypatch, tmp_path):
+    """A bridge with every gate but the bundle audit already satisfied.
+
+    Entitlements, provisioning and upload are stubbed to SUCCEED deliberately: the point of
+    these tests is that the bundle audit alone decides listing, so every other input has to be
+    green or a False `is_listed` would prove nothing.
+    """
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("STORE_INTERNAL_API_KEY", "test-internal-key")
+
+    class _Thresholds:
+        confidence_floor = 0.0
+
+    class _Cfg:
+        entitlements_api_key = "test-entitlements-key"
+        store_payments = {"active_provider": "stripe"}
+        thresholds = _Thresholds()
+        listing = {"price_pence": 4900}
+
+    b = EngineBridge(_Cfg())
+    b.entitlements_check = lambda candidate_id: True
+    b.stripe = _FakeProvisioner()
+    b.r2.upload = lambda path, key: True
+
+    calls: list[dict] = []
+
+    def _capture(**kwargs):
+        calls.append(kwargs)
+        return True
+
+    b._update_catalog = _capture
+    b.catalog_calls = calls
+    return b
+
+
+def _pass_dossier_with_artifacts():
+    d = _dossier()
+    d.candidate.tags = {
+        "artifacts": _full_artifacts(),
+        "marketing": [{
+            "type": "listing_page",
+            "copy": "# Shellfish Classification Aid\n\nA scheduling aid for UK oyster farms "
+                    "facing new sampling rules, sold as a one-off pack.",
+        }],
+    }
+    return d
+
+
+class TestIncompleteBundleCannotBeListed:
+    """The listing gate, end to end.
+
+    `validate_pack` reads the in-memory artifacts and passes in every test here — that is the
+    hole. What decides listing is a re-read of the zip that was actually written.
+    """
+
+    def test_a_complete_bundle_is_listed(self, publishing_bridge):
+        assert publishing_bridge.publish_pass(_pass_dossier_with_artifacts()) is True
+        call = publishing_bridge.catalog_calls[-1]
+        assert call["is_listed"] is True
+        assert call["content_key"] and call["content_hash"]
+
+    def test_a_bundle_missing_a_file_is_registered_unlisted(self, publishing_bridge, monkeypatch):
+        def _deficient(self, dossier, artifacts, marketing):
+            path = Path("publish/bundles/deficient.zip")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(path, "w") as zf:
+                for name in BUNDLE_FILES:
+                    if name == "05_First_Week_Checklist.md":
+                        continue
+                    zf.writestr(name, "x" * 500)
+            return path
+
+        monkeypatch.setattr(EngineBridge, "_create_bundle", _deficient)
+        publishing_bridge.publish_pass(_pass_dossier_with_artifacts())
+
+        call = publishing_bridge.catalog_calls[-1]
+        # Registered (so the operator can retry) but NOT for sale, and with no content
+        # pointer — a buyer must never be handed a key to a bundle we know is short.
+        assert call["is_listed"] is False
+        assert call["content_key"] is None
+        assert call["content_hash"] is None
+
+    def test_the_a03a2ba0_shape_is_registered_unlisted(self, publishing_bridge, monkeypatch):
+        """The live defect: 3 of 8 files, one of them a 20-byte header, listed for sale."""
+        def _stubbed(self, dossier, artifacts, marketing):
+            path = Path("publish/bundles/stubbed.zip")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(path, "w") as zf:
+                zf.writestr("04_Financial_Model.md", "x" * 500)
+                zf.writestr("Marketing_Assets.md", "# Marketing Assets\n\n")
+                zf.writestr("QA_Report.md", "x" * 500)
+            return path
+
+        monkeypatch.setattr(EngineBridge, "_create_bundle", _stubbed)
+        publishing_bridge.publish_pass(_pass_dossier_with_artifacts())
+        assert publishing_bridge.catalog_calls[-1]["is_listed"] is False
+
+    def test_validate_pack_alone_would_have_listed_it(self):
+        """Proves the gap the audit closes rather than assuming it.
+
+        If `validate_pack` failed on this input, the tests above would pass for the wrong
+        reason and the audit could be deleted without anything going red.
+        """
+        from prospector.pack_validation import validate_pack
+
+        d = _pass_dossier_with_artifacts()
+        ok, problems = validate_pack(d.candidate.tags["artifacts"], d.candidate.tags["marketing"])
+        assert ok, problems

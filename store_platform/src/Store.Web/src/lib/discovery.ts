@@ -37,6 +37,7 @@ export interface FacetedPack {
   title: string;
   oneLine?: string;
   headline?: string;
+  cardLine?: string;
   whoPays?: string;
   sector?: string | null;
   payer?: string | null;
@@ -525,4 +526,55 @@ export function splitTitle(
   const name = title.slice(0, cut).trim();
   const descriptor = title.slice(cut + separatorLength).trim();
   return name && descriptor ? { name, descriptor } : fallback;
+}
+
+/** The longest heading that still scans as a shelf label rather than a paragraph. Mirrors
+ *  `CARD_LINE_MAX` in `prospector/artifacts.py`; the front end re-checks rather than trusting
+ *  the wire, because packs published by an older engine predate the enforcement. */
+export const CARD_HEADING_MAX = 60;
+
+/** What a pack card puts where. */
+export interface CardHeading {
+  /** The brand name, always. This is the pack's identity — what a basket line and an order
+   *  confirmation must say — independently of whether the card chose to display it. */
+  name: string;
+  /** The card's H3. */
+  heading: string;
+  /** The brand name, shown small above the heading — only when the heading is not itself
+   *  the name (otherwise the card would print the name twice). */
+  eyebrow: string | null;
+  /** Supporting line under the heading, or null when it would repeat the heading. */
+  sub: string | null;
+}
+
+/**
+ * Decide the card's hierarchy.
+ *
+ * A first-time visitor cannot buy from "PitchBrief" — a brand name they have never heard is
+ * the least useful string on the card, and it was the H3. But the descriptor derived from the
+ * title runs to 90+ characters ("PitchCall Forensics — The Under-27 Gig Driver's
+ * Insurance-Refusal Reversal & Telematics-Data Subject-Access Round"), so promoting THAT gives
+ * twenty cards of wrapped bold text, which is not a shelf either.
+ *
+ * So the heading is the engine's short `cardLine` when there is one, with the brand demoted to
+ * an eyebrow. When there is not — every pack published before the engine emitted it, and any
+ * pack whose operator could not write a truthful short line — the pre-existing hierarchy is
+ * kept exactly. Nothing is shortened here to manufacture a heading: a long line is left where
+ * it already renders correctly rather than cut into a claim nobody made.
+ */
+export function cardHeading(pack: FacetedPack): CardHeading {
+  const { name, descriptor } = splitTitle(pack.title, pack.headline);
+  const card = pack.cardLine?.trim();
+
+  if (card && card.length <= CARD_HEADING_MAX) {
+    return {
+      name,
+      heading: card,
+      // Only worth a line if it says something the heading does not.
+      eyebrow: name && name.toLowerCase() !== card.toLowerCase() ? name : null,
+      sub: descriptor && descriptor.toLowerCase() !== card.toLowerCase() ? descriptor : null,
+    };
+  }
+
+  return { name, heading: name, eyebrow: null, sub: descriptor };
 }

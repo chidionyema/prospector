@@ -306,6 +306,60 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
 
     public async Task<CheckoutHandle> CreateCheckoutAsync(IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct)
     {
+        var options = BuildSessionOptions(lines, buyerEmail);
+        // Stripe substitutes the literal {CHECKOUT_SESSION_ID} template on redirect. The
+        // storefront uses it to resolve the buyer's entitlement and render a real download
+        // link on the success page, so fulfilment no longer depends on an email arriving.
+        options.SuccessUrl = AppendSessionIdTemplate(successUrl);
+        options.CancelUrl = cancelUrl;
+
+        var service = new SessionService();
+        var session = await service.CreateAsync(options, cancellationToken: ct).ConfigureAwait(false);
+
+        return new CheckoutHandle(session.Url, session.ClientSecret);
+    }
+
+    /// <summary>
+    /// The same session, rendered inside the pack page instead of on checkout.stripe.com.
+    /// </summary>
+    /// <remarks>
+    /// Identical in every respect that touches money: same line items, same metadata (so the
+    /// webhook grants the same entitlements), same statement descriptor, same automatic tax.
+    /// Only the surface differs, and it is built from the SAME <see cref="BuildSessionOptions"/>
+    /// so the two cannot drift into billing differently.
+    /// <para>
+    /// Returns null rather than throwing when Stripe answers without a client secret — the
+    /// caller then serves the hosted URL. A buyer must never be blocked from paying because the
+    /// embedded surface was unavailable.
+    /// </para>
+    /// <para>
+    /// Note there is no cancel_url: an embedded checkout has nothing to cancel TO, the buyer is
+    /// already on the pack page. Stripe rejects a session carrying both success_url and
+    /// ui_mode=embedded, which is why this is a separate call and not a flag.
+    /// </para>
+    /// </remarks>
+    public async Task<CheckoutHandle?> CreateEmbeddedCheckoutAsync(
+        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string returnUrl, CancellationToken ct)
+    {
+        var options = BuildSessionOptions(lines, buyerEmail);
+        options.UiMode = "embedded";
+        options.ReturnUrl = AppendSessionIdTemplate(returnUrl);
+
+        var service = new SessionService();
+        var session = await service.CreateAsync(options, cancellationToken: ct).ConfigureAwait(false);
+
+        return string.IsNullOrEmpty(session.ClientSecret)
+            ? null
+            : new CheckoutHandle(session.Url ?? string.Empty, session.ClientSecret);
+    }
+
+    /// <summary>
+    /// Everything about a checkout session that is not the surface it renders on. Shared by the
+    /// hosted and embedded paths so a change to tax, metadata or the statement descriptor cannot
+    /// apply to one and not the other.
+    /// </summary>
+    private SessionCreateOptions BuildSessionOptions(IReadOnlyList<CheckoutLine> lines, string? buyerEmail)
+    {
         EnsureStripeConfigured();
 
         if (lines.Count == 0)
@@ -320,7 +374,7 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
 
         var metadata = BuildCheckoutMetadata(lines);
 
-        var options = new SessionCreateOptions
+        return new SessionCreateOptions
         {
             LineItems = [.. lines.Select(line => new SessionLineItemOptions
             {
@@ -329,11 +383,6 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             })],
             Mode = "payment",
             CustomerEmail = buyerEmail,
-            // Stripe substitutes the literal {CHECKOUT_SESSION_ID} template on redirect. The
-            // storefront uses it to resolve the buyer's entitlement and render a real download
-            // link on the success page, so fulfilment no longer depends on an email arriving.
-            SuccessUrl = AppendSessionIdTemplate(successUrl),
-            CancelUrl = cancelUrl,
             // P0-1 — stamp the pack ids so the inbound webhook (ExtractItemsAsync) can resolve
             // which packs were bought and grant the entitlements. Without this every payment
             // is paid-but-unfulfilled.
@@ -357,12 +406,51 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
             {
                 Enabled = !string.Equals(config["Stripe:AutomaticTax"], "false", StringComparison.OrdinalIgnoreCase),
             },
+            // Billing address collection is deliberately left at Stripe's default rather than
+            // set here: automatic tax REQUIRES an address, and Stripe's default already collects
+            // one when AutomaticTax is on. Pinning it to a literal would be a second, silent
+            // switch that could contradict the tax setting above.
         };
+    }
 
-        var service = new SessionService();
-        var session = await service.CreateAsync(options, cancellationToken: ct).ConfigureAwait(false);
+    /// <summary>
+    /// Whether the Stripe account THIS deployment bills through can charge that price.
+    /// </summary>
+    /// <remarks>
+    /// Resolves the price with our own key, which is the whole point: a price id minted by a
+    /// different account (a publisher still holding a sandbox key, say) is well-formed and
+    /// completely unbillable here, and no amount of inspecting the string reveals that. Stripe
+    /// answers "No such price" and we decline to list.
+    /// <para>
+    /// An inactive price is treated as unbillable too — Stripe refuses it at session creation,
+    /// so listing it would produce the same dead buy button by a different route.
+    /// </para>
+    /// <para>
+    /// A transport failure returns false rather than throwing: this gates whether a pack goes on
+    /// sale, and the safe answer when we cannot confirm billability is not to list. The publish
+    /// still succeeds and the pack is stored unlisted, so a retry lists it once Stripe answers.
+    /// </para>
+    /// </remarks>
+    public async Task<bool> CanBillPriceAsync(string providerPriceId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(providerPriceId)
+            || providerPriceId.StartsWith("price_stub", StringComparison.Ordinal))
+        {
+            return false;
+        }
 
-        return new CheckoutHandle(session.Url, session.ClientSecret);
+        EnsureStripeConfigured();
+        try
+        {
+            var price = await new PriceService().GetAsync(providerPriceId, cancellationToken: ct).ConfigureAwait(false);
+            return price is { Active: true };
+        }
+        catch (StripeException ex)
+        {
+            logger.LogWarning(
+                ex, "Stripe cannot bill price {PriceId}; refusing to list the pack.", providerPriceId);
+            return false;
+        }
     }
 
     /// <summary>

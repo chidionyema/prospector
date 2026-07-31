@@ -101,6 +101,32 @@ BUNDLE_FILES = (
 )
 
 
+def audit_bundle(zip_path: str) -> tuple[list[str], list[str]]:
+    """Structural audit of a written bundle: ``(missing, stubs)``, both empty when complete.
+
+    Reads the artefact we actually wrote rather than the inputs we think we passed. That
+    distinction is the whole point: ``validate_pack`` inspects the in-memory artifacts and
+    marketing dicts, so it cannot see a file that failed to reach the zip. A pack could — and
+    did — clear ``validate_pack`` and still ship three files, one of them a 20-byte header.
+
+    Unreadable or absent zip counts as wholly missing rather than raising: the caller uses this
+    to decide whether a pack may be LISTED, and an audit that throws would take down the
+    register-unlisted retry path it exists to protect.
+    """
+    try:
+        with zipfile.ZipFile(zip_path) as check:
+            written = {i.filename: i.file_size for i in check.infolist()}
+    except (OSError, zipfile.BadZipFile):
+        return list(BUNDLE_FILES), []
+    missing = [f for f in BUNDLE_FILES if f not in written]
+    stubs = [
+        f"{f}={written[f]}b"
+        for f in BUNDLE_FILES
+        if f in written and written[f] < _MIN_BUNDLE_ENTRY_BYTES
+    ]
+    return missing, stubs
+
+
 def _held_back_md(artifact_label: str) -> str:
     """Placeholder for an artifact that generation failed to produce.
 
@@ -193,13 +219,52 @@ class EngineBridge:
         self.paddle_env = os.environ.get("PADDLE_ENVIRONMENT", "sandbox")
         self.paddle = PaddleClient(self.paddle_api_key, self.paddle_env) if self.paddle_api_key else None
 
-        # Stripe settings
-        self.stripe_api_key = os.environ.get("STRIPE_API_KEY")
+        # Stripe settings. The key must belong to the SAME Stripe account the deployed Store
+        # bills through: a price minted anywhere else does not exist as far as checkout is
+        # concerned, so the pack lists and every buy button returns HTTP 500. That is not
+        # hypothetical — on 2026-07-31 `STRIPE_API_KEY` was a sandbox test key while the Store
+        # billed live, and 10 packs went on sale unbuyable. Mode is the part we can check here;
+        # the Store verifies the price is truly billable before it will list it.
+        self.stripe_api_key, self.stripe_key_reason = self._select_stripe_key()
         self.stripe = StripeProvisioner(self.stripe_api_key) if self.stripe_api_key else None
 
         # Content storage (Cloudflare R2, S3-compatible). The deliverable must live here
         # before a pack may be listed — selling something we can't deliver is forbidden.
         self.r2 = R2Uploader()
+
+    @staticmethod
+    def _store_is_local(url: str) -> bool:
+        """True when the catalogue we publish into is a developer's own machine."""
+        host = (urlparse(url).hostname or "").lower()
+        return host in ("localhost", "127.0.0.1", "::1") or host.endswith(".local")
+
+    def _select_stripe_key(self) -> tuple[Optional[str], str]:
+        """The Stripe key whose mode matches the catalogue being published into.
+
+        A remote catalogue is a real shopfront and may only be priced with a live key. Picking
+        the key by target — rather than reading one fixed env var and hoping it matches — is
+        what stops a sandbox key from minting prices the deployed Store cannot bill. Returning
+        None on a mismatch is deliberate: `provisioner` then yields None, the `priced` guard
+        below refuses to list, and the pack is published UNLISTED instead of unbuyable.
+        """
+        live_key = os.environ.get("STRIPE_LIVE_API_KEY")
+        generic = os.environ.get("STRIPE_API_KEY")
+
+        if self._store_is_local(self.store_api_url):
+            # A local store bills through whatever the operator configured; a test key here is
+            # the normal case, not a fault.
+            chosen = generic or live_key
+            return chosen, "local store — any key mode accepted"
+
+        for name, key in (("STRIPE_LIVE_API_KEY", live_key), ("STRIPE_API_KEY", generic)):
+            if key and "_live_" in key:
+                return key, f"{name} (live) for remote catalogue {self.store_api_url}"
+
+        held = [n for n, k in (("STRIPE_LIVE_API_KEY", live_key), ("STRIPE_API_KEY", generic)) if k]
+        return None, (
+            f"refusing to price the remote catalogue {self.store_api_url} without a live key; "
+            f"keys held: {held or 'none'} (a test-mode price cannot be billed by the live Store)"
+        )
 
     @property
     def provisioner(self) -> Optional[ProductProvisioner]:
@@ -317,6 +382,11 @@ class EngineBridge:
         # listings too, not just the deterministic floors in pack_floors.
         subhead = to_plain_text(listing.get("subhead"), collapse=True)
         catalog_meta: Dict[str, Any] = {
+            # The shelf heading. Already length-enforced by artifacts._card_line (drop, never
+            # truncate), so no [:n] slice here — a slice would reintroduce exactly the
+            # mid-clause cut that enforcement exists to prevent. "" when the operator could
+            # not write a truthful short line; the card then falls back to the pack title.
+            "cardLine": to_plain_text(listing.get("card_line"), collapse=True),
             "headline": to_plain_text(listing.get("headline"), collapse=True)[:140],
             "subhead": subhead[:280],
             "whatYouGet": plain_lines(listing.get("what_you_get"))[:5],
@@ -337,7 +407,27 @@ class EngineBridge:
         # validated by artifacts._normalize_listing, so anything the operator invented is
         # gone by here; to_wire drops the empties so a facet-light republish never untags a
         # pack the backfill tagged (the Store API only overwrites what it was sent).
-        catalog_meta.update(facets_mod.to_wire(facets_mod.normalize(listing.get("facets"))))
+        pack_facets = facets_mod.normalize(listing.get("facets"))
+        catalog_meta.update(facets_mod.to_wire(pack_facets))
+        # A sector-less pack is publishable — guessing one is worse, and the vocabulary has an
+        # explicit `other` for "none of the eleven fit", so a missing sector means generation
+        # dropped the facets block, not that the idea defies classification. But it is a real
+        # cost: sector drives the browse filter and the card's colour, so an untagged pack sits
+        # on the shelf reachable only by search. It went unnoticed until four of the twenty-six
+        # packs live on 2026-07-31 (CureSafe Strip, SpatWindow, StrikeShield, SailCert) turned
+        # out to carry no facets at all, because nothing anywhere said so out loud. This does
+        # not block the publish; it makes the omission visible in the run log the same day it
+        # happens, so it can be resolved by hand in store_platform/data/facets-backfill.json.
+        if not pack_facets.get("sector"):
+            absent = sorted(k for k, v in pack_facets.items() if not v)
+            logger.warning(
+                f"EngineBridge: {candidate_id} ({candidate.title}) is being registered with NO "
+                f"sector — it will render without a category and be missing from every sector "
+                f"filter. Absent facets: {absent}. Generation returned "
+                f"facets={listing.get('facets')!r}; resolve by hand in "
+                f"store_platform/data/facets-backfill.json (never by guessing here).",
+                extra={"candidate_id": candidate_id, "absent_facets": absent},
+            )
         catalog_meta.update(_trust_fields(dossier))
         # Drop empties so the payload (and the Store API) only ever see populated fields.
         catalog_meta = {k: v for k, v in catalog_meta.items() if v not in ("", [], {}, None)}
@@ -388,7 +478,8 @@ class EngineBridge:
                 f"EngineBridge: No {payment_provider} provisioner available for "
                 f"{candidate_id} (keys: stripe={'set' if self.stripe_api_key else 'unset'}, "
                 f"paddle={'set' if self.paddle_api_key else 'unset'}). Pack will be "
-                f"published UNLISTED — a stub price id cannot take money."
+                f"published UNLISTED — a stub price id cannot take money. "
+                f"Stripe key selection: {self.stripe_key_reason}"
             )
 
         # 3.5 Upload the deliverable to R2 (content-addressed by hash, so a later republish
@@ -425,7 +516,22 @@ class EngineBridge:
                 f"EngineBridge: {candidate_id} has no billable price id "
                 f"({provider_price_id!r}); publishing UNLISTED."
             )
-        is_listed = uploaded and pack_complete and priced
+
+        # The storefront tells buyers exactly which documents are in the download
+        # (Store.Web PackContents.tsx, bound to BUNDLE_FILES by a drift test). That claim is
+        # only honest if an incomplete bundle cannot be listed, and `pack_complete` alone does
+        # not carry it: `validate_pack` reads the in-memory artifacts, so it cannot see a file
+        # that never reached the zip. a03a2ba029b408a7 is the proof — it shipped 3 of 8 files
+        # with a 20-byte Marketing_Assets.md and was listed for sale anyway.
+        bundle_gaps, bundle_stubs = audit_bundle(bundle_path)
+        bundle_complete = not bundle_gaps and not bundle_stubs
+        if not bundle_complete:
+            logger.error(
+                f"EngineBridge: {candidate_id} bundle fails the structural audit "
+                f"(missing={bundle_gaps or '-'}, stubs={bundle_stubs or '-'}); "
+                f"publishing UNLISTED — the storefront promises every file in BUNDLE_FILES."
+            )
+        is_listed = uploaded and pack_complete and priced and bundle_complete
 
         # Determine the content version: for a new pack, start at 1. For a republish
         # (content_hash differs from existing), increment. Query the store's current
@@ -607,15 +713,12 @@ class EngineBridge:
             # Structural check on the artefact we actually wrote — not on the inputs we think
             # we passed. This is the assertion that would have caught the 5-file bundles and
             # the 20-byte Marketing_Assets.md at build time.
-            with zipfile.ZipFile(zip_path) as check:
-                written = {i.filename: i.file_size for i in check.infolist()}
-            gaps = [f for f in BUNDLE_FILES if f not in written]
-            stubs = [f"{f}={written[f]}b" for f in BUNDLE_FILES
-                     if f in written and written[f] < _MIN_BUNDLE_ENTRY_BYTES]
+            gaps, stubs = audit_bundle(zip_path)
             if gaps or stubs:
-                # Deliberately NOT fatal: an incomplete pack is still registered UNLISTED so it
-                # can be retried, and `is_listed` already requires validate_pack, so nothing
-                # incomplete is ever sold. Failing here would silently drop that retry record.
+                # Deliberately NOT fatal HERE: an incomplete pack is still registered so it can
+                # be retried, and failing this call would silently drop that retry record. The
+                # sellability half is enforced by the caller, which re-runs this audit and ANDs
+                # it into `is_listed` — this log is the diagnostic, not the gate.
                 logger.error(
                     f"EngineBridge: bundle {candidate_id} is structurally incomplete "
                     f"(missing={gaps or '-'}, stubs={stubs or '-'}) — registering UNLISTED"

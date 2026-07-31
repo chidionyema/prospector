@@ -24,6 +24,14 @@ import { FacetChips } from './FacetChips';
  * The one thing this component must never do is produce a winner when nothing scored. A
  * fabricated match is the exact failure the whole story exists to fix — and it stays a failure at
  * any catalogue size, so a top score of 0 routes to the near-miss state instead (AC-8).
+ *
+ * COLLAPSED BY DEFAULT, and this component is only mounted once it has been opened. Expanded, the
+ * three fieldsets are ~470px of form, and they sat between the hero and the shelf: at 1280x720 the
+ * first pack card was at y=1094, below a 720px fold, so a storefront whose entire pitch is "here is
+ * what survived" opened on a questionnaire instead of on the product. The router is a shortcut for
+ * a buyer who wants one, not a toll gate for the buyer who would rather just look. `open` lives in
+ * the parent (`CatalogBrowser`) rather than here because the thing that opens it — `MatchmakerTrigger`
+ * — sits in the toolbar row next to search and sort, where it costs no vertical space at all.
  */
 
 /** Q1 — multi-select, max 2. "None of these yet" is a real answer that must never dead-end. */
@@ -129,6 +137,28 @@ function RunnerUp({ result }: { result: MatchResult<Pack> }) {
       {descriptor && <span className="mt-0.5 line-clamp-1 text-xs text-muted">{descriptor}</span>}
       <span className="mt-2 text-xs font-semibold text-text/60">{formatPrice(result.pack.price)}</span>
     </Link>
+  );
+}
+
+/**
+ * The collapsed state: a toolbar control, sized like the search box and the sort dropdown beside it.
+ *
+ * The label keeps the count ("three questions") rather than reducing to "Find your match": what
+ * this asks of the buyer is the thing that decides whether they start it, and three is a small
+ * enough number to be an argument for clicking. The honesty clause it used to carry inline
+ * ("or we'll say we haven't built it yet") is the first line of the form itself, which is where
+ * it is read by everyone who actually answers.
+ */
+export function MatchmakerTrigger({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-expanded={false}
+      className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
+    >
+      Answer three questions
+    </button>
   );
 }
 

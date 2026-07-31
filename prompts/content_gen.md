@@ -39,6 +39,7 @@ category. Do NOT use a dash as punctuation anywhere; restructure with periods, c
 parentheses.
 {
   "type": "listing_page",
+  "card_line": "<AT MOST 60 CHARACTERS. What the business DOES, in plain words>",
   "headline": "<10-15 words, the concrete outcome the buyer walks away with>",
   "subhead": "<1 sentence: who this is for and what they get>",
   "what_you_get": ["<specific deliverable>", "<deliverable>", "<deliverable>"],
@@ -57,6 +58,22 @@ parentheses.
   "cta_text": "<5-8 word buy-button label>",
   "copy": "<full prose version combining the above, for fallback rendering>"
 }
+
+CARD_LINE RULE — this is the single line a browsing buyer reads on the shelf, before they
+have any context at all. It is the heading of the card, so the whole catalogue is scanned
+through it.
+
+- HARD LIMIT 60 characters, counted as characters, not words. A card_line over 60 characters
+  is DISCARDED by the engine, not shortened: cutting a sentence in the middle changes what it
+  claims, and this system does not ship claims nobody made. Count before you answer.
+- Say what the business DOES for whom, in the words the buyer would use. Not the brand name,
+  not the category, not the outcome-promise (`headline` already carries the outcome).
+  Good: "Refund insurance excess for under-27 gig drivers" (48).
+  Bad: "PitchCall Forensics" (a name says nothing), "Unlock a durable revenue engine"
+  (a promise, not a description).
+- No dashes, no colons, no brand name, no trailing period.
+- If you cannot describe it truthfully in 60 characters, output "" and the storefront falls
+  back to the title. An empty card_line is a correct answer; an invented one is not.
 
 FACET RULES — these route a real buyer to a real purchase, so they are held to the same bar
 as every other claim in this system.
