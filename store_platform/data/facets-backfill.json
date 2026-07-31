@@ -161,6 +161,69 @@
     "payer": "b2b",
     "sector": "trades_construction"
   },
+  "5923c35906c3930b": {
+    "_evidence": {
+      "advantages": "candidate.structural_form = \"data_intelligence\" with automatability 0.85; the hypothesis describes a \"deterministic audit\" over NI/entitlement rules, which the buyer has to build.",
+      "effort": "candidate.automatability = 0.85 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
+      "mechanism": "candidate.structural_form = \"data_intelligence\"",
+      "payer": "candidate.who_pays names the primary buyer as \"Adult children aged 40-65 of retired parents (60-90)\" — an individual; \"private-client solicitors and IFAs\" are explicitly \"secondarily\".",
+      "sector": "candidate.hypothesis: \"The DWP's live State Pension recalculation programme has identified £1bn+ in historic underpayments\" — the subject is recovery of an underpaid state benefit administered by DWP."
+    },
+    "_title": "The State Pension Underpayment Recovery Index",
+    "_unresolved": {
+      "commitment": "no dossier field; decide from candidate.hypothesis = \"The DWP's live State Pension recalculation programme has identified £1bn+ in historic underpayments concentrated in the 1950s-women cohort, married retirees misclassified as single, over-80s on Category D, and those with short NI records — \". Allowed: ['evenings', 'part_time', 'full_time']"
+    },
+    "advantages": [
+      "code"
+    ],
+    "commitment": null,
+    "effort": "automatable",
+    "mechanism": "data_intelligence",
+    "payer": "b2c",
+    "sector": "care_benefits"
+  },
+  "5e8f3b69369be3a8": {
+    "_evidence": {
+      "advantages": "candidate.structural_form = \"productized_service\"; who_pays frames the work case-by-case (\"policy has been cancelled mid-term ... claim has been refused ... renewal has been loaded\"), i.e. per-client case handling rather than a built artefact.",
+      "effort": "candidate.automatability = 0.75 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
+      "mechanism": "candidate.structural_form = \"productized_service\"",
+      "payer": "candidate.who_pays: \"UK gig drivers aged 18-27 on telematics motor policies\" — individuals paying for their own case.",
+      "sector": "No SECTOR member covers motor-insurance dispute work (tags: dsar, financial-ombudsman, insurance-dispute, gig-economy). \"other\" is the explicit catch-all; naming employment_pay or professional_services would be the coercion-to-nearest the contract forbids."
+    },
+    "_title": "PitchCall Forensics — The Under-27 Gig Driver's Insurance-Refusal Reversal & Telematics-Data Subject-Access Round",
+    "_unresolved": {
+      "commitment": "no dossier field; decide from candidate.hypothesis = \"Lens: broaden — instead of drilling into one insurer or one claim type, take the entire telematics-scored driving life of an 18-27 year-old gig worker (black-box car policy, hire-and-reward top-up, food-delivery hour cover) as one contestab\". Allowed: ['evenings', 'part_time', 'full_time']"
+    },
+    "advantages": [
+      "ops"
+    ],
+    "commitment": null,
+    "effort": "automatable",
+    "mechanism": "productized_service",
+    "payer": "b2c",
+    "sector": "other"
+  },
+  "622b2bef95335621": {
+    "_evidence": {
+      "advantages": "candidate.automatability: \"structured inputs (fleet specs, ground type, exposure category, event dates) drive deterministic calculations and templated pack generation\" — the buyer builds that engine.",
+      "effort": "candidate.automatability = \"high — structured inputs (fleet specs, ground type, exposure category, event dates) drive deterministic calculations and templated pack generation; the only ...\" (opens with \"high\")",
+      "mechanism": "candidate.structural_form = \"vertical_tool\"",
+      "payer": "candidate.who_pays: \"UK marquee, tipi and temporary event-structure hire companies with 1-15 staff ... paying GBP 79-149/month\" — a company signs the cheque.",
+      "sector": "candidate.hypothesis: the buyer erects temporary structures and must produce \"a written wind management plan and ballast calculation per event\", otherwise they \"pay a structural engineer GBP 400-\". The trade and the artefact are both structural."
+    },
+    "_title": "GuyLine — The Marquee Hirer's Wind-Plan & Ballast Pack Engine",
+    "_unresolved": {
+      "commitment": "no dossier field; decide from candidate.hypothesis = \"LENS: narrow — drill into one micro-niche of the events industry: the 2-15 person marquee and temporary-structure hire firm. Their daily friction: every corporate venue, council park and festival organiser now demands a written wind managem\". Allowed: ['evenings', 'part_time', 'full_time']"
+    },
+    "advantages": [
+      "code"
+    ],
+    "commitment": null,
+    "effort": "automatable",
+    "mechanism": "vertical_tool",
+    "payer": "b2b",
+    "sector": "trades_construction"
+  },
   "7fc5a381ad82c1ed": {
     "_evidence": {
       "advantages": "productized_service run against local authorities needs the certification workflow operated (ops) and electricians won one at a time (sales) — the same pair as PlateStart, the other licensing_admin productized_service",

@@ -345,6 +345,17 @@ def main() -> int:
             proposed.pop("_unresolved", None)
         out[pack_id] = proposed
 
+    # Keep entries for packs that have left the live catalogue. /catalog serves listed packs
+    # only, so a pack withdrawn by PATCH /internal/catalog/{id}/listing disappears from the
+    # loop above — and rebuilding the file purely from what is live would delete the record
+    # of WHY it was withdrawn, which for the three quarantined on 2026-07-31 is the entire
+    # value of the entry. The row is still needed too: a re-listed pack must come back tagged,
+    # not silently untagged. Phantom ids cannot accumulate here because
+    # test_every_entry_is_a_pack_that_was_actually_published rejects any entry with no dossier.
+    for pack_id, prior in existing.items():
+        if pack_id not in out:
+            out[pack_id] = prior
+
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT_PATH.open("w", encoding="utf-8") as handle:
         json.dump(out, handle, indent=2, ensure_ascii=False, sort_keys=True)
