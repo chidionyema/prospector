@@ -616,19 +616,29 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
              guarantee that also sits under the grid. What is left is the claim, the price, and
              the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
              next block added above the grid fails a test instead of quietly undoing this. */}
-      <SectionBand bg="white" width="6xl" className="pt-5 pb-4 md:pt-7 md:pb-5 text-center animate-rise">
-        <p className="mb-2.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
+      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center animate-rise">
+        <p className="mb-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
-        <h1 className="mx-auto max-w-[24ch] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
+        {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
+            "0", so it means a different number of pixels in every font: the old max-w-[24ch]
+            measured 576px in SF Pro but 819px in Verdana. That made the headline's line count a
+            function of which font the platform happened to pick — and since --font-sans names
+            "Inter", which this site never loads (globals.css), every OS picks a different one.
+            macOS landed on 2 lines and CI Linux on 3, putting the first card at y=718.5 with
+            1.5px showing. Measured minimum width for 2 lines: SF Pro 652px, Arial/Liberation
+            736px, Tahoma 768px, Verdana 872px — 56rem (896px) clears all of them. It does not
+            widen the headline, because text-balance shortens the lines to even them up: the
+            longest rendered line is 677px, narrower than the 736px box this replaces. */}
+        <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           Skip 6 months of research. Launch a business that&apos;s already vetted.
         </h1>
-        <p className="mx-auto mt-3 max-w-[64ch] text-base leading-relaxed text-text/75">
+        <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75">
           Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics
           and a step-by-step go-to-market plan — every claim backed by a source you can open.
         </p>
         {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
-        <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="#catalog"
             onClick={() => track('catalog_cta_clicked')}
@@ -657,18 +667,18 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
         </div>
         {/* One line, and it carries the two facts that decide whether the second button is
             clicked: the sample is the whole thing, and it costs nothing — not even an address. */}
-        <p className="mt-2.5 text-sm font-medium text-muted">
+        <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
       </SectionBand>
 
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
-      <Section bg="bg" width="7xl" className="!pt-5 !pb-16 md:!pt-6 md:!pb-20">
+      <Section bg="bg" width="7xl" className="!pt-3 !pb-16 md:!pt-3 md:!pb-20">
         {/* Heading and heartbeat share a row. Stacked, with the survivorship ratio in a third
             pill below them, this block was 206px of preamble sitting directly on top of the
             shelf — the same fold problem as the hero, in miniature. */}
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
             <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
             <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">
