@@ -35,10 +35,13 @@ import {
   MailIcon,
   DownloadIcon,
   AlertTriangleIcon,
+  ShoppingBagIcon,
+  Trash2Icon,
+  PlusIcon as PlusSignIcon,
 } from "lucide-react";
 
 /**
- * TIE semantic icon set (E17-003).
+ * Semantic icon set for the storefront.
  * Wraps Lucide to enforce accessible defaults and stroke consistency.
  * Icons inherit color from their parent (text-currentColor).
  */
@@ -83,6 +86,10 @@ const ICON_MAP = {
   mail: MailIcon,
   download: DownloadIcon,
   warning: AlertTriangleIcon,
+  // Basket: several packs, one payment.
+  cart: ShoppingBagIcon,
+  trash: Trash2Icon,
+  plus: PlusSignIcon,
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

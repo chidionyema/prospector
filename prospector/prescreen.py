@@ -123,10 +123,13 @@ def structural_filter(cand: Candidate, cfg: Config) -> tuple[bool, str]:
         (pass_filter, reason) — pass_filter=True means the candidate passes both
         deterministic stages.  False means it is rejected with the given reason.
     """
-    # Fields to scan: title, one_liner, hypothesis (most informative), tags.
-    haystack = " ".join(
-        str(x) for x in (cand.title, cand.one_liner, cand.hypothesis,
-                         cand.tags.get("hypothesis", "")))
+    # P1-8 — scan only the title + one_liner: the candidate's actual PROPOSITION. The
+    # hypothesis is the exploratory reasoning field and routinely names patterns it intends
+    # to AVOID or merely discusses ("unlike a marketplace that needs network effects…");
+    # regex-matching it at this zero-cost gate produces false structural rejects and kills
+    # novelty. Constraint lives downstream (LLM prescreen backstop + the moat); this gate
+    # must err toward letting an idea through, not toward a keyword reject on its rationale.
+    haystack = " ".join(str(x) for x in (cand.title, cand.one_liner))
 
     # Stage 1 — hard structural failures (solo-operator infeasible).
     for pattern, label in _FORBID_PATTERNS:

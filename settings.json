@@ -1,0 +1,22 @@
+"model": "Gemini 3.5 Flash (High)"
+
+O  "enableTelemetry": false,
+  "model": "Gemini 3.5 Flash (Medium)",
+  "permissions": {
+    "allow": [
+      "command(git fetch)",
+      "command(npm install)",
+      "command(git add)",
+      "command(git commit)",
+      "command(git checkout)",
+      "command(git merge)",
+      "command(ls)",
+      "command(flyctl)",
+      "command(../deploy/fly/deploy.sh)",
+      "command(/Users/chidionyema/documents/code/the-introduction-exchange/deploy/fly/deploy.sh)",
+      "command(git rev-parse)",
+      "command(cp)",
+      "command(git rebase)"
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Store.Api.Payments;
 using Store.Api.Services;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
@@ -124,6 +125,154 @@ public sealed class FulfilmentServiceTests : IDisposable
         Assert.Null(order.PackId);
     }
 
+    // --- SECURITY (founder fence): fulfilment validates the paid amount and currency against
+    // the catalogue price (Pack.PricePence). The signed webbook body is never trusted to set
+    // the price — coupons, $0 sessions, a mispriced product, or a leaked webhook secret must
+    // not mint a full entitlement. Underpayment/wrong-currency records the Order but grants
+    // nothing, and is reported as unfulfilled for operator reconciliation. ---
+
+    [Fact]
+    public async Task FulfilAsync_PaidBelowCatalogPrice_IsUnfulfilledAndGrantsNothing()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4900);
+
+        var outcome = await RunAsync(Txn("txn-1", new PurchasedItem("prod-1", 3000)));
+
+        Assert.Empty(outcome.EntitlementsCreated);
+        Assert.Contains(outcome.Unfulfilled, u => u.Contains("prod-1"));
+
+        using var verify = NewContext();
+        Assert.Equal(1, await verify.Orders.CountAsync());      // money never dropped
+        Assert.Equal(0, await verify.Entitlements.CountAsync()); // but no free content
+    }
+
+    [Fact]
+    public async Task FulfilAsync_PaidExactlyCatalogPrice_GrantsEntitlement()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4900);
+
+        var outcome = await RunAsync(Txn("txn-1", new PurchasedItem("prod-1", 4900)));
+
+        Assert.Single(outcome.EntitlementsCreated);
+        Assert.Empty(outcome.Unfulfilled);
+    }
+
+    [Fact]
+    public async Task FulfilAsync_WrongCurrency_IsUnfulfilledEvenIfAmountLooksSufficient()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4900);
+
+        // 4900 *USD* cents is not 4900 GBP pence — the comparison is only meaningful in the
+        // store currency, so a non-GBP payment must never grant.
+        var outcome = await RunAsync(TxnInCurrency("txn-1", "USD", new PurchasedItem("prod-1", 4900)));
+
+        Assert.Empty(outcome.EntitlementsCreated);
+        Assert.Contains(outcome.Unfulfilled, u => u.Contains("USD"));
+    }
+
+    // --- P0-1: Stripe stamps the catalog pack id (not the provider product id) into
+    // checkout metadata, so fulfilment must resolve the pack by Id too. ---
+
+    [Fact]
+    public async Task FulfilAsync_ResolvesPackByCatalogId_ForStripeMetadata()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+
+        // Stripe's ExtractItems carries the pack_id (== catalog Id), not the product id.
+        var outcome = await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+
+        Assert.Single(outcome.EntitlementsCreated);
+        Assert.Equal("pack-1", outcome.EntitlementsCreated[0].PackId);
+        Assert.Empty(outcome.Unfulfilled);
+    }
+
+    // --- P1-1: refund / dispute revoke the entitlement. ---
+
+    [Fact]
+    public async Task RevokeAsync_Refund_RevokesEntitlementAndMarksOrderRefunded()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+        await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+
+        var outcome = await RevokeAsync(new PaymentReversal("stripe", "evt_refund_1", "pi_1", "refund"));
+
+        Assert.Equal(1, outcome.EntitlementsRevoked);
+        using var verify = NewContext();
+        Assert.Equal(EntitlementStatus.Revoked, (await verify.Entitlements.FirstAsync()).Status);
+        Assert.Equal(OrderStatus.Refunded, (await verify.Orders.FirstAsync()).Status);
+    }
+
+    [Fact]
+    public async Task RevokeAsync_Dispute_MarksOrderDisputed()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+        await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+
+        await RevokeAsync(new PaymentReversal("stripe", "evt_dispute_1", "pi_1", "dispute"));
+
+        using var verify = NewContext();
+        Assert.Equal(EntitlementStatus.Revoked, (await verify.Entitlements.FirstAsync()).Status);
+        Assert.Equal(OrderStatus.Disputed, (await verify.Orders.FirstAsync()).Status);
+    }
+
+    [Fact]
+    public async Task RevokeAsync_IsIdempotent_SecondApplyRevokesNothing()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", provider: "stripe");
+        await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+        await RevokeAsync(new PaymentReversal("stripe", "evt_refund_1", "pi_1", "refund"));
+
+        var second = await RevokeAsync(new PaymentReversal("stripe", "evt_refund_2", "pi_1", "refund"));
+
+        Assert.Equal(0, second.EntitlementsRevoked);
+    }
+
+    [Fact]
+    public async Task RevokeAsync_UnknownTransaction_RevokesNothing()
+    {
+        var outcome = await RevokeAsync(new PaymentReversal("stripe", "evt_x", "pi_ghost", "refund"));
+        Assert.Equal(0, outcome.EntitlementsRevoked);
+    }
+
+    [Fact]
+    public async Task Lifecycle_Buy_Download_Refund_EndToEnd()
+    {
+        // Full money-rail arc on one purchase: buy -> downloadable -> refund -> revoked.
+        await SeedPackAsync("pack-1", "prod-1", "content/pack-1.zip", version: 2, provider: "stripe");
+
+        // 1. BUY — webhook fulfilment grants a pinned, downloadable entitlement.
+        var fulfil = await RunAsync(StripeTxn("pi_1", new PurchasedItem("pack-1", 3000)));
+        Assert.Single(fulfil.EntitlementsCreated);
+        var granted = fulfil.EntitlementsCreated[0];
+
+        // 2. DOWNLOAD — assert exactly what the delivery gate requires: Active status,
+        //    a pinned content snapshot, and a grant token to resolve the magic link.
+        using (var afterBuy = NewContext())
+        {
+            var ent = await afterBuy.Entitlements.FirstAsync();
+            Assert.Equal(EntitlementStatus.Active, ent.Status);          // gate: must be Active
+            Assert.Equal("content/pack-1.zip", ent.ContentKey);          // gate: has content to serve
+            Assert.Equal(2, ent.ContentVersion);                         // deliver-as-sold
+            Assert.False(string.IsNullOrEmpty(ent.GrantToken));          // magic-link resolvable
+            Assert.Equal(OrderStatus.Paid, (await afterBuy.Orders.FirstAsync()).Status);
+        }
+
+        // 3. REFUND — reversal webhook for the same PI revokes access.
+        var revoke = await RevokeAsync(new PaymentReversal("stripe", "evt_refund_1", "pi_1", "refund"));
+        Assert.Equal(1, revoke.EntitlementsRevoked);
+
+        // 4. DOWNLOAD AFTER REFUND — the gate now fails: entitlement is no longer Active.
+        using (var afterRefund = NewContext())
+        {
+            Assert.Equal(EntitlementStatus.Revoked, (await afterRefund.Entitlements.FirstAsync()).Status);
+            Assert.Equal(OrderStatus.Refunded, (await afterRefund.Orders.FirstAsync()).Status);
+        }
+
+        // Sanity: the same grant token is now attached to a Revoked entitlement, so the
+        // delivery endpoint's `Status == Active` check is what stops the download.
+        Assert.False(string.IsNullOrEmpty(granted.GrantToken));
+    }
+
     private async Task<FulfilmentOutcome> RunAsync(PaymentTransaction txn)
     {
         using var ctx = NewContext();
@@ -131,7 +280,14 @@ public sealed class FulfilmentServiceTests : IDisposable
         return await svc.FulfilAsync(txn);
     }
 
-    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1)
+    private async Task<RevocationOutcome> RevokeAsync(PaymentReversal reversal)
+    {
+        using var ctx = NewContext();
+        var svc = new FulfilmentService(ctx, new TokenGenerator());
+        return await svc.RevokeAsync(reversal);
+    }
+
+    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "paddle", long pricePence = 0)
     {
         using var ctx = NewContext();
         ctx.Packs.Add(new Pack
@@ -140,15 +296,23 @@ public sealed class FulfilmentServiceTests : IDisposable
             Title = id,
             OneLine = "x",
             DossierRef = "d",
+            PaymentProvider = provider,
             ProviderProductId = productId,
             ContentKey = contentKey,
             ContentVersion = version,
+            PricePence = pricePence,
         });
         await ctx.SaveChangesAsync();
     }
 
     private static PaymentTransaction Txn(string id, params PurchasedItem[] items) =>
         new("paddle", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
+
+    private static PaymentTransaction TxnInCurrency(string id, string currency, params PurchasedItem[] items) =>
+        new("paddle", id, "buyer@example.com", currency, "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
+
+    private static PaymentTransaction StripeTxn(string id, params PurchasedItem[] items) =>
+        new("stripe", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
 
     private StoreDbContext NewContext() => new(_options);
 

@@ -11,6 +11,8 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
     public DbSet<Entitlement> Entitlements => Set<Entitlement>();
     public DbSet<IdempotencyJournalEntry> IdempotencyJournal => Set<IdempotencyJournalEntry>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
+    public DbSet<WaitlistSignup> WaitlistSignups => Set<WaitlistSignup>();
+    public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,6 +22,23 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
             entity.HasIndex(e => e.IsListed);
             entity.Property(e => e.Title).HasMaxLength(200);
             entity.Property(e => e.OneLine).HasMaxLength(500);
+            // Facets are the browse filters, so they are read on every catalogue query.
+            // Indexed individually rather than composite: filters combine in any order.
+            entity.HasIndex(e => e.Sector);
+            entity.HasIndex(e => e.Payer);
+            entity.HasIndex(e => e.Effort);
+            entity.HasIndex(e => e.Mechanism);
+        });
+
+        modelBuilder.Entity<WaitlistSignup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Not unique: the same person may legitimately ask about several different gaps,
+            // and each ask carries its own consent evidence and its own demand signal.
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.Email).HasMaxLength(320);   // RFC 5321 max address length
+            entity.Property(e => e.Query).HasMaxLength(500);
         });
 
         modelBuilder.Entity<SalesAudit>(entity =>
@@ -50,10 +69,32 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
             entity.HasIndex(e => e.ExpiresAt);
         });
 
+        ConfigureEventTables(modelBuilder);
+    }
+
+    private static void ConfigureEventTables(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<WebhookEvent>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.Provider, e.ProviderEventId }).IsUnique();
+        });
+
+        modelBuilder.Entity<AnalyticsEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // The only read path is the summary endpoint: counts by name over a date window.
+            entity.HasIndex(e => new { e.Name, e.CreatedAt });
+            // Refresh-proof purchase counting, enforced by the database rather than by a flag
+            // on the buyer's device. Filtered to the one event name that carries an order id:
+            // page views legitimately repeat, so a global unique index would silently drop
+            // real traffic. NULL Meta stays exempt — SQLite treats NULLs as distinct.
+            entity.HasIndex(e => new { e.Name, e.Meta })
+                .IsUnique()
+                .HasFilter("\"Name\" = 'checkout_completed' AND \"Meta\" IS NOT NULL");
+            entity.Property(e => e.Name).HasMaxLength(64);
+            entity.Property(e => e.Path).HasMaxLength(256);
+            entity.Property(e => e.Meta).HasMaxLength(512);
         });
     }
 }

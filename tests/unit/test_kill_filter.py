@@ -218,11 +218,10 @@ def test_clean_set_passes_all_gates(cfg):
 # ---------------------------------------------------------------------------
 
 def test_adversarial_decisive_kills(cfg):
-    checks = _all_passing_checks()  # gates themselves pass
-    killed, gate, reason = apply_gates(checks, cfg, adversarial_decisive=True)
-    assert killed is True
-    assert gate == "adversarial_decisive"
-    assert "adversarial" in reason.lower()
+    """adversarial_decisive now demoted — config has false, gate does not fire."""
+    checks = _all_passing_checks()
+    killed, gate, _ = apply_gates(checks, cfg, adversarial_decisive=True)
+    assert killed is False  # demoted: advisory board, not executioner
 
 
 def test_adversarial_decisive_false_does_not_kill(cfg):
@@ -236,49 +235,50 @@ def test_adversarial_decisive_false_does_not_kill(cfg):
 # Confidence floor: required check supported but confidence below floor
 # ---------------------------------------------------------------------------
 
-def test_low_confidence_supported_does_not_fail_non_killing_gate(cfg):
-    """value_durability kills only on 'refuted'. A low-confidence 'supported'
-    is not a killing verdict, so it must NOT trip the gate — low confidence
-    alone never kills (a KILL must be grounded in cited disconfirming evidence)."""
-    floor = cfg.thresholds.confidence_floor  # 0.6
-    low_conf = floor - 0.1  # 0.5
+def _with_floor(cfg, floor):
+    """Return a cfg whose thresholds.confidence_floor is set to `floor`, without
+    mutating the shared fixture."""
+    from dataclasses import replace
+    return replace(cfg, thresholds=replace(cfg.thresholds, confidence_floor=floor))
 
+
+def test_supported_is_not_a_killing_verdict_for_value_durability(cfg):
+    """value_durability kills only on 'refuted'. A 'supported' is not a killing
+    verdict, so it must NOT trip the gate regardless of confidence."""
     cr = CheckResult(
-        check_name="value_durability",
-        verdict=Verdict.SUPPORTED,
-        confidence=low_conf,
-        rationale="barely supported",
-        citations=["x"],
-    )
+        check_name="value_durability", verdict=Verdict.SUPPORTED,
+        confidence=0.5, rationale="supported", citations=["x"])
     assert is_hard_fail("value_durability", cr, cfg) is False
 
 
-def test_confidence_above_floor_not_a_fail(cfg):
+def test_shipped_floor_lets_grounded_kill_fire(cfg):
+    """A refuted that comfortably clears the shipped (calibrated) floor still hard-kills.
+    Floor was calibrated 0.0 -> 0.3 on 2026-06-25 against the live confidence distribution
+    (supported median 0.43); a well-grounded refutation above the floor still fires, so
+    golden-set / current-catalogue kill behaviour is preserved. Asserted relative to the
+    configured floor so it survives future calibration."""
     floor = cfg.thresholds.confidence_floor
-    high_conf = floor + 0.1
-
     cr = CheckResult(
-        check_name="value_durability",
-        verdict=Verdict.SUPPORTED,
-        confidence=high_conf,
-        rationale="firmly supported",
-        citations=["x"],
-    )
-    assert is_hard_fail("value_durability", cr, cfg) is False
-
-
-def test_incumbency_low_confidence_refuted_still_kills(cfg):
-    """incumbency: killing verdict is 'refuted', so low confidence refuted
-    is caught by the first branch (verdict in killing set) directly."""
-    floor = cfg.thresholds.confidence_floor
-    low_conf = floor - 0.1
-
-    cr = CheckResult(
-        check_name="incumbency",
-        verdict=Verdict.REFUTED,
-        confidence=low_conf,
-        rationale="refuted with low confidence",
-        citations=["x"],
-    )
-    # 'refuted' is in the killing set for incumbency -> is_hard_fail True regardless
+        check_name="incumbency", verdict=Verdict.REFUTED,
+        confidence=max(0.40, floor + 0.1), rationale="grounded refutation", citations=["x"])
     assert is_hard_fail("incumbency", cr, cfg) is True
+
+
+def test_floor_suppresses_below_floor_kill(cfg):
+    """The lever: when the floor is raised, a killing verdict whose grounding
+    confidence is BELOW the floor no longer hard-kills — it falls through to
+    scoring (closes the value_durability over-restriction wall)."""
+    cfg_floor = _with_floor(cfg, 0.6)
+    weak = CheckResult(
+        check_name="value_durability", verdict=Verdict.REFUTED,
+        confidence=0.25, rationale="weakly-grounded refutation", citations=["x"])
+    assert is_hard_fail("value_durability", weak, cfg_floor) is False
+
+
+def test_floor_still_kills_at_or_above_floor(cfg):
+    """Above the floor, a grounded killing verdict still hard-kills."""
+    cfg_floor = _with_floor(cfg, 0.6)
+    strong = CheckResult(
+        check_name="value_durability", verdict=Verdict.REFUTED,
+        confidence=0.82, rationale="strongly-grounded refutation", citations=["x"])
+    assert is_hard_fail("value_durability", strong, cfg_floor) is True

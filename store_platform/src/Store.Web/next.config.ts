@@ -57,6 +57,11 @@ const nextConfig: NextConfig = {
   // Emit `.next/standalone` (minimal server.js + traced node_modules) for a small
   // production Docker image. The Dockerfile copies standalone + .next/static + public.
   output: "standalone",
+  // Pin file-tracing to THIS app dir. Without it a stray lockfile higher up the tree makes Next
+  // infer the wrong monorepo root and nest the output (.next/standalone/<long/path>/server.js),
+  // which breaks the Docker COPY and the dev server's dynamic routes. Pinning keeps server.js
+  // flat at .next/standalone/server.js and silences the workspace-root warning.
+  outputFileTracingRoot: import.meta.dirname,
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

@@ -30,6 +30,14 @@ from .telemetry import logger
 
 HEALTH_PATH = Path(__file__).resolve().parent.parent / "store" / "provider_health.json"
 
+# The non-critical chain (generation, prescreen, scoring on DeepSeek→MiniMax→Gemini-flash)
+# records its quota exhaustion to a SEPARATE file. This is the founder-fence invariant:
+# a non-critical provider going dead must never blind the moat (and vice versa). Same
+# class, different file — the two health states are physically independent.
+NONCRITICAL_HEALTH_PATH = (
+    Path(__file__).resolve().parent.parent / "store" / "provider_health_noncritical.json"
+)
+
 # Clamp a parsed reset window to something sane: never shorter than this (a real quota
 # window is minutes+), never longer than a day (so a mis-parse can't blacklist forever).
 _MIN_DEAD_S = 60.0
@@ -106,10 +114,12 @@ class ProviderHealth:
 
 _DEFAULT: Optional[ProviderHealth] = None
 _DEFAULT_LOCK = threading.Lock()
+_NONCRITICAL: Optional[ProviderHealth] = None
+_NONCRITICAL_LOCK = threading.Lock()
 
 
 def get_health() -> ProviderHealth:
-    """Process-wide shared instance so the operator chain and the grounding chain
+    """Process-wide shared instance so the (moat) operator chain and the grounding chain
     consult/record the SAME persisted health file."""
     global _DEFAULT
     if _DEFAULT is None:
@@ -117,3 +127,15 @@ def get_health() -> ProviderHealth:
             if _DEFAULT is None:
                 _DEFAULT = ProviderHealth()
     return _DEFAULT
+
+
+def get_noncritical_health() -> ProviderHealth:
+    """Process-wide health instance for the non-critical chain, backed by a SEPARATE
+    file (provider_health_noncritical.json). Founder-fence: non-critical exhaustion
+    must never pollute the moat's health, so the moat is never falsely blinded."""
+    global _NONCRITICAL
+    if _NONCRITICAL is None:
+        with _NONCRITICAL_LOCK:
+            if _NONCRITICAL is None:
+                _NONCRITICAL = ProviderHealth(path=NONCRITICAL_HEALTH_PATH)
+    return _NONCRITICAL

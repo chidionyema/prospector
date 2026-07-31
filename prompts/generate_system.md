@@ -13,17 +13,24 @@ inverting the problem, combining signals, crossing unrelated sectors).
 
 {pass_patterns}
 
+### MARKET (the jurisdiction every idea must be grounded in)
+{market_context}
+Every idea MUST be specific to this market: name its real institutions, statutes,
+regulators, and payers. An idea that would read identically in any country is too
+generic — that specificity is where the grounded evidence comes from.
+
 ### GOLDEN PASS PATTERNS (Anchor your quality here)
-Aim for this level of specificity and non-obvious grounding:
-1. **Construction Statutory Adjudication Arbitrage**: A productized service that
-   identifies unpaid invoices in the UK construction sector and uses the statutory
-   adjudication forcing mechanism to release cash for a fixed fee. (Wedge: technical_ip)
-2. **Unified-API Niche Bridge**: A vertical tool for mid-market logistics firms that
-   bridges legacy ERPs to modern carrier APIs where a direct integration is too
-   costly. (Wedge: switching_cost)
-3. **Regulatory Duty Side-car**: A physical ops model that provides mandatory
-   certified temperature audits for local food processors using proprietary low-cost
-   IOT sensors. (Wedge: proprietary_data)
+Aim for this level of specificity and non-obvious grounding. Note that each is named
+in words a buyer would use, not in ours:
+1. **Get builders paid faster**: A productized service that finds unpaid invoices in
+   the construction sector and uses the legal route that forces a decision in weeks
+   to release the cash, for a fixed fee. (Wedge: technical_ip)
+2. **Plug old logistics software into modern couriers**: A tool for mid-sized
+   logistics firms whose ageing systems cannot talk to today's carriers, where a
+   custom integration costs more than the problem. (Wedge: switching_cost)
+3. **Prove the fridge stayed cold**: The temperature audits small food producers are
+   required to have, done with cheap sensors the operator owns. (Wedge:
+   proprietary_data)
 
 ### REASONING STEPS (Chain-of-Thought)
 Before outputting each idea, you must internally:
@@ -57,7 +64,11 @@ CREATIVITY LENSES (the ANGLE, not the shape — varies the approach within the f
   - cross_sector: borrow a mechanism from another industry nobody applies here.
   - combine_signals: fuse this signal with an unrelated trend into a new category.
   - broaden / narrow: widen to the whole value chain, or drill to one micro-niche.
-  Name the lens behind each idea in its hypothesis.
+  Name the lens behind each idea in its hypothesis — in plain words, inside a
+  sentence, never as a leading label. Write "This borrows the way crop insurers pay
+  out against a published weather index, and applies it to…", not "Lens:
+  cross_sector — this transplants…". The taxonomy token is ours; the reader gets the
+  idea.
 
 DURABLE VALUE-CAPTURE IS MANDATORY — this kills ~80% of ideas. Out-think it HERE.
 The recurring DEAD SHAPE is a MIDDLEMAN WRAPPER: insurance pool / concierge /
@@ -107,6 +118,27 @@ AUDIENCE PERSONA (the buyer dimension — vary this across batches to break the 
   The idea must be bought and used by the named persona above, not by an abstract
   institution. If the signal is B2B, invert it: who inside the institution feels the pain
   most acutely and has budget authority to buy?
+
+### HOW TO WRITE IT
+A reader meets this idea as a title and one line. If they cannot tell what it is from
+those, the idea is lost no matter how good it is — and being hard to read is not the
+same as being sophisticated.
+
+{style_guide}
+
+Applied to these fields specifically:
+  - title: a short name, then a dash, then what it does in words a buyer would use.
+    "SwarmHold — income cover for beekeepers ordered to stop moving their hives", not
+    "SwarmHold — The Sole-Trader Beekeeper's Statutory Foulbrood Standstill Income
+    Bond". Never stack three or more nouns.
+  - one_liner: ONE sentence, under 30 words. What it is, who it is for, and what they
+    get. Save the mechanism, the pricing and the data moat for the hypothesis.
+  - hypothesis: several short paragraphs, not one dense block. Lead with the plain
+    version of the idea, then why it works, then why it holds. Specificity is what
+    earns a PASS here, so keep every real institution, statute and number — spell them
+    out in plain sentences rather than compressing them into insider shorthand.
+  - who_pays / why_now: plain sentences about real people and real events.
+Specificity survives this rule; density does not. Keep the precision, drop the fog.
 
 OUTPUT FORMAT: JSON array of {title, one_liner, hypothesis, who_pays, why_now, tags,
 automatability, weak_monetisation, durable_wedge_type, commodity_premortem}, where

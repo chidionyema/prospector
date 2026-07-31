@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import type { OrderDetails } from '@/lib/api/client';
 import { fetchOrder } from '@/lib/api/client';
+import { API_BASE_URL } from '@/lib/config';
 
 export default function OrderPage() {
   const router = useRouter();
@@ -43,6 +44,20 @@ export default function OrderPage() {
     );
   }
 
+  // Only follow a first-party relative path or an explicit https URL. This neutralises a
+  // `javascript:`/`data:` value (which `download` does NOT block) if the API is ever
+  // compromised or buggy. `\/(?!\/)` rejects protocol-relative `//evil.com`.
+  //
+  // The API returns downloadPath as a root-relative path ("/download/<token>"), but /download
+  // is served by the API, not by this storefront and not proxied to it — using the bare path
+  // resolved against the web origin and 404'd. Relative paths are resolved against the API.
+  const rawDownload = order?.downloadPath ?? '';
+  const downloadHref = /^https:\/\//.test(rawDownload)
+    ? rawDownload
+    : /^\/(?!\/)/.test(rawDownload)
+      ? `${API_BASE_URL}${rawDownload}`
+      : '#';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full mx-4">
@@ -52,15 +67,20 @@ export default function OrderPage() {
         </p>
 
         <a
-          href={order?.downloadPath ?? '#'}
+          href={downloadHref}
           className="block w-full text-center bg-blue-600 text-white font-medium py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
           download
         >
           Download now
         </a>
 
-        <p className="text-xs text-gray-400 mt-4 text-center">
-          This link expires after 5 minutes. Your download will be available once.
+        {/* The old copy here ("expires after 5 minutes… available once") described the presigned
+            R2 URL that /download mints internally, NOT this page. The buyer's grant token has
+            ExpiresAt = null and a 50-download cap (DeliveryEndpoints.cs:25). Telling a paying
+            customer their permanent recovery link is already dead is how a sale becomes a refund. */}
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          Bookmark this page — it is your permanent access link and does not expire. You can
+          re-download your pack here whenever you need it.
         </p>
       </div>
     </div>

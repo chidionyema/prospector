@@ -23,15 +23,16 @@ def cfg() -> Config:
 def test_composite_exact_hand_calculation(cfg):
     """Hand-verify one example using the real weights from config.yaml.
 
-    weights: pain_acuity=0.20, money_provability=0.20, automatability=0.20,
-             distribution=0.15, defensibility=0.15, build_feasibility=0.10
+    weights (re-weighted 2026-06-25 to stop rewarding clonability):
+             pain_acuity=0.20, money_provability=0.20, automatability=0.15,
+             distribution=0.15, defensibility=0.25, build_feasibility=0.05
 
     scores: pain_acuity=4, money_provability=3, automatability=5,
             distribution=2, defensibility=3, build_feasibility=4
 
-    Expected = 4*0.20 + 3*0.20 + 5*0.20 + 2*0.15 + 3*0.15 + 4*0.10
-             = 0.80 + 0.60 + 1.00 + 0.30 + 0.45 + 0.40
-             = 3.55
+    Expected = 4*0.20 + 3*0.20 + 5*0.15 + 2*0.15 + 3*0.25 + 4*0.05
+             = 0.80 + 0.60 + 0.75 + 0.30 + 0.75 + 0.20
+             = 3.40
     """
     scores = {
         "pain_acuity": 4,
@@ -43,7 +44,7 @@ def test_composite_exact_hand_calculation(cfg):
     }
     weights = cfg.weights
     result = composite(scores, weights)
-    assert result == pytest.approx(3.55, abs=1e-4)
+    assert result == pytest.approx(3.40, abs=1e-4)
 
 
 def test_composite_all_zeros():
@@ -133,3 +134,38 @@ def test_passes_composite_at_exact_threshold(cfg):
 
 def test_passes_composite_none_score(cfg):
     assert passes_composite(None, cfg) is False
+
+
+# ---------------------------------------------------------------------------
+# P1-9 — score_failed flag distinguishes a scoring outage from a real 0/5
+# ---------------------------------------------------------------------------
+
+def test_score_failed_flag_set_when_scorer_raises(cfg):
+    """When the scorer operator errors, the all-zero fail-safe must carry
+    score_failed=True so the publish gate can tell it from a genuine low score."""
+    from prospector.score import score_candidate
+    from prospector.models import Candidate
+
+    class _Boom:
+        def complete_json(self, *a, **k):
+            raise RuntimeError("scorer down")
+
+    cand = Candidate(title="t", one_liner="o", hypothesis="h", who_pays="x")
+    result = score_candidate(_Boom(), cfg, cand, checks=[])
+    assert result.score_failed is True
+    assert all(v == 0 for v in result.scores.values())
+
+
+def test_score_failed_flag_false_on_success(cfg):
+    """A scorer that returns valid scores yields score_failed=False."""
+    from prospector.score import score_candidate
+    from prospector.models import Candidate
+
+    class _Ok:
+        def complete_json(self, *a, **k):
+            return {"scores": {ax: 3 for ax in SCORE_AXES},
+                    "justification": {ax: "ok" for ax in SCORE_AXES}}
+
+    cand = Candidate(title="t", one_liner="o", hypothesis="h", who_pays="x")
+    result = score_candidate(_Ok(), cfg, cand, checks=[])
+    assert result.score_failed is False

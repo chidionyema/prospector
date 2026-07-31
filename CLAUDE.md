@@ -18,7 +18,7 @@
 
 **Write every run to store/:** capture input (signal or candidate), all verdicts + sources, the kill gate if applicable, cost, and timing. This log is the audit trail and the basis for learning.
 
-**Run supervised batches inside the usage allowance:** batch size is modest (default 5 candidates per signal) and each batch runs under your watch — not a 24/7 API. When batches bump the Claude Code usage cap, fund the API operator. Supervised operation is the liability backstop.
+**Run bounded batches inside the usage allowance:** batch size is modest (default 5 candidates per signal). Generation may run continuously and unattended (founder decision, 2026-06-20: no human in the loop) via `prospector/scheduler/` — but ONLY behind the automated backstop that replaces human supervision: a daily spend ceiling (`spend.daily_cap_usd`, read from the persistent `store/prospector.jsonl` ledger) and a filesystem kill switch (`store/scheduler/PAUSE`). Those two automated rails are the liability backstop; unattended generation without them is forbidden. When batches bump the Claude Code usage cap, fund the API operator.
 
 **No hosted service / no API-key calls beyond this repo:** the entire engine runs locally or within your Claude Code subscription. No external LLM calls, no hosted inference, no infrastructure beyond your own server. This repo is the complete system.
 

@@ -10,5 +10,7 @@ Produce up to {k} DISTINCT opportunities. Range widely; if no signal, generate b
 ACROSS MANY UNRELATED SECTORS — do not cluster in any single domain.
 (Generation batch {seed}: structural form = '{structural_form}'. Stay strictly inside
 this form; a different batch owns each other form.)
-Already proposed this run — do NOT repeat or trivially reword these:
+Already explored by this engine (prior runs, catalogue, AND past rejections) plus this run so
+far. These ideas are SPENT: do NOT repeat, rename, reword, re-skin, or propose a near-variant of
+any of them. A clear-out/probate/estate idea here means that whole family is taken — go elsewhere:
 {avoid}

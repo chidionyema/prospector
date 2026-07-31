@@ -133,23 +133,28 @@ sources, controls, and what it writes.
 
 ### 3.1 Overview (Cockpit)
 
-**Purpose:** one-glance health + activity. The "is the engine alive and producing?" screen.
+**Purpose:** one-glance operator status — not a six-section essay.
 
-**KPI strip** (`st.metric`, color deltas):
-- Catalogue: # PASS / # KILL / # DEFER / # provisional (from `prospector.db`).
-- Today: runs launched, candidates processed, spend $ vs `daily_cap_usd` (progress bar), kill rate.
-- Moat status: Claude/Gemini circuit state (closed/open/half-open) from `provider_health.json`.
-- Non-critical chain status: DeepSeek→MiniMax→Gemini-flash health.
-- Last golden-set discrimination score + pass/fail vs `--floor` (from latest `golden_runs/`).
-- Pending queue depth (`signals/pending/` count) + DEFER count.
+**Hero:** single sentence via `readers.glance_status` — e.g. `Engine idle · last generate k=20 failed (987s)`
+or `Generating 12/20 · lane smb · 340s`. Tone-coded (live / fail / idle).
 
-**Panels:** recent runs (last 10 from `jobs.json`, status badges, click → run detail); active
-alarms (mirror `diagnose` no-flag calibration alarms: zero-yield, single-gate dominance, dead
-gates); a "moat down" banner (`st.error`) when both Claude+Gemini are exhausted.
+**Primary CTA:** always-visible **Launch generate** (→ Launch page). Secondary: Refresh, Resume.
 
-**Refresh:** `st.fragment(run_every="10s")` on the KPI strip + active-runs panel only.
+**Job panel:** active job *or* last finished production job, with monospace log peek + log path.
+Pytest/ephemeral jobs are filtered (`runner.filter_production_jobs`). Logs stay visible for
+finished jobs (disk tail / ring buffer via `get_log_lines`).
+
+**Compact strip:** PASS / KILL / DEFER / pending / spend / cap + newest dossiers + deduped
+operator pills (absence from `provider_health.json` = healthy; no "no health row" spam).
+
+**On demand (expanders):** recent runs, when-stuck paths, calibration alarms (never on hot path).
+
+**Refresh:** `st.fragment(run_every="15s")` only while a job is running. Never load full audit jsonl.
 
 **Writes:** none.
+
+**Shared chrome:** `components/chrome.py` (`page_hero`, `log_panel`) used across all pages.
+Theme: slate + amber (`theme.py` / `.streamlit/config.toml`) — not purple AI defaults.
 
 ### 3.2 Catalogue (Dossier browser)
 
@@ -181,31 +186,17 @@ JSON" (`st.expander` with `st.json`); for DEFER, a "retry now" shortcut.
 
 ### 3.3 Run Launcher
 
-**Purpose:** replace hand-typed `run.py vet|signal|generate|discover`. Form-driven launch with a
-live log, so "tweak a param → rerun → watch" is one screen.
+**Purpose:** generate-first wizard — usual path is one form, not four equal tabs.
 
-**Sub-tabs, one per command** (flags sourced from `run.py` argparse ~1228–1396):
+**Primary:** **Generate** form at top (k slider, exploration, lane, operator `(config)` default,
+fixtures OFF). **Advanced** (vet / signal / discover) collapsed in an expander.
 
-- **Vet** — `--title`, `--one-liner`, `--why-now`, `--lane`, `--operator`, `--fixtures` (offline
-  toggle), `--publish` (guarded — see below).
-- **Signal** — `--text` or `--file` (file picker / textarea), `--count`, `--lane`, `--profile`,
-  `--focus`, `--operator`, `--publish`.
-- **Generate** — `--candidates`, `--exploration` (slider 0.2–0.9), `--lane`, `--profile`,
-  `--focus`, `--publish`.
-- **Discover** — `--signals`, `--sectors`, `--count`, `--dry-run`, `--no-save`, `--lane`,
-  `--publish`.
+**Live run:** when a job is running, page is the run-detail view — monospace log
+(`st.fragment(run_every="5s")`), cancel, outcome. Disk log is authoritative after finish.
 
-**Controls common to all:** an "Estimated scope" hint (candidates × checks) and a **dry-run /
-fixtures preference banner** so the operator can rehearse offline before spending. The `--publish`
-checkbox is **double-gated**: it is disabled unless (a) a recent golden-set run passed the floor
-and (b) the operator ticks an explicit "I reviewed, publish on PASS" confirm — publication is the
-one irreversible, outward-facing action (it hits Paddle + R2 + the live catalog via `bridge.py`).
+**Idle:** last finished production job log peek stays on the page (same glance language as Overview).
 
-**Launch → live log:** on submit, `runner.py` spawns the subprocess; the page switches to a
-**run-detail view** with an auto-scrolling log (`st.fragment(run_every="2s")` tailing the ring
-buffer), a status badge, elapsed time, a live spend counter (parsed from the audit log / progress
-banners), and a **Cancel** button. On completion: a summary card (decision, gate, source count,
-cost, timing — the engine's step-8 summary) and a deep-link to the new dossier in the Catalogue.
+**Publish** remains double-gated via certification. Scope hints stay short.
 
 **Writes:** spawns a `run.py` subprocess (which writes dossiers/audit/listings as usual). The
 console itself writes only `jobs.json` + the job log.

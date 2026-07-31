@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Liveness watchdog for the generation daemon. Runs EVERY 15 min (StartInterval=900) and alerts if
+  the daemon has gone dark. This is the independent safety net: the in-loop alerts in the daemon
+  itself can only fire while it is running, so a crash-loop or hang (which emits no tick) would be
+  invisible without this. `--watchdog` checks the heartbeat age and, if stale/missing, emits a
+  CRITICAL alert (desktop notification + opt-in ALERT_WEBHOOK_URL). It exits immediately each run.
+
+  Install:   cp deploy/com.prospector.watchdog.plist ~/Library/LaunchAgents/
+             launchctl load   ~/Library/LaunchAgents/com.prospector.watchdog.plist
+  Stop:      launchctl unload ~/Library/LaunchAgents/com.prospector.watchdog.plist
+
+  Set ALERT_WEBHOOK_URL in .env (Slack/Discord incoming webhook) to also get alerts off-machine.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.prospector.watchdog</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
+        <string>-m</string>
+        <string>prospector.scheduler.run_scheduled</string>
+        <string>--watchdog</string>
+        <string>--config</string>
+        <string>/Users/chidionyema/Documents/code/prospector/config.yaml</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/chidionyema/Documents/code/prospector</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/Users/chidionyema</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>900</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/chidionyema/Documents/code/prospector/store/scheduler/watchdog.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/chidionyema/Documents/code/prospector/store/scheduler/watchdog.err.log</string>
+</dict>
+</plist>

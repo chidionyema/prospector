@@ -20,15 +20,36 @@ from pathlib import Path
 from typing import Optional
 
 # Max candidates vetted in parallel. Each vet drives slow CLI subprocesses, so the
-# real throughput ceiling is the grounding concurrency; this caps how many candidate
-# vets are in flight at once. Sourced from config (retrieval.vet_workers, aligned to
-# grounding slots) so 5 workers no longer oversubscribe 2+2 slots and self-induce
-# timeouts; PROSPECTOR_VET_WORKERS still overrides for ops. Not a verdict knob.
+# real throughput ceiling is the grounding / Cursor concurrency; this caps how many
+# candidate vets are in flight at once. Sourced from config (retrieval.vet_workers).
+# Align with retrieval.cursor_concurrency + retrieval.claude_concurrency (and export
+# PROSPECTOR_CURSOR_CONCURRENCY= that same value in ops shells / queue_yield_batch.sh)
+# so workers do not self-induce queue_timeout. PROSPECTOR_VET_WORKERS overrides for ops.
+# Not a verdict knob.
 def _vet_workers(cfg) -> int:
     env = os.environ.get("PROSPECTOR_VET_WORKERS")
     if env:
         return max(1, int(env))
     return max(1, int(getattr(cfg.retrieval, "vet_workers", 3)))
+
+
+def _sync_cli_concurrency(cfg) -> None:
+    """Apply retrieval.*_concurrency to CLI governors (env vars still win when set)."""
+    r = getattr(cfg, "retrieval", None)
+    if r is None:
+        return
+    try:
+        from .claude_cli import configure_concurrency as _claude_conc
+        _claude_conc(int(getattr(r, "claude_concurrency", 2) or 2))
+    except Exception:
+        pass
+    try:
+        from .cursor_cli import configure_concurrency as _cursor_conc
+        _cursor_conc(int(getattr(r, "cursor_concurrency", None)
+                         or getattr(r, "claude_concurrency", 2)
+                         or 2))
+    except Exception:
+        pass
 
 
 def _resolve_lanes(cfg, args) -> Optional[list]:
@@ -85,17 +106,31 @@ def _lane_counts(cfg, lanes: list, k: Optional[int]) -> dict:
 _PENDING_DIR = Path(__file__).resolve().parent.parent / "signals" / "pending"
 
 
-def _save_pending_signal(signal_text: str, cfg: Config) -> Path:
-    """Save a failed signal so `generate --resume` can retry it later."""
+def _save_pending_signal(signal_text: str, cfg: Config) -> Optional[Path]:
+    """Persist a failed signal so `generate --resume` can retry it later.
+
+    Returns the path on a CONFIRMED write, or None if the signal could not be
+    durably saved. A write failure here means the signal would be silently lost,
+    so it is logged at ERROR (not warning) and surfaced to the caller — never
+    swallowed as if the deferral succeeded.
+    """
     import hashlib
     key = hashlib.sha1(signal_text.encode()).hexdigest()[:16]
     path = _PENDING_DIR / f"{key}.json"
     try:
         _PENDING_DIR.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"signal_text": signal_text, "key": key}), encoding="utf-8")
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps({"signal_text": signal_text, "key": key}), encoding="utf-8")
+        tmp.replace(path)  # atomic publish — a half-written file is never resumed
+        if not path.exists():
+            raise OSError(f"pending signal not present after write: {path}")
+        return path
     except Exception as e:
-        logger.warning(f"Could not save pending signal: {e}")
-    return path
+        logger.error(
+            f"FAILED to persist pending signal {key} — it will NOT be resumable: {e}",
+            extra={"signal_key": key, "pending_dir": str(_PENDING_DIR)},
+        )
+        return None
 
 
 def _load_pending_signals() -> list[tuple[Path, str]]:
@@ -112,9 +147,9 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
     return results
 
 from .config import Config, load_config
-from .dedup import dedup
+from .dedup import dedup, drops_by_market
 from .dossier import build_dossier, render_markdown
-from .errors import ProviderExhaustedError
+from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .generate import generate
 from .models import Candidate, Decision, Dossier
 from .operator import Operator
@@ -133,11 +168,55 @@ def _get_verify():
     return _verify
 
 
+# Non-critical chain order: DeepSeek (cheap structured JSON) → cursor_cli (subscription
+# reliability) → minimax emergency tail. DeepSeek restored 2026-07-30 after billing recovery.
+# cursor_cli replaced claude_cli here 2026-07-30 so generation can run without Claude Code.
+# Ollama REJECTED 2026-07-01 (markdown, not JSON). NEVER put DeepSeek/MiniMax on the moat
+# (verdict/adversarial) — non-critical only. Module-level so run_signal, `operators`, and the
+# proof tools all reference the SAME chain.
+_NONCRITICAL_ORDER = ("deepseek", "cursor_cli", "minimax")
+
+
 # ---------------------------------------------------------------------------
 # Core vetting unit
 # ---------------------------------------------------------------------------
 
 @track_latency(name="vet_candidate")
+def _build_artifact_op(cfg: Config, fallback_op: Operator) -> Operator:
+    """Build the quality chain for the customer-facing £49 deliverable.
+
+    The pack's prose (build_spec / gtm_plan / ops_plan / listing_page) IS the product, so it
+    is generated by the CLI-based, in-subscription operators in ``cfg.artifact_operator``
+    (Gemini CLI primary -> Claude CLI failover) rather than the cheap non-critical tail. Each
+    tier is circuit-broken against the NON-CRITICAL health file (a CLI hiccup here must never
+    blind the Claude->Gemini moat verdict path). Falls back to ``fallback_op`` (the moat) when
+    none of the configured CLI operators are available, so generation never hard-fails on this.
+    """
+    from .operator import _build_operator, FallbackOperator
+    from .health import get_noncritical_health
+
+    order = cfg.artifact_operator
+    if isinstance(order, str):
+        order = [order]
+    tiers = []
+    for kind in (order or []):
+        try:
+            tiers.append((kind, _build_operator(kind, cfg, fast=False)))
+        except RuntimeError:
+            pass  # CLI not on PATH / not configured — skip this tier
+    if not tiers:
+        logger.warning("Artifact quality chain %s unavailable; using moat op for the deliverable",
+                       order)
+        return fallback_op
+    if len(tiers) == 1:
+        logger.info("Artifact deliverable operator: %s", tiers[0][0])
+        return tiers[0][1]
+    r = cfg.retrieval
+    logger.info("Artifact deliverable chain: %s", " → ".join(n for n, _ in tiers))
+    return FallbackOperator(tiers, failure_threshold=r.breaker_failure_threshold,
+                            cooldown_s=r.breaker_cooldown_s, health=get_noncritical_health())
+
+
 def vet_candidate(
     cand: Candidate,
     op: Operator,
@@ -201,7 +280,7 @@ def vet_candidate(
 
     verify = _get_verify()
     # Build the moat operator chain string for the audit trail (e.g. "claude/claude-opus-4-8 →
-    # gemini/2.5-flash-lite").  FallbackOperator.name is already in that format.
+    # claude-cli/default").  FallbackOperator.name is already in that format.
     _provider_chain = getattr(op, "name", "") or getattr(op, "model_version", "") or str(op)
     
     # Shadow Moat: Run experimental verification in parallel if requested.
@@ -284,8 +363,15 @@ def vet_candidate(
             # sequential, cutting PASS-survivor latency by ~50%.
             logger.info("Generating publish-time artifacts + marketing content...")
             from .artifacts import generate_artifacts, generate_marketing_content
-            cand.tags["artifacts"] = generate_artifacts(op, cand, checks, fast_op=query_op)
-            cand.tags["marketing"] = generate_marketing_content(op, cand, checks, fast_op=query_op)
+            # The £49 deliverable's prose runs on the quality CLI chain (Gemini CLI -> Claude
+            # CLI), not flash-lite. The financial model (Python-computed) and ancillary
+            # marketing stay on fast_op; claim-check runs on the moat `op` (a verification gate
+            # must never be judged by the cheap model that wrote the copy).
+            quality_op = _build_artifact_op(cfg, op)
+            cand.tags["artifacts"] = generate_artifacts(
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg)
+            cand.tags["marketing"] = generate_marketing_content(
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op)
 
     now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -370,6 +456,7 @@ def run_signal(
     # --- Load defaults ---
     if cfg is None:
         cfg = load_config()
+    _sync_cli_concurrency(cfg)
 
     if op is None:
         from .operator import make_operator
@@ -389,8 +476,14 @@ def run_signal(
     # Gemini-flash exhausted → all three skipped → ProviderExhaustedError → DEFER.
     # A tier's health mark does NOT pollute the moat health file (moat stays clean).
     from .operator import _build_operator, FallbackOperator
-    from .errors import ProviderExhaustedError
+    from .errors import GroundingInfrastructureError, ProviderExhaustedError
     from .telemetry import record_usage
+    from .health import get_noncritical_health
+
+    # Founder-fence: the non-critical chain records exhaustion to its OWN health file,
+    # never the moat's. A dead DeepSeek/MiniMax/Gemini-flash here must not blind the
+    # Claude→Gemini moat (and vice versa).
+    _noncritical_health = get_noncritical_health()
 
     def _build_operator_chain(order: tuple[str, ...], fast: bool) -> Operator:
         """Build a FallbackOperator from the given tier order. Raises if none available."""
@@ -408,21 +501,16 @@ def run_signal(
             return tiers[0][1]
         r = cfg.retrieval
         chain = FallbackOperator(tiers, failure_threshold=r.breaker_failure_threshold,
-                                cooldown_s=r.breaker_cooldown_s)
+                                cooldown_s=r.breaker_cooldown_s,
+                                health=_noncritical_health)
         logger.info(f"Chain: {' → '.join(n for n, _ in tiers)}")
         return chain
 
-    # gen_op: gemini API first (~1s per call, paid quota), deepseek fallback.
-    gen_op = _build_operator_chain(
-        ("gemini", "deepseek", "gemini_cli"),
-        fast=True
-    )
+    # gen_op: divergent candidate generation (non-critical).
+    gen_op = _build_operator_chain(_NONCRITICAL_ORDER, fast=True)
 
-    # fast_op: same order.
-    fast_op = _build_operator_chain(
-        ("gemini", "deepseek", "gemini_cli"),
-        fast=True
-    )
+    # fast_op: prescreen / scoring / mechanical JSON (non-critical), same order.
+    fast_op = _build_operator_chain(_NONCRITICAL_ORDER, fast=True)
 
     # Shadow Moat (Part 16 principal upgrade): optionally load an experimental 
     # operator to run in parallel. Findings are logged for drift analysis.
@@ -475,6 +563,12 @@ def run_signal(
     from .adaptive import get_pass_traits
     patterns = get_pass_traits(store)
 
+    # CROSS-RUN ANTI-DUPLICATION MEMORY. The blue-sky daemon re-runs generation every cycle;
+    # without telling the model what it has ALREADY produced (PASS and KILL alike), it keeps
+    # regenerating the same idea families (the live near-duplicate probate packs). Seed the
+    # generator's `avoid` list from the freshest dossier titles so it explores NEW ground.
+    prior_titles = store.recent_titles(limit=200)
+
     # FIX: MiniMax generation — gen_op (MiniMax) for generation; op (Claude/Gemini) stays
     # for verification.  gen_op falls back to op if MINIMAX_API_KEY is not configured.
     if lanes and len(lanes) > 1:
@@ -489,6 +583,7 @@ def run_signal(
         candidates = generate_multilane(
             op, cfg, lanes=lanes, lane_counts=counts, signal_text=signal_text,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
+            prior_titles=prior_titles,
             gen_op=gen_op, grid_priorities=grid_priorities, focus=focus,
             pass_patterns=patterns)
         # ambition_tier already set inside generate_multilane (c.ambition_tier = tier).
@@ -502,7 +597,7 @@ def run_signal(
             op, cfg.for_lane(tier), signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=patterns)
+            pass_patterns=patterns, prior_titles=prior_titles)
         for c in candidates:
             c.ambition_tier = tier
     else:
@@ -513,27 +608,31 @@ def run_signal(
             op, cfg, signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=patterns,
+            pass_patterns=patterns, prior_titles=prior_titles,
         )
     if not candidates:
         # Generation chain exhausted — save the signal text so the operator can
         # re-run it later with `generate --resume`.  Never lose a signal.
         _save_pending_signal(signal_text, cfg)
-        logger.warning(f"Generation chain exhausted (deepseek/minimax/gemini all unavailable or "
-                       f"quota depleted). Signal saved for retry. Run `generate --resume` "
-                       f"when generation chain recovers.")
+        logger.warning(f"Generation chain exhausted ({'/'.join(_NONCRITICAL_ORDER)} all "
+                       f"unavailable or quota depleted). Signal saved for retry. Run "
+                       f"`generate --resume` when generation chain recovers.")
         progress.step(f"generation chain exhausted — signal saved, re-run with generate --resume")
         return []
     logger.info(f"Generated {len(candidates)} candidates")
     progress.step(f"generated {len(candidates)} candidates")
 
-    # --- Dedup against catalogue ---
+    # --- Dedup against catalogue (per market: the same idea elsewhere is not a dupe) ---
     catalogue = store.catalogue_titles()
-    unique, dropped = dedup(candidates, catalogue)
+    unique, dropped = dedup(candidates, catalogue, threshold=cfg.dedup_threshold,
+                            token_threshold=cfg.dedup_token_threshold,
+                            default_market=_default_market(cfg))
     if dropped:
-        logger.info(f"Dedup dropped {len(dropped)} near-duplicate pair(s)")
-    if dropped:
-        progress.note(f"dedup dropped {len(dropped)} near-duplicate(s)")
+        by_market = drops_by_market(dropped)
+        logger.info(f"Dedup dropped {len(dropped)} near-duplicate pair(s)",
+                    extra={"dropped_by_market": by_market})
+        detail = " ".join(f"{m or 'unset'}:{n}" for m, n in sorted(by_market.items()))
+        progress.note(f"dedup dropped {len(dropped)} near-duplicate(s) [{detail}]")
 
     # --- Rejection fast-path (Part 8) ---
     # If an exact near-duplicate was KILLED within the SLA window, return that dossier immediately.
@@ -648,6 +747,8 @@ def run_signal(
                                 gate=d.gate_fired,
                                 composite=(d.score.composite if d.score else None))
                 dossiers.append(d)
+            except GroundingInfrastructureError:
+                raise  # circuit breaker — halt daemon, don't burn credits
             except Exception as e:
                 logger.error(f"ERROR vetting candidate: {e}", extra={"error": str(e)})
                 progress.note(f"[{idx}/{total_submitted}] ⚠ error: {e}")
@@ -676,6 +777,32 @@ def run_signal(
     for a in calibration_alarms(store, cfg):
         progress.note(("🚨 " if a["level"] == "alarm" else "⚠️  ") + f"[{a['code']}] {a['message']}")
 
+    # Per-batch funnel diagnostics — emitted on EVERY generation run (founder
+    # requirement 2026-06-22: every generation ships WITH diagnostics). Purely
+    # additive instrumentation: derived from this batch's own dossiers + the
+    # top-of-funnel counts already in scope. Wrapped so a diagnostics failure can
+    # never break a run. Written to store/scheduler/{DIAGNOSTICS_LATEST.txt,
+    # batch_diagnostics.jsonl}.
+    try:
+        from .diagnostics import diagnose_batch, persist_batch_diagnostics, render_batch_diagnostics
+        stage_counts = {
+            "generated": len(candidates),
+            "dedup_dropped": len(dropped),
+            "rejection_fastpath": len(unique) - len(final_candidates),
+            "prescreen_in": len(final_candidates),
+            "prescreened_out": len(final_candidates) - len(prescreened_data),
+            "novelty_selected": len(kept),
+            "vetted": len(dossiers),
+        }
+        _bd = diagnose_batch(dossiers, stage_counts=stage_counts, usage=usage, cfg=cfg)
+        persist_batch_diagnostics(_bd, store)
+        progress.note("📊 batch diagnostics → store/scheduler/DIAGNOSTICS_LATEST.txt")
+        logger.info("batch diagnostics written", extra={"funnel": stage_counts,
+                    "unverifiable_pct": _bd.get("unverifiable_pct"),
+                    "decisions": _bd.get("decisions")})
+    except Exception as _diag_exc:  # never let diagnostics break a run
+        logger.warning(f"batch diagnostics failed (non-fatal): {_diag_exc}")
+
     return dossiers
 
 
@@ -683,6 +810,38 @@ def run_signal(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
+def _default_market(cfg: Config) -> str:
+    """The market unmarked candidates and legacy catalogue rows belong to."""
+    try:
+        return cfg.active_market or cfg.default_market
+    except AttributeError:  # Config predating Epic D
+        return ""
+
+
+def _guard_market_open(cfg: Config, args: argparse.Namespace) -> None:
+    """Refuse to run against a market that has not passed its readiness probe.
+
+    A market is CLOSED until a calibration probe demonstrates the engine can actually
+    see it (specs/multi-market-dimension.md §4). Generating into an unproven market
+    would mint dossiers whose grounding nobody has measured — the exact thing the gate
+    exists to prevent. `--probe` is the one sanctioned way past this, and it is what
+    `markets probe` uses to run the calibration itself.
+    """
+    if getattr(args, "probe", False):
+        return
+    status = cfg.market_status(cfg.active_market)
+    if status != "open":
+        code = cfg.active_market
+        ref = cfg.market_config(code).get("readiness_ref") or f"store/markets/{code}/READINESS.json"
+        print(f"error: market {code!r} is {status}, not open.\n"
+              f"  Run the readiness probe first:\n"
+              f"    python -m prospector.run markets probe --market {code} "
+              f"--set markets/calibration/{code.split('-')[0]}.jsonl\n"
+              f"  Then, if it passes: markets open {code}  (reads {ref})",
+              file=sys.stderr)
+        sys.exit(2)
+
 
 def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     """Load config and apply CLI overrides (operator, retrieval provider)."""
@@ -694,6 +853,18 @@ def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     # If fixtures provided, switch retrieval provider to fixture mode
     if hasattr(args, "fixtures") and args.fixtures:
         cfg.retrieval.provider = "fixture"
+
+    # Market override (Epic D): which JURISDICTION this run generates/vets for. Applied
+    # BEFORE the lane because it is the outer context (the evidence terrain), and because
+    # for_lane/for_profile/for_persona preserve active_market through dataclasses.replace.
+    if getattr(args, "market", None):
+        cfg = cfg.for_market(args.market)
+    # Guard the EFFECTIVE market, not just an explicit --market. A closed market can
+    # also arrive via `active_market:`/`markets.default:` in config.yaml, and that
+    # route must not be the one way to mint dossiers into an unproven jurisdiction.
+    # hasattr, not truthiness: only the market-aware commands own this dimension.
+    if hasattr(args, "market"):
+        _guard_market_open(cfg, args)
 
     # Ambition-lane override (config-pinned): judge against THIS lane's gates/thresholds
     # instead of the default. Applied last (returns a resolved copy). Empty => unchanged.
@@ -711,6 +882,16 @@ def _build_config_and_overrides(args: argparse.Namespace) -> Config:
     if getattr(args, "persona", None):
         cfg = cfg.for_persona(args.persona)
 
+    # Founder-archetype override (generation-only). Applied last so it wins over lane
+    # defaults; for_lane re-applies active_archetype for multi-lane fan-out.
+    if getattr(args, "archetype", None):
+        from .config import UnknownArchetypeError
+        try:
+            cfg = cfg.for_archetype(args.archetype)
+        except UnknownArchetypeError as e:
+            print(f"error: {e}", file=sys.stderr)
+            sys.exit(2)
+
     return cfg
 
 
@@ -724,6 +905,25 @@ def _make_search(cfg: Config, args: argparse.Namespace) -> SearchProvider:
             fixtures = json.load(fh)
 
     return make_provider(cfg, fixtures=fixtures)
+
+
+def _add_market_args(p: argparse.ArgumentParser) -> None:
+    """Attach the market flags shared by vet/signal/generate/discover."""
+    p.add_argument("--market", metavar="CODE",
+                   help="Jurisdiction to generate/vet for (e.g. uk, us, us-tx). "
+                        "Default: config active_market, else markets.default. "
+                        "A market that has not passed its readiness probe is refused.")
+    p.add_argument("--probe", action="store_true",
+                   help="Calibration run: permit a non-open market. Used by "
+                        "`markets probe`; results never publish.")
+
+
+def _add_archetype_arg(p: argparse.ArgumentParser) -> None:
+    """Attach --archetype (generation-only founder-capacity pin)."""
+    p.add_argument("--archetype", metavar="NAME",
+                   help="Founder archetype for generation (solo_agent, small_team, "
+                        "startup). Overrides the lane default. Generation-only — "
+                        "never moves gates or thresholds.")
 
 
 def _resolve_board(args: argparse.Namespace) -> Optional[list[str]]:
@@ -745,7 +945,7 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
     store = Store(cfg)
 
     if getattr(args, "resume", False):
-        _cmd_resume(args, cfg, op, fast_op, search, store)
+        _cmd_resume(args, cfg, op, fast_op, search, store, log_path)
         return
 
     cand = Candidate(
@@ -772,8 +972,95 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
     print(f"\n{costs_report(log_path or '')}")
 
 
+def _cmd_replicate(args: argparse.Namespace, log_path: Path) -> None:
+    """Re-vet proven PASSes from one market as candidates in another.
+
+    The cheapest high-quality generation channel available: an idea that already cleared
+    the bar somewhere is a better-than-random hypothesis elsewhere. What does NOT carry
+    over is the evidence — every verdict, source and score is re-earned from scratch
+    against the target market's own chain. A replicated PASS is a new PASS, or it is a
+    KILL with its own cited reason.
+    """
+    from .operator import make_operator
+    from .telemetry import get_usage_summary, reset_usage
+    from . import progress
+
+    source_market = args.source_market.lower()
+    cfg = _build_config_and_overrides(args)  # --market is the TARGET (gate-checked)
+    target_market = cfg.active_market or _default_market(cfg)
+    if source_market == target_market:
+        print(f"error: --from and --market are both {target_market!r}; nothing to replicate.",
+              file=sys.stderr)
+        sys.exit(2)
+
+    store = Store(cfg)
+    # The index carries `market`, so filter there rather than opening 1,000+ JSON files.
+    rows = [r for r in store.all(decision=Decision.PASS.value)
+            if (r.get("market") or "").lower() == source_market]
+    min_composite = getattr(args, "min_composite", None)
+    if min_composite is not None:
+        rows = [r for r in rows
+                if float(r.get("composite") or 0.0) >= min_composite]
+    rows = sorted(rows, key=lambda r: float(r.get("composite") or 0.0), reverse=True)
+    rows = rows[: (args.n or len(rows))]
+
+    if not rows:
+        print(f"No PASS dossiers in market {source_market!r} to replicate.")
+        return
+
+    print(f"Replicating {len(rows)} PASS candidate(s): {source_market} → {target_market}")
+    clones: list[Candidate] = []
+    for row in rows:
+        full = store.get(row.get("candidate_id", "")) or {}
+        if not full:
+            continue
+        src = Candidate.from_dict(full.get("candidate", {}))
+        clone = Candidate(
+            title=src.title, one_liner=src.one_liner, hypothesis=src.hypothesis,
+            who_pays=src.who_pays, why_now=src.why_now,
+            tags={**dict(src.tags or {}), "replicated_from": src.candidate_id,
+                  "replicated_from_market": source_market},
+            automatability=src.automatability,
+            structural_form=src.structural_form, ambition_tier=src.ambition_tier,
+            market=target_market)  # candidate_id left blank => re-derived WITH the market
+        if clone.candidate_id == src.candidate_id:
+            # Cannot happen once market participates in the hash, but if it ever did the
+            # save would overwrite the source dossier — refuse rather than destroy it.
+            print(f"error: clone of {src.candidate_id} collides with its source; aborting.",
+                  file=sys.stderr)
+            sys.exit(3)
+        clones.append(clone)
+
+    if getattr(args, "dry_run", False):
+        for c in clones:
+            print(f"  {c.candidate_id}  {c.title[:60]}")
+        print("\nDRY RUN — nothing vetted. Drop --dry-run to run the full vet.")
+        return
+
+    reset_usage()
+    op = make_operator(cfg)
+    fast_op = make_operator(cfg, fast=True)
+    search = _make_search(cfg, args)
+
+    n_pass = n_kill = n_defer = 0
+    for clone in clones:
+        progress.banner(f"Replicating into {target_market}: {clone.title!r}")
+        d = vet_candidate(clone, op, search, cfg, store=store, query_op=fast_op,
+                          publish=getattr(args, "publish", False), show_checks=False)
+        n_pass += d.decision == Decision.PASS
+        n_kill += d.decision == Decision.KILL
+        n_defer += d.decision == Decision.DEFER
+        print(f"  {d.decision.value.upper():5s}  {clone.title[:56]}"
+              f"{'  gate=' + d.gate_fired if d.gate_fired else ''}")
+
+    progress.summary(n_pass=n_pass, n_kill=n_kill, n_defer=n_defer)
+    from .report import costs_report
+    print(f"\n{costs_report(log_path or '')}")
+
+
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
-                fast_op: Operator, search: SearchProvider, store: Store) -> None:
+                fast_op: Operator, search: SearchProvider, store: Store,
+                log_path: Optional[Path] = None) -> None:
     """Re-vet all moat-deferred candidates.
 
     Called when `vet --resume` is used or when the moat comes back online after an outage.
@@ -1083,8 +1370,8 @@ def _cmd_operators(args) -> None:
     available_ops = []  # list of (kind, op, elapsed_or_None)
     cfg = load_config(args.config if args.config else None)
 
-    for kind in ("deepseek", "minimax", "gemini",
-                 "gemini_cli", "claude_cli"):
+    for kind in ("deepseek", "minimax",
+                 "cursor_cli", "claude_cli"):
         print(f"\n  {kind:15s}", end="", flush=True)
         try:
             op = _build_operator(kind, cfg, fast=True)
@@ -1110,7 +1397,7 @@ def _cmd_operators(args) -> None:
     # fast_op: scoring + prescreen (0-5 axis, simple prompts)
     # Run `python -m prospector.run operators --gen` to measure and update these.
     try:
-        from .errors import ProviderExhaustedError
+        from .errors import GroundingInfrastructureError, ProviderExhaustedError
         r = cfg.retrieval
 
         def build_chain(order, fast_label):
@@ -1132,23 +1419,26 @@ def _cmd_operators(args) -> None:
                                  cooldown_s=r.breaker_cooldown_s)
             return f"{fast_label}: {' → '.join(n for n, _ in tiers)}"
 
-        print(f"  {build_chain(('deepseek', 'minimax', 'gemini_cli'), 'gen_op')}")
-        print(f"  {build_chain(('deepseek', 'minimax', 'gemini_cli'), 'fast_op')}")
+        print(f"  {build_chain(_NONCRITICAL_ORDER, 'gen_op')}")
+        print(f"  {build_chain(_NONCRITICAL_ORDER, 'fast_op')}")
     except Exception as e:
         print(f"  ✗ could not build chains: {e}")
 
     # ── 4. Generation prompt probe (optional) ─────────────────────────────
     if getattr(args, "gen", False):
         print("\n▸ Generation prompt probe (~7000 chars)")
-        from .prompts import render
+        from .prompts import market_kwargs, render
+        # Market vars included so the probe measures the REAL prompt size and never
+        # sends a literal {market_context} to a live operator below.
         sys_p, usr_p = render("generate",
-                               signal_text="AI tools for UK small businesses",
+                               signal_text="AI tools for small businesses",
                                sector="", strategy_lens="broaden",
-                               exploration_level=0.5)
+                               exploration_level=0.5,
+                               **market_kwargs(cfg))
         print(f"  Prompt size: {len(sys_p) + len(usr_p)} chars")
         # Probe the non-critical chain operators only
         gen_ops = [(k, o, b) for k, o, b in available_ops
-                   if o is not None and k in ("deepseek", "minimax", "gemini_cli")]
+                   if o is not None and k in _NONCRITICAL_ORDER]
         for kind, op, baseline in gen_ops:
             print(f"\n  {kind:15s} (baseline {baseline:.1f}s)...", end="", flush=True)
             t0 = time.monotonic()
@@ -1285,6 +1575,181 @@ def _cmd_lanes(args: argparse.Namespace, log_path: Path) -> None:
         print(f"error: config file not found at {path}", file=sys.stderr)
         sys.exit(1)
     _manage_lanes(action, lane_name, path)
+
+
+def _cmd_markets(args: argparse.Namespace, cfg: Config, log_path: Path) -> None:
+    """list | show | probe | open | close — the Market-Readiness Gate."""
+    from . import markets as mk
+
+    action = getattr(args, "markets_action", "list") or "list"
+
+    if action == "list":
+        store = Store(cfg)
+        try:
+            counts = store.markets_present()
+        except Exception:  # noqa: BLE001 — a fresh install has no catalogue yet
+            counts = {}
+        default = cfg.default_market
+        print(f"{'code':<10}{'status':<10}{'dossiers':>9}  label")
+        for code in sorted(c for c in (cfg.markets or {}) if c != "default"):
+            block = cfg.market_config(code)
+            flag = " (default)" if code == default else ""
+            print(f"{code:<10}{cfg.market_status(code):<10}{counts.get(code, 0):>9}  "
+                  f"{block.get('label', '')}{flag}")
+        unknown = {m: n for m, n in counts.items() if m and m not in (cfg.markets or {})}
+        if unknown:
+            print(f"\nnot in config: {unknown}")
+        if counts.get(""):
+            print(f"\n{counts['']} dossier(s) predate the market dimension "
+                  f"(market unset). See tools/backfill_market.py.")
+        return
+
+    market = getattr(args, "market", None) or cfg.default_market
+
+    if action == "show":
+        r = mk.load_readiness(cfg, market)
+        if r is None:
+            print(f"market {market!r}: status={cfg.market_status(market)}, "
+                  f"no readiness probe recorded at {mk.readiness_path(cfg, market)}")
+            return
+        print(mk.format_readiness(r))
+        current = mk.config_fingerprint(cfg, market)
+        if current != r.config_fingerprint:
+            print(f"\n  STALE: config has changed since this probe "
+                  f"({r.config_fingerprint} → {current}). Re-probe before opening.")
+        return
+
+    if action == "probe":
+        _run_market_probe(args, cfg, market, log_path)
+        return
+
+    if action == "open":
+        r = mk.load_readiness(cfg, market)
+        if r is None:
+            print(f"error: cannot open {market!r} — no readiness probe at "
+                  f"{mk.readiness_path(cfg, market)}. Run `markets probe` first.",
+                  file=sys.stderr)
+            sys.exit(2)
+        if not r.ready:
+            print(f"error: cannot open {market!r} — the probe says NOT READY:\n"
+                  + "\n".join(f"  - {f}" for f in r.failures)
+                  + "\n\nFix the evidence terrain (queries, authority domains, "
+                    "calibration set). Do NOT lower the bar.", file=sys.stderr)
+            sys.exit(2)
+        current = mk.config_fingerprint(cfg, market)
+        if current != r.config_fingerprint:
+            print(f"error: cannot open {market!r} — the probe measured a different "
+                  f"configuration ({r.config_fingerprint}, now {current}). Re-probe.",
+                  file=sys.stderr)
+            sys.exit(2)
+        _set_market_status(args, market, "open")
+        return
+
+    if action == "close":
+        _set_market_status(args, market, "closed")
+        return
+
+    print(f"error: unknown markets action {action!r}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _set_market_status(args: argparse.Namespace, market: str, status: str) -> None:
+    """Rewrite `status:` for one market in config.yaml, preserving comments."""
+    import re
+    from .config import REPO_ROOT
+
+    path = Path(args.config) if getattr(args, "config", None) else REPO_ROOT / "config.yaml"
+    text = path.read_text()
+    # Match the market's own `status:` line: the key at 2-space indent inside `markets:`,
+    # then its `status:` at 4-space indent. The body pattern only crosses lines that are
+    # indented four or more (or blank), so it can never walk out of this market's block
+    # and flip a SIBLING market's status — a market missing `status:` must fail loudly
+    # below, not silently open the next market in the file.
+    pattern = re.compile(
+        rf"(^  {re.escape(market)}:\n(?:(?:[ \t]{{4,}}.*)?\n)*?    status:[ \t]*)(\S+)",
+        re.MULTILINE)
+    new_text, n = pattern.subn(rf"\g<1>{status}", text, count=1)
+    if n != 1:
+        print(f"error: could not find a `status:` line for market {market!r} in {path}. "
+              f"Edit it by hand.", file=sys.stderr)
+        sys.exit(1)
+    path.write_text(new_text)
+    print(f"market {market!r} is now {status} in {path}")
+
+
+def _run_market_probe(args: argparse.Namespace, cfg: Config, market: str,
+                      log_path: Path) -> None:
+    """Run the calibration set through the real pipeline and record the measurement."""
+    from . import markets as mk
+    from . import progress
+    from .operator import make_operator
+    from .telemetry import reset_usage
+
+    if not getattr(args, "set", None):
+        print("error: --set PATH is required (a JSONL calibration set)", file=sys.stderr)
+        sys.exit(2)
+    entries = mk.load_calibration_set(args.set)
+
+    # The probe is the ONE sanctioned way to run a closed market. Two containments keep
+    # a calibration run from being mistaken for real output: publishing is refused, and
+    # the dossiers land in an isolated store under the market's own probe directory
+    # rather than the live catalogue. Without the second, a probe of a closed market
+    # would write catalogue rows that the market_not_open alarm then flags as a breach.
+    from dataclasses import replace as _replace
+
+    args.probe = True
+    # `real_cfg` keeps the live store dir so the READINESS artifact lands where the rest
+    # of the engine looks for it; only the DOSSIER writes are diverted.
+    real_cfg = _build_config_and_overrides(args).for_market(market)
+    # Pack-shaped calibration ideas must be judged on the lane that matches them
+    # (usually side_hustle). `--lane` already resolves gates via for_lane above; also
+    # stamp ambition_tier on each candidate so dossiers/audit trail show the bar used,
+    # and so any later for_lane(cand.ambition_tier) path cannot silently revert to the
+    # venture default (which kills packs on incumbency — the wrong bar for £30 packs).
+    lane = (getattr(args, "lane", None) or "").strip()
+    probe_dir = Path(real_cfg.store_dir) / "markets" / market / "probe"
+    probe_dir.mkdir(parents=True, exist_ok=True)
+    probe_cfg = _replace(real_cfg, store={**real_cfg.store, "dir": str(probe_dir)})
+    store = Store(probe_cfg)
+    reset_usage()
+    op = make_operator(probe_cfg)
+    fast_op = make_operator(probe_cfg, fast=True)
+    search = _make_search(probe_cfg, args)
+
+    lane_note = f" lane={lane!r}" if lane else " (default lane — pack sets usually want --lane side_hustle)"
+    print(f"Probing market {market!r} with {len(entries)} calibration candidate(s){lane_note}…")
+    outcomes = []
+    for entry in entries:
+        # Entry-level ambition_tier/lane wins when present; else CLI --lane; else unset.
+        entry_lane = (entry.get("ambition_tier") or entry.get("lane") or lane or "").strip()
+        cand = Candidate(title=entry["title"], one_liner=entry.get("one_liner", ""),
+                         why_now=entry.get("why_now", ""), market=market,
+                         ambition_tier=entry_lane)
+        progress.banner(f"[probe {market}] {cand.title!r}")
+        vet_cfg = probe_cfg.for_lane(entry_lane) if entry_lane else probe_cfg
+        d = vet_candidate(cand, op, search, vet_cfg, store=store, query_op=fast_op,
+                          publish=False, show_checks=False)
+        outcome = mk.outcome_from_dossier(entry["expected"], d)
+        outcomes.append(outcome)
+        print(f"  expected={outcome.expected:<5} actual={outcome.actual:<5} "
+              f"grounded={outcome.grounded_checks}/{outcome.total_checks}  {cand.title[:44]}")
+
+    # Fingerprint against the market-scoped config WITHOUT --lane applied.
+    # `markets show|open` load config with no lane pin; hashing the lane-resolved
+    # hard_gates/thresholds here made every successful `probe --lane side_hustle`
+    # look STALE immediately. Outcomes still reflect the lane used for vetting.
+    fp_cfg = load_config().for_market(market)
+    readiness = mk.evaluate(fp_cfg, market, outcomes)
+    path = mk.save_readiness(fp_cfg, readiness)
+    print("\n" + mk.format_readiness(readiness))
+    print(f"\nwritten: {path}")
+    print(f"probe dossiers (not catalogue): {probe_dir}")
+    if readiness.ready:
+        print(f"\nThis market is ready. To open it:\n"
+              f"  python -m prospector.run markets open --market {market}")
+    else:
+        print("\nNot ready. Improve the evidence terrain (authority domains, query "
+              "exemplars in prompts/markets/<code>/), then re-probe. Never lower the bar.")
 
 
 def _save_discovered_signals(signals: list[dict]) -> list[str]:
@@ -1430,11 +1895,13 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    vet_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     vet_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane to judge against (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    _add_market_args(vet_p)
+    _add_archetype_arg(vet_p)
     vet_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1448,14 +1915,14 @@ def main() -> None:
     vet_p.add_argument("--resume", action="store_true",
                        help="Re-vet all moat-deferred candidates (decision=defer).  "
                             "Uses the same operator/lane as the original run.  "
-                            "Safe to re-run when the moat (Claude/Gemini) comes back online.")
+                            "Safe to re-run when the moat (Claude) comes back online.")
 
     # ---- signal subcommand ----
     sig_p = sub.add_parser("signal", help="Run the full signal pipeline")
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    sig_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")
@@ -1466,6 +1933,8 @@ def main() -> None:
     sig_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    _add_market_args(sig_p)
+    _add_archetype_arg(sig_p)
     sig_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1486,7 +1955,7 @@ def main() -> None:
                        help="Number of candidates to generate (default: config candidates_per_signal)")
     gen_p.add_argument("--exploration", type=float, default=None, metavar="X",
                        help="Override exploration level 0-1 (default: adaptive)")
-    gen_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    gen_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     gen_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -1495,6 +1964,8 @@ def main() -> None:
     gen_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
+    _add_market_args(gen_p)
+    _add_archetype_arg(gen_p)
     gen_p.add_argument("--persona", metavar="NAME",
                        help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                             "Default: config active_persona.")
@@ -1509,8 +1980,29 @@ def main() -> None:
                        help="Re-run generation for all pending signals that failed due to "
                             "generation chain exhaustion.  Reads signals from "
                             "signals/pending/ and re-runs the full pipeline (generate + vet). "
-                            "Safe to re-run when the non-critical chain (DeepSeek/MiniMax/ "
-                            "Gemini) recovers.")
+                            "Safe to re-run when the non-critical chain (DeepSeek/MiniMax) recovers.")
+
+    # ---- replicate subcommand (Epic D: cross-market replication) ----
+    rep_p = sub.add_parser(
+        "replicate",
+        help="Re-vet proven PASSes from one market as fresh candidates in another")
+    rep_p.add_argument("--from", dest="source_market", required=True, metavar="CODE",
+                       help="Source market to take PASS dossiers from (e.g. uk)")
+    rep_p.add_argument("-n", type=int, default=None, metavar="N",
+                       help="Max candidates to replicate (default: all)")
+    rep_p.add_argument("--min-composite", dest="min_composite", type=float, default=None,
+                       metavar="X", help="Only replicate PASSes scoring at or above X")
+    rep_p.add_argument("--dry-run", dest="dry_run", action="store_true",
+                       help="List what would be replicated; run no checks")
+    rep_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+                       help="Override operator from config")
+    rep_p.add_argument("--fixtures", metavar="PATH",
+                       help="Path to fixtures JSON (uses FixtureProvider)")
+    rep_p.add_argument("--publish", action="store_true",
+                       help="Generate listing artifacts + publish on PASS")
+    rep_p.add_argument("--lane", metavar="NAME", help="Ambition lane to judge against")
+    rep_p.add_argument("--persona", metavar="NAME", help="Analytical persona")
+    _add_market_args(rep_p)
 
     # ---- discover subcommand (spec EXTENSION: self-sourced signals) ----
     disc_p = sub.add_parser("discover",
@@ -1525,11 +2017,12 @@ def main() -> None:
                         help="Only surface + save signals; do not generate or vet")
     disc_p.add_argument("--no-save", dest="no_save", action="store_true",
                         help="Do not write discovered signals to signals/")
-    disc_p.add_argument("--operator", choices=["gemini_cli", "gemini", "claude", "minimax", "deepseek", "mock"],
+    disc_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
                         help="Override operator from config")
     disc_p.add_argument("--lane", metavar="NAME",
                         help="Pin the sweep to a single ambition lane (default: multi-lane "
                              "across config active_lanes).")
+    _add_market_args(disc_p)
     disc_p.add_argument("--persona", metavar="NAME",
                         help="Analytical persona to 'tint' the run (e.g. shark, minimalist, academic). "
                              "Default: config active_persona.")
@@ -1589,6 +2082,34 @@ def main() -> None:
 
     lanes_act.add_parser("unset", help="Clear active_lane (return to multi-lane mode)")
 
+    # ---- markets subcommand (Epic D: the Market-Readiness Gate) ----
+    markets_p = sub.add_parser(
+        "markets", help="Manage jurisdictions (list, show, probe, open, close)")
+    markets_act = markets_p.add_subparsers(dest="markets_action", required=True)
+
+    markets_act.add_parser("list", help="Show defined markets, status and dossier counts")
+
+    show_p = markets_act.add_parser("show", help="Show a market's readiness measurement")
+    show_p.add_argument("--market", metavar="CODE", required=True)
+
+    probe_p = markets_act.add_parser(
+        "probe", help="Run the calibration set through the real pipeline and measure")
+    probe_p.add_argument("--market", metavar="CODE", required=True)
+    probe_p.add_argument("--set", metavar="PATH", required=True,
+                         help="JSONL calibration set: one "
+                              '{"title","one_liner","expected":"pass|kill"} per line')
+    probe_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"])
+    probe_p.add_argument("--fixtures", metavar="PATH",
+                         help="Path to fixtures JSON (offline probe)")
+    probe_p.add_argument("--lane", metavar="NAME")
+
+    open_p = markets_act.add_parser(
+        "open", help="Open a market — refused unless a current probe says READY")
+    open_p.add_argument("--market", metavar="CODE", required=True)
+
+    close_p = markets_act.add_parser("close", help="Close a market")
+    close_p.add_argument("--market", metavar="CODE", required=True)
+
     args = parser.parse_args()
 
     # Keep the verbose JSON audit log out of the way (it goes to a tail-able file);
@@ -1616,6 +2137,10 @@ def main() -> None:
         _cmd_operators(args)
     elif args.command == "lanes":
         _cmd_lanes(args, log_path)
+    elif args.command == "markets":
+        _cmd_markets(args, cfg_for_log, log_path)
+    elif args.command == "replicate":
+        _cmd_replicate(args, log_path)
     else:
         parser.print_help()
         sys.exit(1)

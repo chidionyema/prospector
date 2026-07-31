@@ -10,6 +10,7 @@ import json
 import os
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -114,8 +115,14 @@ with open(tmp, "w") as f:
 time.sleep(300)
 """)
         env = {**os.environ, "STORE_DIR": str(store_dir)}
+        # sys.executable, not ".venv/bin/python": that path was relative, so it also
+        # depended on the cwd pytest happened to be launched from, and it does not exist
+        # in CI, which installs with `uv pip install --system` into the setup-python
+        # interpreter. sys.executable is the interpreter running this test either way —
+        # locally that IS .venv/bin/python. The script below imports only the stdlib, so
+        # no environment beyond the interpreter is needed.
         proc = subprocess.Popen(
-            [".venv/bin/python", str(script)],
+            [sys.executable, str(script)],
             env=env,
         )
 
@@ -182,6 +189,17 @@ time.sleep(300)
             assert cancelled[0]["status"] in ("cancelled", "failed"), \
                 f"Expected cancelled/failed, got {cancelled[0]['status']}"
         finally:
+            # Kill any leftover child BEFORE restoring production paths so the
+            # daemon cannot finalize into store/control_center/jobs.json.
+            for j in runner._load_jobs():
+                pid = j.get("pid")
+                if pid:
+                    try:
+                        import os, signal
+                        os.kill(pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+            time.sleep(0.1)
             runner._JOBS_FILE = saved_jobs
             runner._CC_DIR = saved_dir
             runner._RUNS_DIR = saved_runs

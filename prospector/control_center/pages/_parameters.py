@@ -5,49 +5,61 @@ The diff is shown before write. Moat-affecting edits are flagged uncertified.
 """
 from __future__ import annotations
 
-import streamlit as st
+from datetime import datetime
 from pathlib import Path
+
+import streamlit as st
 
 from prospector.control_center import config_editor as _ce
 from prospector.control_center import readers
+from prospector.control_center.components.chrome import go_page, page_hero
 
 
 def render():
-    st.title("⚙️ Parameters")
-
-    # ── Certification banner ─────────────────────────────────────────────────
     cert = readers.load_certification()
-    if cert.get("certified"):
-        st.success("✅ Configuration is certified by a passing golden run. "
-                   "Publish is enabled.")
-    else:
-        st.warning("⚠️ Configuration is **uncertified** — a golden-set regression "
-                   "is required before publishing. Publish is disabled.")
+    certified = bool(cert.get("certified"))
+    glance = (
+        "Certified · publish enabled"
+        if certified
+        else "Uncertified · golden regression required before publish"
+    )
+    page_hero("Parameters", glance, tone="ok" if certified else "warn")
 
-    # ── Initialise staged config ──────────────────────────────────────────
     _init_staged()
-
     cfg = st.session_state["staged_config"] or _ce.load_config_raw()
     orig_mtime = st.session_state.get("_config_mtime", 0.0)
 
-    # ── Raw YAML view ─────────────────────────────────────────────────────
-    with st.expander("📄 Raw config.yaml (read-only)"):
-        st.code(readers.load_config_dict(), language="yaml", height=300)
+    # Save / discard sit at the top so the primary action is obvious.
+    _render_diff_and_save(cfg, orig_mtime)
 
-    # ── Backup management ──────────────────────────────────────────────────
-    with st.expander("💾 Config backups"):
+    with st.expander("Thresholds & hard gates", expanded=True):
+        _render_thresholds(cfg)
+        _render_hard_gates(cfg)
+    with st.expander("Score weights", expanded=False):
+        _render_weights(cfg)
+    with st.expander("Spend guard & operator routing", expanded=False):
+        _render_spend_guard(cfg)
+        _render_operator_routing(cfg)
+    with st.expander("Retrieval", expanded=False):
+        _render_retrieval(cfg)
+    with st.expander("Lanes", expanded=False):
+        _render_lanes(cfg)
+    with st.expander("Personas", expanded=False):
+        _render_personas(cfg)
+    with st.expander("Raw config.yaml", expanded=False):
+        st.json(readers.load_config_dict())
+    with st.expander("Config backups", expanded=False):
         backups = _ce.list_backups()
         if not backups:
-            st.info("No backups yet.")
+            st.caption("No backups yet.")
         else:
             for b in backups[:10]:
                 col1, col2 = st.columns([4, 1])
-                from datetime import datetime
                 ts = datetime.fromtimestamp(b["mtime"]).strftime("%Y-%m-%d %H:%M")
                 with col1:
                     st.caption(f"`{b['filename']}`  {ts}  {b['size']:,}B")
                 with col2:
-                    if st.button("↩️ Restore", key=f"bak_{b['filename']}"):
+                    if st.button("Restore", key=f"bak_{b['filename']}"):
                         ok, msg = _ce.restore_backup(b["filename"])
                         if ok:
                             st.session_state["staged_config"] = _ce.load_config_raw()
@@ -57,27 +69,8 @@ def render():
                         else:
                             st.error(msg)
 
-    st.divider()
-
-    # ── Groups ─────────────────────────────────────────────────────────────
-    _render_thresholds(cfg)
-    st.divider()
-    _render_hard_gates(cfg)
-    st.divider()
-    _render_weights(cfg)
-    st.divider()
-    _render_spend_guard(cfg)
-    st.divider()
-    _render_operator_routing(cfg)
-    st.divider()
-    _render_retrieval(cfg)
-    st.divider()
-    _render_lanes(cfg)
-    st.divider()
-    _render_personas(cfg)
-
-    st.divider()
-    _render_diff_and_save(cfg, orig_mtime)
+    if st.button("Open Diagnostics (golden)", key="params_to_diag"):
+        go_page("diagnostics")
 ...
 # ---------------------------------------------------------------------------
 # Personas
@@ -281,8 +274,8 @@ def _render_operator_routing(cfg: dict):
     op = cfg.get("operator", "")
     new_op = st.selectbox(
         "Primary operator",
-        ["", "mock", "gemini_cli", "claude", "gemini"],
-        index=["", "mock", "gemini_cli", "claude", "gemini"].index(op) if op in ["", "mock", "gemini_cli", "claude", "gemini"] else 0,
+        ["", "mock", "claude"],
+        index=["", "mock", "claude"].index(op) if op in ["", "mock", "claude"] else 0,
     )
     _update_staged(cfg, "operator", new_op)
 
@@ -374,40 +367,21 @@ def _render_diff_and_save(cfg: dict, orig_mtime: float):
     new_cfg = st.session_state.get("staged_config", old_cfg)
     diff = _ce.diff_configs(old_cfg, new_cfg)
 
-    st.subheader("🔍 Change diff")
-    if diff:
-        st.code(diff, language="yaml", height=200)
-    else:
-        st.info("No changes detected.")
-
-    # ── Moat-affecting warning ──────────────────────────────────────────────
     moat_affecting = _ce.is_moat_affecting(old_cfg, new_cfg)
     st.session_state["_changed_moat"] = moat_affecting
 
-    if moat_affecting:
-        st.warning("🚨 This change affects the moat. Saving will mark the config "
-                   "as **uncertified**. Run golden regression to re-certify before publishing.")
-        if st.button("🎯 Run golden regression",
-                     help="Launch pytest -k golden to verify prompts haven't regressed"):
-            _run_golden_regression()
-
-    st.divider()
-
-    # ── Save / Reset ───────────────────────────────────────────────────────
-    col1, col2, col3 = st.columns(3)
-
-    # Validate weights
     new_cfg = st.session_state.get("staged_config", old_cfg)
     weights = new_cfg.get("weights", {})
     total_w = sum(v for v in weights.values() if isinstance(v, (int, float)))
     weights_ok = abs(total_w - 1.0) <= 0.005
 
+    col1, col2, col3 = st.columns(3)
     with col1:
         save_disabled = not weights_ok or not diff
         tooltip = "Weights must sum to 1.0" if not weights_ok else \
                   "No changes to save" if not diff else ""
-        if st.button("💾 Save changes", type="primary",
-                    disabled=save_disabled, help=tooltip):
+        if st.button("Save changes", type="primary",
+                    disabled=save_disabled, help=tooltip, key="params_save"):
             ok, msg = _ce.write_config(new_cfg, moat_affecting, orig_mtime)
             if ok:
                 st.session_state["staged_config"] = _ce.load_config_raw()
@@ -416,22 +390,31 @@ def _render_diff_and_save(cfg: dict, orig_mtime: float):
                 st.rerun()
             else:
                 st.error(msg)
-
     with col2:
-        if st.button("↩️ Reset to saved"):
+        if st.button("Reset to saved", key="params_reset"):
             st.session_state["staged_config"] = _ce.load_config_raw()
             st.session_state["_config_mtime"] = _ce.get_config_mtime()
             st.session_state["_changed_moat"] = False
             st.rerun()
-
     with col3:
-        if st.button("↪️ Discard all"):
+        if st.button("Discard", key="params_discard"):
             st.session_state["staged_config"] = _ce.load_config_raw()
             st.session_state["_changed_moat"] = False
             st.rerun()
 
+    if diff:
+        with st.expander("Pending diff", expanded=True):
+            st.code(diff, language="yaml", height=160)
+    else:
+        st.caption("No staged changes.")
+
+    if moat_affecting:
+        st.warning("Moat-affecting edit — save marks config uncertified until golden passes.")
+        if st.button("Run golden regression", key="params_golden"):
+            _run_golden_regression()
+
     if not weights_ok:
-        st.error(f"Weights sum to {total_w:.4f} — save is blocked.")
+        st.error(f"Weights sum to {total_w:.4f} — save blocked.")
 
 
 def _run_golden_regression():

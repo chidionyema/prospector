@@ -82,11 +82,21 @@ def test_publish_only_on_pass(passing_dossier, killing_dossier, cfg, tmp_path):
     assert res_kill["status"] == "skipped"
 
 
-def test_listing_contains_trust_metadata_and_packs(passing_dossier, cfg, tmp_path):
-    # This test is now obsolete as we don't write local JSON listings anymore.
-    # We offload to the Catalog API.
-    # TODO: Add an integration test that checks the Catalog API state.
-    pass
+def test_listing_receipt_written_on_publish(passing_dossier, cfg, tmp_path):
+    """Successful Store publish also drops a local store/listings receipt for CC."""
+    cfg.store = {"dir": str(tmp_path)}
+
+    with patch("requests.post") as mock_post, patch("requests.get") as mock_get:
+        mock_post.return_value.status_code = 200
+        mock_get.return_value.status_code = 404
+        res = publish(passing_dossier, cfg)
+        assert res["status"] == "published"
+
+    listing_path = tmp_path / "listings" / f"{passing_dossier.candidate.candidate_id}.json"
+    assert listing_path.exists(), res
+    data = json.loads(listing_path.read_text(encoding="utf-8"))
+    assert data["candidate_id"] == passing_dossier.candidate.candidate_id
+    assert data.get("catalog") is True
 
 
 def test_syndication_outage_resilience(passing_dossier, cfg, tmp_path, monkeypatch):

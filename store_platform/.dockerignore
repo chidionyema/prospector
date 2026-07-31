@@ -1,0 +1,21 @@
+# Build context for the Store.Api image is this directory (store_platform/). Keep only what the
+# API build needs: nuget.config, Directory.*.props, local-feed/, src/Store.Api, src/Store.Catalog.
+**/bin/
+**/obj/
+**/node_modules/
+src/Store.Web/
+src/Store.Tests/
+scripts/
+deploy/
+.test-stack/
+.vs/
+**/*.md
+.env
+.env.*
+**/.env
+**/.env.*
+**/store.db
+store.db
+**/*.db
+.git/
+.gitignore

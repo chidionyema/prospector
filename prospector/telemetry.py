@@ -151,7 +151,6 @@ _USAGE_KEYS = ("calls", "web_calls", "input", "output", "total", "cached", "self
 # `PRICING` for backwards compatibility with callers that don't have a
 # Config object handy.
 PRICING = {
-    "gemini": {"input": 0.10, "output": 0.40},
     "claude": {"input": 3.00, "output": 15.00},
     "deepseek": {"input": 0.27, "output": 1.10},
     "minimax": {"input": 0.30, "output": 0.30}, # Flat rate for MiniMax M2.7/M3
@@ -196,7 +195,7 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
                  message: str = "", self_correction: bool = False) -> None:
     """Record one model/search call's token usage against the current phase and provider."""
     phase = PHASE.get() or "main"
-    # Extract root provider (e.g. 'gemini/gemini-2.0' -> 'gemini')
+    # Extract root provider (e.g. 'claude-cli/default' -> 'claude-cli')
     root_provider = provider.split("/")[0].lower() if "/" in provider else provider.lower()
     
     with _USAGE_LOCK:

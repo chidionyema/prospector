@@ -12,6 +12,9 @@ export type { InputProps } from './Input';
 export { Select } from './Select';
 export type { SelectProps } from './Select';
 
+export { Dropdown } from './Dropdown';
+export type { DropdownProps, DropdownOption } from './Dropdown';
+
 export { Checkbox } from './Checkbox';
 export type { CheckboxProps } from './Checkbox';
 
@@ -25,6 +28,8 @@ export { Logo } from './Logo';
 
 export { Field, describedBy } from './Field';
 export type { FieldProps } from './Field';
+
+export { CoverArt } from './CoverArt';
 
 export { Card } from './Card';
 export type { CardProps } from './Card';

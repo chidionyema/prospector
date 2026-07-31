@@ -33,7 +33,9 @@ CREATE TABLE IF NOT EXISTS dossiers (
     provisional     INTEGER DEFAULT 0,
     dense_reward    REAL,
     adversarial_confidence REAL,
-    persona         TEXT
+    persona         TEXT,
+    retrieval_degraded INTEGER DEFAULT 0,
+    market          TEXT
 );
 """
 
@@ -44,14 +46,16 @@ CREATE INDEX IF NOT EXISTS idx_ambition_tier ON dossiers(ambition_tier);
 CREATE INDEX IF NOT EXISTS idx_structural_form ON dossiers(structural_form);
 CREATE INDEX IF NOT EXISTS idx_dense_reward ON dossiers(dense_reward);
 CREATE INDEX IF NOT EXISTS idx_persona ON dossiers(persona);
+CREATE INDEX IF NOT EXISTS idx_market ON dossiers(market);
 """
 
 _UPSERT = """
 INSERT OR REPLACE INTO dossiers
     (candidate_id, title, one_liner, decision, gate_fired, composite,
-     created_at, reverify_due_at, path, ambition_tier, structural_form, 
-     provisional, dense_reward, adversarial_confidence, persona)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     created_at, reverify_due_at, path, ambition_tier, structural_form,
+     provisional, dense_reward, adversarial_confidence, persona, retrieval_degraded,
+     market)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 
@@ -87,7 +91,9 @@ class Store:
                                ("provisional", "INTEGER DEFAULT 0"),
                                ("dense_reward", "REAL"),
                                ("adversarial_confidence", "REAL"),
-                               ("persona", "TEXT")]:
+                               ("persona", "TEXT"),
+                               ("retrieval_degraded", "INTEGER DEFAULT 0"),
+                               ("market", "TEXT")]:
                 if col not in cols:
                     conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
             
@@ -144,18 +150,57 @@ class Store:
                 int(bool(getattr(dossier, "provisional", False))),
                 dossier.dense_reward,
                 adv_conf,
-                getattr(dossier, "persona", "") or ""
+                getattr(dossier, "persona", "") or "",
+                # Audit: did ANY check rule under degraded/failed retrieval? Lets the
+                # audit trail tell a clean grounded verdict from one served on thin
+                # evidence, independent of the DEFER decision and provisional flag.
+                int(any(getattr(c, "degraded", False) or getattr(c, "retrieval_failed", False)
+                        for c in getattr(dossier, "checks", []) or [])),
+                getattr(dossier.candidate, "market", "") or "",
             ))
         return path
 
-    def catalogue_titles(self) -> list[str]:
-        """Return fingerprints of all PASS dossiers (used by dedup)."""
+    def catalogue_titles(self) -> list[tuple[str, str]]:
+        """Return (market, fingerprint) for all PASS dossiers (used by dedup).
+
+        The market travels with the fingerprint because the same idea in a different
+        jurisdiction is NOT a duplicate — "mobile notary bond, Texas" and the UK version
+        are different opportunities with different evidence. Pre-Epic-D rows carry '' and
+        are treated as the default market by dedup.
+        """
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT title, one_liner FROM dossiers WHERE decision = ?",
+                "SELECT title, one_liner, market FROM dossiers WHERE decision = ?",
                 (Decision.PASS.value,),
             ).fetchall()
-        return [f"{row['title']} {row['one_liner']}".strip() for row in rows]
+        return [(row["market"] or "", f"{row['title']} {row['one_liner']}".strip())
+                for row in rows]
+
+    def markets_present(self) -> dict[str, int]:
+        """Dossier counts keyed by market ('' = pre-Epic-D rows). Feeds diagnostics."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT COALESCE(market, '') AS m, COUNT(*) AS n "
+                "FROM dossiers GROUP BY m ORDER BY n DESC"
+            ).fetchall()
+        return {row["m"]: row["n"] for row in rows}
+
+    def recent_titles(self, limit: int = 200) -> list[str]:
+        """Return the most recent dossier titles across ALL decisions (PASS/KILL/DEFER).
+
+        This is generation's CROSS-RUN MEMORY. catalogue_titles() returns PASS only, so an
+        idea that keeps getting KILLed (e.g. a probate-clearance variant) is invisible to it —
+        and the blue-sky daemon happily regenerates the same family every wave because the
+        in-run `avoid` list is wiped between runs. Seeding generation's avoid list from this
+        (kills included) stops the engine from re-spending budget on ideas it has already seen.
+        Ordered newest-first so a bounded slice is the freshest memory.
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT title FROM dossiers ORDER BY created_at DESC LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+        return [row["title"] for row in rows if (row["title"] or "").strip()]
 
     def get(self, candidate_id: str) -> Optional[dict]:
         """Load and return the stored dossier dict, or None if not found."""

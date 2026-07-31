@@ -14,6 +14,7 @@ exist and be non-trivial).
 """
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Tuple
 
 # The four £30-pack artifacts. All must be present and non-trivial — these ARE the
@@ -22,6 +23,22 @@ from typing import Dict, List, Tuple
 # exactly 0 when a tier silently fails. A 200-char floor cleanly separates the two.
 REQUIRED_ARTIFACTS = ("build_spec", "gtm_plan", "ops_plan", "financial_model")
 MIN_ARTIFACT_CHARS = 200
+
+# The three PROSE artifacts ARE the £49 product. Length alone is a weak bar — 200 chars of
+# boilerplate clears it. A genuine artifact is substantial (1500+ chars) AND structured into
+# several sections; a stub is short or one undifferentiated block. These two checks reject a
+# long blob and a thin stub without rejecting a real artifact (the floor sits well below a
+# real one's size and section count, so it never blocks genuine output — only inventory-
+# killing over-restriction would, which we explicitly avoid).
+PROSE_ARTIFACTS = ("build_spec", "gtm_plan", "ops_plan")
+MIN_PROSE_CHARS = 600
+MIN_PROSE_BLOCKS = 3
+
+
+def _blocks(text: str) -> List[str]:
+    """Distinct paragraphs/sections, format-agnostic: split on blank lines so it works whether
+    the model used markdown headings or just paragraphs."""
+    return [b for b in re.split(r"\n\s*\n", text.strip()) if b.strip()]
 
 # Marketing pieces can be legitimately dropped when they fail claim-check (by design),
 # so we don't require all four. But the listing page is the storefront copy itself — a
@@ -49,6 +66,19 @@ def validate_pack(
         elif size < MIN_ARTIFACT_CHARS:
             problems.append(
                 f"artifact '{name}' is only {size} chars (<{MIN_ARTIFACT_CHARS}; looks like a stub)"
+            )
+
+    # Substance gate for the prose deliverable: it must be more than a long stub. Only applied
+    # to artifacts that already cleared the basic floor (so we don't double-report an empty one).
+    for name in PROSE_ARTIFACTS:
+        content = ((artifacts or {}).get(name) or "").strip()
+        if len(content) < MIN_ARTIFACT_CHARS:
+            continue
+        blocks = _blocks(content)
+        if len(content) < MIN_PROSE_CHARS or len(blocks) < MIN_PROSE_BLOCKS:
+            problems.append(
+                f"artifact '{name}' is thin ({len(content)} chars, {len(blocks)} section(s); "
+                f"need >= {MIN_PROSE_CHARS} chars and >= {MIN_PROSE_BLOCKS} sections to sell)"
             )
 
     by_type = {m.get("type"): (m.get("copy") or "") for m in (marketing or [])}

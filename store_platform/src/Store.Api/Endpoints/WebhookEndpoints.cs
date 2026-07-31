@@ -34,7 +34,7 @@ public static class WebhookEndpoints
         var paymentProvider = sp.GetKeyedService<IPaymentProvider>(provider);
         if (paymentProvider is null)
         {
-            return Results.NotFound();
+            return UnknownProvider(provider, logger);
         }
 
         using var reader = new StreamReader(request.Body);
@@ -45,6 +45,13 @@ public static class WebhookEndpoints
         if (!result.Verified)
         {
             return HandleVerifyFailure(result);
+        }
+
+        // P1-1 — refund/dispute: revoke the entitlement instead of granting one.
+        if (result.Reversal is not null)
+        {
+            return await HandleReversalAsync(db, provider, result.Reversal, rawBody, fulfilmentService, logger)
+                .ConfigureAwait(false);
         }
 
         var txn = result.Transaction!;
@@ -79,6 +86,24 @@ public static class WebhookEndpoints
         });
     }
 
+    // AC-5 — a bare 404 here is indistinguishable from a typo'd URL, so a provider
+    // misconfiguration (or a webhook registered against a provider this build does not have)
+    // looked like routine noise while every payment event was silently dropped. 503 tells the
+    // provider to RETRY rather than treat the endpoint as gone, so the events stay recoverable
+    // once the misconfiguration is fixed.
+    private static IResult UnknownProvider(string provider, ILogger logger)
+    {
+        logger.LogError(
+            "WEBHOOK-PROVIDER-UNKNOWN: received a webhook for '{Provider}', which is not a "
+            + "registered payment provider in this build. The event was NOT processed. If this "
+            + "is the active provider, payments are being dropped right now.",
+            provider);
+
+        return Results.Problem(
+            detail: $"'{provider}' is not a registered payment provider.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
     // Records the inbound webhook for dedup. Returns true if this event was already
     // processed (caller short-circuits with ALREADY_PROCESSED). The WebhookEvent is only
     // staged here — the actual SaveChangesAsync (and thus any unique-constraint race) happens
@@ -103,9 +128,54 @@ public static class WebhookEndpoints
         return false;
     }
 
+    // P1-1 — apply a refund/dispute reversal. Deduped on the reversal event's own id
+    // (distinct from the original payment's transaction id) so a redelivered refund webhook
+    // is a no-op. Revocation itself is idempotent (only flips Active entitlements).
+    private static async Task<IResult> HandleReversalAsync(
+        StoreDbContext db,
+        string provider,
+        PaymentReversal reversal,
+        string rawBody,
+        FulfilmentService fulfilmentService,
+        ILogger logger)
+    {
+        if (await WebhookAlreadyProcessedAsync(db, provider, reversal.ReversalEventId).ConfigureAwait(false))
+        {
+            return Results.Ok(new { status = "ALREADY_PROCESSED", eventId = reversal.ReversalEventId });
+        }
+
+        db.WebhookEvents.Add(new WebhookEvent
+        {
+            Provider = provider,
+            ProviderEventId = reversal.ReversalEventId,
+            EventType = reversal.Kind,
+            RawPayload = rawBody,
+        });
+
+        var outcome = await fulfilmentService.RevokeAsync(reversal).ConfigureAwait(false);
+        logger.LogWarning(
+            "Reversal ({Kind}) for {TransactionId}: revoked {Revoked} entitlement(s), updated {Orders} order(s).",
+            reversal.Kind, reversal.OriginalTransactionId, outcome.EntitlementsRevoked, outcome.OrdersUpdated);
+
+        return Results.Ok(new
+        {
+            status = "REVERSED",
+            kind = reversal.Kind,
+            revoked = outcome.EntitlementsRevoked,
+            orders = outcome.OrdersUpdated,
+        });
+    }
+
     private static IResult HandleVerifyFailure(WebhookVerifyResult result)
     {
         if (string.Equals(result.Reason, "secret-not-configured", StringComparison.Ordinal))
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+        // A basket whose per-line amounts could not be read. The payment is real and the event is
+        // replayable, so this is transient-by-nature: answer 503 so the retry is the expected
+        // outcome rather than looking like a malformed payload nobody should resend.
+        if (string.Equals(result.Reason, "line-items-unavailable", StringComparison.Ordinal))
         {
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
@@ -126,8 +196,30 @@ public static class WebhookEndpoints
         string? storeUrl,
         ILogger logger)
     {
-        if (entitlements.Count == 0 || string.IsNullOrEmpty(storeUrl) || !emailSender.IsConfigured)
+        if (entitlements.Count == 0)
         {
+            return;
+        }
+
+        // Both of these used to be part of a single silent early return, so a live deployment
+        // with no mail token dispatched nothing and logged nothing — the fulfilment path stayed
+        // green while buyers received no link. Never fail quiet on a path a buyer has paid for.
+        if (string.IsNullOrEmpty(storeUrl))
+        {
+            logger.LogError(
+                "FULFILMENT-EMAIL-SKIPPED for {Count} entitlement(s): Store:PublicUrl / STORE_PUBLIC_URL "
+                + "is not set, so no magic link can be addressed. Buyers must use the success page.",
+                entitlements.Count);
+            return;
+        }
+
+        if (!emailSender.IsConfigured)
+        {
+            logger.LogError(
+                "FULFILMENT-EMAIL-SKIPPED for {Count} entitlement(s): the email sender is not configured "
+                + "(MAILJET_API_KEY / MAILJET_API_SECRET / MAILJET_FROM_EMAIL). Buyers must use the "
+                + "success page.",
+                entitlements.Count);
             return;
         }
 
@@ -145,9 +237,12 @@ public static class WebhookEndpoints
                 .ConfigureAwait(false);
             if (!sent)
             {
-                logger.LogWarning(
-                    "Magic-link email not sent for {PackId} to {Email}; link can be re-issued.",
-                    ent.PackId, ent.BuyerEmail);
+                // A buyer has paid and their delivery email did not go out. Raised at error
+                // level so it surfaces alongside the paid-without-fulfilment alarm, and it
+                // carries the order URL so an operator can re-issue the link by hand.
+                logger.LogError(
+                    "FULFILMENT-EMAIL-FAILED for {PackId} to {Email}; re-issue manually: {OrderUrl}",
+                    ent.PackId, ent.BuyerEmail, orderUrl);
             }
         }
     }

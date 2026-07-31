@@ -32,6 +32,22 @@ class FixtureMiss(RuntimeError):
     """
 
 
+class GroundingInfrastructureError(RuntimeError):
+    """ALL search providers are dead (402/401/429/auth). Not a content verdict —
+    infrastructure collapse. The daemon must HALT, not defer, to stop burning LLM
+    credits on candidates that can never be verified."""
+
+
+class SearchProviderError(RuntimeError):
+    """Raised by a search provider that RAN but failed at the infrastructure level —
+    e.g. SearXNG returns HTTP 200 with zero results because every upstream engine timed
+    out or was blocked. This is NOT a content verdict ("found nothing") and NOT a config
+    skip (ProviderUnavailable): the provider is broken right now. FallbackSearchProvider
+    lets this hit the generic exception path so it (a) fails over to the next provider and
+    (b) counts against the breaker, retiring a persistently-dead provider after the
+    threshold so the chain stops paying its latency on every check."""
+
+
 class ProviderUnavailable(RuntimeError):
     """Raised by a search provider that is NOT CONFIGURED to run (e.g. its API key
     is missing), as opposed to one that ran and legitimately found nothing.
@@ -45,7 +61,7 @@ class ProviderUnavailable(RuntimeError):
 
 
 # Substrings that mean "this account/model is out of allowance for now" across the
-# gemini + claude CLIs and the Anthropic/Google APIs. Matched case-insensitively
+# claude CLI and the Anthropic APIs. Matched case-insensitively
 # against an adapter's error text to classify a failure as exhaustion (-> failover).
 _EXHAUSTION_MARKERS = (
     "quota_exhausted",

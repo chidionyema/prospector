@@ -15,6 +15,8 @@ import json
 import os
 import time
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Optional
 import re
@@ -23,9 +25,10 @@ import urllib.parse
 import urllib.request
 
 from .breaker import CircuitBreaker
-from .errors import FixtureMiss, ProviderExhaustedError, ProviderUnavailable
+from .errors import FixtureMiss, ProviderExhaustedError, ProviderUnavailable, SearchProviderError
 from .models import Source
-from .telemetry import track_latency, logger
+from .telemetry import track_latency, logger, record_usage
+from .audit import audit
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / "store" / "_cache"
 
@@ -74,6 +77,9 @@ _RESOLVE_TIMEOUT = 4.0
 # the best evidence due to transient latency.
 _HIGH_AUTHORITY_TIMEOUT = 15.0
 
+# Globally authoritative sources — the wire services, journals and multilaterals that
+# carry weight in any jurisdiction. Per-MARKET authorities (gov.uk, sec.gov, CAC…) are
+# NOT listed here; they come from the active market's config and are unioned in below.
 _HIGH_AUTHORITY_DOMAINS = {
     "ft.com", "reuters.com", "bloomberg.com", "wsj.com", "economist.com",
     "nytimes.com", "theguardian.com", "bbc.co.uk", "bbc.com", "hbr.org",
@@ -81,6 +87,30 @@ _HIGH_AUTHORITY_DOMAINS = {
     "gov.uk", "europa.eu", "un.org", "worldbank.org", "imf.org", "nih.gov",
     "who.int", "gartner.com", "forrester.com", "mckinsey.com", "deloitte.com",
 }
+
+# The active market's authority domains, unioned with the base set above.
+#
+# A ContextVar rather than a module global on purpose: a plain global would be shared by
+# every worker thread, so the moment vetting runs more than one market concurrently
+# (vet_workers > 1) one market's authority list would silently apply to another's
+# fetches. ContextVar keeps it per-execution-context, so that cannot happen.
+_market_authority_domains: ContextVar[frozenset[str]] = ContextVar(
+    "market_authority_domains", default=frozenset())
+
+
+@contextmanager
+def market_retrieval(cfg):
+    """Scope retrieval to a market's evidence terrain for the duration of the block."""
+    domains = frozenset(
+        str(d).lower().lstrip(".")
+        for d in ((cfg.market_config() or {}).get("authority_domains") or [])
+    ) if getattr(cfg, "markets", None) else frozenset()
+    token = _market_authority_domains.set(domains)
+    try:
+        yield
+    finally:
+        _market_authority_domains.reset(token)
+
 
 def _get_timeout(url: str) -> float:
     """Determine timeout based on domain authority (Domain-Aware Patience)."""
@@ -94,8 +124,9 @@ def _get_timeout(url: str) -> float:
         if netloc.endswith(".gov") or netloc.endswith(".edu") or netloc.endswith(".int"):
             return _HIGH_AUTHORITY_TIMEOUT
             
-        # Domain-list authority
-        if any(netloc == d or netloc.endswith("." + d) for d in _HIGH_AUTHORITY_DOMAINS):
+        # Domain-list authority: global base + the active market's own authorities.
+        authorities = _HIGH_AUTHORITY_DOMAINS | _market_authority_domains.get()
+        if any(netloc == d or netloc.endswith("." + d) for d in authorities):
             return _HIGH_AUTHORITY_TIMEOUT
     except Exception:
         pass
@@ -143,7 +174,7 @@ def resolve_sources(items: list[dict], query: str, max_chars: int, k: int) -> li
     dropping dead/fabricated URLs (source-or-die). Each _resolve() is an independent,
     side-effect-free HEAD request, so running them concurrently is pure latency — the
     drop-dead-URL outcome and the result ORDER are identical to resolving serially.
-    Used by both CLI grounding providers (gemini, claude)."""
+    Used by the CLI grounding provider (claude)."""
     cand = [it for it in (items or [])[:k] if str(it.get("url", ""))]
     if not cand:
         return []
@@ -162,6 +193,9 @@ def resolve_sources(items: list[dict], query: str, max_chars: int, k: int) -> li
 
 
 class GeminiGroundingProvider(SearchProvider):
+    """DEPRECATED — replaced by AgyCliGroundingProvider.
+    Google grounding via google-genai SDK. Kept for reference; not wired in the
+    grounding provider factory."""
     def __init__(self, model: str = "gemini-2.0-flash", api_key: Optional[str] = None,
                  resolve_urls: bool = True):
         from google import genai
@@ -257,47 +291,67 @@ class FixtureProvider(SearchProvider):
           - Hyphens/spaces normalised (re-split on non-alphanumeric)
           - Empty-string key acts as catch-all fallback (matches any query).
         """
-        # Catch-all: empty-string key matches everything.
-        if "" in self._fixtures:
-            items = self._fixtures[""]
-            results = [Source.make(url=i["url"], text=i["text"][:max_chars],
-                                published_at=i.get("published_at"), query=query)
-                    for i in items[:k]]
-            logger.info(f"Fixture match: '' (catch-all, query={query!r})")
-            return results
+        record_usage(web=True, provider="fixture")
+        start = time.monotonic()
+        try:
+            # Catch-all: empty-string key matches everything.
+            if "" in self._fixtures:
+                items = self._fixtures[""]
+                results = [Source.make(url=i["url"], text=i["text"][:max_chars],
+                                    published_at=i.get("published_at"), query=query)
+                        for i in items[:k]]
+                logger.info(f"Fixture match: '' (catch-all, query={query!r})")
+                audit("search", provider="fixture", query=query[:200], k=k,
+                      max_chars=max_chars, returned_n=len(results),
+                      latency_ms=int((time.monotonic() - start) * 1000),
+                      status="ok" if results else "empty")
+                return results
 
-        q_words = {_stem(w) for w in re.split(r'[^\w]+', query) if w}
-        best_key: str | None = None
-        best_score = 0.0
+            q_words = {_stem(w) for w in re.split(r'[^\w]+', query) if w}
+            best_key: str | None = None
+            best_score = 0.0
 
-        for key, items in self._fixtures.items():
-            k_words = [_stem(w) for w in re.split(r'[^\w]+', key)
-                        if w and w.lower() not in _FIXTURE_STOP]
-            if not k_words:
-                continue
-            overlap = sum(1 for w in k_words if w in q_words)
-            score = overlap / len(k_words)
-            if score >= _FIXTURE_MIN_MATCH_RATIO and score > best_score:
-                best_score = score
-                best_key = key
+            for key, items in self._fixtures.items():
+                k_words = [_stem(w) for w in re.split(r'[^\w]+', key)
+                            if w and w.lower() not in _FIXTURE_STOP]
+                if not k_words:
+                    continue
+                overlap = sum(1 for w in k_words if w in q_words)
+                score = overlap / len(k_words)
+                if score >= _FIXTURE_MIN_MATCH_RATIO and score > best_score:
+                    best_score = score
+                    best_key = key
 
-        if best_key is not None:
-            items = self._fixtures[best_key]
-            results = [Source.make(url=i["url"], text=i["text"][:max_chars],
-                                published_at=i.get("published_at"), query=query)
-                    for i in items[:k]]
-            logger.info(f"Fixture match: {best_key!r} (score={best_score:.0%}, query={query!r})")
-            return results
+            if best_key is not None:
+                items = self._fixtures[best_key]
+                results = [Source.make(url=i["url"], text=i["text"][:max_chars],
+                                    published_at=i.get("published_at"), query=query)
+                        for i in items[:k]]
+                logger.info(f"Fixture match: {best_key!r} (score={best_score:.0%}, query={query!r})")
+                audit("search", provider="fixture", query=query[:200], k=k,
+                      max_chars=max_chars, returned_n=len(results),
+                      latency_ms=int((time.monotonic() - start) * 1000),
+                      status="ok" if results else "empty")
+                return results
 
-        if self._raise_on_miss:
-            raise FixtureMiss(f"no fixture entry matched query: {query!r}")
-        return []
+            if self._raise_on_miss:
+                raise FixtureMiss(f"no fixture entry matched query: {query!r}")
+            audit("search", provider="fixture", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="empty")
+            return []
+        except Exception as e:
+            audit("search", provider="fixture", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
+            raise
 
 
 # ---------------------------------------------------------------------------
 # External API search providers (grounding resilience chain)
-# These kick in when the primary grounding providers (gemini_cli, claude_cli,
-# gemini_grounding) are all exhausted. Each must return list[Source] on
+# These kick in when the primary grounding providers (claude_cli) are all exhausted. Each must return list[Source] on
 # success, [] on failure — never raise, so the FallbackSearchProvider can
 # continue to the next tier.
 # ---------------------------------------------------------------------------
@@ -327,6 +381,8 @@ class BraveSearchProvider(SearchProvider):
         if not self._configured:
             logger.debug("BraveSearchProvider: BRAVE_API_KEY not set, skipping")
             raise ProviderUnavailable("BRAVE_API_KEY not set")
+        record_usage(web=True, provider="brave")
+        start = time.monotonic()
         try:
             url = (f"{self._BASE_URL}"
                    f"?q={urllib.parse.quote(query)}&count={min(k, 10)}"
@@ -342,6 +398,10 @@ class BraveSearchProvider(SearchProvider):
                 data = json.loads(r.read())
         except Exception as e:
             logger.warning(f"Brave search failed: {e}")
+            audit("search", provider="brave", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
             return []
 
         results: list[Source] = []
@@ -363,10 +423,21 @@ class BraveSearchProvider(SearchProvider):
                 results.append(Source.make(url=url, text=snippet, query=query))
         except Exception as e:
             logger.warning(f"Brave parse error: {e}")
+            audit("search", provider="brave", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
             return []
 
         logger.info(f"Brave search: {len(results)} results for {query!r}",
                     extra={"query": query, "count": len(results)})
+        audit("search", provider="brave", query=query[:200], k=k,
+              max_chars=max_chars, returned_n=len(results),
+              latency_ms=int((time.monotonic() - start) * 1000),
+              status="ok" if results else "empty")
+        return results
+
+
 class ExaSearchProvider(SearchProvider):
     """Exa Search API — free tier (1,000–20,000 queries/month, no credit card).
 
@@ -384,6 +455,8 @@ class ExaSearchProvider(SearchProvider):
         if not key:
             logger.debug("ExaSearchProvider: EXA_API_KEY not set, skipping")
             raise ProviderUnavailable("EXA_API_KEY not set")
+        record_usage(web=True, provider="exa")
+        start = time.monotonic()
         try:
             from exa_py import Exa
             exa = Exa(api_key=key)
@@ -402,11 +475,233 @@ class ExaSearchProvider(SearchProvider):
                     results.append(Source.make(url=resolved, text=text, query=query))
             logger.info(f"Exa search: {len(results)} results for {query!r}",
                         extra={"query": query, "count": len(results)})
+            audit("search", provider="exa", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=len(results),
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="ok" if results else "empty")
             return results
         except Exception as e:
-            logger.warning(f"Exa search error: {e}")
-            return []
+            # A transport/auth/API error is NOT "zero evidence". Swallowing it into [] makes the
+            # FallbackSearchProvider read a dead provider as a successful empty result and STOP —
+            # never failing over to brave/claude_cli. That is exactly how a bad
+            # EXA_API_KEY silently zeroed grounding (every check -> unverifiable, conf ~0.40).
+            # Propagate so the chain fails over, and if every provider is down it DEFERs (+alerts).
+            logger.warning(f"Exa search error: {e}; failing over to next provider")
+            audit("search", provider="exa", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
+            raise
 
+
+
+
+class TavilySearchProvider(SearchProvider):
+    """Tavily Search API — real web search, simple REST API.
+
+    Free tier: 1,000 queries/month. Configure with:
+      TAVILY_API_KEY=<your-key>  (free key at https://app.tavily.com)
+
+    Returns real URLs with content snippets — no URL hallucination risk.
+    HTTP 402/401/429 errors re-raise so the FallbackSearchProvider fails over.
+    """
+    @track_latency(name="tavily_search")
+    def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        key = os.environ.get("TAVILY_API_KEY", "")
+        if not key:
+            logger.debug("TavilySearchProvider: TAVILY_API_KEY not set, skipping")
+            raise ProviderUnavailable("TAVILY_API_KEY not set")
+        record_usage(web=True, provider="tavily")
+        start = time.monotonic()
+        try:
+            payload = json.dumps({
+                "query": query,
+                "search_depth": "basic",
+                "max_results": min(k, 10),
+                "include_answer": False,
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                "https://api.tavily.com/search",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {key}",
+                },
+            )
+            resp = urllib.request.urlopen(req, timeout=30)
+            data = json.loads(resp.read().decode("utf-8"))
+            results: list[Source] = []
+            for item in (data.get("results") or []):
+                url = item.get("url", "")
+                if not url:
+                    continue
+                resolved = _resolve(url)
+                if not resolved:
+                    continue
+                text = (item.get("content") or "").strip()[:max_chars]
+                if text:
+                    results.append(Source.make(url=resolved, text=text, query=query))
+            logger.info(f"Tavily search: {len(results)} results for {query!r}",
+                        extra={"query": query, "count": len(results)})
+            audit("search", provider="tavily", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=len(results),
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="ok" if results else "empty")
+            return results
+        except Exception as e:
+            logger.warning(f"Tavily search error: {e}; failing over to next provider")
+            audit("search", provider="tavily", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
+            raise
+
+
+
+class SearXNGSearcher(SearchProvider):
+    """SearXNG — self-hosted metasearch, keyless, unlimited.
+
+    Queries the local SearXNG container at SEARXNG_URL (default localhost:8080).
+    Aggregates results from DuckDuckGo, Bing, Brave etc. with no API key,
+    no credits, no quota. This is the load-bearing primary provider.
+
+    Docker: docker compose -f searxng/docker-compose.yml up -d
+    Must have format=json enabled in settings.yml and limiter: false.
+    """
+    def __init__(self, base_url: str | None = None, timeout: float = 6.0):
+        # timeout is a HARD ceiling on the whole HTTP round-trip. Kept tight (6s) so a
+        # SearXNG whose upstream engines are hanging fails over fast instead of stalling
+        # every check on a dead metasearch. Per-engine patience is set separately in
+        # searxng/settings.yml (outgoing.request_timeout) so SearXNG itself gives up on
+        # blocked engines in ~2.5s and returns.
+        self.base = (base_url or os.environ.get("SEARXNG_URL", "http://localhost:8080")).rstrip("/")
+        self.timeout = timeout
+
+    @track_latency(name="searxng_search")
+    def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        record_usage(web=True, provider="searxng")
+        start = time.monotonic()
+        try:
+            import urllib.request
+            url = f"{self.base}/search?q={urllib.parse.quote(query)}&format=json"
+            req = urllib.request.Request(url)
+            resp = urllib.request.urlopen(req, timeout=self.timeout)
+            data = json.loads(resp.read().decode("utf-8"))
+            results: list[Source] = []
+            for item in (data.get("results") or [])[:k]:
+                result_url = item.get("url", "")
+                if not result_url:
+                    continue
+                resolved = _resolve(result_url)
+                if not resolved:
+                    continue
+                text = (item.get("content", "") or item.get("snippet", "") or "").strip()[:max_chars]
+                if text:
+                    results.append(Source.make(url=resolved, text=text, query=query))
+            # Distinguish a WORKING-but-empty response (engines ran, found nothing — real
+            # evidence of nothing) from a BROKEN-empty one (HTTP 200, but every upstream
+            # engine timed out / was blocked). The latter is an infrastructure failure
+            # masquerading as "found nothing"; returning [] would make FallbackSearchProvider
+            # short-circuit and NEVER consult the next provider (ddg). Raise instead so the
+            # fall-over-on-exception path fires AND the circuit breaker eventually retires a
+            # persistently-dead SearXNG (so we stop paying its latency on every check).
+            unresponsive = data.get("unresponsive_engines") or []
+            if not results and unresponsive:
+                msg = (f"SearXNG returned 0 results with {len(unresponsive)} unresponsive "
+                       f"engine(s) {unresponsive[:4]} — treating as provider failure, not empty")
+                logger.warning(f"{msg}; failing over to next provider")
+                audit("search", provider="searxng", query=query[:200], k=k,
+                      max_chars=max_chars, returned_n=0,
+                      latency_ms=int((time.monotonic() - start) * 1000),
+                      status="error", error=msg[:200])
+                raise SearchProviderError(msg)
+            logger.info(f"SearXNG search: {len(results)} results for {query!r}",
+                        extra={"query": query, "count": len(results)})
+            audit("search", provider="searxng", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=len(results),
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="ok" if results else "empty")
+            return results
+        except Exception as e:
+            logger.warning(f"SearXNG search error: {e}; failing over to next provider")
+            audit("search", provider="searxng", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
+            raise
+
+class DuckDuckGoSearchProvider(SearchProvider):
+    """DuckDuckGo search via ddgs library — free, keyless, no account needed.
+
+    Uses the duckduckgo-search Python library which scrapes DuckDuckGo's HTML
+    (not an official API). Rate-limited by DuckDuckGo if abused, but as a
+    bottom-rung fallback for a personal daemon this is acceptable.
+
+    Returns real URLs with snippets. No API key, no credits, no expiration.
+
+    `region` selects the locale ddgs searches in ("uk-en", "us-en", …). Note that ddgs
+    DEFAULTS to "us-en" when the argument is omitted, which is what this provider did
+    for its whole life — so a UK-only engine has been grounding on US-biased results.
+    The uk market therefore pins "us-en" to preserve that behaviour exactly; changing it
+    is a measured yield decision that must move the market's cache_salt with it.
+    """
+    def __init__(self, region: Optional[str] = None) -> None:
+        self.region = region or None
+
+    @track_latency(name="ddg_search")
+    def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        record_usage(web=True, provider="ddg")
+        start = time.monotonic()
+        try:
+            from ddgs import DDGS
+            # ddgs 9.x's underlying primp/impersonation client throws transient
+            # FakeUserAgentError / SystemError("...Client...returned a result with an
+            # exception set") on its FIRST call in a process with non-trivial frequency;
+            # a plain retry succeeds (proven: attempt #2 returns relevant gov.uk pages).
+            # Retry up to 3x so a flaky first call doesn't blind the only working free
+            # fallback. Real "no results" returns [] on attempt 1 and is kept as-is.
+            raw: list = []
+            last_exc: Optional[Exception] = None
+            for attempt in range(3):
+                try:
+                    kw = {"max_results": min(k, 10)}
+                    if self.region:
+                        kw["region"] = self.region
+                    with DDGS() as ddgs:
+                        raw = list(ddgs.text(query, **kw))
+                    last_exc = None
+                    break
+                except Exception as e:  # noqa: BLE001 — transient primp/UA flakiness
+                    last_exc = e
+                    logger.info(f"DDG attempt {attempt + 1}/3 transient error: "
+                                f"{type(e).__name__}: {str(e)[:120]}")
+            if last_exc is not None:
+                raise last_exc
+            results: list[Source] = []
+            for item in raw:
+                url = item.get("href", "") or item.get("url", "")
+                if not url:
+                    continue
+                resolved = _resolve(url)
+                if not resolved:
+                    continue
+                text = (item.get("body", "") or item.get("description", "") or "").strip()[:max_chars]
+                if text:
+                    results.append(Source.make(url=resolved, text=text, query=query))
+            logger.info(f"DDG search: {len(results)} results for {query!r}",
+                        extra={"query": query, "count": len(results)})
+            audit("search", provider="ddg", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=len(results),
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="ok" if results else "empty")
+            return results
+        except Exception as e:
+            logger.warning(f"DDG search error: {e}; failing over to next provider")
+            audit("search", provider="ddg", query=query[:200], k=k,
+                  max_chars=max_chars, returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
+            raise
 
 class _LLMSearchProvider(SearchProvider):
     """Base class for LLM-backed search providers that synthesize web-grounded
@@ -445,41 +740,56 @@ class _LLMSearchProvider(SearchProvider):
 
     @track_latency(name="llm_synthesis_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
-        text, sources = self._call_search(query)
-        results: list[Source] = []
+        record_usage(web=True, provider=self.provider_name or "llm_search")
+        start = time.monotonic()
+        try:
+            text, sources = self._call_search(query)
+            results: list[Source] = []
 
-        # Extract and validate URLs from the response
-        urls = re.findall(r'https?://[^\s\)\;\,\]\'"\'>]+', text)
-        for raw_url in urls[:k]:
-            url = raw_url.rstrip(".,;:)")
-            if self.resolve_urls:
-                resolved = _resolve(url)
-                if not resolved:
-                    logger.warning(f"{self.provider_name}: dropping dead URL", extra={"url": url})
-                    continue
-                url = resolved
-            # Find the sentence containing this URL
-            for line in text.split("\n"):
-                if url in line:
-                    snippet = line.strip()[:max_chars]
-                    break
-            else:
-                snippet = text[:max_chars]
-            results.append(Source.make(url=url, text=snippet, query=query))
+            # Extract and validate URLs from the response
+            urls = re.findall(r'https?://[^\s\)\;\,\]\'"\'>]+', text)
+            for raw_url in urls[:k]:
+                url = raw_url.rstrip(".,;:)")
+                if self.resolve_urls:
+                    resolved = _resolve(url)
+                    if not resolved:
+                        logger.warning(f"{self.provider_name}: dropping dead URL", extra={"url": url})
+                        continue
+                    url = resolved
+                # Find the sentence containing this URL
+                for line in text.split("\n"):
+                    if url in line:
+                        snippet = line.strip()[:max_chars]
+                        break
+                else:
+                    snippet = text[:max_chars]
+                results.append(Source.make(url=url, text=snippet, query=query))
 
-        # Fallback: if no valid URLs, return the synthesis as an unsourced Source
-        # (better than [] — the moat can still rule on the content)
-        if not results and text.strip():
-            logger.info(f"{self.provider_name}: no valid URLs; returning synthesis as unsourced source",
-                        extra={"query": query})
-            results.append(Source.make(
-                url=f"synthesized://{self.provider_name}/knowledge",
-                text=text.strip()[:max_chars],
-                query=query))
+            # Fallback: if no valid URLs, return the synthesis as an unsourced Source
+            # (better than [] — the moat can still rule on the content)
+            if not results and text.strip():
+                logger.info(f"{self.provider_name}: no valid URLs; returning synthesis as unsourced source",
+                            extra={"query": query})
+                results.append(Source.make(
+                    url=f"synthesized://{self.provider_name}/knowledge",
+                    text=text.strip()[:max_chars],
+                    query=query))
 
-        logger.info(f"{self.provider_name} synthesis: {len(results)} sources for {query!r}",
-                    extra={"query": query, "count": len(results)})
-        return results
+            logger.info(f"{self.provider_name} synthesis: {len(results)} sources for {query!r}",
+                        extra={"query": query, "count": len(results)})
+            audit("search", provider=self.provider_name or "llm_search",
+                  query=query[:200], k=k, max_chars=max_chars,
+                  returned_n=len(results),
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="ok" if results else "empty")
+            return results
+        except Exception as e:
+            audit("search", provider=self.provider_name or "llm_search",
+                  query=query[:200], k=k, max_chars=max_chars,
+                  returned_n=0,
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="error", error=str(e)[:200])
+            raise
 
     def _call_search(self, query: str) -> tuple[str, list[dict]]:
         raise NotImplementedError
@@ -885,31 +1195,67 @@ class OpenRouterSearchProvider(_LLMSearchProvider):
 class DiskCache(SearchProvider):
     """Content-addressed cache over any provider (Part 9). Misses delegate; hits
     are served from store/_cache/<sha>.json."""
-    def __init__(self, inner: SearchProvider, cache_dir: Path = CACHE_DIR):
+    def __init__(self, inner: SearchProvider, cache_dir: Path = CACHE_DIR,
+                 ttl_s: int = 0, key_salt: str = ""):
         self.inner = inner
         self.cache_dir = cache_dir
+        # 0 disables expiry; otherwise a cache file older than ttl_s is a miss and
+        # the page is re-grounded so a verdict never rules on stale evidence.
+        self.ttl_s = ttl_s
+        # Per-market salt. Without it, the identical query text run under two different
+        # search regions collides on one cache file, so a US check would be served the
+        # UK's cached evidence — a silent grounding corruption no test would notice.
+        # The default market's salt is "" so the existing cache stays valid.
+        self.key_salt = key_salt or ""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, query: str, k: int, max_chars: int) -> Path:
-        h = hashlib.sha1(f"{query}|{k}|{max_chars}".encode()).hexdigest()[:20]
+        base = f"{query}|{k}|{max_chars}"
+        if self.key_salt:
+            base = f"{base}|{self.key_salt}"
+        h = hashlib.sha1(base.encode()).hexdigest()[:20]
         return self.cache_dir / f"{h}.json"
+
+    def _is_fresh(self, p: Path) -> bool:
+        """A cache file is fresh if expiry is disabled or it is younger than ttl_s."""
+        if self.ttl_s <= 0:
+            return True
+        try:
+            return (time.time() - p.stat().st_mtime) < self.ttl_s
+        except OSError:
+            return False
 
     @track_latency(name="cached_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        record_usage(web=True, provider="cache")
+        start = time.monotonic()
         p = self._path(query, k, max_chars)
-        if p.exists():
+        if p.exists() and self._is_fresh(p):
             try:
                 results = [Source(**d) for d in json.loads(p.read_text())]
                 logger.info("Search cache hit", extra={"query": query, "count": len(results)})
+                audit("search", provider="cache", query=query[:200], k=k,
+                      max_chars=max_chars, returned_n=len(results),
+                      latency_ms=int((time.monotonic() - start) * 1000),
+                      status="ok" if results else "empty", cache_hit=True)
                 return results
             except Exception as e:
                 logger.warning(f"Failed to read search cache: {e}", extra={"path": str(p)})
                 pass
-        
+
         logger.info("Search cache miss", extra={"query": query})
         results = self.inner.search(query, k, max_chars)
-        if results:  # never cache empty/failed results
-            p.write_text(json.dumps([s.to_dict() for s in results], ensure_ascii=False))
+        # Cache writes only succeed when inner returned real results; empty
+        # results stay uncached so a transient outage does not poison the cache.
+        if results:
+            try:
+                p.write_text(json.dumps([s.to_dict() for s in results], ensure_ascii=False))
+            except Exception as e:
+                logger.warning(f"Failed to write search cache: {e}", extra={"path": str(p)})
+        audit("search", provider="cache", query=query[:200], k=k,
+              max_chars=max_chars, returned_n=len(results),
+              latency_ms=int((time.monotonic() - start) * 1000),
+              status="ok" if results else "empty", cache_hit=False)
         return results
 
 
@@ -947,15 +1293,24 @@ class FallbackSearchProvider(SearchProvider):
         from .errors import parse_reset_seconds
         from .health import DEFAULT_EXHAUSTION_S
         last_err: Optional[Exception] = None
+        tried: list[str] = []
+        last_status = "empty"
+        start = time.monotonic()
         for name, prov in self.providers:
             br = self._breakers[name]
             # Persisted quota window (cross-run) OR in-run breaker can skip it for free.
             if self._health.is_dead(name) or not br.allow():
+                tried.append(name)
                 continue
             try:
                 results = prov.search(query, k=k, max_chars=max_chars)
                 br.record_success()       # incl. a legitimate empty [] — provider is healthy
                 self._health.clear(name)  # proven alive — drop any stale dead mark
+                audit("fallback_resolved", actual_provider=name,
+                      tried=tried + [name], query=query[:200], k=k,
+                      max_chars=max_chars, returned_n=len(results),
+                      latency_ms=int((time.monotonic() - start) * 1000),
+                      status="ok" if results else "empty")
                 return results
             except (FixtureMiss, ProviderUnavailable) as e:
                 # Either no fixture matched this query, or the provider is not configured
@@ -964,6 +1319,7 @@ class FallbackSearchProvider(SearchProvider):
                 # (A legitimate empty result from a WORKING provider returns [] above and
                 # short-circuits; a skip must NOT masquerade as that.)
                 logger.info(f"{type(e).__name__} from {name!r}; falling through to next provider")
+                tried.append(name)
                 continue
             except Exception as e:
                 last_err = e
@@ -972,15 +1328,33 @@ class FallbackSearchProvider(SearchProvider):
                 if exhausted:
                     dead_for = parse_reset_seconds(str(e)) or DEFAULT_EXHAUSTION_S
                     self._health.mark_exhausted(name, dead_for)
+                tried.append(name)
+                last_status = "error"
                 logger.warning(
                     f"Grounding provider {name!r} {'exhausted' if exhausted else 'failed'} "
                     f"(breaker={br.state}); failing over to next",
                     extra={"provider": name, "exhausted": exhausted,
                            "breaker": br.state, "error": str(e)[:200]})
-        # Every provider is open or failed this pass — propagate so run_check defers (not a kill).
-        raise ProviderExhaustedError(
-            f"all grounding providers unavailable: {last_err}",
-            provider="+".join(n for n, _ in self.providers))
+        audit("fallback_resolved", actual_provider=None,
+              tried=tried, query=query[:200], k=k,
+              max_chars=max_chars, returned_n=0,
+              latency_ms=int((time.monotonic() - start) * 1000),
+              status=last_status, error=str(last_err)[:200] if last_err else None)
+        # Every provider is down or failed — infrastructure collapse, not a content
+        # verdict. GroundingInfrastructureError propagates to the daemon loop which
+        # HALTS instead of burning LLM credits on unverifiable candidates.
+        from .errors import GroundingInfrastructureError
+        raise GroundingInfrastructureError(
+            f"ALL grounding providers dead: {[n for n, _ in self.providers]}. "
+            f"Last error: {last_err}")
+
+
+def _market_block(cfg) -> dict:
+    """The active market's config block, or {} for a config predating Epic D."""
+    try:
+        return cfg.market_config() or {}
+    except Exception:  # noqa: BLE001 — a stubbed cfg in a test must never break search
+        return {}
 
 
 def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
@@ -989,19 +1363,6 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
         # raise_on_miss=True so FallbackSearchProvider can fall through to live
         # search when a fixture entry is missing (partial fixture coverage).
         return FixtureProvider(fixtures=fixtures, raise_on_miss=bool(fixtures))
-    if name == "gemini_cli":
-        from .gemini_cli import GeminiCliGroundingProvider, configure_concurrency
-        configure_concurrency(r.gemini_concurrency)
-        # Grounding is a web SEARCH (fetch URLs+passages), not reasoning. pro's grounded
-        # search is heavy and times out (~240s); flash-lite is fast but has POOR RECALL
-        # (returns 0 sources for many queries → gates short-circuit to unverifiable). The
-        # mid-tier search_model (gemini-2.5-flash) recalls far better and stays fast. The
-        # capable verdict model (cfg.model) is reserved for ruling on the fetched passages.
-        return GeminiCliGroundingProvider(
-            model=(r.search_model or cfg.model_fast or cfg.model or None),
-            timeout=r.search_timeout, timeout_max=r.search_timeout_max,
-            escalation=r.search_timeout_escalation, retries=r.search_retries,
-            queue_timeout=r.queue_timeout)
     if name == "claude_cli":
         from .claude_cli import ClaudeCliGroundingProvider, configure_concurrency
         configure_concurrency(r.claude_concurrency)
@@ -1010,18 +1371,14 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
             timeout_max=max(r.search_timeout_max, r.claude_min_timeout),
             escalation=r.search_timeout_escalation, retries=r.search_retries,
             queue_timeout=r.queue_timeout)
-    if name == "gemini_grounding":
-        # Gemini grounding: use cfg.model if the operator is gemini, else the
-        # configured gemini default. (Not search.deepseek — that block is for
-        # the LLM-search providers; gemini_grounding is direct search.)
-        md = getattr(cfg, "model_defaults", None)
-        if cfg.operator == "gemini" and cfg.model:
-            model = cfg.model
-        else:
-            model = md.gemini if md else "gemini-2.0-flash"
-        return GeminiGroundingProvider(model=model)
     if name == "brave":
         return BraveSearchProvider()
+    if name == "searxng":
+        return SearXNGSearcher()
+    if name == "ddg":
+        return DuckDuckGoSearchProvider(region=_market_block(cfg).get("search_region"))
+    if name == "tavily":
+        return TavilySearchProvider()
     if name == "exa":
         return ExaSearchProvider()
     if name == "deepseek":
@@ -1054,4 +1411,7 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
         else FallbackSearchProvider(built,
                                     failure_threshold=r.breaker_failure_threshold,
                                     cooldown_s=r.breaker_cooldown_s))
-    return DiskCache(base) if cfg.retrieval.cache else base
+    if not cfg.retrieval.cache:
+        return base
+    return DiskCache(base, ttl_s=cfg.retrieval.cache_ttl_s,
+                     key_salt=str(_market_block(cfg).get("cache_salt", "") or ""))

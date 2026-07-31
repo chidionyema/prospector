@@ -26,6 +26,9 @@ class TestThemeCSS:
         assert ".cc-kpi" in THEME_CSS, "missing .cc-kpi"
         assert ".cc-alarm" in THEME_CSS, "missing .cc-alarm"
         assert ".cc-pill" in THEME_CSS, "missing .cc-pill"
+        assert ".cc-hero" in THEME_CSS, "missing .cc-hero"
+        assert "#6366f1" not in THEME_CSS, "purple AI default must not return"
+        assert "#e8a838" in THEME_CSS or "--cc-primary" in THEME_CSS
 
     def test_inject_theme_does_not_raise(self):
         """inject_theme() must not raise (though it needs Streamlit context

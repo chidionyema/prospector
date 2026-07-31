@@ -1,6 +1,8 @@
 """Prospector Control Center — Streamlit entrypoint.
 
-Launch: streamlit run prospector/control_center/app.py --server.port 8601
+Launch (loopback-bound, behind the operator gate): scripts/run_control_center.sh
+That requires CONTROL_CENTER_PASSWORD to be set; the portal fails closed without it.
+Remote access is an SSH tunnel to the localhost port, never a public bind. See DEPLOYMENT.md.
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import streamlit as st
 
 from prospector.control_center import state as _state
 from prospector.control_center import pages as _pages_mod
+from prospector.control_center.auth import require_auth
 from prospector.control_center.theme import inject_theme
 
 # Page modules — each exposes a render() function
@@ -50,6 +53,10 @@ def main():
         initial_sidebar_state="expanded",
     )
 
+    # Fail-closed operator gate. Must run before any page (config editor, run launcher,
+    # cost data) can render. Halts via st.stop() until authenticated.
+    require_auth()
+
     _state.init_state(
         active_page="overview",
         selected_dossier=None,
@@ -60,32 +67,39 @@ def main():
 
     # ── Sidebar nav ─────────────────────────────────────────────────────────
     with st.sidebar:
-        st.title("🛰 Prospector")
-        st.caption("Control Center")
+        st.markdown("**Prospector**")
+        st.caption("Operator console")
 
-        # Radio persists selected index in session_state
         labels = [p[0] for p in _PAGES_LIST]
-        idx = next((i for i, p in enumerate(_PAGES_LIST) if p[1] == st.session_state.active_page), 0)
+        # Radio is source of truth for sidebar clicks. Programmatic nav (go_page)
+        # sets _sync_nav_radio so we align the widget *before* it is instantiated —
+        # never overwrite a fresh radio click with a stale active_page.
+        if st.session_state.pop("_sync_nav_radio", False) or "nav_radio" not in st.session_state:
+            want = next(
+                (p[0] for p in _PAGES_LIST if p[1] == st.session_state.active_page),
+                labels[0],
+            )
+            st.session_state["nav_radio"] = want
+
         selected_label = st.radio(
-            "Navigate", labels, index=idx,
+            "Navigate",
+            labels,
+            key="nav_radio",
             format_func=lambda p: p,
         )
         key = next((p[1] for p in _PAGES_LIST if p[0] == selected_label), _DEFAULT_KEY)
-
-        if st.session_state.active_page != key:
-            st.session_state.active_page = key
-            st.rerun()
+        st.session_state.active_page = key
 
         st.divider()
         st.caption(f"Project: `{_ROOT.name}`")
         st.caption(f"Store: `store/`")
 
     # ── Active page ──────────────────────────────────────────────────────────
-    mod = _PAGE_MODULES.get(st.session_state.active_page, _PAGE_MODULES[_DEFAULT_KEY])
+    mod = _PAGE_MODULES.get(key, _PAGE_MODULES[_DEFAULT_KEY])
     try:
         mod.render()
     except Exception as e:
-        st.error(f"Error rendering {st.session_state.active_page}: {e}")
+        st.error(f"Error rendering {key}: {e}")
         import traceback
         st.code(traceback.format_exc(), language="python")
 

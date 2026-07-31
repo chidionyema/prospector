@@ -337,7 +337,6 @@ def costs_report(jsonl_path: str | Path) -> str:
                 if not provider and "message" in d:
                     msg = d["message"].lower()
                     if "claude cli usage" in msg: provider = "claude"
-                    elif "gemini cli usage" in msg: provider = "gemini"
                 
                 if provider:
                     root = provider.split("/")[0].lower()
@@ -360,8 +359,8 @@ def costs_report(jsonl_path: str | Path) -> str:
                     if cost:
                         s["cost_usd"] += cost
                     else:
-                        from .telemetry import PRICING
-                        price = PRICING.get(root, {"input": 0, "output": 0})
+                        from .telemetry import get_price
+                        price = get_price(root)
                         s["cost_usd"] += (inp * price["input"] / 1_000_000) + (outp * price["output"] / 1_000_000)
 
     # COST AUTHORITY RULE:
@@ -693,8 +692,6 @@ def costs_data(jsonl_path: str | Path) -> dict[str, Any]:
                     msg = d["message"].lower()
                     if "claude cli usage" in msg:
                         provider = "claude"
-                    elif "gemini cli usage" in msg:
-                        provider = "gemini"
                 if provider:
                     root = provider.split("/")[0].lower()
                     s = provider_stats.setdefault(root, {"calls": 0, "input": 0,
@@ -712,8 +709,8 @@ def costs_data(jsonl_path: str | Path) -> dict[str, Any]:
                     if cost:
                         s["cost_usd"] += cost
                     else:
-                        from .telemetry import PRICING
-                        price = PRICING.get(root, {"input": 0, "output": 0})
+                        from .telemetry import get_price
+                        price = get_price(root)
                         s["cost_usd"] += (inp * price["input"] / 1_000_000) + (outp * price["output"] / 1_000_000)
 
     sum_attributed = sum(s["cost_usd"] for s in provider_stats.values())

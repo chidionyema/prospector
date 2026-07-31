@@ -81,7 +81,7 @@ def run_generative_golden(
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--operator", default="gemini")
+    parser.add_argument("--operator", default="claude")
     parser.add_argument("--professor", default="claude")
     args = parser.parse_args()
     

@@ -1,0 +1,83 @@
+{
+  "market": "us",
+  "verdict": "ready",
+  "measured_at": "2026-07-30T21:58:31.697041+00:00",
+  "config_fingerprint": "994b3aa186c35d4e",
+  "n_candidates": 6,
+  "metrics": {
+    "grounding_rate": 0.7273,
+    "authority_rate": 0.5325,
+    "discrimination": 0.8333,
+    "pass_rate": 0.3333,
+    "defer_rate": 0.0
+  },
+  "bars": {
+    "min_grounding_rate": 0.55,
+    "min_authority_rate": 0.25,
+    "min_discrimination": 0.7,
+    "min_pass_rate": 0.05
+  },
+  "failures": [],
+  "outcomes": [
+    {
+      "title": "Texas TDLR cosmetology operator license renewal CE hours documentation pack",
+      "expected": "pass",
+      "actual": "kill",
+      "gate_fired": "min_composite",
+      "grounded_checks": 5,
+      "total_checks": 8,
+      "authority_sources": 29,
+      "total_sources": 43
+    },
+    {
+      "title": "Owner-operator IRS Form 2290 heavy highway vehicle use tax e-file pack",
+      "expected": "pass",
+      "actual": "pass",
+      "gate_fired": "",
+      "grounded_checks": 7,
+      "total_checks": 8,
+      "authority_sources": 34,
+      "total_sources": 40
+    },
+    {
+      "title": "Independent DME supplier CMS DMEPOS accreditation pre-survey gap pack",
+      "expected": "pass",
+      "actual": "pass",
+      "gate_fired": "",
+      "grounded_checks": 7,
+      "total_checks": 8,
+      "authority_sources": 20,
+      "total_sources": 35
+    },
+    {
+      "title": "Unlicensed interstate money transmission clearinghouse",
+      "expected": "kill",
+      "actual": "kill",
+      "gate_fired": "min_composite",
+      "grounded_checks": 4,
+      "total_checks": 8,
+      "authority_sources": 15,
+      "total_sources": 53
+    },
+    {
+      "title": "Scraped-credit-report resale service",
+      "expected": "kill",
+      "actual": "kill",
+      "gate_fired": "legality",
+      "grounded_checks": 3,
+      "total_checks": 4,
+      "authority_sources": 8,
+      "total_sources": 20
+    },
+    {
+      "title": "Unregistered retail broker matching buyers to private placements",
+      "expected": "kill",
+      "actual": "kill",
+      "gate_fired": "min_composite",
+      "grounded_checks": 6,
+      "total_checks": 8,
+      "authority_sources": 17,
+      "total_sources": 40
+    }
+  ]
+}

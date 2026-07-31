@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 # Add the prospector directory to the path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from prospector.models import Candidate, Dossier, Decision, ScoreResult
+from prospector.models import Candidate, Dossier, Decision, ScoreResult, CheckResult, Verdict
 from prospector.bridge import EngineBridge, ProductProvisioner, StripeProvisioner, PaddleClient, ProvisioningError
 
 class TestEngineBridge(unittest.TestCase):
@@ -17,6 +17,8 @@ class TestEngineBridge(unittest.TestCase):
         # publish path must be given one explicitly — exactly as production does via env.
         os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
         self.cfg = MagicMock()
+        # Real numeric floor so the source-or-die guard's `confidence >= floor` is a real compare.
+        self.cfg.thresholds.confidence_floor = 0.0
         self.bridge = EngineBridge(self.cfg)
         # Point to the local test server
         self.bridge.store_api_url = "http://localhost:5050"
@@ -56,7 +58,11 @@ class TestEngineBridge(unittest.TestCase):
         dossier.score.composite = 4.2
         dossier.score.scores = {axis: 4 for axis in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]}
         dossier.score.justification = {axis: "Test justification" for axis in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]}
-        dossier.checks = []
+        # A real PASS rests on grounded evidence (source-or-die): >=1 supported check.
+        dossier.checks = [
+            CheckResult(check_name="pain_reality", verdict=Verdict.SUPPORTED,
+                        confidence=0.8, rationale="grounded"),
+        ]
         dossier.adversarial = None
         dossier.gate_fired = None
         dossier.reason = "Survived all gates; composite 4.2."
@@ -102,6 +108,38 @@ class TestEngineBridge(unittest.TestCase):
 
         self.assertFalse(success, "Bridge must refuse to publish a provisional PASS dossier")
         # Ensure _update_catalog was NEVER called
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    def test_refuse_ungrounded_pass(self, mock_post):
+        """Source-or-die backstop: a PASS with 0 grounded-supported checks must NOT publish.
+
+        This is the exact stale class that put an ungrounded 'Probate Locker' pack live —
+        decision=PASS, every check unverifiable, 0 sources. The bridge is the last fence.
+        """
+        self.bridge.entitlements_check = MagicMock(return_value=True)
+        candidate = Candidate(title="Ungrounded Biz", one_liner="No evidence behind it")
+        candidate.candidate_id = "test-ungrounded-cand"
+
+        dossier = MagicMock(spec=Dossier)
+        dossier.decision = Decision.PASS
+        dossier.candidate = candidate
+        dossier.score = None
+        # Composite-passed but every check is unverifiable -> no grounding to stand on.
+        dossier.checks = [
+            CheckResult(check_name="pain_reality", verdict=Verdict.UNVERIFIABLE,
+                        confidence=0.0, rationale="no passage"),
+        ]
+        dossier.adversarial = None
+        dossier.gate_fired = None
+        dossier.reason = "Survived all gates; composite 2.95."
+        dossier.model_version = "test-model"
+        dossier.created_at = "2026-06-15T00:00:00Z"
+        dossier.provisional = False
+
+        success = self.bridge.publish_pass(dossier)
+
+        self.assertFalse(success, "Bridge must refuse to publish an ungrounded PASS dossier")
         mock_post.assert_not_called()
 
 
@@ -181,6 +219,62 @@ class TestProviderSelection(unittest.TestCase):
             # Paddle is None because no key
             self.assertIsNone(b.paddle)
             self.assertIsNone(b.provisioner)
+
+
+class TestStripeKeySelection(unittest.TestCase):
+    """The publisher must mint prices in the account the deployed Store bills through.
+
+    On 2026-07-31 it did not: STRIPE_API_KEY was a sandbox test key while the Store billed
+    live, so 10 packs listed with well-formed price ids that account could not charge and
+    every buy button returned HTTP 500. Shape checks cannot catch that — a test price id looks
+    exactly like a live one — so the rule is enforced on key MODE against the target.
+    """
+
+    def _bridge(self, env):
+        cfg = MagicMock()
+        cfg.store_payments = {"active_provider": "stripe"}
+        with patch.dict(os.environ, env, clear=True):
+            return EngineBridge(cfg)
+
+    def test_remote_catalog_refuses_a_test_key(self):
+        # The exact production failure. No provisioner => the `priced` guard publishes the
+        # pack UNLISTED, which is the safe end of the trade: invisible beats unbuyable.
+        b = self._bridge({
+            "STORE_API_URL": "https://api.mumchimp.com",
+            "STRIPE_API_KEY": "sk_test_abc",
+        })
+        self.assertIsNone(b.stripe_api_key)
+        self.assertIsNone(b.stripe)
+        self.assertIsNone(b.provisioner)
+        self.assertIn("without a live key", b.stripe_key_reason)
+
+    def test_remote_catalog_prefers_the_live_key_even_when_both_are_set(self):
+        # Both vars set is the normal developer state; the live catalogue must not get the
+        # test one just because STRIPE_API_KEY is the older, more familiar name.
+        b = self._bridge({
+            "STORE_API_URL": "https://api.mumchimp.com",
+            "STRIPE_API_KEY": "sk_test_abc",
+            "STRIPE_LIVE_API_KEY": "sk_live_xyz",
+        })
+        self.assertEqual(b.stripe_api_key, "sk_live_xyz")
+        self.assertIsNotNone(b.provisioner)
+
+    def test_remote_catalog_accepts_a_live_key_under_the_legacy_name(self):
+        b = self._bridge({
+            "STORE_API_URL": "https://api.mumchimp.com",
+            "STRIPE_API_KEY": "sk_live_only",
+        })
+        self.assertEqual(b.stripe_api_key, "sk_live_only")
+
+    def test_local_store_still_takes_a_test_key(self):
+        # Developing against localhost with a sandbox key is the normal case, not a fault;
+        # the guard must not make local work impossible.
+        b = self._bridge({
+            "STORE_API_URL": "http://localhost:5291",
+            "STRIPE_API_KEY": "sk_test_abc",
+        })
+        self.assertEqual(b.stripe_api_key, "sk_test_abc")
+        self.assertIsNotNone(b.provisioner)
 
 
 class TestStripeProvisionerHardening(unittest.TestCase):

@@ -2,13 +2,19 @@
 
 The catalogue holds PASS dossiers that cleared verification but never had their
 £30 deliverable generated (build_spec/gtm_plan/ops_plan/financial_model + marketing).
-This driver reconstructs a Dossier from the stored JSON, runs the *non-critical*
-generation chain (DeepSeek→MiniMax→Gemini — never the moat) to produce the artifacts,
-attaches them, and publishes via EngineBridge → R2 → Store API catalogue.
+This driver reconstructs a Dossier from the stored JSON, runs the artifact quality
+chain (cfg.artifact_operator — cursor_cli→claude_cli) for pack prose, non-critical
+for ancillary JSON, and moat for claim-check; then publishes via EngineBridge.
 
 Usage:
     python -m tools.publish_passes store/dossiers/<id>.pass.json [more...]
     python -m tools.publish_passes --all          # every PASS in the store
+    python -m tools.publish_passes --reuse-artifacts <paths...>
+        # Re-bundle + re-publish from the artifacts already stored on the dossier, with no
+        # model call. Use when the defect is in the BUNDLE, not the prose — e.g. repairing
+        # the pre-2026-07-31 bundles that shipped without 00_Executive_Summary.md /
+        # 05_First_Week_Checklist.md. Falls back to regeneration if the stored pack does
+        # not clear validate_pack.
 """
 from __future__ import annotations
 
@@ -23,7 +29,9 @@ from prospector.models import (
     Candidate, CheckResult, ScoreResult, Source, Dossier, Decision, Verdict,
 )
 from prospector.artifacts import generate_artifacts, generate_marketing_content
+from prospector.pack_floors import ensure_marketing_floor
 from prospector.pack_validation import validate_pack
+from prospector.run import _build_artifact_op, _NONCRITICAL_ORDER, _load_dotenv
 from publish.publish import publish
 
 # Generation flakiness budget: regenerate the whole pack this many times before giving up
@@ -82,23 +90,39 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
 
+    # Re-bundle without regenerating. Dossiers persist their generated artifacts under
+    # candidate.tags["artifacts"], but this driver regenerated them unconditionally, so
+    # repairing a pack whose ONLY defect is a deterministic floor (a missing executive
+    # summary, a stub Marketing_Assets) cost a full LLM generation per pack. With this flag
+    # a stored pack that already clears validate_pack is re-bundled and re-published as-is:
+    # no model call, no cost, and byte-identical prose to what the moat already verified.
+    reuse_artifacts = "--reuse-artifacts" in argv
+    argv = [a for a in argv if a != "--reuse-artifacts"]
+
     if argv == ["--all"]:
         paths = sorted(glob.glob("store/dossiers/*.pass.json"))
     else:
         paths = argv
 
+    # Same as prospector.run: pull gitignored .env so EngineBridge sees
+    # PROSPECTOR_ENTITLEMENTS_API_KEY / STORE_* without a Claude Code session.
+    _load_dotenv()
     cfg = load_config()
-    # Generation is non-critical (never the verdict moat). The sanctioned cheap chain —
-    # DeepSeek → MiniMax → Gemini-flash — is sufficient: the earlier "empty artifacts"
-    # were NOT a model-capability problem but a prompt/parse bug. DeepSeek was returning a
-    # valid financial_model object when asked for build_spec (the prompt's biggest schema
-    # dominated), and _gen_one_artifact silently turned the type mismatch into "". That's
-    # now fixed at the root (artifacts.md anchors the requested type; _validate_artifact_shape
-    # raises on wrong-type/empty so complete_json's repair loop and then the chain failover
-    # fire). So cheap models generate packs fine; no intelligent model required.
-    cfg.operator = ["deepseek", "minimax", "gemini"]
+    # Match run.py publish path: claim-check stays on the moat; £49 prose uses
+    # cfg.artifact_operator (cursor_cli → claude_cli). Ancillary JSON uses the
+    # non-critical chain. Do NOT hardcode claude_cli — that wedges content_gen when
+    # Claude Code is busy/unavailable (see publish_backfill_yield.log).
+    if not getattr(cfg, "entitlements_api_key", ""):
+        print("ERROR: PROSPECTOR_ENTITLEMENTS_API_KEY unset after .env load; "
+              "EngineBridge will refuse publish.", file=sys.stderr)
+        return 2
     op = make_operator(cfg)
+    quality_op = _build_artifact_op(cfg, op)
+    saved_operator = cfg.operator
+    cfg.operator = list(_NONCRITICAL_ORDER)
     fast_op = make_operator(cfg, fast=True)
+    cfg.operator = saved_operator
+    print(f"artifact chain: {cfg.artifact_operator}  noncritical: {list(_NONCRITICAL_ORDER)}")
 
     ok = 0
     held_back = 0
@@ -118,10 +142,31 @@ def main(argv: list[str]) -> int:
         # pack can never list even if we run out of attempts here — it just won't sell.
         complete = False
         problems: list[str] = []
+
+        if reuse_artifacts:
+            stored = cand.tags.get("artifacts") or {}
+            stored_marketing = ensure_marketing_floor(
+                cand.tags.get("marketing") or [], cand, dossier.checks)
+            complete, problems = validate_pack(stored, stored_marketing)
+            if complete:
+                cand.tags["marketing"] = stored_marketing
+                print(f"  reusing stored artifacts: "
+                      f"{ {k: len(v or '') for k, v in stored.items()} } (no model call)")
+            else:
+                print(f"  stored artifacts incomplete -> regenerating. {problems}")
+
         for attempt in range(1, MAX_GEN_ATTEMPTS + 1):
-            print(f"  generating artifacts (non-critical chain), attempt {attempt}/{MAX_GEN_ATTEMPTS}...")
-            cand.tags["artifacts"] = generate_artifacts(op, cand, dossier.checks, fast_op=fast_op)
-            cand.tags["marketing"] = generate_marketing_content(op, cand, dossier.checks, fast_op=fast_op)
+            if complete:
+                break
+            print(f"  generating artifacts (artifact_operator chain), attempt {attempt}/{MAX_GEN_ATTEMPTS}...")
+            cand.tags["artifacts"] = generate_artifacts(
+                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg)
+            cand.tags["marketing"] = generate_marketing_content(
+                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, check_op=op)
+            # Epic C lite: if LLM listing_page fails claim-check, fill a claim-safe
+            # floor from dossier fields only (same helper EngineBridge already uses).
+            cand.tags["marketing"] = ensure_marketing_floor(
+                cand.tags["marketing"], cand, dossier.checks)
 
             arts = cand.tags["artifacts"]
             sizes = {k: len(v or "") for k, v in arts.items()}

@@ -10,6 +10,32 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# Keys a market block may NEVER contain. A market configures the EVIDENCE TERRAIN
+# (where to look, in what language, under whose authority) and the FRAMING — never the
+# BAR. Only an ambition LANE moves the bar. Allowing a market to set these would make
+# "open a low-evidence market by lowering its threshold" a one-line config edit, which
+# is exactly the failure the two-loops rule forbids: demand never overrides truth.
+MARKET_FORBIDDEN_KEYS = ("hard_gates", "thresholds", "weights")
+
+_MARKET_STATUSES = ("open", "probing", "closed")
+
+
+class MarketConfigError(ValueError):
+    """The `markets:` block is malformed or attempts to move the bar."""
+
+
+class UnknownMarketError(ValueError):
+    """A market code was requested that is not defined in config.
+
+    Deliberately louder than the unknown-LANE behaviour (`for_lane` returns self):
+    silently running "us" as the UK default would stamp dossiers with a market whose
+    evidence chain never ran — fabricated provenance. Fail closed instead.
+    """
+
+
+class UnknownArchetypeError(ValueError):
+    """`operator_archetype` names a binding that is not defined under generation.archetypes."""
+
 
 @dataclass
 class Retrieval:
@@ -19,36 +45,63 @@ class Retrieval:
     results_per_query: int = 4
     max_passage_chars: int = 1500
     cache: bool = True
+    # DiskCache freshness: cached grounding passages older than this are treated as a
+    # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
+    # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,
+    # short enough that a re-vet weeks later re-grounds against the live page.
+    cache_ttl_s: int = 1_209_600
     # Checks that skip the LLM query-gen call and use deterministic disconfirming
     # templates instead (cheap decisive gates that kill most candidates).
     template_checks: list[str] = field(default_factory=list)
     fast_queries: int = 1  # query count used for template_checks
+    # BATCHED LLM query-gen (fast/non-critical tier). When True, verify() makes ONE
+    # query_op call per candidate that decomposes the idea into real-world domain
+    # queries for ALL checks at once (prompts/query_gen_batched.md), overriding the
+    # deterministic templates. Proven necessary: deterministic _keywords restates the
+    # product pitch ("productized transforms tenant answers adversarial") so search
+    # returns off-topic junk (dictionary entries, whatsapp.com, diy.com) → ~93%
+    # unverifiable at batch scale. Query-gen is non-critical (a search string, not a
+    # verdict) so it runs on the deepseek→minimax fast chain — the moat verdict brain is
+    # untouched. Graceful: if the batch call fails or omits a check, that check falls
+    # back to the deterministic template (no hard-fail when the fast chain is down).
+    llm_query_gen: bool = False
     # Model for the web-SEARCH/grounding step (distinct from the verdict `model`).
     # flash-lite returns 0 sources for many queries (poor grounding recall); the
-    # mid-tier `gemini-2.5-flash` recalls far better and is still fast. Empty =>
+    # mid-tier model recalls far better and is still fast. Empty =>
     # fall back to model_fast/model. Verdict ruling still uses `model` (can stay -lite).
     search_model: str = ""
-    # Web-grounding fail-fast budget. The free gemini web-search tool throttles after a
+    # Web-grounding fail-fast budget. The free web-search tiers throttle after a
     # burst and then internally backs off for ~hours, which presents as a 240s hang. A
     # short timeout + few retries makes a throttled search GIVE UP quickly so the candidate
     # DEFERS (re-vet later) instead of blocking the whole run. Verdict calls (no web) are
-    # unaffected — they use run_gemini_cli's normal timeout.
+    # unaffected — they use the CLI's normal timeout.
     search_timeout: int = 75            # base seconds per grounding web-search call (attempt 0)
     search_timeout_max: int = 150       # adaptive ceiling: timeout escalates per retry up to this
     search_timeout_escalation: float = 1.5  # multiply the timeout each retry (slow≠dead: give it room)
     search_retries: int = 1             # in-place retries before failing over to the next provider
-    claude_min_timeout: int = 120       # claude grounding floor (its search is slower than gemini's)
+    claude_min_timeout: int = 120       # claude grounding floor
     # Bounded work queue: a grounding call waits at most this long for a free provider
     # slot before giving up and failing over. Without this the semaphore wait was
     # UNBOUNDED and sat OUTSIDE the timeout, so a saturated provider could block a vet
     # indefinitely. Caps total latency at queue_timeout + search_timeout.
     queue_timeout: int = 45             # seconds to wait for a concurrency slot before failover
     # Physical load governors (decouple logical candidate concurrency from heavy CLI
-    # subprocess load). Config is the single source of truth; PROSPECTOR_{GEMINI,CLAUDE}_
-    # CONCURRENCY / PROSPECTOR_VET_WORKERS env vars still override for ops.
-    gemini_concurrency: int = 2         # max concurrent gemini CLI subprocesses
+    # subprocess load). Config is the single source of truth; env overrides for ops:
+    #   PROSPECTOR_CLAUDE_CONCURRENCY, PROSPECTOR_CURSOR_CONCURRENCY, PROSPECTOR_VET_WORKERS.
+    # Keep vet_workers ≈ cursor_concurrency ≈ claude_concurrency so parallel vets do not
+    # self-induce queue_timeout / CLI hangs.
     claude_concurrency: int = 2         # max concurrent claude CLI subprocesses
+    cursor_concurrency: int = 2         # max concurrent Cursor agent CLI subprocesses
     vet_workers: int = 3                # candidates vetted in parallel; align to grounding slots
+    # Completion-brain CLI budgets (CursorCliOperator / non-web Claude CLI). Distinct from
+    # search_timeout (web-grounding). query_gen_* is the tight cap for non-critical
+    # query-gen so one hung agent call cannot burn 6+ minutes per check.
+    cli_timeout: int = 120              # verdict / adversarial completion (attempt 0)
+    cli_timeout_max: int = 180          # completion ceiling across retries
+    cli_retries: int = 1                # in-place retries for completion brains
+    query_gen_timeout: int = 90         # batched/per-check query-gen (attempt 0)
+    query_gen_timeout_max: int = 90     # no escalation — fail over / template fast
+    query_gen_retries: int = 0          # template fallback is the retry
     # Circuit breaker (failover resilience). A provider is retired only after this many
     # CONSECUTIVE transient failures (or immediately on a quota wall), and recovers via a
     # half-open probe after the cooldown — never permanently dead-listed for the run.
@@ -58,8 +111,35 @@ class Retrieval:
 
 @dataclass
 class Thresholds:
-    confidence_floor: float = 0.6
+    # confidence_floor: a killing verdict (refuted, or supported-for-incumbency) only
+    # HARD-kills when its deterministic grounding confidence clears this floor; below it,
+    # the candidate falls through to scoring instead of being killed at the gate. This is
+    # the tunable lever for the value_durability over-restriction wall (war-room
+    # 2026-06-15). DEFAULT 0.0 = inert (every grounded kill fires, golden-set safe). The
+    # real launch value must be calibrated by re-running the 6 known good/bad controls
+    # live under supervision (store/runs/control_experiment_*.log) — do NOT raise this
+    # above 0 from a guess; the mock/fixture confidence scale (~0.4 flat) is not the live
+    # scale. See docs/PIPELINE_REVIEW_2026-06-18.md (P0-2).
+    confidence_floor: float = 0.0
+    # min_supported_confidence: PASS-SIDE floor (dossier source-or-die only). A SUPPORTED
+    # check counts as grounded toward a PASS only when its confidence clears this floor.
+    # Decoupled from confidence_floor (kill-side) so tightening passes never loosens kills.
+    # Calibrated 2026-06-25 to 0.3 against the live supported-confidence distribution
+    # (median 0.43); 0.0 default keeps it inert for callers that don't set it.
+    min_supported_confidence: float = 0.0
     min_composite_to_pass: float = 3.2
+    min_supported_to_pass: int = 1  # source-or-die: min grounded-supported checks for PASS
+    # Lane-aware publish gate (source-or-die at the PASS boundary). The check(s) whose grounded
+    # SUPPORTED verdict is REQUIRED before a candidate may publish in this lane; at least one
+    # listed check must be grounded-supported. Default = the venture moat
+    # (value_durability/incumbency). Lanes that DELIBERATELY disable the moat checks
+    # (side_hustle, smb — see config.yaml lane notes) MUST override this to their own headline
+    # evidence (e.g. payer_solvency), otherwise the gate demands checks the lane never runs and
+    # NO candidate can ever PASS. PROVEN 2026-06-28: Martyn's Law cleared composite (2.95) but
+    # was KILLed on `moat_ungrounded` because the smb lane runs neither value_durability nor
+    # incumbency — making the entire smb/side_hustle PASS path structurally unreachable.
+    moat_critical_checks: list[str] = field(
+        default_factory=lambda: ["value_durability", "incumbency"])
 
 
 @dataclass
@@ -88,11 +168,10 @@ class ModelDefaults:
     """
     # Operator defaults (one per provider kind, plus a `_fast` split for the
     # cheap/structured variant where it exists).
-    gemini: str = "gemini-2.0-flash"
     claude: str = "claude-opus-4-8"
     deepseek: str = "deepseek-chat"
     minimax: str = "MiniMax-M3"        # full reasoning model
-    minimax_fast: str = "MiniMax-M2.7"  # cheap/structured
+    minimax_fast: str = "MiniMax-M3"  # also M3 per standing order
     ollama: str = "qwen2.5-coder:7b"
     # Search provider defaults (the LLM that decomposes queries for the
     # function-calling search providers). One per search provider.
@@ -119,7 +198,6 @@ class Pricing:
     `telemetry.PRICING` are the defaults; `config.yaml`'s `pricing` block
     overrides them.
     """
-    gemini: PriceTier = field(default_factory=lambda: PriceTier(0.10, 0.40))
     claude: PriceTier = field(default_factory=lambda: PriceTier(3.00, 15.00))
     deepseek: PriceTier = field(default_factory=lambda: PriceTier(0.27, 1.10))
     minimax: PriceTier = field(default_factory=lambda: PriceTier(0.30, 0.30))
@@ -136,6 +214,10 @@ class Config:
     # => reuse `model` (the CLI already auto-routes utility calls to flash).
     model_fast: str = ""
     model_version_tag: str = ""
+    # Quality chain for the customer-facing £49 deliverable (prose artifacts + listing_page).
+    # CLI-based, in-subscription operators (AGY CLI primary -> Claude CLI failover) so the
+    # product's own copy isn't generated by the cheap non-critical tail. Empty => the moat op.
+    artifact_operator: "str | list[str]" = field(default_factory=lambda: ["claude_cli"])
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
     # hard_gates: list of single-key dicts, preserves kill-fast order
@@ -154,6 +236,14 @@ class Config:
     active_lanes: list[str] = field(default_factory=list)
     # Candidates generated per tier per multi-lane run (fan-out for coverage).
     lane_quota: dict[str, int] = field(default_factory=dict)
+    # Markets (Epic D): the JURISDICTION an opportunity lives in. Orthogonal to both the
+    # ambition lane (which sets the bar) and the buyer's locale (packs sell in GBP
+    # regardless). A market supplies the evidence terrain — authority domains, search
+    # region, legality corpus — and the prompt framing. It may not touch the bar; see
+    # MARKET_FORBIDDEN_KEYS. `active_market` empty => markets["default"] => byte-for-byte
+    # today's behaviour.
+    markets: dict[str, Any] = field(default_factory=dict)
+    active_market: str = ""
     generation: dict[str, Any] = field(default_factory=dict)
     # Generation PROFILES (Part 16 — targeted steering): a named, reusable bundle of
     # `generation` overrides (restricted structural_forms + a free-text `focus` directive)
@@ -166,7 +256,18 @@ class Config:
     # A persona provides analytical bias/voice for generation, verdict, and adversarial.
     personas: dict[str, Any] = field(default_factory=dict)
     active_persona: str = ""
+    # Run-level archetype pin (`--archetype`). Empty => each lane's generation.operator_archetype
+    # (or the top-level default). When set, re-applied after for_lane so it wins over lane defaults.
+    active_archetype: str = ""
     listing: dict[str, Any] = field(default_factory=dict)
+    # Near-duplicate similarity ratio (Part 3 dedup). At or above this, two candidates
+    # are treated as duplicates and the later one is dropped. Lifted out of dedup.py so
+    # the freshness bar is tunable without a code change.
+    dedup_threshold: float = 0.85
+    # Content-word overlap (Jaccard) threshold for the SECOND dedup signal. Char ratio is
+    # blind to the same idea reworded; this catches it. At or above this, two candidates
+    # are duplicates even if the char ratio is low. None disables the token signal.
+    dedup_token_threshold: float = 0.34
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
@@ -174,6 +275,14 @@ class Config:
     # PROSPECTOR_ENTITLEMENTS_API_KEY env var at config load time. No default
     # — if unset, the entitlements check will fail clearly (fail-closed).
     entitlements_api_key: str = ""
+    # Storefront payment rail. `active_provider` selects which ProductProvisioner
+    # EngineBridge uses at publish time (bridge.py `provisioner`). This MUST match the
+    # provider the Store API's checkout endpoint bills through: checkout builds a Stripe
+    # Checkout Session from `pack.ProviderPriceId`, so a pack provisioned under any other
+    # provider lists with a `price_stub_*` id and its checkout 500s. Config-driven (not
+    # env-only) so the value is version-controlled and identical across environments.
+    store_payments: dict[str, Any] = field(
+        default_factory=lambda: {"active_provider": "stripe"})
     # Per-provider default model identifiers (see ModelDefaults docstring).
     # This is the canonical home for "what model does provider X use by default".
     # Operators / search providers consume this; the historical `_DEFAULT_MODEL`
@@ -185,7 +294,15 @@ class Config:
 
     @property
     def store_dir(self) -> Path:
-        d = Path(self.store.get("dir", "store"))
+        # PROSPECTOR_STORE_DIR redirects every store read/write, including those made
+        # by a CLI subprocess that loads its own Config. Without it a subprocess-driven
+        # test has no way to avoid the operator's real store/: on 2026-07-30 the market
+        # CLI tests both read and DELETED the live store/markets/us/READINESS.json while
+        # an actual `markets probe us` run was writing it, which made
+        # test_opening_without_a_probe_is_refused fail non-deterministically against a
+        # tree whose tests pass in isolation. Absent the var, behaviour is unchanged.
+        override = os.environ.get("PROSPECTOR_STORE_DIR", "").strip()
+        d = Path(override) if override else Path(self.store.get("dir", "store"))
         return d if d.is_absolute() else REPO_ROOT / d
 
     def gate_map(self) -> dict[str, list[str]]:
@@ -231,7 +348,112 @@ class Config:
         # A persona also composes OVER the lane.
         if self.active_persona:
             resolved = resolved.for_persona(self.active_persona)
+        # A run-level --archetype pin wins over the lane's default operator_archetype.
+        if self.active_archetype:
+            resolved = resolved.for_archetype(self.active_archetype)
         return resolved
+
+    def for_archetype(self, name: str | None) -> "Config":
+        """Pin `generation.operator_archetype` for this run (generation-only; never a gate).
+
+        The named binding must exist under `generation.archetypes` (binding + forbid text
+        injected into the generate prompt). Empty/None => unchanged. Unknown name raises.
+        """
+        if not name:
+            return self
+        archetypes = (self.generation or {}).get("archetypes") or {}
+        if name not in archetypes:
+            raise UnknownArchetypeError(
+                f"unknown archetype {name!r}; defined: {sorted(archetypes)}")
+        new_generation = {**self.generation, "operator_archetype": name}
+        return replace(self, generation=new_generation, active_archetype=name)
+
+    # ------------------------------------------------------------------
+    # Markets (Epic D)
+    # ------------------------------------------------------------------
+
+    @property
+    def default_market(self) -> str:
+        """The market a candidate belongs to when none is declared."""
+        return str((self.markets or {}).get("default", "") or "")
+
+    def resolve_market(self, name: str | None) -> str:
+        """Resolve a possibly-empty market name to a concrete code.
+
+        Empty => the configured default. Raises UnknownMarketError for a name that has
+        no definition (directly or via a parent, e.g. "us-tx" resolves through "us").
+        """
+        code = str(name or "").strip().lower() or self.default_market
+        if not code:
+            return ""
+        if not self._market_chain(code):
+            raise UnknownMarketError(
+                f"unknown market {code!r}; defined: "
+                f"{sorted(k for k in (self.markets or {}) if k != 'default')}")
+        return code
+
+    def _market_chain(self, code: str) -> list[str]:
+        """Ancestry of `code`, nearest-first: 'us-tx' -> ['us-tx', 'us'].
+
+        Only codes that are actually defined appear. Empty list => undefined market.
+        A subdivision inherits everything its parent declares (spec DD4), so opening
+        "us-tx" needs no config beyond "us" unless it genuinely differs.
+        """
+        markets = self.markets or {}
+        parts = code.split("-")
+        chain = []
+        for i in range(len(parts), 0, -1):
+            candidate = "-".join(parts[:i])
+            if isinstance(markets.get(candidate), dict):
+                chain.append(candidate)
+        return chain
+
+    def market_config(self, name: str | None = None) -> dict[str, Any]:
+        """The resolved market block, with parent values inherited by a subdivision.
+
+        Nearest ancestor wins per key. Returns {} when no markets are configured at all
+        (a config predating Epic D), so every caller degrades to today's behaviour.
+        """
+        if not self.markets:
+            return {}
+        code = self.resolve_market(name if name is not None else self.active_market)
+        if not code:
+            return {}
+        resolved: dict[str, Any] = {}
+        for ancestor in reversed(self._market_chain(code)):  # furthest first
+            resolved.update(self.markets.get(ancestor) or {})
+        resolved["code"] = code
+        return resolved
+
+    def market_status(self, name: str | None = None) -> str:
+        """'open' | 'probing' | 'closed'. Unconfigured markets read as 'open' so a
+        pre-Epic-D config keeps working unchanged."""
+        mc = self.market_config(name)
+        return str(mc.get("status", "open") or "open") if mc else "open"
+
+    def for_market(self, name: str | None) -> "Config":
+        """Return a Config resolved to market `name`.
+
+        Merges ONLY `retrieval` and `generation` overrides from the market block and
+        records `active_market`. Gates, thresholds and weights are structurally
+        untouchable (MARKET_FORBIDDEN_KEYS, enforced at load): a market changes where
+        the engine LOOKS, never how strictly it JUDGES.
+
+        Unknown name raises (UnknownMarketError) — see that class for why this diverges
+        from for_lane's silent no-op.
+        """
+        if not self.markets:
+            return self
+        code = self.resolve_market(name)
+        if not code:
+            return self
+        block = self.market_config(code)
+        new_retrieval = self.retrieval
+        if block.get("retrieval"):
+            new_retrieval = replace(self.retrieval, **block["retrieval"])
+        new_generation = {**self.generation, **(block.get("generation") or {})}
+        return replace(self, retrieval=new_retrieval, generation=new_generation,
+                       active_market=code)
 
     def for_profile(self, name: str | None) -> "Config":
         """Return a Config with generation PROFILE `name` merged over `generation`.
@@ -283,7 +505,6 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
     # (nested under `search:`). The shape mirrors ModelDefaults exactly.
     search = raw_md.get("search") or {}
     return ModelDefaults(
-        gemini=raw_md.get("gemini", "gemini-2.0-flash"),
         claude=raw_md.get("claude", "claude-opus-4-8"),
         deepseek=raw_md.get("deepseek", "deepseek-chat"),
         minimax=raw_md.get("minimax", "MiniMax-M3"),
@@ -308,13 +529,80 @@ def _parse_pricing(raw_pr: dict | None) -> Pricing:
             output=float(d.get("output", default.output)),
         )
     return Pricing(
-        gemini=_tier(raw_pr.get("gemini"), Pricing().gemini),
         claude=_tier(raw_pr.get("claude"), Pricing().claude),
         deepseek=_tier(raw_pr.get("deepseek"), Pricing().deepseek),
         minimax=_tier(raw_pr.get("minimax"), Pricing().minimax),
         ollama=_tier(raw_pr.get("ollama"), Pricing().ollama),
         mock=_tier(raw_pr.get("mock"), Pricing().mock),
     )
+
+
+def _validate_generation(raw_generation: dict | None) -> dict:
+    """Fail closed when operator_archetype names a missing binding.
+
+    Archetypes are prompt fragments only — they never touch gates/thresholds. Validation
+    catches a typo that would silently drop the binding (empty operator_constraints).
+    """
+    if not raw_generation:
+        return {}
+    if not isinstance(raw_generation, dict):
+        raise ValueError("`generation` must be a mapping")
+    archetypes = raw_generation.get("archetypes") or {}
+    if archetypes and not isinstance(archetypes, dict):
+        raise ValueError("`generation.archetypes` must be a mapping")
+    for code, block in archetypes.items():
+        if not isinstance(block, dict):
+            raise ValueError(f"generation.archetypes.{code!r} must be a mapping")
+        if not str(block.get("binding", "")).strip():
+            raise ValueError(
+                f"generation.archetypes.{code!r} needs a non-empty `binding` string")
+    pin = str(raw_generation.get("operator_archetype", "") or "").strip()
+    if pin and pin not in archetypes:
+        raise UnknownArchetypeError(
+            f"generation.operator_archetype is {pin!r} but no such entry under "
+            f"generation.archetypes (defined: {sorted(archetypes)})")
+    return raw_generation
+
+
+def _validate_markets(raw_markets: dict | None) -> dict:
+    """Fail closed on a malformed `markets:` block.
+
+    The load-time refusal of MARKET_FORBIDDEN_KEYS is the structural guarantee behind
+    "the bar never moves per market" — it makes the tempting shortcut in a low-evidence
+    market impossible rather than merely discouraged.
+    """
+    if not raw_markets:
+        return {}
+    if not isinstance(raw_markets, dict):
+        raise MarketConfigError("`markets` must be a mapping")
+
+    default = raw_markets.get("default")
+    if not default:
+        raise MarketConfigError("`markets.default` is required when `markets` is set")
+
+    defined = {k: v for k, v in raw_markets.items() if k != "default"}
+    if default not in defined:
+        raise MarketConfigError(
+            f"`markets.default` is {default!r} but no such market is defined "
+            f"(defined: {sorted(defined)})")
+
+    for code, block in defined.items():
+        if not isinstance(block, dict):
+            raise MarketConfigError(f"market {code!r} must be a mapping")
+        offending = [k for k in MARKET_FORBIDDEN_KEYS if k in block]
+        if offending:
+            raise MarketConfigError(
+                f"market {code!r} may not set {offending} — a market configures the "
+                f"evidence terrain, never the bar. Move it to a lane if the BAR must "
+                f"change; see MARKET_FORBIDDEN_KEYS.")
+        if not str(block.get("label", "")).strip():
+            raise MarketConfigError(f"market {code!r} needs a `label`")
+        status = str(block.get("status", "open") or "open")
+        if status not in _MARKET_STATUSES:
+            raise MarketConfigError(
+                f"market {code!r} has status {status!r}; expected one of "
+                f"{list(_MARKET_STATUSES)}")
+    return raw_markets
 
 
 def load_config(path: str | Path | None = None) -> Config:
@@ -325,6 +613,7 @@ def load_config(path: str | Path | None = None) -> Config:
         model=raw.get("model", ""),
         model_fast=raw.get("model_fast", ""),
         model_version_tag=raw.get("model_version_tag", ""),
+        artifact_operator=raw.get("artifact_operator") or ["claude_cli"],
         retrieval=Retrieval(**(raw.get("retrieval") or {})),
         thresholds=Thresholds(**(raw.get("thresholds") or {})),
         hard_gates=raw.get("hard_gates") or [],
@@ -333,12 +622,19 @@ def load_config(path: str | Path | None = None) -> Config:
         active_lane=raw.get("active_lane") or "",
         active_lanes=raw.get("active_lanes") or [],
         lane_quota=raw.get("lane_quota") or {},
-        generation=raw.get("generation") or {},
+        markets=_validate_markets(raw.get("markets")),
+        active_market=raw.get("active_market") or "",
+        generation=_validate_generation(raw.get("generation")),
         profiles=raw.get("profiles") or {},
         active_profile=raw.get("active_profile") or "",
         personas=raw.get("personas") or {},
         active_persona=raw.get("active_persona") or "",
         listing=raw.get("listing") or {},
+        dedup_threshold=float(raw.get("dedup_threshold", 0.85)),
+        dedup_token_threshold=(
+            None if raw.get("dedup_token_threshold", 0.34) is None
+            else float(raw.get("dedup_token_threshold", 0.34))
+        ),
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},
@@ -350,7 +646,35 @@ def load_config(path: str | Path | None = None) -> Config:
             raw.get("entitlements_api_key")
             or os.environ.get("PROSPECTOR_ENTITLEMENTS_API_KEY", "")
         ),
+        # Payment rail: config.yaml wins, then PAYMENTS_ACTIVE_PROVIDER, then the
+        # dataclass default (stripe). Never silently falls back to a provider we hold
+        # no key for — that is what shipped six unbuyable packs.
+        store_payments={
+            "active_provider": (
+                (raw.get("store_payments") or {}).get("active_provider")
+                or os.environ.get("PAYMENTS_ACTIVE_PROVIDER")
+                or "stripe"
+            ),
+            **{k: v for k, v in (raw.get("store_payments") or {}).items()
+               if k != "active_provider"},
+        },
     )
+    # Lane-level operator_archetype pins must resolve against the shared archetypes map.
+    archetypes = (cfg.generation or {}).get("archetypes") or {}
+    for lane_name, lane in (cfg.lanes or {}).items():
+        if not isinstance(lane, dict):
+            continue
+        pin = str((lane.get("generation") or {}).get("operator_archetype", "") or "").strip()
+        if pin and pin not in archetypes:
+            raise UnknownArchetypeError(
+                f"lanes.{lane_name}.generation.operator_archetype is {pin!r} but no such "
+                f"entry under generation.archetypes (defined: {sorted(archetypes)})")
+
+    # Market resolves FIRST: it is the outermost context (which evidence terrain the run
+    # searches), and the lane/profile/persona resolvers below use dataclasses.replace, so
+    # active_market and the market-merged retrieval survive them untouched.
+    if cfg.active_market:
+        cfg = cfg.for_market(cfg.active_market)
     # Resolve the configured active lane (if any) into the operative gate/threshold/weight
     # fields. Empty active_lane => the top-level defaults stand unchanged (today's behaviour).
     # A config-pinned active_profile (if any) is applied too; for_lane re-applies it so it

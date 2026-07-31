@@ -15,7 +15,40 @@ namespace Store.Catalog.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
+
+            modelBuilder.Entity("Store.Catalog.Domain.AnalyticsEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Meta")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name", "CreatedAt");
+
+                    b.HasIndex("Name", "Meta")
+                        .IsUnique()
+                        .HasFilter("\"Name\" = 'checkout_completed' AND \"Meta\" IS NOT NULL");
+
+                    b.ToTable("AnalyticsEvents");
+                });
 
             modelBuilder.Entity("Store.Catalog.Domain.Entitlement", b =>
                 {
@@ -159,6 +192,15 @@ namespace Store.Catalog.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AdvantagesJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CardLine")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Commitment")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ContentHash")
                         .HasColumnType("TEXT");
 
@@ -171,16 +213,46 @@ namespace Store.Catalog.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DelistReason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DelistedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DossierRef")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Effort")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EffortTag")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FinancialSnapshotJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Headline")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("HiddenFromCatalogue")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsListed")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Market")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Mechanism")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("OneLine")
                         .IsRequired()
                         .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Payer")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PaymentProvider")
@@ -190,10 +262,31 @@ namespace Store.Catalog.Migrations
                     b.Property<long>("PricePence")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ProofPoint")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ProviderPriceId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderProductId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("QaVerdictSummary")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SampleExtractJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sector")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SourceCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Subhead")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TimeToFirstRevenue")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -201,9 +294,26 @@ namespace Store.Catalog.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WhatYouGetJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WhoPays")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("Effort");
+
                     b.HasIndex("IsListed");
+
+                    b.HasIndex("Mechanism");
+
+                    b.HasIndex("Payer");
+
+                    b.HasIndex("Sector");
 
                     b.ToTable("Packs");
                 });
@@ -246,6 +356,46 @@ namespace Store.Catalog.Migrations
                         .IsUnique();
 
                     b.ToTable("SalesAudits");
+                });
+
+            modelBuilder.Entity("Store.Catalog.Domain.WaitlistSignup", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConsentTextHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConsentVersion")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IpHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Query")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Email");
+
+                    b.ToTable("WaitlistSignups");
                 });
 
             modelBuilder.Entity("Store.Catalog.Domain.WebhookEvent", b =>

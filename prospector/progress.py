@@ -26,10 +26,26 @@ _GLYPH = {"pass": "✅", "kill": "❌", "defer": "⏸️"}
 
 
 def _emit(line: str) -> None:
+    """Write one progress line to stderr. Never raise on a closed pipe.
+
+    Under Control Center, stderr is an append FD to the run log file (not a
+    PIPE to Streamlit) — so parent death must not break these writes. The
+    BrokenPipe/EPIPE swallow remains as defence-in-depth for non-CC pipes
+    (e.g. ``| head``). Audit trail is jsonl; console is presentational only.
+    """
+    global _QUIET
     if _QUIET:
         return
     with _LOCK:
-        print(line, file=sys.stderr, flush=True)
+        try:
+            print(line, file=sys.stderr, flush=True)
+        except BrokenPipeError:
+            _QUIET = True
+        except OSError as e:
+            if getattr(e, "errno", None) == 32:  # errno.EPIPE
+                _QUIET = True
+            else:
+                raise
 
 
 def banner(title: str) -> None:

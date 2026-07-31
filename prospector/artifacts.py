@@ -18,10 +18,38 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
+from . import facets
 from .models import Candidate, CheckResult, Verdict
-from .operator import Operator
-from .prompts import render
+from .operator import Operator, ParseError, _extract_json
+from .prompts import ALL_MARKET_KEYS, market_kwargs, render
 from .telemetry import logger
+
+# Prose pack bodies: schema is {"type", "content"} where content is markdown.
+# cursor_cli often emits the markdown body without the JSON envelope.
+_PROSE_ARTIFACT_TYPES = frozenset({"build_spec", "gtm_plan", "ops_plan"})
+
+
+def _coerce_bare_markdown_artifact(text: str, t: str) -> dict:
+    """Wrap a bare-markdown CLI reply into the prose artifact JSON envelope."""
+    content = (text or "").strip()
+    if not content:
+        raise ParseError(f"empty response for artifact '{t}'")
+    if content.startswith("```"):
+        lines = content.split("\n")
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        content = "\n".join(lines).strip()
+        try:
+            return _extract_json(content)
+        except ParseError:
+            pass
+    if content.startswith("#") or ("\n## " in content and len(content) >= 400):
+        logger.info("Coerced bare-markdown CLI reply into artifact JSON envelope",
+                    extra={"type": t, "chars": len(content)})
+        return {"type": t, "content": content}
+    raise ParseError(f"cannot coerce response into artifact '{t}'")
 
 
 # ---------------------------------------------------------------------------
@@ -213,12 +241,17 @@ def _validate_artifact_shape(t: str, data: Any) -> Any:
 
 
 def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
-                      t: str) -> tuple[str, str]:
+                      t: str, market_vars: Optional[Dict[str, str]] = None
+                      ) -> tuple[str, str]:
     """Generate one artifact type. Runs in a thread; returns (type, content)."""
     system, user = render("artifacts", candidate_json=cand_json,
-                          claims_json=claims_json, type=t)
+                          claims_json=claims_json, type=t,
+                          **(market_vars or {}))
+    coerce = ((lambda text: _coerce_bare_markdown_artifact(text, t))
+              if t in _PROSE_ARTIFACT_TYPES else None)
     data = op.complete_json(system, user, temperature=0.3,
-                            validate=lambda d: _validate_artifact_shape(t, d))
+                            validate=lambda d: _validate_artifact_shape(t, d),
+                            coerce=coerce)
 
     # FIX #3: financial_model returns structured JSON — perform arithmetic in Python.
     if t == "financial_model" and isinstance(data, dict):
@@ -238,15 +271,21 @@ def generate_artifacts(
     checks: List[CheckResult],
     *,
     fast_op: Optional[Operator] = None,
+    quality_op: Optional[Operator] = None,
+    cfg: Optional[Any] = None,
 ) -> Dict[str, str]:
     """Generate build_spec, gtm_plan, ops_plan, financial_model in parallel.
 
     FIX #13: parallelizes 4 sequential LLM calls into 1 ThreadPoolExecutor batch.
-    FIX #12: routes all calls to fast_op (flash-lite) — these are template-filling
-    tasks, not creative generation; flash-lite quality is identical at lower cost.
     FIX #3: financial_model outputs JSON assumptions; Python performs arithmetic.
+
+    The three PROSE artifacts ARE the £49 deliverable, so they route to ``quality_op``
+    (the Gemini CLI -> Claude CLI quality chain) when provided. The financial_model is a
+    pure JSON fill that Python turns into arithmetic, so it stays on the cheap ``fast_op``.
+    Both fall back to ``op`` (the moat) when their preferred operator isn't supplied.
     """
-    _op = fast_op or op
+    cheap_op = fast_op or op
+    prose_op = quality_op or op
 
     claims = [c.to_dict() for c in checks if c.verdict == Verdict.SUPPORTED]
     claims_json = json.dumps(claims)
@@ -255,9 +294,15 @@ def generate_artifacts(
     types = ["build_spec", "gtm_plan", "ops_plan", "financial_model"]
     results: Dict[str, str] = {}
 
+    # Money figures in the pack must be denominated in the OPPORTUNITY's market currency
+    # (a US pack quoting £ is wrong), independently of the £49 the pack itself sells for.
+    market_vars = market_kwargs(cfg) if cfg is not None else {k: "" for k in ALL_MARKET_KEYS}
+
     with ThreadPoolExecutor(max_workers=len(types)) as ex:
         futures = {
-            ex.submit(_gen_one_artifact, _op, cand_json, claims_json, t): t
+            ex.submit(_gen_one_artifact,
+                      cheap_op if t == "financial_model" else prose_op,
+                      cand_json, claims_json, t, market_vars): t
             for t in types
         }
         for future in as_completed(futures):
@@ -277,33 +322,159 @@ def generate_artifacts(
 # Marketing content + claim check
 # ---------------------------------------------------------------------------
 
-def verify_claims(op: Operator, copy: str, claims: List[Dict[str, Any]]) -> bool:
+def verify_claims(op: Operator, copy: str, claims: List[Dict[str, Any]]
+                  ) -> bool:
     """Check marketing/listing copy for claim-consistency (Part 5)."""
+    ok, _ = verify_claims_detail(op, copy, claims)
+    return ok
+
+
+def verify_claims_detail(op: Operator, copy: str, claims: List[Dict[str, Any]]
+                         ) -> tuple[bool, List[Dict[str, Any]]]:
+    """Like verify_claims, but also returns violation rows for regeneration feedback."""
     system, user = render("claim_check", copy=copy, claims_json=json.dumps(claims))
     try:
         data = op.complete_json(system, user, temperature=0.0)
-        return bool(data.get("pass", False))
+        ok = bool(data.get("pass", False))
+        viol = data.get("violations") if isinstance(data.get("violations"), list) else []
+        return ok, [v for v in viol if isinstance(v, dict)]
     except Exception:
-        return False
+        return False, []
 
 
-def _gen_one_content(op: Operator, cand_json: str, claims_json: str,
-                     claims: List[Dict[str, Any]], t: str) -> Optional[Dict[str, str]]:
-    """Generate one marketing piece with one regeneration attempt.
+#: Hard ceiling for the card heading, mirrored in ``prompts/content_gen.md``. Chosen so two
+#: cards per row at the storefront's card width render it on one or two lines, never as the
+#: 90+ character paragraph the title produces.
+CARD_LINE_MAX = 60
 
-    Returns None if the piece fails claim-check after the regeneration loop.
-    Runs in a thread (per content type, so 4 threads max).
+
+def _card_line(raw: str) -> str:
+    """The shelf heading, or "" when the operator could not produce a truthful short one.
+
+    Accept-or-drop, never truncate. The only tidying applied is stripping a trailing period
+    and collapsing whitespace, neither of which can change a claim.
     """
-    for attempt in range(2):
+    line = " ".join(raw.split()).rstrip(".").strip()
+    if not line or len(line) > CARD_LINE_MAX:
+        if line:
+            logger.info(
+                "listing card_line discarded: %d chars exceeds the %d limit (%r)",
+                len(line),
+                CARD_LINE_MAX,
+                line,
+            )
+        return ""
+    return line
+
+
+def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Coerce a (possibly partial) listing_page response into the structured contract.
+
+    The storefront renders per-pack specifics (headline, what-you-get bullets, the single
+    strongest proof point, who pays, effort + time-to-revenue) instead of generic chips, so
+    the listing_page is structured rather than a freeform blob. This is tolerant: an operator
+    that only returns ``copy`` still yields a valid piece (structured fields empty), and when
+    ``copy`` is missing we assemble a prose fallback from the parts. ``copy`` is always set so
+    the completeness gate (which checks copy length) and the bundle keep working unchanged.
+    """
+    # Operators occasionally return a JSON array (e.g. [{...}]) instead of the object, or a
+    # bare string. Coerce to the dict the contract expects rather than crashing on .get().
+    if isinstance(data, list):
+        data = next((x for x in data if isinstance(x, dict)), {})
+    elif isinstance(data, str):
+        data = {"copy": data}
+    elif not isinstance(data, dict):
+        data = {}
+
+    def _s(key: str) -> str:
+        return str(data.get(key) or "").strip()
+
+    what = [str(x).strip() for x in (data.get("what_you_get") or []) if str(x).strip()][:5]
+    effort = _s("effort_tag").lower()
+    copy = _s("copy")
+    if not copy:
+        parts = [p for p in (_s("headline"), _s("subhead")) if p]
+        if what:
+            parts.append("What you get: " + "; ".join(what))
+        if _s("proof_point"):
+            parts.append(_s("proof_point"))
+        copy = "\n\n".join(parts)
+    return {
+        "type": "listing_page",
+        "copy": copy,
+        # The shelf heading. Over-length is DISCARDED rather than truncated: cutting a
+        # sentence mid-clause changes what it claims ("not suitable for under-27s" ->
+        # "not suitable for"), and a claim nobody made is exactly what this system exists
+        # to keep off the storefront. An empty card_line is a correct answer -- the card
+        # falls back to the pack title.
+        "card_line": _card_line(_s("card_line")),
+        "headline": _s("headline"),
+        "subhead": _s("subhead"),
+        "what_you_get": what,
+        "proof_point": _s("proof_point"),
+        "who_pays": _s("who_pays"),
+        # Legacy. Kept on the wire for one release so nothing that still reads it breaks;
+        # it is NOT the source of the `effort` facet below (spec 2.3 — low|medium|high was
+        # never defined to mean machine-doability, so mapping it would be a guess).
+        "effort_tag": effort if effort in ("low", "medium", "high") else "",
+        # Discovery facets, validated against the closed vocabulary. Anything the operator
+        # invented is dropped to None here rather than coerced to the nearest member: the
+        # storefront routes buyers on these, and a coerced value is a claim nobody made.
+        "facets": facets.normalize(data.get("facets")),
+        "time_to_first_revenue": _s("time_to_first_revenue"),
+        "cta_text": _s("cta_text"),
+    }
+
+
+def _listing_check_text(piece: Dict[str, Any]) -> str:
+    """Everything a buyer will SEE on the card, concatenated for the claim-check gate, so
+    overstatement in the headline/bullets/proof_point is caught, not just the prose body."""
+    # card_line is the FIRST thing a browsing buyer reads and for many it is the only thing,
+    # so it is held to the same claim-check bar as the headline. Omitting it here would make
+    # the shortest, most-read line on the storefront the one line nobody checked.
+    bits = [piece.get("card_line", ""), piece.get("headline", ""), piece.get("subhead", "")]
+    bits.extend(piece.get("what_you_get", []) or [])
+    bits.extend([piece.get("proof_point", ""), piece.get("copy", "")])
+    return "\n".join(b for b in bits if b)
+
+
+def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claims_json: str,
+                     claims: List[Dict[str, Any]], t: str) -> Optional[Dict[str, Any]]:
+    """Generate one marketing piece with regeneration that feeds claim-check violations.
+
+    ``gen_op`` drafts the copy (cheap for ancillary pieces, the quality chain for the
+    listing_page); ``check_op`` runs the claim-check — always the moat, because a verification
+    gate must never be judged by the same cheap model that produced the copy. Returns None if
+    the piece fails claim-check after the regeneration loop. Runs in a thread.
+    """
+    feedback = ""
+    # listing_page is required for publish; give it one extra repair turn with violations.
+    attempts = 3 if t == "listing_page" else 2
+    for attempt in range(attempts):
         system, user = render("content_gen", candidate_json=cand_json,
                               claims_json=claims_json, type=t)
-        data = op.complete_json(system, user, temperature=0.7)
-        copy = str(data.get("copy", ""))
+        if feedback:
+            user = f"{user}\n\n{feedback}"
+        data = gen_op.complete_json(system, user, temperature=0.7 if attempt == 0 else 0.3)
+        if t == "listing_page":
+            piece = _normalize_listing(data)
+            check_text = _listing_check_text(piece)
+        else:
+            piece = {"type": t, "copy": str(data.get("copy", ""))}
+            check_text = piece["copy"]
 
-        if verify_claims(op, copy, claims):
-            return {"type": t, "copy": copy}
-        logger.debug(f"Content {t} failed claim-check, regenerating (attempt {attempt + 1}/2)",
-                     extra={"type": t})
+        ok, violations = verify_claims_detail(check_op, check_text, claims)
+        if ok:
+            return piece
+        logger.info(
+            f"Content {t} failed claim-check, regenerating (attempt {attempt + 1}/{attempts})",
+            extra={"type": t, "violations_n": len(violations)})
+        feedback = (
+            "Your previous draft FAILED claim-check. Rewrite so every factual statement "
+            "is supported by the verified claims. Do NOT invent mechanics, tools, prices, "
+            "or channels. Empty optional fields are safer than invention. Violations:\n"
+            f"{json.dumps(violations, ensure_ascii=False)}"
+        )
 
     logger.warning(f"Dropping unverified marketing piece: {t}", extra={"type": t})
     return None
@@ -315,15 +486,23 @@ def generate_marketing_content(
     checks: List[CheckResult],
     *,
     fast_op: Optional[Operator] = None,
-) -> List[Dict[str, str]]:
+    quality_op: Optional[Operator] = None,
+    check_op: Optional[Operator] = None,
+) -> List[Dict[str, Any]]:
     """Generate and claim-check listing_page, teaser_social, seo_preview, launch_email.
 
     FIX #13: all 4 content types are generated in parallel (4 threads instead of
     sequential).  Each type has its own 2-attempt regeneration loop.  The retry
-    loop is INSIDE the thread so threads are independent — a slow regeneration on
-    one type does not block the others.  FIX #12: calls route to fast_op.
+    loop is INSIDE the thread so threads are independent.
+
+    The listing_page is the storefront copy a buyer reads BEFORE paying, so it routes to
+    ``quality_op`` (the Gemini CLI -> Claude CLI chain); the ancillary pieces stay on the
+    cheap ``fast_op``. The claim-check gate always runs on ``check_op`` (the moat) — never the
+    drafting model. All three fall back to ``op`` when their preferred operator isn't supplied.
     """
-    _op = fast_op or op
+    cheap_op = fast_op or op
+    quality = quality_op or op
+    checker = check_op or op
 
     claims = [c.to_dict() for c in checks if c.verdict == Verdict.SUPPORTED]
     claims_json = json.dumps(claims)
@@ -333,10 +512,12 @@ def generate_marketing_content(
 
     with ThreadPoolExecutor(max_workers=len(types)) as ex:
         futures = {
-            ex.submit(_gen_one_content, _op, cand_json, claims_json, claims, t): t
+            ex.submit(_gen_one_content,
+                      quality if t == "listing_page" else cheap_op,
+                      checker, cand_json, claims_json, claims, t): t
             for t in types
         }
-        results: List[Dict[str, str]] = []
+        results: List[Dict[str, Any]] = []
         for future in as_completed(futures):
             t = futures[future]
             try:

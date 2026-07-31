@@ -5,12 +5,30 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 env:
   PYTHON_VERSION: "3.14"
   DOTNET_VERSION: "9.0"
 
 jobs:
+  # ──────────────────────────────────────────────────────────────────
+  # Guard — protected files (money rail, moat, identity) cannot be
+  # deleted silently. Removing one requires a `Removes:` commit trailer.
+  # Born from: account/social-login deleted unannounced inside a logo commit.
+  # ──────────────────────────────────────────────────────────────────
+  guard:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard against silent deletion of protected files
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=50
+          python3 scripts/guard_protected_deletions.py "origin/${{ github.base_ref }}"
+
   # ──────────────────────────────────────────────────────────────────
   # Python — full test suite + golden-set hard gate
   # ──────────────────────────────────────────────────────────────────
@@ -36,18 +54,25 @@ jobs:
           restore-keys: |
             uv-${{ runner.os }}-
 
+      # Install from requirements.txt (there is no pyproject.toml, so `uv sync`
+      # cannot be used). --system installs into the setup-python interpreter.
       - name: Install dependencies
-        run: uv sync
+        run: uv pip install --system -r requirements.txt
 
       - name: Main test suite (excluding UI theme)
-        run: uv run pytest -q --ignore=tests/test_ui_theme.py --tb=short -x -p no:warnings
+        # No -x. It stops at the first failure, so a run reports one problem and hides the
+        # rest behind it: on 2026-07-31 four independent environment faults (a hardcoded
+        # .venv path, tests asserting on a gitignored store, and three undeclared
+        # dependencies) took four separate pushes to discover, one per run. The whole point
+        # of CI is to learn everything one push is wrong about, in that push.
+        run: python -m pytest -q --ignore=tests/test_ui_theme.py --tb=short -p no:warnings
 
       # ── Hard gate ──────────────────────────────────────────────
       # Block the pipeline if the golden set does not achieve 100 %
       # discrimination.  Every config change or prompt edit must
       # maintain perfect regression coverage on the 9 fixtures.
       - name: Golden-set regression gate ⛔
-        run: uv run pytest tests/test_golden_set.py -v --tb=short
+        run: python -m pytest tests/test_golden_set.py -v --tb=short
       # ────────────────────────────────────────────────────────────
 
   # ──────────────────────────────────────────────────────────────────
@@ -64,14 +89,17 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # The test project lives under store_platform/. These paths previously omitted that
+      # prefix, so every run failed with MSB1009 (project file does not exist) and the job
+      # had never actually executed a test.
       - name: Restore dependencies
-        run: dotnet restore src/Store.Tests/
+        run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
 
       - name: Build
-        run: dotnet build src/Store.Tests/ --no-restore
+        run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore
 
       - name: Test
-        run: dotnet test src/Store.Tests/ --no-build --verbosity normal
+        run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal
 
   # ──────────────────────────────────────────────────────────────────
   # Next.js — build check on store platform
@@ -89,10 +117,23 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # package.json declares engines.node >=22; this said 20, so CI was building on a
+          # runtime the project does not claim to support.
+          node-version: "22"
 
       - name: Install dependencies
         run: npm ci
 
+      # The job previously ran `build` alone. A type error that Next tolerates at build time
+      # (or lives in a file the build tree-shakes) therefore reached main unchallenged.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # NEXT_PUBLIC_* are inlined at build time. Set placeholder https values here so the
+      # build exercises the same code path as production (CSP connect-src and the sitemap
+      # both derive from them) instead of silently baking in localhost defaults.
       - name: Build
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.example.com
+          NEXT_PUBLIC_SITE_URL: https://www.example.com

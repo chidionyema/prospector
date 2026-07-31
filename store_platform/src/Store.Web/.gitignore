@@ -4,3 +4,8 @@
 /out/
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright smoke (prove_web.sh) artifacts
+/test-results/
+/playwright-report/
+/.playwright/

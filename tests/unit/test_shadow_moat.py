@@ -12,24 +12,38 @@ from prospector.retrieval import FixtureProvider
 def test_vet_candidate_logs_shadow_moat_drift(caplog):
     caplog.set_level(logging.INFO)
     
-    # Primary op: says PASS
-    op = MockOperator(router=lambda s, u: {
-        "verdict": "supported", "confidence": 1.0, "rationale": "ok", "citations": []
-    })
-    
-    # Experimental op: says KILL (refuted)
-    exp_op = MockOperator(router=lambda s, u: {
-        "verdict": "refuted", "confidence": 1.0, "rationale": "bad", "citations": []
-    })
-    
-    cand = Candidate(title="Test Idea", one_liner="x", hypothesis="y", who_pays="z")
-    cfg = load_config()
-    
     # Provide enough fixtures for all checks
     fixtures = {
         "": [{"url": "http://x", "text": "evidence"}]
     }
     search = FixtureProvider(fixtures=fixtures)
+
+    # The citation is load-bearing, not decoration. This mock used to return
+    # `"citations": []`, i.e. a "supported" verdict resting on nothing — and source-or-die
+    # correctly refuses that: verify.py:377 downgrades an uncited supported check to
+    # unverifiable, every check then reads unverifiable, and the `source_or_die` gate fires.
+    # The engine was right and the fixture was wrong; the fix is to make the mock's PASS
+    # genuinely grounded, never to relax the gate so the mock's story works.
+    #
+    # verify.py filters citations against `{s.source_id for s in sources}`, and source_id is
+    # a hash of the URL — not the URL itself. Derive it from the provider that will actually
+    # serve this check rather than hardcoding the digest, so the test survives any change to
+    # how ids are minted.
+    source_id = search.search("probe", 1)[0].source_id
+
+    # Primary op: says PASS, grounded in the one source the fixture serves.
+    op = MockOperator(router=lambda s, u: {
+        "verdict": "supported", "confidence": 1.0, "rationale": "ok",
+        "citations": [source_id]
+    })
+
+    # Experimental op: says KILL (refuted)
+    exp_op = MockOperator(router=lambda s, u: {
+        "verdict": "refuted", "confidence": 1.0, "rationale": "bad", "citations": []
+    })
+
+    cand = Candidate(title="Test Idea", one_liner="x", hypothesis="y", who_pays="z")
+    cfg = load_config()
     
     # Run vet
     dossier = vet_candidate(cand, op, search, cfg, experimental_op=exp_op)

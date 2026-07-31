@@ -1,58 +1,60 @@
-"""Catalogue — dossier browser.
-
-Purpose: browse, filter, and drill into the full grounded receipt for any candidate.
-Both PASS and KILL are first-class — KILL is rendered with its cited sources.
-"""
+"""Catalogue — filter + drill into grounded dossiers (PASS and KILL)."""
 from __future__ import annotations
 
 import streamlit as st
 
 from prospector.control_center import readers
+from prospector.control_center.components.chrome import go_page, page_hero
 from prospector.control_center.components.gate_badge import st_decision_badge
 
 
 def render():
-    st.title("📋 Catalogue")
     rows = readers.catalogue_index()
+    stats = readers.catalogue_stats() if rows else {}
+    n = len(rows)
+    glance = (
+        f"{n} dossiers · PASS {stats.get('n_pass', 0)} · "
+        f"KILL {stats.get('n_kill', 0)} · DEFER {stats.get('n_defer', 0)}"
+        if n
+        else "No dossiers yet — launch generate"
+    )
+    page_hero("Catalogue", glance, tone="ok" if n else "idle")
 
     if not rows:
-        st.info("No dossiers yet. Run `vet` or `signal` first.")
+        if st.button("Go to Launch", type="primary", key="cat_empty_launch"):
+            go_page("launcher")
         return
 
-    # ── Read navigation presets from alarm links (one-shot) ─────────────────
     preset_lane = st.session_state.pop("catalogue_preset_lane", None)
     preset_decision = st.session_state.pop("catalogue_preset_decision", None)
     if preset_lane is not None or preset_decision is not None:
-        lane_label = f"lane={preset_lane or '(no lane)'}" if preset_lane == "" else f"lane={preset_lane or '(any)'}"
-        dec_label = f"decision={preset_decision}" if preset_decision else ""
-        st.info(f"🔍 Pre-filtered from alarm: {lane_label}  {dec_label}")
+        st.caption(
+            f"Pre-filtered from alarm · lane={preset_lane!r} · decision={preset_decision!r}"
+        )
 
-    # ── Filters ─────────────────────────────────────────────────────────────
     col1, col2, col3, col4, col5 = st.columns(5)
     decisions = ["all", "pass", "kill", "defer"]
     decision_idx = decisions.index(preset_decision) if preset_decision in decisions else 0
     decision_filter = col1.selectbox("Decision", decisions, index=decision_idx)
-    
+
     lanes = ["all"] + sorted({r.get("ambition_tier") or "(no lane)" for r in rows})
-    # Pre-select lane from alarm link; "all" = no filter.
-    # preset_lane="" means the [all] alarm — rows with empty ambition_tier, displayed
-    # as "(no lane)" in the dropdown.
     if preset_lane is not None:
         lookup = "(no lane)" if preset_lane == "" else preset_lane
         lane_idx = next((i for i, l in enumerate(lanes) if l == lookup), 0)
     else:
         lane_idx = 0
     lane_filter = col2.selectbox("Lane", lanes, index=lane_idx)
-    # Map display value "(no lane)" back to empty string for filtering
     actual_lane_filter = "" if lane_filter == "(no lane)" else lane_filter
 
     personas = ["all"] + sorted({r.get("persona") or "(none)" for r in rows})
     persona_filter = col3.selectbox("Persona", personas)
     actual_persona_filter = "" if persona_filter == "(none)" else persona_filter
 
-    structural_forms = ["all"] + sorted({r.get("structural_form") or "" for r in rows if r.get("structural_form")})
+    structural_forms = ["all"] + sorted(
+        {r.get("structural_form") or "" for r in rows if r.get("structural_form")}
+    )
     form_filter = col4.selectbox("Form", structural_forms)
-    search = col5.text_input("Search title", "").lower()
+    search = col5.text_input("Search", "").lower()
 
     filtered = rows
     if decision_filter != "all":
@@ -66,9 +68,8 @@ def render():
     if search:
         filtered = [r for r in filtered if search in (r.get("title") or "").lower()]
 
-    st.caption(f"Showing {len(filtered)} / {len(rows)} dossiers")
+    st.caption(f"{len(filtered)} / {n} shown · select a row to open the receipt")
 
-    # ── List view ────────────────────────────────────────────────────────────
     display = []
     for r in filtered:
         d = (r.get("decision") or "").lower()
@@ -77,13 +78,13 @@ def render():
             "id": (r.get("candidate_id") or "")[:8],
             "title": r.get("title") or "(untitled)",
             "decision": d.upper(),
-            "gate_fired": r.get("gate_fired") or r.get("gate_fired") or "—",
+            "gate_fired": r.get("gate_fired") or "—",
             "composite": r.get("composite"),
             "lane": r.get("ambition_tier") or "—",
             "persona": r.get("persona") or "—",
             "form": r.get("structural_form") or "—",
-            "provisional": "⚠️" if r.get("provisional") else "",
-            "published": "✅" if listing else "",
+            "provisional": "Y" if r.get("provisional") else "",
+            "published": "Y" if listing else "",
         })
 
     selected = st.dataframe(
@@ -97,18 +98,16 @@ def render():
             "title": st.column_config.TextColumn("title", width="large"),
             "decision": st.column_config.TextColumn("Decision", width="small"),
             "gate_fired": st.column_config.TextColumn("Gate", width="medium"),
-            "composite": st.column_config.NumberColumn(
-                "Composite", format="%.2f", width="small"),
+            "composite": st.column_config.NumberColumn("Composite", format="%.2f", width="small"),
             "lane": st.column_config.TextColumn("Lane", width="small"),
             "persona": st.column_config.TextColumn("Persona", width="small"),
             "form": st.column_config.TextColumn("Form", width="small"),
             "provisional": st.column_config.TextColumn("Prov.", width="tiny"),
             "published": st.column_config.TextColumn("Pub.", width="tiny"),
         },
-        height=400,
+        height=360,
     )
 
-    # ── Drill-in ────────────────────────────────────────────────────────────
     if selected and selected.get("selection", {}).get("rows"):
         idx = selected["selection"]["rows"][0]
         row = filtered[idx]
@@ -120,44 +119,36 @@ def render():
         col1, col2 = st.columns([3, 1])
         with col1:
             st.subheader(row.get("title") or "(untitled)")
-            st.caption(row.get("one_liner") or "")
+            st.caption(row.get("one_liner") or candidate_id)
         with col2:
             st_decision_badge(decision)
 
         if dossier:
             _render_dossier_detail(dossier, row)
         else:
-            st.warning(f"Could not load dossier JSON for {candidate_id}.{decision}")
+            st.warning(f"Missing dossier JSON for {candidate_id}.{decision}")
 
 
 def _render_dossier_detail(dossier: dict, row: dict):
-    """Render the full dossier: verdict panels per check + sources + score."""
     cand = dossier.get("candidate", {})
     checks = dossier.get("checks", [])
     score = dossier.get("score", {})
     adversarial = dossier.get("adversarial", {})
 
-    # ── Composite + per-axis scores ───────────────────────────────────────
     composite = row.get("composite") or score.get("composite") or 0.0
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Composite", f"{composite:.2f}")
-    with col2:
-        gate = row.get("gate_fired") or "—"
-        st.metric("Gate fired", gate)
-    with col3:
-        lane = row.get("ambition_tier") or "—"
-        st.metric("Lane", lane)
-    with col4:
-        persona = row.get("persona") or "—"
-        st.metric("Persona", persona)
+    col1.metric("Composite", f"{composite:.2f}")
+    col2.metric("Gate", row.get("gate_fired") or "—")
+    col3.metric("Lane", row.get("ambition_tier") or "—")
+    col4.metric("Persona", row.get("persona") or "—")
 
-    # ── Per-check verdict panels ──────────────────────────────────────────
-    st.subheader("🔍 Verdict per check")
+    if cand.get("why_now"):
+        st.caption(f"Why now: {cand.get('why_now')}")
+
+    st.markdown("**Verdicts**")
     if not checks:
-        st.info("No check results in this dossier.")
+        st.caption("No check results in this dossier.")
     else:
-        from prospector.models import Verdict
         for check in checks:
             name = check.get("check_name", "?")
             verdict = check.get("verdict", "unspecified")
@@ -165,36 +156,34 @@ def _render_dossier_detail(dossier: dict, row: dict):
             rationale = check.get("rationale", "—")
             sources = check.get("sources", [])
             citations = check.get("citations", [])
-
-            with st.expander(f"**{name}** → {verdict.upper()} (conf {confidence:.2f})",
-                            expanded=(verdict.lower() in ("refuted", "unverifiable"))):
-                st.markdown(f"**Rationale:** {rationale}")
+            with st.expander(
+                f"{name} → {str(verdict).upper()} ({confidence:.2f})",
+                expanded=(str(verdict).lower() in ("refuted", "unverifiable")),
+            ):
+                st.markdown(rationale)
                 if citations:
-                    st.markdown(f"**Citations:** {', '.join(str(c) for c in citations)}")
+                    st.caption("Citations: " + ", ".join(str(c) for c in citations))
                 if sources:
-                    st.markdown("**Sources:**")
                     for src in sources:
                         url = src.get("url", "")
-                        text = src.get("text", "")[:120]
+                        text = (src.get("text", "") or "")[:120]
                         if url:
-                            st.markdown(f"- [{url[:60]}]({url})")
+                            st.markdown(f"- [{url[:70]}]({url})")
                             if text:
                                 st.caption(text)
                         elif text:
-                            st.markdown(f"- {text[:120]}")
+                            st.markdown(f"- {text}")
                 if not sources and not citations:
                     st.caption("No cited sources — unverifiable.")
 
-    # ── Adversarial ────────────────────────────────────────────────────────
     if adversarial:
-        st.subheader("⚔️ Adversarial pass")
-        adv_decisive = adversarial.get("decisive")
-        adv_kill = adversarial.get("kill_case")
-        adv_conf = adversarial.get("confidence")
-        st.markdown(f"**Decisive:** {adv_decisive}  **Confidence:** {adv_conf}")
-        if adv_kill:
-            st.markdown(f"**Kill case:** {adv_kill}")
+        with st.expander("Adversarial", expanded=bool(adversarial.get("kill_case"))):
+            st.markdown(
+                f"Decisive: {adversarial.get('decisive')} · "
+                f"Confidence: {adversarial.get('confidence')}"
+            )
+            if adversarial.get("kill_case"):
+                st.markdown(adversarial["kill_case"])
 
-    # ── Raw JSON ───────────────────────────────────────────────────────────
-    with st.expander("📄 Raw dossier JSON"):
+    with st.expander("Raw JSON", expanded=False):
         st.json(dossier)

@@ -13,6 +13,12 @@ namespace Store.Api.Services;
 /// </summary>
 public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
 {
+    // The catalogue is priced in GBP pence (see Money). Fulfilment compares the paid amount
+    // against Pack.PricePence, which is only meaningful in the same currency, so a payment in
+    // any other currency is treated as unfulfillable rather than silently honoured.
+    private const string StoreCurrency = "GBP";
+
+
     public async Task<FulfilmentOutcome> FulfilAsync(PaymentTransaction txn)
     {
         ArgumentNullException.ThrowIfNull(txn);
@@ -45,9 +51,14 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
     private async Task FulfilItemAsync(
         PaymentTransaction txn, PurchasedItem item, List<Entitlement> created, List<string> unfulfilled)
     {
+        // Resolve the deliverable pack from the identifier carried on the transaction.
+        // Stripe stamps the catalog pack id into checkout metadata (P0-1); Paddle carries
+        // the provider product id on its line items. Match either, scoped to the provider.
         var pack = item.ProductId is null
             ? null
-            : await db.Packs.FirstOrDefaultAsync(p => p.ProviderProductId == item.ProductId && p.PaymentProvider == txn.Provider).ConfigureAwait(false);
+            : await db.Packs.FirstOrDefaultAsync(p =>
+                (p.Id == item.ProductId || p.ProviderProductId == item.ProductId)
+                && p.PaymentProvider == txn.Provider).ConfigureAwait(false);
 
         var order = NewOrder(txn, pack?.Id, item.AmountPence);
         db.Orders.Add(order);
@@ -57,6 +68,26 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
             // Unknown product, or a listed pack with no deliverable content (should be
             // impossible given list-only-after-upload). Record, alert, never drop.
             unfulfilled.Add(item.ProductId ?? "(null product)");
+            return;
+        }
+
+        // SECURITY (founder fence) — the catalogue price is the source of truth, never the
+        // webhook body. A valid signature only proves the payload came from the provider; it
+        // does not prove the buyer paid the listed price. Coupons, a $0/discounted session, a
+        // mispriced provider product, or — if a webhook signing secret ever leaks — a forged
+        // underpayment would otherwise mint a full entitlement. Refuse to grant unless the
+        // paid currency is the store currency and the amount covers Pack.PricePence. Money is
+        // never dropped: the Order is already recorded above; route the item to unfulfilled so
+        // the operator reconciles it instead of the buyer getting paid content for free.
+        if (!string.Equals(txn.Currency, StoreCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            unfulfilled.Add($"{item.ProductId} (currency {txn.Currency} != {StoreCurrency})");
+            return;
+        }
+
+        if (item.AmountPence < pack.PricePence)
+        {
+            unfulfilled.Add($"{item.ProductId} (paid {item.AmountPence}p < price {pack.PricePence}p)");
             return;
         }
 
@@ -98,6 +129,44 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
         }
 
         return new FulfilmentOutcome(false, created, unfulfilled);
+    }
+
+    /// <summary>
+    /// P1-1 — apply a refund/dispute reversal: revoke every Active entitlement granted for
+    /// the original payment and move its orders to a reversed status, so a refunded/disputed
+    /// buyer can no longer download. Idempotent: re-applying finds nothing Active and is a
+    /// no-op. Matches the original payment by provider + transaction id.
+    /// </summary>
+    public async Task<RevocationOutcome> RevokeAsync(Store.Api.Payments.PaymentReversal reversal)
+    {
+        ArgumentNullException.ThrowIfNull(reversal);
+
+        var entitlements = await db.Entitlements
+            .Where(e => e.Order!.ProviderTransactionId == reversal.OriginalTransactionId
+                        && e.Order.PaymentProvider == reversal.Provider
+                        && e.Status == EntitlementStatus.Active)
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        foreach (var ent in entitlements)
+        {
+            ent.Status = EntitlementStatus.Revoked;
+        }
+
+        var newOrderStatus = string.Equals(reversal.Kind, "dispute", StringComparison.Ordinal)
+            ? OrderStatus.Disputed : OrderStatus.Refunded;
+        var orders = await db.Orders
+            .Where(o => o.ProviderTransactionId == reversal.OriginalTransactionId
+                        && o.PaymentProvider == reversal.Provider)
+            .ToListAsync()
+            .ConfigureAwait(false);
+        foreach (var order in orders)
+        {
+            order.Status = newOrderStatus;
+        }
+
+        await db.SaveChangesAsync().ConfigureAwait(false);
+        return new RevocationOutcome(entitlements.Count, orders.Count);
     }
 
     private Task<bool> TransactionAlreadyRecordedAsync(string provider, string transactionId) =>

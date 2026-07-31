@@ -10,12 +10,36 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!--
+    xunit.runner.json caps test parallelism at 4 threads. It has to be copied next to the
+    assembly or the runner never reads it, and a silently-ignored config is worse than none
+    because it looks applied.
+
+    Why cap at all: xunit defaults maxParallelThreads to the core count (12 here), and this
+    repo is worked by several agents in parallel git worktrees, so the real figure is
+    12 x N-agents. On 2026-07-31, with three checkouts building at once, this 12-core /
+    16GB machine sat at load 364 with 18.49% CPU idle and 32M of 16G unused — blocked on
+    page faults, not computing. RAM is the scarce resource, and each thread here spins up a
+    WebApplicationFactory with its own SQLite database.
+
+    That is also a correctness argument, not just a speed one: at that load the presign TTL
+    assertion in StorageWiringTests.Download_url_honours_a_custom_ttl failed three runs
+    straight (X-Amz-Expires 594, 596, 597 against an expected 599-600) because the two clock
+    reads it straddles drifted seconds apart. Tests that were never touched should not go red.
+  -->
+  <ItemGroup>
+    <Content Include="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

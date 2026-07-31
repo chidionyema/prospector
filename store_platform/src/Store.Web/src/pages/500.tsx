@@ -1,17 +1,19 @@
 import React from 'react';
 import Link from 'next/link';
+import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 
 /**
- * 500. Shown when the server itself errors, so it stays deliberately minimal — no data fetching,
- * no app providers to depend on. The reassurance about funds matters most here: a server error on
- * a money surface must never read as "my hold is gone".
+ * 500. Shown when the server itself errors. Wrapped in the marketing chrome (nav + footer) for
+ * consistency with the rest of the store; MarketingLayout fetches nothing and carries no providers,
+ * so it stays safe on a failed render. The reassurance about funds matters most here: a server error
+ * on a money surface must never read as "my hold is gone".
  */
 export default function ServerError() {
   return (
-    <>
+    <MarketingLayout>
       <Seo title="Something went wrong" noindex />
-      <main className="flex min-h-screen items-center justify-center bg-bg px-6 font-sans text-text">
+      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
         <div className="max-w-md text-center">
           <p className="text-small font-semibold uppercase tracking-wide text-muted">500</p>
           <h1 className="mt-2 text-h1 font-semibold text-text">Something went wrong on our side</h1>
@@ -26,7 +28,7 @@ export default function ServerError() {
             Back to home
           </Link>
         </div>
-      </main>
-    </>
+      </div>
+    </MarketingLayout>
   );
 }

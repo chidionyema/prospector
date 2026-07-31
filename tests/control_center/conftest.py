@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -22,28 +23,31 @@ def _isolate_runner_state(tmp_path, monkeypatch):
 
     Without this, runner's module-level _JOBS_FILE and _RUNS_DIR would
     read/write the real store/control_center/ directory and leak state
-    between tests."""
+    between tests.
+
+    Teardown kills children AND waits briefly so daemon threads finish their
+    final upsert against the *still-patched* temp path — never against
+    production after monkeypatch unwinds.
+    """
     cc = tmp_path / "control_center"
     cc.mkdir(parents=True, exist_ok=True)
     (cc / "runs").mkdir()
     monkeypatch.setattr(_runner, "_JOBS_FILE", cc / "jobs.json")
     monkeypatch.setattr(_runner, "_CC_DIR", cc)
     monkeypatch.setattr(_runner, "_RUNS_DIR", cc / "runs")
-    # Also clear the in-memory ring buffers + status map
     _runner._RING_BUFFERS.clear()
     _runner._JOB_STATUS.clear()
     yield
-    # Reap any subprocesses this test spawned. The actuator-lock and cancel tests
-    # launch `sleep(60)` children; without reaping they linger for 60s and their daemon
-    # threads can write stale job state into a *later* test's jobs.json — the source of
-    # the flaky cross-test failures and the suite timeout. _JOBS_FILE is still patched
-    # to this test's temp file here (monkeypatch unwinds after fixture teardown).
-    for j in _runner._load_jobs():
+    # Reap while paths are still patched (monkeypatch unwinds after this fixture).
+    for j in list(_runner._load_jobs()):
         pid = j.get("pid")
-        if pid:
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except OSError:
-                pass
+        if not pid:
+            continue
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+    # Give daemon threads a moment to observe wait() and upsert into the temp file.
+    time.sleep(0.15)
     _runner._RING_BUFFERS.clear()
     _runner._JOB_STATUS.clear()

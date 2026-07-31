@@ -111,6 +111,10 @@ class Candidate:
     # to packaging: the tier sets the vetting BAR; the £30 pack is downstream selling format.
     # Default "" = no lane engaged (today's single-default behaviour, back-compat).
     ambition_tier: str = ""
+    # Jurisdiction this opportunity lives in (Epic D). "" = not declared => the config
+    # default market. Hierarchical: "us" or "us-tx". Orthogonal to ambition_tier (which
+    # sets the BAR) and to the BUYER's locale — packs sell in GBP whatever the market.
+    market: str = ""
     # Optional audit trail of how the raw brainstormed idea was sharpened during the
     # refinement pass (list of {"before": {...}} snapshots). Purely additive observability
     # — never read by any gate; rendered in the dossier's "Generation Refinement" section.
@@ -118,7 +122,12 @@ class Candidate:
 
     def __post_init__(self) -> None:
         if not self.candidate_id:
-            self.candidate_id = _id(self.title, self.one_liner)
+            # `market` joins the hash ONLY when explicitly set, so every pre-Epic-D and
+            # default-market id stays byte-identical (no catalogue churn, no duplicate
+            # rows on re-vet). Without this, replicating a UK PASS into another market
+            # produces the SAME id — and store.save() would overwrite the UK dossier.
+            self.candidate_id = (_id(self.title, self.one_liner) if not self.market
+                                 else _id(self.title, self.one_liner, self.market))
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -151,6 +160,7 @@ class Candidate:
             candidate_id=d.get("candidate_id", ""),
             structural_form=sform,
             ambition_tier=str(d.get("ambition_tier", "") or ""),
+            market=str(d.get("market", "") or ""),
             refinement_history=list(d.get("refinement_history") or []))
 
 
@@ -168,7 +178,7 @@ class CheckResult:
     retrieval_failed: bool = False  # ALL searches for this check errored (infra/outage),
                                     # distinct from "searched and found nothing" — must
                                     # NEVER trip a kill gate; the candidate defers instead.
-    # Which operator actually ran this check (e.g. "gemini/2.5-flash-lite" or
+    # Which operator actually ran this check (e.g. "claude-cli/default" or
     # "minimax/MiniMax-M3").  Records the concrete model version used so the audit
     # trail shows exactly which brain ruled, not just the class name.
     provider: str = ""
@@ -206,6 +216,11 @@ class ScoreResult:
     scores: dict[str, int]
     justification: dict[str, str]
     composite: float = 0.0
+    # P1-9 — True when scoring could not be computed (operator error / unparseable
+    # response) and the all-zero scores are a fail-safe, NOT a genuine 0/5 verdict.
+    # Lets the publish gate distinguish "scored and weak" from "could not score" so a
+    # scoring outage never silently reads as a real low composite.
+    score_failed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -227,7 +242,7 @@ class Dossier:
     score: Optional[ScoreResult] = None
     model_version: str = ""
     # The concrete operator chain that ran the moat for this dossier.
-    # Format: "claude/claude-opus → gemini/2.5-flash" or "minimax/MiniMax-M3".
+    # Format: "claude/claude-opus → claude-cli/default" or "minimax/MiniMax-M3".
     # Persisted so the audit trail shows exactly which brains were used, including
     # any failover steps when the primary moat was exhausted mid-run.
     provider_chain: str = ""

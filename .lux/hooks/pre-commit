@@ -1,30 +1,56 @@
 #!/bin/sh
-# PDD pre-commit hook — Prospector (Python project)
-# Checks modified functions have valid POPDD receipts.
-# Add to .git/hooks/pre-commit as:
-#   ln -sf ../../.lux/hooks/pre-commit .git/hooks/pre-commit
+# ─────────────────────────────────────────────────────────────────────────────
+# POPDD pre-commit gate — Prospector  (rewired 2026-06-26, estate Phase 1)
+#
+# WHY THE REWRITE (proven failure modes of the old ci-gate.sh path):
+#   1. Schema mismatch: ci-gate.sh only counted receipts with action=='verify'
+#      (per-function), but the only working producer (popdd_verify.py) emits
+#      action=='test-run:complete' for target 'prospector:test-suite'. The gate
+#      could never see a receipt the project actually produces -> green theater.
+#   2. Branch-vs-main lockout: ci-gate.sh diffed merge-base(HEAD,main)..HEAD, i.e.
+#      the WHOLE branch. On a feature branch with no per-function receipts that
+#      blocks 100% of commits, trapping in-flight work.
+#
+# WHAT THIS GATE ENFORCES (honest, coarse-but-real v1):
+#   - Looks only at the STAGED delta of THIS commit (no branch lockout).
+#   - If no source (.py/.ts/.js/.cs) is staged -> nothing to prove, allow.
+#   - If source IS staged -> run the proof suite (popdd_verify.py). It runs the
+#     full pytest suite and signs a PASS/FAIL receipt into .lux/receipts/.
+#     Commit is BLOCKED unless the suite is green and the chain is valid.
+#
+# LIMITATION (stated, not hidden): this proves "the suite is green at commit
+# time", not per-function POPDD. Tighten later with `lux spec verify <fn>` +
+# action=='verify' receipts. Bypass is `--no-verify` (logged by git as a choice).
+#
+# Install:  ln -sf ../../.lux/hooks/pre-commit .git/hooks/pre-commit
+# ─────────────────────────────────────────────────────────────────────────────
+set -eu
 
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
-echo "🔍 PDD Pre-Commit Check"
-echo "======================="
+# Test override hook (used by the gate's own self-test to prove the BLOCK path
+# without breaking the real suite). Unset in normal operation.
+VERIFY_CMD="${POPDD_VERIFY_CMD:-.venv/bin/python scripts/popdd_verify.py}"
 
-# Run the CI gate script if it exists
-if [ -f "scripts/ci-gate.sh" ]; then
-  sh scripts/ci-gate.sh 2>&1
-  result=$?
-else
-  echo "⚠️  No ci-gate.sh found — skipping PDD check"
-  result=0
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py|ts|js|cs)$' || true)
+
+if [ -z "$staged" ]; then
+  echo "✅ POPDD gate: no source changes staged — nothing to prove. Allowing commit."
+  exit 0
 fi
 
-if [ $result -ne 0 ]; then
-  echo ""
-  echo "❌ PDD gate BLOCKED this commit."
-  echo "   One or more modified functions lack POPDD receipts."
-  echo "   Run: python scripts/popdd_verify.py"
+echo "🔍 POPDD gate: source changes staged — running proof suite before allowing commit"
+echo "$staged" | sed 's/^/     staged: /'
+echo "─────────────────────────────────────────────────────────"
+
+if sh -c "$VERIFY_CMD"; then
+  echo "─────────────────────────────────────────────────────────"
+  echo "✅ POPDD gate PASSED — suite green, receipt signed into .lux/receipts/. Commit allowed."
+  exit 0
+else
+  echo "─────────────────────────────────────────────────────────"
+  echo "❌ POPDD gate BLOCKED this commit — proof suite did not pass (or chain invalid)."
+  echo "   Fix the failure, re-run the suite, and the receipt will prove green."
+  echo "   (Emergency override, recorded as a deliberate choice: git commit --no-verify)"
   exit 1
 fi
-
-echo "✅ PDD gate passed — all modified functions have receipts."
-exit 0
