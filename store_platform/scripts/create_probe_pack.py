@@ -210,6 +210,24 @@ def main() -> int:
     live = bool(stripe_key and stripe_key.startswith("sk_live_"))
     print(f"Stripe mode: {'LIVE' if live else 'test/unset'}")
 
+    # Stripe's test and live modes are separate object namespaces: a price minted with a test
+    # key does not exist to a live key. Publishing one to the live catalogue creates a pack the
+    # API cannot bill -- CanBillPriceAsync (StripeProvider.cs:434) fails the PriceService lookup
+    # and refuses to list it. That fails safe, but it still leaves a dead row and a stray Stripe
+    # object, and the symptom ("published fine, pack never appears") points nowhere near the
+    # cause. Refuse up front instead. `.env` at the repo root holds the TEST key; the live key
+    # lives in .env.production, so this is a one-character-of-attention mistake to make.
+    local_api = urllib.parse.urlparse(API_BASE).hostname in ("localhost", "127.0.0.1", "::1")
+    if not args.dry_run and not live and not local_api:
+        sys.exit(
+            f"FATAL: refusing to publish a test-mode price to {API_BASE}.\n"
+            "  Stripe__ApiKey is not an sk_live_ key, so the price this would mint does not\n"
+            "  exist in live mode and the API could never bill it.\n"
+            "  Point PROSPECTOR_ENV_PATH at an env file holding the live key, e.g.\n"
+            "    PROSPECTOR_ENV_PATH=store_platform/.env.production \\\n"
+            "      python3 store_platform/scripts/create_probe_pack.py --content-file <zip>"
+        )
+
     print("\nContent:")
     content_key, content_hash = upload_content(args.content_file, args.dry_run)
 
