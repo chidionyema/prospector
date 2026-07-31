@@ -115,6 +115,28 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
     window.location.href = route.url;
   };
 
+  /**
+   * The overlay opened but cannot work in this browser — send the buyer to hosted checkout.
+   *
+   * resolveStripeCheckout's fallback only covers a failed session REQUEST; a session that is
+   * issued and then cannot render had no escape at all, and the buyer saw Stripe's own "cannot
+   * be reached" message with nowhere to go (LIVE_RAIL_SMOKE_TEST.md, 2026-07-31).
+   *
+   * A new hosted session is requested rather than reusing the embedded one: an embedded session
+   * has no `url`, so there is nothing to redirect to. The panel closes first, so a hosted request
+   * that itself fails leaves a visible error on the pack page instead of a frozen overlay.
+   */
+  const handleEmbeddedUnreachable = async () => {
+    setClientSecret(null);
+    try {
+      window.location.href = await createStripeCheckout(pack.id);
+    } catch {
+      setCheckoutError(
+        'Checkout could not load in this browser. Please try another browser, or disable any ad or privacy blocker for this page.',
+      );
+    }
+  };
+
   const handlePaddleCheckout = async (pack: PackDetails) => {
     await initPaddle();
     openPaddleCheckout(pack.providerPriceId);
@@ -284,6 +306,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
           clientSecret={clientSecret}
           title={pack.title}
           onClose={() => setClientSecret(null)}
+          onUnreachable={handleEmbeddedUnreachable}
         />
       )}
 
