@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
@@ -11,6 +12,7 @@ import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackC
 import { createEmbeddedCheckout, createStripeCheckout, fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { resolveStripeCheckout } from '@/lib/checkoutRoute';
+import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
 import { stripeConfigured } from '@/lib/stripe';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
@@ -51,6 +53,15 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
   /** Non-null while the embedded checkout is open. Null is not "failed" — it is also every
    *  provider and build that pays through the hosted redirect instead. */
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  // A session created out of band opens the overlay directly, so the live render can be proven
+  // on a smoke-test-priced session instead of a full-price one. Ignored unless the value has the
+  // shape of a client secret; see lib/preopenedCheckout for why this leaks nothing.
+  const router = useRouter();
+  const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
+  useEffect(() => {
+    if (preopened) setClientSecret(preopened);
+  }, [preopened]);
 
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);

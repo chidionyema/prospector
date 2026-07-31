@@ -136,8 +136,62 @@ public static class CheckoutEndpoints
             .Select(id => new CheckoutLine(id, packs[id].ProviderPriceId!))
             .ToArray();
 
+        var (rejection, billedLines) = ApplySmokeTestPricing(lines, packIds, sp, config, request);
+        if (rejection is not null)
+        {
+            return rejection;
+        }
+
         return await OpenSessionAsync(
-            paymentProvider, lines, buyerEmail, embedded, successUrl, cancelUrl).ConfigureAwait(false);
+            paymentProvider, billedLines, buyerEmail, embedded, successUrl, cancelUrl).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Token pricing for a live-rail smoke test: returns the lines to actually bill, or a
+    /// rejection that must be returned to the caller instead of opening a session.
+    /// </summary>
+    /// <remarks>
+    /// An absent header is every real buyer and returns the lines untouched. A present-but-invalid
+    /// header is REJECTED rather than sold at the listed price — falling through would bill the
+    /// full amount for a mistyped test key, which is exactly what the override exists to prevent.
+    /// See <see cref="SmokeTestPricing"/> for why the storefront cannot reach this.
+    /// </remarks>
+    private static (IResult? Rejection, IReadOnlyList<CheckoutLine> Lines) ApplySmokeTestPricing(
+        IReadOnlyList<CheckoutLine> lines,
+        string[] packIds,
+        IServiceProvider sp,
+        IConfiguration config,
+        HttpRequest request)
+    {
+        var smoke = SmokeTestPricing.Evaluate(
+            lines,
+            request.Headers[SmokeTestPricing.HeaderName].ToString(),
+            config["Store:InternalApiKey"] ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY"),
+            config[SmokeTestPricing.PriceIdSetting] ?? Environment.GetEnvironmentVariable("STRIPE_SMOKE_TEST_PRICE_ID"));
+
+        switch (smoke.Outcome)
+        {
+            case SmokeTestPricing.Outcome.Unauthorized:
+                return (Results.Unauthorized(), lines);
+
+            case SmokeTestPricing.Outcome.NotConfigured:
+                return (Results.Problem(
+                    $"Smoke-test pricing requested but {SmokeTestPricing.PriceIdSetting} is not configured.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable), lines);
+
+            case SmokeTestPricing.Outcome.Applied:
+                // Loud on purpose: a token-priced live session is the one checkout that must stay
+                // greppable afterwards, so a 50p order is never mistaken for a lost £49 sale.
+                sp.GetService<ILoggerFactory>()?.CreateLogger("SmokeTestPricing").LogWarning(
+                    "SMOKE-TEST PRICING APPLIED: packs [{Packs}] repriced to {PriceId}",
+                    string.Join(",", packIds), smoke.Lines[0].ProviderPriceId);
+                break;
+
+            default:
+                break;
+        }
+
+        return (null, smoke.Lines);
     }
 
     /// <summary>
@@ -151,7 +205,7 @@ public static class CheckoutEndpoints
     /// </remarks>
     private static async Task<IResult> OpenSessionAsync(
         IPaymentProvider paymentProvider,
-        CheckoutLine[] lines,
+        IReadOnlyList<CheckoutLine> lines,
         string? buyerEmail,
         bool embedded,
         string successUrl,
