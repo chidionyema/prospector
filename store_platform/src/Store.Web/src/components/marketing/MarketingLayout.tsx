@@ -139,6 +139,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               <ul className="flex flex-col gap-4">
                 <li><Link href="/" className="text-xs text-muted hover:text-text transition-colors">Catalog</Link></li>
                 <li><Link href="/how-it-works" className="text-xs text-muted hover:text-text transition-colors">How it works</Link></li>
+                <li><Link href="/kill-log" className="text-xs text-muted hover:text-text transition-colors">Kill log</Link></li>
                 <li><Link href="/faq" className="text-xs text-muted hover:text-text transition-colors">FAQ</Link></li>
               </ul>
             </div>
