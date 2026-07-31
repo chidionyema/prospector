@@ -14,7 +14,7 @@ import re
 import requests
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -99,6 +99,22 @@ BUNDLE_FILES = (
     "Marketing_Assets.md",
     "QA_Report.md",
 )
+
+# Human-readable section titles for the in-bundle index.html reading experience
+# (see pack_html.py). Mirrors the `title` field of store_platform's PackContents.tsx for the
+# same filenames — kept as a plain dict rather than imported (that file is TypeScript); a
+# drift between the two is cosmetic (both label the same file) and NOT the sellability
+# drift the BUNDLE_FILES/PackContents pairing's own test guards, so it isn't pinned here.
+_SECTION_TITLES = {
+    "00_Executive_Summary.md": "Executive Summary",
+    "01_Blueprint_BuildSpec.md": "The Blueprint (Build Spec)",
+    "02_Marketing_Plan_GTM.md": "The Go-To-Market Plan",
+    "03_Operations_Plan.md": "The Operations Plan",
+    "04_Financial_Model.md": "The Financial Model",
+    "05_First_Week_Checklist.md": "First-Week Checklist",
+    "Marketing_Assets.md": "Marketing Assets",
+    "QA_Report.md": "The QA Report, with the receipts",
+}
 
 
 def audit_bundle(zip_path: str) -> tuple[list[str], list[str]]:
@@ -628,6 +644,12 @@ class EngineBridge:
                 marketing, dossier.candidate, getattr(dossier, "checks", []) or []
             )
 
+            # Ordered (title, markdown) pairs, appended in the exact sequence each file is
+            # written below — this is what index.html renders, in the same order, via
+            # pack_html.render_pack_html. A parallel list rather than a re-read of the zip
+            # because content is already in hand here (no second pass, no encoding round-trip).
+            md_entries: List[Tuple[str, str]] = []
+
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # 1-3. The prose deliverable. `_add_to_zip` writes nothing for empty content, so
                 # a tier that silently returned "" used to produce a zip with the file simply
@@ -635,20 +657,17 @@ class EngineBridge:
                 # completeness gate correctly keeps such a pack UNLISTED, but a structurally
                 # incomplete zip is still worse than an honest placeholder — a missing file
                 # reads as an oversight, a stub says what happened and why nothing is for sale.
-                self._add_to_zip(
-                    zipf, "01_Blueprint_BuildSpec.md",
-                    artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec"),
-                )
+                build_spec_md = artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec")
+                self._add_to_zip(zipf, "01_Blueprint_BuildSpec.md", build_spec_md)
+                md_entries.append((_SECTION_TITLES["01_Blueprint_BuildSpec.md"], build_spec_md))
 
-                self._add_to_zip(
-                    zipf, "02_Marketing_Plan_GTM.md",
-                    artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan"),
-                )
+                gtm_md = artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan")
+                self._add_to_zip(zipf, "02_Marketing_Plan_GTM.md", gtm_md)
+                md_entries.append((_SECTION_TITLES["02_Marketing_Plan_GTM.md"], gtm_md))
 
-                self._add_to_zip(
-                    zipf, "03_Operations_Plan.md",
-                    artifacts.get("ops_plan", "") or _held_back_md("Operations plan"),
-                )
+                ops_md = artifacts.get("ops_plan", "") or _held_back_md("Operations plan")
+                self._add_to_zip(zipf, "03_Operations_Plan.md", ops_md)
+                md_entries.append((_SECTION_TITLES["03_Operations_Plan.md"], ops_md))
 
                 # 4. Financial Model — its own file, with a provenance banner. The arithmetic is
                 # Python-computed from verified inputs (no LLM math), which is a real trust
@@ -670,12 +689,14 @@ class EngineBridge:
                         "Prospector does not invent revenue, cost, or TAM figures._\n"
                     )
                 self._add_to_zip(zipf, "04_Financial_Model.md", financials)
+                md_entries.append((_SECTION_TITLES["04_Financial_Model.md"], financials))
 
                 # 5. QA Report
                 from .dossier import render_markdown
                 qa_report = render_markdown(dossier)
                 self._add_to_zip(zipf, "QA_Report.md", qa_report)
-                
+                md_entries.append((_SECTION_TITLES["QA_Report.md"], qa_report))
+
                 # 6. Marketing Assets (Social, Email, SEO) — never a bare header stub.
                 # The old loop appended a `##` heading per piece even when `copy` was empty,
                 # so a marketing list of empty pieces produced exactly "# Marketing Assets\n\n"
@@ -699,16 +720,42 @@ class EngineBridge:
                     ]
                 marketing_text = "# Marketing Assets\n\n" + "\n".join(sections)
                 self._add_to_zip(zipf, "Marketing_Assets.md", marketing_text)
+                md_entries.append((_SECTION_TITLES["Marketing_Assets.md"], marketing_text))
 
                 # 7–8. Epic C lite floors (deterministic, claim-safe)
-                self._add_to_zip(
-                    zipf, "00_Executive_Summary.md",
-                    exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or []),
-                )
-                self._add_to_zip(
-                    zipf, "05_First_Week_Checklist.md",
-                    first_week_checklist_md(dossier.candidate),
-                )
+                exec_summary_content = exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or [])
+                self._add_to_zip(zipf, "00_Executive_Summary.md", exec_summary_content)
+                md_entries.append((_SECTION_TITLES["00_Executive_Summary.md"], exec_summary_content))
+
+                checklist_content = first_week_checklist_md(dossier.candidate)
+                self._add_to_zip(zipf, "05_First_Week_Checklist.md", checklist_content)
+                md_entries.append((_SECTION_TITLES["05_First_Week_Checklist.md"], checklist_content))
+
+                # 9. index.html — the ONE non-.md file in the bundle: the same eight
+                # deliverables above, rendered to a single polished, self-contained reading
+                # experience (pack_html.py). Deliberately NOT added to BUNDLE_FILES/audit_bundle
+                # — that tuple is the sellability contract with the storefront's PackContents.tsx
+                # (a drift test binds the two), and this file is a bonus convenience, not a
+                # promised deliverable a missing copy of which should block listing.
+                # Guarded because the sentence above must be TRUE at runtime, not just in
+                # intent: an unguarded render exception here would fail _create_bundle and
+                # block the listing — exactly what "bonus, not promised" forbids. Loud
+                # (warning, never silent) so a broken renderer can't rot unnoticed.
+                try:
+                    from . import pack_html
+                    pack_meta = pack_html.PackMeta(
+                        title=dossier.candidate.title,
+                        one_liner=getattr(dossier.candidate, "one_liner", "") or "",
+                        verified_at=getattr(dossier, "created_at", "") or "",
+                        source_count=len(dossier.all_sources) if getattr(dossier, "all_sources", None) else None,
+                        pack_id=candidate_id,
+                    )
+                    index_html = pack_html.render_pack_html(md_entries, pack_meta)
+                    self._add_to_zip(zipf, "index.html", index_html)
+                except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
+                    logger.warning(
+                        f"index.html render failed for {candidate_id}: {e}; "
+                        "shipping the 8-file bundle without it")
 
             # Structural check on the artefact we actually wrote — not on the inputs we think
             # we passed. This is the assertion that would have caught the 5-file bundles and
