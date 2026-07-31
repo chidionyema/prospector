@@ -36,7 +36,6 @@ hidden-from-catalogue. Plus `ec8b954 (#5)` Dependabot, `a547fc8 (#4)` filters + 
 | #7 | `analytics-no-device-storage` | Drops the sessionStorage visitor id; server-side dedup replaces `trackOnce`. Migration `DropAnalyticsSessionId`. |
 | #8 | `sitemap-pack-urls` | `sitemap.xml` gains `/sample` + one entry per live pack |
 | #9 | `waitlist-second-placement` | Waitlist placement on `/sample`; consent wording centralised |
-| — | `rescue-delivery-verifier` | `verify_delivery.py` + its `.gitignore` rule (see below). **Prepared, not yet committed** — blocked by the POPDD chain artifact described under "Known pre-existing failures". |
 | #3 | dependabot js-yaml | Failing checks, untouched |
 
 #7, #8 and #9 touch **disjoint files** and all three pairs merge clean — which is why bundling them
@@ -49,21 +48,32 @@ was safe. Reproduce:
 
 If #10 merges, close #7, #8 and #9 — do not merge them as well.
 
-## What was stranded, and why it nearly vanished
+## In a branch but in no PR — check the remote before calling it stranded
 
-`verify_delivery.py` was committed to `store-analytics-2026-07-31` and then **left out** of the PR
-that carried the rest of that branch. It existed on one local branch and nowhere else; deleting the
-branch would have lost it with no trace. PR #11 rescues it.
-
-Its `.gitignore` rule travels with it and is **not** cosmetic: `.delivery-proof/` holds live
-entitlement grant tokens, which are bearer credentials for a paid download. The script without the
-rule invites committing them.
-
-Check for this class of problem — files committed on a branch but absent from its PR:
+`verify_delivery.py` is committed on `store-analytics-2026-07-31` and **left out** of the PR that
+carried the rest of that branch (`analytics-no-device-storage` → #7). Finding that is worth doing:
 
     git diff --name-only origin/main store-analytics-2026-07-31
     git diff --name-only origin/main origin/analytics-no-device-storage
-    # anything in the first list and not the second is in no PR
+    # in the first list and not the second = committed but in no PR
+
+But "in no PR" is **not** the same as "at risk", and conflating them wastes real work. The branch
+tracks a remote, so both the script and its `.gitignore` rule are already on GitHub:
+
+    git rev-parse origin/store-analytics-2026-07-31                                    # 7a8cc43
+    git cat-file -e origin/store-analytics-2026-07-31:store_platform/scripts/verify_delivery.py  # exists
+    git show origin/store-analytics-2026-07-31:.gitignore | grep delivery-proof        # line 89
+
+**Ask `git ls-remote` / `git cat-file -e <remote-ref>:<path>` before building a rescue.** A branch
+that is unmerged is not the same as a branch that is unpushed. A cherry-pick "rescue" of an
+already-pushed file just creates a second copy competing with the original.
+
+That `.gitignore` rule is not cosmetic and must never be separated from the script:
+`.delivery-proof/` holds live entitlement grant tokens, which are bearer credentials for a paid
+download. On any branch lacking the rule, that directory sits untracked-but-unignored.
+
+**What genuinely is unpushed:** `b9731c7` ("make the money rail answerable in one command"), the
+15:04 commit on `store-analytics-2026-07-31`. It exists on one disk. Its author should push it.
 
 ## Not in git at all
 
@@ -94,6 +104,19 @@ the API ships. Analytics only; no money path.
 
 Anything touching `Store.Api` or `Store.Catalog` needs a deliberate API deploy. Migrations run at
 startup via `MigrateAsync`, so the deploy is when the schema changes.
+
+**Order: API first, then merge.** Not a style preference — it is the only order with no gap:
+
+| step | dedup by `trackOnce` (localStorage) | dedup by unique index | double-count possible? |
+|---|---|---|---|
+| today | yes | no | no |
+| API deployed first | yes (old bundle still live) | yes | no |
+| then merge → web deploys | gone | yes | no |
+| **merge first** (wrong order) | **gone** | **not yet** | **yes** |
+
+This works because the migration is backward compatible in the older direction too: the deployed
+bundle still posts `sessionId`, and `System.Text.Json` discards members the record does not declare.
+So the API can go first without waiting for the web.
 
 ## Known pre-existing failures — do not attribute these to new work
 
