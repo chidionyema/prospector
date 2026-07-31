@@ -10,6 +10,7 @@ import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { createEmbeddedCheckout, createStripeCheckout, fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
+import { resolveStripeCheckout } from '@/lib/checkoutRoute';
 import { stripeConfigured } from '@/lib/stripe';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
@@ -86,20 +87,21 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
     // publishable key once hid every buy button in production when the key was left out of the
     // web build args (see hasProvisionedPrice below). That failure must not come back through
     // this path, so a missing key degrades the SURFACE, never the sale.
-    if (stripeConfigured) {
-      const session = await createEmbeddedCheckout(pack.id);
-      if (session.clientSecret) {
-        setClientSecret(session.clientSecret);
-        return;
-      }
-      if (session.url) {
-        window.location.href = session.url;
-        return;
-      }
-    }
-
+    // resolveStripeCheckout owns the "embedded is preferred but never required" guarantee, and
+    // is unit-tested for every way the embedded attempt can fail — including a THROW, which
+    // previously escaped to handleBuy and rendered "Checkout failed" for a completable sale.
     // createStripeCheckout already refuses any URL that is not Stripe's hosted checkout.
-    window.location.href = await createStripeCheckout(pack.id);
+    const route = await resolveStripeCheckout({
+      stripeConfigured,
+      requestEmbedded: () => createEmbeddedCheckout(pack.id),
+      requestHosted: () => createStripeCheckout(pack.id),
+    });
+
+    if (route.kind === 'embedded') {
+      setClientSecret(route.clientSecret);
+      return;
+    }
+    window.location.href = route.url;
   };
 
   const handlePaddleCheckout = async (pack: PackDetails) => {
