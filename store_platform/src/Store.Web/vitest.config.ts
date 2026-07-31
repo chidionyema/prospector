@@ -21,6 +21,11 @@ import { defineConfig } from 'vitest/config';
  * type-checks every .ts file in this package, this config file included, the stale key was
  * a hard `tsc --noEmit` failure — which blocked the Deploy Store.Web workflow, not just the
  * test run.
+ *
+ * The reason there is a test beside this file: an unknown key here is IGNORED at runtime, not
+ * rejected. Measured on the stale version — createVitest(...).config.maxWorkers was
+ * `undefined`, so the suite ran green with no cap at all. tsc is what caught it; a passing
+ * test run did not, and could not.
  */
 const maxWorkers = Number(process.env.VITEST_MAX_FORKS)
   || Math.max(1, Math.min(4, Math.floor(availableParallelism() / 2)));
