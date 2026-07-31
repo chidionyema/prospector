@@ -8,6 +8,7 @@ import { Icon, IconName, Dropdown } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { DossierPreview } from '@/components/marketing/DossierPreview';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
@@ -700,6 +701,11 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
           <TrustPill icon="download" label="Instant download" />
         </div>
         <PackContentsSection heading="What’s inside your download" />
+        {/* The list above names the documents; this shows one. The fear on a digital download
+            page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
+            rows from the free sample, including the check that failed — a preview of eight
+            green ticks would advertise better and claim something the shop does not. */}
+        <DossierPreview />
         <ComparisonBlock />
       </Section>
 
