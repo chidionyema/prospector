@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
+import { productJsonLd } from '@/lib/productJsonLd';
 import { Icon, CoverArt } from '@/components/ui';
 import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
@@ -302,7 +303,11 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
 
   return (
     <MarketingLayout>
-      <Seo title={`${pack.title} · A business idea that survived our filter`} />
+      <Seo
+        title={`${pack.title} · A business idea that survived our filter`}
+        description={pack.oneLine || undefined}
+        jsonLd={productJsonLd(pack)}
+      />
 
       {clientSecret && (
         <EmbeddedCheckoutPanel

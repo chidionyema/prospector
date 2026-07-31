@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
   '/',
   '/how-it-works',
   '/sample',
+  '/kill-log',
   '/faq',
   '/terms',
   '/privacy',

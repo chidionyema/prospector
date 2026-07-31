@@ -120,7 +120,11 @@ test('the waitlist refuses to submit without consent, and the box starts unticke
   // A query no pack can match forces the catalogue-wide empty state.
   await page.goto('/?q=zzzzz-no-such-pack-anywhere');
 
-  const consent = page.getByRole('checkbox', { name: /Email me if a pack in this space survives/ });
+  // Matched loosely on purpose. 9b87875 moved this form to a second placement and generalised
+  // the label from "a pack in this space" to "a pack", which left this test red on a copy edit
+  // while the consent behaviour it exists to protect was never touched. The assertions that
+  // matter are the two below: the box is visible, and it does not start ticked.
+  const consent = page.getByRole('checkbox', { name: /Email me if a pack/ });
   await expect(consent).toBeVisible();
   // Pre-ticked is not consent under UK GDPR. This is the assertion that keeps it that way.
   await expect(consent).not.toBeChecked();
