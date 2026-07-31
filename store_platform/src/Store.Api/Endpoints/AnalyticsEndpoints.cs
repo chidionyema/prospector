@@ -30,7 +30,13 @@ public static class AnalyticsEndpoints
         "checkout_completed",
     };
 
-    public sealed record AnalyticsEventRequest(string? Name, string? Path, string? SessionId, string? Meta);
+    /// <summary>
+    /// Beacon payload. Deliberately carries no visitor identifier — see AnalyticsEvent's
+    /// remarks. An older storefront bundle also posted a "sessionId"; System.Text.Json skips
+    /// unmapped members, so those beacons still succeed and the value is simply discarded.
+    /// That is what makes web and API deployable in either order.
+    /// </summary>
+    public sealed record AnalyticsEventRequest(string? Name, string? Path, string? Meta);
 
     public static void MapAnalyticsEndpoints(this IEndpointRouteBuilder app)
     {
@@ -56,10 +62,22 @@ public static class AnalyticsEndpoints
             // Truncate rather than reject: a beacon that 400s for length silently loses
             // the count, and the count is the whole point. Names are the strict part.
             Path = Truncate(request.Path, 256),
-            SessionId = Truncate(request.SessionId, 64),
             Meta = Truncate(request.Meta, 512),
         });
-        await db.SaveChangesAsync().ConfigureAwait(false);
+
+        try
+        {
+            await db.SaveChangesAsync().ConfigureAwait(false);
+        }
+        catch (DbUpdateException)
+        {
+            // The (Name, Meta) unique index rejected a repeat of an event that carries an
+            // order id — i.e. the buyer reloaded the success page. That is the dedup working,
+            // not an error: the first beacon is already counted, so the caller has nothing to
+            // fix and nothing to retry. Answering 202 keeps the beacon fire-and-forget.
+            db.ChangeTracker.Clear();
+            return Results.Accepted();
+        }
 
         return Results.Accepted();
     }

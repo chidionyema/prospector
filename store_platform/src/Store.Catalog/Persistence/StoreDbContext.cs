@@ -85,9 +85,15 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContex
             entity.HasKey(e => e.Id);
             // The only read path is the summary endpoint: counts by name over a date window.
             entity.HasIndex(e => new { e.Name, e.CreatedAt });
+            // Refresh-proof purchase counting, enforced by the database rather than by a flag
+            // on the buyer's device. Filtered to the one event name that carries an order id:
+            // page views legitimately repeat, so a global unique index would silently drop
+            // real traffic. NULL Meta stays exempt — SQLite treats NULLs as distinct.
+            entity.HasIndex(e => new { e.Name, e.Meta })
+                .IsUnique()
+                .HasFilter("\"Name\" = 'checkout_completed' AND \"Meta\" IS NOT NULL");
             entity.Property(e => e.Name).HasMaxLength(64);
             entity.Property(e => e.Path).HasMaxLength(256);
-            entity.Property(e => e.SessionId).HasMaxLength(64);
             entity.Property(e => e.Meta).HasMaxLength(512);
         });
     }

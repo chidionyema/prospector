@@ -29,6 +29,17 @@ public sealed class AnalyticsEndpointsTests : IClassFixture<StoreApiFactory>
     private async Task<HttpResponseMessage> PostEventAsync(object body) =>
         await _factory.CreateClient().PostAsJsonAsync("/events", body);
 
+    /// <summary>Total count for one event name, so a test can assert on its own delta rather
+    /// than on an absolute number the rest of the class also writes to.</summary>
+    private async Task<int> CountAsync(string name)
+    {
+        var summary = await InternalClient().GetFromJsonAsync<JsonElement>("/internal/analytics/summary?days=1");
+        var row = summary.GetProperty("totals").EnumerateArray()
+            .Where(t => string.Equals(t.GetProperty("name").GetString(), name, StringComparison.Ordinal))
+            .ToList();
+        return row.Count == 0 ? 0 : row[0].GetProperty("count").GetInt32();
+    }
+
     [Fact]
     public async Task Allowlisted_event_is_accepted_and_counted()
     {
@@ -36,7 +47,6 @@ public sealed class AnalyticsEndpointsTests : IClassFixture<StoreApiFactory>
         {
             name = "sample_cta_clicked",
             path = "/",
-            sessionId = "s-123",
         });
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
@@ -67,10 +77,61 @@ public sealed class AnalyticsEndpointsTests : IClassFixture<StoreApiFactory>
         {
             name = "page_view",
             path = "/" + new string('a', 2000),
-            sessionId = new string('b', 500),
             meta = new string('c', 5000),
         });
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    /// <summary>
+    /// The storefront bundle that shipped before the session id was removed still posts one.
+    /// It must not 400, or every beacon from a cached bundle is lost during the rollout window
+    /// — which is also what lets web and API deploy in either order.
+    /// </summary>
+    [Fact]
+    public async Task Legacy_beacon_carrying_a_session_id_is_still_accepted()
+    {
+        var response = await PostEventAsync(new
+        {
+            name = "page_view",
+            path = "/",
+            sessionId = "left-over-from-the-old-bundle",
+        });
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    /// <summary>
+    /// The whole reason the localStorage flag could be deleted: a reloaded success page beacons
+    /// again, and the database — not the buyer's browser — refuses the duplicate.
+    /// </summary>
+    [Fact]
+    public async Task Repeat_checkout_for_the_same_order_is_counted_once()
+    {
+        var meta = "cs_test_dedup_" + Guid.NewGuid().ToString("N");
+        var before = await CountAsync("checkout_completed");
+
+        var first = await PostEventAsync(new { name = "checkout_completed", meta });
+        var second = await PostEventAsync(new { name = "checkout_completed", meta });
+
+        // Both are accepted: the beacon is fire-and-forget, so a duplicate is not the caller's
+        // problem to handle. The count is what has to stay honest.
+        Assert.Equal(HttpStatusCode.Accepted, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, second.StatusCode);
+        Assert.Equal(before + 1, await CountAsync("checkout_completed"));
+    }
+
+    /// <summary>
+    /// The dedup index is filtered for a reason: page views legitimately repeat. A global
+    /// unique index would have silently discarded most of the traffic we are trying to measure.
+    /// </summary>
+    [Fact]
+    public async Task Repeat_page_views_are_all_counted()
+    {
+        var before = await CountAsync("page_view");
+
+        Assert.Equal(HttpStatusCode.Accepted, (await PostEventAsync(new { name = "page_view", path = "/" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, (await PostEventAsync(new { name = "page_view", path = "/" })).StatusCode);
+
+        Assert.Equal(before + 2, await CountAsync("page_view"));
     }
 
     [Fact]
