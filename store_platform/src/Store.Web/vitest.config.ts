@@ -15,8 +15,14 @@ import { defineConfig } from 'vitest/config';
  *
  * VITEST_MAX_FORKS overrides it for a machine that genuinely has the headroom (CI runs one
  * suite on a dedicated runner and should not inherit this laptop's contention).
+ *
+ * Expressed as `test.maxWorkers`, not `test.poolOptions.forks.maxForks`: vitest 4 removed
+ * `poolOptions` (this repo is on 4.1.10, see package-lock.json). Because tsconfig.json
+ * type-checks every .ts file in this package, this config file included, the stale key was
+ * a hard `tsc --noEmit` failure — which blocked the Deploy Store.Web workflow, not just the
+ * test run.
  */
-const maxForks = Number(process.env.VITEST_MAX_FORKS)
+const maxWorkers = Number(process.env.VITEST_MAX_FORKS)
   || Math.max(1, Math.min(4, Math.floor(availableParallelism() / 2)));
 
 /**
@@ -40,8 +46,6 @@ export default defineConfig({
     // Playwright specs live in ./e2e and are run by `npm run test:e2e`; without this they get
     // collected by vitest and fail on a missing `test` export.
     exclude: ['node_modules/**', '.next/**', 'e2e/**'],
-    poolOptions: {
-      forks: { maxForks },
-    },
+    maxWorkers,
   },
 });
