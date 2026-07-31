@@ -112,3 +112,24 @@ test('the privacy notice states the waitlist basis and its retention', async ({ 
   await expect(page.getByText(/Art\.\s*6\(1\)\(a\)/)).toBeVisible();
   await expect(page.getByText(/24 months from sign-up/)).toBeVisible();
 });
+
+// A pack withdrawn via PATCH /internal/catalog/{id}/listing must be GONE, not merely absent
+// from the shelf. On 2026-07-31 it was only the latter: GET /catalog filtered on IsListed but
+// GET /catalog/{id} did not, so a withdrawn pack still served its full sales page — verified
+// claims, sources, and a "Get instant access" button — to anyone with the URL. Checkout
+// refused it (Program.cs:605), so no money could move; the damage was that withdrawn claims
+// stayed public and the button became an error instead of an absence.
+//
+// The ids below are the three quarantined that day for a moat breach (kill-checks and the
+// adversarial pass run on DeepSeek, which CLAUDE.md forbids from touching verification).
+// If one is ever re-listed this test goes red — deliberately: re-listing them is a decision
+// that has to be made with the re-verification, not by a test quietly agreeing.
+const QUARANTINED_2026_07_31 = ['42bf9861ecc08079', 'f7783abea10a4216', '54f775d91cbe09d8'];
+
+for (const id of QUARANTINED_2026_07_31) {
+  test(`a withdrawn pack is gone, not just unlisted: ${id}`, async ({ page }) => {
+    const res = await page.goto(`/pack/${id}`);
+    expect(res?.status()).toBe(404);
+    await expect(page.getByRole('button', { name: /instant access/i })).toHaveCount(0);
+  });
+}

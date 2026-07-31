@@ -192,7 +192,17 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
 app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
 {
     var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
-    if (pack is null) return Results.NotFound();
+    // Unlisted is 404 here, not just absent from GET /catalog. This endpoint is the sole
+    // source for the public product page (Store.Web fetchPackDetails), so serving a
+    // withdrawn pack rendered its full sales page — headline, verified claims, sources and
+    // a "Get instant access" button — for anyone holding the URL. POST /packs/{id}/checkout
+    // already refuses an unlisted pack, so no money could move, but that made the button an
+    // error rather than an absence: the buyer met a broken purchase instead of a page that
+    // was honestly gone, and the withdrawn claims stayed public and indexable. For the three
+    // packs quarantined on 2026-07-31 those claims are exactly what must not be readable —
+    // they were verified on a provider CLAUDE.md forbids from touching the moat.
+    // Deliberately not 403/410: the catalogue does not disclose which ids it once carried.
+    if (pack is null || !pack.IsListed) return Results.NotFound();
 
     // Re-hydrate the JSON-text columns. Parse defensively: a malformed value yields null
     // rather than a 500, so one bad row never takes down a product page.
