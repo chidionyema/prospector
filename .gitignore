@@ -84,6 +84,10 @@ store_platform/src/Store.Api/content_store/
 # local test stack runtime (logs + pids)
 store_platform/.test-stack/
 
+# verify_delivery.py state — holds live entitlement grant tokens, which are bearer
+# credentials for a paid download (/download/{token} needs nothing else)
+store_platform/.delivery-proof/
+
 # Agent/keystore scratch — NEVER commit (.lux/keys holds a private agent.pem)
 .lux/
 .pi/

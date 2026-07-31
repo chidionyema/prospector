@@ -1,5 +1,12 @@
 # Handover — Bridging the Gap to Launch (build-ready spec, edge-cases included)
 
+> **ARCHIVED — 2026-06-18. Historical record only; do NOT follow this.**
+> Verified false against the live store: it describes 11 listed packs (live: 42) and says money
+> is not yet real (live money since 2026-07-30). For what to run today see
+> [`store_platform/OPERATIONS.md`](../../../store_platform/OPERATIONS.md); to deploy see
+> [`store_platform/deploy/PROD_DEPLOY.md`](../../../store_platform/deploy/PROD_DEPLOY.md).
+
+
 **Date:** 2026-06-16
 **Companion to:** `GO_LIVE_SPEC.md` (the assessment). This document is the **implementation handover**: what to build, the exact contracts to build against, and every edge case to handle.
 **Audience:** the engineer/agent who will close the P0 money-and-delivery loop.

@@ -1,0 +1,316 @@
+#!/usr/bin/env python3
+"""One entrypoint for store operations, so you don't have to remember 31 scripts.
+
+WHY THIS EXISTS
+---------------
+On 2026-07-31 a paid-without-delivery incident was diagnosed by hand: paging a thousand Stripe
+sessions to find a session id, then querying the order endpoint, then reasoning about it. All of
+that already existed as `reconcile_orders.py`, wired into `verify_store.sh`. Nobody found it,
+because store_platform/scripts holds 31 files with no index and several near-identical names
+(prove_checkout / prove_money_path / prove_launch / prove_storefront / prove_web).
+
+This does NOT reimplement any of them. It dispatches, and it carries the two pieces of knowledge
+that were only in someone's head:
+
+  1. `.env` defaults STRIPE_API_KEY to a TEST key (deliberately - safety). Every live operation
+     therefore needs `--stripe-key-var STRIPE_LIVE_API_KEY`, and nothing told you that; the
+     scripts just refuse with a message you have to already understand.
+  2. Which script answers which question. See `storeops list`.
+
+DESIGN RULES
+------------
+* Exit codes are passed through untouched. `verify_store.sh` distinguishes 1 (FAIL, checked and
+  broken) from 3 (UNPROVEN, could not check), and collapsing those would destroy the property
+  that makes it trustworthy.
+* `--brief` prints ONE line, for a phone. It never changes what runs or how it is judged.
+* `deploy` refuses to run under `--brief`. A production deploy must not be one tap away from a
+  chat window, and the bot path is exactly where an accidental tap happens.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS = REPO_ROOT / "store_platform" / "scripts"
+PAUSE_FILE = REPO_ROOT / "store" / "scheduler" / "PAUSE"
+
+# Prefer the repo venv: `ddgs` and other deps are installed there and NOT in system python3,
+# so running these under bare python3 produces phantom failures.
+VENV_PY = REPO_ROOT / ".venv" / "bin" / "python"
+PY = str(VENV_PY) if VENV_PY.exists() else sys.executable
+
+LIVE_KEY_VAR = "STRIPE_LIVE_API_KEY"
+
+
+# --------------------------------------------------------------------------- the script index
+# Kept here rather than in a doc because a doc drifts and this is executable: `storeops list`
+# prints it, and every entry names the question it answers rather than what it is called.
+INDEX = [
+    ("health",     "verify_store.sh",      "Can a stranger safely give us money right now?"),
+    ("reconcile",  "reconcile_orders.py",  "Did every paying buyer actually get their download?"),
+    ("delivery",   "verify_delivery.py",   "For ONE purchase: did the bytes and the refund work?"),
+    ("money",      "prove_launch.sh",      "Do all money paths still work? (offline, no prod keys)"),
+    ("pause",      "store/scheduler/PAUSE","Stop the generation daemon writing to prod."),
+    ("resume",     "store/scheduler/PAUSE","Let the daemon write again."),
+    ("status",     "(composite)",          "One-line answer for a phone: daemon + store + buyers."),
+    ("deploy",     "PROD_DEPLOY.md",       "Ship the API. Interactive only, never from the bot."),
+]
+
+OTHER_SCRIPTS = """
+Not wrapped here (rarer, or destructive enough to deserve reading first):
+  provision_prices.py      mint Stripe Product+Price for every listed pack, repoint prod
+  reprovision_stripe.py    same, for re-pointing an existing catalogue
+  create_probe_pack.py     create/refresh the GBP1 delivery-probe pack
+  sync_r2_content.py       push published bundles to R2 (the store's real content source)
+  backfill_facets.py       backfill the facet vocabulary onto older packs
+  run_test_stack.sh        full storefront in Stripe TEST mode, for manual clicking
+  go_live.sh               the original Stripe LIVE cutover (one-time)
+  register_stripe_webhook.sh / setup_domain.sh / switch_domain.sh   one-time infra
+"""
+
+
+def live_env() -> dict:
+    """Environment with STRIPE_API_KEY set to the LIVE key.
+
+    verify_store.sh reads `${STRIPE_API_KEY}` first and falls back to .env (verify_store.sh:47).
+    Because .env deliberately holds a TEST key under that name, the probe SKIPs its two most
+    important checks — webhook registration and paid-vs-delivered reconcile — and still exits 0
+    if nothing else fails. "Can a stranger safely give us money right now" is a question about
+    the LIVE store; answering it with a test key answers a different question quietly.
+
+    This overrides only the child process's environment. Nothing is written to .env.
+    """
+    env = dict(os.environ)
+    key = os.environ.get(LIVE_KEY_VAR)
+    if not key:
+        env_file = REPO_ROOT / ".env"
+        if env_file.exists():
+            for line in env_file.read_text().splitlines():
+                if line.startswith(f"{LIVE_KEY_VAR}="):
+                    key = line.partition("=")[2].strip().strip('"').strip("'")
+                    break
+    if key:
+        env["STRIPE_API_KEY"] = key
+    return env
+
+
+def run(cmd: list[str], brief: bool, env: dict | None = None) -> int:
+    """Run a child command, streaming or capturing depending on output mode."""
+    if not brief:
+        return subprocess.call(cmd, cwd=REPO_ROOT, env=env)
+    p = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, env=env)
+    # Stash for the caller to summarise; brief mode prints its own one-liner.
+    run.last_stdout = p.stdout
+    run.last_stderr = p.stderr
+    return p.returncode
+
+
+run.last_stdout = ""
+run.last_stderr = ""
+
+
+def say(brief: bool, line: str) -> None:
+    if brief:
+        print(line)
+
+
+# --------------------------------------------------------------------------------- the verbs
+def _failing_checks(out: str) -> tuple[list[str], list[str]]:
+    """(fails, skips) from verify_store.sh output, trimmed for a one-line summary.
+
+    Kept separate on purpose. A SKIP is "could not check", a FAIL is "checked and broken", and
+    leading a summary with a SKIP names the wrong cause — which is worse than naming none,
+    because it sends someone to fix a check that was merely not run.
+    """
+    fails, skips = [], []
+    for line in out.splitlines():
+        s = line.strip()
+        if s.startswith("FAIL"):
+            fails.append(s[4:].strip())
+        elif s.startswith("SKIP"):
+            skips.append(s[4:].strip())
+    return fails, skips
+
+
+def cmd_health(args) -> int:
+    cmd = ["bash", str(SCRIPTS / "verify_store.sh")]
+    if args.quick:
+        cmd.append("--quick")
+    env = dict(os.environ) if args.test_mode else live_env()
+    rc = run(cmd, args.brief, env)
+    # verify_store.sh's three-way verdict is the whole point of it; preserve the distinction.
+    # A named failing check beats a bare verdict: "NOT SELLABLE" sends you reading the whole
+    # probe, "NOT SELLABLE (dirty tree)" tells you it is not a customer-facing outage.
+    detail = ""
+    if args.brief and rc != 0:
+        fails, skips = _failing_checks(run.last_stdout)
+        parts = [f"broken: {'; '.join(f[:70] for f in fails[:2])}"] if fails else []
+        if skips:
+            parts.append(f"unchecked: {len(skips)}")
+        detail = " — " + " | ".join(parts) if parts else ""
+    say(args.brief, {0: "OK  store sellable — every gate verified",
+                     1: "FAIL  store NOT sellable",
+                     3: "WARN  store UNPROVEN — a gate could not be checked"}
+        .get(rc, f"FAIL  health exited {rc}") + detail)
+    return rc
+
+
+def cmd_reconcile(args) -> int:
+    cmd = [PY, str(SCRIPTS / "reconcile_orders.py"),
+           "--days", str(args.days), "--stripe-key-var", LIVE_KEY_VAR]
+    if args.no_exceptions:
+        cmd.append("--no-exceptions")
+    rc = run(cmd, args.brief)
+    if args.brief:
+        # Surface the actual failing line, not just a code — "1 buyer" is the useful part.
+        bad = [l.strip() for l in run.last_stdout.splitlines() if "PAID-WITHOUT-DELIVERY" in l]
+        if rc == 0:
+            excused = sum("EXCUSED" in l for l in run.last_stdout.splitlines())
+            tail = f" ({excused} excused)" if excused else ""
+            print(f"OK  every paid buyer can download what they bought{tail}")
+        elif bad:
+            print(f"FAIL  {len(bad)} buyer(s) paid without delivery: {bad[0][:160]}")
+        else:
+            print(f"FAIL  reconcile exited {rc} — {(run.last_stderr or '').strip()[:200]}")
+    return rc
+
+
+def cmd_delivery(args) -> int:
+    cmd = [PY, str(SCRIPTS / "verify_delivery.py"), "--session", args.session]
+    if args.expect:
+        cmd += ["--expect", args.expect]
+    rc = run(cmd, args.brief)
+    say(args.brief, "OK  delivery verified end to end" if rc == 0
+        else f"FAIL  delivery check failed (exit {rc})")
+    return rc
+
+
+def cmd_money(args) -> int:
+    rc = run(["bash", str(SCRIPTS / "prove_launch.sh")], args.brief)
+    say(args.brief, "OK  all money paths proven" if rc == 0
+        else f"FAIL  money-path proof failed (exit {rc})")
+    return rc
+
+
+def cmd_pause(args) -> int:
+    PAUSE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PAUSE_FILE.touch()
+    print(f"OK  daemon paused ({PAUSE_FILE.relative_to(REPO_ROOT)} present)")
+    return 0
+
+
+def cmd_resume(args) -> int:
+    if PAUSE_FILE.exists():
+        PAUSE_FILE.unlink()
+        print("OK  daemon resumed (PAUSE removed)")
+    else:
+        print("OK  daemon was not paused")
+    return 0
+
+
+def cmd_status(args) -> int:
+    """The phone verb: three questions, one line each, worst-case exit code.
+
+    Uses health --quick deliberately. The full probe mints a Stripe session, and a status check
+    that anyone can trigger repeatedly should not create live payment objects as a side effect.
+    """
+    paused = PAUSE_FILE.exists()
+    lines = [f"daemon: {'PAUSED' if paused else 'running'}"]
+
+    h = run(["bash", str(SCRIPTS / "verify_store.sh"), "--quick"], True, live_env())
+    hdetail = ""
+    if h != 0:
+        fails, skips = _failing_checks(run.last_stdout)
+        if fails:
+            hdetail = f" ({fails[0][:60]})"
+        elif skips:
+            hdetail = f" ({len(skips)} check(s) not run)"
+    lines.append({0: "store: sellable", 1: "store: NOT SELLABLE", 3: "store: unproven"}
+                 .get(h, f"store: exit {h}") + hdetail)
+
+    r = run([PY, str(SCRIPTS / "reconcile_orders.py"),
+             "--days", str(args.days), "--stripe-key-var", LIVE_KEY_VAR], True)
+    bad = [l for l in run.last_stdout.splitlines() if "PAID-WITHOUT-DELIVERY" in l]
+    lines.append("buyers: all delivered" if r == 0
+                 else f"buyers: {len(bad) or '?'} PAID WITHOUT DELIVERY")
+
+    verdict = "FAIL" if (h == 1 or r != 0) else "WARN" if h == 3 else "OK"
+    print(f"{verdict}  " + " | ".join(lines))
+    return 0 if verdict == "OK" else (1 if verdict == "FAIL" else 3)
+
+
+def cmd_deploy(args) -> int:
+    if args.brief:
+        # The fence: --brief is how the Telegram bridge calls this.
+        print("REFUSED  deploy is interactive-only — run it in a terminal, not from chat.")
+        return 2
+    print("Deploy is deliberately NOT automated here. Two reasons, both learned the hard way:")
+    print("  1. `fly deploy` ships the WORKING TREE, not HEAD. With several agents editing this")
+    print("     repo, that means shipping someone else's half-finished work. Use a clean")
+    print("     detached worktree — see store_platform/deploy/PROD_DEPLOY.md.")
+    print("  2. The predeploy guard below is advisory here; PROD_DEPLOY.md is the procedure.")
+    print()
+    rc = subprocess.call(["bash", str(SCRIPTS / "predeploy_guard.sh")], cwd=REPO_ROOT)
+    print()
+    print("Guard passed — follow PROD_DEPLOY.md." if rc == 0
+          else "Guard FAILED — do not deploy from this tree.")
+    return rc
+
+
+def cmd_list(args) -> int:
+    print("storeops — what to run when\n")
+    for verb, impl, question in INDEX:
+        print(f"  {verb:<11} {question}")
+        print(f"  {'':<11} -> {impl}")
+    print(OTHER_SCRIPTS)
+    print(f"Live Stripe operations use {LIVE_KEY_VAR}; .env's STRIPE_API_KEY is a TEST key.")
+    return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        prog="storeops", description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--brief", action="store_true",
+                    help="one line of output, for a chat bot or a status bar")
+    sub = ap.add_subparsers(dest="verb", required=True)
+
+    p = sub.add_parser("health", help="can a stranger safely give us money right now?")
+    p.add_argument("--quick", action="store_true",
+                   help="skip live Stripe + e2e checks (does not mint a checkout session)")
+    p.add_argument("--test-mode", action="store_true",
+                   help="use .env's TEST key; the live-only checks will SKIP, not run")
+    p.set_defaults(fn=cmd_health)
+
+    p = sub.add_parser("reconcile", help="did every paying buyer get their download?")
+    p.add_argument("--days", type=int, default=7)
+    p.add_argument("--no-exceptions", action="store_true",
+                   help="audit mode: report excused failures too")
+    p.set_defaults(fn=cmd_reconcile)
+
+    p = sub.add_parser("delivery", help="verify ONE purchase end to end")
+    p.add_argument("--session", required=True, help="Stripe checkout session id (cs_...)")
+    p.add_argument("--expect", choices=["ready", "revoked"])
+    p.set_defaults(fn=cmd_delivery)
+
+    sub.add_parser("money", help="prove all money paths offline").set_defaults(fn=cmd_money)
+    sub.add_parser("pause", help="stop the generation daemon").set_defaults(fn=cmd_pause)
+    sub.add_parser("resume", help="restart the generation daemon").set_defaults(fn=cmd_resume)
+
+    p = sub.add_parser("status", help="one-line health for a phone")
+    p.add_argument("--days", type=int, default=7)
+    p.set_defaults(fn=cmd_status)
+
+    sub.add_parser("deploy", help="pre-deploy guard + the real procedure").set_defaults(fn=cmd_deploy)
+    sub.add_parser("list", help="what to run when").set_defaults(fn=cmd_list)
+
+    args = ap.parse_args()
+    return args.fn(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

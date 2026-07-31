@@ -1,0 +1,27 @@
+{
+  "_README": [
+    "Paid Stripe sessions that reconcile_orders.py must NOT count as delivery failures.",
+    "",
+    "This exists because a single known-bad historical order otherwise red-lights the probe",
+    "forever, and a permanently red probe is worse than no probe: a REAL paid-without-delivery",
+    "becomes indistinguishable from the known one.",
+    "",
+    "RULES, enforced in code (reconcile_orders.py):",
+    "  * Only sessions listed here are excused. Everything else still fails.",
+    "  * `reason` must be non-empty. An entry with a blank reason is itself an error, so this",
+    "    file cannot be used to silence a failure without writing down why.",
+    "  * Excuses apply ONLY to undelivered orders, never to an unreachable store. 'I could not",
+    "    check' is not something anyone gets to wave through.",
+    "  * An exception is an admission that a buyer did not get what they paid for. If the payer",
+    "    was a real customer, refund them instead of listing them here."
+  ],
+
+  "exceptions": {
+    "cs_live_a1V1QmVBSqXEUKiPJH1SuxYEkTRJcYbBwaG2HcvcMAndNQ5chytDUjooS3": {
+      "reason": "2026-07-31 internal delivery test, not a customer. Paid 50p against a GBP49 pack to smoke-test the money rail; FulfilmentService.cs:88 correctly refused to grant an entitlement for an underpayment, so nothing was delivered and nothing should have been. The fence worked; the test was wrong. Superseded by the probe-delivery-1gbp pack, which is honestly priced at GBP1 so the full amount is paid and fulfilment actually runs.",
+      "payer": "chidionyema@gmail.com (founder)",
+      "amount": "0.50 GBP",
+      "added": "2026-07-31"
+    }
+  }
+}

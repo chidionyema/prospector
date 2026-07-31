@@ -1,5 +1,12 @@
 # Prospector — Go-Live Specification & Production-Readiness Assessment
 
+> **ARCHIVED — 2026-06-18. Historical record only; do NOT follow this.**
+> Verified false against the live store: it describes 11 listed packs (live: 42) and says money
+> is not yet real (live money since 2026-07-30). For what to run today see
+> [`store_platform/OPERATIONS.md`](../../../store_platform/OPERATIONS.md); to deploy see
+> [`store_platform/deploy/PROD_DEPLOY.md`](../../../store_platform/deploy/PROD_DEPLOY.md).
+
+
 **Date:** 2026-06-16
 **Author:** Engineering (Claude, founder-reviewed)
 **Status:** DRAFT for go/no-go decision

@@ -1,5 +1,12 @@
 # Prospector — Engineering Handover (for the continuing agent)
 
+> **ARCHIVED — 2026-06-15. Historical record only; do NOT follow this.**
+> Verified false against the live store: it describes 11 listed packs (live: 42) and says money
+> is not yet real (live money since 2026-07-30). For what to run today see
+> [`store_platform/OPERATIONS.md`](../../../store_platform/OPERATIONS.md); to deploy see
+> [`store_platform/deploy/PROD_DEPLOY.md`](../../../store_platform/deploy/PROD_DEPLOY.md).
+
+
 You are continuing the build of **Prospector**. The full product spec is
 `prospector-master-spec.md` (the single source of truth — read Parts 4, 5, 6, 14, 16
 especially). This file tells you **what already exists, how it's wired, the rules you
