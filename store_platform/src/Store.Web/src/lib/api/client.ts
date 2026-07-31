@@ -177,6 +177,32 @@ export async function joinWaitlist(
   return { ok: false, error: body?.error ?? 'That did not go through. Try again in a moment.' };
 }
 
+/**
+ * Ask the API to open a Stripe Checkout Session for a pack and return the hosted URL.
+ *
+ * Lives here rather than in the page because components never call fetch directly
+ * (UI-STANDARDS §4). The redirect allow-list travels with the call: it is a property of
+ * trusting this response, not of the component that happens to use it.
+ */
+export async function createStripeCheckout(packId: string): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/packs/${packId}/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to start checkout: ${text}`);
+  }
+  const { url } = await res.json();
+  // Defence in depth: only ever redirect to Stripe's hosted checkout. Refuse any other
+  // value so a compromised/buggy API response can't turn this into an open redirect.
+  if (typeof url !== 'string' || !url.startsWith('https://checkout.stripe.com/')) {
+    throw new Error('Unexpected checkout URL');
+  }
+  return url;
+}
+
 export async function fetchPackDetails(id: string): Promise<PackDetails> {
   const res = await fetch(`${API_BASE_URL}/catalog/${id}`);
   if (!res.ok) throw new Error('Failed to fetch pack details');

@@ -4,14 +4,15 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon, CoverArt } from '@/components/ui';
+import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection } from '@/components/marketing/PackContents';
-import { fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { createStripeCheckout, fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
-import { API_BASE_URL, LEGAL } from '@/lib/config';
+import { LEGAL } from '@/lib/config';
 import { coverFor } from '@/lib/cover';
 
 interface PackPageProps {
@@ -60,30 +61,17 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
       } else {
         await handlePaddleCheckout(pack);
       }
-    } catch (err: any) {
-      setCheckoutError(err.message || 'Checkout failed. Please try again.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      setCheckoutError(message || 'Checkout failed. Please try again.');
     } finally {
       setCheckingOut(false);
     }
   };
 
   const handleStripeCheckout = async (pack: PackDetails) => {
-    const res = await fetch(`${API_BASE_URL}/packs/${pack.id}/checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to start checkout: ${text}`);
-    }
-    const { url } = await res.json();
-    // Defence in depth: only ever redirect to Stripe's hosted checkout. Refuse any other
-    // value so a compromised/buggy API response can't turn this into an open redirect.
-    if (typeof url !== 'string' || !url.startsWith('https://checkout.stripe.com/')) {
-      throw new Error('Unexpected checkout URL');
-    }
-    window.location.href = url;
+    // createStripeCheckout already refuses any URL that is not Stripe's hosted checkout.
+    window.location.href = await createStripeCheckout(pack.id);
   };
 
   const handlePaddleCheckout = async (pack: PackDetails) => {
@@ -111,7 +99,11 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
     `&body=${encodeURIComponent(`Please email me the moment this pack is available to buy: ${pack.title} (${pack.id}).`)}`;
 
   // Shared checkout body — rendered in the desktop sticky card and the mobile purchase bar.
-  const CheckoutBody = () => (
+  // Deliberately an element VALUE, not a component defined during render: a component declared
+  // inline is a new type on every render, so React unmounts and remounts the subtree and the
+  // checkout button loses its state mid-purchase. The same element object can be placed twice —
+  // React instantiates it independently at each position.
+  const checkoutBody = (
     <>
       <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">One time price</span>
       <div className="mt-1 flex items-baseline gap-2">
@@ -187,13 +179,13 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
       )}
 
       <div className="mt-7 space-y-3 border-t border-border/70 pt-6">
-        {[
+        {([
           { icon: 'download', text: 'Instant download the moment you pay' },
           { icon: 'lock', text: `Secure checkout via ${providerLabel}` },
           { icon: 'mail', text: 'A private link sent straight to you' },
-        ].map((feat, i) => (
+        ] satisfies { icon: IconName; text: string }[]).map((feat, i) => (
           <div key={i} className="flex items-center gap-3 text-xs font-medium text-muted">
-            <Icon name={feat.icon as any} size={14} className="text-text/60" />
+            <Icon name={feat.icon} size={14} className="text-text/60" />
             {feat.text}
           </div>
         ))}
@@ -261,7 +253,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
 
             {/* Mobile purchase bar — keeps price + CTA above the fold on small screens */}
             <div className="mt-8 rounded-2xl border border-border bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
-              <CheckoutBody />
+              {checkoutBody}
             </div>
 
             {/* Deliverables first: "what do I actually receive for £49" is the question that stalls a
@@ -518,7 +510,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
           {/* Right: Checkout (desktop sticky) */}
           <div className="hidden w-full shrink-0 lg:block lg:w-80">
             <div className="sticky top-24 rounded-2xl border border-border bg-white p-7 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
-              <CheckoutBody />
+              {checkoutBody}
             </div>
           </div>
         </div>

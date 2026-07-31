@@ -481,6 +481,62 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
 .WithName("PatchPackFacets")
 .WithOpenApi();
 
+// Withdraw a pack from sale (or restore one), touching nothing else about it.
+//
+// The alternative was re-POSTing the pack to /internal/catalog with IsListed=false, but that
+// endpoint is an upsert: it assigns ProviderProductId, ProviderPriceId and DossierRef from the
+// request unconditionally, and those are not readable back from the public /catalog. Pulling a
+// pack that way silently nulls its Stripe ids — a moderation action destroying the money rail.
+// Hence a door that can only reach the listing bit.
+//
+// Restoring is deliberately subject to the same rule as publishing: a pack with no ContentKey
+// cannot go live, because selling what we cannot deliver is the cardinal sin of this layer.
+app.MapPatch("/internal/catalog/{id}/listing", async (
+    string id,
+    ListingPatchRequest request,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Reason))
+    {
+        return Results.BadRequest(new { error = "reason is required — an unexplained delisting reads as a bug" });
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    if (request.IsListed && string.IsNullOrEmpty(pack.ContentKey))
+    {
+        return Results.BadRequest(new { error = "cannot list a pack with no deliverable content" });
+    }
+
+    pack.IsListed = request.IsListed;
+    pack.DelistReason = request.Reason;
+    pack.DelistedAt = request.IsListed ? null : DateTime.UtcNow;
+
+    await db.SaveChangesAsync().ConfigureAwait(false);
+
+    return Results.Ok(new { pack.Id, pack.IsListed, pack.DelistReason, pack.DelistedAt });
+})
+.WithName("PatchPackListing")
+.WithOpenApi();
+
 // Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a
 // pack to confirm it is entitled to publish. A separate key from the internal-catalog key so
 // the two authorities can be rotated independently. Fail closed: 503 when no key is

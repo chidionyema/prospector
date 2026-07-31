@@ -10,6 +10,13 @@ public class Pack
     public string? ProviderProductId { get; set; }
     public string? ProviderPriceId { get; set; }
     public bool IsListed { get; set; }
+
+    // Why the pack was last withdrawn from sale, set by PATCH /internal/catalog/{id}/listing.
+    // Kept after a re-list rather than cleared, so the history of a pack that has been pulled
+    // and restored is still legible; DelistedAt tells you whether it applies right now.
+    public string? DelistReason { get; set; }
+    public DateTime? DelistedAt { get; set; }
+
     public required string DossierRef { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

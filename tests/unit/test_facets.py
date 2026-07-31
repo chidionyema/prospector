@@ -152,8 +152,26 @@ class TestBackfillFile:
     def data(self):
         return json.loads(BACKFILL.read_text(encoding="utf-8"))
 
-    def test_covers_the_live_catalogue(self, data):
-        assert len(data) == 15
+    def test_every_entry_is_a_pack_that_was_actually_published(self, data):
+        # Deliberately NOT `len(data) == 15`, and deliberately not the other direction
+        # either. The engine publishes unattended, so "every live pack has an entry" is a
+        # moving target: asserting it here would turn a successful PASS into a red suite
+        # and a blocked commit. That coverage check belongs where it can be acted on -
+        # backfill_facets.py reads the LIVE catalogue on every run and re-proposes anything
+        # new, so re-running it is the fix, and its printed `packs=` line is the report.
+        #
+        # What is stable, and what this guards, is the reverse: no entry may name a pack
+        # that was never published. That catches a mistyped or stale id, which would
+        # otherwise fail silently as a 404 halfway through --apply.
+        # Keyed on store/dossiers/, not store/listings/: the dossier is what the proposer
+        # actually read to justify each value, and it is the only local record that is
+        # complete. store/listings/ has drifted from the deployed catalogue (checked
+        # 2026-07-31: 20 packs live, 11 of them with no listings/ file), so using it here
+        # would fail on packs that are demonstrably published.
+        known = {p.name.split(".")[0] for p in (REPO_ROOT / "store" / "dossiers").glob("*.json")}
+        assert known, "no dossiers on disk - the assertion below would prove nothing"
+        phantom = sorted(set(data) - known)
+        assert not phantom, f"backfill entries with no dossier to justify them: {phantom}"
 
     def test_every_non_null_value_is_in_the_vocabulary(self, data):
         for pack_id, entry in data.items():

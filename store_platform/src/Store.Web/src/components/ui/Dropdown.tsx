@@ -49,13 +49,19 @@ export function Dropdown<T extends string>({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
-  // When opening, focus the list and highlight the current value.
+  // When opening, move focus to the list. The highlight is seeded at the moment of opening
+  // (see `openList`) rather than here: setting state inside an effect makes React render the
+  // closed list once and immediately re-render it highlighted, which is a visible flash on the
+  // first frame and a cascading render on every subsequent `selectedIndex` change.
   React.useEffect(() => {
-    if (open) {
-      setActive(selectedIndex);
-      listRef.current?.focus();
-    }
-  }, [open, selectedIndex]);
+    if (open) listRef.current?.focus();
+  }, [open]);
+
+  /** Open the list with the current value pre-highlighted. */
+  const openList = () => {
+    setActive(selectedIndex);
+    setOpen(true);
+  };
 
   const choose = (i: number) => {
     onChange(options[i].value);
@@ -108,11 +114,11 @@ export function Dropdown<T extends string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-labelledby={labelId}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setOpen(true);
+            openList();
           }
         }}
         className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm font-semibold text-text shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition hover:border-text/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-text"
@@ -137,6 +143,13 @@ export function Dropdown<T extends string>({
           {options.map((opt, i) => {
             const selected = opt.value === value;
             return (
+              // Keyboard selection is handled on the owning [role=listbox] (onListKeyDown),
+              // which is the ARIA listbox pattern: focus stays on the list and the active
+              // option is named by aria-activedescendant. Options are deliberately not
+              // focusable (no tabIndex), so a key handler here could never fire; the pointer
+              // handler below is the mouse half of an interaction that already has its
+              // keyboard half. Hence the rule is suppressed rather than satisfied with dead code.
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events
               <li
                 key={opt.value}
                 id={`${labelId}-opt-${i}`}

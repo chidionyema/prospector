@@ -15,26 +15,39 @@ const MAX_POLL_ATTEMPTS = 20; // ~40s, then fall back to the email/support path.
 
 type Phase = 'resolving' | 'ready' | 'no-session' | 'timed-out';
 
+/** window.location.origin never changes for the life of the document, so there is nothing to
+ *  subscribe to. useSyncExternalStore still needs a subscribe function; this one registers no
+ *  listener and its unsubscribe is a no-op. */
+const subscribeToNothing = () => () => {};
+
 export default function OrderSuccess() {
   const { query, isReady } = useRouter();
   const packId = typeof query.pack === 'string' ? query.pack : null;
   const sessionId = typeof query.session_id === 'string' ? query.session_id : null;
 
-  const [phase, setPhase] = React.useState<Phase>('resolving');
+  const [pollPhase, setPollPhase] = React.useState<Phase>('resolving');
   const [items, setItems] = React.useState<SessionOrderItem[]>([]);
   const [copied, setCopied] = React.useState(false);
 
   // Resolved after mount, never during SSR: reading window on the server would either throw or
   // bake the build machine's origin into the HTML and cause a hydration mismatch.
-  const [origin, setOrigin] = React.useState('');
-  React.useEffect(() => setOrigin(window.location.origin), []);
+  // useSyncExternalStore is the supported way to read a browser value that differs between
+  // server and client — the server snapshot is '' and React swaps in the real origin on
+  // hydration, without a setState-in-effect and its extra render pass.
+  const origin = React.useSyncExternalStore(
+    subscribeToNothing,
+    () => window.location.origin,
+    () => '',
+  );
+
+  // "No session id in the URL" is a fact about the URL, not an outcome of polling, so it is
+  // derived rather than stored. Storing it meant writing state from inside the polling effect
+  // on the very first run, which cascades an extra render before anything is on screen.
+  const phase: Phase = isReady && !sessionId ? 'no-session' : pollPhase;
 
   React.useEffect(() => {
     if (!isReady) return;
-    if (!sessionId) {
-      setPhase('no-session');
-      return;
-    }
+    if (!sessionId) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -47,7 +60,7 @@ export default function OrderSuccess() {
         if (cancelled) return;
         if (result.status === 'ready' && result.items.length > 0) {
           setItems(result.items);
-          setPhase('ready');
+          setPollPhase('ready');
           return;
         }
       } catch {
@@ -56,7 +69,7 @@ export default function OrderSuccess() {
       }
       if (cancelled) return;
       if (attempts >= MAX_POLL_ATTEMPTS) {
-        setPhase('timed-out');
+        setPollPhase('timed-out');
         return;
       }
       timer = setTimeout(poll, POLL_INTERVAL_MS);
