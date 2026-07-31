@@ -125,9 +125,27 @@ def test_liveness_fresh_sleeping_is_alive(tmp_path):
 
 
 def test_liveness_stuck_generating_is_dead(tmp_path):
-    _write_heartbeat(tmp_path, phase="generating", age_min=90)
+    # Derived from the deadline rather than hardcoded. _liveness computes
+    # stall_min = _TICK_HARD_DEADLINE_S/60 + 10, so any fixed age here stops testing the
+    # thing it names as soon as the deadline is retuned — which is exactly what happened:
+    # a hardcoded 90 was a real assertion at the 75-min deadline and became a failure the
+    # moment it moved to 3h. The constant's own comment warns about this trap on the
+    # production side; the test carried the same bug.
+    stall_min = rs._TICK_HARD_DEADLINE_S / 60 + 10
+    _write_heartbeat(tmp_path, phase="generating", age_min=stall_min + 15)
     ok, reason = rs._liveness(_cfg(tmp_path))
     assert not ok and "generating" in reason
+
+
+def test_liveness_generating_within_deadline_is_alive(tmp_path):
+    # The other half of the coupling, and the reason the test above is not enough on its
+    # own: a watchdog that declared every 'generating' heartbeat dead would still satisfy
+    # it, while force-exiting healthy long batches into the relaunch livelock the deadline
+    # exists to prevent. A batch still inside its budget must be left alone.
+    stall_min = rs._TICK_HARD_DEADLINE_S / 60 + 10
+    _write_heartbeat(tmp_path, phase="generating", age_min=stall_min - 15)
+    ok, _ = rs._liveness(_cfg(tmp_path))
+    assert ok
 
 
 def test_liveness_overdue_sleeping_is_dead(tmp_path):

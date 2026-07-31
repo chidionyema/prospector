@@ -658,10 +658,11 @@ def render_alarms(alarms: list[Alarm]) -> str:
     if not alarms:
         return "  ✓ calibration: no pathologies detected"
     glyph = {"alarm": "🚨", "warn": "⚠️"}
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     by_lane: dict[str | None, list[Alarm]] = {}
     for a in alarms:
         by_lane.setdefault(a.get("lane"), []).append(a)
-    lines = []
+    lines = [f"  diagnostics @ {now}"]
     for lane_key, lane_alarms in sorted(by_lane.items(), key=lambda x: (x[0] is not None, x[0] or "")):
         if lane_key:
             lines.append(f"  ── lane: {lane_key!r} ──")
