@@ -666,6 +666,41 @@ app.MapPatch("/internal/catalog/{id}/content", async (
 .WithName("PatchPackContent")
 .WithOpenApi();
 
+// Read a pack's current content pointer. The backfill needs to know WHICH stored object a
+// listing serves before rebuilding it: content-addressing keeps every superseded upload, so
+// a pack republished twice has three objects under packs/<id>/ and only the database knows
+// which one buyers receive. Newest-by-LastModified is a heuristic that goes wrong exactly
+// when a past upload succeeded but its catalog update failed. Internal (key-gated) because
+// content keys are presign targets, not public catalogue data.
+app.MapGet("/internal/catalog/{id}/content", async (
+    string id,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    return Results.Ok(new { pack.Id, pack.ContentKey, pack.ContentHash, pack.ContentVersion });
+})
+.WithName("GetPackContent")
+.WithOpenApi();
+
 // Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a
 // pack to confirm it is entitled to publish. A separate key from the internal-catalog key so
 // the two authorities can be rotated independently. Fail closed: 503 when no key is

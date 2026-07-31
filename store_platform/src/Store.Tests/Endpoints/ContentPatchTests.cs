@@ -144,6 +144,38 @@ public sealed class ContentPatchTests : IClassFixture<StoreApiFactory>
     }
 
     [Fact]
+    public async Task Read_endpoint_returns_the_current_pointer_and_tracks_a_repoint()
+    {
+        await PublishAsync("cp-read");
+
+        var before = await Client().GetAsync("/internal/catalog/cp-read/content");
+        Assert.Equal(HttpStatusCode.OK, before.StatusCode);
+        using (var doc = JsonDocument.Parse(await before.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("packs/cp-read/oldhash.zip", doc.RootElement.GetProperty("contentKey").GetString());
+        }
+
+        var patch = await Client().PatchAsJsonAsync("/internal/catalog/cp-read/content", PatchBody("cp-read"));
+        Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
+
+        var after = await Client().GetAsync("/internal/catalog/cp-read/content");
+        using (var doc = JsonDocument.Parse(await after.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("packs/cp-read/newhash.zip", doc.RootElement.GetProperty("contentKey").GetString());
+            Assert.Equal(2, doc.RootElement.GetProperty("contentVersion").GetInt32());
+        }
+    }
+
+    [Fact]
+    public async Task Read_endpoint_requires_the_internal_key()
+    {
+        await PublishAsync("cp-read-auth");
+
+        var response = await Client(withKey: false).GetAsync("/internal/catalog/cp-read-auth/content");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Unknown_pack_is_404()
     {
         var response = await Client().PatchAsJsonAsync(

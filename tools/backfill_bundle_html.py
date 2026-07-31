@@ -139,29 +139,45 @@ def main() -> int:
     mode = "APPLY" if args.apply else "DRY-RUN"
     print(f"{mode}: {len(packs)} listed pack(s) from {args.api_url}/catalog\n")
 
+    def current_key(pid: str) -> Tuple[Optional[str], str]:
+        """The object key this listing actually serves, and how we know.
+
+        Authority order: the internal content endpoint (the database's own pointer),
+        then an unambiguous single stored object, then --take-newest as an explicit
+        operator override. Newest-by-LastModified alone is wrong exactly when a past
+        upload succeeded but its catalog update failed — the orphan looks current.
+        """
+        if internal_key:
+            r = requests.get(f"{args.api_url}/internal/catalog/{pid}/content",
+                             headers={"X-Internal-Key": internal_key}, timeout=15)
+            if r.status_code == 200 and r.json().get("contentKey"):
+                return r.json()["contentKey"], "db-pointer"
+        listing = s3.list_objects_v2(Bucket=bucket, Prefix=f"packs/{pid}/")
+        objects = listing.get("Contents", [])
+        if not objects:
+            return None, "no-object"
+        if len(objects) == 1:
+            return objects[0]["Key"], "single-object"
+        if args.take_newest:
+            objects.sort(key=lambda o: o["LastModified"], reverse=True)
+            return objects[0]["Key"], "take-newest"
+        keys = ", ".join(o["Key"].rsplit("/", 1)[-1] for o in objects)
+        return None, f"{len(objects)} objects ({keys})"
+
     report = Report()
     for pack in packs:
         pid = pack.get("id", "")
         try:
-            listing = s3.list_objects_v2(Bucket=bucket, Prefix=f"packs/{pid}/")
-            objects = listing.get("Contents", [])
-            if not objects:
-                report.add(PackResult(pid, "no-object",
-                                      "listed but nothing under its prefix — investigate before touching"))
-                continue
-        except Exception as e:  # noqa: BLE001 — per-pack isolation: one failure never stops the sweep
-            report.add(PackResult(pid, "error", f"listing storage failed: {e}"))
-            continue
-
-        try:
-            if len(objects) > 1:
-                if not args.take_newest:
-                    keys = ", ".join(o["Key"].rsplit("/", 1)[-1] for o in objects)
+            old_key, how = current_key(pid)
+            if old_key is None:
+                if how == "no-object":
+                    report.add(PackResult(pid, "no-object",
+                                          "listed but nothing under its prefix — investigate before touching"))
+                else:
                     report.add(PackResult(pid, "ambiguous",
-                                          f"{len(objects)} objects ({keys}); rerun with --take-newest"))
-                    continue
-                objects.sort(key=lambda o: o["LastModified"], reverse=True)
-            old_key = objects[0]["Key"]
+                                          f"{how}; no db pointer available — deploy the content "
+                                          "endpoint (or --take-newest to override)"))
+                continue
 
             zip_bytes = s3.get_object(Bucket=bucket, Key=old_key)["Body"].read()
 
