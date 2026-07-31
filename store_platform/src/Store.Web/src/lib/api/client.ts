@@ -315,7 +315,6 @@ export async function fetchCatalogStats(): Promise<CatalogStats | null> {
 export interface AnalyticsEventBody {
   name: string;
   path: string | null;
-  sessionId: string | null;
   meta: string | null;
 }
 
