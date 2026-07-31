@@ -600,6 +600,72 @@ app.MapPatch("/internal/catalog/{id}/listing", async (
 .WithName("PatchPackListing")
 .WithOpenApi();
 
+// Repoint a pack's deliverable at a new content object, touching nothing else about it.
+//
+// Content keys are content-addressed (packs/<id>/<sha256>.zip), so ANY bundle change mints a
+// new object key and the listing must be repointed to it — but a bundle-format backfill must
+// never hold the power to rewrite price, provider ids or listing state, and /internal/catalog
+// assigns those unconditionally. Same narrow-door rationale as the facet and listing patches.
+//
+// The key must parse as this pack's own content-addressed path with the hash it claims:
+// accepting an arbitrary key would let a bad call point pack A's download at pack B's zip.
+app.MapPatch("/internal/catalog/{id}/content", async (
+    string id,
+    ContentPatchRequest request,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Reason))
+    {
+        return Results.BadRequest(new { error = "reason is required — an unexplained content repoint reads as a bug" });
+    }
+    if (string.IsNullOrWhiteSpace(request.ContentKey) || string.IsNullOrWhiteSpace(request.ContentHash))
+    {
+        return Results.BadRequest(new { error = "contentKey and contentHash are both required" });
+    }
+    if (!string.Equals(request.ContentKey, $"packs/{id}/{request.ContentHash}.zip", StringComparison.Ordinal))
+    {
+        return Results.BadRequest(new { error = $"contentKey must be packs/{id}/<contentHash>.zip for this pack" });
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    // Only a pack that already has a deliverable can be repointed: this door updates content,
+    // it does not grant it. First-time content still goes through /internal/catalog, where
+    // list-only-after-upload and billability are enforced together.
+    if (string.IsNullOrEmpty(pack.ContentKey))
+    {
+        return Results.BadRequest(new { error = "pack has no content to repoint — publish it through /internal/catalog first" });
+    }
+
+    pack.ContentKey = request.ContentKey;
+    pack.ContentHash = request.ContentHash;
+    pack.ContentVersion += 1;
+
+    await db.SaveChangesAsync().ConfigureAwait(false);
+
+    return Results.Ok(new { pack.Id, pack.ContentKey, pack.ContentHash, pack.ContentVersion });
+})
+.WithName("PatchPackContent")
+.WithOpenApi();
+
 // Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a
 // pack to confirm it is entitled to publish. A separate key from the internal-catalog key so
 // the two authorities can be rotated independently. Fail closed: 503 when no key is
