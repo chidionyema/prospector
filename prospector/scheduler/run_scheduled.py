@@ -152,13 +152,13 @@ def _default_generate(cfg, batch_size: int) -> dict:
 # read hung the daemon 34+ min while the alert-only watchdog watched it sit dead for 8.5h). No
 # single tick may hang the process longer than this; on breach the daemon force-exits and launchd
 # KeepAlive (ThrottleInterval=30) relaunches a clean daemon. Default 75 min (env-overridable):
-# measured 2026-07-02 a fully-grounded vetted candidate takes ~10 min on the claude_cli chain,
-# so a batch of 5 legitimately runs ~55-60 min incl. generation — a tighter deadline force-exits
-# healthy ticks in a relaunch livelock (proven live: batch_size=20 + 45 min deadline meant NO
-# tick ever completed; dossiers survived but tick rows/diagnostics were lost every cycle).
+# measured 2026-07-02 a fully-grounded vetted candidate takes ~10 min on the claude_cli chain.
+# Batch size 15 + cursor_cli primary (faster) + exa in grounding → ~120-150 min per tick.
+# Default bumped to 10800s (3h) on founder directive 2026-07-31. Still env-overridable
+# via PROSPECTOR_TICK_DEADLINE_S for tuning without code changes.
 # The watchdog's 'generating' stall threshold is derived from this constant (see _liveness) so
 # the in-process deadline always fires first and the process self-heals before the watchdog acts.
-_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "4500"))  # 75 min
+_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "10800"))  # 3h
 
 # After an unproductive tick (error or 0 dossiers despite the guard allowing spend) retry soon
 # instead of burning the full 2h cadence idle — one provider blip cost days of ~$0 barren ticks.
@@ -498,7 +498,8 @@ def _liveness(cfg) -> tuple[bool, str]:
 
     Returns (ok, reason). This is deliberately separate from the in-loop alerts: if the daemon
     crash-loops or hangs, NO tick fires, so only an external check (run on its own schedule) can
-    notice. A `generating` heartbeat older than a long batch (≈45 min) is a stall; a `sleeping`
+    notice. A `generating` heartbeat older than the tick deadline + 10 min grace (see stall_min
+    below — do not restate it as a literal here, it moves) is a stall; a `sleeping`
     heartbeat older than interval + grace means the loop died; a missing heartbeat means it never
     started. This is the active form of the "looked alive for 15h" guard.
     """
