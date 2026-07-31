@@ -60,7 +60,12 @@ jobs:
         run: uv pip install --system -r requirements.txt
 
       - name: Main test suite (excluding UI theme)
-        run: python -m pytest -q --ignore=tests/test_ui_theme.py --tb=short -x -p no:warnings
+        # No -x. It stops at the first failure, so a run reports one problem and hides the
+        # rest behind it: on 2026-07-31 four independent environment faults (a hardcoded
+        # .venv path, tests asserting on a gitignored store, and three undeclared
+        # dependencies) took four separate pushes to discover, one per run. The whole point
+        # of CI is to learn everything one push is wrong about, in that push.
+        run: python -m pytest -q --ignore=tests/test_ui_theme.py --tb=short -p no:warnings
 
       # ── Hard gate ──────────────────────────────────────────────
       # Block the pipeline if the golden set does not achieve 100 %

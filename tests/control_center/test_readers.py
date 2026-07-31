@@ -18,24 +18,16 @@ if str(_ROOT) not in sys.path:
 
 from prospector.control_center import readers
 
-# store/dossiers/ and store/prospector.jsonl are gitignored (.gitignore:43), so a fresh
-# checkout — CI's, or a new laptop's — has neither. A handful of tests below assert on the
-# CONTENTS of that local data rather than on reader behaviour, so on a clone they were
-# failing for the absence of data instead of a defect: `assert 0 >= 300`. Skipping with a
-# stated reason keeps them doing their real job (guarding the operator's own store, where
-# there is something to guard) without making "I have not run the engine on this machine"
-# indistinguishable from a broken reader. The behavioural tests run everywhere, unskipped.
-_CATALOGUE_IS_POPULATED = bool(readers.catalogue_index())
-_LEDGER_EXISTS = (_ROOT / "store" / "prospector.jsonl").is_file()
-
-requires_populated_catalogue = pytest.mark.skipif(
-    not _CATALOGUE_IS_POPULATED,
-    reason="no local catalogue (store/dossiers/ is gitignored) — nothing to assert about",
-)
-requires_audit_ledger = pytest.mark.skipif(
-    not _LEDGER_EXISTS,
-    reason="no local store/prospector.jsonl (gitignored) — nothing to assert about",
-)
+# NOTHING here asserts on the operator's own store/. store/dossiers/ and
+# store/prospector.jsonl are gitignored (.gitignore:43), so a fresh checkout — CI's, or a new
+# laptop's — has neither, and a test that asserted on their CONTENTS reported the absence of
+# data as though it were a defect: `assert 0 >= 300`, which reads as a broken reader.
+#
+# Those checks were not wrong, they were in the wrong place. They ask "is this machine's data
+# sane?", which is an operational question with an operational response (run the engine),
+# whereas a test asks "is the code correct?", which must be answerable on any checkout. They
+# now live in scripts/store_audit.py, which the operator runs where the real store exists.
+# What remains here is behaviour, exercised against fixtures these tests build themselves.
 
 
 class TestCatalogueIndex:
@@ -45,11 +37,8 @@ class TestCatalogueIndex:
         idx = readers.catalogue_index()
         assert isinstance(idx, list)
 
-    @requires_populated_catalogue
-    def test_total_matches_existing_data(self):
-        idx = readers.catalogue_index()
-        # Real store has 367 dossiers — verify we read the real data
-        assert len(idx) >= 300  # conservative guard
+    # "the real store has >= 300 dossiers" moved to scripts/store_audit.py (CATALOGUE).
+    # It measured this laptop, not this code.
 
     def test_filter_by_decision(self):
         pass_rows = readers.catalogue_index(decision="pass")
@@ -193,25 +182,60 @@ class TestLoadDossier:
 
 
 class TestCostsData:
-    """costs_data() must compute totals from the real audit log."""
+    """costs_data() must compute totals from an audit log."""
 
-    def test_costs_data_returns_dict(self):
+    def test_costs_data_returns_dict(self, ledger):
         from prospector.report import costs_data
-        result = costs_data("store/prospector.jsonl")
+        result = costs_data(str(ledger))
         assert isinstance(result, dict)
 
-    @requires_audit_ledger
-    def test_costs_data_has_expected_keys(self):
+    # The two tests that used to read store/prospector.jsonl directly are replaced by the
+    # fixture below. Reading the operator's own ledger gave weaker coverage than this, not
+    # stronger: it could only assert the keys existed and the total was >= 0, because the
+    # file's contents are whatever the engine happened to have done. A ledger this test
+    # writes has a KNOWN answer, so it can assert the arithmetic. The question "is the real
+    # ledger sane?" is scripts/store_audit.py (LEDGER_SHAPE, LEDGER_SPEND).
+
+    @pytest.fixture
+    def ledger(self, tmp_path):
+        rows = [
+            {"event": "spend", "amount_usd": 0.25, "phase": "verify"},
+            {"event": "spend", "amount_usd": 0.75, "phase": "generate"},
+            # An errored call must not be counted as a call...
+            {"event": "latency", "operation": "verdict", "latency_ms": 900, "status": "error"},
+            {"event": "latency", "operation": "verdict", "latency_ms": 1100,
+             "provider": "claude", "input": 1000, "output": 200},
+            {"event": "latency", "operation": "score", "latency_ms": 300,
+             "provider": "gemini", "input": 500, "output": 100},
+            "{ this line is corrupt",  # ...and a torn write must not take the report down
+        ]
+        path = tmp_path / "ledger.jsonl"
+        path.write_text("\n".join(
+            r if isinstance(r, str) else json.dumps(r) for r in rows
+        ) + "\n")
+        return path
+
+    def test_costs_data_has_expected_keys(self, ledger):
         from prospector.report import costs_data
-        result = costs_data("store/prospector.jsonl")
+        result = costs_data(str(ledger))
         for key in ("total_spend_usd", "total_calls", "providers", "tokens", "slowest_ops"):
             assert key in result, f"Missing key: {key}"
 
-    @requires_audit_ledger
-    def test_costs_data_total_spend_is_non_negative(self):
+    def test_costs_data_sums_the_spend_events(self, ledger):
         from prospector.report import costs_data
-        result = costs_data("store/prospector.jsonl")
-        assert result["total_spend_usd"] >= 0
+        assert costs_data(str(ledger))["total_spend_usd"] == pytest.approx(1.00)
+
+    def test_costs_data_totals_tokens_across_providers(self, ledger):
+        from prospector.report import costs_data
+        tokens = costs_data(str(ledger))["tokens"]
+        assert tokens["input"] == 1500
+        assert tokens["output"] == 300
+
+    def test_a_corrupt_line_does_not_lose_the_rest_of_the_ledger(self, ledger):
+        # The engine appends to this file while running; a crash mid-write leaves a partial
+        # line. Losing the whole spend report to it would blind the daily cap.
+        from prospector.report import costs_data
+        assert costs_data(str(ledger))["total_spend_usd"] == pytest.approx(1.00)
 
     def test_costs_data_nonexistent_file_returns_error(self):
         from prospector.report import costs_data
