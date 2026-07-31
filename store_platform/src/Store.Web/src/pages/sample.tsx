@@ -5,6 +5,7 @@ import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section, SectionBand } from '@/components/marketing/blocks';
+import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import { freshnessLabel } from '@/lib/api/client';
 import report from '@/data/sample-report.json';
 
@@ -220,6 +221,10 @@ export default function SamplePage() {
             <Icon name="arrowRight" size={15} />
           </Link>
         </div>
+
+        {/* Second position, under the buy CTA: a reader who wants a pack should buy one, and the
+            address is only the fallback when nothing on the shelf fits them yet. */}
+        <WaitlistCallout />
       </Section>
     </MarketingLayout>
   );

@@ -1,0 +1,996 @@
+{
+  "generatedAt": "2026-07-31T16:32:13+00:00",
+  "totals": {
+    "killed": 960,
+    "passed": 103,
+    "shown": 60,
+    "byGate": {
+      "min_composite": 511,
+      "adversarial_decisive": 154,
+      "incumbency": 146,
+      "value_durability": 47,
+      "moat_ungrounded": 43,
+      "payer_solvency": 22,
+      "legality": 9,
+      "route_to_market": 6,
+      "source_or_die": 5,
+      "pain_reality": 5,
+      "currency": 5,
+      "distribution": 4,
+      "buyer_intent": 3
+    }
+  },
+  "entries": [
+    {
+      "title": "AssessAid — the carer's statutory assessment evidence dossier builder",
+      "oneLiner": "A web app that asks a carer a series of questions and produces a personalised, legally grounded evidence pack to maximise the outcome of their Carer's Assessment under the Care Act 2014.",
+      "gate": "route_to_market",
+      "gateLabel": "There is no route to reach buyers",
+      "reason": "UK carer-facing Facebook groups and forums (Carers UK Carers Connect, Carers' Support East Kent, CCLG, and the documented peer-support pattern) ban commercial advertising, solicitations, and business links, with any promotion limited to admin-controlled exceptions. That closes the beginner-accessible community channels the passages describe, so they show no open, freely executable route to paying carers.",
+      "citations": [],
+      "date": "2026-07-31"
+    },
+    {
+      "title": "DecibelKit – the home noise evidence pack that makes the council act",
+      "oneLiner": "A meter, logbook and data‑backed guide that turns a neighbour noise problem into a formal complaint councils can’t ignore.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "Passages show citizens already get a free Noise App that is the preferred way to capture and share noise evidence, used by over 400 organisations and handling more than a million reports a year, so a paid home evidence pack for the same job has no durable margin left. Separately, most noise is not judged by a fixed decibel maximum, which undercuts the lasting value of selling a calibrated meter as decisive proof.",
+      "citations": [],
+      "date": "2026-07-31"
+    },
+    {
+      "title": "HeatLeak Ledger – a thermal camera home survey that gives you a report of heat leaks and the paperwork to claim government insulation grants",
+      "oneLiner": "A portable thermal imaging service for NHS and council staff who want independent proof of their home’s heat loss before applying for the ECO4 or Great British Insulation Scheme.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "One passage states that most ECO4 funding has ended, so the grant-claim paperwork this paid survey sells against is largely gone. Another describes ECO4 home surveys already done by qualified professionals to decide free efficiency upgrades, so a free in-scheme assessment already covers that need.",
+      "citations": [],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "SaltCourt Rounds — The Council Leisure Manager's Portable Pool-Hall & Sports-Floor Slip-Coefficient Reinstatement Round",
+      "oneLiner": "A one-person mobile bench that turns up out-of-hours at school and council-run sports halls, wet-changing rooms and poolside walkways, mechanically re-tests the floor's slip resistance to the BS 7976 pendulum method, and — in the same visit — performs a measured abrasive/chemical reinstatement pass that lifts the reading back above the wet-barefoot threshold, leaving a signed before/after pendulum ledger the duty-holder can put in front of an insurer or a claimant's solicitor.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show the UK leisure-centre slip-testing space is already served by multiple established nationwide providers — National Testing, UKAS ISO 17025 accredited pendulum testers, and Slip Safety marketing HSE-endorsed pendulum testing directly at leisure centres [183c310eaea760d6, 4a8acf678977b52a] — alongside nationwide anti-slip treatment contractors. Critically, describes a provider already bundling anti-slip treatment AND pendulum slip testing in one offering, which is the candidate's supposed structural gap",
+      "citations": [
+        {
+          "url": "https://www.nationaltesting.co.uk/",
+          "domain": "nationaltesting.co.uk"
+        },
+        {
+          "url": "https://www.slip-testing-nationwide.co.uk/sectors/construction-handover/",
+          "domain": "slip-testing-nationwide.co.uk"
+        },
+        {
+          "url": "https://www.floor-safe.co.uk/",
+          "domain": "floor-safe.co.uk"
+        },
+        {
+          "url": "https://www.sliptech.co.uk/anti-slip-treatment/",
+          "domain": "sliptech.co.uk"
+        }
+      ],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "SplitCare Rebate — The Primary Carer's Council-Tax Second-Adult & Care-Occupancy Reclassification Broker",
+      "oneLiner": "A fixed-fee transaction broker that reconstructs a caring household's occupancy history and executes the specific council-tax reclassification claims (second-adult rebate, carer disregard, annexe/dependent-relative exemption, banding-effect adaptations) with the billing authority, charging per successful reclassification plus a slice of the backdated refund.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The named payer segment — unpaid carers in caring households — is described as frequently in poverty or financial hardship, facing extra care costs and higher household bills, and increasingly unable to afford day-to-day living costs to the point of skipping meals, which contradicts the ability to pay a £145 upfront per-claim fee. Related passages frame this cohort as one needing help because it cannot afford bills including council tax, reinforcing constrained cash rather than available budget.",
+      "citations": [
+        {
+          "url": "https://www.carersuk.org/policy-and-research/our-areas-of-policy-work/money-and-finance/",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://www.carersuk.org/reports/state-of-caring-2024-the-impact-of-unpaid-caring-on-finances/",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://www.citizensadvice.org.uk/debt-and-money/budgeting1/get-help-with-bills/",
+          "domain": "citizensadvice.org.uk"
+        }
+      ],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "ReferencePass — The Multi-App Gig Worker's Tenancy Referencing Pass-Dossier Desk",
+      "oneLiner": "A fixed-fee productized service that reconstructs a gig worker's fragmented multi-platform income into the exact evidence format each automated tenancy-referencing agency's underwriting rules will accept — before the application is submitted, so the reference passes first time.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Housing Hand is described as 'the UK's largest and most trusted professional rent guarantor service', having supported over 100,000 students and young working professionals and standing as guarantor for those unable to provide one — a dominant incumbent that directly resolves the exact failure the candidate monetises (applicant fails referencing and lacks a guarantor). Tenant-side help also already exists (Fraser Bond's expert guidance for those who failed referencing), so the space is not shown to be open.",
+      "citations": [],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "S117Broker — The Primary Carer's Mental Health Act s.117 Aftercare Activation & Means-Test-Defence Desk",
+      "oneLiner": "A fixed-fee, per-case transaction broker for primary carers of adults detained (or previously detained) under the Mental Health Act 1983 who reactivates a free, non-means-tested Section 117 aftercare package from the local authority and Integrated Care Board — and recovers three years of illegally means-tested charges when the LA cites Care Act assessments — at £795 per case activated or 20% of charges reversed, whichever is greater.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "Passages directly indicate primary carers are disproportionately from low-income households, receive only £81.90/week carer's allowance, and qualify for free legal aid specifically targeting low-income and disabled individuals — structurally undermining ability to pay £795+ upfront.",
+      "citations": [
+        {
+          "url": "https://carers.org/campaigning-for-change/new-research-finds-unpaid-care-has-huge-impact-on-mental-health-and-affects-low-income-households",
+          "domain": "carers.org"
+        },
+        {
+          "url": "https://www.theguardian.com/money/article/2024/jun/29/unpaid-uk-carers-financial-hit-income-benefits-bills",
+          "domain": "theguardian.com"
+        },
+        {
+          "url": "https://www.usa.gov/legal-aid",
+          "domain": "usa.gov"
+        }
+      ],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "AllotmentClock — The Independent Tree Surgeon & Arborist's Per-Tree Preservation Order & Conservation-Area Notice Clock",
+      "oneLiner": "A vertical tool that tells a sole-trader arborist, before quoting, exactly which of the trees at a given address are legally gated (TPO / conservation-area / felling-licence) and prints the correct notice with the correct clock — so the quote is priced with the 6-week statutory wait, not blown up by it.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "A UK-wide interactive TPO map already lets anyone check by postcode whether trees are protected before starting work, and Arb Quotes already occupies the tree-work quoting workflow this tool would sit inside, so both halves of the wedge are served by existing national-scale products rather than an open space.",
+      "citations": [
+        {
+          "url": "https://tposearch.co.uk/",
+          "domain": "tposearch.co.uk"
+        },
+        {
+          "url": "https://www.arbprosoftware.com/arb-quotes",
+          "domain": "arbprosoftware.com"
+        }
+      ],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "KerbRound — The Primary Carer's Multi-Borough PCN Cancellation & Carer-Permit Stack Broker",
+      "oneLiner": "A no-cancel-no-fee transaction broker that kills the parking, bus-lane and moving-traffic penalties a family carer racks up on their daily care round, then re-plans the round onto a stack of discretionary carer/health-worker permits and low-enforcement kerb space — priced per PCN cancelled and per permit granted.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show the PCN-appeal transaction is already occupied at scale by a free incumbent — DoNotPay, which has successfully challenged 160,000 parking tickets (~$4m) in London and New York and is marketed as making appeals effortless — and by an existing no-win-no-fee parking-ticket appeal operator using the identical pricing model KerbRound proposes. That is a free dominant-volume service plus a direct commercial rival on the same segment, not an open space.",
+      "citations": [],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "BedFall Bench — The Independent Care-Home Owner's Per-Bedroom Furniture Entrapment & Gap-Measurement Bench",
+      "oneLiner": "A camera-and-caliper vertical tool that lets a single-site care-home owner measure, log and re-prove every bed rail, hoist and window-restrictor dimensional gap in their building against the MHRA/CQC entrapment zones — producing a per-bedroom dimensional ledger that becomes the home's own defence asset when an incident or inspection lands.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Passage describes an existing service offering exactly the candidate's core function — helping care homes check bed rail measurements, equipment compatibility and inspection records for compliance — and shows a monthly bed-rail audit template already referenced to CQC Regulation 12, so the dimensional-check need is already being served rather than open. The passages do not establish dominant market share, so this is a competitor-occupied space rather than a proven monopoly.",
+      "citations": [
+        {
+          "url": "https://welcometoable.co.uk/resources/bed-rail-compliance/",
+          "domain": "welcometoable.co.uk"
+        },
+        {
+          "url": "https://goaudits.com/checklist/use-of-bed-rails-audit/931/38/",
+          "domain": "goaudits.com"
+        }
+      ],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "MeterSplit Rounds — The Under-27 HMO Renter's Sub-Metered Utility Overcharge Reconstruction & Refund Round",
+      "oneLiner": "A fixed-fee productized service that reconstructs, from a landlord's own resale-of-energy billing records, how much a shared-house tenant was overcharged above the Maximum Resale Price, and runs the recovery to conclusion.",
+      "gate": "distribution",
+      "gateLabel": "There is no route to reach buyers",
+      "reason": "Two of the three named routes are contradicted by the passages: the renter-forum rules explicitly prohibit linking to, advertising, soliciting business for, or recommending any paid service [f8e297e7687cccc9, 991148b7ab004882], and the student-housing bodies described are landlord-facing — Unipol runs Landlord Clinics in Leeds, Bradford and Nottingham to support landlords, and the university-union event celebrates landlords alongside union representatives [c2040b39a36990e8, 67b967e3660aeb17] — an implausible host for a service that pursues those same landlords for refunds. No passage evidences",
+      "citations": [],
+      "date": "2026-07-30"
+    },
+    {
+      "title": "CustodyClock — The Primary Carer's Court-Ordered Contact Breach Reconstruction & Enforcement Filing Broker",
+      "oneLiner": "A fixed-fee transaction broker that reconstructs a year of missed, curtailed or sabotaged child-contact handovers into a court-ready C79 enforcement application for separated primary carers, charging £220 per filed application plus £90 per subsequent breach schedule update.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages describing this payer segment state single-parent families are nearly twice as likely to be in poverty (67%), and that single parents on low income are directed to charity grants and free one-to-one legal support — evidence of a structurally cash-constrained payer, not one with budget. The unbundled-legal-services passages establish a paid limited-scope model is recognised in England & Wales family courts but say nothing about this segment's ability to fund it, so they do not offset the sol",
+      "citations": [
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5932102/",
+          "domain": "pmc.ncbi.nlm.nih.gov"
+        },
+        {
+          "url": "https://www.gingerbread.org.uk/find-information/money/grants/",
+          "domain": "gingerbread.org.uk"
+        },
+        {
+          "url": "https://opfs.org.uk/sitemap/",
+          "domain": "opfs.org.uk"
+        },
+        {
+          "url": "https://familylawservice.co.uk/unbundled-legal-services/",
+          "domain": "familylawservice.co.uk"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "SharpsCount Rounds — The NHS Ward Sister's Overnight Instrument-Tray Photo-Census & Loan-Kit Shortfall Round",
+      "oneLiner": "A physical night-round service that photo-censuses reusable surgical/procedure trays and loan kits across a hospital's wards and theatres before the 07:00 list, producing a signed shortfall sheet that ward sisters use to stop a cancelled list being blamed on their department.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show funded incumbents already selling exactly this capability: Censis offers AI-driven surgical instrument management for sterile processing departments, enterprise deployments of such tracking systems are widespread enough to have documented 18–36 month ROI benchmarks and an established global market with active competition [9beb16cc5523e83d, 198fd17e9abbb6a0], and one system explicitly tracks dispatch and receipt of orthopaedic implant loan kits — the candidate's core chain-of-custody need.",
+      "citations": [
+        {
+          "url": "https://www.foresightiq.co/competitive-landscape/censis-technologies",
+          "domain": "foresightiq.co"
+        },
+        {
+          "url": "https://satoasiapacific.com/product/pjm-rfid-medical-device-loan-kit-management-for-hospitals-pjm-assure/",
+          "domain": "satoasiapacific.com"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "BorderCare Split — The Cross-Border Primary Carer's Dual-State Care-Cost Attribution & Recovery Broker",
+      "oneLiner": "A fixed-fee transaction broker that reconstructs which of two jurisdictions is legally liable for a dependent's care, treatment or benefit costs — then recovers the wrongly-paid share from the losing authority on behalf of the carer who fronted the money.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages state that 1.2 million unpaid carers in the UK live in poverty, per the Carers UK/WPI Economics report on the scale of carer poverty, which cuts against the named payer — unpaid primary carers — having the budget to front £2k–£40k and pay £180+£450 fees; the remaining passages describe rising self-funder care costs and unfair care-home charges without evidencing carers' capacity or willingness to pay a broker.",
+      "citations": [
+        {
+          "url": "https://www.carersuk.org/reports/poverty-and-financial-hardship-of-unpaid-carers-in-the-uk/",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://wpieconomics.com/publications/poverty-and-financial-hardship-of-unpaid-carers-in-the-uk/",
+          "domain": "wpieconomics.com"
+        },
+        {
+          "url": "https://www.carersuk.org/media/dnxerxqv/poverty_financial_hardship_uk_web.pdf",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://www.bbc.co.uk/news/health-42175297",
+          "domain": "bbc.co.uk"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "PourWindow — The Independent Ready-Mix & Screed Batching Plant Owner's Per-Load Slump-Loss & Rejection Forecast Bench",
+      "oneLiner": "A vertical bench tool for owner-operators of single-plant ready-mix concrete batching operations that predicts, before the drum leaves the yard, whether a given mix design will arrive on-site outside its slump/temperature acceptance window — and issues a signed pre-departure load certificate that shifts the rejection argument onto the receiving site.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages describe an established, commercially deployed incumbent solving exactly this need: GCP's patented VERIFI® in-transit system measures and manages slump, temperature and water additions from plant to job site and is deployed fleet-wide by operators like the Neilsen Group, with Load Assurance giving dispatch minute-by-minute slump/air/temperature visibility. A crowded dispatch-software field (Command Alkon, Sysdyne, Zylocon, Dispatch360) further indicates the space is served rather than open",
+      "citations": [
+        {
+          "url": "https://constructionexec.com/partner-article/in-transit-management-empowers-concrete-producers/",
+          "domain": "constructionexec.com"
+        },
+        {
+          "url": "https://vimeo.com/289292583",
+          "domain": "vimeo.com"
+        },
+        {
+          "url": "https://www.spec-net.com.au/press/1120/nei_181120/In-transit-Concrete-Slump-Management-Deployed-by-Neilsens",
+          "domain": "spec-net.com.au"
+        },
+        {
+          "url": "https://platform.softwareone.com/product/load-assurance/PCP-8326-5966",
+          "domain": "platform.softwareone.com"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "StandDown Bond — The Owner-Driver HGV Operator's DVSA Roadside Prohibition Income Micro-Bond",
+      "oneLiner": "A fixed-premium income bond that pays an owner-driver HGV/PSV operator a daily cash sum for every day their vehicle is off the road under a DVSA roadside 'S-marked' prohibition, funded and priced from the operator's own pre-enrolment inspection record — with payout rising as DVSA enforcement intensity rises.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages describe UK hauliers operating under 'the tightest conditions in years: thin margins, rising non-fuel costs' with a live run of freight-sector failures in summer 2026 — T.M.S Service Provider Limited and S&B Haulage Ltd both entering liquidation within a week — which cuts against small operators having discretionary budget for a new premium; the one countervailing datapoint, easing headline insolvencies and falling diesel, is economy-wide rather than specific to owner-driver hauliers, and no passage shows this segment buying",
+      "citations": [
+        {
+          "url": "https://hauliermagic.co.uk/blogs/uk-road-haulage-industry-crisis-2025-hidden-threats-nobody-talking-about/",
+          "domain": "hauliermagic.co.uk"
+        },
+        {
+          "url": "https://trans.info/en/morecambe-haulier-enters-administration-after-more-than-50-years-492265",
+          "domain": "trans.info"
+        },
+        {
+          "url": "https://insolvencydirect.co.uk/briefing-sme-insolvency-july-2026",
+          "domain": "insolvencydirect.co.uk"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "UnclaimedSeat — The Primary Carer's Nursery & Childminder Funded-Hours Mid-Term Vacancy Claim Broker",
+      "oneLiner": "A fixed-fee broker who finds and secures unadvertised mid-term funded-hours childcare places for carers whose arrangement has just collapsed, charging £145 per confirmed placement plus a claim-back of the outgoing provider's unspent funded-hours entitlement.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Passage 529082a4c171336b shows the Family Information Service already performs exactly the brokered service for parents struggling to find childcare — 'we will conduct on your behalf a detailed search of childcare available that best suits your needs' — i.e. a free, council-run brokerage, not the mere directory the candidate assumes; 7dd945f209695f02 confirms local FIS operations handling places and funded childcare options. A free statutory incumbent delivering the core search-and-place function in every council occupies the need the £145 fee is charged for.",
+      "citations": [],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "SubletTrace — The Under-27 Renter's Rent-Repayment-Order Evidence & Filing Pack",
+      "oneLiner": "A fixed-fee productized service that reconstructs the 12-month evidence chain a Gen Z renter needs to win a Rent Repayment Order against an unlicensed or banned landlord — and hands them a tribunal-ready bundle plus the exact filing route, priced at £145 with an uplift on award.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show established rivals already serving this exact need: Flat Justice CIC provides RRO applications against unlicensed and rogue landlords with a free DIY guide, advice and no-win-no-fee representation, a specialist adviser covers RROs across ten London boroughs on a free-assessment, no-win-no-fee basis, and Justice for Tenants assists thousands of tenants every year and is referred to by dozens of organisations [0226494a1b92a04c, 07896cb4d133507b]. A free/contingency full-representation service assisting thousands annually occupies the tenant",
+      "citations": [
+        {
+          "url": "https://www.getrentback.org/",
+          "domain": "getrentback.org"
+        },
+        {
+          "url": "https://rentlaw.co.uk/",
+          "domain": "rentlaw.co.uk"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "TerpSheet — The Independent UK Distiller's Botanical Batch-to-Cut Yield & Flavour-Drift Bench Tool",
+      "oneLiner": "A vertical bench tool for the ~700 owner-operated UK gin/rum distilleries that records every still run's botanical lot, maceration curve and cut points against sensory outcome, so the one person who owns the palate can reproduce a winning batch and defend it when their botanical supplier silently changes origin.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show multiple established distillery/brewery production-management platforms already serving this exact segment — Breww for craft breweries, Ollie's batch tracking of ingredients and costs, MasterDistiller covering 'all aspects of the production and maturation process', a distillery ERP covering distillation, blending and quality control, and a management product explicitly for whisky, rum and gin makers. The passages do not, however, show any of these capturing supplier lot codes or post-re",
+      "citations": [
+        {
+          "url": "https://breww.com/",
+          "domain": "breww.com"
+        },
+        {
+          "url": "https://getollie.com/brewery-production-software",
+          "domain": "getollie.com"
+        },
+        {
+          "url": "https://master-distiller.com/distillery-management-software/",
+          "domain": "master-distiller.com"
+        },
+        {
+          "url": "https://flutebyte.com/distillery-erp-solution/",
+          "domain": "flutebyte.com"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "The Late-Onset Atlas — The Retiree's Per-Trial Clinical-Study Eligibility & Reimbursed-Travel Decision Brief",
+      "oneLiner": "A data intelligence product that reconstructs, from public trial registries and site-level protocol documents, which UK/EU clinical trials a 60-75-year-old with a specific comorbidity stack would actually be admitted to — and which of those sites pay travel, accommodation and companion costs — sold as a personalised per-condition decision brief.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Join Dementia Research is an NIHR-managed national service, in partnership with Alzheimer's Society, Alzheimer's Research UK and Alzheimer Scotland, that already matches UK patients to trials at scale (over 10,000 people enrolled per its NIHR National Director), and Deep 6 AI's Precision Research Ecosystem is deployed enterprise-wide across health systems to match patients against complex trial inclusion criteria — now integrated with Tempus. These are funded, dominant-position players occupying the patient-to-trial matching need in exactly this segment (UK dementia/retiree cohort), so the spa",
+      "citations": [],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "PitStop Ledger — The Gig Driver's Per-Vehicle Warranty & Recall Claim Reconstruction Service",
+      "oneLiner": "A fixed-fee productized service that reconstructs a high-mileage gig driver's fragmented service history into a manufacturer-grade warranty/goodwill claim pack, recovering repair costs the dealer has already refused.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show existing commercial operators already serving this exact need — Motor Claims Helpline offers professional resolution of vehicle disputes explicitly including warranty claims, and claims consultancies run no-win-no-fee vehicle claim services with zero upfront cost [e1ea2d30b5b50f01, d184033068e77779], undercutting a £180-£340 fixed fee. The Motor Ombudsman additionally operates a free ADR channel embedded into businesses' own complaints processes and is already absorbing a rising volume of service and repair complaints [eaebe2a03a52cfc4, 577baafcaff7fa6f, 99",
+      "citations": [
+        {
+          "url": "https://www.motorclaimshelpline.co.uk/",
+          "domain": "motorclaimshelpline.co.uk"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "NightWaiver — The Under-27 Rideshare Driver's Private Hire Licence Medical & Endorsement Objection Round",
+      "oneLiner": "A fixed-fee productized service that builds and files the evidence-led objection pack when a council licensing officer refuses, suspends or refers a young private-hire driver's badge over a medical group-2 assessment or DVLA endorsement, drawing on a compounding per-council dataset of which committee arguments actually reversed which refusal reason.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show established specialist solicitor firms already positioned on exactly this need — taxi/PHV licence appeals marketed as protecting the driver's livelihood — and a self-described UK market leader in motoring law running fixed-fee representation at 4,000–5,000 cases a year with 5–15 court hearings daily. That is dominant, well-resourced incumbency over the licence-and-endorsement defence segment rather than a mere competitor, so the space is not open.",
+      "citations": [
+        {
+          "url": "https://www.ellisjones.co.uk/business/regulatory-solicitors/licensing-disputes/taxi-and-private-hire-vehicle-licence-appeals/",
+          "domain": "ellisjones.co.uk"
+        },
+        {
+          "url": "https://www.nelson-guest.co.uk/services/regulatory-law/taxi-private-hire-vehicle-license-appeals/",
+          "domain": "nelson-guest.co.uk"
+        },
+        {
+          "url": "https://www.hcnlaw.co.uk/how-do-i-appeal-a-private-hire-vehicle-or-hackney-carriage-licence-ban/",
+          "domain": "hcnlaw.co.uk"
+        },
+        {
+          "url": "https://www.pattersonlaw.co.uk/",
+          "domain": "pattersonlaw.co.uk"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "CutList Arbiter — The Independent Joinery & Kitchen-Fitting Shop's Sheet-Goods Yield & Off-Spec Board Reject Bench",
+      "oneLiner": "A vertical desktop tool that, before a single cut is made, nests a shop's job on the actual boards it received, measures each delivered pack's real thickness/moisture/bow against BS EN 14322 tolerance, and prints both the optimised cut list and a merchant-facing off-spec reject claim.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show established panel-saw optimisation software already serving this exact workflow — OptiCut nesting for panel/beam saws with grain and stock management, and automatic panel-saw cutting optimisation with material costing tied to the major machine vendors BIESSE, SCM and HOMAG explicitly serving small companies, with SCM distributing its optimisation software to users. The core cut-list/nesting function the candidate sells is thus occupied by well-established vendors, though no passage addresses the measured-deviation/rejec",
+      "citations": [
+        {
+          "url": "https://wooddesigner.org/wood-cnc-machines/",
+          "domain": "wooddesigner.org"
+        },
+        {
+          "url": "https://woodexpert3d.com/en/automating-custom-furniture-production-for-small-and-medium-sized-businesses/",
+          "domain": "woodexpert3d.com"
+        },
+        {
+          "url": "https://www.facebook.com/scmwoodworking/posts/with-maestro-converter-cut-it-is-finally-possible-to-integrate-any-cutting-optim/2697661523783554/",
+          "domain": "facebook.com"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "SolderFloor — The Squeezed-Middle Parent's Board-Level Repair Bench for Dead School Chromebooks and Tablets",
+      "oneLiner": "A component-level toolkit-and-training operation that sells the exact jig, donor-board map and failure-code playbook that lets a parent or a school IT lead resurrect the specific dead Chromebook/iPad models UK schools issue to pupils — sold as a physical kit plus a per-model bench manual, not a repair service.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show iFixit already occupies exactly this slot for the same devices — 'iFixit makes Chromebook repair easy:... unmatched DIY fix kits, and free in-depth, accurate repair manuals', backed by tested parts, precision tools, schematics and a large fixer community [c2457179eee87ddc, 3703f1c35d36405b, 580f95a74dabad17] — i.e. a dominant DIY repair-kit-plus-manual incumbent giving the manual half away free. The board-level training half is likewise already sold by existing micro-soldering course providers covering IC repair and no-charge fault diagnosis [edf4d5674e2a7b75, b1700b6b685d11",
+      "citations": [],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "SaltPrint Rounds — The School Site Manager's Termly Playground-Surfacing Impact-Attenuation Drop Test & Depth Ledger",
+      "oneLiner": "A mobile physical-testing round that drop-tests every impact-absorbing playground surface in a school or nursery to BS EN 1177, records the measured Critical Fall Height against the installed equipment's actual free-height-of-fall, and leaves a photographic, GPS-and-depth-stamped ledger the site manager can put in front of the insurer, the RPA claims handler, and the head teacher — with each subsequent visit compounding into a per-square-metre degradation curve nobody else holds.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show the candidate's exact core service is already commercially marketed by multiple existing providers — computerised headform HIC/GMAX drop testing to establish Critical Fall Height as part of playground inspection offerings, TRIAX impact testing rigs, and an HIC impact testing machine sold on a recurring seasonal schedule ('if you haven't already scheduled your testing... early-season testing... coming out of winter'), alongside established UK inspection firms serving schools, councils and parish councils [e49d52757a0e72b",
+      "citations": [
+        {
+          "url": "https://trassig.com/products/hic-drop-test",
+          "domain": "trassig.com"
+        },
+        {
+          "url": "https://playgroundsafetyinspections.net/understanding-triax-impact-testing-for-playground-safety-surfaces-in-texas/",
+          "domain": "playgroundsafetyinspections.net"
+        },
+        {
+          "url": "https://triaxtouch.com/articles/spring-is-here-time-to-get-your-testing-done/",
+          "domain": "triaxtouch.com"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "TheatreLift — The Hospital Theatre Nurse's Bariatric Ceiling-Hoist Load-Proof & LOLER-Recert Round",
+      "oneLiner": "A mobile physical-ops round that arrives on-site with calibrated dynamometer test-weight rigs and load-proofs the ceiling hoists, gantry tracks and shower chairs in independent hospices, private clinics and specialist care homes — issuing a per-anchor LOLER thorough-examination certificate and building a proprietary per-track deflection-history dataset nobody else holds.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show established, well-resourced LOLER thorough-examination providers already serving this exact need — Zurich Engineering, a UKAS-accredited inspection body with 'professionally qualified, fully certified engineer surveyors' conducting on-site thorough examinations of lifting equipment [c9207e9b4239a40e, 800e142a1f98d4cf, ec58da1dbb515e8a] — and third-party providers already combining LOLER inspection with servicing for care operators, plus procured patient-lifting inspection contracts in healthcare. These are independent competent-person ins",
+      "citations": [
+        {
+          "url": "https://medaco.co.uk/who-carry-loler-inspection-annual-service-patient-lifting-equipment/?srsltid=AfmBOor8QQFXZ_ng5WlkyXB3LeMzvWycND1L3jGinkbJT6ooxRo-Wc0S",
+          "domain": "medaco.co.uk"
+        },
+        {
+          "url": "https://bidstats.uk/tenders/?q=loler+inspections",
+          "domain": "bidstats.uk"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "SaltFront Rounds — The Council Highways Officer's Coastal Street-Furniture Galvanic Depletion Round",
+      "oneLiner": "A solo mobile round that measures residual zinc coating thickness and galvanic corrosion depth on coastal council street furniture (railings, lamp columns, bin housings, bus shelter frames) using an ultrasonic/eddy-current bench, selling per-asset remaining-life certificates that let a highways officer defer or trigger replacement with defensible evidence.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Passage shows a local authority (Leicestershire County Council) already procuring exactly this need through a Structural Testing of Street Lighting Columns Framework Agreement, with an incumbent NDT supplier (Roch NDT Services, £87,500) awarded — i.e. councils have an established, contracted route for column structural testing rather than an open space. The remaining passages concern lighting-control hardware, laptops, and US defence contracts and bear on nothing here.",
+      "citations": [
+        {
+          "url": "https://gvtcx.com/procurement/cf/ocds-b5fd17-5dc88c14-88b1-488a-bc39-71bb660da6ef/structural-testing-lighting-columns",
+          "domain": "gvtcx.com"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "ThawPoint — The Independent Ice-Cream Van & Mobile Freezer Operator's Per-Route Product-Integrity & Insurance-Defence Bench",
+      "oneLiner": "A vertical tool that turns a cheap logger in the freezer into a per-load, per-stop soft-serve mix and hard-scoop integrity record — telling the owner-operator which stops are quietly cooking their stock, and producing the temperature-chain exhibit that wins a spoilage or food-complaint dispute.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show an established commercial field already serving this exact need: UK-stock battery fridge probes buyable online today, wireless Bluetooth fridge monitors with mobile apps aimed at reducing food waste, full temperature-monitoring software platforms, and cold-chain vendors (Berlinger/Sensitech, tempmate®) selling IoT loggers with cloud, 'verified visibility and audit-ready records' — i.e. the logging-plus-audit-record function is already productised. The passages do not show any single",
+      "citations": [
+        {
+          "url": "https://indiott.com/fridge-temperature-monitoring/",
+          "domain": "indiott.com"
+        },
+        {
+          "url": "https://ruuvi.com/fridge-temperature-monitoring-made-easy/",
+          "domain": "ruuvi.com"
+        },
+        {
+          "url": "https://www.anttelecom.co.uk/wireless-temperature-monitoring-lp-0",
+          "domain": "anttelecom.co.uk"
+        },
+        {
+          "url": "https://www.sensitech.com/en/products/berlinger-cold-chain-solutions/",
+          "domain": "sensitech.com"
+        }
+      ],
+      "date": "2026-07-29"
+    },
+    {
+      "title": "BridgeTheGrant — The Primary Carer's Disabled Facilities Grant Cashflow Bridge & Contractor Settlement Desk",
+      "oneLiner": "A transaction broker that fronts the builder's stage payments on an already-approved Disabled Facilities Grant, then collects the council's post-completion reimbursement directly — carer never touches a penny, broker takes a fixed 9% of grant value.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages establish that unpaid carers — the named payer segment — are disproportionately impoverished (1.2m in poverty, 400,000 in deep poverty, poverty rate 50% higher, with caring itself reducing income) [84a4670aa1d88132, 0a5f5e41f78afcaa, 7ccbad63cdcccaac], which is precisely the 'broke body' condition; the DFG budget growth to £761m shows council money exists but does not show the carer can pay, and the candidate itself concedes the carer pays nothing out of pocket.",
+      "citations": [
+        {
+          "url": "https://stairliftguru.co.uk/stairlift-grants/uk-disabled-facilities-grant-funding-statistics/",
+          "domain": "stairliftguru.co.uk"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "AshCert Rounds — The Public-Sector Wood-Burner Owner's Post-Installation Chimney Compliance & Insurance-Evidence Round",
+      "oneLiner": "A booked physical inspection round that sweeps, camera-surveys and smoke-tests wood-burning stoves in older housing stock for public-sector households, producing a dated instrument-backed defect record that a retrospective HETAS certificate or Building Regulations completion cannot supply.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show multiple existing UK chimney firms already bundling exactly the proposed physical wedge — sweeping plus CCTV flue survey with condition diagnosis and remedial advice, aligned to HETAS-recommended post-installation visual examination — and dedicated CCTV survey specialists serving domestic clients. The in-room instrument inspection the candidate treats as an unserved gap is an established, competitively offered service rather than an open space.",
+      "citations": [
+        {
+          "url": "https://inspectorflueso.co.uk/chimney-services/cctv-chimney-inspections/",
+          "domain": "inspectorflueso.co.uk"
+        },
+        {
+          "url": "https://inspectorflueso.co.uk/chimney-services/chimney-flue-system-survey/",
+          "domain": "inspectorflueso.co.uk"
+        },
+        {
+          "url": "https://www.chimneysweepsuk.com/",
+          "domain": "chimneysweepsuk.com"
+        },
+        {
+          "url": "https://www.billingchimneys.co.uk/chimney-services/chimney-camera-inspection/",
+          "domain": "billingchimneys.co.uk"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "BracketLock — The Independent Bike Shop Owner's E-Bike Motor-Recall & Battery-Serial Fitment Bench Engine",
+      "oneLiner": "A bench-side vertical tool for owner-operator UK bicycle shops that resolves, per bike on the workstand, whether that exact e-bike's motor/battery serial falls inside an active OPSS/manufacturer recall or a UN38.3 shipping restriction — and prints the refuse-or-repair decision sheet the shop needs to avoid taking liability for someone else's battery.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show an existing, free, publicly searchable recall/alert database that already lists e-bike battery recalls down to serial-number ranges (e.g. \"Serial numbers between 190790036E and 190790137E only\") with email subscription for new entries, i.e. the serial-level recall-lookup need is already served by an authoritative incumbent. The motor-side need is likewise covered by the dominant OEM's dealer channel — certified service networks with diagnostics and firmware updates, and dealer-only software gated to authorised shops [df63",
+      "citations": [
+        {
+          "url": "https://www.gov.uk/guidance/product-recalls-and-alerts",
+          "domain": "gov.uk"
+        },
+        {
+          "url": "https://www.gov.je/StayingSafe/ConsumerProtection/ProductSafety/pages/productrecallsforcategory.aspx?CategoryId=6",
+          "domain": "gov.je"
+        },
+        {
+          "url": "https://www.facebook.com/USCPSC/posts/recall-pacific-cycle-recalls-e-bikes-due-to-fire-hazard-the-wiring-harness-that-/804404861730629/",
+          "domain": "facebook.com"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "KilnLog — The Independent Pottery Studio's Per-Firing Kiln Element & Cone-Drift Ledger",
+      "oneLiner": "A vertical tool for one-person UK/EU ceramics studios that logs every kiln firing against measured cone-drift and element resistance, predicting the exact firing at which a batch will underfire so the studio reschedules production rather than losing a £2,000 commission load.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages show the payer segment is structurally low-income: UK visual artists have a median income of £12,500/year, 79% cannot afford their livelihoods from art earnings and 96.4% earn below the median wage, and a whole studio can be started for £2,000–£5,000 with firings costing only £3–£50 — so a £19/mo per-kiln subscription plus £45 briefs sits against budgets with no evidenced slack. Nothing in the passages shows this payer willing or able to buy software.",
+      "citations": [
+        {
+          "url": "https://creativesunite.eu/article/majority-of-uk-artists-earn-less-than-minimum-wage",
+          "domain": "creativesunite.eu"
+        },
+        {
+          "url": "https://www.dacs.org.uk/news-events/artists-earnings-report-2024",
+          "domain": "dacs.org.uk"
+        },
+        {
+          "url": "https://www.artsprofessional.co.uk/news/over-half-of-unionised-artists-earn-under-15000",
+          "domain": "artsprofessional.co.uk"
+        },
+        {
+          "url": "https://getpotteryclass.com/blog/how-much-does-it-cost-to-start-a-pottery-studio-uk",
+          "domain": "getpotteryclass.com"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "TrigPointHold — The Sole-Trader Land Surveyor's Instrument-Recall Income Micro-Bond",
+      "oneLiner": "A fixed-premium micro-bond that pays a self-employed land/setting-out surveyor a daily income sum for every day their total station or GNSS rover is quarantined by a manufacturer calibration recall or a failed UKAS-traceable baseline check, funded from a pooled subscription ledger the operator underwrites off proprietary drift data.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show an established, funded incumbent category directly serving this payer: self-employed income protection policies that pay a monthly or weekly sum when the sole trader cannot work, alongside business interruption cover for loss of operating income and brokers already distributing such cover to sole-trader tradies. However, none of the passages addresses a calibration/recall trigger — they cover illness, injury, or physical damage — so the incumbency is over the adjace",
+      "citations": [
+        {
+          "url": "https://www.drewberryinsurance.co.uk/income-protection-insurance/self-employed-income-protection",
+          "domain": "drewberryinsurance.co.uk"
+        },
+        {
+          "url": "https://www.gocompare.com/income-protection/short-term/",
+          "domain": "gocompare.com"
+        },
+        {
+          "url": "https://professionalsaver.co.uk/income-protection-insurance/",
+          "domain": "professionalsaver.co.uk"
+        },
+        {
+          "url": "https://www.brytesa.com/resources/media/educational-articles/business-interrupted-the-risk-hiding-in-plain-sight",
+          "domain": "brytesa.com"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "BadDebtBack — The Gig-Economy Landlord-Deposit & Rent-Credit Forensic Recovery Round for Under-27 Renters",
+      "oneLiner": "A fixed-fee productized service that reconstructs a Gen Z gig worker's full renting history across every landlord, agent and flat-share they have lived in since age 18, and recovers every unprotected-deposit penalty, unreturned deposit, and mis-recorded rent arrears marker still suppressing their credit file — priced per tenancy recovered, not per hour.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Passage shows an existing commercial channel already serving this exact wedge — a panel of deposit solicitors running no-win-no-fee claims for deposits not protected within 30 days or with missing prescribed information — i.e. the s.214 penalty claim the candidate is built on, offered at zero upfront cost versus the candidate's £39/tenancy fee; the surrounding passages [90072c00f8499751, 5184dc9bfd67f338] show the mature UK no-win-no-fee claims industry that supplies such panels. The passages do not show a single dominant leader, so this is a rival-capture finding rather tha",
+      "citations": [
+        {
+          "url": "https://www.claimexperts.co.uk/tenancy-deposit-claims/",
+          "domain": "claimexperts.co.uk"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "SchoolTransportBridge — The Primary Carer's Home-to-School Transport Refusal Reversal & Independent-Panel Broker",
+      "oneLiner": "A fixed-fee transaction broker who takes a refused (or downgraded) statutory home-to-school transport application for a disabled or SEND child all the way through the two-stage council appeal to Stage 2 independent panel, and — where the panel is lost or delayed — simultaneously brokers the interim Personal Transport Budget / mileage settlement so the carer stops driving unpaid on day one.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages describe the payer segment (unpaid carers) as structurally poor: carers on Carer's Allowance alone have a 33% poverty rate versus 18% for non-carers, with ~90,000 in poverty [15d2c57b0eeb99c3, c9c8b7b5e09dfb94]. The only passage touching the transport settlement itself says personal transport budgets/mileage payments exist but vary by council — it does not show the carer can or will pay a £180 upfront fee.",
+      "citations": [
+        {
+          "url": "https://load2learn.org.uk/getting-children-to-school-when-standard-transport-does-not-fit/",
+          "domain": "load2learn.org.uk"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "SlipRisk Bond — The Sole-Trader Resin-Bound Driveway Installer's Post-Cure Slip-Test Failure Income Micro-Bond",
+      "oneLiner": "A subscription micro-bond that pays a named resin-bound surfacing installer a fixed daily income while a customer-commissioned pendulum slip test (BS 7976 / UKSRG) has failed and the driveway is disputed, in exchange for exclusive rights to the installer's per-batch cure telemetry.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show an established UK tradesman-insurance market already selling the adjacent products to this exact payer — sole-trader income protection for when a tradesperson can't earn (de2144c0a07e8f21, b72e61d1b7222bd7) and Tradesman Saver contract works cover including £10,000–£50,000 for financial loss — on a pick-and-mix basis at £75–£1,200 a year (0cab99bedbc6b890, b0bea8e3effda339). Incumbent insurers already occupy the sole-trader income-and-financial-loss cover slot cheaply, so the space is not shown to be open; the passages do not describe any product tied to a",
+      "citations": [
+        {
+          "url": "https://www.tradesmansaver.co.uk/contract-works-insurance/",
+          "domain": "tradesmansaver.co.uk"
+        }
+      ],
+      "date": "2026-07-28"
+    },
+    {
+      "title": "CycleMark — The NHS Hospital Bike-Shed Forensic Mark-Up Round",
+      "oneLiner": "A mobile operator who works NHS hospital bike sheds at the 6am/6pm shift-change window, forensically marking staff bicycles with a UV-traceable code onto a multi-Trust recovery database cross-linked to local police BikeRegister — sold as a £25 one-off mark-up plus £15/year per-bike subscription.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Passages establish BikeRegister as a clear dominant incumbent: used by ALL UK police forces, its marking kits achieve an 83% theft-reduction rate, it reunites hundreds of cyclists annually, and police regularly run marking events (, ). This dominant share in the bike security marking space meets the standard for refuting incumbency. The passages do not, however, directly address whether any incumbent specifically serves the NHS hospital bike-shed shift-change channel, so some uncertainty remains.",
+      "citations": [
+        {
+          "url": "https://www.bikeregister.com/",
+          "domain": "bikeregister.com"
+        },
+        {
+          "url": "https://www.bikeregister.com/events",
+          "domain": "bikeregister.com"
+        }
+      ],
+      "date": "2026-07-22"
+    },
+    {
+      "title": "The Quiet Ledger — The UK Freelance Creative's Financial-Benchmark Weekly",
+      "oneLiner": "A paid weekly Substack (£11/month) publishing anonymized aggregated financial-health benchmarks for UK freelance creatives — billable utilization, project margins, expense ratios, IR35-borderline patterns, pension-contribution sweet spots, year-end tax windows — drawn from a proprietary monthly subscriber survey that compounds into an intelligence layer no incumbent can replicate.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show free first-party AI tools (ChatGPT, Gemini, Claude prompts; ChatGPT Pro's personalized financial insights) already delivering expert financial guidance for freelancers, and that AI financial advice is becoming 'cheap and universally accessible.' This commoditizes the broader financial-intelligence value category the candidate sells, removing most margin for a paid newsletter even if peer-benchmark specifics aren't directly addressed.",
+      "citations": [],
+      "date": "2026-07-22"
+    },
+    {
+      "title": "VulnerabilityTap — The Primary Carer's Multi-Utility Social-Tariff, PSR & Crisis-Grant Activation Broker",
+      "oneLiner": "A fixed-fee transaction broker who, in one bundled transaction per household, audits eligibility for — and then completes the forms, switches and grant applications across — energy (PSR, social tariff, Warm Home Discount), water (WaterSure, CWTtariff), telecoms (BT Home Essentials, Virgin Oomph, social broadband, free SIM schemes), and council-tax reductions on behalf of the carer and the cared-for person simultaneously, charging £195 dual-household or £120 single.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages consistently characterize unpaid carers as a population in financial distress: Carers UK published a dedicated report titled 'Carer poverty and financial hardship in the UK' and held a parliamentary event on carer poverty; the Carer Poverty Coalition was formed specifically because 'financial support available to them' is 'limited'; and the cost-of-living crisis is highlighted as impacting them. This evidence undermines the claim that the target payer segment has discretionary budget for a £120–£195 fee, as the candidate concedes the payer draws from a 'constrained household budge",
+      "citations": [],
+      "date": "2026-07-22"
+    },
+    {
+      "title": "SoleClaim — The Gen Z Sole-Trader's Money-Claims-Online Filing & Pre-Action Decision Pack",
+      "oneLiner": "A productised service that, from a Gen Z sole-trader's spreadsheet of an unpaid invoice (typically £400–£5,000 from a previous client), drafts a per-defendant-type pre-action letter plus a Money-Claims-Online (MCOL) County-Court filing pack ready for the sole-trader to lodge without a solicitor — charged at a flat £95 (pre-action only) or £185 (full MCOL filing pack, court-fee pass-through inclusive).",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Passages show Rocket Lawyer is a well-funded rival with 100K+ monthly users offering 'legal letters' and 'affordable legal documents' directly overlapping with the candidate's core pre-action letter and document-pack value proposition, meeting the 'well-funded rival' threshold for incumbency refutation.",
+      "citations": [],
+      "date": "2026-07-22"
+    },
+    {
+      "title": "WishlistAtlas — The Solo Indie Game Dev's End-to-End Steam Discovery & Conversion Atlas",
+      "oneLiner": "A paid weekly Substack that benchmarks anonymised Steam wishlist-to-sale conversion rates by genre, art style, demo presence, trailer strategy, launch discount and post-launch DLC cycle, sourced from a contributor panel of solo/small-team indie devs sharing their real per-game numbers.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "GameDiscoverCo is a well-funded, dominant incumbent with tens of thousands of subscribers and a Pro tier already providing wishlist-to-sale conversion analysis (passages 03c0ad374df61464, abfb13669955df2e), supplemented by established tools like GameDevTools.net and SteamyData offering wishlist benchmarks; this goes beyond a mere competitor and represents a clear market leader already capturing a large share of the Steam discovery benchmarking need.",
+      "citations": [],
+      "date": "2026-07-22"
+    },
+    {
+      "title": "GasSafe Hold-Bond — The Sole-Trader Domestic Gas Engineer's Statutory-Trigger Income Micro-Bond",
+      "oneLiner": "A parametric daily income bridge that pays a sole-trader domestic gas engineer 75% of their verified day-rate (capped at 30 days per event, max 2 events per policy year) on ANY of four measured triggers: (1) Gas Safe Register Prohibition Notice or formal registration suspension, (2) ACS certificate re-assessment failure in the prior 90 days, (3) customer complaint escalated to Gas Safe with a formal investigation opened, or (4) mid-policy withdrawal of the engineer's Public Liability cover by their insurer.",
+      "gate": "legality",
+      "gateLabel": "There is a legal landmine",
+      "reason": "The candidate is functionally a contract of insurance (collecting recurring premiums and paying out on contingent statutory events). The passages establish that insurance activities require FCA authorisation [5d42ad9f5b94a83a, 16d24b5c34aed04b] and that the 'contract of insurance' is defined broadly enough to include arrangements 'that might not be considered a contract of insurance at common law'. Without FCA authorisation as insurer or intermediary, operating this parametric bond in the UK would breach the regulatory perimeter, so the margin cannot exist lawfully.",
+      "citations": [
+        {
+          "url": "https://handbook.fca.org.uk/handbook/perg2",
+          "domain": "handbook.fca.org.uk"
+        }
+      ],
+      "date": "2026-07-22"
+    },
+    {
+      "title": "NewtStop Bond — The Groundwork Contractor's Protected-Species Statutory Stop-Work Daily Income Micro-Bond",
+      "oneLiner": "A fixed-fee per-project micro-bond sold to UK groundworks and small civils contractors that pays a daily income bridge (capped at 60 days) if a great crested newt, bat roost, badger sett, hazel dormouse, water vole or white-clawed crayfish discovery halts works pending a Natural England or NRW mitigation licence — priced via a compounding dataset that crosses parish-level protected-species density with named ecologist turnaround times per local authority.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages show construction accounts for 16% of all insolvencies in England and Wales (e2dd0d33831b751f, 6942c22fe5a22e52, 45b6d09e36e5aa05) and that even established groundworks subcontractors cannot obtain credit accounts from plant hire firms, indicating the payer segment is structurally financially fragile and likely unable or unwilling to commit discretionary budget to a £350–£900 micro-bond premium.",
+      "citations": [
+        {
+          "url": "https://archdesk.com/blog/problems-with-construction-subcontractor-procurement-uk",
+          "domain": "archdesk.com"
+        }
+      ],
+      "date": "2026-07-22"
+    },
+    {
+      "title": "FastTrackDESK — The Primary Carer's NHS Continuing Healthcare Fast-Track Application & Refusal-Reversal Broker",
+      "oneLiner": "Fixed-fee transaction broker who screens an elderly relative's eligibility, drafts the clinician-signed Fast-Track Pathway Tool with a condition-specific evidence pack, lodges it with the Integrated Care Board within 24-48 hours, and writes the per-ICB refusal-reversal letter — built on a proprietary dataset of per-ICB approval rates and rejection-reasons that swings outcomes.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Beacon is explicitly described as a well-funded organisation offering 'paid-for casework representation' for families navigating CHC, and another provider advertises 'Expert representation' with 'Over 50,000 helped' — these constitute well-funded rivals already serving the paid CHC advocacy/representation market the candidate targets.",
+      "citations": [
+        {
+          "url": "https://uk.linkedin.com/company/beacon-chc",
+          "domain": "uk.linkedin.com"
+        },
+        {
+          "url": "https://beaconchc.co.uk/",
+          "domain": "beaconchc.co.uk"
+        }
+      ],
+      "date": "2026-07-11"
+    },
+    {
+      "title": "GrievanceForge — The Gen Z Gig Worker's Platform Grievance Pack Engine",
+      "oneLiner": "A fixed-fee advisory pack engine for Gen Z gig and platform workers (Deliveroo, Stuart, Evri, Amazon Flex, Just Eat couriers, Uber Eats) hit by sudden pay-cuts, algorithmic deactivation, withheld tips, or contract re-classification — delivering per-platform grievance-letter templates, back-pay arithmetic, ACAS conciliation packs, and employment tribunal filing briefs for £89 per dispute pack.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The candidate's claimed defensible core is a proprietary dataset of platform grievance outcomes 'scraped from public Employment Tribunal decisions.' But passage describes a free, daily-updated structured index of exactly those public tribunal decisions, cross-cut by employer and outcome — directly commoditising the proprietary data moat. Combined with free ACAS templates and advice (, ), the first-party free tools remove the margin the pack relies on.",
+      "citations": [
+        {
+          "url": "https://tribunalwatch.co.uk/",
+          "domain": "tribunalwatch.co.uk"
+        },
+        {
+          "url": "https://www.acas.org.uk/advice",
+          "domain": "acas.org.uk"
+        },
+        {
+          "url": "https://www.acas.org.uk/",
+          "domain": "acas.org.uk"
+        }
+      ],
+      "date": "2026-07-10"
+    },
+    {
+      "title": "FarrierCycle — The Sole-Trader Farrier's Per-Horse Service Cycle, Yard Access & Owner-Communication Brief",
+      "oneLiner": "A vertical scheduling tool for UK sole-trader farriers that tracks every horse's trim/shoe cycle, sends automated owner SMS reminders, stores per-yard logistics (parking, gate codes, stable layout, handling notes) and produces FRFC-aligned CPD logs plus insurance-defensible yard risk assessments.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages document at least four dedicated farrier-specific apps (ee1caa8f5404ec39, 7a6af7e1ff668c5e, 6a78cb9df87c154c, 11d99c73cca6bc3e) plus the Stables platform, all offering scheduling, invoicing, reminders, horse-level service records, and contacts — the core features the candidate claims as its wedge. Multiple specialized, UK-available competitors targeting this exact segment constitutes a served market, not an underserved one.",
+      "citations": [
+        {
+          "url": "https://stables.co/blog/best-farrier-management-software",
+          "domain": "stables.co"
+        }
+      ],
+      "date": "2026-07-10"
+    },
+    {
+      "title": "CycleCrash — The Gig Cyclist's First-72-Hours Adversarial Evidence Pack",
+      "oneLiner": "A fixed-fee adversarial evidence pack for Gen Z Deliveroo, Uber Eats or Just Eat cyclists who have been hit by a car on shift — capturing scene data before the platform's own incident protocol or the at-fault driver's loss-adjuster can revise the narrative, built on a proprietary dataset of per-borough police RTC referral rates and per-platform incident-response variance.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Multiple passages describe well-funded specialist law firms (Fletchers Solicitors, Cycle's specialist solicitors, and others) operating dedicated delivery-rider accident claims teams targeting exactly this audience—Deliveroo/Uber Eats cyclists in non-fault RTCs—on a No Win No Fee basis, which would subsume evidence preservation as part of their service. This constitutes funded rivals already capturing this exact segment, not an open space.",
+      "citations": [],
+      "date": "2026-07-09"
+    },
+    {
+      "title": "SolePitch — The Public-Sector Worker's Workplace Shoe & Leather Repair Pop-Up",
+      "oneLiner": "A solo mobile cobbler who sets up a monthly 'done-while-you-work' shoe, boot, belt and bag repair pitch at NHS trust, local-government and school staff car parks, undercutting high-street chains by 30-40% because there's no shop rent, no counter staff and the shift-worker never has to leave the ward or classroom.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "Multiple passages indicate shoe repair demand is structurally declining: UK cobblers falling 3.8% yearly, fast fashion reducing repairable shoe quality and demand, millennials bypassing cobblers for cheaper replacements, and industry predicted to continue declining. Only one passage hints at a sustainability counter-trend, but it describes awareness rather than confirmed behavior change. The net evidence suggests the underlying value of shoe repair is evaporating rather than durable.",
+      "citations": [
+        {
+          "url": "https://journalism-school.cardiff.ac.uk/thecardiffian/2025/12/03/when-times-are-bad-cobblers-will-always-do-well-how-one-cardiff-cobbler-is-finding-success-during-the-cost-of-living-crisis/",
+          "domain": "journalism-school.cardiff.ac.uk"
+        },
+        {
+          "url": "https://decentfoot.com/why-is-the-shoe-maker-business-dead-2/",
+          "domain": "decentfoot.com"
+        },
+        {
+          "url": "https://www.blabber.buzz/flipbook/1053090-the-diminishing-art-of-shoe-repair--how-fast-fashion-is-outpacing-cobblery",
+          "domain": "blabber.buzz"
+        },
+        {
+          "url": "https://www.reskinned.clothing/the-re-edit-blog/12-sustainable-shoe-disposal-options",
+          "domain": "reskinned.clothing"
+        }
+      ],
+      "date": "2026-07-09"
+    },
+    {
+      "title": "NI-GapSweep — The Gen Z Casual Worker's NI-Record Gap Audit & Voluntary Contribution Decision Pack",
+      "oneLiner": "A £45 fixed-fee productised audit pack for Gen Z casual workers that reconstructs their HMRC National Insurance record from their State Pension Forecast PDF, ranks missing qualifying years by 2028-state-pension-forecast impact, and ships with pre-filled CF83 Class 3 voluntary-contribution forms for the optimal six-year backfill window — without the user ever needing to read a 90-page HMRC guidance note.",
+      "gate": "pain_reality",
+      "gateLabel": "The pain was not real",
+      "reason": "The passages confirm Gen Z is aware of state pension concerns but explicitly document a 'troubling gap between knowledge and action', with nearly half believing the state pension won't exist by retirement. This combination — acute anxiety paired with demonstrated inaction — undermines the pain_reality claim that Gen Z casual workers will pay £45 NOW to audit NI gaps, as the target persona is shown to be aware but not converting awareness into action.",
+      "citations": [
+        {
+          "url": "https://www.professionalpensions.com/opinion/4518679/pensions-age-uncertainty-gen",
+          "domain": "professionalpensions.com"
+        },
+        {
+          "url": "https://www.professionalpensions.com/opinion/4518679/pensions-age-uncertainty-gen",
+          "domain": "professionalpensions.com"
+        }
+      ],
+      "date": "2026-07-08"
+    },
+    {
+      "title": "CareDeposit Rescue — The Bereaved Carer's Care-Home Deposit Clawback Broker",
+      "oneLiner": "A no-win-no-fee transaction broker that audits a UK care home's deductions from a deceased resident's deposit, challenges every contractually illegitimate line item, and remits 75% of the net refund to the bereaved primary carer.",
+      "gate": "legality",
+      "gateLabel": "There is a legal landmine",
+      "reason": "The candidate's 75% contingency fee arrangement is functionally a Damages-Based Agreement, and the passages establish that DBAs are capped at 25% for personal injury and 50% for commercial actions in England and Wales [58d8d132159e5072, f92b7dab877b90df], meaning a 75% fee exceeds the statutory cap and is therefore unlawful.",
+      "citations": [],
+      "date": "2026-07-08"
+    },
+    {
+      "title": "The Adoption Match Atlas",
+      "oneLiner": "A personalised matching intelligence brief for approved UK adopters, built on a FOI-derived, quarterly-compounding dataset of per-agency wait times, placement-preference profiles and family-finding social-worker turnover across England's Regional Adoption Agencies and Voluntary Adoption Agencies.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The candidate rests payer solvency on adopters having 'already invested £10–30k in legal/social-work fees,' but passages [1c90867e] and [5b4d8f5b] state domestic UK adoption is free with out-of-pocket costs of only 'a few hundred pounds in total' (the £12–25k figure in [4f75b49a] is explicitly for international adoption). Passage [095ead1e] further shows this exact demographic is served by free advice lines, undercutting both the sunk-cost framing and likely willingness to pay a new £175–£295 fee.",
+      "citations": [],
+      "date": "2026-07-08"
+    },
+    {
+      "title": "WindBond — The Scaffolder's HSG253 High-Wind Stop-Work Daily Income Micro-Bond",
+      "oneLiner": "A parametric micro-bond sold per scaffold contract that pays the scaffolder a verified day-rate whenever Met Office station data confirms sustained wind above the HSG253 stop-work threshold during the contracted hire period.",
+      "gate": "legality",
+      "gateLabel": "There is a legal landmine",
+      "reason": "The passages establish that 'effecting contracts of insurance' is a regulated activity, parametric policies are within the scope of insurance contract law review, and 'insurance risk transformation' is being introduced as a new regulated activity under FSMA. The candidate's product—premium paid in exchange for an automated payout triggered by a defined weather event—is structurally insurance regardless of its 'micro-bond' framing, and under this regulatory framework would require FCA authorization to be sold lawfully to UK scaffolders.",
+      "citations": [],
+      "date": "2026-07-08"
+    },
+    {
+      "title": "AdaptClear Desk — The Carer's Post-Care Major Home-Adaptation Removal & Resale Broker",
+      "oneLiner": "When the person a primary carer has been caring for at home dies or moves into a care home, the home is left with a stairlift, a level-access shower, a ceiling hoist and a wet-room floor — adaptations that block re-sale of the property, cost £300–£1,500 each to remove, and that an estate agent has just told the carer will knock £4–£9k off the asking price. AdaptClear aggregates the small, fragmented UK trade of specialist adaptation-removal contractors, brokers the booking within 48 hours, and also brokers resale of cleaned-and-tested units to second-user installers — converting an invoice into a £150–£400 net rebate in the carer's pocket.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The candidate's hypothesis that no intermediary brokers the private-household supply side for adaptation removal-plus-resale is directly contradicted by the passages, which describe at least two stairlift removal services offering exactly this bundled model (removal + cash-back purchase of used stairlifts), including nationwide coverage.",
+      "citations": [],
+      "date": "2026-07-07"
+    },
+    {
+      "title": "MindReady — The Ofsted-Ready Childminder's Per-Inspection Evidence Dossier",
+      "oneLiner": "A per-inspection evidence dossier, compiled from each childminder's existing logs and a proprietary FOI-derived atlas of which evidence types Ofsted inspectors actually cite when awarding 'Good' or 'Outstanding' grades.",
+      "gate": "pain_reality",
+      "gateLabel": "The pain was not real",
+      "reason": "Passage 03bfb0dbb1ab7135 states 98% of childcare providers had been judged good or outstanding, directly contradicting the candidate's claim that 'the majority prepare generic evidence folders [and] fail to Good.' With only ~2% failing inspection, the acute pre-inspection pain and willingness-to-pay is far narrower than the hypothesis asserts.",
+      "citations": [],
+      "date": "2026-07-05"
+    },
+    {
+      "title": "CareCostCompass — The Squeezed-Middle Eldercare Forward Planner",
+      "oneLiner": "A web app that turns a family's specific parental finances — savings, property, gifting history, local authority — into a 5–20 year projection of council-funded vs self-funded social-care costs, flagging deprivation-of-asset triggers and the inheritance-tax endgame.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "Passage describes a free UK long-term care calculator already covering England/Scotland/Wales/NI, the £86k cap, home-protection logic, and Power of Attorney / wills / SOLLA — a free first-party tool that commoditises the bulk of the basic care-planning value proposition CareCostCompass proposes to charge £80–£250 for. No passage confirms that the forward 5–20 year LA-specific projection is uniquely available or not already subsumed by this free offering.",
+      "citations": [
+        {
+          "url": "https://wealthr.co.uk/tools/long-term-care-uk/",
+          "domain": "wealthr.co.uk"
+        }
+      ],
+      "date": "2026-07-05"
+    },
+    {
+      "title": "The Hard Brief",
+      "oneLiner": "A paid weekly newsletter for creative freelancers that publishes forensic teardowns of real difficult-client scenarios, with sample language, contract clauses, and tactical playbooks for handling scope creep, late payments, and rate pushback.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show the core tactical value the newsletter would sell — complete escalation frameworks with email templates, late-fee strategies, scope-creep prevention strategies with real examples and free tools, and contract clauses — already exists as free, comprehensive content. Combined with advancing AI contract generators and management tools, the underlying tactical content is substantially commoditised, eroding the margin a paid curation layer could capture.",
+      "citations": [],
+      "date": "2026-07-03"
+    },
+    {
+      "title": "RemoRidge — The Squeezed-Middle Remortgage Cliff-Edge Decision Pack",
+      "oneLiner": "A £39 one-off downloadable decision pack for UK homeowners whose 2020–2022 cheap-fix mortgage is unwinding: combines your current ERC exposure, lender stress-test affordability floor, salary-sacrifice-to-overpay micro-simulator, broker-interview script and a maintained live database of back-channel re-fix products — so the £500 whole-of-market broker fee feels optional.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Passage explicitly describes Tembo as 'Voted the UK's Best Mortgage Broker 5 years running' with 100+ lenders and 20,000+ schemes — a clear market leader in the remortgage space, which per the incumbency precedent constitutes a dominant incumbent. Passage further shows free remortgage comparison and personalised advice services, indicating the comparison-shopping layer is not underserved.",
+      "citations": [
+        {
+          "url": "https://www.tembomoney.com/remortgage-lp?msclkid=ca75a2076f5f1371552fc840ce082866&utm_source=bing&utm_medium=cpc&utm_campaign=PPC_Remortgage_Generics&utm_term=remortgage&utm_content=Remortgage_Generics_Core_Phrase",
+          "domain": "tembomoney.com"
+        },
+        {
+          "url": "https://getmymortgage.co.uk/pre/5/remortgage-calculator?utm_source=bing&utm_medium=cpc&utm_campaign=686996689&utm_adgroup=1312819174762880&utm_keyword=remortgage%20deals&matchtype=p&utm_network=o&utm_device=c&utm_term=Moneyfacts%20MSE%20Which%20remortgage%20guide%20free%20incumbent&utm_creative=82051430126009&utm_content=&exp=&v=&role=&msg=&loc_int=&loc_phy=41471&msclkid=ab2dd7ec4822142c1849bdabe9750d32",
+          "domain": "getmymortgage.co.uk"
+        }
+      ],
+      "date": "2026-07-03"
+    },
+    {
+      "title": "CHC Retrospect — The NHS Continuing Healthcare Retroactive Claim Broker",
+      "oneLiner": "A no-win-no-fee transaction broker for UK primary_carers — prepares and prosecutes retrospective NHS Continuing Healthcare (CHC) claims against the ICB for care-home fees the family should not have paid, taking 18–22% of the statutory cash recovered.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Beacon CHC has already helped over 50,000 families and explicitly provides 'Expert representation' and 'Full appeal management and complaints service' for CHC claims (not merely advice), directly occupying the adversarial-representation role the candidate claims is open; Martin Searle and other firms also serve retrospective CHC reclamations, making this a contested space with a clear incumbent leader.",
+      "citations": [],
+      "date": "2026-07-02"
+    },
+    {
+      "title": "BatteryDossier — The Gig Driver's EV Resale Health Certificate",
+      "oneLiner": "A done-for-you battery-health certification service that lets high-mileage rideshare/delivery drivers sell their used EV at a verified premium instead of a fear-discount.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Recurrent already sells battery-health resale certificates that boost used-EV prices ~7% and is integrated into Experian's AutoCheck vehicle history reports [872c130da09bcb97, 3e83a6c7e10a74f0], a well-funded rival already solving the exact certified-resale-premium need, so the space is not underserved.",
+      "citations": [
+        {
+          "url": "https://businessmodelcanvastemplate.com/products/recurrent-business-model-canvas",
+          "domain": "businessmodelcanvastemplate.com"
+        }
+      ],
+      "date": "2026-07-02"
+    },
+    {
+      "title": "RoastLock — The Micro-Roaster's Roast-Curve IP Vault",
+      "oneLiner": "A vertical tool that captures every roast's thermocouple curve and ties it to the exact green-bean lot, turning a micro-roaster's tacit skill into a re-orderable, drift-controlled proprietary profile library.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Cropster is a dominant incumbent trusted in over 100 countries that already does exactly what the candidate claims is uncaptured — linking cupping/quality data to every roast batch and managing green lots; the space is crowded with named rivals rather than underserved.",
+      "citations": [
+        {
+          "url": "https://www.cropster.com/",
+          "domain": "cropster.com"
+        },
+        {
+          "url": "https://eng.firescope.cropster.com/cropster",
+          "domain": "eng.firescope.cropster.com"
+        },
+        {
+          "url": "https://www.cropster.com/products/roast/features/",
+          "domain": "cropster.com"
+        },
+        {
+          "url": "https://coffeetec.com/blogs/news/roast-profiling-software-helps-you-achieve-a-consistent-coffee-roast?srsltid=AfmBOop1xcc7Ch0fmDwbil9SQuFS_30YJzdUr5dQuMJNO_MCl6TCr4dC",
+          "domain": "coffeetec.com"
+        }
+      ],
+      "date": "2026-07-02"
+    }
+  ]
+}

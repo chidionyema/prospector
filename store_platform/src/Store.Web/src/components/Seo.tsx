@@ -29,9 +29,18 @@ export interface SeoProps {
   description?: string;
   /** Keep private/transactional surfaces (pitch links, settings) out of search engines. */
   noindex?: boolean;
+  /**
+   * Page-level schema.org structured data, serialised into one ld+json block.
+   *
+   * Only ever describe what the page actually is. In particular this must never carry
+   * `aggregateRating` or `review`: we have no reviews, a fabricated one is an offence under the
+   * DMCCA 2024 fake-review provisions, and Google delists structured data that does not match
+   * visible page content — so inventing it would be illegal, dishonest and ineffective at once.
+   */
+  jsonLd?: Record<string, unknown>;
 }
 
-export function Seo({ title, description = DEFAULT_DESCRIPTION, noindex = false }: SeoProps) {
+export function Seo({ title, description = DEFAULT_DESCRIPTION, noindex = false, jsonLd }: SeoProps) {
   const fullTitle = title ? `${title} · ${SITE}` : `${SITE} · grounded business packs, £49 each.`;
 
   // Canonical/og:url need an absolute URL, so they only emit when SITE_URL is configured (prod).
@@ -75,6 +84,17 @@ export function Seo({ title, description = DEFAULT_DESCRIPTION, noindex = false 
       <meta key="twitter:description" name="twitter:description" content={description} />
       {ogImage && <meta key="twitter:image" name="twitter:image" content={ogImage} />}
       {noindex && <meta key="robots" name="robots" content="noindex, nofollow" />}
+      {/* A noindex page never emits structured data — there is nothing to be structured for.
+          `<` is escaped because the payload carries operator-authored copy (pack titles), and an
+          unescaped "</script>" inside a JSON string ends the block and drops the rest of it into
+          the document as markup. */}
+      {jsonLd && !noindex && (
+        <script
+          key="jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+        />
+      )}
     </Head>
   );
 }
