@@ -6,7 +6,7 @@ import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { fetchOrderBySession, type SessionOrderItem } from '@/lib/api/client';
-import { trackOnce } from '@/lib/analytics';
+import { track } from '@/lib/analytics';
 
 // The buyer lands here the instant the payment provider redirects, which is normally BEFORE
 // the fulfilment webhook has been processed. So "not ready yet" is the expected first answer
@@ -96,10 +96,13 @@ export default function OrderSuccess() {
   }, [isReady, sessionId]);
 
   // Count the purchase once the order actually resolved — not on page load, which also happens
-  // on refresh and on redirects that never fulfil. trackOnce dedups reloads by session id.
+  // on refresh and on redirects that never fulfil. Sending it again on a reload is harmless:
+  // the checkout session id travels as the event's meta and the API deduplicates on it, so the
+  // count stays honest without marking the buyer's browser. (It previously used a localStorage
+  // flag; that stored data on the device without consent — see lib/analytics.ts.)
   React.useEffect(() => {
     if (phase === 'ready' && sessionId) {
-      trackOnce(`checkout_${sessionId}`, 'checkout_completed', sessionId);
+      track('checkout_completed', sessionId);
     }
   }, [phase, sessionId]);
 
