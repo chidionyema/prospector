@@ -88,10 +88,17 @@ export function Seo({ title, description = DEFAULT_DESCRIPTION, noindex = false,
           `<` is escaped because the payload carries operator-authored copy (pack titles), and an
           unescaped "</script>" inside a JSON string ends the block and drops the rest of it into
           the document as markup. */}
+      {/* The `react/no-danger` rail exists to keep untrusted strings out of an HTML sink, and
+          this is the one sink it cannot cover. A <script> element has raw-text content, so a
+          React text child would be emitted with `"` as `&quot;` and no crawler could parse the
+          block; dangerouslySetInnerHTML is the only way to write it, and is what Next.js
+          documents for JSON-LD. What makes it safe is the escaping below, not the rule: the
+          payload is JSON.stringify output, so it can never be arbitrary markup. */}
       {jsonLd && !noindex && (
         <script
           key="jsonld"
           type="application/ld+json"
+          /* eslint-disable-next-line react/no-danger -- justified above; safe by the escape */
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
         />
       )}

@@ -6,6 +6,11 @@
 */
 
 :root {
+  /* What we fall back to when the webfont has not arrived (or was never wired). Named once so
+     the three font stacks below and the .fonts-wired rule cannot drift apart. */
+  --font-fallback-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-fallback-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
   /* Enterprise SaaS Palette (LinkedIn-Grade) */
   --bg: #f8fafc;          /* Cool Gray Canvas (Slate 50) */
   --surface: #ffffff;     /* Pure White cards */
@@ -91,10 +96,24 @@
   --color-on-band-muted: var(--on-band-muted);
   --color-on-band-faint: var(--on-band-faint);
 
-  /* Typography Overhaul - Exclusively Sans */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-serif: var(--font-sans); /* Deprecate serif, map to sans */
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Typography Overhaul - Exclusively Sans. These name the family _app.tsx actually downloads.
+     The list used to start with "Inter", which nothing ever loaded, so the real typeface was
+     whatever each OS picked out of the system stack — which is how a headline's line count
+     became platform-dependent (see the h1 in pages/index.tsx).
+
+     The `var(…, fallback)` form is load-bearing twice over. Because this is `@theme inline`,
+     Tailwind bakes these values into the `font-sans` / `font-mono` UTILITIES rather than emitting
+     a var() reference — so written this way the utility re-resolves --font-*-pref at whatever
+     element wears it, which is what makes `font-sans` on MarketingLayout pick up the webfont.
+     And the fallback argument is what keeps the same declaration valid at :root (for `body`),
+     where --font-*-pref does not exist and a bare var() would void the whole list.
+
+     This is NOT sufficient on its own: the rules that read var(--font-serif) / var(--font-mono)
+     directly (h1/h2/h3, .text-eyebrow) get the value already substituted at :root. `.fonts-wired`
+     below is the other half. */
+  --font-sans: var(--font-sans-pref, ui-sans-serif), var(--font-fallback-sans);
+  --font-serif: var(--font-sans-pref, ui-sans-serif), var(--font-fallback-sans); /* Deprecate serif, map to sans */
+  --font-mono: var(--font-mono-pref, ui-monospace), var(--font-fallback-mono);
 
   /* Explicit Mathematical Leading & Tracking */
   --text-hero: 5.5rem;      --text-hero--line-height: 1.1;     --text-hero--letter-spacing: -0.05em;
@@ -150,6 +169,38 @@ html {
   scroll-behavior: smooth;
   overflow-y: scroll;
   scrollbar-gutter: stable;
+}
+
+/*
+  The one place the downloaded webfont is actually put in front of the system stack. Carried by
+  the App wrapper <div> in pages/_app.tsx, which is also the element next/font puts
+  --font-sans-pref / --font-mono-pref on.
+
+  It has to be a separate rule on THAT element, and not the @theme values above, because a var()
+  inside a custom property is substituted where the property is DECLARED, not where it is finally
+  used. Declaring --font-serif: var(--font-sans-pref, …) at :root resolves it against a :root that
+  has no --font-sans-pref, and descendants then inherit that already-resolved fallback — the
+  webfont downloads and never renders. Measured before this rule existed: the hero h1 computed to
+  `ui-sans-serif` with all 13 Hanken faces sitting loaded in document.fonts.
+
+  Custom properties inherit, so declaring them here reaches every descendant, including the
+  `h1, h2, h3 { font-family: var(--font-serif) }` rule further down.
+*/
+.fonts-wired {
+  --font-sans: var(--font-sans-pref), var(--font-fallback-sans);
+  /* Repeated rather than var(--font-sans) for the same substitution reason: it must resolve
+     against -pref here, not against whatever --font-sans already computed to. */
+  --font-serif: var(--font-sans-pref), var(--font-fallback-sans);
+  --font-mono: var(--font-mono-pref), var(--font-fallback-mono);
+
+  /* Redeclaring the variables is not enough on its own. Body copy has no font-family rule of its
+     own — it inherits, and the nearest ancestor that sets one is this element. It used to set it
+     via Tailwind's `font-sans` utility, but `@theme inline` bakes the theme value INTO that
+     utility, so it emitted the :root fallback stack and body text stayed on the system font
+     while headings (which read var(--font-serif) directly) had already switched. Measured at
+     that point: h1font=Hanken Grotesk, bodyfont=-apple-system on the same page.
+     `--font-sans` on the line above is visible to this var() because it is the same element. */
+  font-family: var(--font-sans);
 }
 
 .hover-shadow-premium {
