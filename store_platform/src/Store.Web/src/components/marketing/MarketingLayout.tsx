@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Logo, Icon } from '@/components/ui';
+import { CartButton } from '@/components/cart/CartButton';
 import { LEGAL, BRAND } from '@/lib/config';
 import { useDisclosure } from '@/lib/useDisclosure';
 
@@ -66,7 +67,9 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-6 h-full">
+          <div className="flex items-center gap-2 h-full">
+            {/* Renders nothing until there is something in it — see CartButton. */}
+            <CartButton />
             <div className="flex items-center md:hidden h-full">
               <button
                 ref={menuButtonRef}

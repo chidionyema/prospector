@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 # Publish all non-provisional PASSes that lack store/listings receipts.
+#
+# Stopping this used to be a fight (2026-07-31). Two structural reasons, both fixed here:
+#   1. The driver loop treated a killed batch as a normal iteration — `subprocess.run` just
+#      returned a negative code and the loop launched the NEXT batch. Killing a child was
+#      therefore indistinguishable from a batch finishing. The `exit=-15` / `exit=-9` rows in
+#      the log are that bug. Fixed by a signal handler that sets a stop flag AND by treating a
+#      signal-killed child (negative returncode) as fatal.
+#   2. Nothing stopped two backfills running at once. An earlier run whose shell had died left
+#      an orphaned driver grinding batches for 5h23m, interleaved into this same log, and was
+#      invisible to anyone reading `ps` for the shell. Fixed by a single-instance lock, which
+#      lives in the Python driver on fcntl.flock — NOT in this script, because the flock(1)
+#      command does not exist on macOS and a shell-level lock silently refused every run.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -15,37 +27,40 @@ if [ -n "${PROSPECTOR_CURSOR_CONCURRENCY:-}" ]; then
 fi
 LOG="${ROOT}/store/control_center/runs/backfill_all_listings.log"
 mkdir -p "$(dirname "$LOG")"
+
 exec >>"$LOG" 2>&1
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] backfill_missing_listings start"
-"$PY" -u - <<'PY'
-import json, subprocess, sys
-from pathlib import Path
-paths = []
-for f in sorted(Path("store/dossiers").glob("*.pass.json")):
-    try:
-        d = json.loads(f.read_text(encoding="utf-8"))
-    except Exception:
-        continue
-    if str(d.get("decision", "")).lower() != "pass" or d.get("provisional"):
-        continue
-    cid = (d.get("candidate") or {}).get("candidate_id") or f.stem.split(".")[0]
-    if Path(f"store/listings/{cid}.json").exists():
-        continue
-    paths.append(str(f))
-print(f"missing={len(paths)}", flush=True)
-# Raised from 2 on 2026-07-31. Each batch is a fresh `tools.publish_passes` subprocess, so a
-# small batch pays full interpreter + config + store startup per 2 dossiers and cannot overlap
-# CLI work across the boundary. The per-dossier work is unchanged — this only widens the window
-# in which the 8 shared CLI slots can stay busy. Restart-safety is preserved: the existence
-# check below re-runs per batch, so anything already carrying a listing is still skipped.
-batch_size = 5
-for i in range(0, len(paths), batch_size):
-    batch = [p for p in paths[i:i+batch_size]
-             if not Path(f"store/listings/{Path(p).name.replace('.pass.json','')}.json").exists()]
-    if not batch:
-        continue
-    print(f"batch {i//batch_size+1}/{ (len(paths)+batch_size-1)//batch_size }: {batch}", flush=True)
-    r = subprocess.run([sys.executable, "-u", "-m", "tools.publish_passes", *batch], cwd=".")
-    print(f"exit={r.returncode} listings_now={len(list(Path('store/listings').glob('*.json')))}", flush=True)
-print("backfill_missing_listings done", flush=True)
-PY
+
+# Run the driver in its own process group so one kill reaches the driver, the current
+# publish_passes batch, and its cursor-agent grandchildren together. Killing only the shell
+# used to orphan the whole subtree (`ppid=1`), which then had to be hunted down by hand.
+cleanup() {
+  trap - TERM INT EXIT
+  if [ -n "${DRIVER_PID:-}" ] && kill -0 "$DRIVER_PID" 2>/dev/null; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] stopping backfill process group -$DRIVER_PID"
+    kill -TERM -- "-$DRIVER_PID" 2>/dev/null || kill -TERM "$DRIVER_PID" 2>/dev/null || true
+    for _ in $(seq 1 30); do
+      kill -0 "$DRIVER_PID" 2>/dev/null || break
+      sleep 1
+    done
+    kill -KILL -- "-$DRIVER_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup TERM INT EXIT
+
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] backfill_missing_listings start (pid $$)"
+
+# `set -m` (job control) puts the background job in its OWN process group, which is what makes
+# `kill -- -$DRIVER_PID` in cleanup() reach the driver, its publish_passes batch and the
+# cursor-agent grandchildren in one signal. setsid(1) would be the obvious tool and is what
+# Linux notes recommend — it is NOT installed on macOS, this project's host, same trap as
+# flock(1). Job control is in bash itself, so it works on both.
+set -m
+set +e
+"$PY" -u "${ROOT}/tools/_backfill_driver.py" "$@" &
+DRIVER_PID=$!
+wait "$DRIVER_PID"
+RC=$?
+set -e
+set +m
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] backfill_missing_listings exit=$RC"
+exit "$RC"

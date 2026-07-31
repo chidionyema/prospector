@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""Audit the operator's real store/ — the checks that are about DATA, not about code.
+
+Why this is not a pytest file
+-----------------------------
+These checks used to live in tests/. That conflated two questions that fail for different
+reasons and need different responses:
+
+    "is the code correct?"          a defect. Fix the code. True on every machine.
+    "is this machine's data sane?"  an operational fact. Run the engine, or investigate.
+                                    Meaningless on a fresh clone, where there is no data.
+
+store/dossiers/ and store/prospector.jsonl are gitignored (.gitignore:43), so CI clones with
+zero dossiers while the operator's machine has 1153. Asserting on data volume inside pytest
+therefore made CI report `assert 0 >= 300` — which reads as a broken reader and is actually
+"this checkout has no catalogue". On 2026-07-31 that cost four CI round-trips to untangle.
+
+The split is the fix: pytest asserts behaviour with fixtures it constructs, and passes
+anywhere. This probe asserts facts about the real store, and is run by the operator (and by
+the daily backup's neighbour LaunchAgent) where the real store exists.
+
+Per the operating rule "state is a probe, not a paragraph": the output is verdict lines, and
+the exit code is the answer. 0 = every check passed, 1 = at least one FAIL, 2 = no store here.
+
+    python3 scripts/store_audit.py
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
+LEDGER = REPO_ROOT / "store" / "prospector.jsonl"
+BACKFILL = REPO_ROOT / "store_platform" / "data" / "facets-backfill.json"
+
+# Was `assert len(idx) >= 300` in tests/control_center/test_readers.py. The number is a floor
+# on a catalogue that only grows, not a measurement — it catches a reader silently returning
+# a truncated view, which is the failure that would otherwise look like a quiet afternoon.
+MIN_CATALOGUE = 300
+
+results: list[tuple[str, bool, str]] = []
+
+
+def check(name: str, ok: bool, detail: str) -> None:
+    results.append((name, ok, detail))
+
+
+def main() -> int:
+    if not DOSSIER_DIR.is_dir() or not any(DOSSIER_DIR.glob("*.json")):
+        print("STORE_AUDIT SKIP no local catalogue — store/dossiers/ is gitignored and empty here.")
+        print("  This is the expected state on a fresh clone or in CI. Nothing to audit.")
+        return 2
+
+    # readers is a Streamlit module, so importing it outside a Streamlit runtime emits ~20
+    # lines of "No runtime found" per @st.cache_data decorator. A probe whose verdict is
+    # buried under known-irrelevant warnings stops being read.
+    import logging
+    logging.getLogger("streamlit").setLevel(logging.ERROR)
+
+    from prospector.control_center import readers
+    from prospector.report import costs_data
+
+    # ── catalogue ────────────────────────────────────────────────────────────
+    idx = readers.catalogue_index()
+    check("CATALOGUE", len(idx) >= MIN_CATALOGUE,
+          f"{len(idx)} entries (floor {MIN_CATALOGUE})")
+
+    stats = readers.catalogue_stats()
+    check("CATALOGUE_STATS", stats["total"] == len(idx),
+          f"stats.total={stats['total']} index={len(idx)}")
+
+    on_disk = len(list(DOSSIER_DIR.glob("*.json")))
+    check("DOSSIERS_ON_DISK", on_disk > 0, f"{on_disk} files")
+
+    # ── ledger / spend ───────────────────────────────────────────────────────
+    if LEDGER.is_file():
+        costs = costs_data(str(LEDGER))
+        expected = ("total_spend_usd", "total_calls", "providers", "tokens", "slowest_ops")
+        absent = [k for k in expected if k not in costs]
+        check("LEDGER_SHAPE", not absent,
+              "all keys present" if not absent else f"missing {absent}")
+        spend = costs.get("total_spend_usd", -1)
+        check("LEDGER_SPEND", spend >= 0, f"lifetime ${spend:,.2f}")
+    else:
+        check("LEDGER", False, f"{LEDGER} is missing — the audit trail is the liability record")
+
+    # ── backfill integrity ───────────────────────────────────────────────────
+    # Was tests/unit/test_facets.py::test_every_entry_is_a_pack_that_was_actually_published.
+    # A phantom entry is a mistyped or stale pack id, which fails as a silent 404 halfway
+    # through `backfill_facets.py --apply` — an operational fault, found only against real data.
+    if BACKFILL.is_file():
+        data = json.loads(BACKFILL.read_text(encoding="utf-8"))
+        known = {p.name.split(".")[0] for p in DOSSIER_DIR.glob("*.json")}
+        phantom = sorted(set(data) - known)
+        check("BACKFILL_ENTRIES", not phantom,
+              f"{len(data)} entries, all backed by a dossier" if not phantom
+              else f"no dossier justifies: {phantom[:5]}")
+
+    # ── the backup actually happened ─────────────────────────────────────────
+    # The point of an audit that runs where the data is: prove the offsite copy matches, not
+    # that a script exists. --verify-only uploads nothing.
+    proc = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts" / "backup_store.py"), "--verify-only"],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    )
+    line = (proc.stdout.strip().splitlines() or ["no output"])[-1]
+    check("OFFSITE_BACKUP", proc.returncode == 0, line)
+
+    # ── verdict ──────────────────────────────────────────────────────────────
+    failed = [n for n, ok, _ in results if not ok]
+    for name, ok, detail in results:
+        print(f"  {'PASS' if ok else 'FAIL'}  {name:<18} {detail}")
+    print(f"STORE_AUDIT {'PASS' if not failed else 'FAIL'} "
+          f"checks={len(results)} failed={len(failed)}"
+          + (f" [{', '.join(failed)}]" if failed else ""))
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

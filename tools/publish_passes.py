@@ -9,6 +9,12 @@ for ancillary JSON, and moat for claim-check; then publishes via EngineBridge.
 Usage:
     python -m tools.publish_passes store/dossiers/<id>.pass.json [more...]
     python -m tools.publish_passes --all          # every PASS in the store
+    python -m tools.publish_passes --reuse-artifacts <paths...>
+        # Re-bundle + re-publish from the artifacts already stored on the dossier, with no
+        # model call. Use when the defect is in the BUNDLE, not the prose — e.g. repairing
+        # the pre-2026-07-31 bundles that shipped without 00_Executive_Summary.md /
+        # 05_First_Week_Checklist.md. Falls back to regeneration if the stored pack does
+        # not clear validate_pack.
 """
 from __future__ import annotations
 
@@ -84,6 +90,15 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
 
+    # Re-bundle without regenerating. Dossiers persist their generated artifacts under
+    # candidate.tags["artifacts"], but this driver regenerated them unconditionally, so
+    # repairing a pack whose ONLY defect is a deterministic floor (a missing executive
+    # summary, a stub Marketing_Assets) cost a full LLM generation per pack. With this flag
+    # a stored pack that already clears validate_pack is re-bundled and re-published as-is:
+    # no model call, no cost, and byte-identical prose to what the moat already verified.
+    reuse_artifacts = "--reuse-artifacts" in argv
+    argv = [a for a in argv if a != "--reuse-artifacts"]
+
     if argv == ["--all"]:
         paths = sorted(glob.glob("store/dossiers/*.pass.json"))
     else:
@@ -127,7 +142,22 @@ def main(argv: list[str]) -> int:
         # pack can never list even if we run out of attempts here — it just won't sell.
         complete = False
         problems: list[str] = []
+
+        if reuse_artifacts:
+            stored = cand.tags.get("artifacts") or {}
+            stored_marketing = ensure_marketing_floor(
+                cand.tags.get("marketing") or [], cand, dossier.checks)
+            complete, problems = validate_pack(stored, stored_marketing)
+            if complete:
+                cand.tags["marketing"] = stored_marketing
+                print(f"  reusing stored artifacts: "
+                      f"{ {k: len(v or '') for k, v in stored.items()} } (no model call)")
+            else:
+                print(f"  stored artifacts incomplete -> regenerating. {problems}")
+
         for attempt in range(1, MAX_GEN_ATTEMPTS + 1):
+            if complete:
+                break
             print(f"  generating artifacts (artifact_operator chain), attempt {attempt}/{MAX_GEN_ATTEMPTS}...")
             cand.tags["artifacts"] = generate_artifacts(
                 op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg)

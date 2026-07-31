@@ -1,0 +1,79 @@
+# Playwright storefront smoke against the LIVE site.
+#
+# Why this is its own workflow rather than a job in ci.yml:
+#
+# It used to run on `push: main` alongside ci.yml's other jobs. Once Store.Web started deploying
+# from GitHub on that same push, the two raced — Playwright would hit https://mumchimp.com while
+# the Fly rolling update was still in flight, so a green run proved the OLD image worked and a red
+# run usually meant "you caught a machine mid-roll", not a real defect. A gate that is green for
+# the wrong reason is worse than no gate.
+#
+# `workflow_run` fixes the ordering properly: this only starts once "Deploy Store.Web" has
+# COMPLETED, and the job guard below drops it unless that deploy actually succeeded (a failed
+# deploy leaves the previous image serving, so smoking it would test code that never shipped).
+#
+# The daily schedule is not belt-and-braces, it covers a failure mode no push trigger ever could:
+# this storefront breaks without anyone committing. The specs assert the home page lists at least
+# one pack, and that depends on the live Store.Api catalogue and on Stripe — the 2 unbuyable packs
+# found on 2026-07-31 were a data/config fault with no commit behind them. Deploys catch bad code;
+# the schedule catches bad state.
+
+name: Live storefront smoke
+
+on:
+  workflow_run:
+    workflows: ["Deploy Store.Web"]
+    types: [completed]
+  schedule:
+    # 07:00 UTC daily — before the UK working day, so a broken shelf is known before buyers arrive.
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+# One smoke at a time. Two overlapping runs against the same live site tell you nothing extra and
+# make the report artifacts ambiguous about which run produced them.
+concurrency:
+  group: e2e-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    # A deploy that failed did not change the site, so there is nothing new to smoke; running
+    # anyway would attribute a pre-existing failure to a deploy that never landed.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: store_platform/src/Store.Web/
+
+    steps:
+      # On a workflow_run event the default checkout is the default branch, which is what we want:
+      # the specs must match the code that was just deployed from main, not whatever branch
+      # triggered anything else.
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: store_platform/src/Store.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Storefront smoke against live
+        run: npm run test:e2e
+        env:
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: store_platform/src/Store.Web/playwright-report/
+          retention-days: 7

@@ -162,6 +162,9 @@ namespace Store.Catalog.Migrations
                     b.Property<string>("AdvantagesJson")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CardLine")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Commitment")
                         .HasColumnType("TEXT");
 

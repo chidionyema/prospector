@@ -19,8 +19,32 @@ test('the shelf renders and every card is a link to a pack', async ({ page }) =>
   expect(await page.locator(cards).count()).toBeGreaterThan(0);
 });
 
+test('the first pack card is above the fold', async ({ page }) => {
+  // Measured at the configured viewport (1280x720, playwright.config.ts), the first card used to
+  // start at y=1094: a hero of 606px, a three-block section heading of 206px and a full-width
+  // three-question form of 107px, so a storefront whose whole pitch is "here is what survived"
+  // opened on an argument with no product on screen. It now starts at ~651.
+  //
+  // The bar is 40px of card actually visible, not merely `y < 720`: a card whose top edge lands
+  // one pixel above the fold satisfies the letter of "above the fold" and shows the buyer nothing.
+  // This is asserted as a number because the failure mode is additive — the next block someone
+  // puts above the grid pushes it back down, and no reviewer measures.
+  const MIN_VISIBLE_PX = 40;
+  await page.goto('/');
+  const box = await page.locator(cards).first().boundingBox();
+  expect(box).not.toBeNull();
+  const fold = page.viewportSize()!.height;
+  expect(fold - box!.y).toBeGreaterThan(MIN_VISIBLE_PX);
+});
+
 test('the three-question router refuses to route until the first two are answered', async ({ page }) => {
   await page.goto('/');
+
+  // The router is collapsed on load, so the form has to be asked for before any of it exists.
+  // Without this click Playwright fails on actionability against a button that is not rendered
+  // at all — which would read as "the disabled-until-answered rule broke", not "it is closed".
+  await page.getByRole('button', { name: 'Answer three questions' }).click();
+
   const submit = page.getByRole('button', { name: 'Show me mine' });
   await expect(submit).toBeDisabled();
 

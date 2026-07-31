@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button, Checkbox, Input } from '@/components/ui';
 import { joinWaitlist } from '@/lib/api/client';
 import type { DiscoveryState } from '@/lib/discovery';
-import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
+import { KIND_NOUN, label, type FacetKind } from '@/lib/facets';
 
 /**
  * Near miss before empty, and only then the waitlist (spec Part 7).
@@ -183,6 +183,6 @@ export function DiscoveryWaitlist({ query }: { query: string }) {
 export function missLabelFor(kind: FacetKind, wanted: string, actual: string | null | undefined): string {
   const wantedText = label(kind, wanted) ?? wanted;
   const actualText = label(kind, actual);
-  if (!actualText) return `Not tagged for ${KIND_LABEL[kind].toLowerCase()}, you said ${wantedText.toLowerCase()}`;
+  if (!actualText) return `Not tagged for ${KIND_NOUN[kind]}, you said ${wantedText.toLowerCase()}`;
   return `${actualText}, you said ${wantedText.toLowerCase()}`;
 }

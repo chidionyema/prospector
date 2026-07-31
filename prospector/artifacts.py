@@ -342,6 +342,31 @@ def verify_claims_detail(op: Operator, copy: str, claims: List[Dict[str, Any]]
         return False, []
 
 
+#: Hard ceiling for the card heading, mirrored in ``prompts/content_gen.md``. Chosen so two
+#: cards per row at the storefront's card width render it on one or two lines, never as the
+#: 90+ character paragraph the title produces.
+CARD_LINE_MAX = 60
+
+
+def _card_line(raw: str) -> str:
+    """The shelf heading, or "" when the operator could not produce a truthful short one.
+
+    Accept-or-drop, never truncate. The only tidying applied is stripping a trailing period
+    and collapsing whitespace, neither of which can change a claim.
+    """
+    line = " ".join(raw.split()).rstrip(".").strip()
+    if not line or len(line) > CARD_LINE_MAX:
+        if line:
+            logger.info(
+                "listing card_line discarded: %d chars exceeds the %d limit (%r)",
+                len(line),
+                CARD_LINE_MAX,
+                line,
+            )
+        return ""
+    return line
+
+
 def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
     """Coerce a (possibly partial) listing_page response into the structured contract.
 
@@ -377,6 +402,12 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "type": "listing_page",
         "copy": copy,
+        # The shelf heading. Over-length is DISCARDED rather than truncated: cutting a
+        # sentence mid-clause changes what it claims ("not suitable for under-27s" ->
+        # "not suitable for"), and a claim nobody made is exactly what this system exists
+        # to keep off the storefront. An empty card_line is a correct answer -- the card
+        # falls back to the pack title.
+        "card_line": _card_line(_s("card_line")),
         "headline": _s("headline"),
         "subhead": _s("subhead"),
         "what_you_get": what,
@@ -398,7 +429,10 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
 def _listing_check_text(piece: Dict[str, Any]) -> str:
     """Everything a buyer will SEE on the card, concatenated for the claim-check gate, so
     overstatement in the headline/bullets/proof_point is caught, not just the prose body."""
-    bits = [piece.get("headline", ""), piece.get("subhead", "")]
+    # card_line is the FIRST thing a browsing buyer reads and for many it is the only thing,
+    # so it is held to the same claim-check bar as the headline. Omitting it here would make
+    # the shortest, most-read line on the storefront the one line nobody checked.
+    bits = [piece.get("card_line", ""), piece.get("headline", ""), piece.get("subhead", "")]
     bits.extend(piece.get("what_you_get", []) or [])
     bits.extend([piece.get("proof_point", ""), piece.get("copy", "")])
     return "\n".join(b for b in bits if b)

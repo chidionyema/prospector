@@ -166,6 +166,7 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
         p.PaymentProvider,
         p.ProviderPriceId,
         // Per-pack card specifics so the catalogue sells each pack on its own merits.
+        p.CardLine,
         p.Headline,
         p.WhoPays,
         p.EffortTag,
@@ -222,6 +223,7 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
         pack.ProviderPriceId,
         pack.DossierRef,
         // Conversion surfaces for the product page.
+        pack.CardLine,
         pack.Headline,
         pack.Subhead,
         pack.ProofPoint,
@@ -306,7 +308,7 @@ app.MapPost("/catalog/waitlist", async (
 
 // --- INTERNAL/ENGINE ENDPOINTS ---
 
-app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http, StoreDbContext db, IConfiguration config) =>
+app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http, StoreDbContext db, IConfiguration config, IServiceProvider sp, ILoggerFactory loggerFactory) =>
 {
     // Authenticate the engine→store publish call. Fail closed if no key is configured
     // (an unauthenticated internal endpoint would let anyone publish to the catalogue).
@@ -379,6 +381,7 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
 
     // Storefront conversion metadata (optional, additive). Only overwrite when the engine
     // sent a value, so a metadata-light republish never wipes existing copy.
+    if (request.CardLine is not null) pack.CardLine = request.CardLine;
     if (request.Headline is not null) pack.Headline = request.Headline;
     if (request.Subhead is not null) pack.Subhead = request.Subhead;
     if (request.ProofPoint is not null) pack.ProofPoint = request.ProofPoint;
@@ -402,9 +405,38 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     if (request.Mechanism is not null) pack.Mechanism = request.Mechanism;
     if (request.Advantages is not null) pack.AdvantagesJson = JsonSerializer.Serialize(request.Advantages);
 
-    // List-only-after-upload: a pack may only go live once it has deliverable content.
-    // Selling something we cannot deliver is the cardinal sin of this layer.
-    pack.IsListed = request.IsListed && !string.IsNullOrEmpty(pack.ContentKey);
+    // Two conditions gate going live, and both are about not taking money we cannot honour.
+    //
+    // List-only-after-upload: a pack may only go live once it has deliverable content. Selling
+    // something we cannot deliver is the cardinal sin of this layer.
+    //
+    // List-only-if-billable: the price must be one THIS deployment can actually charge. The
+    // publisher cannot establish that — it does not hold the key we bill through — and a price
+    // id looks identical whichever account minted it. On 2026-07-31 a publisher holding a
+    // sandbox key listed 10 packs whose ids were well-formed and unchargeable, so every buy
+    // button returned HTTP 500 until someone noticed. Asking our own money rail is the only
+    // answer that cannot drift, so the check lives here rather than in the publisher.
+    var logger = loggerFactory.CreateLogger("PublishPack");
+    var wantsListing = request.IsListed && !string.IsNullOrEmpty(pack.ContentKey);
+    if (wantsListing)
+    {
+        var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "paddle");
+        if (provider is null)
+        {
+            logger.LogError(
+                "Refusing to list {PackId}: no payment provider registered for {Provider}.",
+                pack.Id, pack.PaymentProvider);
+            wantsListing = false;
+        }
+        else if (!await provider.CanBillPriceAsync(pack.ProviderPriceId ?? "", http.HttpContext?.RequestAborted ?? CancellationToken.None).ConfigureAwait(false))
+        {
+            logger.LogError(
+                "Refusing to list {PackId}: {Provider} cannot bill price {PriceId}. Stored UNLISTED.",
+                pack.Id, pack.PaymentProvider, pack.ProviderPriceId);
+            wantsListing = false;
+        }
+    }
+    pack.IsListed = wantsListing;
 
     await db.SaveChangesAsync().ConfigureAwait(false);
     return Results.Ok(pack);
@@ -599,77 +631,22 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// --- CHECKOUT ENDPOINT (P4/P7 — provider-agnostic, hot-reloaded) ---
-// The provider for NEW checkouts is determined by the runtime config
-// `payments:active_provider` (P7 — seamless switch, no redeploy). For
-// packs published before the switch, the pack's stored PaymentProvider is
-// honoured as a fallback so the buyer's checkout always succeeds.
-app.MapPost("/packs/{id}/checkout", async (
-    string id,
-    StoreDbContext db,
-    IServiceProvider sp,
-    IConfiguration config,
-    HttpRequest request) =>
-{
-    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
-    if (pack is null || !pack.IsListed)
-    {
-        return Results.NotFound();
-    }
-
-    // P7 — runtime active_provider (hot-reloaded) takes precedence for new checkouts
-    // and falls back to the pack's stored provider so legacy packs still work.
-    var runtimeProvider = config["payments:active_provider"];
-    var provider = !string.IsNullOrEmpty(runtimeProvider) ? runtimeProvider : (pack.PaymentProvider ?? "paddle");
-    var paymentProvider = sp.GetKeyedService<IPaymentProvider>(provider);
-    if (paymentProvider is null)
-    {
-        return Results.Problem(
-            $"Payment provider '{provider}' is not registered.",
-            statusCode: StatusCodes.Status503ServiceUnavailable);
-    }
-
-    string? buyerEmail = null;
-    if (request.HasJsonContentType())
-    {
-        try
-        {
-            var body = await request.ReadFromJsonAsync<CheckoutRequest>().ConfigureAwait(false);
-            buyerEmail = body?.Email;
-        }
-        catch
-        {
-            // Buyer email is optional; proceed with null if parse fails.
-        }
-    }
-
-    // The post-checkout redirect must land on the STOREFRONT, not on this API. /orders/success
-    // and /pack/{id} are Next.js pages; this API serves neither, so pointing the redirect at
-    // Store:PublicUrl (which PROD_DEPLOY.md sets to the API host, correctly, for magic links)
-    // sent every paying buyer to a 404. Resolution order: an explicit storefront URL, else the
-    // CORS origin — which is by definition the storefront and is already set in the runbook —
-    // else this host, which is only ever right for a single-origin local run.
-    var baseUrl = DeliveryUrls.ResolveStorefrontBaseUrl(
-        config["Store:StorefrontUrl"],
-        Environment.GetEnvironmentVariable("STORE_STOREFRONT_URL"),
-        config["Store:AllowedOrigin"],
-        Environment.GetEnvironmentVariable("STORE_ALLOWED_ORIGIN"),
-        $"{request.Scheme}://{request.Host}");
-
-    var handle = await paymentProvider.CreateCheckoutAsync(
-        id,
-        pack.ProviderPriceId ?? "",
-        buyerEmail,
-        $"{baseUrl}/orders/success?pack={id}",
-        $"{baseUrl}/pack/{id}",
-        CancellationToken.None).ConfigureAwait(false);
-
-    return Results.Ok(new { url = handle.Url });
-})
-.WithName("CreateCheckout")
-.WithOpenApi();
+// Checkout (single pack and basket) — see Endpoints/CheckoutEndpoints.cs.
+app.MapCheckoutEndpoints();
 
 app.MapWebhookEndpoints();
 app.MapDeliveryEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
+
+// Top-level statements compile to an internal Program, which WebApplicationFactory<T> cannot
+// name. Declaring it public here is the whole handshake that lets the tests boot this exact
+// app — same DI, same middleware, same endpoint wiring — rather than a re-declared stand-in
+// that could drift from it.
+public partial class Program
+{
+    // Never instantiated — the class exists only so WebApplicationFactory<Program> can name it.
+    // Protected rather than suppressing S1118: the analyzer's point (nobody should construct a
+    // holder of static members) is correct, and this satisfies it honestly.
+    protected Program() { }
+}

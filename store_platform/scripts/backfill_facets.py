@@ -223,8 +223,20 @@ def fetch_catalog(url: str) -> list:
 # apply
 # --------------------------------------------------------------------------------------
 
-def apply_backfill(api_base: str, api_key: str, dry_run: bool) -> int:
-    """PATCH the reviewed file to the store. Skips entries with nothing decided."""
+def apply_backfill(
+    api_base: str,
+    api_key: str,
+    dry_run: bool,
+    only: "set[str] | None" = None,
+    skip: "set[str] | None" = None,
+) -> int:
+    """PATCH the reviewed file to the store. Skips entries with nothing decided.
+
+    ``only`` restricts the run to an explicit id allow-list; ``skip`` excludes ids. Both
+    exist because this file covers the whole catalogue, so an unscoped ``--apply`` will
+    re-send values for packs that are already tagged — and overwrite any that have since
+    been corrected in the store. Scoping is how a repair stays a repair.
+    """
     if not OUTPUT_PATH.exists():
         print(f"error: {OUTPUT_PATH} does not exist — run without --apply first", file=sys.stderr)
         return 1
@@ -232,9 +244,22 @@ def apply_backfill(api_base: str, api_key: str, dry_run: bool) -> int:
     with OUTPUT_PATH.open(encoding="utf-8") as handle:
         data = json.load(handle)
 
+    if only:
+        unknown = only - {k for k in data if not k.startswith("_")}
+        if unknown:
+            print(f"error: --only names ids not in {OUTPUT_PATH.name}: "
+                  f"{', '.join(sorted(unknown))}", file=sys.stderr)
+            return 1
+
     applied = skipped = failed = 0
     for pack_id, entry in sorted(data.items()):
         if pack_id.startswith("_"):
+            continue
+        if only and pack_id not in only:
+            continue
+        if skip and pack_id in skip:
+            print(f"skip   {pack_id}  (excluded by --skip)")
+            skipped += 1
             continue
 
         payload = {}
@@ -300,6 +325,10 @@ def main() -> int:
                         help="PATCH the reviewed file to the store instead of proposing")
     parser.add_argument("--dry-run", action="store_true",
                         help="with --apply, print what would be sent and send nothing")
+    parser.add_argument("--only", action="append", metavar="PACK_ID", default=[],
+                        help="restrict --apply to these pack ids (repeatable)")
+    parser.add_argument("--skip", action="append", metavar="PACK_ID", default=[],
+                        help="exclude these pack ids from --apply (repeatable)")
     args = parser.parse_args()
 
     if args.apply:
@@ -307,7 +336,8 @@ def main() -> int:
         if not api_key and not args.dry_run:
             print("error: STORE_INTERNAL_API_KEY is not set", file=sys.stderr)
             return 1
-        return apply_backfill(args.api_base, api_key, args.dry_run)
+        return apply_backfill(args.api_base, api_key, args.dry_run,
+                              only=set(args.only), skip=set(args.skip))
 
     try:
         catalog = fetch_catalog(args.catalog_url)

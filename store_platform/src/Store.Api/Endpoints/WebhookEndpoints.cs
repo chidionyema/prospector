@@ -172,6 +172,13 @@ public static class WebhookEndpoints
         {
             return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
+        // A basket whose per-line amounts could not be read. The payment is real and the event is
+        // replayable, so this is transient-by-nature: answer 503 so the retry is the expected
+        // outcome rather than looking like a malformed payload nobody should resend.
+        if (string.Equals(result.Reason, "line-items-unavailable", StringComparison.Ordinal))
+        {
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
         if (result.Ignored)
         {
             return Results.Ok(new { status = "IGNORED", eventType = result.Reason });

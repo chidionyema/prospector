@@ -1,20 +1,34 @@
 import React from 'react';
 
+import { Modal } from '@/components/ui/Modal';
 import { cx } from '@/components/ui/cx';
 import type { Pack } from '@/lib/api/client';
-import { facetCounts, type DiscoveryState } from '@/lib/discovery';
-import { KIND_LABEL, VOCABULARY, label, type FacetKind } from '@/lib/facets';
+import {
+  activeFacetSelectionCount,
+  activeFacetValues,
+  facetCounts,
+  filterPacks,
+  offeredFacetValues,
+  type DiscoveryState,
+} from '@/lib/discovery';
+import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
 
 /**
- * The facet filter — sticky under the header on mobile, a sidebar from `lg` up.
+ * The facet filter — a disclosure button below `lg`, a sidebar from `lg` up.
  *
- * Two rules it enforces visibly:
+ * Rules it enforces visibly:
  *
  * - **"All" is always present and always first**, because it is the only control that shows the
  *   untagged packs. Without it an untagged pack would be unreachable through the filter.
  * - **A facet with no data anywhere in the catalogue does not render at all** (AC-12). A filter
  *   group whose every option returns nothing is a dead control that makes the catalogue look
  *   broken; the honest move is to omit it until the engine has tagged something.
+ * - **Below `lg` the whole bar collapses behind one button.** The page grid is
+ *   `lg:grid-cols-[15rem_1fr]` (`pages/index.tsx:428`) with this `<aside>` first, so under `lg`
+ *   the grid is one column and every filter control stacked ABOVE the first product card. That
+ *   is the same defect already fixed for the router panel (`pages/index.tsx:434-436`): space
+ *   above the fold is the space that decides whether a buyer sees a product at all. As a
+ *   sidebar it costs nothing; as a stacked column on a phone it cost the entire first screen.
  */
 
 /** Order matters: the router's primary axis first, sector (display/exclusion only) last. */
@@ -60,10 +74,23 @@ export function FacetBar({
   onChange: (next: DiscoveryState) => void;
   className?: string;
 }) {
-  const groups = GROUPS.map((kind) => ({ kind, counts: facetCounts(packs, state, kind) })).filter(
-    // AC-12: nothing in the catalogue carries this facet — render no control at all.
-    (group) => Object.keys(group.counts).length > 0,
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+
+  // AC-12 now falls out of `offeredFacetValues`: a group with no offerable value renders nothing,
+  // whether that is because the engine has tagged nothing or because every option it has is too
+  // rare to be worth a control.
+  const groups = React.useMemo(
+    () =>
+      GROUPS.map((kind) => ({
+        kind,
+        counts: facetCounts(packs, state, kind),
+        activeValues: activeFacetValues(state, kind),
+        values: offeredFacetValues(packs, state, kind),
+      })).filter((group) => group.values.length > 0),
+    [packs, state],
   );
+
+  const activeCount = activeFacetSelectionCount(state);
 
   if (groups.length === 0) return null;
 
@@ -78,19 +105,16 @@ export function FacetBar({
       mechanism: null,
     });
 
-  const anyActive =
-    state.advantage.length > 0 ||
-    state.sector !== null ||
-    state.payer !== null ||
-    state.effort !== null ||
-    state.commitment !== null ||
-    state.mechanism !== null;
+  const panel = (
+    <div className="flex flex-col gap-5">
+      {/* Every group named an attribute, so nothing on screen said what clicking one would DO.
+          One sentence, and the count already sitting beside each option explains itself. */}
+      <p className="text-xs leading-relaxed text-muted">
+        Pick any option to narrow the shelf. The number beside it is how many packs match.
+      </p>
 
-  return (
-    <div className={cx('flex flex-col gap-5', className)}>
-      {groups.map(({ kind, counts }) => {
+      {groups.map(({ kind, counts, activeValues, values }) => {
         const isAdvantage = kind === 'advantage';
-        const activeValues = isAdvantage ? state.advantage : ([state[kind]].filter(Boolean) as string[]);
         return (
           <div key={kind}>
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
@@ -105,38 +129,34 @@ export function FacetBar({
               >
                 All
               </ValueButton>
-              {VOCABULARY[kind]
-                // Only offer values some pack actually carries — an option that can only ever
-                // return zero results is a promise the catalogue cannot keep.
-                .filter((value) => counts[value] !== undefined)
-                .map((value) => {
-                  const active = activeValues.includes(value);
-                  return (
-                    <ValueButton
-                      key={value}
-                      active={active}
-                      count={counts[value]}
-                      onClick={() => {
-                        if (isAdvantage) {
-                          const next = active
-                            ? state.advantage.filter((v) => v !== value)
-                            : [...state.advantage, value as (typeof state.advantage)[number]];
-                          onChange({ ...state, advantage: next });
-                        } else {
-                          onChange({ ...state, [kind]: active ? null : value });
-                        }
-                      }}
-                    >
-                      {label(kind, value)}
-                    </ValueButton>
-                  );
-                })}
+              {values.map((value) => {
+                const active = activeValues.includes(value);
+                return (
+                  <ValueButton
+                    key={value}
+                    active={active}
+                    count={counts[value]}
+                    onClick={() => {
+                      if (isAdvantage) {
+                        const next = active
+                          ? state.advantage.filter((v) => v !== value)
+                          : [...state.advantage, value as (typeof state.advantage)[number]];
+                        onChange({ ...state, advantage: next });
+                      } else {
+                        onChange({ ...state, [kind]: active ? null : value });
+                      }
+                    }}
+                  >
+                    {label(kind, value)}
+                  </ValueButton>
+                );
+              })}
             </div>
           </div>
         );
       })}
 
-      {anyActive && (
+      {activeCount > 0 && (
         <button
           type="button"
           onClick={clearAll}
@@ -145,6 +165,51 @@ export function FacetBar({
           Clear all filters
         </button>
       )}
+    </div>
+  );
+
+  const matching = filterPacks(packs, state).length;
+
+  return (
+    <div className={className}>
+      <div className="hidden lg:block">{panel}</div>
+
+      <div className="lg:hidden">
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-expanded={sheetOpen}
+          aria-haspopup="dialog"
+          className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30"
+        >
+          Filters
+          {activeCount > 0 && (
+            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-white">
+              {activeCount}
+            </span>
+          )}
+        </button>
+
+        {/* Modal owns Escape, backdrop click, body-scroll lock and the focus trap
+            (`components/ui/Modal.tsx:20-25`), so the sheet inherits them rather than
+            re-implementing a dialog that gets one of them wrong. */}
+        <Modal
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          title="Narrow the shelf"
+          footer={
+            <button
+              type="button"
+              onClick={() => setSheetOpen(false)}
+              className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"
+            >
+              Show {matching} {matching === 1 ? 'pack' : 'packs'}
+            </button>
+          }
+        >
+          {panel}
+        </Modal>
+      </div>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   MECHANISM,
   PAYER,
   SECTOR,
+  VOCABULARY,
   type Advantage,
   type Commitment,
   type Effort,
@@ -37,6 +38,7 @@ export interface FacetedPack {
   title: string;
   oneLine?: string;
   headline?: string;
+  cardLine?: string;
   whoPays?: string;
   sector?: string | null;
   payer?: string | null;
@@ -257,6 +259,68 @@ export function facetCounts(
     }
   }
   return counts;
+}
+
+/** The values of `kind` the buyer currently has selected. Single-valued facets yield 0 or 1. */
+export function activeFacetValues(state: DiscoveryState, kind: FacetKind): string[] {
+  return kind === 'advantage' ? [...state.advantage] : ([state[kind]].filter(Boolean) as string[]);
+}
+
+/**
+ * How many individual chips are lit, which is NOT `activeConstraintCount`.
+ *
+ * `activeConstraintCount` counts `advantage` as one constraint however many values are in it,
+ * because the near-miss rule asks "how many AND-ed constraints did this pack fail". A "Filters"
+ * badge answers a different question — how many controls did I switch on — and a buyer who lit
+ * "Suits builders" and "Suits sellers" and reads "Filters 1" has been told something they can
+ * see is false.
+ */
+export function activeFacetSelectionCount(state: DiscoveryState): number {
+  return state.advantage.length + SINGLE_PARAMS.filter(([kind]) => state[kind] !== null).length;
+}
+
+/**
+ * The minimum number of packs in the whole catalogue that must carry a value before it is
+ * offered as a filter control. See `offeredFacetValues`.
+ */
+export const MIN_OPTION_PACKS = 2;
+
+/**
+ * Which values of `kind` are worth rendering as controls.
+ *
+ * Three rules, in order:
+ *
+ * 1. A value no pack in the current pool carries is not offered — an option that can only ever
+ *    return zero results is a promise the catalogue cannot keep.
+ * 2. A value fewer than `minPacks` packs carry ANYWHERE in the catalogue is not offered.
+ *    Measured on the live catalogue on 2026-07-31: `audience` was carried by 1 pack of 42,
+ *    `full_time` by 1, `housing_rental` by 1, `professional_services` by 1, `audience_media`
+ *    by 1, `data_intelligence` by 1. A control that takes the shelf from 42 to 1 charges every
+ *    buyer the cost of reading and deciding on it and can only ever produce a near-empty grid.
+ *    Nothing becomes unreachable: the pack keeps every chip it earned and still appears under
+ *    "All", in search, in the matchmaker and in similar-packs.
+ * 3. A value the buyer has already selected is ALWAYS offered, whatever its count — hiding it
+ *    would strand them inside a filter with no visible control to leave it by. That is the case
+ *    a shared-URL makes real: `?commitment=full_time` is a legal link.
+ *
+ * Rule 2 is judged against the catalogue and never against the filtered pool, so options do not
+ * appear and vanish as the buyer clicks. `q` is cleared for the same reason — typing in the
+ * search box must not silently delete filter controls.
+ */
+export function offeredFacetValues(
+  packs: readonly FacetedPack[],
+  state: DiscoveryState,
+  kind: FacetKind,
+  minPacks: number = MIN_OPTION_PACKS,
+): string[] {
+  const active = activeFacetValues(state, kind);
+  const inPool = facetCounts(packs, state, kind);
+  const inCatalogue = facetCounts(packs, EMPTY_DISCOVERY_STATE, kind);
+  return VOCABULARY[kind].filter(
+    (value) =>
+      inPool[value] !== undefined &&
+      (active.includes(value) || (inCatalogue[value] ?? 0) >= minPacks),
+  );
 }
 
 /** A pack that failed exactly one active facet constraint, plus the state that would include it. */
@@ -525,4 +589,55 @@ export function splitTitle(
   const name = title.slice(0, cut).trim();
   const descriptor = title.slice(cut + separatorLength).trim();
   return name && descriptor ? { name, descriptor } : fallback;
+}
+
+/** The longest heading that still scans as a shelf label rather than a paragraph. Mirrors
+ *  `CARD_LINE_MAX` in `prospector/artifacts.py`; the front end re-checks rather than trusting
+ *  the wire, because packs published by an older engine predate the enforcement. */
+export const CARD_HEADING_MAX = 60;
+
+/** What a pack card puts where. */
+export interface CardHeading {
+  /** The brand name, always. This is the pack's identity — what a basket line and an order
+   *  confirmation must say — independently of whether the card chose to display it. */
+  name: string;
+  /** The card's H3. */
+  heading: string;
+  /** The brand name, shown small above the heading — only when the heading is not itself
+   *  the name (otherwise the card would print the name twice). */
+  eyebrow: string | null;
+  /** Supporting line under the heading, or null when it would repeat the heading. */
+  sub: string | null;
+}
+
+/**
+ * Decide the card's hierarchy.
+ *
+ * A first-time visitor cannot buy from "PitchBrief" — a brand name they have never heard is
+ * the least useful string on the card, and it was the H3. But the descriptor derived from the
+ * title runs to 90+ characters ("PitchCall Forensics — The Under-27 Gig Driver's
+ * Insurance-Refusal Reversal & Telematics-Data Subject-Access Round"), so promoting THAT gives
+ * twenty cards of wrapped bold text, which is not a shelf either.
+ *
+ * So the heading is the engine's short `cardLine` when there is one, with the brand demoted to
+ * an eyebrow. When there is not — every pack published before the engine emitted it, and any
+ * pack whose operator could not write a truthful short line — the pre-existing hierarchy is
+ * kept exactly. Nothing is shortened here to manufacture a heading: a long line is left where
+ * it already renders correctly rather than cut into a claim nobody made.
+ */
+export function cardHeading(pack: FacetedPack): CardHeading {
+  const { name, descriptor } = splitTitle(pack.title, pack.headline);
+  const card = pack.cardLine?.trim();
+
+  if (card && card.length <= CARD_HEADING_MAX) {
+    return {
+      name,
+      heading: card,
+      // Only worth a line if it says something the heading does not.
+      eyebrow: name && name.toLowerCase() !== card.toLowerCase() ? name : null,
+      sub: descriptor && descriptor.toLowerCase() !== card.toLowerCase() ? descriptor : null,
+    };
+  }
+
+  return { name, heading: name, eyebrow: null, sub: descriptor };
 }

@@ -60,7 +60,12 @@ jobs:
         run: uv pip install --system -r requirements.txt
 
       - name: Main test suite (excluding UI theme)
-        run: python -m pytest -q --ignore=tests/test_ui_theme.py --tb=short -x -p no:warnings
+        # No -x. It stops at the first failure, so a run reports one problem and hides the
+        # rest behind it: on 2026-07-31 four independent environment faults (a hardcoded
+        # .venv path, tests asserting on a gitignored store, and three undeclared
+        # dependencies) took four separate pushes to discover, one per run. The whole point
+        # of CI is to learn everything one push is wrong about, in that push.
+        run: python -m pytest -q --ignore=tests/test_ui_theme.py --tb=short -p no:warnings
 
       # ── Hard gate ──────────────────────────────────────────────
       # Block the pipeline if the golden set does not achieve 100 %
@@ -132,47 +137,3 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://api.example.com
           NEXT_PUBLIC_SITE_URL: https://www.example.com
-
-  # ──────────────────────────────────────────────────────────────────
-  # Playwright storefront smoke against the LIVE site.
-  #
-  # Deliberately not part of the PR gate: the specs assert that the home page lists at least
-  # one pack (e2e/storefront.spec.ts), which needs a real seeded Store.Api catalogue. A bare
-  # CI build has an empty catalogue and would fail for reasons unrelated to the diff. Running
-  # it on main (and on demand) keeps it a real gate on the deployed store without making every
-  # PR depend on production being reachable.
-  # ──────────────────────────────────────────────────────────────────
-  e2e-live-smoke:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-
-    defaults:
-      run:
-        working-directory: store_platform/src/Store.Web/
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Storefront smoke against live
-        run: npm run test:e2e
-        env:
-          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: store_platform/src/Store.Web/playwright-report/
-          retention-days: 7

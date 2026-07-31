@@ -31,6 +31,14 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # with no canonical URLs and no social preview card — a failure with no error message anywhere.
 ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+# Same silent-discard trap as SITE_URL above, but this one costs money rather than SEO. lib/stripe.ts
+# reads this to decide `stripeConfigured`; undeclared, the --build-arg is dropped and the bundle
+# ships with no key, so resolveStripeCheckout skips the embedded surface entirely and every buyer
+# is redirected to hosted checkout. That degrades safely — which is exactly why it can sit
+# unnoticed. The MODE must match the API's secret key: a pk_test_ bundle against a live API cannot
+# confirm a live PaymentIntent. scripts/deploy_web.sh enforces both facts before a build starts.
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

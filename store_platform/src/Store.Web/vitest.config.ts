@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -7,6 +9,14 @@ import { defineConfig } from 'vitest/config';
  * rather than slowing the whole suite down.
  */
 export default defineConfig({
+  resolve: {
+    // Mirrors the `@/*` path mapping in tsconfig.json. Vitest does not read tsconfig paths, so
+    // without this any test that reaches a module importing `@/...` fails to resolve — which is
+    // every component, not just the one under test.
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
