@@ -176,9 +176,22 @@ Two things came out of it, both shipped:
   `SaveChangesAsync`) or `revoked`, and logs `PAID-WITHOUT-FULFILMENT` at error level.
   Covered by `src/Store.Tests/Endpoints/OrderBySessionTests.cs`; both new cases return
   `pending` against the pre-fix endpoint, which is the proof they would have caught this.
-- If repeatable end-to-end delivery testing is wanted, the way to get it is a £1 **unlisted**
-  pack with real content — not a bypass in the fence. A bypass would upgrade a leaked
-  `Store:InternalApiKey` from "can open 50p sessions" to "can take packs for free".
+- Repeatable end-to-end delivery testing now has a route that touches no fence: a £1 pack,
+  bought at its real £1, hidden from the browse catalogue. `scripts/create_probe_pack.py`
+  creates it; `GO_LIVE_RUNBOOK.md` step 4 uses it.
+
+  It could not be *unlisted*, which is what this was first sketched as. `IsListed` does two jobs
+  — "appears in `GET /catalog`" and "can be bought at all" — and the second is what makes
+  withdrawing a pack actually stop sales (`Program.cs:206`, `CheckoutEndpoints.cs:271`). An
+  unlisted pack is unbuyable, so it can prove nothing about delivery. `Pack.HiddenFromCatalogue`
+  splits off only the browse half: absent from `GET /catalog`, the storefront grid and the
+  public stats, while remaining an ordinary sale that still needs a billable price and still
+  faces the underpayment fence. **Nothing became buyable that was not buyable before**, and
+  `HiddenFromCatalogueTests` pins that — an unlisted pack is still refused at checkout whether
+  hidden or not.
+
+  The alternative — a bypass in the fence for cheap sessions — was rejected: it would upgrade a
+  leaked `Store:InternalApiKey` from "can open 50p sessions" to "can take any pack for free".
 - **Express Checkout (Apple Pay / Link).** Stripe's
   `elements-inner-express-checkout-*.html` iframe repeatedly `ERR_ABORTED`s in the probe.
   HYPOTHESIS: headless Chromium has no Apple Pay, so Stripe tears the frame down; card and the

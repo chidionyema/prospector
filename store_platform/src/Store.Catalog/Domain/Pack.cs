@@ -11,6 +11,21 @@ public class Pack
     public string? ProviderPriceId { get; set; }
     public bool IsListed { get; set; }
 
+    // Hidden from the browse catalogue while staying fully sellable at its real price.
+    //
+    // This exists so fulfilment can be proved end to end for the price of the pack, repeatably,
+    // WITHOUT weakening a fence. IsListed does two jobs — "appears in GET /catalog" and "can be
+    // bought at all" — and it is the second that makes withdrawing a pack actually stop sales
+    // (Program.cs:206, CheckoutEndpoints.cs:271). A cheap probe pack therefore cannot be
+    // "unlisted": unlisted means unbuyable. Splitting off the browse half is the only way to get
+    // one that is out of the shop window and still a real, honestly-priced sale.
+    //
+    // Deliberately NOT a sellability flag. Nothing becomes buyable that was not buyable before:
+    // a hidden pack is still IsListed, still needs a billable price, and is still refused by the
+    // underpayment fence below its own PricePence. Quarantine keeps working exactly as it did —
+    // IsListed=false stops the sale regardless of this flag.
+    public bool HiddenFromCatalogue { get; set; }
+
     // Why the pack was last withdrawn from sale, set by PATCH /internal/catalog/{id}/listing.
     // Kept after a re-list rather than cleared, so the history of a pack that has been pulled
     // and restored is still legible; DelistedAt tells you whether it applies right now.

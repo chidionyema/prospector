@@ -56,9 +56,16 @@ Everything else (validation, reprovisioning prices, proving the fail-closed boot
    ```
    STRIPE_TEST_SECRET_KEY="$Stripe__ApiKey" bash store_platform/scripts/prove_launch.sh
    ```
-   Then do **one real purchase at full list price** on the live storefront, confirm the download
-   arrives, refund it in the dashboard, and confirm the download 410s (access revoked). Refund
-   it and the money comes back, so the true cost of this step is the card fee, not the price.
+   Then do **one real purchase at the pack's full price**, confirm the download arrives, refund
+   it in the dashboard, and confirm the download 410s (access revoked). Use the £1 delivery
+   probe pack so this costs £1 rather than £49:
+   ```
+   python3 store_platform/scripts/create_probe_pack.py --content-file <real.zip> --dry-run
+   python3 store_platform/scripts/create_probe_pack.py --content-file <real.zip>
+   ```
+   It creates a genuine £1 pack that is hidden from the browse catalogue but sold like any
+   other — full price paid, every gate exercised, no fence touched. Buy it at
+   `/pack/probe-delivery-1gbp`. Refunding returns the money, so the real cost is the card fee.
 
    ⚠️ **Full price is required, and this step used to say otherwise.** It previously said to pay
    50p via `scripts/smoke_checkout.sh`. That is wrong and it was tried: the payment left the

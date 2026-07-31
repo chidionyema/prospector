@@ -152,8 +152,11 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
 {
     // Materialise first, then shape: AdvantagesJson is JSON text (SQLite has no array
     // column) and must be rehydrated in memory — EF cannot translate the parse into SQL.
+    // Hidden packs are sellable but not on the shelf: they must not appear here, in the
+    // storefront grid, or in the sitemap. Their pack page still resolves for anyone holding
+    // the id, which is what makes them buyable at all — see Pack.HiddenFromCatalogue.
     var packs = await db.Packs
-        .Where(p => p.IsListed)
+        .Where(p => p.IsListed && !p.HiddenFromCatalogue)
         .OrderByDescending(p => p.CreatedAt)
         .ToListAsync()
         .ConfigureAwait(false);
@@ -254,8 +257,13 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
 // survivorship social proof. Counts only what this layer actually knows.
 app.MapGet("/catalog/stats", async (StoreDbContext db) =>
 {
-    var registered = await db.Packs.CountAsync().ConfigureAwait(false);
-    var listed = await db.Packs.CountAsync(p => p.IsListed).ConfigureAwait(false);
+    // Both counts exclude hidden packs. This number is shown to buyers as survivorship proof,
+    // so an internal probe pack must not inflate either side of it — it cleared no gates and is
+    // not on offer.
+    var registered = await db.Packs.CountAsync(p => !p.HiddenFromCatalogue).ConfigureAwait(false);
+    var listed = await db.Packs
+        .CountAsync(p => p.IsListed && !p.HiddenFromCatalogue)
+        .ConfigureAwait(false);
     return Results.Ok(new { listed, registered });
 })
 .WithName("GetCatalogStats")
@@ -437,6 +445,7 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
         }
     }
     pack.IsListed = wantsListing;
+    pack.HiddenFromCatalogue = request.HiddenFromCatalogue;
 
     await db.SaveChangesAsync().ConfigureAwait(false);
     return Results.Ok(pack);

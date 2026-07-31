@@ -56,5 +56,9 @@ public record PublishRequest(
     // last for the same append-only reason as the facets above. Length is enforced by the
     // engine, which DISCARDS an over-length line rather than truncating it, so anything
     // arriving here is a whole sentence the engine stood behind.
-    string? CardLine = null
+    string? CardLine = null,
+    // Keep the pack out of the browse catalogue while leaving it fully sellable. Appended last
+    // for the same append-only reason as everything above it. Defaults false, so no existing
+    // caller changes behaviour. This is NOT a sellability switch — see Pack.HiddenFromCatalogue.
+    bool HiddenFromCatalogue = false
 );
