@@ -10,6 +10,7 @@ import json
 import os
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -114,8 +115,14 @@ with open(tmp, "w") as f:
 time.sleep(300)
 """)
         env = {**os.environ, "STORE_DIR": str(store_dir)}
+        # sys.executable, not ".venv/bin/python": that path was relative, so it also
+        # depended on the cwd pytest happened to be launched from, and it does not exist
+        # in CI, which installs with `uv pip install --system` into the setup-python
+        # interpreter. sys.executable is the interpreter running this test either way —
+        # locally that IS .venv/bin/python. The script below imports only the stdlib, so
+        # no environment beyond the interpreter is needed.
         proc = subprocess.Popen(
-            [".venv/bin/python", str(script)],
+            [sys.executable, str(script)],
             env=env,
         )
 

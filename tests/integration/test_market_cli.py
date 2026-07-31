@@ -14,7 +14,12 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PY = str(REPO_ROOT / ".venv" / "bin" / "python")
+
+# The interpreter running these tests, not a hardcoded .venv path: CI installs with
+# `uv pip install --system` (.github/workflows/ci.yml) so there is no .venv there at all,
+# and the subprocess needs the same dependencies the parent already imported. Locally
+# sys.executable IS .venv/bin/python, so this is the previous behaviour plus CI.
+PY = sys.executable
 
 
 @pytest.fixture(autouse=True)
