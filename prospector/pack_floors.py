@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Sequence
 
+from .plain_text import to_plain_text
+
 
 def _supported_bullets(checks: Sequence[Any], *, limit: int = 5) -> List[str]:
     out: List[str] = []
@@ -77,7 +79,12 @@ def claim_safe_marketing(
                 "Operations plan",
                 "Financial model (Python-computed from verified inputs)",
             ],
-            "proof_point": (bullets[0][2:] if bullets else one)[:240],
+            # `bullets` are markdown list items (`- **buyer intent:** ...`). proof_point is
+            # rendered by the storefront as literal text, so the markup has to come off here
+            # or the buyer reads the asterisks. Words are preserved verbatim.
+            "proof_point": to_plain_text(
+                bullets[0] if bullets else one, collapse=True
+            )[:240],
             "who_pays": who,
             "effort_tag": "solo_operator",
             "time_to_first_revenue": "",

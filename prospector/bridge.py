@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 from . import facets as facets_mod
 from .models import Dossier, Decision
 from .pack_validation import validate_pack
+from .plain_text import plain_lines, to_plain_text
 
 logger = logging.getLogger("prospector.bridge")
 
@@ -45,14 +46,19 @@ def _sample_excerpts(build_spec: str, proof_point: str, max_items: int = 3) -> L
     the research looks like, never the build steps (the how-to is the paid product)."""
     out: List[str] = []
     for raw in re.split(r"(?<=[.!?])\s+|\n", build_spec or ""):
-        line = raw.strip().lstrip("-*#> ").strip()
+        # Detect on the RAW line (a citation may be a markdown link), emit the plain-text
+        # form — the storefront prints these verbatim, so leftover `**` reaches the buyer.
+        # keep_link_urls preserves the cited target, which is the whole point of an excerpt.
+        if not _CITED_RE.search(raw):
+            continue
+        line = to_plain_text(raw, collapse=True, keep_link_urls=True)
         if not (40 <= len(line) <= 320):
             continue
-        if _CITED_RE.search(line) and any(ch.isdigit() for ch in line) and line not in out:
+        if any(ch.isdigit() for ch in line) and line not in out:
             out.append(line)
         if len(out) >= max_items:
             break
-    proof = (proof_point or "").strip()
+    proof = to_plain_text(proof_point, collapse=True)
     if len(out) < 2 and proof and proof not in out:
         out.append(proof)
     return out[:max_items]
@@ -74,6 +80,40 @@ def _financial_snapshot(fin_text: str) -> Dict[str, str]:
     if m:
         snap["paybackMonths"] = f"{m.group(1)} months"
     return snap
+
+
+# Every file a complete bundle must contain. Asserted after the zip is written, so a
+# structurally incomplete pack fails loudly at build time instead of at a buyer's download.
+#
+# 120 bytes is a deliberately low bar: it catches the header-only class of failure (the
+# 20-byte "# Marketing Assets\n\n") without second-guessing `validate_pack`, which remains the
+# real sellability gate. The claim-safe financial-model stub is ~150 bytes and must pass.
+_MIN_BUNDLE_ENTRY_BYTES = 120
+BUNDLE_FILES = (
+    "00_Executive_Summary.md",
+    "01_Blueprint_BuildSpec.md",
+    "02_Marketing_Plan_GTM.md",
+    "03_Operations_Plan.md",
+    "04_Financial_Model.md",
+    "05_First_Week_Checklist.md",
+    "Marketing_Assets.md",
+    "QA_Report.md",
+)
+
+
+def _held_back_md(artifact_label: str) -> str:
+    """Placeholder for an artifact that generation failed to produce.
+
+    Claim-safe by construction: it states an absence and invents nothing. A pack containing
+    one of these cannot pass `validate_pack`, so it is registered UNLISTED and never sold.
+    """
+    return (
+        f"# {artifact_label} — not generated\n\n"
+        "Generation did not return this document, so there is nothing to show here. "
+        "Prospector does not substitute invented content for a missing artifact.\n\n"
+        "This pack therefore fails the completeness gate and is held back from sale until "
+        "the document is regenerated.\n"
+    )
 
 
 def _trust_fields(dossier: Dossier) -> Dict[str, Any]:
@@ -260,20 +300,32 @@ class EngineBridge:
 
         listing = next((m for m in marketing if m.get("type") == "listing_page"), {})
         listing_copy = listing.get("copy", "")
-        one_liner = candidate.one_liner or (listing_copy[:150] + "..." if len(listing_copy) > 150 else listing_copy)
+        # `copy` is markdown (it starts with `# <title>`), and oneLine is rendered as literal
+        # text on the storefront card — take the markup off before it becomes the fallback.
+        one_liner = to_plain_text(candidate.one_liner, collapse=True) or to_plain_text(
+            listing_copy, collapse=True
+        )
+        if len(one_liner) > 150:
+            one_liner = one_liner[:150] + "..."
 
         # Per-pack catalog metadata: the structured listing fields + a safe sample excerpt +
         # the Python-computed economics teaser + moat trust signals. This is what lets the
         # storefront sell each pack specifically instead of with identical generic chips.
-        subhead = (listing.get("subhead") or "").strip()
+        # EVERY string below is printed by the storefront without a markdown parser (see
+        # Store.Web pack/[id].tsx), so each one goes through to_plain_text. Sanitising here —
+        # at the single boundary where the payload is built — covers operator-generated
+        # listings too, not just the deterministic floors in pack_floors.
+        subhead = to_plain_text(listing.get("subhead"), collapse=True)
         catalog_meta: Dict[str, Any] = {
-            "headline": (listing.get("headline") or "").strip()[:140],
+            "headline": to_plain_text(listing.get("headline"), collapse=True)[:140],
             "subhead": subhead[:280],
-            "whatYouGet": [str(x).strip() for x in (listing.get("what_you_get") or []) if str(x).strip()][:5],
-            "proofPoint": (listing.get("proof_point") or "").strip(),
-            "whoPays": (listing.get("who_pays") or "").strip(),
+            "whatYouGet": plain_lines(listing.get("what_you_get"))[:5],
+            "proofPoint": to_plain_text(listing.get("proof_point"), collapse=True),
+            "whoPays": to_plain_text(listing.get("who_pays"), collapse=True),
             "effortTag": (listing.get("effort_tag") or "").strip(),
-            "timeToFirstRevenue": (listing.get("time_to_first_revenue") or "").strip(),
+            "timeToFirstRevenue": to_plain_text(
+                listing.get("time_to_first_revenue"), collapse=True
+            ),
             "sampleExtract": _sample_excerpts(artifacts.get("build_spec", ""), listing.get("proof_point", "")),
             "financialSnapshot": _financial_snapshot(artifacts.get("financial_model", "")),
             "verifiedAt": getattr(dossier, "created_at", "") or "",
@@ -390,7 +442,7 @@ class EngineBridge:
 
         return self._update_catalog(
             id=candidate_id,
-            title=candidate.title,
+            title=to_plain_text(candidate.title, collapse=True),
             one_line=one_liner,
             dossier_ref=dossier_ref,
             payment_provider=payment_provider,
@@ -471,14 +523,26 @@ class EngineBridge:
             )
 
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                # 1. Blueprint (Build Spec)
-                self._add_to_zip(zipf, "01_Blueprint_BuildSpec.md", artifacts.get("build_spec", ""))
-                
-                # 2. Marketing Plan (GTM Plan)
-                self._add_to_zip(zipf, "02_Marketing_Plan_GTM.md", artifacts.get("gtm_plan", ""))
+                # 1-3. The prose deliverable. `_add_to_zip` writes nothing for empty content, so
+                # a tier that silently returned "" used to produce a zip with the file simply
+                # ABSENT (proven: publish/bundles/af1647af.../*.zip has no 01/02/03). The
+                # completeness gate correctly keeps such a pack UNLISTED, but a structurally
+                # incomplete zip is still worse than an honest placeholder — a missing file
+                # reads as an oversight, a stub says what happened and why nothing is for sale.
+                self._add_to_zip(
+                    zipf, "01_Blueprint_BuildSpec.md",
+                    artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec"),
+                )
 
-                # 3. Operations Plan
-                self._add_to_zip(zipf, "03_Operations_Plan.md", artifacts.get("ops_plan", ""))
+                self._add_to_zip(
+                    zipf, "02_Marketing_Plan_GTM.md",
+                    artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan"),
+                )
+
+                self._add_to_zip(
+                    zipf, "03_Operations_Plan.md",
+                    artifacts.get("ops_plan", "") or _held_back_md("Operations plan"),
+                )
 
                 # 4. Financial Model — its own file, with a provenance banner. The arithmetic is
                 # Python-computed from verified inputs (no LLM math), which is a real trust
@@ -506,13 +570,28 @@ class EngineBridge:
                 qa_report = render_markdown(dossier)
                 self._add_to_zip(zipf, "QA_Report.md", qa_report)
                 
-                # 6. Marketing Assets (Social, Email, SEO) — never a bare header stub
-                marketing_text = "# Marketing Assets\n\n"
-                for m in marketing:
-                    marketing_text += (
-                        f"## {str(m.get('type', 'asset')).replace('_', ' ').title()}\n\n"
-                        f"{m.get('copy') or ''}\n\n"
-                    )
+                # 6. Marketing Assets (Social, Email, SEO) — never a bare header stub.
+                # The old loop appended a `##` heading per piece even when `copy` was empty,
+                # so a marketing list of empty pieces produced exactly "# Marketing Assets\n\n"
+                # — the 20-byte file. Skip empty pieces, then assert we wrote something real.
+                sections = [
+                    f"## {str(m.get('type', 'asset')).replace('_', ' ').title()}\n\n"
+                    f"{(m.get('copy') or '').strip()}\n"
+                    for m in marketing
+                    if (m.get("copy") or "").strip()
+                ]
+                if not sections:
+                    # ensure_marketing_floor above should make this unreachable; if it ever is
+                    # reached, synthesise the floor directly rather than ship a header stub.
+                    from .pack_floors import claim_safe_marketing
+                    sections = [
+                        f"## Listing Page\n\n{m['copy'].strip()}\n"
+                        for m in claim_safe_marketing(
+                            dossier.candidate, getattr(dossier, "checks", []) or []
+                        )
+                        if (m.get("copy") or "").strip()
+                    ]
+                marketing_text = "# Marketing Assets\n\n" + "\n".join(sections)
                 self._add_to_zip(zipf, "Marketing_Assets.md", marketing_text)
 
                 # 7–8. Epic C lite floors (deterministic, claim-safe)
@@ -523,6 +602,23 @@ class EngineBridge:
                 self._add_to_zip(
                     zipf, "05_First_Week_Checklist.md",
                     first_week_checklist_md(dossier.candidate),
+                )
+
+            # Structural check on the artefact we actually wrote — not on the inputs we think
+            # we passed. This is the assertion that would have caught the 5-file bundles and
+            # the 20-byte Marketing_Assets.md at build time.
+            with zipfile.ZipFile(zip_path) as check:
+                written = {i.filename: i.file_size for i in check.infolist()}
+            gaps = [f for f in BUNDLE_FILES if f not in written]
+            stubs = [f"{f}={written[f]}b" for f in BUNDLE_FILES
+                     if f in written and written[f] < _MIN_BUNDLE_ENTRY_BYTES]
+            if gaps or stubs:
+                # Deliberately NOT fatal: an incomplete pack is still registered UNLISTED so it
+                # can be retried, and `is_listed` already requires validate_pack, so nothing
+                # incomplete is ever sold. Failing here would silently drop that retry record.
+                logger.error(
+                    f"EngineBridge: bundle {candidate_id} is structurally incomplete "
+                    f"(missing={gaps or '-'}, stubs={stubs or '-'}) — registering UNLISTED"
                 )
 
             return zip_path

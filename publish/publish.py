@@ -4,6 +4,7 @@ publish.py — Publish a PASS to own store + syndicate (Part 6, 11).
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -46,7 +47,19 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
     if decision != Decision.PASS:
         return {"status": "skipped", "reason": f"Decision is {decision}"}
 
+    # The catalog push and the local receipt are two writes with a gap between them. A crash
+    # or kill inside that gap leaves a pack LIVE in the catalog with no local trace, and the
+    # backfill — which decides what is outstanding purely from store/listings/ — would then
+    # regenerate and re-publish it. The marker makes that window observable: it is written
+    # before the push and cleared after the receipt, so anything left behind names exactly
+    # which candidate to reconcile against the catalog.
+    marker = _mark_inflight(candidate_id, cfg)
+
     # Use the new EngineBridge for Track 1 (Paddle + Catalog API)
+    # The marker is cleared ONLY once the receipt exists, i.e. once local and catalog state
+    # are known to agree. An exception or a reported failure leaves it in place on purpose:
+    # a partial catalog update is indistinguishable from no update from here, and a stale
+    # marker asking for a check is safer than a silent divergence.
     bridge = EngineBridge(cfg)
     success = bridge.publish_pass(dossier)
 
@@ -64,6 +77,7 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
             },
             cfg,
         )
+        _clear_inflight(marker)
         return {
             "status": "published",
             "candidate_id": candidate_id,
@@ -78,8 +92,58 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
         }
 
 
+def _store_dir(cfg: Any) -> Path:
+    if isinstance(cfg, dict):
+        store_dir_path = (cfg.get("store") or {}).get("dir") or cfg.get("store_dir", "store")
+    else:
+        store = getattr(cfg, "store", None) or {}
+        store_dir_path = (
+            store.get("dir") if isinstance(store, dict) else None
+        ) or getattr(cfg, "store_dir", "store")
+    return Path(store_dir_path or "store")
+
+
+def inflight_dir(cfg: Any) -> Path:
+    return _store_dir(cfg) / "listings" / ".inflight"
+
+
+def _mark_inflight(candidate_id: str, cfg: Any) -> Optional[Path]:
+    """Record 'a catalog push is about to happen for this id'. Best-effort: a failure to
+    write the marker must never block a publish."""
+    try:
+        d = inflight_dir(cfg)
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / f"{candidate_id}.json"
+        p.write_text(json.dumps({"candidate_id": candidate_id, "pid": os.getpid()}))
+        return p
+    except Exception:
+        return None
+
+
+def _clear_inflight(marker: Optional[Path]) -> None:
+    if marker is None:
+        return
+    try:
+        marker.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def unreconciled(cfg: Any) -> list:
+    """Candidate ids that were mid-publish when a previous process died. Each one may be live
+    in the catalog without a local receipt — check before re-publishing it."""
+    d = inflight_dir(cfg)
+    if not d.is_dir():
+        return []
+    return sorted(p.stem for p in d.glob("*.json"))
+
+
 def _write_listing(candidate_id: str, listing: Dict[str, Any], cfg: Any) -> Path:
-    """Write a local listing receipt under ``store/listings/`` (CC Pub badge)."""
+    """Write a local listing receipt under ``store/listings/`` (CC Pub badge).
+
+    Written atomically (temp file + os.replace): the receipt is what the backfill reads to
+    decide a pack is done, so a torn half-written file would make it skip a pack forever.
+    """
     if isinstance(cfg, dict):
         store_dir_path = (cfg.get("store") or {}).get("dir") or cfg.get("store_dir", "store")
     else:
@@ -92,7 +156,9 @@ def _write_listing(candidate_id: str, listing: Dict[str, Any], cfg: Any) -> Path
     listings_dir.mkdir(parents=True, exist_ok=True)
 
     path = listings_dir / f"{candidate_id}.json"
-    path.write_text(json.dumps(listing, indent=2, ensure_ascii=False))
+    tmp = listings_dir / f".{candidate_id}.json.tmp"
+    tmp.write_text(json.dumps(listing, indent=2, ensure_ascii=False))
+    os.replace(tmp, path)
     return path
 
 
