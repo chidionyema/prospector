@@ -40,8 +40,10 @@ Read these, in this order. Each tells you something the next one assumes:
    handoff from the last session: the active task, decisions + reasoning, files
    touched, the exact next step, and open problems. This is re-injected automatically
    at session start. **Start here for "what am I doing right now."**
-3. **`HANDOVER.md`** (repo root) — the engineering handover: what exists, how it's
-   wired, how to run, what to build next. Points to the master spec.
+3. **`store_platform/OPERATIONS.md`** — symptom → command for the store and money rail,
+   and the traps that have each already produced a wrong conclusion. **Start here before
+   running anything against the live store.** (The old root `HANDOVER.md` is archived under
+   `docs/archive/2026-06/` — it is pre-launch and factually wrong now.)
 4. **`~/.claude/projects/<project-slug>/memory/MEMORY.md`** — the memory index;
    one line per durable fact. Follow the links that look relevant (the master plan
    and the ambition-lanes architecture are the north stars).
@@ -126,7 +128,8 @@ Do not quote these from memory. Open the file.
 | CLI commands + flags | `prospector/run.py` (the argparse block) |
 | The check vocabulary + data contracts | `prospector/models.py` |
 | The moat mechanics (query-gen → fetch → verdict, confidence) | `prospector/verify.py` |
-| What's built, how it's wired, what's next | `HANDOVER.md` → `prospector-master-spec.md` |
+| What's built, how it's wired, what's next | `README.md` → `prospector-master-spec.md` |
+| What to run when the store misbehaves | `store_platform/OPERATIONS.md` |
 | Operating rules + module map | `CLAUDE.md` |
 | Durable project facts/decisions | the memory dir (`MEMORY.md` index) |
 | Written specs for delegated work | `specs/` |

@@ -18,10 +18,17 @@ Two states are deliberately NOT failures:
     (FulfilmentService.cs:151-154), so the endpoint correctly stops saying "ready". Counting
     those as failures would make every successful refund look like a delivery bug.
 
+A third state is excused by ledger: store_platform/data/reconcile-exceptions.json lists sessions
+that must not count as failures, each with a written reason. This exists because one known-bad
+historical order otherwise red-lights the probe forever, and a permanently red probe hides the
+real failure it was built to catch. Excuses are printed on every run, never silent, and they
+apply ONLY to undelivered orders — an unreachable store can never be waved through.
+
 Read-only. Exit 0 = every paid buyer can download what they bought.
 
     python3 store_platform/scripts/reconcile_orders.py
     python3 store_platform/scripts/reconcile_orders.py --days 30 --json
+    python3 store_platform/scripts/reconcile_orders.py --no-exceptions   # audit the ledger
 """
 from __future__ import annotations
 
@@ -38,6 +45,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = Path(os.environ.get("PROSPECTOR_ENV_PATH", REPO_ROOT / ".env"))
+EXCEPTIONS_PATH = REPO_ROOT / "store_platform" / "data" / "reconcile-exceptions.json"
 STRIPE_API = "https://api.stripe.com/v1"
 DEFAULT_API_BASE = "https://api.mumchimp.com"
 
@@ -115,6 +123,34 @@ def is_reversed(key: str, session: dict) -> bool:
         or (charge.get("amount_refunded") or 0) > 0
 
 
+def load_exceptions(path: Path) -> dict:
+    """Sessions deliberately excused from the delivery check.
+
+    Deliberately strict: a malformed file or a blank reason is a hard error rather than a
+    silent "no exceptions". This file's whole job is to be the one sanctioned way to make the
+    probe green, so a typo in it must never quietly widen or silently discard the excuse list.
+    """
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text())
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"{path} is not valid JSON ({e}). Refusing to guess whether an "
+                           "order was excused.") from e
+
+    entries = raw.get("exceptions", {})
+    if not isinstance(entries, dict):
+        raise RuntimeError(f"{path}: 'exceptions' must be an object keyed by session id.")
+
+    for sid, meta in entries.items():
+        reason = (meta or {}).get("reason", "").strip() if isinstance(meta, dict) else ""
+        if not reason:
+            raise RuntimeError(
+                f"{path}: exception for {sid} has no reason. An excused delivery failure means "
+                "a payer got nothing — that always needs a written justification.")
+    return entries
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -127,7 +163,18 @@ def main() -> int:
     ap.add_argument("--allow-test-mode", action="store_true",
                     help="permit reconciling with a TEST-mode Stripe key (see the mode check)")
     ap.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    ap.add_argument("--exceptions", type=Path, default=EXCEPTIONS_PATH,
+                    help="ledger of sessions excused from the delivery check "
+                         f"(default {EXCEPTIONS_PATH})")
+    ap.add_argument("--no-exceptions", action="store_true",
+                    help="ignore the ledger and report every undelivered order, excused or not")
     args = ap.parse_args()
+
+    try:
+        excused = {} if args.no_exceptions else load_exceptions(args.exceptions)
+    except RuntimeError as e:
+        print(f"  FAIL  {e}", file=sys.stderr)
+        return 2
 
     env = load_env(ENV_PATH)
     skey = os.environ.get(args.stripe_key_var) or env.get(args.stripe_key_var)
@@ -166,12 +213,14 @@ def main() -> int:
     mature = [s for s in sessions if (s.get("created") or 0) <= cutoff]
     in_flight = len(sessions) - len(mature)
 
-    undelivered, unreachable, refunded, delivered = [], [], 0, 0
+    undelivered, unreachable, excused_hits, refunded, delivered = [], [], [], 0, 0
 
     for s in mature:
         sid = s["id"]
         status, body = http_json(f"{api_base}/api/orders/by-session/{urllib.parse.quote(sid)}")
         if status == 0 or status >= 500:
+            # NOTE: deliberately checked BEFORE the exception ledger. An excused session still
+            # has to be reachable — "the store is down" is never something the ledger may hide.
             unreachable.append((sid, status, body.get("error") or body))
             continue
         if body.get("status") == "ready" and body.get("items"):
@@ -180,6 +229,9 @@ def main() -> int:
         # Not deliverable right now. A refund explains that legitimately; nothing else does.
         if is_reversed(skey, s):
             refunded += 1
+            continue
+        if sid in excused:
+            excused_hits.append({"session": sid, "reason": excused[sid]["reason"]})
             continue
         undelivered.append({
             "session": sid,
@@ -198,6 +250,7 @@ def main() -> int:
         "in_flight_skipped": in_flight,
         "delivered": delivered,
         "refunded_or_disputed": refunded,
+        "excused": excused_hits,
         "undelivered": undelivered,
         "unreachable": [{"session": a, "http": b} for a, b, _ in unreachable],
     }
@@ -213,6 +266,11 @@ def main() -> int:
         print(f"  PASS  {delivered} delivered (order + active entitlement)")
         if refunded:
             print(f"  ....  {refunded} refunded/disputed — revocation is expected, not a fault")
+        # Printed, never silent: an excused failure is still a payer who got nothing, and the
+        # moment it stops being visible it stops being reviewed.
+        for x in excused_hits:
+            print(f"  EXCUSED  {x['session']}")
+            print(f"           {x['reason'][:150]}")
         for u in undelivered:
             amt = f"{(u['amount'] or 0) / 100:.2f} {u['currency']}"
             print(f"  FAIL  PAID-WITHOUT-DELIVERY  {u['session']}  {amt}  "
@@ -223,6 +281,9 @@ def main() -> int:
         if undelivered or unreachable:
             print(f"RECONCILE: FAIL — {len(undelivered)} buyer(s) paid without delivery, "
                   f"{len(unreachable)} unverifiable")
+        elif excused_hits:
+            print(f"RECONCILE: OK — every paid buyer can download what they bought "
+                  f"({len(excused_hits)} excused, see {args.exceptions.name})")
         else:
             print("RECONCILE: OK — every paid buyer can download what they bought")
         print(line)
