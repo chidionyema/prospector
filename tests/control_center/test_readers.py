@@ -18,6 +18,25 @@ if str(_ROOT) not in sys.path:
 
 from prospector.control_center import readers
 
+# store/dossiers/ and store/prospector.jsonl are gitignored (.gitignore:43), so a fresh
+# checkout — CI's, or a new laptop's — has neither. A handful of tests below assert on the
+# CONTENTS of that local data rather than on reader behaviour, so on a clone they were
+# failing for the absence of data instead of a defect: `assert 0 >= 300`. Skipping with a
+# stated reason keeps them doing their real job (guarding the operator's own store, where
+# there is something to guard) without making "I have not run the engine on this machine"
+# indistinguishable from a broken reader. The behavioural tests run everywhere, unskipped.
+_CATALOGUE_IS_POPULATED = bool(readers.catalogue_index())
+_LEDGER_EXISTS = (_ROOT / "store" / "prospector.jsonl").is_file()
+
+requires_populated_catalogue = pytest.mark.skipif(
+    not _CATALOGUE_IS_POPULATED,
+    reason="no local catalogue (store/dossiers/ is gitignored) — nothing to assert about",
+)
+requires_audit_ledger = pytest.mark.skipif(
+    not _LEDGER_EXISTS,
+    reason="no local store/prospector.jsonl (gitignored) — nothing to assert about",
+)
+
 
 class TestCatalogueIndex:
     """catalogue_index() must read the real SQLite store."""
@@ -26,6 +45,7 @@ class TestCatalogueIndex:
         idx = readers.catalogue_index()
         assert isinstance(idx, list)
 
+    @requires_populated_catalogue
     def test_total_matches_existing_data(self):
         idx = readers.catalogue_index()
         # Real store has 367 dossiers — verify we read the real data
@@ -180,12 +200,14 @@ class TestCostsData:
         result = costs_data("store/prospector.jsonl")
         assert isinstance(result, dict)
 
+    @requires_audit_ledger
     def test_costs_data_has_expected_keys(self):
         from prospector.report import costs_data
         result = costs_data("store/prospector.jsonl")
         for key in ("total_spend_usd", "total_calls", "providers", "tokens", "slowest_ops"):
             assert key in result, f"Missing key: {key}"
 
+    @requires_audit_ledger
     def test_costs_data_total_spend_is_non_negative(self):
         from prospector.report import costs_data
         result = costs_data("store/prospector.jsonl")
