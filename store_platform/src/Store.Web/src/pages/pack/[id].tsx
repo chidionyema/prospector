@@ -14,6 +14,7 @@ import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { LEGAL } from '@/lib/config';
 import { coverFor } from '@/lib/cover';
+import { AddToCartButton } from '@/components/cart/AddToCartButton';
 
 interface PackPageProps {
   pack: PackDetails;
@@ -157,13 +158,20 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
       )}
 
       {canCheckout ? (
-        <button
-          onClick={handleBuy}
-          disabled={checkingOut}
-          className="mt-4 w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
-        >
-          {checkingOut ? 'Redirecting…' : `Get instant access — ${priceLabel}`}
-        </button>
+        <>
+          <button
+            onClick={handleBuy}
+            disabled={checkingOut}
+            className="mt-4 w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            {checkingOut ? 'Redirecting…' : `Get instant access — ${priceLabel}`}
+          </button>
+          {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
+              only a gain for someone who wants several, so it never sits in front of the direct path. */}
+          <div className="mt-3">
+            <AddToCartButton line={{ id: pack.id, title: pack.title, price: pack.price }} />
+          </div>
+        </>
       ) : (
         <>
           <a

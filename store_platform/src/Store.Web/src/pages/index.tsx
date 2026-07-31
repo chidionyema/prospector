@@ -8,6 +8,7 @@ import { Icon, IconName, Dropdown } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection } from '@/components/marketing/PackContents';
+import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { FacetBar } from '@/components/discovery/FacetBar';
@@ -199,14 +200,22 @@ function PackCard({ pack }: { pack: Pack }) {
           </div>
         )}
 
-        {/* Active CTA at the price, not a passive "see what is inside". */}
+        {/* Active CTA at the price, not a passive "see what is inside". The basket toggle sits
+            beside it rather than replacing it: opening the pack stays the primary action, and a
+            shelf where every card demands a cart decision is a worse shelf. */}
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/70 pt-4">
           <span className="text-sm font-bold text-text transition-colors group-hover:text-primary">
             View vetted blueprint ({formatPrice(pack.price)})
           </span>
-          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg text-text transition-all group-hover:bg-primary group-hover:text-white">
-            <Icon name="arrowRight" size={15} />
-          </span>
+          <div className="flex flex-none items-center gap-2">
+            <AddToCartButton
+              size="compact"
+              line={{ id: pack.id, title: name, price: pack.price }}
+            />
+            <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg text-text transition-all group-hover:bg-primary group-hover:text-white">
+              <Icon name="arrowRight" size={15} />
+            </span>
+          </div>
         </div>
       </div>
     </Link>
@@ -251,6 +260,7 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition group-hover:opacity-90">
             View vetted blueprint <Icon name="arrowRight" size={15} />
           </span>
+          <AddToCartButton size="compact" line={{ id: pack.id, title: name, price: pack.price }} />
         </div>
       </div>
     </Link>

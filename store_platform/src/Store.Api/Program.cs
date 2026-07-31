@@ -599,75 +599,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// --- CHECKOUT ENDPOINT (P4/P7 — provider-agnostic, hot-reloaded) ---
-// The provider for NEW checkouts is determined by the runtime config
-// `payments:active_provider` (P7 — seamless switch, no redeploy). For
-// packs published before the switch, the pack's stored PaymentProvider is
-// honoured as a fallback so the buyer's checkout always succeeds.
-app.MapPost("/packs/{id}/checkout", async (
-    string id,
-    StoreDbContext db,
-    IServiceProvider sp,
-    IConfiguration config,
-    HttpRequest request) =>
-{
-    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
-    if (pack is null || !pack.IsListed)
-    {
-        return Results.NotFound();
-    }
-
-    // P7 — runtime active_provider (hot-reloaded) takes precedence for new checkouts
-    // and falls back to the pack's stored provider so legacy packs still work.
-    var runtimeProvider = config["payments:active_provider"];
-    var provider = !string.IsNullOrEmpty(runtimeProvider) ? runtimeProvider : (pack.PaymentProvider ?? "paddle");
-    var paymentProvider = sp.GetKeyedService<IPaymentProvider>(provider);
-    if (paymentProvider is null)
-    {
-        return Results.Problem(
-            $"Payment provider '{provider}' is not registered.",
-            statusCode: StatusCodes.Status503ServiceUnavailable);
-    }
-
-    string? buyerEmail = null;
-    if (request.HasJsonContentType())
-    {
-        try
-        {
-            var body = await request.ReadFromJsonAsync<CheckoutRequest>().ConfigureAwait(false);
-            buyerEmail = body?.Email;
-        }
-        catch
-        {
-            // Buyer email is optional; proceed with null if parse fails.
-        }
-    }
-
-    // The post-checkout redirect must land on the STOREFRONT, not on this API. /orders/success
-    // and /pack/{id} are Next.js pages; this API serves neither, so pointing the redirect at
-    // Store:PublicUrl (which PROD_DEPLOY.md sets to the API host, correctly, for magic links)
-    // sent every paying buyer to a 404. Resolution order: an explicit storefront URL, else the
-    // CORS origin — which is by definition the storefront and is already set in the runbook —
-    // else this host, which is only ever right for a single-origin local run.
-    var baseUrl = DeliveryUrls.ResolveStorefrontBaseUrl(
-        config["Store:StorefrontUrl"],
-        Environment.GetEnvironmentVariable("STORE_STOREFRONT_URL"),
-        config["Store:AllowedOrigin"],
-        Environment.GetEnvironmentVariable("STORE_ALLOWED_ORIGIN"),
-        $"{request.Scheme}://{request.Host}");
-
-    var handle = await paymentProvider.CreateCheckoutAsync(
-        id,
-        pack.ProviderPriceId ?? "",
-        buyerEmail,
-        $"{baseUrl}/orders/success?pack={id}",
-        $"{baseUrl}/pack/{id}",
-        CancellationToken.None).ConfigureAwait(false);
-
-    return Results.Ok(new { url = handle.Url });
-})
-.WithName("CreateCheckout")
-.WithOpenApi();
+// Checkout (single pack and basket) — see Endpoints/CheckoutEndpoints.cs.
+app.MapCheckoutEndpoints();
 
 app.MapWebhookEndpoints();
 app.MapDeliveryEndpoints();

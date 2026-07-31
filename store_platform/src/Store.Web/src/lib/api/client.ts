@@ -195,8 +195,56 @@ export async function createStripeCheckout(packId: string): Promise<string> {
     throw new Error(`Failed to start checkout: ${text}`);
   }
   const { url } = await res.json();
-  // Defence in depth: only ever redirect to Stripe's hosted checkout. Refuse any other
-  // value so a compromised/buggy API response can't turn this into an open redirect.
+  return assertStripeCheckoutUrl(url);
+}
+
+/** Raised when the API refuses specific packs — sold out, withdrawn, or not yet priced. Carries
+ *  the ids so the basket can prune exactly those rather than making the buyer start again. */
+export class PacksUnavailableError extends Error {
+  readonly packIds: string[];
+
+  constructor(message: string, packIds: string[]) {
+    super(message);
+    this.name = 'PacksUnavailableError';
+    this.packIds = packIds;
+  }
+}
+
+/**
+ * Ask the API to open one Stripe Checkout Session for a whole basket.
+ *
+ * The buyer enters their card once and gets one charge, one statement line and one set of
+ * download links, however many packs they picked.
+ */
+export async function createCartCheckout(packIds: string[]): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ packIds }),
+  });
+
+  if (!res.ok) {
+    // The API answers 404 with the exact ids it will not sell. A basket can sit in localStorage
+    // for weeks, so a withdrawn pack is expected rather than exceptional: name it, prune it, and
+    // let the buyer pay for the rest.
+    const body = await res.json().catch(() => null);
+    const rejected: unknown = body?.packIds;
+    if (res.status === 404 && Array.isArray(rejected) && rejected.length > 0) {
+      throw new PacksUnavailableError(
+        typeof body?.error === 'string' ? body.error : 'Not available for purchase.',
+        rejected.filter((id: unknown): id is string => typeof id === 'string'),
+      );
+    }
+    throw new Error(typeof body?.error === 'string' ? body.error : 'Failed to start checkout.');
+  }
+
+  const { url } = await res.json();
+  return assertStripeCheckoutUrl(url);
+}
+
+/** Defence in depth: only ever redirect to Stripe's hosted checkout. Refuse any other value so a
+ *  compromised/buggy API response can't turn this into an open redirect. */
+function assertStripeCheckoutUrl(url: unknown): string {
   if (typeof url !== 'string' || !url.startsWith('https://checkout.stripe.com/')) {
     throw new Error('Unexpected checkout URL');
   }
