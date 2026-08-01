@@ -100,9 +100,14 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     return match![1];
   })();
 
-  it('renders cards with white bg, 1px border, 8px radius, 24px padding', () => {
+  it('renders cards with white bg, a hairline edge, 8px radius, 24px padding', () => {
     assertContains('card white bg', cardLinkClasses, 'bg-white');
-    assertContains('card 1px border', cardLinkClasses, 'border border-border');
+    // Amendment 1, 2026-08-01: the original `1px solid #E2E8F0` is now a `ring-1` at 6% black.
+    // Still a 1px edge and still a real separation of white card from the #F8FAFC page, but at
+    // 42 cards a full-strength border draws 42 rectangles and the eye reads the grid before it
+    // reads any listing. The assertion stays rather than being deleted, because "no edge at all"
+    // is a third design and should fail here.
+    expect(cardLinkClasses, 'card 1px edge').toMatch(/border border-border|ring-1/);
     // 8px radius = rounded-lg (the design token --radius-lg is 8px)
     assertContains('card 8px radius', cardLinkClasses, 'rounded-lg');
     // 24px padding = p-6, on the card's content well rather than the link itself (the cover
@@ -110,21 +115,45 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     assertContains('card 24px padding', packCard, 'p-6');
   });
 
-  it('applies hover translateY(-2px) and the exact named shadow', () => {
-    // -2px translate: Tailwind -translate-y-0.5 = -0.125rem = -2px
-    // OR an arbitrary value like [transform:translateY(-2px)]
-    expect(
-      cardLinkClasses,
-      'card hover translateY(-2px)',
-    ).toMatch(/hover:-translate-y-0\.5|hover:\[transform:translateY\(-2px\)\]/);
+  it('answers hover with light rather than movement, and keeps the named shadow', () => {
+    // Amendment 1, 2026-08-01. The original contract asked for `translateY(-2px)`; the card tints
+    // instead. This assertion is inverted rather than deleted on purpose: an unexplained
+    // reintroduction of the lift should fail, because the lift was the card's only motion and
+    // removing it is what gives a `prefers-reduced-motion` visitor identical feedback to
+    // everyone else. Reinstating it means amending the spec again, deliberately.
+    expect(cardLinkClasses, 'card must not lift on hover').not.toMatch(
+      /hover:-translate-y|hover:\[transform:translateY/,
+    );
+    assertContains('card ghost hover tint', cardLinkClasses, 'hover:bg-');
 
-    // Exact shadow from spec
+    // The shadow survives the amendment unchanged — depth on hover was never the problem.
     // Tailwind 4 JIT encodes spaces as underscores in arbitrary values.
     assertContains(
       'card hover shadow',
       cardLinkClasses,
       '0_10px_15px_-3px_rgba(15,23,42,0.08)',
     );
+  });
+
+  /**
+   * Added 2026-08-01 with the card's three tiers. This is the assertion the old contract had no
+   * equivalent of, and its absence is why the regression went unseen for as long as it did:
+   * sources and freshness were entries 7 and 8 of a list sliced to 5, so proof lost every tie
+   * against a descriptive tag — and lost more often as facet coverage improved. Measured on the
+   * live catalogue that day (n=51): `verifiedAt` present on 51, freshness rendered on 2.
+   */
+  it('renders the proof tier outside the capped chip row', () => {
+    assertContains('proof tier present', packCard, '<ProofLine');
+    const proofLine = (() => {
+      const start = page.indexOf('function ProofLine(');
+      expect(start, 'function ProofLine not found in index.tsx').toBeGreaterThan(-1);
+      const end = page.indexOf('\nfunction ', start + 1);
+      return page.slice(start, end === -1 ? undefined : end);
+    })();
+    expect(proofLine, 'ProofLine must not be truncated by CARD_META_MAX').not.toContain(
+      'CARD_META_MAX',
+    );
+    expect(proofLine, 'ProofLine must not slice its own entries').not.toMatch(/\.slice\(/);
   });
 });
 
