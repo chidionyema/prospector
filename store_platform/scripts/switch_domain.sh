@@ -86,6 +86,10 @@ updates = {
     "STORE_ALLOWED_ORIGIN":  os.environ["STORE_URL"],
     # The magic-link email base. This one is the API — it serves /orders/{token}.
     "STORE_PUBLIC_URL":      os.environ["API_URL"],
+    # Verification / password-reset / OAuth-landing base. Also the STOREFRONT. Its baked default
+    # in deploy/fly/api.fly.toml still names the OLD domain, and a secret overrides that file, so
+    # it must be re-set here or account emails keep pointing at the domain you just left.
+    "Email__WebBaseUrl":     os.environ["STORE_URL"],
 }
 with open(path) as fh:
     text = fh.read()
@@ -113,7 +117,12 @@ cat <<EOF
      fly secrets set --app $API_APP \\
        STORE_STOREFRONT_URL=$STORE_URL \\
        STORE_ALLOWED_ORIGIN=$STORE_URL \\
-       STORE_PUBLIC_URL=$API_URL
+       STORE_PUBLIC_URL=$API_URL \\
+       Email__WebBaseUrl=$STORE_URL
+
+   Then update the baked default in deploy/fly/api.fly.toml ([env] Email__WebBaseUrl) to the same
+   value and commit it, so the config file and the secret do not disagree about which domain
+   account emails point at.
 
 3. Re-point the Stripe webhook at the new API host (the old endpoint still targets .fly.dev):
      bash $SCRIPT_DIR/register_stripe_webhook.sh --recreate

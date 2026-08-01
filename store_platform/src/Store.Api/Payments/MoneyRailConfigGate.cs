@@ -59,6 +59,7 @@ public sealed class MoneyRailConfigGate(
         GuardWebhookSecretPlaceholder(activeProvider);
         GuardStripeApiKeyShape(activeProvider);
         GuardStorefrontUrl();
+        GuardEmailWebBaseUrl();
         GuardR2Config();
         ReportDeliveryConfig();
 
@@ -130,6 +131,46 @@ public sealed class MoneyRailConfigGate(
             throw new InvalidOperationException(msg);
         }
     }
+
+    // Email:WebBaseUrl is the storefront base every ACCOUNT link is built from: the verification,
+    // password-reset and resend emails (EmailOptions consumers) and the post-consent OAuth landing
+    // (ExternalAuthEndpoints.SafeRedirect). Unset, it defaults to http://localhost:3000.
+    //
+    // This ran unset in production on 2026-08-01. Nothing looked wrong — the API was healthy, the
+    // mail sent, only the link inside it pointed at the recipient's own machine. Because order
+    // history is gated on EmailConfirmed, no account created in that window could ever reach its
+    // orders. A silent default that only shows up in someone else's inbox is exactly the shape
+    // GuardStorefrontUrl already refuses to boot on, so this refuses too.
+    //
+    // It is also rejected when it merely POINTS at localhost/127.0.0.1: the failure is not "empty",
+    // it is "resolves on the buyer's machine instead of ours", and the default value is non-empty.
+    private void GuardEmailWebBaseUrl()
+    {
+        if (environment.IsDevelopment())
+        {
+            return;
+        }
+
+        var configured = config["Email:WebBaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(configured) || IsLoopback(configured))
+        {
+            var msg = "CRITICAL: Email:WebBaseUrl (Email__WebBaseUrl) is missing or points at "
+                + $"localhost in the '{environment.EnvironmentName}' environment (value: "
+                + $"'{configured ?? "<unset>"}'). Every verification, password-reset and OAuth "
+                + "landing link would be sent to the recipient's own machine, and order history "
+                + "is gated on a confirmed email. Set it to the STOREFRONT base URL. App refusing "
+                + "to start.";
+            logger.LogCritical("{Message}", msg);
+            throw new InvalidOperationException(msg);
+        }
+    }
+
+    private static bool IsLoopback(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(uri.Host, "127.0.0.1", StringComparison.Ordinal)
+            || string.Equals(uri.Host, "[::1]", StringComparison.Ordinal));
 
     private string? ResolveStorefrontUrl() =>
         config["Store:StorefrontUrl"]
