@@ -8,7 +8,7 @@ import { social, type Provider } from '@/lib/api/auth';
  * The list is fetched rather than hardcoded because /auth/external/providers returns exactly the
  * schemes with credentials present (ExternalAuthEndpoints.cs:90). A hardcoded Google button on a
  * deployment whose secrets are not set is a button that always fails, and it fails on Google's
- * error page rather than ours — so the customer sees a broken product and we see nothing.
+ * error page rather than ours, so the customer sees a broken product and we see nothing.
  *
  * Renders null while loading, not a skeleton: this sits beside a working email form, and a
  * placeholder that resolves to nothing is a worse flicker than an element appearing.

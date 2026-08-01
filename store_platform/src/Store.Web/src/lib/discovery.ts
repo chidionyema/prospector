@@ -1,12 +1,12 @@
 /**
- * Discovery: filtering, matchmaking and similarity — the pure core of the storefront's
+ * Discovery: filtering, matchmaking and similarity, the pure core of the storefront's
  * routing, with no React, no fetch and no DOM in it, so every rule below is unit-testable
  * (`src/lib/__tests__/discovery.test.ts`) rather than only reachable through a browser.
  *
  * The one rule that governs the whole file: **absent means absent**. A pack the engine could
  * not justify tagging is `null` for that facet, and a null facet never matches a specific
  * value, never scores, and is never inferred from the pack's text. That is what makes the
- * filter honest on a brand that sells "every claim has a clickable source" — see
+ * filter honest on a brand that sells "every claim has a clickable source", see
  * `src/lib/facets.ts` for the same rule at the vocabulary level.
  */
 
@@ -56,7 +56,7 @@ export interface FacetedPack {
 
 /**
  * Everything the catalogue view is filtered by. Lives in the URL so a filtered view is
- * shareable and so the server can render the first paint already filtered — a link to
+ * shareable and so the server can render the first paint already filtered, a link to
  * "B2B, evenings-friendly" that arrives showing the whole catalogue and then reflows is the kind
  * of detail that reads as broken.
  */
@@ -142,7 +142,7 @@ function firstValue(input: QueryLike, key: string): string | null {
  *
  * Every value is checked against the closed vocabulary and silently dropped if it is not a
  * member. A hand-edited or stale URL therefore degrades to a wider view rather than creating
- * a filter for a value that does not exist — which would render an empty catalogue with a
+ * a filter for a value that does not exist, which would render an empty catalogue with a
  * chip naming a facet the engine has never emitted.
  */
 export function decodeDiscoveryState(input: string | QueryLike | undefined | null): DiscoveryState {
@@ -216,7 +216,7 @@ function matchesSingle(pack: FacetedPack, kind: SingleValuedKind, wanted: string
   if (!wanted) return true;
   const actual = pack[kind];
   // The null rule, in one line: an untagged pack is not a match for a specific value. It is
-  // not "probably this" and it is not excluded from the catalogue — it appears under "All".
+  // not "probably this" and it is not excluded from the catalogue, it appears under "All".
   if (!actual) return false;
   return actual === wanted;
 }
@@ -238,7 +238,7 @@ export function filterPacks<T extends FacetedPack>(packs: readonly T[], state: D
 }
 
 /**
- * How many packs each value of a facet would yield under the rest of the current state — the
+ * How many packs each value of a facet would yield under the rest of the current state, the
  * counts shown beside each option in the filter bar. Computed with that facet's own constraint
  * removed, so the count answers "what happens if I click this" rather than "what is selected".
  */
@@ -271,7 +271,7 @@ export function activeFacetValues(state: DiscoveryState, kind: FacetKind): strin
  *
  * `activeConstraintCount` counts `advantage` as one constraint however many values are in it,
  * because the near-miss rule asks "how many AND-ed constraints did this pack fail". A "Filters"
- * badge answers a different question — how many controls did I switch on — and a buyer who lit
+ * badge answers a different question, how many controls did I switch on, and a buyer who lit
  * "Suits builders" and "Suits sellers" and reads "Filters 1" has been told something they can
  * see is false.
  */
@@ -290,7 +290,7 @@ export const MIN_OPTION_PACKS = 2;
  *
  * Three rules, in order:
  *
- * 1. A value no pack in the current pool carries is not offered — an option that can only ever
+ * 1. A value no pack in the current pool carries is not offered, an option that can only ever
  *    return zero results is a promise the catalogue cannot keep.
  * 2. A value fewer than `minPacks` packs carry ANYWHERE in the catalogue is not offered.
  *    Measured on the live catalogue on 2026-07-31: `audience` was carried by 1 pack of 42,
@@ -299,12 +299,12 @@ export const MIN_OPTION_PACKS = 2;
  *    buyer the cost of reading and deciding on it and can only ever produce a near-empty grid.
  *    Nothing becomes unreachable: the pack keeps every chip it earned and still appears under
  *    "All", in search, in the matchmaker and in similar-packs.
- * 3. A value the buyer has already selected is ALWAYS offered, whatever its count — hiding it
+ * 3. A value the buyer has already selected is ALWAYS offered, whatever its count, hiding it
  *    would strand them inside a filter with no visible control to leave it by. That is the case
  *    a shared-URL makes real: `?commitment=full_time` is a legal link.
  *
  * Rule 2 is judged against the catalogue and never against the filtered pool, so options do not
- * appear and vanish as the buyer clicks. `q` is cleared for the same reason — typing in the
+ * appear and vanish as the buyer clicks. `q` is cleared for the same reason, typing in the
  * search box must not silently delete filter controls.
  */
 export function offeredFacetValues(
@@ -327,7 +327,7 @@ export function offeredFacetValues(
 export interface FacetGroupFold<T> {
   /** The groups to render, in order. */
   visible: T[];
-  /** How many groups are currently folded away — 0 when everything is on screen. */
+  /** How many groups are currently folded away, 0 when everything is on screen. */
   foldedCount: number;
   /** Whether to offer the expand/collapse control at all. */
   canFold: boolean;
@@ -338,7 +338,7 @@ export interface FacetGroupFold<T> {
  *
  * This lives here rather than inline in `FacetBar` for one reason: the invariant it protects is
  * not a rendering detail. Folding a group that holds an active selection puts a buyer under a
- * constraint with no control on screen to see or release it — the exact way a shared or
+ * constraint with no control on screen to see or release it, the exact way a shared or
  * bookmarked URL strands someone on a near-empty shelf with no visible cause. So the fold is
  * overridden whenever anything below the cut is selected, and the toggle is withdrawn with it,
  * because a collapse control that can re-hide a live constraint is the same bug behind a click.
@@ -369,7 +369,7 @@ export interface NearMiss<T extends FacetedPack = FacetedPack> {
   kind: FacetKind;
   /** The value the buyer asked for. For `advantage` this is the first advantage they picked. */
   wanted: string;
-  /** What the pack actually carries — `null` when it is simply untagged for this facet. */
+  /** What the pack actually carries, `null` when it is simply untagged for this facet. */
   actual: string | null;
   relaxedState: DiscoveryState;
 }
@@ -427,12 +427,12 @@ export function nearMisses<T extends FacetedPack>(
 /**
  * The three quiz answers.
  *
- * `payer: null` covers both "Don't mind" and skipping Q3 — the spec scores both as 0 rather
+ * `payer: null` covers both "Don't mind" and skipping Q3, the spec scores both as 0 rather
  * than as a miss, so declining to answer can never cost a pack points.
  *
  * Note on Q1's "None of these yet": the spec maps it to `nocode` + `hands_on`. NEITHER half is
  * applied, because the requirement attached to that answer is that it "must never dead-end" and
- * both halves break it. `hands_on` was dropped first — as a filter or a penalty it pushes a
+ * both halves break it. `hands_on` was dropped first, as a filter or a penalty it pushes a
  * beginner away from the automatable packs, which are the ones a beginner can actually run. The
  * `nocode` half was dropped on 2026-08-01 once the catalogue could be measured: `nocode` is
  * carried by 1 pack of 49, so copying it into `advantages` here sent `?adv=nocode` through
@@ -440,7 +440,7 @@ export function nearMisses<T extends FacetedPack>(
  * everything that matched" down to that single pack.
  *
  * So "None of these yet" now contributes NO advantage: `advantages` stays empty and the buyer is
- * routed on the answers they did give (commitment, payer, evidence). Empty is not a miss —
+ * routed on the answers they did give (commitment, payer, evidence). Empty is not a miss,
  * `scoreMatch` is additive and never punishes an absent term, so a beginner still gets a ranked
  * catalogue rather than a near-empty one.
  */
@@ -452,14 +452,14 @@ export interface MatchAnswers {
 
 export const EMPTY_MATCH_ANSWERS: MatchAnswers = { advantages: [], commitment: null, payer: null };
 
-/** Why a pack scored — the raw material for the one-sentence reason on the result screen. */
+/** Why a pack scored, the raw material for the one-sentence reason on the result screen. */
 export interface MatchReason {
   kind: FacetKind | 'evidence';
   value: string;
   points: number;
 }
 
-/** Generic over the pack type so a caller holding a full `Pack` gets a full `Pack` back — the
+/** Generic over the pack type so a caller holding a full `Pack` gets a full `Pack` back, the
  *  result screen needs `price`, which discovery itself never reads. */
 export interface MatchResult<T extends FacetedPack = FacetedPack> {
   pack: T;
@@ -467,13 +467,13 @@ export interface MatchResult<T extends FacetedPack = FacetedPack> {
   reasons: MatchReason[];
 }
 
-/** Packs with at least this many sources earn the evidence point (live range 5–29). */
+/** Packs with at least this many sources earn the evidence point (live range 5 to 29). */
 export const WELL_SOURCED_THRESHOLD = 15;
 
 /**
  * Score one pack against the quiz answers. Pure, total, never negative.
  *
- * Every term is additive and every untagged facet contributes exactly 0 — a pack is never
+ * Every term is additive and every untagged facet contributes exactly 0, a pack is never
  * punished for a facet the engine declined to assert, because that would turn "we don't know"
  * into "no", which is a claim the dossier does not support.
  */
@@ -525,7 +525,7 @@ function compareMatches(a: MatchResult<FacetedPack>, b: MatchResult<FacetedPack>
 }
 
 export interface MatchOutcome<T extends FacetedPack = FacetedPack> {
-  /** Null when the top score is 0 — show the near-miss state, never a fabricated match. */
+  /** Null when the top score is 0, show the near-miss state, never a fabricated match. */
   winner: MatchResult<T> | null;
   /** Up to two, only ever packs that themselves scored above 0. */
   runnersUp: MatchResult<T>[];
@@ -574,7 +574,7 @@ export function scoreSimilar(a: FacetedPack, b: FacetedPack): number {
 }
 
 /**
- * Top 3 most similar packs, or `[]` when fewer than 2 score above 0 — a "more like this" row
+ * Top 3 most similar packs, or `[]` when fewer than 2 score above 0, a "more like this" row
  * holding one weak suggestion is worse than no row, and on a mostly-untagged catalogue that is
  * the common case.
  */
@@ -604,17 +604,20 @@ export function similarPacks<T extends FacetedPack>(
 // Title splitting
 // ---------------------------------------------------------------------------
 
-/** Em dash, en dash, and a hyphen with spaces on both sides. A bare hyphen is left alone: it is
- *  usually part of a compound ("Private-Hire"), and splitting there mangles the name. */
-const TITLE_SEPARATORS = ['—', '–', ' - '];
+/** Comma, em dash, en dash, and a hyphen with spaces on both sides. A bare hyphen is left alone:
+ *  it is usually part of a compound ("Private-Hire"), and splitting there mangles the name. The
+ *  comma is the live separator since the marketeer rewrote the catalogue copy to drop em-dashes
+ *  (the universal AI writing tell); em-dash and en-dash are kept as a safety net for any
+ *  historical pack that resurfaces. */
+const TITLE_SEPARATORS = [', ', '—', '–', ' - '];
 
 /**
- * Split "Brand — long descriptive subtitle" into a name a buyer can hold in their head and a
+ * Split "Brand, long descriptive subtitle" into a name a buyer can hold in their head and a
  * supporting descriptor.
  *
  * The version this replaces (`index.tsx:43-49`) matched the em dash only, so the 9 of 15 live
  * packs whose titles use another separator or none at all rendered their entire title as the
- * "name" — which is why cards read as a paragraph. When there is no separator at all, the
+ * "name", which is why cards read as a paragraph. When there is no separator at all, the
  * descriptor falls back to `headline` rather than being invented from the title.
  */
 export function splitTitle(
@@ -646,12 +649,12 @@ export const CARD_HEADING_MAX = 60;
 
 /** What a pack card puts where. */
 export interface CardHeading {
-  /** The brand name, always. This is the pack's identity — what a basket line and an order
-   *  confirmation must say — independently of whether the card chose to display it. */
+  /** The brand name, always. This is the pack's identity, what a basket line and an order
+   *  confirmation must say, independently of whether the card chose to display it. */
   name: string;
   /** The card's H3. */
   heading: string;
-  /** The brand name, shown small above the heading — only when the heading is not itself
+  /** The brand name, shown small above the heading, only when the heading is not itself
    *  the name (otherwise the card would print the name twice). */
   eyebrow: string | null;
   /** Supporting line under the heading, or null when it would repeat the heading. */
@@ -661,15 +664,15 @@ export interface CardHeading {
 /**
  * Decide the card's hierarchy.
  *
- * A first-time visitor cannot buy from "PitchBrief" — a brand name they have never heard is
+ * A first-time visitor cannot buy from "PitchBrief", a brand name they have never heard is
  * the least useful string on the card, and it was the H3. But the descriptor derived from the
- * title runs to 90+ characters ("PitchCall Forensics — The Under-27 Gig Driver's
+ * title runs to 90+ characters ("PitchCall Forensics, The Under-27 Gig Driver's
  * Insurance-Refusal Reversal & Telematics-Data Subject-Access Round"), so promoting THAT gives
  * twenty cards of wrapped bold text, which is not a shelf either.
  *
  * So the heading is the engine's short `cardLine` when there is one, with the brand demoted to
- * an eyebrow. When there is not — every pack published before the engine emitted it, and any
- * pack whose operator could not write a truthful short line — the pre-existing hierarchy is
+ * an eyebrow. When there is not, every pack published before the engine emitted it, and any
+ * pack whose operator could not write a truthful short line, the pre-existing hierarchy is
  * kept exactly. Nothing is shortened here to manufacture a heading: a long line is left where
  * it already renders correctly rather than cut into a claim nobody made.
  */

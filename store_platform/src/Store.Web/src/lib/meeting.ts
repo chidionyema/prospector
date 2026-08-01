@@ -72,7 +72,7 @@ export const MEETING_MOCKS = {
       confirmed_at: '2026-06-10T14:30:00Z',
       confirmed_by: 'buyer-id',
       source: 'MutualConfirmation',
-      // Target also tapped "yes, we met" — strengthens the buyer's confirmation.
+      // Target also tapped "yes, we met", strengthens the buyer's confirmation.
       corroborated_at: '2026-06-10T14:25:00Z',
     } as MeetingSnapshot,
   },

@@ -6,7 +6,7 @@ import { TOS_VERSION } from '@/lib/config';
 
 interface LegalDocProps {
   title: string;
-  /** Doc version string — defaults to the registration-recorded TOS_VERSION (L-04/L-05). */
+  /** Doc version string, defaults to the registration-recorded TOS_VERSION (L-04/L-05). */
   version?: string;
   /** Hide the "interim, pending counsel" banner only once counsel has signed the copy off. */
   interim?: boolean;
@@ -19,7 +19,7 @@ interface LegalDocProps {
  * (rather than the authenticated app shell, which is wrong for a public legal page).
  *
  * These are INTERIM beta-stage documents grounded in docs/legal/LEGAL-DECISIONS-LOG.md and are
- * explicitly pending final legal review (E12 / launch task #17). The banner says so honestly —
+ * explicitly pending final legal review (E12 / launch task #17). The banner says so honestly,
  * a clickwrap that links to clearly-marked interim terms beats a checkbox pointing at nothing.
  * Semantic tokens only (UI-STANDARDS); no raw palette, no dangerouslySetInnerHTML.
  */

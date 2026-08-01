@@ -9,7 +9,7 @@ import { breadcrumbNode, faqPageNode, graph } from '@/lib/seo/schema';
 
 /**
  * Render one answer's segments as prose. The segments come from `lib/faqContent.ts`, which is also
- * what the FAQPage structured data below serialises — that shared source is what keeps the schema
+ * what the FAQPage structured data below serialises, that shared source is what keeps the schema
  * and the visible answer identical, which is the condition Google requires of FAQ markup.
  *
  * A `mailto:` link is a plain anchor; an internal route gets `next/link` so it client-navigates.

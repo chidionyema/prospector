@@ -13,12 +13,12 @@ const MOUNT_DEADLINE_MS = 12000;
 interface EmbeddedCheckoutPanelProps {
   /** Server-issued session secret. The component owns nothing about the payment beyond this. */
   clientSecret: string;
-  /** Close and return to the pack. Stripe has no cancel_url in embedded mode — this is it. */
+  /** Close and return to the pack. Stripe has no cancel_url in embedded mode, this is it. */
   onClose: () => void;
   /** Shown in the panel header so the buyer can see what they are paying for. */
   title: string;
   /**
-   * The overlay cannot work in this browser — hand the buyer to hosted checkout.
+   * The overlay cannot work in this browser, hand the buyer to hosted checkout.
    *
    * Fires on either of two independent signals: Stripe's API is unreachable (probe), or Stripe
    * never inserted its iframe within `MOUNT_DEADLINE_MS`. Optional so the component keeps its
@@ -36,8 +36,8 @@ interface EmbeddedCheckoutPanelProps {
  * of the evidence that persuaded them still on screen, and every buyer who wants to re-check one
  * figure before paying has to leave checkout to do it.
  *
- * On success Stripe navigates the iframe's parent to the session's return_url — the same
- * /orders/success?session_id=... the hosted flow uses — so fulfilment, entitlement resolution
+ * On success Stripe navigates the iframe's parent to the session's return_url, the same
+ * /orders/success?session_id=... the hosted flow uses, so fulfilment, entitlement resolution
  * and the success page are entirely unchanged by this component.
  */
 export function EmbeddedCheckoutPanel({
@@ -52,7 +52,7 @@ export function EmbeddedCheckoutPanel({
   const [ready, setReady] = useState(false);
 
   // Escape closes, and the background does not scroll underneath an open checkout. Both are
-  // undone on unmount — a checkout that leaves the page permanently unscrollable after the
+  // undone on unmount, a checkout that leaves the page permanently unscrollable after the
   // buyer backs out is worse than no overlay at all.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,7 +71,7 @@ export function EmbeddedCheckoutPanel({
   // Two independent ways to notice the overlay will never work, either of which hands the buyer
   // to hosted checkout. Both are needed: the probe catches a browser that cannot reach Stripe's
   // API (the iframe DOES appear, then renders Stripe's own error), and the mount deadline
-  // catches the overlay never appearing at all — blocked iframes, storage partitioning, an SDK
+  // catches the overlay never appearing at all, blocked iframes, storage partitioning, an SDK
   // that threw. Whichever fires first wins; `handedOff` makes sure only one does.
   useEffect(() => {
     if (!onUnreachable) return;
@@ -99,7 +99,7 @@ export function EmbeddedCheckoutPanel({
   }, [onUnreachable, clientSecret]);
 
   // Stripe mounts asynchronously, so without this the buyer clicks pay and gets an empty white
-  // box for as long as the SDK takes — the single clunkiest moment in the purchase. The iframe
+  // box for as long as the SDK takes, the single clunkiest moment in the purchase. The iframe
   // appearing is the only same-origin signal available (react-stripe-js exposes no ready
   // callback), so this tracks "Stripe has rendered something", not "the card fields are
   // interactive". It errs early rather than late: a skeleton that lingers past a usable form

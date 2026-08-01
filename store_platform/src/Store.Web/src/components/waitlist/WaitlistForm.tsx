@@ -21,7 +21,7 @@ import { joinWaitlist } from '@/lib/api/client';
  *  what was consented to, so it must not drift from what is rendered.
  *
  *  Note what it says: "No newsletter". This is a notify-me-on-publish list, not a marketing list.
- *  A placement that implies a regular send is making a promise this text contradicts — and the
+ *  A placement that implies a regular send is making a promise this text contradicts, and the
  *  contradiction would be recorded, hashed, against every signup it collected. Changing the
  *  promise means a new `WAITLIST_CONSENT_VERSION` here AND in `WaitlistService`, not new copy. */
 export const WAITLIST_CONSENT_TEXT =
@@ -37,7 +37,7 @@ export interface WaitlistFormProps {
    *  placements stay tellable apart without a second analytics event. */
   source: string;
   /** What they were searching for, when the placement has one. Omitted (not empty-stringed) on
-   *  placements with no search behind them — the API nulls a blank query anyway, and an empty
+   *  placements with no search behind them, the API nulls a blank query anyway, and an empty
    *  string in the column would read as "searched for nothing" rather than "never searched". */
   query?: string;
   submitLabel?: string;

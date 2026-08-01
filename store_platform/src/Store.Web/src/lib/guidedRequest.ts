@@ -1,9 +1,9 @@
-// E25 Discovery Layer — 3a guided requests (WR-031). Pure mapping between the read-only guided-request
+// E25 Discovery Layer, 3a guided requests (WR-031). Pure mapping between the read-only guided-request
 // taxonomy (goals + worked examples) and what the composer needs: the editable free-text fields it
 // pre-fills, and the structured `brief_structured` tag it posts. Kept side-effect free so the mapping
 // is unit-testable and the page component stays a thin shell.
 //
-// Invariant: `brief_structured` is demand-side intent ONLY — a goal id plus optional category hints. It
+// Invariant: `brief_structured` is demand-side intent ONLY, a goal id plus optional category hints. It
 // never carries a target's name (personas are descriptions) and is never a supply map (E20 firewall).
 import type { BriefStructured, RequestExample, RequestGoal } from './api/types';
 

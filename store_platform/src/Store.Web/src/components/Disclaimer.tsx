@@ -4,7 +4,7 @@ import React from 'react';
  * Shared "not financial / investment advice" disclaimer.
  * Rendered on /terms and /refund at minimum; import wherever Pack content is described.
  *
- * Draft legal copy — review with qualified counsel before go-live.
+ * Draft legal copy, review with qualified counsel before go-live.
  */
 export default function Disclaimer() {
   return (

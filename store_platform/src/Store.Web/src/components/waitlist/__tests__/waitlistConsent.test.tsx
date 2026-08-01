@@ -14,7 +14,7 @@ import { WAITLIST_CONSENT_TEXT, WAITLIST_CONSENT_VERSION } from '../WaitlistForm
  * `WaitlistService` stores a HASH of the sentence the person was shown, not the sentence. That
  * makes the evidence tamper-evident and it also makes drift invisible: a second placement with a
  * reworded promise produces a second hash for what is supposed to be one promise, and nothing
- * fails — you would only discover it when asked to prove what a given subscriber agreed to, which
+ * fails, you would only discover it when asked to prove what a given subscriber agreed to, which
  * is exactly the moment you cannot afford to find out.
  *
  * Same technique as `marketing/__tests__/packContents.test.ts` against `bridge.py` and

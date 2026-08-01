@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { track } from '@/lib/analytics';
 import { formatPrice, type Pack } from '@/lib/api/client';
 import { matchesQuery, splitTitle } from '@/lib/discovery';
 
@@ -14,7 +15,7 @@ import { FacetChips } from './FacetChips';
  *
  * It searches title, one-liner, headline AND who-pays. Title-only search is the specific bug
  * this replaces: the feature's own worked example is a buyer typing "Uber", and "Uber" appears
- * in PlateStart's one-liner and who-pays but in no title in the catalogue — so a title-only
+ * in PlateStart's one-liner and who-pays but in no title in the catalogue, so a title-only
  * search returns nothing for the exact query the feature was asked for (AC-13).
  */
 
@@ -88,7 +89,7 @@ export function SearchTrigger({
 
 /**
  * A window of `field` starting just before the first match, so the highlight is on screen even
- * when the match sits deep in a long one-liner — `truncate` cuts the tail, which is exactly
+ * when the match sits deep in a long one-liner, `truncate` cuts the tail, which is exactly
  * where the explaining phrase lives when the title didn't match.
  */
 function matchSnippet(field: string, needle: string): string | null {
@@ -122,7 +123,7 @@ export function CommandPalette({
   packs: Pack[];
   open: boolean;
   onClose: () => void;
-  /** "See all N matches" — hands the query to the catalogue filter. */
+  /** "See all N matches", hands the query to the catalogue filter. */
   onSeeAll?: (query: string) => void;
 }) {
   // The dialog is a separate component so that opening MOUNTS it: query and cursor start clean
@@ -158,6 +159,7 @@ function PaletteDialog({
   const rows = matches.slice(0, MAX_ROWS);
 
   const go = (pack: Pack) => {
+    track('palette_search', pack.id);
     onClose();
     void router.push(`/pack/${pack.id}`);
   };
@@ -249,7 +251,7 @@ function PaletteDialog({
           {rows.map((pack, index) => {
             const { name, descriptor } = splitTitle(pack.title, pack.headline);
             // The search matches one-liner and who-pays as well as the title (the "Uber" worked
-            // example above) — so a row can come back with no visible trace of why. When the
+            // example above), so a row can come back with no visible trace of why. When the
             // heading carries no match, the line under it becomes the field that DID match,
             // windowed onto the hit, instead of a descriptor that looks like a non sequitur.
             const needle = query.trim().toLowerCase();
@@ -259,7 +261,7 @@ function PaletteDialog({
             // Same fields as `searchableText` (`lib/discovery.ts:197`) minus the title, in its
             // order. `headline` has to be in here: when the title carries a separator,
             // `splitTitle` renders the title's own tail as the descriptor and the headline is
-            // never on screen — so a headline-only match was a row with no visible reason.
+            // never on screen, so a headline-only match was a row with no visible reason.
             const context =
               needle !== '' && !headingMatched
                 ? [pack.oneLine, pack.headline, pack.whoPays]
@@ -319,7 +321,7 @@ function PaletteDialog({
               </p>
               {/* Not a dead end: the old copy said "close this and we'll show you what to do
                   next", which handed the buyer homework. One tap lands them on the shelf's own
-                  empty state — the waitlist that asks where to point the engine — with the query
+                  empty state, the waitlist that asks where to point the engine, with the query
                   already carried across. */}
               {onSeeAll && query.trim() && (
                 <button

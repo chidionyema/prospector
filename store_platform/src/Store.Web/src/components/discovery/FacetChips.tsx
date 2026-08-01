@@ -7,8 +7,8 @@ import { label, shortLabel, type FacetKind } from '@/lib/facets';
 /**
  * The facet chips on a card or a palette row.
  *
- * Renders only what the engine actually tagged. A pack with no facets renders nothing at all —
- * no "Uncategorised" chip, no placeholder — because a chip is a claim and an untagged pack has
+ * Renders only what the engine actually tagged. A pack with no facets renders nothing at all,
+ * no "Uncategorised" chip, no placeholder, because a chip is a claim and an untagged pack has
  * no claim to make. Copy comes from `lib/facets.ts`, never from the raw enum token.
  */
 export function FacetChips({

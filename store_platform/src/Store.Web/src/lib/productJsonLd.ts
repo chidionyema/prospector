@@ -8,12 +8,12 @@ import { packOgImagePath } from '@/lib/seo/ogImage';
  * schema.org Product data for a pack page.
  *
  * Pack pages are already indexable and in the sitemap, but a crawler reading one sees only
- * prose — it cannot tell that the page sells a specific thing for a specific price. This is the
+ * prose, it cannot tell that the page sells a specific thing for a specific price. This is the
  * machine-readable version of what a visitor already sees, and nothing more.
  *
  * What is deliberately absent: `aggregateRating` and `review`. We have no reviews. Inventing
  * them is an offence under the DMCCA 2024 fake-review provisions, and Google drops structured
- * data that contradicts visible page content — so it would be illegal, dishonest, and useless.
+ * data that contradicts visible page content, so it would be illegal, dishonest, and useless.
  * If reviews ever exist, they go on the page first and here second, never the other way round.
  */
 
@@ -33,8 +33,8 @@ export function parsePrice(display: string | undefined): { price: string; priceC
 }
 
 /**
- * The refund promise, stated once. This is a real, published policy — /refund is the authored page
- * and the FAQ repeats it verbatim — which is the only reason it is allowed in structured data.
+ * The refund promise, stated once. This is a real, published policy, /refund is the authored page
+ * and the FAQ repeats it verbatim, which is the only reason it is allowed in structured data.
  *
  * `returnMethod` is deliberately absent. Every value schema.org offers for it describes shipping
  * something back (`ReturnByMail`, `ReturnInStore`), and there is nothing to return: a pack is a
@@ -76,7 +76,7 @@ export function productJsonLd(pack: Pack): Record<string, unknown> {
     inLanguage: 'en',
     isAccessibleForFree: false,
     // The engine's source count, which the page displays next to the title ("48 sources cited").
-    // Emitted only when the pack actually carries one — an older pack without the field gets no
+    // Emitted only when the pack actually carries one, an older pack without the field gets no
     // property rather than a zero, which would read as "cites nothing".
     ...(typeof pack.sourceCount === 'number' && pack.sourceCount > 0
       ? {

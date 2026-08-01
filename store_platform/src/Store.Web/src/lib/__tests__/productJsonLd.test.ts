@@ -22,7 +22,7 @@ describe('parsePrice', () => {
 
   it('strips thousands separators rather than truncating at them', () => {
     // "£1,299.00" naively parsed with parseFloat gives 1. That would advertise a £1,299 pack
-    // at one pound in search results — the exact mismatch this function exists to prevent.
+    // at one pound in search results, the exact mismatch this function exists to prevent.
     expect(parsePrice('£1,299.00')).toEqual({ price: '1299.00', priceCurrency: 'GBP' });
   });
 

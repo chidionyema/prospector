@@ -6,12 +6,12 @@ import { SECTOR, label as facetLabel } from '../facets';
 /**
  * Two rules this file holds, both of which the storefront broke once.
  *
- * 1. A category is never inferred. The sector comes from the API or there is no category —
+ * 1. A category is never inferred. The sector comes from the API or there is no category,
  *    the deleted regex table told buyers a metal-fabrication quoting engine was a gardening
  *    business, and an invented category is an unsourced claim on a storefront that sells
  *    "every claim has a clickable source".
  * 2. An untagged pack renders no label. `tagged` is the flag callers branch on, and it is
- *    deliberately not derived from `label` being empty — `UNLABELLED.label` still holds a
+ *    deliberately not derived from `label` being empty, `UNLABELLED.label` still holds a
  *    developer-facing string, so a caller that reached for the label instead of the flag would
  *    print "Not yet tagged" on a £49 product and nothing here would notice. Hence both are
  *    asserted, separately.
@@ -52,7 +52,7 @@ describe('the untagged treatment', () => {
     expect(UNLABELLED.icon).not.toBe('');
   });
 
-  it('is the only untagged category — every real sector is tagged', () => {
+  it('is the only untagged category, every real sector is tagged', () => {
     expect(allCategories().every((c) => c.tagged)).toBe(true);
     expect(allCategories().map((c) => c.key)).not.toContain(UNLABELLED.key);
   });

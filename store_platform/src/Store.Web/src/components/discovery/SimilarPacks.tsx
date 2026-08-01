@@ -9,7 +9,7 @@ import { DossierCard } from './DossierCard';
  * "More like this" keyed on **mechanism**, not sector (spec Part 9).
  *
  * The buyer the row exists for is the one who liked the mechanics of B2B fee recovery and does
- * not want another vets business — so same-sector is a *penalty* in `scoreSimilar`, not a match.
+ * not want another vets business, so same-sector is a *penalty* in `scoreSimilar`, not a match.
  *
  * The row hides itself entirely when fewer than two candidates score above 0 (AC-21). On a
  * mostly-untagged catalogue that is the common case, and one weak suggestion under "more like

@@ -20,7 +20,7 @@ const controlClass = (invalid: boolean) =>
     invalid ? 'border-danger focus-visible:border-danger focus-visible:ring-danger/10' : 'border-border',
   );
 
-/** Labelled text input — label always present, error/hint slots, aria wired (UI-STANDARDS §2). */
+/** Labelled text input, label always present, error/hint slots, aria wired (UI-STANDARDS §2). */
 export function Input({
   label,
   hint,

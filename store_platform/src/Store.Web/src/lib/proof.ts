@@ -6,8 +6,8 @@
  * against the live catalogue on 2026-08-01: present on 51 of 51 packs, 51 distinct values,
  * rendered on 0 surfaces. The strongest evidence we hold per pack was reaching no buyer.
  *
- * It needs cleaning before it can, because it begins life as a markdown rationale bullet —
- * `- **value durability:** Passages show direct-payment recipients still face ...` — and
+ * It needs cleaning before it can, because it begins life as a markdown rationale bullet,
+ * `- **value durability:** Passages show direct-payment recipients still face ...`, and
  * `prospector/plain_text.py` strips the markup without rewording. That is the correct engine
  * behaviour (a filter that rewrites its own evidence has stopped being a filter), but it leaves
  * two residues in the catalogue field, both measured on the same 51 packs:
@@ -16,19 +16,19 @@
  *   - 8 still carry raw `**`, from a publish path that never ran the converter at all
  *
  * Both are removed here rather than at the source, because the `.md` deliverables a buyer
- * downloads must keep their markdown — the conversion belongs at the display boundary.
+ * downloads must keep their markdown, the conversion belongs at the display boundary.
  *
  * What this file does NOT do is as important: it strips markup and a known label, and it never
  * rewords, truncates meaning, or supplies a sentence where there was none. It cannot manufacture
  * a claim the moat did not verify. A proofPoint that cleans to nothing returns `null`, and the
- * caller renders no proof line at all — absent stays absent, the same rule the facets follow.
+ * caller renders no proof line at all, absent stays absent, the same rule the facets follow.
  */
 
 /**
  * The verification checks, mirrored from `prospector/dossier.py`'s `_CHECK_LABEL`.
  *
  * This is a closed vocabulary on purpose. The tempting implementation is `/^[a-z ]+:\s/`, which
- * also eats the opening of a legitimately sourced sentence — `Ofgem: the price cap fell ...`
+ * also eats the opening of a legitimately sourced sentence, `Ofgem: the price cap fell ...`
  * loses its attribution, which is precisely the word a buyer needs in order to check us. Only a
  * name that is actually one of our internal checks may be stripped.
  *
@@ -82,7 +82,7 @@ const BLOCK_PREFIX = /^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d{1,3}[.)]\s+)/;
  * Strip markup and a leading internal check name; return null when nothing usable is left.
  *
  * The null return is the point of the signature. `cleanProofPoint('') === null` rather than
- * `''`, so a caller cannot render an empty proof row by forgetting to check truthiness — the
+ * `''`, so a caller cannot render an empty proof row by forgetting to check truthiness, the
  * failure mode would be a card that looks like it is citing something and is citing nothing.
  */
 export function cleanProofPoint(raw: string | null | undefined): string | null {

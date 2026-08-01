@@ -5,14 +5,14 @@ import { eligibleLandings, packMatchesLanding } from '@/lib/seo/landings';
 import { packOgImagePath } from '@/lib/seo/ogImage';
 
 /**
- * Dynamic /sitemap.xml — the PUBLIC marketing pages, plus one entry per live pack. Authed,
+ * Dynamic /sitemap.xml, the PUBLIC marketing pages, plus one entry per live pack. Authed,
  * transactional, and identity-blind pitch surfaces are deliberately excluded (they're noindex and
  * must not be discoverable). Host is derived from the request so the URLs are correct on every
  * environment without a baked domain.
  */
 
 // Public, indexable routes. Kept as an explicit allow-list, not a directory scan, so a new authed
-// page never leaks into the sitemap by accident. `/pack/*` and `/ideas/*` are NOT here — both are
+// page never leaks into the sitemap by accident. `/pack/*` and `/ideas/*` are NOT here, both are
 // generated from the live catalogue below, because the set changes on every publish.
 //
 // `/llms.txt` is deliberately absent: it is a machine-readable index found by convention at a fixed
@@ -53,7 +53,7 @@ function changefreqFor(path: string): string {
 const SAFE_PACK_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** `verifiedAt` arrives as an ISO timestamp ("2026-07-31T02:19:33.616927"). Take the date only,
- *  and only when it really is one — a malformed value falls back to the build date rather than
+ *  and only when it really is one, a malformed value falls back to the build date rather than
  *  emitting a `<lastmod>` a crawler will reject. */
 function packLastmod(verifiedAt: string | undefined, fallback: string): string {
   const date = verifiedAt?.slice(0, 10);
@@ -79,7 +79,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
 
   // Every live pack already renders a public, indexable page (no `noindex`, canonical emitted by
   // `Seo`, and `/pack` is not in the robots.txt DISALLOW list) and is linked from the shelf on `/`.
-  // Listing them here does not change what is exposed — it only stops discovery depending entirely
+  // Listing them here does not change what is exposed, it only stops discovery depending entirely
   // on a crawler walking 42 links off the home page.
   //
   // Best-effort, like `fetchCatalogStats`: a catalogue outage must degrade this to the marketing
@@ -98,7 +98,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
       ),
     );
 
-    // Only the landings the live catalogue can actually fill — the same eligibility check the pages
+    // Only the landings the live catalogue can actually fill, the same eligibility check the pages
     // themselves run, so the sitemap can never advertise a URL that 404s on arrival. A landing's
     // `lastmod` is the newest verification date among its own packs: that is genuinely when the page
     // last changed, and it is what makes a re-crawl worth the crawler's time after a publish.

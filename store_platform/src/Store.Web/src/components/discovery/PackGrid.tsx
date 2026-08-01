@@ -10,7 +10,7 @@ import { DossierCard } from './DossierCard';
  * WHY NOT REUSE THE HOME PAGE'S CARD. `PackCard` in `pages/index.tsx` is deliberately not
  * exported: it is coupled to the catalogue's filter state and its spotlight/variant logic. Lifting
  * it out would mean editing the busiest page on the site to serve a new one, for a card that needs
- * none of that behaviour. This follows the shape `SimilarPacks` already established instead — the
+ * none of that behaviour. This follows the shape `SimilarPacks` already established instead, the
  * same visual language, no shared state.
  *
  * The whole card is one `<a>`, which is the point: a crawler on a landing page needs a real anchor

@@ -1,5 +1,5 @@
 /**
- * Stripe.js loader — the ONLY place the publishable key is read.
+ * Stripe.js loader, the ONLY place the publishable key is read.
  *
  * Card data NEVER touches our JS or servers (SECURE-UI §3, PCI): the key here only
  * boots Stripe Elements, which renders card fields in a cross-origin iframe and returns
@@ -22,5 +22,5 @@ export function getStripe(): Promise<Stripe | null> | null {
   return cached;
 }
 
-/** True when a publishable key is configured — gate funding UI on this. */
+/** True when a publishable key is configured, gate funding UI on this. */
 export const stripeConfigured = Boolean(PUBLISHABLE_KEY);

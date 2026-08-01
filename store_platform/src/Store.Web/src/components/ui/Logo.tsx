@@ -23,7 +23,7 @@ interface LogoProps {
  * single configurable `BRAND.name` (lib/config) so it always matches the page title, OG/Twitter
  * meta, both footers, and email.
  *
- * `monogramOnly` is the only compact form — a single-initial tile — kept for tight spots and for
+ * `monogramOnly` is the only compact form, a single-initial tile, kept for tight spots and for
  * favicon parity (public/icon.svg mirrors it). The letter is derived from `BRAND.wordmark` rather
  * than hardcoded, so renaming the brand cannot leave the tile and the favicon disagreeing.
  */

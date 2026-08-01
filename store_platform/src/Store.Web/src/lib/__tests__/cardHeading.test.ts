@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CARD_HEADING_MAX, cardHeading } from '@/lib/discovery';
 
-const base = { id: 'p1', title: 'PitchBrief — A very long descriptive subtitle about gig drivers' };
+const base = { id: 'p1', title: 'PitchBrief, A very long descriptive subtitle about gig drivers' };
 
 describe('cardHeading', () => {
   it('leads with the engine card line and demotes the brand name to an eyebrow', () => {
@@ -12,7 +12,7 @@ describe('cardHeading', () => {
     expect(heading).toBe('Refund insurance excess for under-27 gig drivers');
     expect(eyebrow).toBe('PitchBrief');
     expect(sub).toBe('A very long descriptive subtitle about gig drivers');
-    // The brand name survives regardless of layout — a basket line must still say "PitchBrief".
+    // The brand name survives regardless of layout, a basket line must still say "PitchBrief".
     expect(name).toBe('PitchBrief');
   });
 
@@ -55,7 +55,7 @@ describe('cardHeading', () => {
     // Nor as both heading and sub, when the title descriptor repeats it.
     const dup = cardHeading({
       id: 'p3',
-      title: 'SpatWindow — Track oyster spat windows',
+      title: 'SpatWindow, Track oyster spat windows',
       cardLine: 'Track oyster spat windows',
     });
     expect(dup.heading).toBe('Track oyster spat windows');

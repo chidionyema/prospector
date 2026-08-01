@@ -93,6 +93,27 @@ ACCUSATORY = re.compile(
 CITATION_REF = re.compile(r"[\(\[]([0-9a-f]{16})[\)\]]")
 
 
+def nodash(s: str | None) -> str:
+    """Strip em-dashes and en-dashes — the universal AI writing tell.
+
+    Replaces them with `, ` (the most natural English substitution) and collapses
+    any leftover whitespace. Compound words like "out-of-hours" and "slip-resistance"
+    are preserved because the regex only matches dashes surrounded by whitespace.
+
+    Mirrors the same pattern in tools/make_sample_report.py so the published voice
+    is consistent across the kill-log and the free sample report. The post-processor
+    runs at publish time, here, so the underlying dossiers and the engine's verdicts
+    are untouched — no moat change, only cosmetic normalisation.
+    """
+    if not s:
+        return ""
+    s = s.replace("\u2014", ", ").replace("\u2013", ", ")
+    s = re.sub(r"\s+-\s+", ", ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    # Tidy up the spaces the dash substitution leaves behind: "Brand , X" → "Brand, X".
+    return re.sub(r"\s+([.,;])", r"\1", s)
+
+
 def _sources_by_id(dossier: dict) -> dict[str, str]:
     """Every retrieved source in the dossier, keyed by the hash its prose cites."""
     index: dict[str, str] = {}
@@ -109,14 +130,15 @@ def _clean_reason(reason: str) -> str:
 
     Two prefix formats are in the corpus — the older `Gate 'incumbency' fired — ...` and the
     newer `It failed on: Do incumbents already own this? (`incumbency`) — ...`. Both restate
-    the gate, which the page renders separately, so both go.
+    the gate, which the page renders separately, so both go. `nodash()` is applied last to
+    sweep the em/en-dashes the LLM verdict uses for parenthetical clauses.
     """
     text = re.sub(r"^Gate '[^']+' fired\s*[—–-]\s*", "", reason).strip()
     text = re.sub(r"^It failed on:.*?\(`[^`]+`\)\s*[—–-]\s*", "", text).strip()
     text = re.sub(r"^refuted \(conf [\d.]+\):\s*", "", text).strip()
     text = CITATION_REF.sub("", text)
     text = re.sub(r"\s{2,}", " ", text).strip()
-    return re.sub(r"\s+([.,;])", r"\1", text)
+    return nodash(re.sub(r"\s+([.,;])", r"\1", text))
 
 
 def build(limit: int) -> dict:
@@ -151,8 +173,8 @@ def build(limit: int) -> dict:
 
         candidate = dossier.get("candidate") or {}
         entries.append({
-            "title": str(candidate.get("title") or "").strip(),
-            "oneLiner": str(candidate.get("one_liner") or "").strip(),
+            "title": nodash(candidate.get("title")),
+            "oneLiner": nodash(candidate.get("one_liner")),
             "gate": gate,
             "gateLabel": GATE_LABELS.get(gate, "It failed a check"),
             "reason": _clean_reason(reason),

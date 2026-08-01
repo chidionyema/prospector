@@ -10,13 +10,13 @@ import { useAuth } from '@/lib/auth/AuthContext';
 /**
  * The whole customer-account surface: one route.
  *
- * Signed out it is sign-in / register / forgot-password, and — via the query string the
- * transactional emails carry — verify-address and reset-password. Signed in it is orders, details
+ * Signed out it is sign-in / register / forgot-password, and, via the query string the
+ * transactional emails carry, verify-address and reset-password. Signed in it is orders, details
  * and security. The-introduction-exchange spread the same functionality over nine pages; the
  * storefront has one kind of user and one thing they come here to do, which is get at what they
  * bought.
  *
- * noindex, and not because the content is secret — a signed-out crawler only ever sees a sign-in
+ * noindex, and not because the content is secret, a signed-out crawler only ever sees a sign-in
  * form. It is that a sign-in form indexed against the store's name outranks the catalogue for
  * people searching the brand.
  */
@@ -67,7 +67,7 @@ export default function AccountPage() {
           description={
             status === 'authenticated'
               ? undefined
-              : 'Your purchases are tied to the email address you bought with — sign in with it to see them.'
+              : 'Your purchases are tied to the email address you bought with, sign in with it to see them.'
           }
         />
 

@@ -1,12 +1,12 @@
 /**
- * The discovery facet vocabulary — the TypeScript end of one closed contract.
+ * The discovery facet vocabulary, the TypeScript end of one closed contract.
  *
  * The same six vocabularies exist in Python at `prospector/facets.py` and in C# at
  * `store_platform/src/Store.Catalog/Domain/PackFacets.cs`. Three copies is a deliberate cost:
  * the engine, the API and the browser are three deploy units, and a shared runtime dependency
  * between them would be a worse coupling than three lists a test can compare. The test that
  * makes the cost safe is `src/lib/__tests__/facets.test.ts`, which reads `PackFacets.cs` off
- * disk and asserts value-for-value equality — so a facet added in one language and forgotten
+ * disk and asserts value-for-value equality, so a facet added in one language and forgotten
  * in another fails `npm test` rather than silently disappearing from the filter bar.
  *
  * Two rules this module exists to enforce:
@@ -17,7 +17,7 @@
  *    is "every claim sourced", a filter that lies is worse than no filter.
  * 2. **Absent means absent.** An untagged pack renders no chip and appears only under "All".
  *    There is no default value anywhere in this file, and `label()` returns null for an
- *    unknown code rather than prettifying it — a rendered guess is a claim nobody made.
+ *    unknown code rather than prettifying it, a rendered guess is a claim nobody made.
  */
 
 export const ADVANTAGE = ['code', 'nocode', 'sales', 'ops', 'audience'] as const;
@@ -80,7 +80,7 @@ export function isFacetValue(kind: FacetKind, value: string | null | undefined):
 }
 
 /**
- * Display copy. Chips must read as English — the old card rendered `{effortTag} effort`, giving
+ * Display copy. Chips must read as English, the old card rendered `{effortTag} effort`, giving
  * buyers "Highly automatable effort" (spec Part 10). Every string here is buyer-facing and this
  * file is its only home, so a wording change happens in one place rather than five components.
  */
@@ -119,19 +119,19 @@ const LABELS: Record<FacetKind, Record<string, string>> = {
   },
   /**
    * Sector display copy. The old set read as a government directory ("Licensing and admin",
-   * "Employment and pay", "Other") — accurate, but it described the paperwork rather than the
+   * "Employment and pay", "Other"), accurate, but it described the paperwork rather than the
    * opportunity, and a buyer scanning a shelf of £49 packs has no reason to click "Other".
    *
    * These are LABELS ONLY. The codes below are the closed cross-language contract shared with
    * `prospector/facets.py` and `PackFacets.cs`; nothing here renames, merges or splits a code.
-   * That matters because the obvious "improvement" is to merge — e.g. one "worker justice" tag
+   * That matters because the obvious "improvement" is to merge, e.g. one "worker justice" tag
    * over both `employment_pay` and `care_benefits`. That would silently make the three
    * vocabularies disagree and break the filter contract, so it is not done here: two codes stay
    * two labels.
    *
    * The bar every string had to clear: punchier tone, but still only describing WHAT THE SECTOR
    * IS. No label may assert an outcome the dossier has not proven. "Niche cash cows" for `other`
-   * and "Lucrative" anything are rejected on exactly that basis — profitability is a claim, and
+   * and "Lucrative" anything are rejected on exactly that basis, profitability is a claim, and
    * on a storefront whose position is "every claim sourced", a category cannot be the one place
    * we assert something with no source behind it.
    */
@@ -152,7 +152,7 @@ const LABELS: Record<FacetKind, Record<string, string>> = {
 };
 
 /**
- * Compact copy for dense rows — the command palette shows four facts plus a price on one line
+ * Compact copy for dense rows, the command palette shows four facts plus a price on one line
  * (spec :274), where "Sells to consumers" pushes the price off a phone. Only defined where it
  * differs from the full label; `shortLabel` falls back to `label` otherwise.
  */
@@ -186,11 +186,11 @@ export function shortLabel(kind: FacetKind, value: string | null | undefined): s
 
 /**
  * Heading copy for a facet's group in the filter bar. Each one names the question the buyer is
- * answering about themselves, not the database column — "Sector" told a buyer nothing about what
+ * answering about themselves, not the database column, "Sector" told a buyer nothing about what
  * clicking would do, and "What you already have" left "have of what?" unanswered.
  *
  * These are HEADINGS ONLY: they sit above a group of chips and are never dropped into a sentence.
- * Use `KIND_NOUN` for that — see below for why the distinction is not cosmetic.
+ * Use `KIND_NOUN` for that, see below for why the distinction is not cosmetic.
  *
  * Revised 2026-08-01 toward a tighter register, per string rather than wholesale. The sidebar is
  * `lg:grid-cols-[15rem_1fr]` (`pages/index.tsx:428`) and these render uppercase with
@@ -201,7 +201,7 @@ export function shortLabel(kind: FacetKind, value: string | null | undefined): s
  *
  * - `effort` keeps "How much is automated" over "Tech Enablement", which does not tell a buyer
  *   what the options underneath it will say.
- * - `mechanism` keeps "How it makes money" over "Revenue Model" — identical length, and one of
+ * - `mechanism` keeps "How it makes money" over "Revenue Model", identical length, and one of
  *   them is readable by someone who has never worked in a startup.
  * - `advantage` takes "Skills you have" rather than "Founder Skillset": shorter than the original,
  *   but without the word "Founder", because the `evenings` commitment lane exists precisely for
@@ -221,7 +221,7 @@ export const KIND_LABEL: Record<FacetKind, string> = {
  *
  * This exists because `KIND_LABEL` was being used in two sentence slots it cannot fit, and both
  * rendered broken English on a live page: `pages/index.tsx` builds the near-miss relax button as
- * `Show any ${...}` — "Show any what you already have", "Show any time it needs" — and
+ * `Show any ${...}`, "Show any what you already have", "Show any time it needs", and
  * `components/discovery/EmptyState.tsx` builds "Not tagged for ${...}". A heading is a fragment
  * chosen to read well ABOVE a control; a noun is chosen to read well INSIDE a clause. One string
  * cannot be both, and trying made the copy worse every time a heading improved.

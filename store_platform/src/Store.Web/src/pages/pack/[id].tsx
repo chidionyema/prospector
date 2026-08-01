@@ -13,6 +13,7 @@ import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { track } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
@@ -28,7 +29,7 @@ const subscribeToNothing = () => () => {};
 
 interface PackPageProps {
   pack: PackDetails | null;
-  /** The rest of the catalogue, for the "same mechanics" row. Empty when that fetch failed —
+  /** The rest of the catalogue, for the "same mechanics" row. Empty when that fetch failed,
    *  a catalogue outage must never take down a page someone is trying to buy from. */
   catalog: Pack[];
   error?: string;
@@ -37,7 +38,7 @@ interface PackPageProps {
 /**
  * The six fronts an idea is attacked on before it can be listed.
  *
- * These name the FILTER, not this pack's findings — deliberately, because this page has no
+ * These name the FILTER, not this pack's findings, deliberately, because this page has no
  * per-check verdicts to render (`PackDetails` in lib/api/client.ts carries none) and a static
  * list therefore may only say what is true of every listed pack.
  *
@@ -47,16 +48,16 @@ interface PackPageProps {
  *   - a check that finds no matching passage returns `unverifiable`, which is silence, not a
  *     finding. Across the 111 passing dossiers, `incumbency` has no positive finding for 71 of
  *     them (59 unverifiable + 12 never run) and `legality` for 52;
- *   - and not every check runs in every lane at all — the smb and side_hustle lanes never run
+ *   - and not every check runs in every lane at all, the smb and side_hustle lanes never run
  *     `value_durability` or `incumbency` (see the per-lane `hard_gates`/`score_checks` in
  *     config.yaml). "We tried" is false for those packs before the second clause even arrives.
  *
  * What IS true of every listed pack is the gate: it died on the first front where we found cited
- * evidence against it, and it did not die (kill_filter.is_hard_fail — only a cited killing
+ * evidence against it, and it did not die (kill_filter.is_hard_fail, only a cited killing
  * verdict kills; silence never does). So the lines state the front, the prose states what
  * surviving means, and the marker is a numeral rather than a green tick.
  *
- * Framing stays refutational — two-sided attack framing out-persuades one-sided "validated"
+ * Framing stays refutational, two-sided attack framing out-persuades one-sided "validated"
  * claims (Allen 1991, O'Keefe 1999, Eisend 2006). The change is scope, not tone: this pack's own
  * answers are real and directly below, in the scored axes with their weak ones left visible, and
  * in the QA report inside the pack, which marks each individual claim SUPPORTED or not.
@@ -77,7 +78,7 @@ export default function PackPage({ pack, catalog, error }: PackPageProps) {
   const router = useRouter();
 
   // Hooks must run unconditionally. If the server couldn't fetch the pack, render an error
-  // panel — the inner component runs only when pack is non-null.
+  // panel, the inner component runs only when pack is non-null.
   const packId = router.query.id as string;
 
   if (!pack) {
@@ -112,7 +113,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
 
-  // The buy path itself — shared verbatim with the shelf's Buy drawer, which is the point: the
+  // The buy path itself, shared verbatim with the shelf's Buy drawer, which is the point: the
   // logic it holds is three production incidents written down, and two copies would mean the
   // next such fix lands in only one of them. See lib/checkout/usePackCheckout.
   const {
@@ -129,7 +130,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
 
-  // Back-to-top visibility — revealed after scrolling past the hero (~600px).
+  // Back-to-top visibility, revealed after scrolling past the hero (~600px).
   const [showBackToTop, setShowBackToTop] = React.useState(false);
   React.useEffect(() => {
     const onScroll = () => setShowBackToTop(window.scrollY > 600);
@@ -147,10 +148,10 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
     `?subject=${encodeURIComponent(`Notify me when "${pack.title}" opens`)}` +
     `&body=${encodeURIComponent(`Please email me the moment this pack is available to buy: ${pack.title} (${pack.id}).`)}`;
 
-  // Shared checkout body — rendered in the desktop sticky card and the mobile purchase bar.
+  // Shared checkout body, rendered in the desktop sticky card and the mobile purchase bar.
   // Deliberately an element VALUE, not a component defined during render: a component declared
   // inline is a new type on every render, so React unmounts and remounts the subtree and the
-  // checkout button loses its state mid-purchase. The same element object can be placed twice —
+  // checkout button loses its state mid-purchase. The same element object can be placed twice,
   // React instantiates it independently at each position.
   const checkoutBody = (
     <>
@@ -205,7 +206,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
 
       {/* The one comparison a buyer is actually making, put where they make it. £49 alone is a
           cost with nothing to weigh it against; the figures that answer "worth it?" were already
-          on this page, 400px below, inside "Modelled economics". No new engine field — the only
+          on this page, 400px below, inside "Modelled economics". No new engine field, the only
           new thing is the division, and it is shown. `paybackEquation` returns null (renders
           nothing) whenever the comparison would not be honest, including when the modelled
           revenue fails to clear the price: this must never be a widget that appears only when
@@ -224,7 +225,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
             One month at the modelled rate covers the pack {payback.multiple} times over
             {payback.paybackMonths ? `, with the build itself modelled to pay back in ${payback.paybackMonths}` : ''}.
           </p>
-          {/* The same hedge as the Modelled economics box below — a model, not a forecast, and
+          {/* The same hedge as the Modelled economics box below, a model, not a forecast, and
               not a claim about this buyer. It travels with the number wherever the number goes. */}
           <p className="mt-2 text-[10px] leading-relaxed text-muted">
             Computed by the engine from the pack&apos;s verified inputs. Your own results will differ.
@@ -247,8 +248,8 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
           >
             {/* Not "Redirecting…": the embedded path opens a panel in place and never navigates,
                 so that label promised a page change that never came. This wording is true of both
-                routes — the overlay and the hosted redirect. */}
-            {checkingOut ? 'Opening secure checkout…' : `Get instant access — ${priceLabel}`}
+                routes, the overlay and the hosted redirect. */}
+            {checkingOut ? 'Opening secure checkout…' : `Get instant access, ${priceLabel}`}
           </button>
           {/* Under the button, not above it: the address only matters once the buyer has decided,
               and putting an account-shaped sentence in front of the price is how a storefront
@@ -301,7 +302,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
         description={pack.oneLine || undefined}
         ogType="product"
         ogImagePath={packOgImagePath(pack.id)}
-        ogImageAlt={`${pack.title} — a £49 researched business pack from Mumchimp`}
+        ogImageAlt={`${pack.title}, a £49 researched business pack from Mumchimp`}
         jsonLd={graph(
           productJsonLd(pack),
           // The trail Google renders in place of the raw URL, so a result reads
@@ -359,7 +360,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) ||
               verdict.summary) && (
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-muted">
-                {/* Near the title, not just in the "Is this for you?" section further down —
+                {/* Near the title, not just in the "Is this for you?" section further down,
                     a buyer landing here from the "Also available" shelf should see straight
                     away which market this pack is for, without scrolling. */}
                 {pack.market && (
@@ -384,7 +385,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               </div>
             )}
 
-            {/* Mobile purchase bar — keeps price + CTA above the fold on small screens */}
+            {/* Mobile purchase bar, keeps price + CTA above the fold on small screens */}
             <div className="mt-8 rounded-2xl border border-border bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
               {checkoutBody}
             </div>
@@ -399,7 +400,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               />
             </div>
 
-            {/* How the idea was attacked — the filter, stated as the filter. The per-pack answers
+            {/* How the idea was attacked, the filter, stated as the filter. The per-pack answers
                 are the scored axes immediately below and the QA report inside the pack; see the
                 CHECKS doc comment for why this block deliberately makes no per-check claim. */}
             <div className="mt-12">
@@ -407,7 +408,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               <p className="mt-2 text-sm text-muted">
                 Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
                 cited evidence against it, and a listing means none of the six produced that evidence.
-                Finding nothing is not the same as finding a green light — so the scores below show where
+                Finding nothing is not the same as finding a green light, so the scores below show where
                 this pack&rsquo;s case is strong and where it is thin.
               </p>
               <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -434,7 +435,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               </Link>
             </div>
 
-            {/* The stress test, scored — show the stress. Real per-pack scores, including the
+            {/* The stress test, scored, show the stress. Real per-pack scores, including the
                 weak axes, plus the surfaced main risk. Hiding the cons would kill the pros. */}
             {(axes.length > 0 || verdict.risk) && (
               <div className="mt-12">
@@ -491,7 +492,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               </div>
             )}
 
-            {/* Is this for you? — the concrete fit signals, when the pack carries them */}
+            {/* Is this for you?, the concrete fit signals, when the pack carries them */}
             {(pack.market || pack.whoPays || pack.timeToFirstRevenue) && (
               <div className="mt-12">
                 <h2 className="text-xl font-bold tracking-tight text-text">Is this for you?</h2>
@@ -546,8 +547,8 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               {/* Blurred deliverable preview. Grey rectangles said "a document exists"; this
                   page's whole claim is that a SPECIFIC, sourced document exists, and a skeleton
                   is the one element on the page that could be identical for a pack with nothing
-                  behind it. So the preview is now the pack's own text — the same headings and
-                  sourced lines rendered elsewhere on this page — set as a document and blurred.
+                  behind it. So the preview is now the pack's own text, the same headings and
+                  sourced lines rendered elsewhere on this page, set as a document and blurred.
                   Blur is a legible-shape effect: what shows through is real structure, real
                   paragraph lengths, real tables. Nothing is invented to fill it; when there is
                   no real content to show, `PreviewDocument` renders the neutral skeleton. */}
@@ -572,7 +573,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               )}
             </div>
 
-            {/* A look inside — real sourced lines lifted straight from the pack */}
+            {/* A look inside, real sourced lines lifted straight from the pack */}
             {pack.sampleExtract && pack.sampleExtract.length > 0 && (
               <div className="mt-12">
                 <h2 className="text-xl font-bold tracking-tight text-text">A look inside</h2>
@@ -581,7 +582,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                   every claim you are buying.
                 </p>
                 {/* Peek inside: a page you are looking at the top of. The fade is over the page
-                    itself, never over invented text — every line below is really in the pack, and
+                    itself, never over invented text, every line below is really in the pack, and
                     nothing is blurred to imply content that does not exist. */}
                 <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_18px_40px_rgba(0,0,0,0.07)]">
                   <div className="flex items-center gap-2 border-b border-border bg-bg/60 px-5 py-3">
@@ -640,7 +641,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
           </div>
         </div>
 
-        {/* Sticky mobile checkout bar — keeps price + CTA above the fold on phones. */}
+        {/* Sticky mobile checkout bar, keeps price + CTA above the fold on phones. */}
         {canCheckout && !clientSecret && (
           <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white p-3 pb-[env(safe-area-inset-bottom)] lg:hidden">
             <div className="flex items-center justify-between gap-3">
@@ -653,13 +654,13 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 disabled={checkingOut}
                 className="rounded-xl bg-text px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {checkingOut ? 'Opening…' : `Buy — ${priceLabel}`}
+                {checkingOut ? 'Opening…' : `Buy, ${priceLabel}`}
               </button>
             </div>
           </div>
         )}
 
-        {/* Back to top — desktop-only, revealed after scrolling. */}
+        {/* Back to top, desktop-only, revealed after scrolling. */}
         {showBackToTop && (
           <button
             type="button"
@@ -679,7 +680,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
 /**
  * The blurred look inside the deliverable.
  *
- * Built from the pack's OWN text — `whatYouGet` as the section headings a real build spec
+ * Built from the pack's OWN text, `whatYouGet` as the section headings a real build spec
  * carries, `sampleExtract` as the sourced body lines, the modelled economics as the figures
  * table. Nothing here is generated to fill space: every string is one the engine wrote and this
  * page already renders in full elsewhere, which is exactly why it is safe to show blurred.
@@ -762,6 +763,7 @@ function ShareRow({ title }: { title: string }) {
   );
 
   const handleCopy = React.useCallback(() => {
+    track('pack_shared', 'copy');
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -788,7 +790,7 @@ function ShareRow({ title }: { title: string }) {
         target="_blank"
         rel="noopener noreferrer"
         className={btnClass}
-        aria-label="Share on X"
+        onClick={() => track('pack_shared', 'x')}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
       </a>
@@ -799,7 +801,7 @@ function ShareRow({ title }: { title: string }) {
         target="_blank"
         rel="noopener noreferrer"
         className={btnClass}
-        aria-label="Share on LinkedIn"
+        onClick={() => track('pack_shared', 'linkedin')}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
       </a>
@@ -812,7 +814,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
     const id = params?.id as string;
     // Fetched together, not in series: the "same mechanics" row needs the catalogue, and paying
     // two sequential round trips before first byte would be a real cost for a decorative row.
-    // The catalogue is best-effort — a failure there must not 404 a page someone is buying from.
+    // The catalogue is best-effort, a failure there must not 404 a page someone is buying from.
     const [pack, catalog] = await Promise.all([
       fetchPackDetails(id),
       fetchCatalog().catch(() => [] as Pack[]),

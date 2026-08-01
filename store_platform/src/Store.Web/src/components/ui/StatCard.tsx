@@ -11,7 +11,7 @@ export interface StatCardProps {
   className?: string;
 }
 
-/** A quiet secondary number — active intros, pending offers. Tabular, calm, no chartjunk; it sits
+/** A quiet secondary number, active intros, pending offers. Tabular, calm, no chartjunk; it sits
  *  beside (never competes with) the MoneyHero (SITE-POLISH-SPEC §2.3). */
 export function StatCard({ label, value, sub, icon, className }: StatCardProps) {
   return (

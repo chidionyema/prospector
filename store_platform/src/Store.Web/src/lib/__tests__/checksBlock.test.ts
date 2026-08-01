@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * The pack page's "Six ways we tried to kill it" block is STATIC — it is the same six lines on
+ * The pack page's "Six ways we tried to kill it" block is STATIC, it is the same six lines on
  * every pack, because `PackDetails` (lib/api/client.ts) carries no per-check verdicts. A static
  * list may therefore only state what is true of every listed pack.
  *
@@ -28,7 +28,7 @@ const PAGE = readFileSync(
 /** The CHECKS array literal, isolated so a match elsewhere on the page cannot mask a regression. */
 function checksArray(): string {
   const start = PAGE.indexOf('const CHECKS = [');
-  expect(start, 'CHECKS array not found — rename it and update this guard').toBeGreaterThan(-1);
+  expect(start, 'CHECKS array not found, rename it and update this guard').toBeGreaterThan(-1);
   const end = PAGE.indexOf('];', start);
   return PAGE.slice(start, end);
 }

@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * The basket: several packs, one payment.
  *
- * Every pack is a one-off digital download, so there is no quantity — a pack is in the basket or
+ * Every pack is a one-off digital download, so there is no quantity, a pack is in the basket or
  * it is not. That is why this is a set of lines rather than a map of counts, and why adding
  * something already present is a no-op rather than an increment.
  *
@@ -19,7 +19,7 @@ export interface CartLine {
   price: string;
 }
 
-/** Mirrors StripeProvider.MaxCheckoutLines — the server refuses a longer basket. */
+/** Mirrors StripeProvider.MaxCheckoutLines, the server refuses a longer basket. */
 export const MAX_CART_LINES = 10;
 
 const STORAGE_KEY = 'mumchimp.cart.v1';
@@ -44,7 +44,7 @@ export function hasLine(lines: CartLine[], id: string): boolean {
  * Sum the display prices back into one display total.
  *
  * Returns null when any line's price cannot be read as a currency amount, or when the lines do not
- * agree on a symbol — a total that quietly drops or mixes a currency is worse than no total, since
+ * agree on a symbol, a total that quietly drops or mixes a currency is worse than no total, since
  * the buyer would reconcile it against their card statement and find a different number. The
  * drawer shows the per-line prices and lets Stripe state the total in that case.
  */

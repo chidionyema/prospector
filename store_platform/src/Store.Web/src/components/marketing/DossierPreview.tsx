@@ -10,7 +10,7 @@ import report from '@/data/sample-report.json';
   The list above this says a pack contains a verification dossier. That is a noun, and the
   documented fear on a digital download page is paying £49 for a two-page Google Doc. So this
   shows the dossier itself: the real check names, the real verdicts, the real source domains
-  from Report #00, the free sample. Nothing here is a mockup — it is the same JSON the /sample
+  from Report #00, the free sample. Nothing here is a mockup, it is the same JSON the /sample
   page renders in full, which is why one of the eight rows says the idea was pushed back.
 
   Keeping that row is the point. A preview showing eight green ticks would be a better advert
@@ -39,7 +39,7 @@ export function DossierPreview() {
             A real page from a real pack
           </p>
           <p className="mt-1 text-sm font-bold text-text">
-            {report.title} — the verification dossier
+            {report.title}, the verification dossier
           </p>
         </div>
         <span className="font-mono text-[11px] font-semibold text-muted">

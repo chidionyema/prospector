@@ -3,7 +3,7 @@ import type { GetServerSideProps } from 'next';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
 
 /**
- * `/llms.txt` — a curated, plain-Markdown map of this site for large language models.
+ * `/llms.txt`, a curated, plain-Markdown map of this site for large language models.
  *
  * WHAT IT IS. A proposed convention (llmstxt.org) answering the same question robots.txt answers
  * for crawlers, but for a model with a limited context window: not "what may you read" but "what
@@ -11,7 +11,7 @@ import { fetchCatalog, type Pack } from '@/lib/api/client';
  * catalogue and the honest scope of the product in one request, instead of inferring it from a
  * 344KB marketing page whose content is mostly layout.
  *
- * HONESTY. It is adopted, not universal — no search engine is known to require it, and it is not
+ * HONESTY. It is adopted, not universal, no search engine is known to require it, and it is not
  * a ranking factor. It is cheap (one route, no build step) and it is the only artefact on the site
  * that states, in machine-first prose, what a pack is and is not. That is the case for it; there
  * is no evidence-backed traffic claim to make here and none is implied.
@@ -25,7 +25,7 @@ import { fetchCatalog, type Pack } from '@/lib/api/client';
  */
 
 // Keep the file small enough to be read in full. The catalogue is newest-first, so a cap keeps the
-// most recent work and drops the tail — and the sitemap still lists every pack for crawlers that
+// most recent work and drops the tail, and the sitemap still lists every pack for crawlers that
 // want the complete set.
 const MAX_PACKS = 60;
 
@@ -75,8 +75,8 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const body = `# Mumchimp
 
 > Mumchimp sells researched business opportunity packs for £49 each. Every pack is one business
-> idea that passed an automated six-check filter — real pain, durable value, room past incumbents,
-> a solvent payer, a distribution route, and legality — and then survived an adversarial review.
+> idea that passed an automated six-check filter, real pain, durable value, room past incumbents,
+> a solvent payer, a distribution route, and legality, and then survived an adversarial review.
 > Each claim in a pack cites a retrievable source.
 
 A pack is a zip of plain Markdown (5,000+ words) in four parts: a build spec, a go-to-market plan,
@@ -87,7 +87,7 @@ What a pack is NOT, stated so it is not inferred wrongly: it is not financial, l
 advice, and it is not a guarantee that the business will succeed. The guarantee is that the
 analysis is grounded and sourced. Execution is the buyer's.
 
-Ideas that FAIL the filter are published too, with the sourced reason they were rejected — that is
+Ideas that FAIL the filter are published too, with the sourced reason they were rejected, that is
 the kill log, and it is the evidence the filter is real rather than a marketing claim.
 
 ## Guide
