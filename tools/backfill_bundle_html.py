@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backfill the in-zip HTML reader (index.html) into already-listed packs.
+"""Backfill (or correct) the in-zip HTML reader, index.html, on already-listed packs.
 
 Packs bundled before prospector/pack_html.py shipped contain only the eight .md
 deliverables. This tool retrofits index.html WITHOUT regenerating anything: the
@@ -7,6 +7,18 @@ deliverables. This tool retrofits index.html WITHOUT regenerating anything: the
 zip byte-identical — zero model calls, zero content changes. (Deliberately NOT
 `publish --reuse-artifacts`, which silently regenerates — model calls and a live
 publish — whenever validate_pack is incomplete.)
+
+It also CORRECTS a reader that is present but wrong, which is the case for every
+pack listed today. The reader used to be built from the zip's own entry order,
+and the bundle is written 01, 02, 03, 04, QA, Marketing, 00, 05 — so the reader
+opened on the build spec, buried the executive summary seventh, and put the
+first-week checklist, the one document that tells a buyer what to do, last. The
+generator was fixed to take its order from the BUNDLE_FILES contract instead;
+this tool now does the same, so the shelf can be brought in line with it.
+
+Only the generated index.html is ever written or replaced. The .md deliverables
+of record are never rewritten — that would be editing a document someone already
+paid for, which is a different decision and not this tool's to make.
 
 Content storage is content-addressed (packs/<id>/<sha256-of-zip>.zip,
 bridge.py:_sha256/content_key), so the new zip lands at a NEW object key and the
@@ -18,7 +30,9 @@ presigned download URL already in a buyer's hands keeps working.
 Safety model:
   * --dry-run (default): fetch, rebuild, report. No upload, no PATCH.
   * --apply: upload new zip, then PATCH the listing. Requires STORE_INTERNAL_API_KEY.
-  * A pack whose zip already contains index.html is skipped (idempotent).
+  * A pack whose index.html already renders exactly what this tool would write is
+    skipped. Idempotency is by CONTENT, not by presence — a pack carrying the old
+    write-order reader is corrected, not treated as already done.
   * A pack with several objects under packs/<id>/ is AMBIGUOUS (the API does not
     expose the current contentKey): skipped unless --take-newest, which uses the
     most recently modified object and says so in the report.
@@ -41,6 +55,7 @@ from typing import List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from prospector import pack_html  # noqa: E402
+from prospector.bridge import BUNDLE_FILES, _SECTION_TITLES  # noqa: E402
 
 DEFAULT_API_URL = "https://api.mumchimp.com"
 
@@ -48,7 +63,7 @@ DEFAULT_API_URL = "https://api.mumchimp.com"
 @dataclass
 class PackResult:
     pack_id: str
-    action: str  # converted | would-convert | already-has-html | ambiguous | no-object | error
+    action: str  # converted | would-convert | already-correct | ambiguous | no-object | error
     detail: str = ""
     old_key: str = ""
     new_key: str = ""
@@ -70,27 +85,61 @@ class Report:
         return ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
 
 
-def rebuild_zip_with_index(zip_bytes: bytes, meta: pack_html.PackMeta) -> Optional[bytes]:
-    """Return new zip bytes with index.html appended, or None if it is already there.
+def ordered_md_entries(src: zipfile.ZipFile) -> List[Tuple[str, str]]:
+    """The zip's .md files as ``(display_title, markdown)``, in READING order.
 
-    Every existing entry is copied byte-identical, in its original order, so the
-    .md deliverables of record are untouched — index.html is strictly additive.
+    Reading order comes from the ``BUNDLE_FILES`` contract, exactly as the generator now takes
+    it (bridge.py, the `md_entries` comprehension feeding render_pack_html) — deliberately NOT
+    from the zip's own entry order. Those two are not the same thing: the bundle is written
+    01, 02, 03, 04, QA, Marketing, 00, 05, so a reader built from write order opens on the
+    build spec and buries the executive summary seventh and the checklist last. That is the
+    defect this function exists to stop repeating on already-listed packs.
+
+    Titles come from the same `_SECTION_TITLES` map the generator uses, so a backfilled reader
+    and a freshly generated one label the same file identically ("Executive Summary", not
+    "00_Executive_Summary").
+
+    Any .md not in the contract keeps its original relative position at the end rather than
+    being dropped: this tool's whole promise is that it does not lose content, and a legacy
+    bundle with an extra file must still render all of it.
+    """
+    names = src.namelist()
+    md = [n for n in names if n.endswith(".md")]
+    known = [n for n in BUNDLE_FILES if n in md]
+    extra = [n for n in md if n not in set(BUNDLE_FILES)]
+    return [
+        (_SECTION_TITLES.get(n, n[:-3]), src.read(n).decode("utf-8", errors="replace"))
+        for n in known + extra
+    ]
+
+
+def rebuild_zip_with_index(zip_bytes: bytes, meta: pack_html.PackMeta) -> Optional[bytes]:
+    """Return new zip bytes carrying a correct index.html, or None if it is already correct.
+
+    Every .md entry is copied byte-identical, in its original order, so the deliverables of
+    record are untouched — only the generated index.html is written or replaced.
+
+    Idempotency is by CONTENT, not by presence. The first version of this tool skipped any
+    bundle that already had an index.html, which meant a pack backfilled with the old
+    write-order reader could never be corrected: it was permanently "done" while opening on
+    the wrong page. Rendering and comparing costs one render per pack and makes the tool safe
+    to re-run after any reader change.
     """
     src = zipfile.ZipFile(io.BytesIO(zip_bytes))
     names = src.namelist()
-    if "index.html" in names:
-        return None
+    index_html = pack_html.render_pack_html(ordered_md_entries(src), meta)
 
-    md_entries: List[Tuple[str, str]] = [
-        (name[:-3], src.read(name).decode("utf-8", errors="replace"))
-        for name in names
-        if name.endswith(".md")
-    ]
-    index_html = pack_html.render_pack_html(md_entries, meta)
+    if "index.html" in names and src.read("index.html").decode("utf-8", errors="replace") == index_html:
+        return None
 
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
         for name in names:
+            # The stale reader is dropped here and rewritten below, so a corrected bundle can
+            # never end up with two index.html members (zipfile permits duplicates silently,
+            # and readers disagree about which one wins).
+            if name == "index.html":
+                continue
             dst.writestr(name, src.read(name))
         dst.writestr("index.html", index_html)
     return out.getvalue()
@@ -196,17 +245,21 @@ def main() -> int:
 
             new_bytes = rebuild_zip_with_index(zip_bytes, meta)
             if new_bytes is None:
-                report.add(PackResult(pid, "already-has-html", old_key.rsplit("/", 1)[-1]))
+                report.add(PackResult(pid, "already-correct", old_key.rsplit("/", 1)[-1]))
                 continue
 
             new_hash = hashlib.sha256(new_bytes).hexdigest()
             new_key = f"packs/{pid}/{new_hash}.zip"
             delta = len(new_bytes) - len(zip_bytes)
+            # Two different jobs under one action, worth telling apart in the log: a pack that
+            # never had a reader is gaining one, a pack that had the write-order reader is
+            # having it corrected. Only the second is a change to what an existing buyer sees.
+            kind = "reordered reader" if "index.html" in zipfile.ZipFile(
+                io.BytesIO(zip_bytes)).namelist() else "new reader"
+            sized = f"{len(zip_bytes)}B -> {len(new_bytes)}B ({delta:+d}B, {kind})"
 
             if not args.apply:
-                report.add(PackResult(pid, "would-convert",
-                                      f"{len(zip_bytes)}B -> {len(new_bytes)}B (+{delta}B)",
-                                      old_key, new_key, delta))
+                report.add(PackResult(pid, "would-convert", sized, old_key, new_key, delta))
                 continue
 
             s3.put_object(Bucket=bucket, Key=new_key, Body=new_bytes,
@@ -226,7 +279,7 @@ def main() -> int:
                                       f"uploaded {new_key} but PATCH returned {patch.status_code}: {patch.text[:200]}"))
                 continue
 
-            report.add(PackResult(pid, "converted", f"+{delta}B -> {new_key}",
+            report.add(PackResult(pid, "converted", f"{delta:+d}B, {kind} -> {new_key}",
                                   old_key, new_key, delta))
         except Exception as e:  # noqa: BLE001 — per-pack isolation: one failure never stops the sweep
             report.add(PackResult(pid, "error", str(e)))
