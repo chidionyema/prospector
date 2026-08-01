@@ -1,0 +1,126 @@
+# Deploy the API (Store.Api) to Fly from GitHub.
+#
+# Why this exists: the storefront already deploys from CI (deploy-web.yml) but the API did not,
+# so shipping it meant `fly deploy` from a laptop. That has two failure modes and we hit both on
+# 2026-07-31/08-01. First, a local deploy builds the WORKING TREE — on that day the tree also held
+# a second agent's uncommitted files, and predeploy_guard.sh correctly refused, so the deploy could
+# only go out from a detached worktree pinned to one commit. Second, the laptop's flyctl session
+# expired: `fly auth whoami` still printed the account while every call returned
+# "Not authorized to access this firecrackerapp" and the image push died on `403 Forbidden` /
+# `ensure depot builder failed (status 401)`. A finished, fully-tested API change sat unshipped
+# because of a credential on one machine. A CI checkout fixes both: every deploy is exactly one
+# commit, and the credential lives in the repo rather than in someone's home directory.
+#
+# Setup, once, by the repo owner — CI cannot mint this for itself:
+#
+#   flyctl tokens create deploy -a prospector-store-api
+#   gh secret set FLY_API_TOKEN_API                  # paste the token above
+#
+# A SEPARATE secret from FLY_API_TOKEN on purpose: that one was minted with
+# `-a prospector-store-web`, and a Fly deploy token is scoped to its app, so reusing it here would
+# fail at push time with an authorization error rather than deploying. If the owner would rather
+# keep one credential, mint an org-scoped token and set both secrets to it — this workflow falls
+# back to FLY_API_TOKEN so that arrangement works without an edit.
+#
+# The API carries its own runtime secrets (STORE_INTERNAL_API_KEY, Stripe, R2) as Fly app secrets
+# set on the app itself. They are not deploy-time inputs and this workflow never reads or prints
+# them.
+
+name: Deploy Store.Api
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run the tests and stop before deploying"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "store_platform/src/Store.Api/**"
+      - "store_platform/src/Store.Catalog/**"
+      - "store_platform/deploy/fly/api.fly.toml"
+      - ".github/workflows/deploy-api.yml"
+
+# Never cancel a half-finished production deploy to start another: a cancelled rolling update can
+# leave machines split across two images. Queue instead.
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: "9.0.x"
+  FLY_APP: prospector-store-api
+
+jobs:
+  # The image build compiles, so a compile error already fails the deploy. It does NOT run xunit —
+  # gate the suite here rather than discover a regression against live buyers. This is the money
+  # rail: fulfilment, checkout and the content pointer all live in this app.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      # Same project path as ci.yml's dotnet job. Pointing at the solution or omitting the
+      # store_platform/ prefix fails with MSB1009 and a job that never ran a test still goes green
+      # on the surrounding steps — that exact bug shipped here once already.
+      - run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
+      - run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore
+      - run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal
+
+  deploy:
+    needs: test
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        env:
+          # Prefer the API-scoped token; fall back to a single org-scoped FLY_API_TOKEN if that is
+          # how the owner set it up. Fails with a named instruction rather than a Fly 401 if neither
+          # is present.
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_API || secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${FLY_API_TOKEN:?set repo secret FLY_API_TOKEN_API (flyctl tokens create deploy -a ${FLY_APP})}"
+          flyctl deploy store_platform \
+            --config store_platform/deploy/fly/api.fly.toml \
+            --app "$FLY_APP" \
+            --remote-only
+
+      # `flyctl deploy` exiting 0 means the machines took the image, not that this commit's code is
+      # answering. Two requests settle it:
+      #
+      #   /catalog 200            — the app boots and the database opened (a failed EF migration
+      #                             shows up here, not in the deploy log)
+      #   /internal/catalog/<id>/content 401 without a key — the route EXISTS. It answers 404 on
+      #                             any build that predates the content door, and the auth check
+      #                             runs before the pack lookup (Program.cs), so 401 is returned
+      #                             for a nonexistent id too. 401 vs 404 is therefore a clean
+      #                             binary answer to "did THIS commit ship?", with no key involved
+      #                             and nothing secret in the log.
+      - name: Prove this commit is the one answering
+        env:
+          API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+        run: |
+          set -euo pipefail
+          base="${API_URL:-https://api.mumchimp.com}"
+
+          catalog=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 5 --retry-delay 5 \
+                      --retry-all-errors "$base/catalog")
+          echo "GET $base/catalog -> $catalog"
+          [ "$catalog" = "200" ] || { echo "API did not serve the catalogue after deploy"; exit 1; }
+
+          door=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+                   "$base/internal/catalog/deploy-probe/content")
+          echo "GET $base/internal/catalog/deploy-probe/content (no key) -> $door"
+          case "$door" in
+            401) echo "content door is live and refuses unauthenticated callers" ;;
+            404) echo "route missing — the machines are serving an older image"; exit 1 ;;
+            *)   echo "unexpected status from the content door"; exit 1 ;;
+          esac
