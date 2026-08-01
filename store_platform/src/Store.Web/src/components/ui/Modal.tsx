@@ -104,7 +104,10 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
             className,
           )}
         >
-          <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+          {/* shrink-0 keeps the header at its natural height when the body grows past the
+              panel — without it, flexbox will squeeze the title/close row before the body
+              scrolls, hiding the close button on a tall checkout. */}
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-6 py-4">
             <h2 id={titleId} className="text-h2 font-semibold text-text">
               {title}
             </h2>
@@ -115,10 +118,13 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
               className="rounded-md p-1.5 text-muted hover:bg-surface2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               <Icon name="close" size={18} />
+              <span className="sr-only">Close</span>
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
-          {footer && <div className="border-t border-border px-6 py-4">{footer}</div>}
+          {/* shrink-0 mirrors the header: the footer (Pay-once button, identity note) must
+              stay visible at the bottom regardless of body content height. */}
+          {footer && <div className="shrink-0 border-t border-border px-6 py-4">{footer}</div>}
         </div>
       </div>
     </div>

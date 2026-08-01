@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Input, Money, SegmentedControl, useToast } from '@/components/ui';
+import { Button, Card, EmptyState, Input, Money, SegmentedControl, Skeleton, useToast } from '@/components/ui';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { auth, social, AuthError, type Order, type ProfileEdit, type Session } from '@/lib/api/auth';
 import { API_BASE_URL } from '@/lib/config';
@@ -111,7 +111,7 @@ function OrdersTab() {
   }, []);
 
   if (error) return <Card className="p-6"><p className="text-body text-text">{error}</p></Card>;
-  if (!orders) return <Card className="p-6"><p className="text-body text-muted">Loading your orders…</p></Card>;
+  if (!orders) return <Card className="p-6"><div className="space-y-3"><Skeleton className="h-5 w-3/4" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div></Card>;
 
   if (!confirmed) {
     return (

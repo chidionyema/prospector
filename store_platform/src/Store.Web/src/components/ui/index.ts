@@ -40,6 +40,8 @@ export type { PageHeaderProps } from './PageHeader';
 export { Badge } from './Badge';
 export type { BadgeProps } from './Badge';
 
+export { Breadcrumbs } from './Breadcrumbs';
+
 export { Money } from './Money';
 export type { MoneyProps } from './Money';
 

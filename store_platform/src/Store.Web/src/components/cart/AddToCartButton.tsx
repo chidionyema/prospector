@@ -43,7 +43,7 @@ export function AddToCartButton({ line, size = 'full', className }: AddToCartBut
   // Rendered only once the browser has read localStorage: before that every button would claim
   // the pack is not in the basket, and the ones that are would visibly flip a frame later.
   if (!cart.ready) {
-    return <span aria-hidden className={cx(size === 'compact' ? 'h-8 w-8' : 'h-11', 'block', className)} />;
+    return <span aria-busy={true} aria-hidden className={cx(size === 'compact' ? 'h-8 w-8' : 'h-11', 'block', className)} />;
   }
 
   if (size === 'compact') {

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon } from '@/components/ui';
+import { Icon, Skeleton } from '@/components/ui';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { fetchOrderBySession, type SessionOrderItem } from '@/lib/api/client';
 import { PostPurchaseAccountNote } from '@/components/checkout/BuyerIdentityNote';
@@ -32,6 +32,7 @@ export default function OrderSuccess() {
   const sessionId = typeof query.session_id === 'string' ? query.session_id : null;
 
   const [pollPhase, setPollPhase] = React.useState<Phase>('resolving');
+  const [pollAttempt, setPollAttempt] = React.useState(0);
   const [items, setItems] = React.useState<SessionOrderItem[]>([]);
   const [copied, setCopied] = React.useState(false);
 
@@ -61,6 +62,7 @@ export default function OrderSuccess() {
 
     const poll = async () => {
       attempts += 1;
+      setPollAttempt(attempts);
       try {
         const result = await fetchOrderBySession(sessionId);
         if (cancelled) return;
@@ -179,12 +181,18 @@ export default function OrderSuccess() {
           )}
 
           {phase === 'resolving' && (
-            <div className="bg-surface2 border border-border rounded-xl p-6 max-w-sm w-full text-left">
-              <p className="text-sm font-semibold text-text">Confirming your payment</p>
-              <p className="text-xs text-muted mt-1">
-                This usually takes a few seconds. You can stay on this page — your download will
-                appear here as soon as it is ready.
-              </p>
+            <div className="bg-surface2 border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-5">
+              <div className="h-1 w-full bg-border overflow-hidden rounded-full">
+                <div
+                  className="h-full bg-primary transition-all rounded-full"
+                  style={{ width: `${(pollAttempt / MAX_POLL_ATTEMPTS) * 100}%` }}
+                />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
             </div>
           )}
 
@@ -193,6 +201,14 @@ export default function OrderSuccess() {
             phase === 'unfulfilled' ||
             phase === 'revoked') && (
             <div className="bg-surface2 border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-4">
+              {phase === 'timed-out' && (
+                <div className="h-1 w-full bg-border overflow-hidden rounded-full">
+                  <div
+                    className="h-full bg-danger transition-all rounded-full"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              )}
               {/* Do NOT tell the buyer to check their inbox: no fulfilment email is sent while
                   the MAILJET_* secrets are unset. Sending them to an empty inbox loses the sale.
                   Give them the one reference that actually lets support find the order. */}

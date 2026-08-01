@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Button, Icon, Modal, cx } from '@/components/ui';
+import { Button, Icon, Modal, cx, useToast } from '@/components/ui';
 import { createCartCheckout, formatPrice, PacksUnavailableError } from '@/lib/api/client';
 import { useCart } from '@/lib/cart';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -17,9 +17,22 @@ export function CartButton() {
   // Above the early return below, because hooks cannot be conditional. Null for a guest, which is
   // the answer the basket wants: checkout carries an address only when one is already proven.
   const { account } = useAuth();
+  const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
   const [checkingOut, setCheckingOut] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [justAdded, setJustAdded] = React.useState(false);
+  const prevCount = React.useRef(cart.count);
+
+  React.useEffect(() => {
+    if (cart.count > prevCount.current) {
+      setJustAdded(true);
+      const timer = setTimeout(() => setJustAdded(false), 600);
+      prevCount.current = cart.count;
+      return () => clearTimeout(timer);
+    }
+    prevCount.current = cart.count;
+  }, [cart.count]);
 
   if (!cart.ready || cart.count === 0) return null;
 
@@ -64,7 +77,7 @@ export function CartButton() {
         <Icon name="cart" size={18} />
         <span className="hidden sm:inline">Basket</span>
         <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-white">
-          {cart.count}
+          {justAdded ? <span className="animate-rise" data-just-added>{cart.count}</span> : cart.count}
         </span>
       </button>
 
@@ -114,7 +127,10 @@ export function CartButton() {
               </div>
               <button
                 type="button"
-                onClick={() => cart.remove(line.id)}
+                onClick={() => {
+                  cart.remove(line.id);
+                  toast(`Removed "${line.title}" from basket`, 'info');
+                }}
                 aria-label={`Remove ${line.title} from basket`}
                 className={cx(
                   'inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg text-muted transition-colors',
