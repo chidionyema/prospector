@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -10,16 +10,13 @@ import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
-import { createEmbeddedCheckout, createStripeCheckout, fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { resolveStripeCheckout } from '@/lib/checkoutRoute';
+import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
-import { stripeConfigured } from '@/lib/stripe';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
-import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { LEGAL } from '@/lib/config';
 import { coverFor } from '@/lib/cover';
 import { paybackEquation } from '@/lib/payback';
@@ -51,129 +48,32 @@ const CHECKS = [
 // never drift into promising different things for the same £49.
 
 export default function PackPage({ pack, catalog }: PackPageProps) {
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  /** What this page has decided about the overlay, which is NOT the same question as whether it
-   *  is open — see `clientSecret` below.
-   *   - `undefined`: nothing decided yet, so a pre-opened session in the URL is free to win.
-   *   - `null`: decided closed. Also every provider and build that pays through the hosted
-   *     redirect instead; null is not "failed".
-   *   - a string: this session is open. */
-  const [checkoutSession, setCheckoutSession] = useState<string | null | undefined>(undefined);
-
   // A session created out of band opens the overlay directly, so the live render can be proven
   // on a smoke-test-priced session instead of a full-price one. Ignored unless the value has the
   // shape of a client secret; see lib/preopenedCheckout for why this leaks nothing.
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
 
-  // Derived, not copied into state by an effect. The URL is already a source of truth, so the
-  // effect that used to mirror it into state bought nothing and cost two things: a first paint
-  // with the overlay shut before the effect ran, and a re-open bug waiting to happen — closing
-  // sets null, and an effect keyed on `preopened` would put it straight back. The three-state
-  // above is what keeps "not decided yet" distinguishable from "closed": only the former defers
-  // to the query string.
-  const clientSecret = checkoutSession === undefined ? preopened : checkoutSession;
+  // The buy path itself — shared verbatim with the shelf's Buy drawer, which is the point: the
+  // logic it holds is three production incidents written down, and two copies would mean the
+  // next such fix lands in only one of them. See lib/checkout/usePackCheckout.
+  const {
+    checkingOut,
+    checkoutError,
+    clientSecret,
+    canCheckout,
+    provider,
+    buy: handleBuy,
+    handleUnreachable: handleEmbeddedUnreachable,
+    closeOverlay,
+  } = usePackCheckout(pack, preopened);
 
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
 
-  // Null for a guest, and that is a complete answer rather than a missing one — checkout carries
-  // the address only when we already know it. See checkoutBody in lib/api/client.ts for why
-  // sending it matters: it locks the field at Stripe, which is what keeps the order joined to
-  // this account (orders join on email alone).
-  const { account } = useAuth();
-  const buyerEmail = account?.email ?? null;
-
-  const provider = pack.paymentProvider || 'paddle';
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
   const priceLabel = formatPrice(pack.price);
   const payback = paybackEquation(pack.price, pack.financialSnapshot);
-
-  const handleBuy = async () => {
-    setCheckingOut(true);
-    setCheckoutError(null);
-
-    try {
-      if (provider === 'stripe') {
-        await handleStripeCheckout(pack);
-      } else {
-        await handlePaddleCheckout(pack);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '';
-      setCheckoutError(message || 'Checkout failed. Please try again.');
-    } finally {
-      setCheckingOut(false);
-    }
-  };
-
-  const handleStripeCheckout = async (pack: PackDetails) => {
-    // Embedded is preferred but never required. Two separate reasons it may not happen — no
-    // Stripe.js key in this build, or a server that answered with a hosted URL anyway — and
-    // both land on exactly the redirect that existed before embedded checkout was added.
-    //
-    // The buy button is deliberately NOT gated on `stripeConfigured`: gating it on the
-    // publishable key once hid every buy button in production when the key was left out of the
-    // web build args (see hasProvisionedPrice below). That failure must not come back through
-    // this path, so a missing key degrades the SURFACE, never the sale.
-    // resolveStripeCheckout owns the "embedded is preferred but never required" guarantee, and
-    // is unit-tested for every way the embedded attempt can fail — including a THROW, which
-    // previously escaped to handleBuy and rendered "Checkout failed" for a completable sale.
-    // createStripeCheckout already refuses any URL that is not Stripe's hosted checkout.
-    const route = await resolveStripeCheckout({
-      stripeConfigured,
-      requestEmbedded: () => createEmbeddedCheckout(pack.id, buyerEmail),
-      requestHosted: () => createStripeCheckout(pack.id, buyerEmail),
-    });
-
-    if (route.kind === 'embedded') {
-      setCheckoutSession(route.clientSecret);
-      return;
-    }
-    window.location.href = route.url;
-  };
-
-  /**
-   * The overlay opened but cannot work in this browser — send the buyer to hosted checkout.
-   *
-   * resolveStripeCheckout's fallback only covers a failed session REQUEST; a session that is
-   * issued and then cannot render had no escape at all, and the buyer saw Stripe's own "cannot
-   * be reached" message with nowhere to go (LIVE_RAIL_SMOKE_TEST.md, 2026-07-31).
-   *
-   * A new hosted session is requested rather than reusing the embedded one: an embedded session
-   * has no `url`, so there is nothing to redirect to. The panel closes first, so a hosted request
-   * that itself fails leaves a visible error on the pack page instead of a frozen overlay.
-   */
-  const handleEmbeddedUnreachable = async () => {
-    setCheckoutSession(null);
-    try {
-      window.location.href = await createStripeCheckout(pack.id, buyerEmail);
-    } catch {
-      setCheckoutError(
-        'Checkout could not load in this browser. Please try another browser, or disable any ad or privacy blocker for this page.',
-      );
-    }
-  };
-
-  const handlePaddleCheckout = async (pack: PackDetails) => {
-    await initPaddle();
-    openPaddleCheckout(pack.providerPriceId);
-  };
-
-  // Stripe checkout is a server-issued redirect to Stripe's HOSTED page (handleStripeCheckout
-  // above); it never boots Stripe.js, so the publishable key has no bearing on whether a pack
-  // can be bought. Gating on it silently hid every buy button in production once the key was
-  // left out of the web build args — a sales outage with no error anywhere. Gate instead on the
-  // one thing that must actually be true: the pack points at a real provisioned price.
-  const hasProvisionedPrice =
-    typeof pack.providerPriceId === 'string' &&
-    pack.providerPriceId.length > 0 &&
-    !pack.providerPriceId.startsWith('price_stub');
-
-  const canCheckout =
-    (provider === 'stripe' && hasProvisionedPrice) ||
-    (provider !== 'stripe' && paddleConfigured);
 
   const notifyHref =
     `mailto:${LEGAL.supportEmail}` +
@@ -335,7 +235,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
         <EmbeddedCheckoutPanel
           clientSecret={clientSecret}
           title={pack.title}
-          onClose={() => setCheckoutSession(null)}
+          onClose={closeOverlay}
           onUnreachable={handleEmbeddedUnreachable}
         />
       )}
