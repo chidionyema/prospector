@@ -15,9 +15,10 @@ import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { BuyDrawerProvider, BuyNowButton } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
-import { FacetBar } from '@/components/discovery/FacetBar';
+import { AppliedFilterChips, FacetBar } from '@/components/discovery/FacetBar';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { Matchmaker, MatchmakerTrigger } from '@/components/discovery/Matchmaker';
+import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
 import { citedFigure } from '@/lib/sources';
@@ -572,6 +573,12 @@ function CatalogBrowser({
             </div>
           </div>
 
+          {/* What is currently narrowing the shelf, one removable chip per constraint — the
+              only always-visible trace of the filters on a phone, where the controls live in a
+              closed sheet. Renders nothing when nothing is active, so the default view pays no
+              height for it. */}
+          <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
+
           {/* Mounted only once opened, and never unmounted after — "Change my answers" on the
               result screen has to land back on the form, not on the trigger they already used. */}
           {matchOpen && (
@@ -606,6 +613,14 @@ function CatalogBrowser({
                 <Icon name="shield" size={15} className="text-success" />
                 Every pack carries a 14 day money back guarantee.
               </p>
+              {/* The waitlist ask sits AFTER the shelf on purpose: the deployed variant put it
+                  between the hero and the first card, spending above-the-fold pixels on buyers
+                  who had not yet seen a product. Down here it reaches the only buyer it converts
+                  — one who scrolled the shelf and still wants more. It renders ONLY on this
+                  branch: the near-miss and empty states carry their own ask (DiscoveryWaitlist),
+                  and two email forms on one screen is a duplicate ask that also breaks selector
+                  uniqueness. Rationale in ShelfEndCapture.tsx. */}
+              <ShelfEndCapture className="mt-10" />
             </>
           ) : candidates.length > 0 ? (
             /* A. Something is one facet away — sell that before asking for an email address. */

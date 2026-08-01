@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@/components/ui';
+import { Button, Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { formatPrice, type Pack } from '@/lib/api/client';
 import {
@@ -13,7 +13,7 @@ import {
   type MatchAnswers,
   type MatchResult,
 } from '@/lib/discovery';
-import { label as facetLabel, type Advantage, type Commitment, type Payer } from '@/lib/facets';
+import type { Advantage, Commitment, Payer } from '@/lib/facets';
 
 import { FacetChips } from './FacetChips';
 
@@ -92,21 +92,70 @@ function OptionButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  // The tick is not decoration: selection here is a border-and-tint change, and on Q1 two
+  // options can be lit at once — a colour-only signal both fails low-vision buyers and reads
+  // as "highlighted" rather than "chosen". aria-pressed already tells a screen reader; the
+  // tick tells everyone else the same thing.
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
       className={cx(
-        'rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all duration-150',
+        'flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all duration-150',
         selected
           ? 'border-primary bg-primary/5 text-text shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
           : 'border-border bg-surface text-text/80 hover:border-text/20 hover:bg-bg',
       )}
     >
       {children}
+      <span
+        aria-hidden
+        className={cx(
+          'flex h-5 w-5 flex-none items-center justify-center rounded-full transition-all duration-150',
+          selected ? 'bg-primary text-white' : 'bg-transparent text-transparent ring-1 ring-inset ring-border',
+        )}
+      >
+        <Icon name="check" size={11} />
+      </span>
     </button>
   );
+}
+
+/**
+ * Sentence-slot phrases for the reason line, one per facet value that can score.
+ *
+ * The chip labels ("Suits builders", "Evenings-friendly") are heading fragments, and dropping
+ * them into a sentence produced "It matches you on suits builders, evenings-friendly" — the
+ * same heading-vs-noun trap `KIND_NOUN` exists for (`lib/facets.ts`). These strings are written
+ * for exactly one slot: after "Picked because ". They live here and not in `facets.ts` because
+ * the reason line is the only sentence that speaks about the buyer's own answers, and each
+ * phrase deliberately echoes the wording of the option the buyer just clicked.
+ */
+const REASON_PHRASES: Record<'advantage' | 'commitment' | 'payer', Record<string, string>> = {
+  advantage: {
+    code: 'you can build software',
+    nocode: 'it needs no code',
+    sales: 'you can sell',
+    ops: 'you can run operations',
+    audience: 'you have an audience',
+  },
+  commitment: {
+    evenings: 'it fits evenings and weekends',
+    part_time: 'it fits part-time hours',
+    full_time: 'it earns full-time focus',
+  },
+  payer: {
+    b2b: 'it sells to businesses',
+    b2c: 'it sells to consumers',
+    b2g: 'it sells to public bodies',
+  },
+};
+
+/** "a, b and c" — the serial join that keeps a three-reason sentence readable. */
+function joinClauses(parts: string[]): string {
+  if (parts.length <= 1) return parts.join('');
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 /**
@@ -117,14 +166,15 @@ function OptionButton({
 function reasonSentence(result: MatchResult): string {
   const parts: string[] = [];
   for (const reason of result.reasons) {
-    if (reason.kind === 'advantage') parts.push((facetLabel('advantage', reason.value) ?? '').toLowerCase());
-    if (reason.kind === 'commitment') parts.push((facetLabel('commitment', reason.value) ?? '').toLowerCase());
-    if (reason.kind === 'payer') parts.push((facetLabel('payer', reason.value) ?? '').toLowerCase());
+    if (reason.kind === 'advantage' || reason.kind === 'commitment' || reason.kind === 'payer') {
+      const phrase = REASON_PHRASES[reason.kind][reason.value];
+      if (phrase) parts.push(phrase);
+    }
   }
   const evidence = result.reasons.find((r) => r.kind === 'evidence');
   const tail = evidence ? `Backed by ${evidence.value} sources.` : '';
   if (parts.length === 0) return tail || 'It is the best-evidenced pack in the catalogue.';
-  return `It matches you on ${parts.join(', ')}. ${tail}`.trim();
+  return `Picked because ${joinClauses(parts)}. ${tail}`.trim();
 }
 
 function WinnerCard({ result }: { result: MatchResult<Pack> }) {
@@ -290,7 +340,12 @@ export function Matchmaker({
       </p>
 
       <fieldset className="mt-6">
-        <legend className="text-base font-black tracking-tight text-text">What have you already got?</legend>
+        {/* The trigger promised "three questions"; the numbers keep that promise visibly and
+            let a skimmer see the whole cost of the form before starting it. */}
+        <legend className="text-base font-black tracking-tight text-text">
+          <span className="mr-2 font-mono text-xs font-bold text-primary">1/3</span>
+          What have you already got?
+        </legend>
         <span className="text-xs font-medium text-muted">Pick up to two.</span>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {Q1_OPTIONS.map((option) => (
@@ -308,7 +363,10 @@ export function Matchmaker({
       </fieldset>
 
       <fieldset className="mt-6">
-        <legend className="text-base font-black tracking-tight text-text">How much time, honestly?</legend>
+        <legend className="text-base font-black tracking-tight text-text">
+          <span className="mr-2 font-mono text-xs font-bold text-primary">2/3</span>
+          How much time, honestly?
+        </legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           {Q2_OPTIONS.map((option) => (
             <OptionButton
@@ -324,6 +382,7 @@ export function Matchmaker({
 
       <fieldset className="mt-6">
         <legend className="text-base font-black tracking-tight text-text">
+          <span className="mr-2 font-mono text-xs font-bold text-primary">3/3</span>
           Who would you rather sell to?
         </legend>
         <span className="text-xs font-medium text-muted">Optional.</span>
