@@ -12,6 +12,7 @@ import { DossierPreview } from '@/components/marketing/DossierPreview';
 import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
+import { BuyDrawerProvider, BuyNowButton } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { FacetBar } from '@/components/discovery/FacetBar';
@@ -298,6 +299,11 @@ function PackCard({ pack }: { pack: Pack }) {
               View blueprint
             </span>
             <div className="flex flex-none items-center gap-2">
+              {/* Buy before basket: a single pack is the common purchase, and the drawer carries
+                  the deliverables, the price and the refund right, so this is not a shortcut
+                  past the evidence. Both stay quieter than "View blueprint" — the pack page is
+                  still the primary action, because the evidence is the product. */}
+              <BuyNowButton pack={pack} />
               <AddToCartButton
                 size="compact"
                 line={{ id: pack.id, title: name, price: pack.price }}
@@ -362,6 +368,7 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           <span className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary-hover">
             View vetted blueprint <Icon name="arrowRight" size={15} />
           </span>
+          <BuyNowButton pack={pack} />
           <AddToCartButton size="compact" line={{ id: pack.id, title: name, price: pack.price }} />
         </div>
       </div>
@@ -790,6 +797,9 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
   // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
   const survived = stats?.listed ?? packs.length;
   return (
+    // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
+    // above the header, and so a card anywhere on the page can reach it without prop threading.
+    <BuyDrawerProvider>
     <MarketingLayout>
       <Seo title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each" />
 
@@ -1002,6 +1012,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         secondary={{ href: '/how-it-works', label: 'How it works' }}
       />
     </MarketingLayout>
+    </BuyDrawerProvider>
   );
 }
 
