@@ -63,7 +63,7 @@ export function PageHero({
   children?: React.ReactNode;
 }) {
   return (
-    <SectionBand bg={bg} width="4xl" className="pt-12 pb-4 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 min-h-[calc(100dvh-4rem)] md:min-h-0 flex flex-col justify-start md:justify-center items-center animate-rise text-center">
+    <SectionBand bg={bg} width="4xl" className="pt-20 pb-10 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 md:min-h-[calc(100dvh-4rem)] flex flex-col justify-start md:justify-center items-center animate-rise text-center">
       <div className="flex flex-col items-center justify-center flex-grow w-full">
         {eyebrow && (
           <p className="font-mono text-xs font-semibold uppercase tracking-wide text-muted mb-4 md:mb-6">{eyebrow}</p>
