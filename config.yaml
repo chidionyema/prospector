@@ -215,11 +215,24 @@ weights:
 # single lane and overrides active_lanes; empty active_lanes => single-default (venture) run.
 active_lane: ""
 active_lanes: [side_hustle, smb, growth, venture]
+# Rebalanced 2026-08-01 (founder: "more startup ideas than just solo operator"). Weights are
+# EVIDENCE-LED, from historical per-lane PASS rate across the 221 tier-tagged dossiers — NOT a
+# guess at which tier sounds most ambitious:
+#     smb  6/51 = 11.8%   growth 2/41 = 4.9%   side_hustle 4/94 = 4.3%   venture 0/35 = 0.0%
+# So the weight goes to smb (small_team) and growth (startup) — the tiers that actually convert —
+# while side_hustle (the SOLO lane) steps down from the largest share to the smallest. venture
+# holds at 3 rather than rising: it has never produced a PASS, so buying more of it would buy
+# more kills, not more startups; it stays funded only so the 0% stays measured rather than
+# assumed. Revisit when venture records its first PASS.
+# NOTE these totals sum to exactly `schedule.batch_size` (15), so `_lane_counts` distributes them
+# 1:1 with no rounding nudge (run.py::_lane_counts). Changing batch_size re-proportions them.
+# Until 2026-08-01 this whole block was DEAD CONFIG for the daemon — see the comment in
+# scheduler/run_scheduled.py::_default_generate.
 lane_quota:                        # candidates generated per tier per multi-lane run
-  side_hustle: 4
-  smb: 3
-  growth: 3
-  venture: 3
+  side_hustle: 3                   # solo_agent  — was 4 (the largest share); now the smallest
+  smb: 5                           # small_team  — was 3; best converter at 11.8%
+  growth: 4                        # startup     — was 3
+  venture: 3                       # startup     — unchanged; 0 PASS in 35, do not over-buy
 lanes:
   venture:                         # unicorn-ambition: the durable-moat bar (= current default)
     hard_gates:

@@ -127,9 +127,20 @@ def _default_generate(cfg, batch_size: int) -> dict:
     environment) — that surfaces as an exception which the caller records as a soft error; the
     daemon keeps looping and the signal is recoverable via `generate --resume` / `vet --resume`.
     """
-    from prospector.run import run_signal
+    from prospector.run import run_signal, _resolve_lanes
 
-    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True)
+    # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
+    # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
+    # the single implicit default — `generation.operator_archetype: solo_agent`. The four
+    # configured lanes and their small_team/startup archetypes were dead config in the daemon:
+    # they were only ever resolved on the CLI paths (run.py:1182/1224/1277/1837). PROVEN by
+    # `ambition_tier` being absent from every one of the last 50 dossiers ordered by
+    # `created_at`, and by the batch mode-collapsing onto one shape (2026-08-01T03:25 batch:
+    # the PASS and all three closest-to-pass kills were "fixed-fee pack for one individual").
+    # `_resolve_lanes` honours the same precedence as the CLI (active_lane pins a single tier,
+    # else active_lanes); an empty config still yields None => the previous behaviour exactly.
+    lanes = _resolve_lanes(cfg, argparse.Namespace(lane=None))
+    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes)
 
     def _decision(d) -> str:
         # Dossier carries `.decision` (a Decision enum) — NOT `.verdict`. Reading the wrong
