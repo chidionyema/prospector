@@ -38,8 +38,8 @@ describe('isStripeApiReachable', () => {
   it('fails safe — reports reachable when there is no fetch to probe with', async () => {
     // Never block a sale on the probe's own unavailability.
     const original = globalThis.fetch;
-    // @ts-expect-error deliberately removing the global to simulate an environment without it
-    delete globalThis.fetch;
+    // Deliberately removing the global to simulate an environment without it.
+    delete (globalThis as Record<string, unknown>).fetch;
     try {
       await expect(isStripeApiReachable()).resolves.toBe(true);
     } finally {

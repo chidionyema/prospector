@@ -76,7 +76,21 @@ const nextConfig: NextConfig = {
   // Full-page OAuth/OIDC navigations deliberately bypass this and go straight to the API (client.ts
   // API_DIRECT_BASE) because the provider correlation cookie must be set and read on the API origin.
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${API_ORIGIN}/v1/:path*` }];
+    return [
+      // Everything else the browser fetches, proxied verbatim (no /v1 — these are the store's own
+      // unversioned routes: /catalog, /catalog/stats, /catalog/waitlist, /packs/{id}/checkout,
+      // /checkout, /events, /api/orders/*). Must come FIRST: rewrites are tried in array order and
+      // the /api/:path* rule below would otherwise swallow these and send them to /v1.
+      //
+      // Why they are proxied at all: a browser fetch to the API's own origin is cross-site on Fly
+      // and needs Store__AllowedOrigin to list this exact host. When that list is wrong the failure
+      // is SILENT AND PARTIAL — reproduced 2026-08-01 with the storefront on :3001 and the API
+      // allowing only :3000: sign-in worked (already proxied) while /events was refused for a
+      // missing Access-Control-Allow-Origin. The same mistake on Fly kills the BUY BUTTON, because
+      // checkout is a browser POST, while every page still renders. See lib/config.ts API_FETCH_BASE.
+      { source: "/api/store/:path*", destination: `${API_ORIGIN}/:path*` },
+      { source: "/api/:path*", destination: `${API_ORIGIN}/v1/:path*` },
+    ];
   },
   // WR-023 lexicon: the requester's posted ask is a "proposal" (was "/bounties"); an introducer's
   // submission is an "offer" (was the "/proposals" sub-route). Keep the old paths alive permanently —
@@ -87,6 +101,17 @@ const nextConfig: NextConfig = {
       { source: "/bounties/new", destination: "/proposals/new", permanent: true },
       { source: "/bounties/:id/proposals", destination: "/proposals/:id/offers", permanent: true },
       { source: "/bounties/:id", destination: "/proposals/:id", permanent: true },
+      // The account surface is ONE route (/account) that renders sign-in, register, verify and
+      // reset from its query string. These are the conventional URLs people type or that a
+      // password manager has stored, plus the two paths the-introduction-exchange's emails used —
+      // any link already in an inbox keeps working. Next.js carries the query string through a
+      // redirect, so ?user_id=…&token=… survives; `verify=1` / `reset=1` is what /account
+      // dispatches on, so the old paths add it here.
+      { source: "/login", destination: "/account", permanent: false },
+      { source: "/register", destination: "/account?mode=register", permanent: false },
+      { source: "/forgot-password", destination: "/account", permanent: false },
+      { source: "/verify-email", destination: "/account?verify=1", permanent: false },
+      { source: "/reset-password", destination: "/account?reset=1", permanent: false },
     ];
   },
 };

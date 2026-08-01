@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@/lib/config';
+import { API_FETCH_BASE } from '@/lib/config';
 import type {
   Advantage,
   Commitment,
@@ -143,7 +143,7 @@ export function marketLabel(code?: string): string {
 }
 
 export async function fetchCatalog(): Promise<Pack[]> {
-  const res = await fetch(`${API_BASE_URL}/catalog`);
+  const res = await fetch(`${API_FETCH_BASE}/catalog`);
   if (!res.ok) throw new Error('Failed to fetch catalog');
   return res.json();
 }
@@ -170,7 +170,7 @@ export interface WaitlistSignup {
 export async function joinWaitlist(
   signup: WaitlistSignup,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const res = await fetch(`${API_BASE_URL}/catalog/waitlist`, {
+  const res = await fetch(`${API_FETCH_BASE}/catalog/waitlist`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(signup),
@@ -184,17 +184,41 @@ export async function joinWaitlist(
 }
 
 /**
+ * The buyer's email on a checkout body, or nothing at all.
+ *
+ * An order is joined to an account by email address alone — `Order.BuyerEmail`, with no user id
+ * column — so the address the provider records IS the link between a purchase and a customer.
+ * Sending a signed-in customer's address does two things: Stripe pre-fills it AND makes the field
+ * read-only (`CustomerEmail` on the session, StripeProvider.cs:385), so the recorded address
+ * cannot drift from the account. Without it a signed-in buyer who types a different address at
+ * Stripe gets a perfectly valid order that never appears in their account — no error, anywhere.
+ *
+ * Omitted for a guest, which is the supported case, not a fallback: neither checkout route
+ * requires authorization (CheckoutEndpoints.cs:24,40), so the provider collects the address and
+ * the webhook records whatever the buyer typed (StripeProvider.cs:133).
+ *
+ * The address is asserted by the client, because these two routes are called on the API origin
+ * directly and carry no session cookie (see the D-63 note in next.config.ts — only `/api/*` is
+ * proxied). That is not an escalation: filing an order under an address requires PAYING for it,
+ * and reading that order back still requires proving the address (order history is gated on
+ * EmailConfirmed). The server is free to override it if these routes ever move behind the proxy.
+ */
+function checkoutBody(buyerEmail: string | null | undefined, rest: Record<string, unknown> = {}) {
+  return JSON.stringify(buyerEmail ? { ...rest, email: buyerEmail } : rest);
+}
+
+/**
  * Ask the API to open a Stripe Checkout Session for a pack and return the hosted URL.
  *
  * Lives here rather than in the page because components never call fetch directly
  * (UI-STANDARDS §4). The redirect allow-list travels with the call: it is a property of
  * trusting this response, not of the component that happens to use it.
  */
-export async function createStripeCheckout(packId: string): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/packs/${packId}/checkout`, {
+export async function createStripeCheckout(packId: string, buyerEmail?: string | null): Promise<string> {
+  const res = await fetch(`${API_FETCH_BASE}/packs/${packId}/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
+    body: checkoutBody(buyerEmail),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -220,11 +244,14 @@ export interface CheckoutSession {
  * than a client secret — there is no failure to report when the answer is "use the hosted page",
  * and turning it into one would block a buyer from paying over a cosmetic difference.
  */
-export async function createEmbeddedCheckout(packId: string): Promise<CheckoutSession> {
-  const res = await fetch(`${API_BASE_URL}/packs/${packId}/checkout`, {
+export async function createEmbeddedCheckout(
+  packId: string,
+  buyerEmail?: string | null,
+): Promise<CheckoutSession> {
+  const res = await fetch(`${API_FETCH_BASE}/packs/${packId}/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ embedded: true }),
+    body: checkoutBody(buyerEmail, { embedded: true }),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -257,11 +284,14 @@ export class PacksUnavailableError extends Error {
  * The buyer enters their card once and gets one charge, one statement line and one set of
  * download links, however many packs they picked.
  */
-export async function createCartCheckout(packIds: string[]): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/checkout`, {
+export async function createCartCheckout(
+  packIds: string[],
+  buyerEmail?: string | null,
+): Promise<string> {
+  const res = await fetch(`${API_FETCH_BASE}/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ packIds }),
+    body: checkoutBody(buyerEmail, { packIds }),
   });
 
   if (!res.ok) {
@@ -293,7 +323,7 @@ function assertStripeCheckoutUrl(url: unknown): string {
 }
 
 export async function fetchPackDetails(id: string): Promise<PackDetails> {
-  const res = await fetch(`${API_BASE_URL}/catalog/${id}`);
+  const res = await fetch(`${API_FETCH_BASE}/catalog/${id}`);
   if (!res.ok) throw new Error('Failed to fetch pack details');
   return res.json();
 }
@@ -302,7 +332,7 @@ export async function fetchPackDetails(id: string): Promise<PackDetails> {
  *  failure so a stats outage never blocks the catalogue from rendering. */
 export async function fetchCatalogStats(): Promise<CatalogStats | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/catalog/stats`);
+    const res = await fetch(`${API_FETCH_BASE}/catalog/stats`);
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -323,7 +353,7 @@ export interface AnalyticsEventBody {
  *  event is the correct failure mode — analytics must never break the page. */
 export function recordAnalyticsEvent(body: AnalyticsEventBody): void {
   try {
-    void fetch(`${API_BASE_URL}/events`, {
+    void fetch(`${API_FETCH_BASE}/events`, {
       method: 'POST',
       keepalive: true,
       headers: { 'Content-Type': 'application/json' },
@@ -344,7 +374,7 @@ export interface OrderDetails {
 }
 
 export async function fetchOrder(token: string): Promise<OrderDetails> {
-  const res = await fetch(`${API_BASE_URL}/api/orders/${token}`);
+  const res = await fetch(`${API_FETCH_BASE}/api/orders/${token}`);
   if (res.status === 404) throw new Error('not_found');
   if (!res.ok) throw new Error('Failed to fetch order');
   return res.json();
@@ -377,39 +407,7 @@ export interface SessionOrder {
 /** Resolve the checkout session the buyer just completed into real download links.
  *  This is what makes the purchase deliverable on-screen rather than only by email. */
 export async function fetchOrderBySession(sessionId: string): Promise<SessionOrder> {
-  const res = await fetch(`${API_BASE_URL}/api/orders/by-session/${encodeURIComponent(sessionId)}`);
+  const res = await fetch(`${API_FETCH_BASE}/api/orders/by-session/${encodeURIComponent(sessionId)}`);
   if (!res.ok) throw new Error('Failed to resolve checkout session');
   return res.json();
 }
-
-// Stub TIE-compat exports — the Store.Web is being repurposed from TIE to Prospector.
-// These APIs don't exist in the Store context but several components still import them.
-// Each stub returns safe defaults so the app type-checks without the TIE backend.
-export const bountiesApi = { mine: async () => [] as unknown[] };
-export const proposalsApi = { listMine: async () => [] as unknown[] };
-export const authApi = {
-  login: async () => ({ token: '', user: null }),
-  register: async () => ({ token: '', user: null }),
-  me: async () => null,
-  logout: async () => {},
-};
-export const externalAuthApi = {
-  providers: async () => ({ providers: [] as unknown[] }),
-  callback: async () => ({ token: '' }),
-  challengeUrl: (_provider: string, _redirectUrl: string) => '',
-};
-export const accountApi = {
-  get: async () => ({}),
-  update: async () => ({}),
-  delete: async () => {},
-  acceptTos: async (_version: string) => {},
-};
-export class ApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
-export function setAccessToken(_token: string | null) {}
-export function setOnUnauthorized(_fn: () => void) {}

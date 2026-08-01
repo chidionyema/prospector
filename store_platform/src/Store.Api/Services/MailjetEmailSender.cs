@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Store.Api.Common;
 
 namespace Store.Api.Services;
 
@@ -28,7 +29,7 @@ namespace Store.Api.Services;
 /// (3) The pack title is HTML-encoded into the HTML part. Titles come from our own catalogue,
 ///     but an unescaped ampersand alone is enough to produce a malformed email body.
 /// </summary>
-public sealed class MailjetEmailSender : IEmailSender
+public sealed class MailjetEmailSender : IEmailSender, ITransactionalEmailSender
 {
     private const string SendPath = "/v3.1/send";
 
@@ -87,6 +88,50 @@ public sealed class MailjetEmailSender : IEmailSender
                     "This link is tied to your purchase — please keep it private."),
         ]);
 
+        return await PostAsync(envelope, toEmail, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The auth emails — verify-your-address, password reset, resend-verification. Same credentials,
+    /// same envelope, same never-throw contract as the fulfilment mail above, because a second
+    /// provider would mean a second sending domain to authenticate and a second way to be silently
+    /// misconfigured. Auth mail is HTML-only: the bodies come from <c>EmailTemplates</c> and are a
+    /// single call-to-action link, so a text part would be the same URL twice.
+    /// </summary>
+    /// <remarks>
+    /// Returns <see cref="EmailSendResult.NoOp"/> when unconfigured, which is <c>Accepted = true</c>.
+    /// That is the contract, not an oversight: in dev and CI there are no Mailjet credentials, and a
+    /// <c>false</c> there would fire the <c>ICriticalEmailAlerter</c> escalation on every signup.
+    /// A real send that Mailjet rejects returns <c>Accepted = false</c> and does escalate.
+    /// ProviderMessageId stays null — Mailjet returns one, but the store has no bounce webhook to
+    /// correlate it against, and a stored id nothing reads is a claim we cannot honour.
+    /// </remarks>
+    public async Task<EmailSendResult> SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(toEmail);
+        if (!IsConfigured)
+        {
+            _logger.LogInformation("Mailjet not configured; auth email to {Email} logged, not sent.", toEmail);
+            return EmailSendResult.NoOp;
+        }
+
+        var envelope = new MailjetEnvelope(
+        [
+            new MailjetMessage(
+                From: new MailjetAddress(_fromEmail),
+                To: [new MailjetAddress(toEmail)],
+                Subject: subject,
+                HTMLPart: htmlBody,
+                TextPart: string.Empty),
+        ]);
+
+        return await PostAsync(envelope, toEmail, ct).ConfigureAwait(false)
+            ? new EmailSendResult(true, null, null)
+            : new EmailSendResult(false, null, "mailjet_send_failed");
+    }
+
+    private async Task<bool> PostAsync(MailjetEnvelope envelope, string toEmail, CancellationToken ct)
+    {
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, SendPath)
@@ -96,7 +141,7 @@ public sealed class MailjetEmailSender : IEmailSender
             var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_apiKey}:{_apiSecret}"));
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basic);
 
-            using var response = await _http.SendAsync(request).ConfigureAwait(false);
+            using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 return true;
@@ -104,7 +149,7 @@ public sealed class MailjetEmailSender : IEmailSender
 
             // The body carries Mailjet's reason (unverified sender, suppressed recipient, bad
             // key). Without it the operator only sees a status code and cannot act.
-            var detail = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var detail = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             _logger.LogError(
                 "Mailjet send failed ({Status}) to {Email}: {Detail}",
                 (int)response.StatusCode, toEmail, detail);

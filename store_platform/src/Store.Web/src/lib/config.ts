@@ -11,6 +11,8 @@ export const TOS_VERSION = '2026-06-15';
 
 export const BRAND = {
   name: 'Mumchimp',
+  /** Typographic wordmark split: first part in ink, second muted, period in teal. */
+  wordmark: { first: 'Mum', second: 'chimp' } as const,
 } as const;
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || undefined;
@@ -49,4 +51,30 @@ export const PADDLE_SETTINGS = {
   clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || '',
 } as const;
 
+/**
+ * The API's real origin. Correct for server-side fetches, and for links the BROWSER NAVIGATES to
+ * (`/download/{token}` answers with a 302 to a presigned URL and must be followed as a navigation,
+ * so it cannot go through the proxy). Wrong for browser XHR — use API_FETCH_BASE for that.
+ */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5291';
+
+/**
+ * Base for any fetch that MIGHT run in the browser.
+ *
+ * On the server there is no origin and no CORS, so the API's real origin is used directly. In the
+ * browser it resolves to `/api/store`, which next.config.ts rewrites to the same API — making the
+ * request first-party to the storefront, exactly as the auth calls already are.
+ *
+ * This exists because CORS failure here is silent and partial. Reproduced 2026-08-01: with the API
+ * allowing only `http://localhost:3000` and the storefront served on `:3001`, sign-in kept working
+ * (it goes through the proxy) while `/events` failed with "No 'Access-Control-Allow-Origin' header
+ * is present". The same shape on Fly takes out the BUY BUTTON — checkout is a browser POST to the
+ * API origin — while every page still renders and every log looks healthy. Routing browser XHR
+ * through the proxy removes a whole class of deploy-time misconfiguration from the money path
+ * instead of relying on `Store__AllowedOrigin` being written out exhaustively.
+ *
+ * `Store__AllowedOrigin` still matters and must still be set: the API derives the post-checkout
+ * redirect base from it (CheckoutEndpoints.cs BuildRedirectUrls). Getting it wrong there sends a
+ * paying buyer to the wrong host — visible and loud — rather than silently breaking checkout.
+ */
+export const API_FETCH_BASE = typeof window === 'undefined' ? API_BASE_URL : '/api/store';

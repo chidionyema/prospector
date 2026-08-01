@@ -6,6 +6,7 @@ import { Hanken_Grotesk, Playfair_Display, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui";
 import { Seo } from "@/components/Seo";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 import { track } from "@/lib/analytics";
 
 const hanken = Hanken_Grotesk({
@@ -44,8 +45,13 @@ export default function App({ Component, pageProps }: AppProps) {
     <div className={`${hanken.variable} ${playfair.variable} ${geistMono.variable} font-sans`}>
       <ErrorBoundary>
         <ToastProvider>
-          <Seo />
-          <Component {...pageProps} />
+          {/* Mounted app-wide so the session is asked for once, not per page. It resolves to
+              "anonymous" with a single 401 for a visitor who has never signed in, which is the
+              overwhelmingly common case on a storefront. */}
+          <AuthProvider>
+            <Seo />
+            <Component {...pageProps} />
+          </AuthProvider>
         </ToastProvider>
       </ErrorBoundary>
     </div>

@@ -1,9 +1,14 @@
+using System.Globalization;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Store.Api.Auth;
 using Store.Api.Endpoints;
 using Store.Api.Contracts;
 using Store.Api.Infrastructure;
@@ -92,6 +97,77 @@ builder.Services.AddKeyedScoped<IPaymentProvider, PaddleProvider>("paddle");
 builder.Services.AddKeyedScoped<IPaymentProvider, StripeProvider>("stripe");
 builder.Services.AddHostedService<MoneyRailConfigGate>();
 
+// Customer accounts: registration, login, refresh/revoke, password reset, email verification,
+// social sign-in and the profile. Ported from the-introduction-exchange; the whole registration
+// block lives in Auth/AuthServiceCollectionExtensions.cs.
+builder.Services.AddStoreAuth(builder.Configuration);
+
+// DataProtection key ring, persisted to the same volume as the database.
+//
+// Email-verification and password-reset tokens are DataProtection payloads, not database rows:
+// they are only valid while the key that protected them still exists. The default key ring on a
+// Linux container lands in ~/.aspnet/DataProtection-Keys inside the container filesystem, which
+// is destroyed on every deploy and every machine restart. The failure that produces is quiet and
+// nasty — every reset link already sitting in a customer's inbox stops working, and the endpoint
+// reports it as an invalid token, which is indistinguishable from tampering.
+//
+// Data:KeyRingPath so the same setting works on Fly (/data, the SQLite volume — see the
+// single-machine pin in DEPLOYMENT) and locally. Skipped when the directory cannot be created,
+// because a developer without /data should still get a booting API.
+var keyRingPath = builder.Configuration["Data:KeyRingPath"]
+    ?? Environment.GetEnvironmentVariable("DATA_KEYRING_PATH");
+if (!string.IsNullOrWhiteSpace(keyRingPath))
+{
+    Directory.CreateDirectory(keyRingPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
+        .SetApplicationName("store-api");
+}
+
+// Forwarded headers — required for social login behind a reverse proxy (Fly, Cloudflare, nginx).
+//
+// The Google handler builds its redirect_uri from the CURRENT request's scheme and host. Behind
+// a TLS-terminating proxy the app sees http, so it sends Google "http://api-host/signin-google"
+// while the console has the https form registered, and the provider answers redirect_uri_mismatch.
+// It fails only in production, only for social login, and the error surfaces on Google's page
+// rather than in our logs.
+//
+// Locked to configured proxies: trusting X-Forwarded-* from anyone lets a caller forge its own
+// client IP, and the rate limiter partitions on client IP. With no proxy configured, no
+// forwarding is applied at all — which is the correct behaviour for local development.
+var knownProxies = builder.Configuration["Security:KnownProxies"];
+var knownNetworks = builder.Configuration["Security:KnownNetworks"];
+if (!string.IsNullOrWhiteSpace(knownProxies) || !string.IsNullOrWhiteSpace(knownNetworks))
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = 1;
+        options.KnownProxies.Clear();
+        options.KnownNetworks.Clear();
+
+        foreach (var proxy in (knownProxies ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (IPAddress.TryParse(proxy, out var ip))
+            {
+                options.KnownProxies.Add(ip);
+            }
+        }
+
+        foreach (var network in (knownNetworks ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = network.Split('/', 2);
+            if (parts.Length == 2 && IPAddress.TryParse(parts[0], out var prefix)
+                && int.TryParse(parts[1], CultureInfo.InvariantCulture, out var length))
+            {
+                options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(prefix, length));
+            }
+        }
+    });
+}
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -127,6 +203,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// First in the pipeline, before anything reads Request.Scheme or the client IP: forwarded headers
+// rewrite both, and a middleware that ran earlier would see the proxy's values. No-op unless
+// Security:KnownProxies / Security:KnownNetworks is configured (see the registration above).
+app.UseForwardedHeaders();
+
 // CORS middleware — must come between routing and endpoints.
 app.UseCors();
 
@@ -135,6 +216,11 @@ app.UseCorrelationId();
 
 // P1-7 — rate limiter must run before endpoints so throttled requests short-circuit.
 app.UseRateLimiter();
+
+// Auth middleware. Order is load-bearing: UseAuthentication must precede UseAuthorization, or
+// every [Authorize] endpoint sees an anonymous principal and 401s even with a valid token.
+app.UseAuthentication();
+app.UseAuthorization();
 
 // --- PUBLIC CATALOG ENDPOINTS ---
 
@@ -761,6 +847,12 @@ app.MapDeliveryEndpoints();
 
 // First-party storefront analytics (ingest + key-gated summary) — see Endpoints/AnalyticsEndpoints.cs.
 app.MapAnalyticsEndpoints();
+
+// Accounts: /v1/auth/* (register, login, refresh, logout, password reset, verify-email) and
+// /v1/auth/external/* (social sign-in, link/unlink) — see Auth/.
+app.MapAuthEndpoints();
+app.MapExternalAuthEndpoints();
+app.MapAccountOrdersEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
 

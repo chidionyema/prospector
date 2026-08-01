@@ -11,6 +11,8 @@ import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { createEmbeddedCheckout, createStripeCheckout, fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
+import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { resolveStripeCheckout } from '@/lib/checkoutRoute';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
 import { stripeConfigured } from '@/lib/stripe';
@@ -60,11 +62,19 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
   useEffect(() => {
+    // eslint-disable-next-line -- preopened comes from router.query which populates after hydration
     if (preopened) setClientSecret(preopened);
   }, [preopened]);
 
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
+
+  // Null for a guest, and that is a complete answer rather than a missing one — checkout carries
+  // the address only when we already know it. See checkoutBody in lib/api/client.ts for why
+  // sending it matters: it locks the field at Stripe, which is what keeps the order joined to
+  // this account (orders join on email alone).
+  const { account } = useAuth();
+  const buyerEmail = account?.email ?? null;
 
   const provider = pack.paymentProvider || 'paddle';
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
@@ -104,8 +114,8 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
     // createStripeCheckout already refuses any URL that is not Stripe's hosted checkout.
     const route = await resolveStripeCheckout({
       stripeConfigured,
-      requestEmbedded: () => createEmbeddedCheckout(pack.id),
-      requestHosted: () => createStripeCheckout(pack.id),
+      requestEmbedded: () => createEmbeddedCheckout(pack.id, buyerEmail),
+      requestHosted: () => createStripeCheckout(pack.id, buyerEmail),
     });
 
     if (route.kind === 'embedded') {
@@ -129,7 +139,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
   const handleEmbeddedUnreachable = async () => {
     setClientSecret(null);
     try {
-      window.location.href = await createStripeCheckout(pack.id);
+      window.location.href = await createStripeCheckout(pack.id, buyerEmail);
     } catch {
       setCheckoutError(
         'Checkout could not load in this browser. Please try another browser, or disable any ad or privacy blocker for this page.',
@@ -260,6 +270,10 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
                 routes — the overlay and the hosted redirect. */}
             {checkingOut ? 'Opening secure checkout…' : `Get instant access — ${priceLabel}`}
           </button>
+          {/* Under the button, not above it: the address only matters once the buyer has decided,
+              and putting an account-shaped sentence in front of the price is how a storefront
+              teaches guests that they need an account. They do not. */}
+          <BuyerIdentityNote className="mt-3 text-xs leading-relaxed text-muted" />
           {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
               only a gain for someone who wants several, so it never sits in front of the direct path. */}
           <div className="mt-3">
