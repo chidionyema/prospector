@@ -45,20 +45,18 @@ export function Logo({ className, onDark = false, monogramOnly = false }: LogoPr
     );
   }
 
-  const [first, ...rest] = BRAND.name.split(' ');
-  const tail = rest.join(' ');
+  const { first, second } = BRAND.wordmark;
 
   return (
-    <span className={cx('inline-flex items-baseline whitespace-nowrap font-sans font-bold tracking-tight leading-none', className)}>
+    <span className={cx('inline-flex items-baseline whitespace-nowrap font-sans font-extrabold tracking-tight leading-none', className)}>
       <span className="sr-only">{BRAND.name}</span>
       <span aria-hidden="true" className={textColor}>
         {first}
       </span>
-      {tail && (
-        <span aria-hidden="true" className={cx('ml-1.5 font-semibold', mutedColor)}>
-          {tail}
-        </span>
-      )}
+      <span aria-hidden="true" className={mutedColor}>
+        {second}
+      </span>
+      <span aria-hidden="true" className="text-primary">.</span>
     </span>
   );
 }

@@ -11,9 +11,10 @@ import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackC
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
-import { FacetBar } from '@/components/discovery/FacetBar';
+import { AppliedFilterChips, FacetBar } from '@/components/discovery/FacetBar';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { Matchmaker, MatchmakerTrigger } from '@/components/discovery/Matchmaker';
+import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
 import { categoryFor, type Category } from '@/lib/category';
@@ -147,11 +148,18 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
   );
 }
 
-/** The single metadata row on a grid card: market, the strongest facets, sources, freshness.
+/** The single metadata row on a grid card: market, the strongest facets, time to revenue.
  *  One capped row replaces the three stacked chip sections the card used to carry — measured on
  *  the live shelf those sections were the whole size problem (cards ran 585–660px tall depending
  *  on which sections a pack happened to have). A pack with nothing to claim renders no row at
- *  all: a chip is a claim, and absence stays absence (same rule as FacetChips). */
+ *  all: a chip is a claim, and absence stays absence (same rule as FacetChips).
+ *
+ *  Sources and freshness are deliberately NOT here. They used to be — two grey chips visually
+ *  identical to the facet chips — which flattened the card's one real differentiator into its
+ *  routine attributes. "Sells to businesses" is a fact any directory could print; "24 sources,
+ *  verified this week" is the receipt the whole brand stands on. The receipt now renders in
+ *  `ProofRow`, in the verified colourway, so proof reads as a different KIND of statement from
+ *  classification (the review's "outcome, then mechanism, then proof" hierarchy). */
 const CARD_META_MAX = 5;
 
 function CardMeta({ pack }: { pack: Pack }) {
@@ -170,11 +178,6 @@ function CardMeta({ pack }: { pack: Pack }) {
   if (pack.timeToFirstRevenue) {
     chips.push({ key: 'revenue', text: `Revenue in ${pack.timeToFirstRevenue}` });
   }
-  if (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) {
-    chips.push({ key: 'sources', text: `${pack.sourceCount} sources` });
-  }
-  const fresh = freshnessLabel(pack.verifiedAt);
-  if (fresh) chips.push({ key: 'fresh', text: fresh });
   if (chips.length === 0) return null;
   return (
     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -193,6 +196,29 @@ function CardMeta({ pack }: { pack: Pack }) {
   );
 }
 
+/** The receipt line: real source count, real verification date, in the verified colourway and
+ *  nothing else's. Renders nothing when neither exists — an empty green box would be a claim. */
+function ProofRow({ pack, className }: { pack: Pack; className?: string }) {
+  const parts: string[] = [];
+  if (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) {
+    parts.push(`${pack.sourceCount} sources`);
+  }
+  const fresh = freshnessLabel(pack.verifiedAt);
+  if (fresh) parts.push(fresh.toLowerCase());
+  if (parts.length === 0) return null;
+  return (
+    <p
+      className={cx(
+        'inline-flex w-fit items-center gap-1.5 rounded-md bg-verified-bg px-2 py-1 text-[11px] font-bold text-verified-text',
+        className,
+      )}
+    >
+      <Icon name="verified" size={12} />
+      {parts.join(' · ')}
+    </p>
+  );
+}
+
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
@@ -202,7 +228,7 @@ function PackCard({ pack }: { pack: Pack }) {
   return (
     <Link
       href={`/pack/${pack.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-text/15 hover:shadow-[0_18px_40px_rgba(0,0,0,0.10)]"
+      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)]"
     >
       <Cover cat={cat} iconSize={104} className="h-28">
         <span className="absolute left-3.5 top-3.5">
@@ -218,7 +244,7 @@ function PackCard({ pack }: { pack: Pack }) {
         </span>
       </Cover>
 
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-6">
         {/* What it DOES leads; the brand name is the eyebrow. Nobody can buy from "PitchBrief"
             on a first visit, so the name is not the heading whenever the engine gave us a short
             line to use instead. `cardHeading` falls back to the old name-first hierarchy for
@@ -237,6 +263,7 @@ function PackCard({ pack }: { pack: Pack }) {
         {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-text/75">{line}</p>}
 
         <CardMeta pack={pack} />
+        <ProofRow pack={pack} className="mt-3" />
 
         {/* Active CTA, basket beside it rather than replacing it: opening the pack stays the
             primary action, and a shelf where every card demands a cart decision is a worse
@@ -298,12 +325,15 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           {sub && <p className="mt-2 max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
         </div>
         {pack.oneLine && <CardFact label="The opportunity" clamp="line-clamp-3">{pack.oneLine}</CardFact>}
-        <FacetChips pack={pack} compact max={5} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <FacetChips pack={pack} compact max={5} />
+          <ProofRow pack={pack} />
+        </div>
         {/* The one place on the shelf the deliverable chips render — see the note on DELIVERABLES. */}
         <DeliverableChips />
         <div className="mt-0.5 flex flex-wrap items-center gap-4">
           <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition group-hover:opacity-90">
+          <span className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary-hover">
             View vetted blueprint <Icon name="arrowRight" size={15} />
           </span>
           <AddToCartButton size="compact" line={{ id: pack.id, title: name, price: pack.price }} />
@@ -482,7 +512,7 @@ function CatalogBrowser({
           (`components/discovery/FacetBar.tsx`), so the mobile cost is one row, and the desktop
           sidebar is unchanged. The gap shrinks with it: 32px of air above the fold bought
           nothing when the thing above is a single button. */}
-      <div className="grid gap-4 lg:gap-8 lg:grid-cols-[15rem_1fr]">
+      <div className="grid gap-4 lg:gap-8 lg:grid-cols-[280px_1fr]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <FacetBar packs={packs} state={state} onChange={apply} />
         </aside>
@@ -507,6 +537,12 @@ function CatalogBrowser({
               </div>
             </div>
           </div>
+
+          {/* What is currently narrowing the shelf, one removable chip per constraint — the
+              only always-visible trace of the filters on a phone, where the controls live in a
+              closed sheet. Renders nothing when nothing is active, so the default view pays no
+              height for it. */}
+          <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
 
           {/* Mounted only once opened, and never unmounted after — "Change my answers" on the
               result screen has to land back on the form, not on the trigger they already used. */}
@@ -542,6 +578,14 @@ function CatalogBrowser({
                 <Icon name="shield" size={15} className="text-success" />
                 Every pack carries a 14 day money back guarantee.
               </p>
+              {/* The waitlist ask sits AFTER the shelf on purpose: the deployed variant put it
+                  between the hero and the first card, spending above-the-fold pixels on buyers
+                  who had not yet seen a product. Down here it reaches the only buyer it converts
+                  — one who scrolled the shelf and still wants more. It renders ONLY on this
+                  branch: the near-miss and empty states carry their own ask (DiscoveryWaitlist),
+                  and two email forms on one screen is a duplicate ask that also breaks selector
+                  uniqueness. Rationale in ShelfEndCapture.tsx. */}
+              <ShelfEndCapture className="mt-10" />
             </>
           ) : candidates.length > 0 ? (
             /* A. Something is one facet away — sell that before asking for an email address. */
@@ -636,7 +680,7 @@ function ComparisonBlock() {
           </dl>
           <Link
             href="#catalog"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-text px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover"
           >
             Browse the packs <Icon name="arrowRight" size={15} />
           </Link>
@@ -678,7 +722,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           <Link
             href="#catalog"
             onClick={() => track('catalog_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover sm:w-auto"
           >
             {survived > 0 ? `See the ${survived} that survived` : 'Browse vetted blueprints'} — £49
           </Link>

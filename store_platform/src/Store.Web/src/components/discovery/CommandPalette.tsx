@@ -86,6 +86,18 @@ export function SearchTrigger({
   );
 }
 
+/**
+ * A window of `field` starting just before the first match, so the highlight is on screen even
+ * when the match sits deep in a long one-liner — `truncate` cuts the tail, which is exactly
+ * where the explaining phrase lives when the title didn't match.
+ */
+function matchSnippet(field: string, needle: string): string | null {
+  const at = field.toLowerCase().indexOf(needle);
+  if (at === -1) return null;
+  const start = Math.max(0, at - 28);
+  return (start > 0 ? '…' : '') + field.slice(start);
+}
+
 /** Highlights the matched substring so the buyer can see WHY a row came back. */
 function Highlight({ text, query }: { text: string; query: string }) {
   const needle = query.trim();
@@ -174,7 +186,16 @@ function PaletteDialog({
       }
       if (event.key === 'Enter') {
         const pack = rows[active];
-        if (!pack) return;
+        if (!pack) {
+          // Zero rows: Enter takes the same door the visible button offers, so the keyboard
+          // path is never weaker than the mouse path.
+          if (rows.length === 0 && query.trim() && onSeeAll) {
+            event.preventDefault();
+            onSeeAll(query);
+            onClose();
+          }
+          return;
+        }
         event.preventDefault();
         onClose();
         void router.push(`/pack/${pack.id}`);
@@ -182,7 +203,7 @@ function PaletteDialog({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [rows, active, onClose, router]);
+  }, [rows, active, query, onSeeAll, onClose, router]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-text/30 px-4 pt-[12vh] backdrop-blur-sm">
@@ -227,6 +248,25 @@ function PaletteDialog({
         <ul id="command-palette-results" role="listbox" aria-label="Search results" className="max-h-[50vh] overflow-y-auto">
           {rows.map((pack, index) => {
             const { name, descriptor } = splitTitle(pack.title, pack.headline);
+            // The search matches one-liner and who-pays as well as the title (the "Uber" worked
+            // example above) — so a row can come back with no visible trace of why. When the
+            // heading carries no match, the line under it becomes the field that DID match,
+            // windowed onto the hit, instead of a descriptor that looks like a non sequitur.
+            const needle = query.trim().toLowerCase();
+            const headingMatched =
+              needle !== '' &&
+              (name.toLowerCase().includes(needle) || (descriptor ?? '').toLowerCase().includes(needle));
+            // Same fields as `searchableText` (`lib/discovery.ts:197`) minus the title, in its
+            // order. `headline` has to be in here: when the title carries a separator,
+            // `splitTitle` renders the title's own tail as the descriptor and the headline is
+            // never on screen — so a headline-only match was a row with no visible reason.
+            const context =
+              needle !== '' && !headingMatched
+                ? [pack.oneLine, pack.headline, pack.whoPays]
+                    .filter((field): field is string => !!field)
+                    .map((field) => matchSnippet(field, needle))
+                    .find((snippet): snippet is string => snippet !== null) ?? null
+                : null;
             return (
               <li
                 key={pack.id}
@@ -248,10 +288,16 @@ function PaletteDialog({
                     <span className="block truncate text-sm font-bold text-text">
                       <Highlight text={name} query={query} />
                     </span>
-                    {descriptor && (
+                    {context ? (
                       <span className="block truncate text-xs text-muted">
-                        <Highlight text={descriptor} query={query} />
+                        <Highlight text={context} query={query} />
                       </span>
+                    ) : (
+                      descriptor && (
+                        <span className="block truncate text-xs text-muted">
+                          <Highlight text={descriptor} query={query} />
+                        </span>
+                      )
                     )}
                     <FacetChips pack={pack} compact max={3} className="mt-1.5" />
                   </span>
@@ -262,9 +308,26 @@ function PaletteDialog({
           })}
 
           {rows.length === 0 && (
-            <li className="px-4 py-6 text-sm font-medium text-muted">
-              Nothing in the catalogue matches “{query.trim()}”. Close this and we&apos;ll show you what to
-              do next.
+            <li className="px-4 py-6">
+              <p className="text-sm font-medium text-muted">
+                Nothing in the catalogue matches “{query.trim()}”.
+              </p>
+              {/* Not a dead end: the old copy said "close this and we'll show you what to do
+                  next", which handed the buyer homework. One tap lands them on the shelf's own
+                  empty state — the waitlist that asks where to point the engine — with the query
+                  already carried across. */}
+              {onSeeAll && query.trim() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSeeAll(query);
+                    onClose();
+                  }}
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-primary underline-offset-4 hover:underline"
+                >
+                  Tell us to point the engine at it <Icon name="arrowRight" size={14} />
+                </button>
+              )}
             </li>
           )}
         </ul>

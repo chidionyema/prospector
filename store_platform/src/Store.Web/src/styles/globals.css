@@ -11,8 +11,8 @@
   --surface: #ffffff;     /* Pure White cards */
   --surface2: #ffffff;    /* Deprecated, mapped to white */
   --border: #e2e8f0;      /* Crisp 1px borders */
-  --text: #191919;        /* Deeper Slate/Black for high density */
-  --muted: #475569;       /* Slate 600: >=4.5:1 on white AND on the slate-50 canvas (Lighthouse) */
+  --text: #0F172A;        /* Slate 900 */
+  --muted: #64748B;       /* Slate 500 */
   --faint: #cbd5e1;       /* Decorative faint elements (non-text only) */
   --eyebrow: #475569;     /* Monospace metadata, contrast-safe */
 
@@ -27,10 +27,12 @@
   --cold-head: #9f1239;
   --icon-well: #f1f3f7;
 
-  --primary: #0a66c2;     /* Trust Blue */
+  --primary: #042F2E;     /* Deep Teal */
   --on-primary: #ffffff;
-  --primary-hover: #084c91;
-  --accent: #0a66c2;
+  --primary-hover: #022C22;
+  --verified-bg: #ECFDF5;
+  --verified-text: #065F46;
+  --accent: #042F2E;
   --on-accent: #ffffff;
 
   --success: #15803d;     /* Value Anchor / Success Green */
@@ -79,9 +81,12 @@
   --color-faint: var(--faint);
   --color-eyebrow: var(--eyebrow);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
+  --color-verified-bg: var(--verified-bg);
+  --color-verified-text: var(--verified-text);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -99,10 +104,11 @@
   /* Explicit Mathematical Leading & Tracking */
   --text-hero: 5.5rem;      --text-hero--line-height: 1.1;     --text-hero--letter-spacing: -0.05em;
   --text-display: 3.5rem;   --text-display--line-height: 1.1;  --text-display--letter-spacing: -0.025em;
-  --text-h1: 2.5rem;        --text-h1--line-height: 1.2;       --text-h1--letter-spacing: -0.025em;
-  --text-h2: 1.75rem;       --text-h2--line-height: 1.3;       --text-h2--letter-spacing: -0.025em;
+  --text-h1: 3rem;          --text-h1--line-height: 1.1;       --text-h1--letter-spacing: -0.02em;
+  --text-h2: 1.5rem;        --text-h2--line-height: 1.3;       --text-h2--letter-spacing: -0.025em;
   --text-h3: 1.25rem;       --text-h3--line-height: 1.4;
-  --text-body: 1.125rem;    --text-body--line-height: 1.6;
+  --text-body: 1rem;        --text-body--line-height: 1.6;
+  --text-meta: 0.8125rem;   --text-meta--font-weight: 500;
   --text-small: 0.9375rem;  --text-small--line-height: 1.6;
   --text-caption: 0.75rem;  --text-caption--line-height: 1.6;
 

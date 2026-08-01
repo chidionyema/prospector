@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@/components/ui';
+import { Button, Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { formatPrice, type Pack } from '@/lib/api/client';
 import {
@@ -13,7 +13,7 @@ import {
   type MatchAnswers,
   type MatchResult,
 } from '@/lib/discovery';
-import { label as facetLabel, type Advantage, type Commitment, type Payer } from '@/lib/facets';
+import type { Advantage, Commitment, Payer } from '@/lib/facets';
 
 import { FacetChips } from './FacetChips';
 
@@ -34,13 +34,33 @@ import { FacetChips } from './FacetChips';
  * — sits in the toolbar row next to search and sort, where it costs no vertical space at all.
  */
 
-/** Q1 — multi-select, max 2. "None of these yet" is a real answer that must never dead-end. */
-const Q1_OPTIONS: ReadonlyArray<{ text: string; advantage: Advantage }> = [
+/**
+ * Q1 — multi-select, max 2, plus one mutually-exclusive escape hatch.
+ *
+ * "None of these yet" is a real answer that must never dead-end, and it carries
+ * `advantage: null` to keep that promise. This is the null rule (`facets.ts:18`) applied to the
+ * router: a buyer saying they hold none of these skills has not claimed they can build with
+ * no-code tools, and recording it as `nocode` turned "I have nothing" into an assertion nobody
+ * made.
+ *
+ * It mattered, not just semantically. `stateFromAnswers` copies the answer into the URL, so
+ * "Show me everything that matched" used to hand a beginner `?adv=nocode`, and
+ * `applyDiscoveryState` hard-filters on it. Measured on the live catalogue 2026-08-01, `nocode`
+ * is carried by **1 pack of 49** — so the least confident buyer in the funnel was filtered down
+ * to a single pack by answering honestly. `discovery.ts` had already dropped the spec's
+ * `hands_on` half of this mapping for dead-ending a beginner; the data now says the `nocode`
+ * half dead-ends them too.
+ *
+ * `nocode` is NOT retired from the vocabulary — one pack earns it on its own evidence (CureSafe
+ * Strip, whose dossier names a Shopify build in so many words). It is simply no longer the
+ * dumping ground for "nothing".
+ */
+const Q1_OPTIONS: ReadonlyArray<{ text: string; advantage: Advantage | null }> = [
   { text: 'I can build software', advantage: 'code' },
   { text: 'I can sell', advantage: 'sales' },
   { text: 'I can run operations', advantage: 'ops' },
   { text: 'I have an audience', advantage: 'audience' },
-  { text: 'None of these yet', advantage: 'nocode' },
+  { text: 'None of these yet', advantage: null },
 ];
 
 const Q2_OPTIONS: ReadonlyArray<{ text: string; commitment: Commitment }> = [
@@ -72,21 +92,70 @@ function OptionButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  // The tick is not decoration: selection here is a border-and-tint change, and on Q1 two
+  // options can be lit at once — a colour-only signal both fails low-vision buyers and reads
+  // as "highlighted" rather than "chosen". aria-pressed already tells a screen reader; the
+  // tick tells everyone else the same thing.
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
       className={cx(
-        'rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all duration-150',
+        'flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all duration-150',
         selected
           ? 'border-primary bg-primary/5 text-text shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
           : 'border-border bg-surface text-text/80 hover:border-text/20 hover:bg-bg',
       )}
     >
       {children}
+      <span
+        aria-hidden
+        className={cx(
+          'flex h-5 w-5 flex-none items-center justify-center rounded-full transition-all duration-150',
+          selected ? 'bg-primary text-white' : 'bg-transparent text-transparent ring-1 ring-inset ring-border',
+        )}
+      >
+        <Icon name="check" size={11} />
+      </span>
     </button>
   );
+}
+
+/**
+ * Sentence-slot phrases for the reason line, one per facet value that can score.
+ *
+ * The chip labels ("Suits builders", "Evenings-friendly") are heading fragments, and dropping
+ * them into a sentence produced "It matches you on suits builders, evenings-friendly" — the
+ * same heading-vs-noun trap `KIND_NOUN` exists for (`lib/facets.ts`). These strings are written
+ * for exactly one slot: after "Picked because ". They live here and not in `facets.ts` because
+ * the reason line is the only sentence that speaks about the buyer's own answers, and each
+ * phrase deliberately echoes the wording of the option the buyer just clicked.
+ */
+const REASON_PHRASES: Record<'advantage' | 'commitment' | 'payer', Record<string, string>> = {
+  advantage: {
+    code: 'you can build software',
+    nocode: 'it needs no code',
+    sales: 'you can sell',
+    ops: 'you can run operations',
+    audience: 'you have an audience',
+  },
+  commitment: {
+    evenings: 'it fits evenings and weekends',
+    part_time: 'it fits part-time hours',
+    full_time: 'it earns full-time focus',
+  },
+  payer: {
+    b2b: 'it sells to businesses',
+    b2c: 'it sells to consumers',
+    b2g: 'it sells to public bodies',
+  },
+};
+
+/** "a, b and c" — the serial join that keeps a three-reason sentence readable. */
+function joinClauses(parts: string[]): string {
+  if (parts.length <= 1) return parts.join('');
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 /**
@@ -97,14 +166,15 @@ function OptionButton({
 function reasonSentence(result: MatchResult): string {
   const parts: string[] = [];
   for (const reason of result.reasons) {
-    if (reason.kind === 'advantage') parts.push((facetLabel('advantage', reason.value) ?? '').toLowerCase());
-    if (reason.kind === 'commitment') parts.push((facetLabel('commitment', reason.value) ?? '').toLowerCase());
-    if (reason.kind === 'payer') parts.push((facetLabel('payer', reason.value) ?? '').toLowerCase());
+    if (reason.kind === 'advantage' || reason.kind === 'commitment' || reason.kind === 'payer') {
+      const phrase = REASON_PHRASES[reason.kind][reason.value];
+      if (phrase) parts.push(phrase);
+    }
   }
   const evidence = result.reasons.find((r) => r.kind === 'evidence');
   const tail = evidence ? `Backed by ${evidence.value} sources.` : '';
   if (parts.length === 0) return tail || 'It is the best-evidenced pack in the catalogue.';
-  return `It matches you on ${parts.join(', ')}. ${tail}`.trim();
+  return `Picked because ${joinClauses(parts)}. ${tail}`.trim();
 }
 
 function WinnerCard({ result }: { result: MatchResult<Pack> }) {
@@ -175,11 +245,24 @@ export function Matchmaker({
 }) {
   const [answers, setAnswers] = useState<MatchAnswers>(EMPTY_MATCH_ANSWERS);
   const [payerChoice, setPayerChoice] = useState<string | null>(null);
+  /**
+   * "None of these yet" needs its own flag because it is an *answer* that adds no constraint.
+   * Without it, `answers.advantages` stays `[]` and the form cannot tell "told us they have
+   * nothing" apart from "has not answered Q1 yet" — so the submit button would never enable.
+   */
+  const [noSkillsYet, setNoSkillsYet] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const outcome = useMemo(() => rankMatches(packs, answers), [packs, answers]);
 
-  const toggleAdvantage = (advantage: Advantage) => {
+  const chooseAdvantage = (advantage: Advantage | null) => {
+    // Mutually exclusive with every skill claim: nobody both has nothing and has something.
+    if (advantage === null) {
+      setNoSkillsYet((prev) => !prev);
+      setAnswers((prev) => ({ ...prev, advantages: [] }));
+      return;
+    }
+    setNoSkillsYet(false);
     setAnswers((prev) => {
       const has = prev.advantages.includes(advantage);
       if (has) return { ...prev, advantages: prev.advantages.filter((a) => a !== advantage) };
@@ -189,7 +272,7 @@ export function Matchmaker({
     });
   };
 
-  const canSubmit = answers.advantages.length > 0 && answers.commitment !== null;
+  const canSubmit = (answers.advantages.length > 0 || noSkillsYet) && answers.commitment !== null;
   const noMatch = submitted && outcome.winner === null;
 
   // Told in an effect, not during render: `onNoMatch` sets state on the page, and doing that
@@ -257,14 +340,21 @@ export function Matchmaker({
       </p>
 
       <fieldset className="mt-6">
-        <legend className="text-base font-black tracking-tight text-text">What have you already got?</legend>
+        {/* The trigger promised "three questions"; the numbers keep that promise visibly and
+            let a skimmer see the whole cost of the form before starting it. */}
+        <legend className="text-base font-black tracking-tight text-text">
+          <span className="mr-2 font-mono text-xs font-bold text-primary">1/3</span>
+          What have you already got?
+        </legend>
         <span className="text-xs font-medium text-muted">Pick up to two.</span>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {Q1_OPTIONS.map((option) => (
             <OptionButton
               key={option.text}
-              selected={answers.advantages.includes(option.advantage)}
-              onClick={() => toggleAdvantage(option.advantage)}
+              selected={
+                option.advantage === null ? noSkillsYet : answers.advantages.includes(option.advantage)
+              }
+              onClick={() => chooseAdvantage(option.advantage)}
             >
               {option.text}
             </OptionButton>
@@ -273,7 +363,10 @@ export function Matchmaker({
       </fieldset>
 
       <fieldset className="mt-6">
-        <legend className="text-base font-black tracking-tight text-text">How much time, honestly?</legend>
+        <legend className="text-base font-black tracking-tight text-text">
+          <span className="mr-2 font-mono text-xs font-bold text-primary">2/3</span>
+          How much time, honestly?
+        </legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           {Q2_OPTIONS.map((option) => (
             <OptionButton
@@ -289,6 +382,7 @@ export function Matchmaker({
 
       <fieldset className="mt-6">
         <legend className="text-base font-black tracking-tight text-text">
+          <span className="mr-2 font-mono text-xs font-bold text-primary">3/3</span>
           Who would you rather sell to?
         </legend>
         <span className="text-xs font-medium text-muted">Optional.</span>

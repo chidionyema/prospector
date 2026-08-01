@@ -11,13 +11,29 @@ import pytest
 
 import prospector.claude_cli as C
 import prospector.gemini_cli as G
+from prospector.cli_governor import make_governor
 
 
 @pytest.fixture(autouse=True)
-def _reset_concurrency(monkeypatch):
+def _reset_concurrency(monkeypatch, tmp_path):
     """Module-global semaphores are mutated by these tests — restore defaults after."""
     monkeypatch.delenv("PROSPECTOR_GEMINI_CONCURRENCY", raising=False)
     monkeypatch.delenv("PROSPECTOR_CLAUDE_CONCURRENCY", raising=False)
+    # Claude's governor is a CrossProcessSemaphore backed by lock FILES under
+    # ~/.prospector/cli_slots (cli_governor._slot_root), deliberately shared by every
+    # prospector process on the machine. So "occupy the only slot" below was competing with
+    # the real daemon for the real budget: with `configure_concurrency(1)` only slot_0 is
+    # ever tried, and on 2026-08-01 the scheduler (pid 89502) held all four claude slot
+    # files, so the acquire returned False and this file failed on any machine where
+    # prospector was actually running — blocking every commit through the POPDD gate for a
+    # reason that had nothing to do with the change being committed.
+    # PROSPECTOR_CLI_SLOTS is the documented escape hatch for exactly this
+    # (cli_governor.py:92); tests/unit/test_cli_governor_scope.py proves it takes effect.
+    monkeypatch.setenv("PROSPECTOR_CLI_SLOTS", str(tmp_path / "cli_slots"))
+    # Rebuild rather than trust configure_concurrency(): it is a no-op when the requested
+    # size already equals _MAX_CLI (claude_cli.py:64), which would silently leave the
+    # machine-wide governor in place and reintroduce the coupling.
+    monkeypatch.setattr(C, "_CLI_SEM", make_governor(C._MAX_CLI, "claude"))
     yield
     G.configure_concurrency(2)
     C.configure_concurrency(2)
