@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { Icon } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { cx } from '@/components/ui/cx';
 import type { Pack } from '@/lib/api/client';
@@ -64,6 +65,11 @@ function ValueButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  // A zero-count option stays clickable (the near-miss state rescues it honestly) but must not
+  // LOOK like a live door: fifteen identical pills where four lead nowhere makes the buyer test
+  // options instead of reading them. The count already says "0"; the dimming lets the eye skip
+  // it without reading every number.
+  const dead = count === 0 && !active;
   return (
     <button
       type="button"
@@ -74,11 +80,92 @@ function ValueButton({
         active
           ? 'border-primary bg-primary/10 text-text'
           : 'border-border bg-surface text-text/70 hover:border-text/20 hover:bg-bg',
+        dead && 'opacity-45',
       )}
     >
       {children}
       {count !== undefined && <span className="text-[10px] font-bold text-muted">{count}</span>}
     </button>
+  );
+}
+
+/**
+ * The active selections as removable chips, rendered by the page directly above the grid.
+ *
+ * This exists for the state the sidebar cannot cover: below `lg` the filter controls live inside
+ * a closed sheet, so once it closes the only trace of a selection is a count badge on the
+ * "Filters" button — the buyer sees a shortened shelf with nothing on screen saying WHY, and
+ * undoing one choice means reopening the sheet and finding it again. Each chip names one active
+ * constraint in the same buyer-facing copy as the controls, and removes exactly that constraint
+ * in one tap. On desktop the row doubles as confirmation at the point the eye actually rests —
+ * the grid — rather than in sidebar peripheral vision.
+ *
+ * The search query is a chip too: it constrains the shelf exactly like a facet, and it is even
+ * less visible once the palette closes.
+ */
+export function AppliedFilterChips({
+  state,
+  onChange,
+  className,
+}: {
+  state: DiscoveryState;
+  onChange: (next: DiscoveryState) => void;
+  className?: string;
+}) {
+  const chips: { key: string; text: string; remove: () => void }[] = [];
+
+  if (state.q.trim()) {
+    chips.push({
+      key: 'q',
+      text: `“${state.q.trim()}”`,
+      remove: () => onChange({ ...state, q: '' }),
+    });
+  }
+  for (const kind of GROUPS) {
+    for (const value of activeFacetValues(state, kind)) {
+      const text = label(kind, value);
+      if (!text) continue;
+      chips.push({
+        key: `${kind}:${value}`,
+        text,
+        remove: () =>
+          onChange(
+            kind === 'advantage'
+              ? { ...state, advantage: state.advantage.filter((v) => v !== value) }
+              : { ...state, [kind]: null },
+          ),
+      });
+    }
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className={cx('flex flex-wrap items-center gap-1.5', className)}>
+      {chips.map((chip) => (
+        <button
+          key={chip.key}
+          type="button"
+          onClick={chip.remove}
+          aria-label={`Remove filter: ${chip.text}`}
+          className="group/chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 py-1 pl-3 pr-2 text-xs font-semibold text-text transition-colors hover:border-primary/50"
+        >
+          {chip.text}
+          <span className="flex h-4 w-4 items-center justify-center rounded-full text-muted transition-colors group-hover/chip:bg-primary group-hover/chip:text-white">
+            <Icon name="close" size={10} />
+          </span>
+        </button>
+      ))}
+      {chips.length > 1 && (
+        <button
+          type="button"
+          onClick={() => onChange({ ...state, q: '', advantage: [], sector: null, payer: null, effort: null, commitment: null, mechanism: null })}
+          className="ml-1 text-xs font-semibold text-muted underline underline-offset-4 hover:text-text"
+        >
+          Clear all
+        </button>
+      )}
+    </div>
   );
 }
 
