@@ -356,10 +356,20 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
               <p className="mt-3 max-w-[65ch] text-base leading-relaxed text-text/70">{pack.subhead}</p>
             )}
 
-            {(freshnessLabel(pack.verifiedAt) ||
+            {(pack.market ||
+              freshnessLabel(pack.verifiedAt) ||
               (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) ||
               verdict.summary) && (
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-muted">
+                {/* Near the title, not just in the "Is this for you?" section further down —
+                    a buyer landing here from the "Also available" shelf should see straight
+                    away which market this pack is for, without scrolling. */}
+                {pack.market && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon name="landmark" size={13} />
+                    {marketLabel(pack.market)} market
+                  </span>
+                )}
                 {freshnessLabel(pack.verifiedAt) && (
                   <span className="inline-flex items-center gap-1.5">
                     <Icon name="scheduled" size={13} />

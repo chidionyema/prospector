@@ -148,7 +148,7 @@ static string[] RehydrateStringArray(string? json)
     catch (JsonException) { return []; }
 }
 
-app.MapGet("/catalog", async (StoreDbContext db) =>
+app.MapGet("/catalog", async (StoreDbContext db, string? market) =>
 {
     // Materialise first, then shape: AdvantagesJson is JSON text (SQLite has no array
     // column) and must be rehydrated in memory — EF cannot translate the parse into SQL.
@@ -160,6 +160,18 @@ app.MapGet("/catalog", async (StoreDbContext db) =>
         .OrderByDescending(p => p.CreatedAt)
         .ToListAsync()
         .ConfigureAwait(false);
+
+    // ?market= is a boost-don't-block filter for the storefront's geo-aware shelf, not a second
+    // sellability fence: an absent param returns every listed pack, unchanged from before this
+    // existed. Many rows predate the engine tracking markets at all, so a null Market is treated
+    // as "uk" here — the same rule the storefront applies when it groups packs for display.
+    if (!string.IsNullOrWhiteSpace(market))
+    {
+        var wanted = market.Trim();
+        packs = packs
+            .Where(p => string.Equals(p.Market ?? "uk", wanted, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
 
     return packs.Select(p => new {
         p.Id,
@@ -586,6 +598,107 @@ app.MapPatch("/internal/catalog/{id}/listing", async (
     return Results.Ok(new { pack.Id, pack.IsListed, pack.DelistReason, pack.DelistedAt });
 })
 .WithName("PatchPackListing")
+.WithOpenApi();
+
+// Repoint a pack's deliverable at a new content object, touching nothing else about it.
+//
+// Content keys are content-addressed (packs/<id>/<sha256>.zip), so ANY bundle change mints a
+// new object key and the listing must be repointed to it — but a bundle-format backfill must
+// never hold the power to rewrite price, provider ids or listing state, and /internal/catalog
+// assigns those unconditionally. Same narrow-door rationale as the facet and listing patches.
+//
+// The key must parse as this pack's own content-addressed path with the hash it claims:
+// accepting an arbitrary key would let a bad call point pack A's download at pack B's zip.
+app.MapPatch("/internal/catalog/{id}/content", async (
+    string id,
+    ContentPatchRequest request,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Reason))
+    {
+        return Results.BadRequest(new { error = "reason is required — an unexplained content repoint reads as a bug" });
+    }
+    if (string.IsNullOrWhiteSpace(request.ContentKey) || string.IsNullOrWhiteSpace(request.ContentHash))
+    {
+        return Results.BadRequest(new { error = "contentKey and contentHash are both required" });
+    }
+    if (!string.Equals(request.ContentKey, $"packs/{id}/{request.ContentHash}.zip", StringComparison.Ordinal))
+    {
+        return Results.BadRequest(new { error = $"contentKey must be packs/{id}/<contentHash>.zip for this pack" });
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    // Only a pack that already has a deliverable can be repointed: this door updates content,
+    // it does not grant it. First-time content still goes through /internal/catalog, where
+    // list-only-after-upload and billability are enforced together.
+    if (string.IsNullOrEmpty(pack.ContentKey))
+    {
+        return Results.BadRequest(new { error = "pack has no content to repoint — publish it through /internal/catalog first" });
+    }
+
+    pack.ContentKey = request.ContentKey;
+    pack.ContentHash = request.ContentHash;
+    pack.ContentVersion += 1;
+
+    await db.SaveChangesAsync().ConfigureAwait(false);
+
+    return Results.Ok(new { pack.Id, pack.ContentKey, pack.ContentHash, pack.ContentVersion });
+})
+.WithName("PatchPackContent")
+.WithOpenApi();
+
+// Read a pack's current content pointer. The backfill needs to know WHICH stored object a
+// listing serves before rebuilding it: content-addressing keeps every superseded upload, so
+// a pack republished twice has three objects under packs/<id>/ and only the database knows
+// which one buyers receive. Newest-by-LastModified is a heuristic that goes wrong exactly
+// when a past upload succeeded but its catalog update failed. Internal (key-gated) because
+// content keys are presign targets, not public catalogue data.
+app.MapGet("/internal/catalog/{id}/content", async (
+    string id,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    return Results.Ok(new { pack.Id, pack.ContentKey, pack.ContentHash, pack.ContentVersion });
+})
+.WithName("GetPackContent")
 .WithOpenApi();
 
 // Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a

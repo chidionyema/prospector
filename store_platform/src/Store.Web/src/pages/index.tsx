@@ -27,6 +27,7 @@ import {
   nearMisses,
   type DiscoveryState,
 } from '@/lib/discovery';
+import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
 // Totals only — the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
@@ -38,6 +39,10 @@ interface HomeProps {
   /** Discovery state decoded from the query string on the server, so a shared filtered link
    *  renders filtered in the HTML rather than flashing the whole catalogue first. */
   initialState: DiscoveryState;
+  /** The visitor's resolved market (`?market=` override -> `market` cookie -> `Fly-Client-Country`
+   *  -> "uk"; see `resolveMarket` in `lib/market.ts`). Boosts that market's packs to the top of
+   *  the grid — every other market is still fully shown, just below. */
+  market: string;
 }
 
 type PillIcon = 'check' | 'shield' | 'download' | 'lock' | 'money';
@@ -382,7 +387,15 @@ function relaxLabelFor(kind: keyof typeof KIND_NOUN): string {
  * the packs are already here, so re-running `getServerSideProps` would be a network round trip
  * that changes nothing on screen.
  */
-function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: DiscoveryState }) {
+function CatalogBrowser({
+  packs,
+  initialState,
+  market,
+}: {
+  packs: Pack[];
+  initialState: DiscoveryState;
+  market: string;
+}) {
   const router = useRouter();
   const [state, setState] = React.useState<DiscoveryState>(initialState);
   const [sort, setSort] = React.useState<SortKey>('newest');
@@ -423,10 +436,17 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
 
   const filtered = isFiltered(state);
 
+  // Boost, don't block: partition the filtered/sorted shelf into the visitor's market and every
+  // other, so the grid can render "your market" first without ever dropping a pack.
+  const grouped = React.useMemo(() => groupByMarket(visible, market), [visible, market]);
+
   // Spotlight the newest survivor only on the unfiltered, unsorted, full view — when it is
-  // genuinely "newest" and there is a grid behind it to anchor.
-  const spotlight = !filtered && sort === 'newest' && visible.length > 2 ? visible[0] : null;
-  const gridPacks = spotlight ? visible.slice(1) : visible;
+  // genuinely "newest" and there is a grid behind it to anchor. Drawn from the visitor's own
+  // market only: the single biggest promotional slot on the page boosting a pack from a market
+  // that then gets "Also available" below it would be the opposite of the point.
+  const spotlight =
+    !filtered && sort === 'newest' && grouped.matching.length > 2 ? grouped.matching[0] : null;
+  const gridPacks = spotlight ? grouped.matching.slice(1) : grouped.matching;
 
   if (packs.length === 0) {
     return (
@@ -444,6 +464,22 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
 
   return (
     <>
+      {/* Only shown once we have boosted away from the default shelf. A visitor already on "uk"
+          has nothing to be told — the grid below is already every pack, in the usual order. */}
+      {market !== DEFAULT_MARKET && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-bg/60 px-4 py-3 text-sm">
+          <span className="text-text">Showing packs for {marketLabel(market)} first.</span>
+          {/* Sets the `market` cookie server-side (getServerSideProps) on the next request, so
+              the switch survives past this one click, not just this one page load. */}
+          <Link
+            href={`/?market=${DEFAULT_MARKET}`}
+            className="whitespace-nowrap font-semibold text-primary hover:underline"
+          >
+            Switch to {marketLabel(DEFAULT_MARKET)}
+          </Link>
+        </div>
+      )}
+
       {/* One column below `lg`, so this <aside> stacks ABOVE the first card on every phone.
           It used to stack the whole filter bar there — six groups of chips before a buyer saw a
           single product. FacetBar now collapses itself into one "Filters" button under `lg`
@@ -492,6 +528,20 @@ function CatalogBrowser({ packs, initialState }: { packs: Pack[]; initialState: 
                   <PackCard key={pack.id} pack={pack} />
                 ))}
               </div>
+              {/* Boost, don't block: every other market's packs are still fully on the shelf,
+                  clearly separated rather than mixed in or hidden. */}
+              {grouped.others.map((group) => (
+                <div key={group.market} className="mt-10 border-t border-border pt-8">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
+                    Also available — {group.label}
+                  </h2>
+                  <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {group.packs.map((pack) => (
+                      <PackCard key={pack.id} pack={pack} />
+                    ))}
+                  </div>
+                </div>
+              ))}
               <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
                 <Icon name="shield" size={15} className="text-success" />
                 Every pack carries a 14 day money back guarantee.
@@ -600,7 +650,7 @@ function ComparisonBlock() {
   );
 }
 
-export default function Home({ packs, stats, initialState }: HomeProps) {
+export default function Home({ packs, stats, initialState, market }: HomeProps) {
   // Never a literal. The catalogue grows on every PASS, so the only honest number is the one the
   // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
   const survived = stats?.listed ?? packs.length;
@@ -695,7 +745,7 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
           <Heartbeat packs={packs} stats={stats} />
         </div>
 
-        <CatalogBrowser packs={packs} initialState={initialState} />
+        <CatalogBrowser packs={packs} initialState={initialState} market={market} />
       </Section>
 
       {/* 3. WHAT YOU GET — the deliverable breakdown. Format ambiguity is the biggest killer on a
@@ -786,19 +836,46 @@ export default function Home({ packs, stats, initialState }: HomeProps) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
+export const getServerSideProps: GetServerSideProps<HomeProps> = async (context) => {
   // Decoded server-side: out-of-vocabulary values in a hand-edited URL are dropped rather than
   // filtering the shelf down to nothing on a value no pack can ever carry.
   const initialState = decodeDiscoveryState(context.query);
+
+  // Same precedence order documented on `resolveMarket`: an explicit `?market=` (the switcher)
+  // beats a stored cookie, which beats the edge-supplied country header, which beats "uk".
+  const queryMarket = context.query.market;
+  const cookieMarket = context.req.cookies.market ?? null;
+  const countryHeader = context.req.headers['fly-client-country'];
+  const market = resolveMarket({
+    queryMarket: typeof queryMarket === 'string' || Array.isArray(queryMarket) ? queryMarket : null,
+    cookieMarket,
+    countryHeader: typeof countryHeader === 'string' ? countryHeader : null,
+  });
+
+  // An explicit `?market=` is a user choice and must persist, or the switcher would silently
+  // revert on the visitor's very next request. This is the ONLY place the market cookie is
+  // ever set — geo inference stays per-request off the header, nothing stored (see
+  // lib/market.ts header comment). `market` is safe in the header because resolveMarket
+  // clamps to KNOWN_MARKETS; the queryMarket guard means a merely-inferred value never
+  // persists, and the clamp means an unknown `?market=` resolved elsewhere, so it won't
+  // match `market` and no cookie is written for junk input.
+  if (
+    typeof queryMarket === 'string' &&
+    queryMarket.trim().toLowerCase() === market &&
+    market !== cookieMarket
+  ) {
+    context.res.setHeader('Set-Cookie', `market=${market}; Path=/; Max-Age=31536000; SameSite=Lax`);
+  }
+
   try {
     const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
     return {
-      props: { packs, stats, initialState },
+      props: { packs, stats, initialState, market },
     };
   } catch (error) {
     console.error('Error fetching catalog:', error);
     return {
-      props: { packs: [], stats: null, initialState },
+      props: { packs: [], stats: null, initialState, market },
     };
   }
 };

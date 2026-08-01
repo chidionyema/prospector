@@ -70,7 +70,10 @@ class TestCompleteBundle:
     def test_all_eight_files_present(self, bridge):
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
         assert path is not None
-        assert set(_entries(path)) == set(BUNDLE_FILES)
+        # `<=` not `==`: the bundle also ships index.html (pack_html.py), a bonus reading
+        # view that is deliberately NOT part of the BUNDLE_FILES sellability contract — see
+        # test_bundle_index_html.py for that file's own coverage.
+        assert set(BUNDLE_FILES) <= set(_entries(path))
 
     def test_no_entry_is_a_stub(self, bridge):
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
@@ -87,7 +90,7 @@ class TestMissingArtifactsStillProduceAllEightFiles:
         artifacts[dropped] = ""
         path = bridge._create_bundle(_dossier(), artifacts, [])
         entries = _entries(path)
-        assert set(entries) == set(BUNDLE_FILES), f"dropping {dropped} lost a file"
+        assert set(BUNDLE_FILES) <= set(entries), f"dropping {dropped} lost a file"
         assert all(s >= _MIN_BUNDLE_ENTRY_BYTES for s in entries.values())
 
     def test_placeholder_invents_nothing(self, bridge):
@@ -101,7 +104,7 @@ class TestMissingArtifactsStillProduceAllEightFiles:
 
     def test_every_artifact_missing_still_yields_eight_files(self, bridge):
         path = bridge._create_bundle(_dossier(), {}, [])
-        assert set(_entries(path)) == set(BUNDLE_FILES)
+        assert set(BUNDLE_FILES) <= set(_entries(path))
 
 
 class TestMarketingAssetsNeverAStub:

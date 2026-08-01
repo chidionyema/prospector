@@ -6,6 +6,10 @@ requests>=2.31
 tenacity>=8.2
 pytest>=8.0
 python-json-logger>=2.0
+# Markdown -> HTML for the bundle's self-contained index.html reading experience
+# (bridge.py::_create_bundle -> pack_html.py). Imported at module top level (not lazy) since
+# pack_html.py is loaded on every publish, not just an optional path.
+mistune>=3.3
 # API layer (api.py) + its FastAPI test client
 fastapi>=0.110
 uvicorn>=0.29
