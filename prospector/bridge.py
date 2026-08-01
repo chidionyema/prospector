@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 from datetime import datetime
 from urllib.parse import urlparse
 
+from . import facet_derive
 from . import facets as facets_mod
 from . import indexnow
 from .models import Dossier, Decision
@@ -425,6 +426,29 @@ class EngineBridge:
         # gone by here; to_wire drops the empties so a facet-light republish never untags a
         # pack the backfill tagged (the Store API only overwrites what it was sent).
         pack_facets = facets_mod.normalize(listing.get("facets"))
+        # Fill the holes generation left — but only for the two facets whose value restates a
+        # dossier field rather than making a judgement (`facet_derive.DERIVABLE` is exactly
+        # ("effort", "mechanism"); sector, payer, commitment and advantages are refused there and
+        # stay hand-resolved). Generation always outranks derivation: an asserted value is never
+        # overwritten, which is the same authority order tools/backfill_facets.py uses.
+        #
+        # Without this the mechanical half of the 2026-08-01 backfill is a one-off patch. It
+        # filled effort on 14 live packs by reading `automatability` and `structural_form` — two
+        # fields the publish path never looked at — so the identical hole would reopen on the very
+        # next pack whose generation dropped the facets block, and nothing here would notice.
+        derivation_source = {
+            "automatability": getattr(candidate, "automatability", None),
+            "structural_form": getattr(candidate, "structural_form", "") or "",
+        }
+        for facet_name, derived in facet_derive.derive(derivation_source).items():
+            if pack_facets.get(facet_name):
+                continue
+            pack_facets[facet_name] = derived.value
+            logger.info(
+                f"EngineBridge: {candidate_id} derived {facet_name}={derived.value} "
+                f"({derived.evidence})",
+                extra={"candidate_id": candidate_id, "facet": facet_name},
+            )
         catalog_meta.update(facets_mod.to_wire(pack_facets))
         # A sector-less pack is publishable — guessing one is worse, and the vocabulary has an
         # explicit `other` for "none of the eleven fit", so a missing sector means generation
@@ -645,11 +669,28 @@ class EngineBridge:
                 marketing, dossier.candidate, getattr(dossier, "checks", []) or []
             )
 
-            # Ordered (title, markdown) pairs, appended in the exact sequence each file is
-            # written below — this is what index.html renders, in the same order, via
-            # pack_html.render_pack_html. A parallel list rather than a re-read of the zip
-            # because content is already in hand here (no second pass, no encoding round-trip).
-            md_entries: List[Tuple[str, str]] = []
+            # Content by filename, for the index.html reading experience. Keyed rather than
+            # appended, because the order this is WRITTEN in is not the order it should be READ
+            # in, and for a long time it was.
+            #
+            # The zip is built cheapest-first: the three prose artifacts, financials, QA,
+            # marketing, and only then the two deterministic floors (00 and 05), which need
+            # `dossier.checks` in hand. An ordered list appended alongside those writes
+            # therefore handed pack_html a running order of 01, 02, 03, 04, QA, Marketing, 00,
+            # 05 — so a buyer opening the pack landed on the build spec, met the Executive
+            # Summary seventh of eight, and found the First-Week Checklist, the only file that
+            # says what to DO, dead last. Proven on a shipped bundle
+            # (publish/bundles/fbd10d6bdfcd5e31): "Executive Summary" appears at char 5212 and
+            # "The Blueprint (Build Spec)" at 4806.
+            #
+            # Nobody chose that order; it fell out of the write sequence. The right order was
+            # already written down twice — `BUNDLE_FILES` below, and PackContents.tsx on the
+            # storefront, which packContents.test.ts pins to it with an ORDERED toEqual. So the
+            # reading order is now derived from that same tuple at render time rather than
+            # accumulated here, which means adding a file or re-sequencing a write cannot
+            # silently reorder what the buyer reads. Reordering the pack now requires editing
+            # the contract, which is the only place it should ever have been editable.
+            written: Dict[str, str] = {}
 
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # 1-3. The prose deliverable. `_add_to_zip` writes nothing for empty content, so
@@ -660,15 +701,15 @@ class EngineBridge:
                 # reads as an oversight, a stub says what happened and why nothing is for sale.
                 build_spec_md = artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec")
                 self._add_to_zip(zipf, "01_Blueprint_BuildSpec.md", build_spec_md)
-                md_entries.append((_SECTION_TITLES["01_Blueprint_BuildSpec.md"], build_spec_md))
+                written["01_Blueprint_BuildSpec.md"] = build_spec_md
 
                 gtm_md = artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan")
                 self._add_to_zip(zipf, "02_Marketing_Plan_GTM.md", gtm_md)
-                md_entries.append((_SECTION_TITLES["02_Marketing_Plan_GTM.md"], gtm_md))
+                written["02_Marketing_Plan_GTM.md"] = gtm_md
 
                 ops_md = artifacts.get("ops_plan", "") or _held_back_md("Operations plan")
                 self._add_to_zip(zipf, "03_Operations_Plan.md", ops_md)
-                md_entries.append((_SECTION_TITLES["03_Operations_Plan.md"], ops_md))
+                written["03_Operations_Plan.md"] = ops_md
 
                 # 4. Financial Model — its own file, with a provenance banner. The arithmetic is
                 # Python-computed from verified inputs (no LLM math), which is a real trust
@@ -690,13 +731,13 @@ class EngineBridge:
                         "Prospector does not invent revenue, cost, or TAM figures._\n"
                     )
                 self._add_to_zip(zipf, "04_Financial_Model.md", financials)
-                md_entries.append((_SECTION_TITLES["04_Financial_Model.md"], financials))
+                written["04_Financial_Model.md"] = financials
 
                 # 5. QA Report
                 from .dossier import render_markdown
                 qa_report = render_markdown(dossier)
                 self._add_to_zip(zipf, "QA_Report.md", qa_report)
-                md_entries.append((_SECTION_TITLES["QA_Report.md"], qa_report))
+                written["QA_Report.md"] = qa_report
 
                 # 6. Marketing Assets (Social, Email, SEO) — never a bare header stub.
                 # The old loop appended a `##` heading per piece even when `copy` was empty,
@@ -721,16 +762,16 @@ class EngineBridge:
                     ]
                 marketing_text = "# Marketing Assets\n\n" + "\n".join(sections)
                 self._add_to_zip(zipf, "Marketing_Assets.md", marketing_text)
-                md_entries.append((_SECTION_TITLES["Marketing_Assets.md"], marketing_text))
+                written["Marketing_Assets.md"] = marketing_text
 
                 # 7–8. Epic C lite floors (deterministic, claim-safe)
                 exec_summary_content = exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or [])
                 self._add_to_zip(zipf, "00_Executive_Summary.md", exec_summary_content)
-                md_entries.append((_SECTION_TITLES["00_Executive_Summary.md"], exec_summary_content))
+                written["00_Executive_Summary.md"] = exec_summary_content
 
                 checklist_content = first_week_checklist_md(dossier.candidate)
                 self._add_to_zip(zipf, "05_First_Week_Checklist.md", checklist_content)
-                md_entries.append((_SECTION_TITLES["05_First_Week_Checklist.md"], checklist_content))
+                written["05_First_Week_Checklist.md"] = checklist_content
 
                 # 9. index.html — the ONE non-.md file in the bundle: the same eight
                 # deliverables above, rendered to a single polished, self-contained reading
@@ -751,6 +792,16 @@ class EngineBridge:
                         source_count=len(dossier.all_sources) if getattr(dossier, "all_sources", None) else None,
                         pack_id=candidate_id,
                     )
+                    # The reading order, taken from the contract rather than from the order
+                    # the files happened to be written in. `if name in written` keeps a
+                    # partially-built bundle renderable — such a pack is held UNLISTED by the
+                    # completeness gate below, and a bonus file must never be the thing that
+                    # raises on the retry path.
+                    md_entries: List[Tuple[str, str]] = [
+                        (_SECTION_TITLES[name], written[name])
+                        for name in BUNDLE_FILES
+                        if name in written
+                    ]
                     index_html = pack_html.render_pack_html(md_entries, pack_meta)
                     self._add_to_zip(zipf, "index.html", index_html)
                 except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless

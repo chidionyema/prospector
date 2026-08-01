@@ -12,3 +12,35 @@ generated_code = true
 [**/Store.Tests/**.cs]
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.MA0004.severity = none
+
+# Auth slices ported from the-introduction-exchange. Two LAYOUT rules are silenced here,
+# and only these two — every correctness rule (CA*, S*, the rest of MA*) stays an error.
+#
+# MA0048 (file name must match type name): these files are vertical slices. RegisterCommand.cs
+# holds RegisterCommand + RegisterCommandValidator + RegisterCommandHandler, which is the shape
+# the upstream repo uses. Splitting ~54 types into ~54 files would satisfy the rule and destroy
+# the property that makes this port maintainable: a file here still diffs cleanly against its
+# upstream original, so a future security fix in that repo can be re-synced by reading a diff
+# instead of re-deriving the change across three files.
+#
+# MA0051 (method too long): 7 methods exceed 60 lines. Two are flat route tables
+# (AuthEndpoints.MapAuthEndpoints, ExternalAuthEndpoints at 140 lines) where the length is the
+# number of endpoints, not complexity. The other five are the ported auth state machines —
+# ExternalLoginCallbackCommand's account-consolidation path in particular. Chopping a reviewed
+# security sequence into private helpers to satisfy a line count moves the risk without
+# reducing it, and breaks the same upstream-diff property.
+[**/Store.Api/Identity/*.cs]
+dotnet_diagnostic.MA0048.severity = none
+dotnet_diagnostic.MA0051.severity = none
+
+[**/Store.Api/Auth/*.cs]
+dotnet_diagnostic.MA0048.severity = none
+dotnet_diagnostic.MA0051.severity = none
+
+# Result/Error/the shared auth primitives are one conceptual unit per file (Result + Result<T> +
+# ResultExtensions; ErrorType + Error). Same MA0048 rationale, correctness rules unchanged.
+[**/Store.Api/Common/*.cs]
+dotnet_diagnostic.MA0048.severity = none
+
+[**/Store.Api/Common/Audit/*.cs]
+dotnet_diagnostic.MA0048.severity = none

@@ -52,8 +52,13 @@ def bridge(monkeypatch, tmp_path):
     return b
 
 
-def _dossier(facets):
-    """A publishable PASS whose listing carries `facets` (or omits the block entirely)."""
+def _dossier(facets, automatability=None, structural_form=""):
+    """A publishable PASS whose listing carries `facets` (or omits the block entirely).
+
+    `automatability` / `structural_form` are the two candidate fields the publish path derives
+    from; they default to absent so every pre-existing test here keeps exercising the
+    nothing-to-derive path.
+    """
     body = "## Section\n\nGrounded prose about the opportunity. " * 20
     listing = {
         "type": "listing_page",
@@ -71,6 +76,8 @@ def _dossier(facets):
         who_pays="owner-operated shellfish farms",
         why_now="new sampling rules",
     )
+    cand.automatability = automatability
+    cand.structural_form = structural_form
     cand.tags = {
         "artifacts": {k: f"# {k}\n\n{body}" for k in
                       ("build_spec", "gtm_plan", "ops_plan", "financial_model")},
@@ -139,3 +146,51 @@ class TestSectorlessPublishIsAnnounced:
             bridge.publish_pass(_dossier({"sector": "aquaculture"}))
         assert [m for m in _warnings(caplog) if "NO sector" in m]
         assert "sector" not in bridge.catalog_calls[-1]["metadata"]
+
+
+class TestDerivedFacetsFillHolesAtPublish:
+    """The publish path consults the dossier's own fields for the two facets that restate one.
+
+    Until 2026-08-01 it did not, and that made the mechanical half of the facet backfill a
+    one-off patch: `effort` was filled on 14 live packs by reading `automatability` and
+    `structural_form`, two fields nothing in `publish_pass` had ever opened, so the identical
+    hole would reopen on the next pack whose generation dropped the facets block.
+    """
+
+    def test_effort_and_mechanism_are_derived_when_generation_omits_them(self, bridge):
+        bridge.publish_pass(_dossier(
+            {"sector": "other", "payer": "b2b"},
+            automatability=0.9,
+            structural_form="vertical_tool",
+        ))
+        meta = bridge.catalog_calls[-1]["metadata"]
+        assert meta["effort"] == "automatable"
+        assert meta["mechanism"] == "vertical_tool"
+
+    def test_generation_is_never_overwritten(self, bridge):
+        """0.9 on its own derives `automatable`; generation said `hands_on` and it must win.
+
+        This is the authority order tools/backfill_facets.py uses, asserted at the other end of
+        the pipe: derivation fills holes, it never corrects a human or a model that spoke.
+        """
+        bridge.publish_pass(_dossier(
+            {"sector": "other", "effort": "hands_on"},
+            automatability=0.9,
+            structural_form="vertical_tool",
+        ))
+        assert bridge.catalog_calls[-1]["metadata"]["effort"] == "hands_on"
+
+    def test_the_judgement_facets_are_never_derived(self, bridge):
+        """A candidate rich enough to derive both derivable facets must STILL publish untagged
+        on the four that need a judgement about who pays or what the buyer already has."""
+        bridge.publish_pass(_dossier(None, automatability=0.9, structural_form="vertical_tool"))
+        meta = bridge.catalog_calls[-1]["metadata"]
+        assert meta["effort"] == "automatable"
+        for judgement in ("sector", "payer", "commitment", "advantages"):
+            assert judgement not in meta, f"{judgement} was derived; it is a judgement call"
+
+    def test_off_vocabulary_structural_form_is_refused_not_coerced(self, bridge):
+        """`vertical_saas` is one underscore from `vertical_tool` and is live in real dossiers.
+        Nearness is not membership, so the pack publishes with no mechanism at all."""
+        bridge.publish_pass(_dossier({"sector": "other"}, structural_form="vertical_saas"))
+        assert "mechanism" not in bridge.catalog_calls[-1]["metadata"]

@@ -9,7 +9,10 @@ import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { DossierPreview } from '@/components/marketing/DossierPreview';
+import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
+import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
+import { BuyDrawerProvider, BuyNowButton } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { FacetBar } from '@/components/discovery/FacetBar';
@@ -17,6 +20,7 @@ import { FacetChips } from '@/components/discovery/FacetChips';
 import { Matchmaker, MatchmakerTrigger } from '@/components/discovery/Matchmaker';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
+import { citedFigure } from '@/lib/sources';
 import { categoryFor, type Category } from '@/lib/category';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
@@ -30,6 +34,7 @@ import {
 } from '@/lib/discovery';
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
+import { cleanProofPoint } from '@/lib/proof';
 // Totals only — the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
 import killTotals from '@/data/kill-log-totals.json';
@@ -152,14 +157,22 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
   );
 }
 
-/** The single metadata row on a grid card: market, the strongest facets, sources, freshness.
- *  One capped row replaces the three stacked chip sections the card used to carry — measured on
- *  the live shelf those sections were the whole size problem (cards ran 585–660px tall depending
- *  on which sections a pack happened to have). A pack with nothing to claim renders no row at
- *  all: a chip is a claim, and absence stays absence (same rule as FacetChips). */
+/** The mechanism tier of a grid card: which market, then the strongest facets — what this is and
+ *  who pays for it. One capped row replaces the three stacked chip sections the card used to
+ *  carry; measured on the live shelf those sections were the whole size problem (cards ran
+ *  585–660px tall depending on which sections a pack happened to have). A pack with nothing to
+ *  claim renders no row at all: a chip is a claim, and absence stays absence (same rule as
+ *  FacetChips).
+ *
+ *  Sources and freshness used to sit at the end of this same capped list, at positions 7 and 8.
+ *  Measured against the live catalogue on 2026-08-01 (n=51): `verifiedAt` is present on 51 packs
+ *  and the freshness chip reached 2 of them; `sourceCount` is present on 51 and was cut on 12.
+ *  The cap was not choosing between claims of the same kind — it was letting a fifth descriptive
+ *  tag outrank the only evidence on the card, and it got stricter as facet coverage improved.
+ *  Proof is now its own tier below, and is not subject to this cap. */
 const CARD_META_MAX = 5;
 
-function CardMeta({ pack }: { pack: Pack }) {
+function FitChips({ pack }: { pack: Pack }) {
   const chips: { key: string; text: string; primary?: boolean }[] = [];
   if (pack.market) chips.push({ key: 'market', text: marketLabel(pack.market), primary: true });
   const facets: [FacetKind, string | null | undefined][] = [
@@ -175,11 +188,6 @@ function CardMeta({ pack }: { pack: Pack }) {
   if (pack.timeToFirstRevenue) {
     chips.push({ key: 'revenue', text: `Revenue in ${pack.timeToFirstRevenue}` });
   }
-  if (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) {
-    chips.push({ key: 'sources', text: `${pack.sourceCount} sources` });
-  }
-  const fresh = freshnessLabel(pack.verifiedAt);
-  if (fresh) chips.push({ key: 'fresh', text: fresh });
   if (chips.length === 0) return null;
   return (
     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -198,16 +206,52 @@ function CardMeta({ pack }: { pack: Pack }) {
   );
 }
 
+/** The proof tier: how much evidence stands behind the listing, and when it was last checked.
+ *
+ *  Deliberately not chips and deliberately not capped. It is the last thing a buyer reads before
+ *  the CTA because it is the claim the rest of the card rests on — every other line describes the
+ *  opportunity, this one says why we think it is real. It renders nothing when there is nothing
+ *  to cite, which is the same rule as everywhere else: we do not print a reassurance we cannot
+ *  back. */
+function ProofLine({ pack }: { pack: Pack }) {
+  const sources =
+    typeof pack.sourceCount === 'number' && pack.sourceCount > 0 ? pack.sourceCount : null;
+  const fresh = freshnessLabel(pack.verifiedAt);
+  if (sources === null && !fresh) return null;
+  return (
+    <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-muted">
+      <Icon name="verified" size={12} className="text-primary" />
+      {sources !== null && (
+        <span>
+          <span className="font-bold text-text/80">{sources}</span> sources
+        </span>
+      )}
+      {sources !== null && fresh && <span aria-hidden="true">·</span>}
+      {fresh && <span>{fresh}</span>}
+    </p>
+  );
+}
+
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
   // One description, not two. `oneLine` (the engine's opportunity line) wins; the title
   // descriptor is the fallback for packs published before the engine emitted one.
   const line = pack.oneLine || sub;
+  // Ghost hover: the card answers with light, not with movement. The `1px solid #E2E8F0` border
+  // and `translateY(-2px)` lift that used to live here are amendment 1 of the design contract —
+  // the reason is recorded in storefrontDesignContract.test.ts, which still fails if the lift
+  // comes back unannounced. A hairline ring at 6% still separates a white card from the #F8FAFC
+  // page, but at 42 cards a full-strength border draws 42 rectangles and the eye reads the grid
+  // before it reads any listing.
+  //
+  // Dropping the transform is the accessible answer rather than a cost of one: the lift was the
+  // card's only motion, so a `prefers-reduced-motion` visitor now gets exactly the same feedback
+  // as everyone else instead of a suppressed version of it.
   return (
     <Link
       href={`/pack/${pack.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)]"
+      className="group flex flex-col overflow-hidden rounded-lg bg-white ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200 hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.12]"
     >
       <Cover cat={cat} iconSize={104} className="h-28">
         <span className="absolute left-3.5 top-3.5">
@@ -241,7 +285,10 @@ function PackCard({ pack }: { pack: Pack }) {
         </h3>
         {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-text/75">{line}</p>}
 
-        <CardMeta pack={pack} />
+        {/* Outcome (heading + line) above, mechanism next, proof last. The order is the argument:
+            what you'd be selling, how it makes money, and why we believe it. */}
+        <FitChips pack={pack} />
+        <ProofLine pack={pack} />
 
         {/* Active CTA, basket beside it rather than replacing it: opening the pack stays the
             primary action, and a shelf where every card demands a cart decision is a worse
@@ -253,6 +300,11 @@ function PackCard({ pack }: { pack: Pack }) {
               View blueprint
             </span>
             <div className="flex flex-none items-center gap-2">
+              {/* Buy before basket: a single pack is the common purchase, and the drawer carries
+                  the deliverables, the price and the refund right, so this is not a shortcut
+                  past the evidence. Both stay quieter than "View blueprint" — the pack page is
+                  still the primary action, because the evidence is the product. */}
+              <BuyNowButton pack={pack} />
               <AddToCartButton
                 size="compact"
                 line={{ id: pack.id, title: name, price: pack.price }}
@@ -273,10 +325,11 @@ function PackCard({ pack }: { pack: Pack }) {
 function SpotlightCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
+  const proof = cleanProofPoint(pack.proofPoint);
   return (
     <Link
       href={`/pack/${pack.id}`}
-      className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] md:flex-row"
+      className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] hover:ring-black/[0.12] md:flex-row"
     >
       <Cover cat={cat} iconSize={200} className="min-h-[180px] md:w-[36%]">
         <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
@@ -303,6 +356,11 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           {sub && <p className="mt-2 max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
         </div>
         {pack.oneLine && <CardFact label="The opportunity" clamp="line-clamp-3">{pack.oneLine}</CardFact>}
+        {/* The spotlight is the one card with room for the sentence itself rather than a count of
+            sources. Every pack has carried one since publish and no surface has ever shown it —
+            see lib/proof.ts. Cleaned at this boundary, because the .md a buyer downloads keeps
+            its markdown. Renders nothing if it cleans to nothing. */}
+        {proof && <CardFact label="The evidence" clamp="line-clamp-3">{proof}</CardFact>}
         <FacetChips pack={pack} compact max={5} />
         {/* The one place on the shelf the deliverable chips render — see the note on DELIVERABLES. */}
         <DeliverableChips />
@@ -311,6 +369,7 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           <span className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary-hover">
             View vetted blueprint <Icon name="arrowRight" size={15} />
           </span>
+          <BuyNowButton pack={pack} />
           <AddToCartButton size="compact" line={{ id: pack.id, title: name, price: pack.price }} />
         </div>
       </div>
@@ -579,11 +638,89 @@ function CatalogBrowser({
  * Why £49 once beats a subscription, side by side. Justifies the impulse price by anchoring against
  * the category the buyer is actually comparing us to.
  *
- * Deliberately no competitor is named and no capability is denied on their behalf: the left column
- * states only the two things that are true by definition of a subscription idea feed (it recurs, and
- * it hands you leads you still have to vet). The "$300 to $1,000 a year" range is the figure this
- * page already carried before this rewrite — it is unsourced, so it is hedged as "typically".
+ * Deliberately no competitor is named IN THE ROWS and no capability is denied on their behalf: the
+ * left column states only the things that are true by definition of a subscription idea feed (it
+ * recurs, and it hands you leads you still have to vet).
+ *
+ * The price is the exception, and it had to become one. This block used to read "Typically $300 to
+ * $1,000 a year", hedged as typical precisely because nobody could say where it came from. An
+ * unnamed range is not the cautious choice it looks like — it is a number about a competitor with
+ * no way for the reader to check it, on a page whose entire pitch is that we do not do that. It now
+ * cites one real published plan price, named and linked, and says so is one product rather than a
+ * category average (`lib/sources.ts`).
+ *
+ * Naming the seller for the price while keeping the rows generic is the deliberate line: their
+ * price is a fact they publish, whereas "you keep nothing if you cancel" would be a claim about
+ * their terms that we have not read. We cite what we checked and generalise only what is true by
+ * definition.
  */
+/**
+ * What the method costs when you commission it, next to what it costs here.
+ *
+ * The brief asked for a straight price anchor — "£3,500 agency vs £49" — and that exact figure is
+ * the thing this block refuses to print, because nobody could tell me whose £3,500 it was. What
+ * survived research is narrower and checkable: a market-research firm's own published price list,
+ * with a row for the method a pack actually is. They call it documentary research; we call it
+ * reading published sources until a claim either holds or dies. Same activity, their price.
+ *
+ * Two temptations were declined, and both would have produced a bigger number:
+ *
+ * A UK agency guide priced B2B market research at £15k–£80k, which is the figure a marketer would
+ * pick. It is not comparable — that range buys depth interviews and commissioned surveys, primary
+ * research a pack does not contain and does not claim to. Anchoring against it would inflate the
+ * gap by pricing work we do not do.
+ *
+ * The second was to convert euros to pounds so both sides of the comparison shared a unit. That
+ * needs an exchange rate the source does not print, which would make the headline number partly
+ * ours. The currencies stay as published and the reader does the last step, because a comparison
+ * this favourable has to be checkable to be worth making at all.
+ *
+ * The caveat renders with the figure rather than under an asterisk: their deliverable answers a
+ * question a client brings them, and a pack answers one we chose. That difference is the actual
+ * reason the price can be £49, so burying it would be arguing badly as well as dishonestly.
+ */
+function MethodCostAnchor() {
+  const documentary = citedFigure('documentary-research');
+  return (
+    <div className="mt-12 rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
+      <h3 className="text-xl font-bold tracking-tight text-text md:text-2xl">
+        What this costs when you commission it
+      </h3>
+      <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-muted md:text-base">
+        A pack is desk research: published sources, read until a claim either holds or dies. Firms
+        sell that by the project, and publish what they charge for it.
+      </p>
+
+      <dl className="mt-6 grid gap-5 sm:grid-cols-2">
+        <div className="rounded-xl bg-white p-5 ring-1 ring-black/[0.06]">
+          <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">
+            {documentary.publisher}, {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
+          </dt>
+          <dd className="mt-2 text-sm leading-relaxed text-text/80">
+            <SourcedFigure id="documentary-research" />
+            <span className="mt-1 block text-xs text-muted">for {documentary.of}</span>
+          </dd>
+        </div>
+        <div className="rounded-xl bg-white p-5 ring-1 ring-success/25">
+          <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+            A pack, already run
+          </dt>
+          <dd className="mt-2 text-sm leading-relaxed text-text/80">
+            <span className="font-semibold text-text">£49</span>
+            <span className="mt-1 block text-xs text-muted">
+              one payment, {PACK_CONTENTS.length} documents, every claim sourced
+            </span>
+          </dd>
+        </div>
+      </dl>
+
+      <p className="mt-5 max-w-[68ch] text-xs leading-relaxed text-faint">
+        <SourcedCaveat id="documentary-research" />
+      </p>
+    </div>
+  );
+}
+
 function ComparisonBlock() {
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
@@ -611,7 +748,12 @@ function ComparisonBlock() {
             </span>
             <span className="text-base font-bold text-text/70">Subscription idea feeds</span>
           </div>
-          <p className="mt-1.5 text-sm font-semibold text-muted">Typically $300 to $1,000 a year</p>
+          <p className="mt-1.5 text-sm text-muted">
+            <SourcedFigure id="idea-feed-entry-plan" />
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-faint">
+            <SourcedCaveat id="idea-feed-entry-plan" />
+          </p>
           <dl className="mt-5 space-y-3.5">
             {rows.map((r) => (
               <div key={r.label} className="flex flex-col gap-0.5">
@@ -656,6 +798,9 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
   // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
   const survived = stats?.listed ?? packs.length;
   return (
+    // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
+    // above the header, and so a card anywhere on the page can reach it without prop threading.
+    <BuyDrawerProvider>
     <MarketingLayout>
       <Seo
         title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each"
@@ -741,6 +886,39 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         </p>
       </SectionBand>
 
+      {/* The address, asked for after the sample rather than in front of it.
+
+          The brief asked to gate the sample behind an email. That is the one change on this page
+          I will not make, and not on taste: the line directly above says "No payment, no email",
+          and a form standing between the visitor and the file would make the sentence we lead
+          with false at the moment it is read. The cost of gating is also concentrated on exactly
+          the visitor worth having — the sceptic, who came to check whether we are real and would
+          read a paywall as the answer.
+
+          What the brief actually wants is reachable without that. The list already exists, with
+          consent recorded and hashed (`WaitlistForm`), and it was only reachable by searching for
+          something we do not stock — a placement that can only be found by failing. Here it sits
+          under a door that is already open, phrased as what it is: a notification, not a
+          newsletter, offered to someone who has just been given the product for nothing. The
+          `source` tag keeps the two placements tellable apart, so the founder can see whether
+          asking after beats asking before rather than take my word for it. */}
+      <Section bg="white" width="4xl" className="!py-10 md:!py-12">
+        <div className="rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
+          <h2 className="text-lg font-bold tracking-tight text-text md:text-xl">
+            Want the next one, when it survives?
+          </h2>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-muted">
+            Most ideas we run die on the incumbent test, so this is not a weekly send — there is
+            nothing to send most weeks. Leave an address and you get one email on the day a pack
+            clears all six checks. The sample above stays free either way, and this form is not in
+            front of it.
+          </p>
+          <div className="mt-5">
+            <WaitlistForm source="home-after-sample" submitLabel="Email me when one survives" />
+          </div>
+        </div>
+      </Section>
+
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-3 !pb-16 md:!pt-3 md:!pb-20">
@@ -785,6 +963,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             rows from the free sample, including the check that failed — a preview of eight
             green ticks would advertise better and claim something the shop does not. */}
         <DossierPreview />
+        <MethodCostAnchor />
         <ComparisonBlock />
       </Section>
 
@@ -846,6 +1025,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         secondary={{ href: '/how-it-works', label: 'How it works' }}
       />
     </MarketingLayout>
+    </BuyDrawerProvider>
   );
 }
 

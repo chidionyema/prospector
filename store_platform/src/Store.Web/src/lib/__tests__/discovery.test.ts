@@ -12,6 +12,7 @@ import {
   isFiltered,
   matchesQuery,
   nearMisses,
+  foldFacetGroups,
   offeredFacetValues,
   rankMatches,
   scoreMatch,
@@ -272,10 +273,30 @@ describe('rankMatches (AC-6, AC-8, AC-9)', () => {
     expect(outcome.runnersUp.every((r) => r.score > 0)).toBe(true);
   });
 
-  it('never dead-ends "None of these yet" — nocode still scores (AC-9)', () => {
-    const beginner = { advantages: ['nocode' as const], commitment: 'evenings' as const, payer: null };
-    const packs = [pack('n', { advantages: ['nocode'], commitment: 'evenings' })];
-    expect(rankMatches(packs, beginner).winner?.pack.id).toBe('n');
+  /**
+   * The previous version of this test built a pack tagged `nocode` and proved the scorer scores
+   * it. True, and vacuous: it never asked whether the *catalogue* holds such packs. Measured on
+   * the live catalogue 2026-08-01, `nocode` is carried by 1 pack of 49 — so the answer that was
+   * documented as one that "must never dead-end" was routing a beginner into a one-pack shelf,
+   * and this test reported green throughout. "None of these yet" now carries no advantage at
+   * all, so these two assert the property that actually matters.
+   */
+  it('never dead-ends "None of these yet" — no advantage constraint, still ranks (AC-9)', () => {
+    const beginner = { advantages: [], commitment: 'evenings' as const, payer: null };
+    const packs = [
+      pack('evening-pack', { advantages: ['code'], commitment: 'evenings' }),
+      pack('elsewhere', { advantages: ['ops'], commitment: 'full_time' }),
+    ];
+    expect(rankMatches(packs, beginner).winner?.pack.id).toBe('evening-pack');
+  });
+
+  it('hands a beginner the whole shelf, not the packs matching a skill they disclaimed', () => {
+    const state = stateFromAnswers({ advantages: [], commitment: 'evenings', payer: null });
+    expect(state.advantage).toEqual([]);
+    // The regression: `advantage: ['nocode']` arrived here as a hard constraint in
+    // applyDiscoveryState, and only one live pack carries `nocode`.
+    const packs = [pack('a', { advantages: ['code'] }), pack('b', { advantages: ['ops'] })];
+    expect(filterPacks(packs, { ...state, commitment: null })).toHaveLength(2);
   });
 
   it('hands the catalogue a state that reproduces the quiz', () => {
@@ -435,6 +456,52 @@ describe('offeredFacetValues — which controls are worth rendering', () => {
   it('still drops a value no pack in the current pool carries at all', () => {
     const state: DiscoveryState = { ...EMPTY_DISCOVERY_STATE, payer: 'b2b' };
     expect(offeredFacetValues(packs, state, 'commitment')).toEqual(['evenings']);
+  });
+});
+
+describe('foldFacetGroups — progressive disclosure that cannot hide a constraint', () => {
+  const group = (id: string, active: string[] = []) => ({ id, activeValues: active });
+  const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => group(id));
+
+  it('keeps the first n open and folds the rest', () => {
+    const fold = foldFacetGroups(six, 3, false);
+    expect(fold.visible.map((g) => g.id)).toEqual(['a', 'b', 'c']);
+    expect(fold.foldedCount).toBe(3);
+    expect(fold.canFold).toBe(true);
+  });
+
+  it('shows everything once expanded, and still offers the way back', () => {
+    const fold = foldFacetGroups(six, 3, true);
+    expect(fold.visible).toHaveLength(6);
+    expect(fold.foldedCount).toBe(0);
+    expect(fold.canFold).toBe(true);
+  });
+
+  it('never folds a group holding an active selection, and withdraws the toggle with it', () => {
+    // The failure this prevents: a buyer opens a shared URL carrying `?mechanism=vertical_tool`,
+    // sees a shelf cut to four packs, and has no control on screen naming the cut — because the
+    // group that owns it is the fifth, below the fold. Collapsed is not an option here, so the
+    // toggle must go too: leaving it would let one click re-hide the live constraint.
+    const constrained = [...six.slice(0, 4), group('e', ['vertical_tool']), group('f')];
+    const fold = foldFacetGroups(constrained, 3, false);
+    expect(fold.visible.map((g) => g.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+    expect(fold.canFold).toBe(false);
+  });
+
+  it('ignores a selection that is already above the fold', () => {
+    const constrained = [group('a', ['code']), ...six.slice(1)];
+    expect(foldFacetGroups(constrained, 3, false).foldedCount).toBe(3);
+  });
+
+  it('offers no toggle when there is nothing to fold', () => {
+    expect(foldFacetGroups(six.slice(0, 3), 3, false).canFold).toBe(false);
+    expect(foldFacetGroups(six.slice(0, 2), 3, false).visible).toHaveLength(2);
+  });
+
+  it('has no collapse-everything mode', () => {
+    const fold = foldFacetGroups(six, 0, false);
+    expect(fold.visible).toHaveLength(6);
+    expect(fold.canFold).toBe(false);
   });
 });
 

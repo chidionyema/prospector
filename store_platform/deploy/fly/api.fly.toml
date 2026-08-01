@@ -2,8 +2,17 @@
 #
 # Deploy from store_platform/ so the build context (the `.`) includes local-feed/ + Store.Catalog:
 #   fly deploy . --config deploy/fly/api.fly.toml
-# The `.` sets the build context; `dockerfile` below is resolved relative to THIS config file's
-# directory (deploy/fly/), hence the ../../ climb back to the context root.
+# `dockerfile` below is relative to THIS file's directory (deploy/fly/), hence the ../../ climb
+# back to the context root — the same convention as web.fly.toml and api.staging.fly.toml.
+#
+# Do not "fix" this path from a deploy error alone. On 2026-08-01 CI failed with
+#   dockerfile '/home/runner/work/prospector/src/Store.Api/Dockerfile' not found
+# and this value was changed to match, which changed nothing: the real fault was that flyctl had
+# loaded NO config file at all (it resolves --config relative to the working-directory argument)
+# and was building from the app's REMOTE config. The log line that says so is
+#   Validating --config path unset--
+# Check for that line before believing an error is about this value. CI now also passes
+# --dockerfile explicitly, so what gets built comes from the checkout, not from Fly's copy.
 #
 # Secrets (Stripe keys, R2, internal keys) are set with `fly secrets set ...`, NOT here.
 # This file holds only non-secret config.

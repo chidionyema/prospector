@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Button, Icon, Modal, cx } from '@/components/ui';
 import { createCartCheckout, formatPrice, PacksUnavailableError } from '@/lib/api/client';
 import { useCart } from '@/lib/cart';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 
 /**
  * The basket, in the header.
@@ -12,6 +14,9 @@ import { useCart } from '@/lib/cart';
  */
 export function CartButton() {
   const cart = useCart();
+  // Above the early return below, because hooks cannot be conditional. Null for a guest, which is
+  // the answer the basket wants: checkout carries an address only when one is already proven.
+  const { account } = useAuth();
   const [open, setOpen] = React.useState(false);
   const [checkingOut, setCheckingOut] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -23,7 +28,10 @@ export function CartButton() {
     setError(null);
     try {
       // createCartCheckout already refuses any URL that is not Stripe's hosted checkout.
-      window.location.href = await createCartCheckout(cart.lines.map((l) => l.id));
+      window.location.href = await createCartCheckout(
+        cart.lines.map((l) => l.id),
+        account?.email ?? null,
+      );
     } catch (err) {
       if (err instanceof PacksUnavailableError) {
         // The catalogue moved under a basket that had been sitting in localStorage. Prune exactly
@@ -81,6 +89,7 @@ export function CartButton() {
             <p className="text-center text-xs text-muted">
               One card entry, one charge, instant download of every pack.
             </p>
+            <BuyerIdentityNote className="text-center text-xs leading-relaxed text-muted" />
           </div>
         }
       >

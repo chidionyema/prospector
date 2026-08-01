@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -12,14 +12,13 @@ import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
-import { createEmbeddedCheckout, createStripeCheckout, fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
-import { resolveStripeCheckout } from '@/lib/checkoutRoute';
+import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
+import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
-import { stripeConfigured } from '@/lib/stripe';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
-import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { LEGAL } from '@/lib/config';
 import { coverFor } from '@/lib/cover';
 import { paybackEquation } from '@/lib/payback';
@@ -33,140 +32,71 @@ interface PackPageProps {
 }
 
 /**
- * The six attacks every idea must survive before it can be listed.
- * Framed as the attack that failed (refutational), not a positive rubber stamp:
- * refutational two-sided framing out-persuades one-sided "validated" claims
- * (Allen 1991, O'Keefe 1999, Eisend 2006).
+ * The six fronts an idea is attacked on before it can be listed.
+ *
+ * These name the FILTER, not this pack's findings — deliberately, because this page has no
+ * per-check verdicts to render (`PackDetails` in lib/api/client.ts carries none) and a static
+ * list therefore may only say what is true of every listed pack.
+ *
+ * The previous copy said "We tried to show the value would not last. **It held.**" beside a green
+ * success tick, six times. Two things make that a claim the page cannot support:
+ *
+ *   - a check that finds no matching passage returns `unverifiable`, which is silence, not a
+ *     finding. Across the 111 passing dossiers, `incumbency` has no positive finding for 71 of
+ *     them (59 unverifiable + 12 never run) and `legality` for 52;
+ *   - and not every check runs in every lane at all — the smb and side_hustle lanes never run
+ *     `value_durability` or `incumbency` (see the per-lane `hard_gates`/`score_checks` in
+ *     config.yaml). "We tried" is false for those packs before the second clause even arrives.
+ *
+ * What IS true of every listed pack is the gate: it died on the first front where we found cited
+ * evidence against it, and it did not die (kill_filter.is_hard_fail — only a cited killing
+ * verdict kills; silence never does). So the lines state the front, the prose states what
+ * surviving means, and the marker is a numeral rather than a green tick.
+ *
+ * Framing stays refutational — two-sided attack framing out-persuades one-sided "validated"
+ * claims (Allen 1991, O'Keefe 1999, Eisend 2006). The change is scope, not tone: this pack's own
+ * answers are real and directly below, in the scored axes with their weak ones left visible, and
+ * in the QA report inside the pack, which marks each individual claim SUPPORTED or not.
  */
 const CHECKS = [
-  'We tried to prove the pain was imagined. It was real.',
-  'We tried to show the value would not last. It held.',
-  'We tried to prove incumbents own the space. There was room.',
-  'We tried to find that no one would pay. A payer was there.',
-  'We tried to show it cannot reach a market. A route existed.',
-  'We tried to find a legal landmine. It came back clean.',
+  'Whether the pain is imagined',
+  'Whether the value decays',
+  'Whether incumbents already own the space',
+  'Whether anyone will actually pay',
+  'Whether it can reach a market at all',
+  'Whether there is a legal landmine',
 ];
 
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
 
 export default function PackPage({ pack, catalog }: PackPageProps) {
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  /** What this page has decided about the overlay, which is NOT the same question as whether it
-   *  is open — see `clientSecret` below.
-   *   - `undefined`: nothing decided yet, so a pre-opened session in the URL is free to win.
-   *   - `null`: decided closed. Also every provider and build that pays through the hosted
-   *     redirect instead; null is not "failed".
-   *   - a string: this session is open. */
-  const [checkoutSession, setCheckoutSession] = useState<string | null | undefined>(undefined);
-
   // A session created out of band opens the overlay directly, so the live render can be proven
   // on a smoke-test-priced session instead of a full-price one. Ignored unless the value has the
   // shape of a client secret; see lib/preopenedCheckout for why this leaks nothing.
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
 
-  // Derived, not copied into state by an effect. The URL is already a source of truth, so the
-  // effect that used to mirror it into state bought nothing and cost two things: a first paint
-  // with the overlay shut before the effect ran, and a re-open bug waiting to happen — closing
-  // sets null, and an effect keyed on `preopened` would put it straight back. The three-state
-  // above is what keeps "not decided yet" distinguishable from "closed": only the former defers
-  // to the query string.
-  const clientSecret = checkoutSession === undefined ? preopened : checkoutSession;
+  // The buy path itself — shared verbatim with the shelf's Buy drawer, which is the point: the
+  // logic it holds is three production incidents written down, and two copies would mean the
+  // next such fix lands in only one of them. See lib/checkout/usePackCheckout.
+  const {
+    checkingOut,
+    checkoutError,
+    clientSecret,
+    canCheckout,
+    provider,
+    buy: handleBuy,
+    handleUnreachable: handleEmbeddedUnreachable,
+    closeOverlay,
+  } = usePackCheckout(pack, preopened);
 
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
 
-  const provider = pack.paymentProvider || 'paddle';
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
   const priceLabel = formatPrice(pack.price);
   const payback = paybackEquation(pack.price, pack.financialSnapshot);
-
-  const handleBuy = async () => {
-    setCheckingOut(true);
-    setCheckoutError(null);
-
-    try {
-      if (provider === 'stripe') {
-        await handleStripeCheckout(pack);
-      } else {
-        await handlePaddleCheckout(pack);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '';
-      setCheckoutError(message || 'Checkout failed. Please try again.');
-    } finally {
-      setCheckingOut(false);
-    }
-  };
-
-  const handleStripeCheckout = async (pack: PackDetails) => {
-    // Embedded is preferred but never required. Two separate reasons it may not happen — no
-    // Stripe.js key in this build, or a server that answered with a hosted URL anyway — and
-    // both land on exactly the redirect that existed before embedded checkout was added.
-    //
-    // The buy button is deliberately NOT gated on `stripeConfigured`: gating it on the
-    // publishable key once hid every buy button in production when the key was left out of the
-    // web build args (see hasProvisionedPrice below). That failure must not come back through
-    // this path, so a missing key degrades the SURFACE, never the sale.
-    // resolveStripeCheckout owns the "embedded is preferred but never required" guarantee, and
-    // is unit-tested for every way the embedded attempt can fail — including a THROW, which
-    // previously escaped to handleBuy and rendered "Checkout failed" for a completable sale.
-    // createStripeCheckout already refuses any URL that is not Stripe's hosted checkout.
-    const route = await resolveStripeCheckout({
-      stripeConfigured,
-      requestEmbedded: () => createEmbeddedCheckout(pack.id),
-      requestHosted: () => createStripeCheckout(pack.id),
-    });
-
-    if (route.kind === 'embedded') {
-      setCheckoutSession(route.clientSecret);
-      return;
-    }
-    window.location.href = route.url;
-  };
-
-  /**
-   * The overlay opened but cannot work in this browser — send the buyer to hosted checkout.
-   *
-   * resolveStripeCheckout's fallback only covers a failed session REQUEST; a session that is
-   * issued and then cannot render had no escape at all, and the buyer saw Stripe's own "cannot
-   * be reached" message with nowhere to go (LIVE_RAIL_SMOKE_TEST.md, 2026-07-31).
-   *
-   * A new hosted session is requested rather than reusing the embedded one: an embedded session
-   * has no `url`, so there is nothing to redirect to. The panel closes first, so a hosted request
-   * that itself fails leaves a visible error on the pack page instead of a frozen overlay.
-   */
-  const handleEmbeddedUnreachable = async () => {
-    setCheckoutSession(null);
-    try {
-      window.location.href = await createStripeCheckout(pack.id);
-    } catch {
-      setCheckoutError(
-        'Checkout could not load in this browser. Please try another browser, or disable any ad or privacy blocker for this page.',
-      );
-    }
-  };
-
-  const handlePaddleCheckout = async (pack: PackDetails) => {
-    await initPaddle();
-    openPaddleCheckout(pack.providerPriceId);
-  };
-
-  // Stripe checkout is a server-issued redirect to Stripe's HOSTED page (handleStripeCheckout
-  // above); it never boots Stripe.js, so the publishable key has no bearing on whether a pack
-  // can be bought. Gating on it silently hid every buy button in production once the key was
-  // left out of the web build args — a sales outage with no error anywhere. Gate instead on the
-  // one thing that must actually be true: the pack points at a real provisioned price.
-  const hasProvisionedPrice =
-    typeof pack.providerPriceId === 'string' &&
-    pack.providerPriceId.length > 0 &&
-    !pack.providerPriceId.startsWith('price_stub');
-
-  const canCheckout =
-    (provider === 'stripe' && hasProvisionedPrice) ||
-    (provider !== 'stripe' && paddleConfigured);
 
   const notifyHref =
     `mailto:${LEGAL.supportEmail}` +
@@ -272,6 +202,10 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
                 routes — the overlay and the hosted redirect. */}
             {checkingOut ? 'Opening secure checkout…' : `Get instant access — ${priceLabel}`}
           </button>
+          {/* Under the button, not above it: the address only matters once the buyer has decided,
+              and putting an account-shaped sentence in front of the price is how a storefront
+              teaches guests that they need an account. They do not. */}
+          <BuyerIdentityNote className="mt-3 text-xs leading-relaxed text-muted" />
           {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
               only a gain for someone who wants several, so it never sits in front of the direct path. */}
           <div className="mt-3">
@@ -336,7 +270,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
         <EmbeddedCheckoutPanel
           clientSecret={clientSecret}
           title={pack.title}
-          onClose={() => setCheckoutSession(null)}
+          onClose={closeOverlay}
           onUnreachable={handleEmbeddedUnreachable}
         />
       )}
@@ -415,21 +349,27 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
               />
             </div>
 
-            {/* Cleared all six checks — the proof block */}
+            {/* How the idea was attacked — the filter, stated as the filter. The per-pack answers
+                are the scored axes immediately below and the QA report inside the pack; see the
+                CHECKS doc comment for why this block deliberately makes no per-check claim. */}
             <div className="mt-12">
               <h2 className="text-xl font-bold tracking-tight text-text">Six ways we tried to kill it</h2>
               <p className="mt-2 text-sm text-muted">
-                Each check is an attack, not a rubber stamp. Every claim that survived is backed by a real
-                source you can open. Ideas that fail any one of the six never reach the store.
+                Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
+                cited evidence against it, and a listing means none of the six produced that evidence.
+                Finding nothing is not the same as finding a green light — so the scores below show where
+                this pack&rsquo;s case is strong and where it is thin.
               </p>
               <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {CHECKS.map((check) => (
+                {CHECKS.map((check, i) => (
                   <li
                     key={check}
                     className="flex items-center gap-3 rounded-lg border border-border bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
                   >
-                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success/10 text-success">
-                      <Icon name="check" size={13} />
+                    {/* A numeral, not a tick: a green success mark on a static line reads as this
+                        pack's verdict on that check, which is exactly what this page cannot know. */}
+                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border bg-bg font-mono text-[11px] font-bold text-muted">
+                      {i + 1}
                     </span>
                     <span className="text-sm font-medium text-text">{check}</span>
                   </li>

@@ -17,6 +17,15 @@
     </PackageReference>
     <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Stripe.net" />
+    <!-- Auth stack, ported from the-introduction-exchange. See Directory.Packages.props for
+         why MediatR is pinned to 12.4.1. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
   </ItemGroup>
 
   <ItemGroup>

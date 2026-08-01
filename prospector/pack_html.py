@@ -107,9 +107,15 @@ def render_pack_html(sections: List[Tuple[str, str]], meta: PackMeta) -> str:
     """Render the whole pack to one self-contained HTML document.
 
     Args:
-        sections: ordered ``(display_title, markdown_text)`` pairs. MUST be given in the same
-            order the corresponding files are written to the zip — the reading experience
-            mirrors the deliverable order, it does not re-sort by filename.
+        sections: ordered ``(display_title, markdown_text)`` pairs, given in READING order —
+            this renders them in the order received and never re-sorts.
+
+            Reading order is the ``BUNDLE_FILES`` contract (bridge.py), NOT the order the
+            files happen to be written to the zip. The two differ: the bundle is written
+            01, 02, 03, 04, QA, Marketing, 00, 05. This docstring used to say "the same order
+            the corresponding files are written to the zip", and a caller that followed it
+            (tools/backfill_bundle_html.py) shipped a reader opening on the build spec with
+            the executive summary seventh and the first-week checklist last.
         meta: cover-header fields.
 
     Returns:
