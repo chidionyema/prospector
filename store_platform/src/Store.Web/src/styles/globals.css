@@ -10,6 +10,9 @@
      the three font stacks below and the .fonts-wired rule cannot drift apart. */
   --font-fallback-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-fallback-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Named faces before generic `serif` so a headline that falls back still falls back to a text
+     serif rather than to whatever the OS calls "serif" (on Windows, Times New Roman). */
+  --font-fallback-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 
   /* Enterprise SaaS Palette (LinkedIn-Grade) */
   --bg: #f8fafc;          /* Cool Gray Canvas (Slate 50) */
@@ -117,7 +120,11 @@
      directly (h1/h2/h3, .text-eyebrow) get the value already substituted at :root. `.fonts-wired`
      below is the other half. */
   --font-sans: var(--font-sans-pref, ui-sans-serif), var(--font-fallback-sans);
-  --font-serif: var(--font-sans-pref, ui-sans-serif), var(--font-fallback-sans); /* Deprecate serif, map to sans */
+  /* Serif reinstated 2026-08-01. It was mapped onto the sans stack when nothing loaded a serif
+     and Playfair Display was downloading unread; the answer then was to stop paying for a font
+     nobody rendered, which was right. What changed is that headings now have a face chosen for
+     them (Newsreader, `_app.tsx`), so the mapping would throw away the thing it was protecting. */
+  --font-serif: var(--font-serif-pref, ui-serif), var(--font-fallback-serif);
   --font-mono: var(--font-mono-pref, ui-monospace), var(--font-fallback-mono);
 
   /* Explicit Mathematical Leading & Tracking */
@@ -196,7 +203,7 @@ html {
   --font-sans: var(--font-sans-pref), var(--font-fallback-sans);
   /* Repeated rather than var(--font-sans) for the same substitution reason: it must resolve
      against -pref here, not against whatever --font-sans already computed to. */
-  --font-serif: var(--font-sans-pref), var(--font-fallback-sans);
+  --font-serif: var(--font-serif-pref), var(--font-fallback-serif);
   --font-mono: var(--font-mono-pref), var(--font-fallback-mono);
 
   /* Redeclaring the variables is not enough on its own. Body copy has no font-family rule of its
@@ -328,7 +335,11 @@ body::before {
 h1, h2, h3, .font-serif {
   font-family: var(--font-serif);
   font-weight: 600;
-  letter-spacing: -0.04em; /* Optical tracking for massive type */
+  /* Was -0.04em, set when these headings rendered in a grotesque. Serifs need the sidebearing
+     they come with; -0.04em was tight enough to close the gaps at `--text-h3` (1.25rem), where
+     most of the site's headings actually live. Judgement, not a measurement — the per-size
+     `--text-h1--letter-spacing` values in the theme block remain the finer control. */
+  letter-spacing: -0.015em;
 }
 
 .font-mono, .text-caption, .text-eyebrow {
