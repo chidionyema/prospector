@@ -66,7 +66,7 @@ export function PageHero({
     <SectionBand bg={bg} width="4xl" className="pt-20 pb-10 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 md:min-h-[calc(100dvh-4rem)] flex flex-col justify-start md:justify-center items-center animate-rise text-center">
       <div className="flex flex-col items-center justify-center flex-grow w-full">
         {eyebrow && (
-          <p className="font-mono text-xs font-semibold uppercase tracking-wide text-muted mb-4 md:mb-6">{eyebrow}</p>
+          <p className="font-mono text-xs font-semibold uppercase tracking-wide text-eyebrow mb-4 md:mb-6">{eyebrow}</p>
         )}
         <h1 className="max-w-[20ch] text-4xl md:text-6xl lg:text-[5.5rem] font-bold tracking-tight text-text leading-[1.15] mb-6 animate-fade-in-up text-balance">{title}</h1>
         {lead && (
