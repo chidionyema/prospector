@@ -427,3 +427,10 @@ section {
     line-height: 1.4 !important;
   }
 }
+
+@media print {
+  header, footer { display: none; }
+  body { font-size: 12pt; color: black; }
+  [class*="max-w"] { max-width: none; }
+  * { background: white !important; box-shadow: none !important; }
+}

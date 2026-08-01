@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHeader } from '@/components/ui';
+import { PageHeader, Skeleton } from '@/components/ui';
 import { AuthPanel } from '@/components/account/AuthPanel';
 import { AccountPanel } from '@/components/account/AccountPanel';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -75,7 +75,11 @@ export default function AccountPage() {
           {/* Nothing renders until the session question is answered. The alternative shows every
               returning customer a sign-in form for one frame before their account replaces it. */}
           {status === 'loading' && (
-            <p className="text-body text-muted">Checking your session…</p>
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
           )}
           {status === 'anonymous' && <AuthPanel initial={initial} returnTo={returnTo} />}
           {status === 'authenticated' && <AccountPanel />}
