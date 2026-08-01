@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Button, Icon, Modal, cx, useToast } from '@/components/ui';
 import { createCartCheckout, formatPrice, PacksUnavailableError } from '@/lib/api/client';
 import { useCart } from '@/lib/cart';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 
@@ -128,6 +129,7 @@ export function CartButton() {
               <button
                 type="button"
                 onClick={() => {
+                  track('basket_removed', line.id);
                   cart.remove(line.id);
                   toast(`Removed "${line.title}" from basket`, 'info');
                 }}
