@@ -50,11 +50,14 @@ export function DiscoveryNearMiss({
       </h3>
       <ul className="mt-3 flex flex-wrap gap-2">
         {candidates.map((candidate) => (
-          <li
-            key={candidate.pack.id}
-            className="rounded-full bg-warning/10 px-3 py-1 text-[11px] font-semibold text-text/80 ring-1 ring-inset ring-warning/30"
-          >
-            {candidate.pack.title.split(/[—–]/)[0].trim()}: {candidate.missLabel}
+          <li key={candidate.pack.id}>
+            <button
+              type="button"
+              onClick={() => onRelax(candidate.relaxedState)}
+              className="rounded-full bg-warning/10 px-3 py-1 text-[11px] font-semibold text-text/80 ring-1 ring-inset ring-warning/30 transition-colors hover:bg-warning/20"
+            >
+              {candidate.pack.title.split(/[—–]/)[0].trim()}: {candidate.missLabel}
+            </button>
           </li>
         ))}
       </ul>
@@ -84,7 +87,7 @@ export function DiscoveryNearMiss({
  * component keeps only what is specific to arriving here: the copy naming the failed search, and
  * the `catalogue-empty-state` source tag that keeps the two placements tellable apart.
  */
-export function DiscoveryWaitlist({ query }: { query: string }) {
+export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?: () => void }) {
   return (
     <div className="rounded-2xl border border-border bg-surface p-6">
       <h3 className="text-lg font-black tracking-tight text-text">
@@ -95,6 +98,14 @@ export function DiscoveryWaitlist({ query }: { query: string }) {
         ideas in a hot space die on the incumbent test. Tell us where to point the engine and we&apos;ll
         email you if one survives.
       </p>
+
+      {onReset && (
+        <div className="mt-5">
+          <Button variant="secondary" onClick={onReset}>
+            Reset all filters
+          </Button>
+        </div>
+      )}
 
       <div className="mt-5">
         <WaitlistForm source="catalogue-empty-state" query={query} />

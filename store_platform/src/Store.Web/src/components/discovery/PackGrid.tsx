@@ -1,10 +1,8 @@
-import Link from 'next/link';
 import React from 'react';
 
-import { formatPrice, type Pack } from '@/lib/api/client';
-import { splitTitle } from '@/lib/discovery';
+import { type Pack } from '@/lib/api/client';
 
-import { FacetChips } from './FacetChips';
+import { DossierCard } from './DossierCard';
 
 /**
  * A plain, linkable grid of packs, used by the `/ideas/*` landing pages.
@@ -21,22 +19,11 @@ import { FacetChips } from './FacetChips';
 export function PackGrid({ packs }: { packs: Pack[] }) {
   return (
     <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {packs.map((pack) => {
-        const { name, descriptor } = splitTitle(pack.title, pack.headline);
-        return (
-          <li key={pack.id}>
-            <Link
-              href={`/pack/${pack.id}`}
-              className="flex h-full flex-col rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-text/20 hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)]"
-            >
-              <h3 className="text-base font-bold leading-snug text-text">{name}</h3>
-              {descriptor && <p className="mt-1.5 line-clamp-3 text-sm text-muted">{descriptor}</p>}
-              <FacetChips pack={pack} compact max={3} className="mt-4" />
-              <span className="mt-4 text-sm font-black text-text">{formatPrice(pack.price)}</span>
-            </Link>
-          </li>
-        );
-      })}
+      {packs.map((pack) => (
+        <li key={pack.id}>
+          <DossierCard pack={pack} />
+        </li>
+      ))}
     </ul>
   );
 }
