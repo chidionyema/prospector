@@ -1,5 +1,8 @@
 import { SITE_URL, BRAND } from '@/lib/config';
 import type { Pack } from '@/lib/api/client';
+import { label } from '@/lib/facets';
+import { ORG_ID } from '@/lib/seo/schema';
+import { packOgImagePath } from '@/lib/seo/ogImage';
 
 /**
  * schema.org Product data for a pack page.
@@ -29,9 +32,32 @@ export function parsePrice(display: string | undefined): { price: string; priceC
   return { price: amount, priceCurrency: CURRENCY_BY_SYMBOL[symbol] };
 }
 
+/**
+ * The refund promise, stated once. This is a real, published policy — /refund is the authored page
+ * and the FAQ repeats it verbatim — which is the only reason it is allowed in structured data.
+ *
+ * `returnMethod` is deliberately absent. Every value schema.org offers for it describes shipping
+ * something back (`ReturnByMail`, `ReturnInStore`), and there is nothing to return: a pack is a
+ * download, so we simply refund. Google may treat the policy as incomplete without that field.
+ * Incomplete and true beats complete and false, and the honesty rail is not negotiable for a
+ * consumer-facing money claim.
+ */
+const RETURN_POLICY = {
+  '@type': 'MerchantReturnPolicy',
+  applicableCountry: 'GB',
+  returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+  merchantReturnDays: 14,
+  returnFees: 'https://schema.org/FreeReturn',
+} as const;
+
 export function productJsonLd(pack: Pack): Record<string, unknown> {
   const offer = parsePrice(pack.price);
   const url = SITE_URL ? `${SITE_URL}/pack/${pack.id}` : undefined;
+  const orgId = ORG_ID();
+  // Each pack renders its own link-preview card. Naming it here is what stops a search result or
+  // an assistant's citation card falling back to the generic site image for all of them.
+  const image = SITE_URL ? `${SITE_URL}${packOgImagePath(pack.id)}` : undefined;
+  const category = label('sector', pack.sector);
 
   return {
     '@context': 'https://schema.org',
@@ -39,10 +65,28 @@ export function productJsonLd(pack: Pack): Record<string, unknown> {
     name: pack.title,
     ...(pack.oneLine ? { description: pack.oneLine } : {}),
     ...(url ? { url } : {}),
+    ...(image ? { image } : {}),
     brand: { '@type': 'Brand', name: BRAND.name },
     // A pack is a one-off download, so the pack id is its SKU. Stable across republishes,
     // which is what makes it usable as one.
     sku: pack.id,
+    ...(category ? { category } : {}),
+    // Every pack is written in English and sold as a paid download. Both are stated because an
+    // assistant deciding whether to cite this page for a user asks exactly these two questions.
+    inLanguage: 'en',
+    isAccessibleForFree: false,
+    // The engine's source count, which the page displays next to the title ("48 sources cited").
+    // Emitted only when the pack actually carries one — an older pack without the field gets no
+    // property rather than a zero, which would read as "cites nothing".
+    ...(typeof pack.sourceCount === 'number' && pack.sourceCount > 0
+      ? {
+          additionalProperty: {
+            '@type': 'PropertyValue',
+            name: 'Sources cited',
+            value: pack.sourceCount,
+          },
+        }
+      : {}),
     ...(offer
       ? {
           offers: {
@@ -50,6 +94,8 @@ export function productJsonLd(pack: Pack): Record<string, unknown> {
             ...offer,
             availability: 'https://schema.org/InStock',
             ...(url ? { url } : {}),
+            ...(orgId ? { seller: { '@id': orgId } } : {}),
+            hasMerchantReturnPolicy: RETURN_POLICY,
           },
         }
       : {}),

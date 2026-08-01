@@ -4,86 +4,35 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { LEGAL } from '@/lib/config';
+import { FAQS, isLink, plainAnswer, type FaqItem } from '@/lib/faqContent';
+import { breadcrumbNode, faqPageNode, graph } from '@/lib/seo/schema';
 
-const FAQS: { q: string; a: React.ReactNode }[] = [
-  {
-    q: 'What am I actually buying?',
-    a: (
-      <>
-        A £49 pack: a grounded business opportunity dossier in four parts — a build spec, a go to market plan, an operations and financial model, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears.
-      </>
-    ),
-  },
-  {
-    q: 'What makes a pack "grounded"?',
-    a: (
-      <>
-        Every pack passed the Mumchimp engine&apos;s six checks (real pain, durable value, room past incumbents, a solvent payer, a distribution route, and legality) and survived an adversarial review. Every claim and number cites a retrievable source, or it isn&apos;t in the pack.
-      </>
-    ),
-  },
-  {
-    q: 'How do I get the pack after I pay?',
-    a: (
-      <>
-        Checkout runs through Stripe. As soon as payment succeeds you get your download link on screen, so the pack is in your hands within seconds. The link is permanent — bookmark it and you can re-download whenever you need to.
-      </>
-    ),
-  },
-  {
-    q: 'Can I get a refund?',
-    a: (
-      <>
-        Yes. Every pack comes with a 14 day money back guarantee, no questions asked. If it is not what you expected, email us within 14 days of purchase and we refund you. The full terms are on the{' '}
-        <Link href="/refund" className="text-primary font-bold hover:underline">refund policy</Link>{' '}page.
-      </>
-    ),
-  },
-  {
-    q: 'Is a pack financial or investment advice?',
-    a: (
-      <>
-        No. A pack is research and information only, not financial, legal, or investment advice. It&apos;s an evidence backed starting point, and what you do with it is your decision.
-      </>
-    ),
-  },
-  {
-    q: 'Are the opportunities guaranteed to work?',
-    a: (
-      <>
-        No, and we won&apos;t pretend otherwise. We guarantee the analysis is grounded and sourced, not that the business will succeed. Execution is yours.
-      </>
-    ),
-  },
-  {
-    q: 'Can I share or resell a pack?',
-    a: (
-      <>
-        No. A pack is licensed for your own personal use, with no redistribution, resale, or use as training data. The details are in the{' '}
-        <Link href="/terms" className="font-semibold text-text underline underline-offset-2">Terms of Service</Link>.
-      </>
-    ),
-  },
-  {
-    q: 'Is the store live right now?',
-    a: (
-      <>
-        Yes. Everything on this site works today, and new packs are published as they clear the filter.
-      </>
-    ),
-  },
-  {
-    q: 'Can I have my data removed?',
-    a: (
-      <>
-        Of course. Email us at{' '}
-        <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary font-bold hover:underline">{LEGAL.supportEmail}</a>{' '}
-        or read how we handle data in the{' '}
-        <Link href="/privacy" className="font-semibold text-text underline underline-offset-2">Privacy Policy</Link>.
-      </>
-    ),
-  },
-];
+/**
+ * Render one answer's segments as prose. The segments come from `lib/faqContent.ts`, which is also
+ * what the FAQPage structured data below serialises — that shared source is what keeps the schema
+ * and the visible answer identical, which is the condition Google requires of FAQ markup.
+ *
+ * A `mailto:` link is a plain anchor; an internal route gets `next/link` so it client-navigates.
+ */
+function Answer({ item }: { item: FaqItem }) {
+  return (
+    <>
+      {item.answer.map((segment, i) => {
+        if (!isLink(segment)) return <React.Fragment key={i}>{segment}</React.Fragment>;
+        const className = 'text-primary font-bold hover:underline';
+        return segment.href.startsWith('/') ? (
+          <Link key={i} href={segment.href} className={className}>
+            {segment.text}
+          </Link>
+        ) : (
+          <a key={i} href={segment.href} className={className}>
+            {segment.text}
+          </a>
+        );
+      })}
+    </>
+  );
+}
 
 export default function Faq() {
   return (
@@ -91,6 +40,13 @@ export default function Faq() {
       <Seo
         title="FAQ"
         description="The packs, the payment, and the guarantees. Common questions about Mumchimp."
+        jsonLd={graph(
+          faqPageNode(FAQS.map((item) => ({ question: item.question, answer: plainAnswer(item) }))),
+          breadcrumbNode([
+            { name: 'Mumchimp', path: '/' },
+            { name: 'FAQ', path: '/faq' },
+          ]),
+        )}
       />
 
       <PageHero
@@ -109,8 +65,8 @@ export default function Faq() {
           <div className="space-y-6">
             {FAQS.map((item, i) => (
               <div key={i} className="bg-white border border-border p-8 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
-                <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.q}</h2>
-                <div className="text-base text-text/80 leading-relaxed">{item.a}</div>
+                <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
+                <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
               </div>
             ))}
           </div>

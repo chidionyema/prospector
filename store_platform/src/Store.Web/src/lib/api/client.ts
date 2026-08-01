@@ -292,9 +292,14 @@ function assertStripeCheckoutUrl(url: unknown): string {
   return url;
 }
 
+/** Throws `ApiError` (declared below) rather than a bare Error, so a caller can tell "gone" from
+ *  "down". It matters wherever the answer becomes a cached artefact: `/og/pack/[id]` must serve
+ *  404 for a pack that does not exist and 503 for an API that is briefly unreachable, because
+ *  social platforms cache a preview response for days and would keep serving the wrong one.
+ *  Message and `instanceof Error` are unchanged, so existing catch blocks behave as before. */
 export async function fetchPackDetails(id: string): Promise<PackDetails> {
   const res = await fetch(`${API_BASE_URL}/catalog/${id}`);
-  if (!res.ok) throw new Error('Failed to fetch pack details');
+  if (!res.ok) throw new ApiError('Failed to fetch pack details', res.status);
   return res.json();
 }
 

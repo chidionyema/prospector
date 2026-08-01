@@ -1,0 +1,174 @@
+import React from 'react';
+import Link from 'next/link';
+import type { GetServerSideProps } from 'next';
+
+import MarketingLayout from '@/components/marketing/MarketingLayout';
+import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
+import { PackGrid } from '@/components/discovery/PackGrid';
+import { Seo } from '@/components/Seo';
+import { fetchCatalog, type Pack } from '@/lib/api/client';
+import {
+  eligibleLandings,
+  landingBySlug,
+  packMatchesLanding,
+  type Landing,
+} from '@/lib/seo/landings';
+import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
+
+/**
+ * A topical landing page — one slice of the catalogue at a stable, indexable URL.
+ *
+ * See `lib/seo/landings.ts` for why these exist, and for the three guards that stop a set of
+ * category pages becoming the doorway-page pattern Google demotes. The one enforced HERE is the
+ * thin-content threshold: a landing whose slice the live catalogue cannot fill returns a genuine
+ * 404 rather than rendering an almost-empty shelf. That check runs per request against the live
+ * catalogue, so the set of live landing pages tracks supply on its own as the engine publishes.
+ *
+ * Server-rendered, not client-filtered. The whole point is that a crawler and an assistant see the
+ * matching packs, their titles, and real anchors to them in the initial HTML.
+ */
+
+interface Props {
+  landing: Landing;
+  packs: Pack[];
+  /** The other live landings, for the cross-links at the foot of the page. */
+  siblings: { slug: string; h1: string; count: number }[];
+  /** The catalogue was unreachable. Rendered as a 503 holding page, never indexed. */
+  unavailable?: boolean;
+}
+
+export const getServerSideProps: GetServerSideProps<Props> = async ({ params, res }) => {
+  const landing = landingBySlug(typeof params?.slug === 'string' ? params.slug : undefined);
+  if (!landing) return { notFound: true };
+
+  let all: Pack[];
+  try {
+    all = await fetchCatalog();
+  } catch (error) {
+    // MEASURED, 2026-08-01: `res.statusCode = 503` together with `return { notFound: true }` does
+    // NOT serve a 503 — Next overrides it and the response is a 404. The server log showed
+    // "/ideas/b2b-business-ideas: catalog fetch failed" on a request curl recorded as 404.
+    //
+    // That is the difference between "come back later" and "this page is gone", and Google acts
+    // on the difference: a 404 on a live landing page is grounds for dropping it from the index,
+    // so a two-second API blip would cost the page its ranking. Serve a real 503 with a holding
+    // body instead. `noindex` on top, because a crawler that ignores the status must not record
+    // an empty category page either.
+    console.error(`/ideas/${landing.slug}: catalog fetch failed:`, error);
+    res.statusCode = 503;
+    res.setHeader('Retry-After', '120');
+    return { props: { landing, packs: [], siblings: [], unavailable: true } };
+  }
+
+  const eligible = eligibleLandings(all);
+  const mine = eligible.find((entry) => entry.landing.slug === landing.slug);
+  if (!mine) return { notFound: true };
+
+  return {
+    props: {
+      landing,
+      packs: all.filter((pack) => packMatchesLanding(pack, landing)),
+      siblings: eligible
+        .filter((entry) => entry.landing.slug !== landing.slug)
+        .map(({ landing: other, count }) => ({ slug: other.slug, h1: other.h1, count })),
+    },
+  };
+};
+
+export default function IdeasLanding({ landing, packs, siblings, unavailable }: Props) {
+  if (unavailable) {
+    return (
+      <MarketingLayout>
+        <Seo title={landing.metaTitle} description={landing.metaDescription} noindex />
+        <PageHero
+          eyebrow="Temporarily unavailable"
+          title={<span className="leading-tight tracking-tighter">{landing.h1}</span>}
+          lead="The catalogue is briefly unreachable, so this page cannot list its packs right now. Try again in a minute."
+        />
+        <Section bg="white" width="7xl">
+          <p className="text-base text-muted">
+            <Link href="/" className="font-semibold text-text underline underline-offset-2">
+              Browse every pack
+            </Link>{' '}
+            or{' '}
+            <Link href="/ideas" className="font-semibold text-text underline underline-offset-2">
+              see the other categories
+            </Link>
+            .
+          </p>
+        </Section>
+      </MarketingLayout>
+    );
+  }
+
+  return (
+    <MarketingLayout>
+      <Seo
+        title={landing.metaTitle}
+        description={landing.metaDescription}
+        jsonLd={graph(
+          itemListNode(
+            packs.map((pack) => ({ name: pack.title, path: `/pack/${pack.id}` })),
+            landing.h1,
+          ),
+          breadcrumbNode([
+            { name: 'Mumchimp', path: '/' },
+            { name: 'Business ideas', path: '/ideas' },
+            { name: landing.h1, path: `/ideas/${landing.slug}` },
+          ]),
+        )}
+      />
+
+      <PageHero
+        eyebrow={`${packs.length} researched ${packs.length === 1 ? 'pack' : 'packs'}`}
+        title={<span className="leading-tight tracking-tighter">{landing.h1}</span>}
+        lead={landing.intro}
+      />
+
+      <Section bg="white" width="7xl">
+        <PackGrid packs={packs} />
+
+        <p className="mt-10 text-sm leading-relaxed text-muted">
+          Every pack on this page cleared the same six checks — real pain, durable value, room past
+          incumbents, a solvent payer, a route to distribution, and legality — and then survived an
+          adversarial review.{' '}
+          <Link href="/how-it-works" className="font-semibold text-text underline underline-offset-2">
+            How the filter works
+          </Link>
+          , and the{' '}
+          <Link href="/kill-log" className="font-semibold text-text underline underline-offset-2">
+            kill log
+          </Link>{' '}
+          lists what it rejected.
+        </p>
+
+        {siblings.length > 0 && (
+          <nav className="mt-12 border-t border-border pt-8" aria-label="Other categories">
+            <h2 className="text-sm font-black uppercase tracking-widest text-muted">
+              Browse another way
+            </h2>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {siblings.map((sibling) => (
+                <li key={sibling.slug}>
+                  <Link
+                    href={`/ideas/${sibling.slug}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-text transition-colors hover:border-text/30 hover:bg-bg"
+                  >
+                    {sibling.h1}
+                    <span className="text-muted">{sibling.count}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+      </Section>
+
+      <CtaBand
+        title="See the whole catalogue."
+        lead=""
+        primary={{ href: '/', label: 'Browse every pack' }}
+      />
+    </MarketingLayout>
+  );
+}

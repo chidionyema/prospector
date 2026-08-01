@@ -24,6 +24,15 @@
 #   gh variable set NEXT_PUBLIC_SITE_URL   --body 'https://mumchimp.com'
 #   gh variable set STRIPE_LIVE_PUBLISHABLE_KEY --body 'pk_live_...'
 #
+# Optional, add whenever the consoles issue them (the deploy reports "absent" and ships no meta tag
+# until then, which is correct — see the env step below):
+#
+#   gh variable set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION --body '...'   # Search Console, HTML tag
+#   gh variable set NEXT_PUBLIC_BING_SITE_VERIFICATION   --body '...'   # Bing Webmaster Tools
+#
+# Not here at all: INDEXNOW_KEY. It is read at REQUEST time by pages/indexnow-key.txt.tsx, so it is
+# a Fly runtime secret (`fly secrets set INDEXNOW_KEY=...`) and must match the engine's own value.
+#
 # The publishable key is a repository VARIABLE, not a secret, on purpose: it is inlined into the
 # public client bundle by design (`curl https://mumchimp.com/pack/<id>` will show it), so storing
 # it as a secret would buy no confidentiality and would only hide a wrong value from review. The
@@ -94,6 +103,14 @@ jobs:
           SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
           PK_LIVE: ${{ vars.STRIPE_LIVE_PUBLISHABLE_KEY }}
           PK_TEST: ${{ vars.STRIPE_TEST_PUBLISHABLE_KEY }}
+          # Search-console ownership tokens. OPTIONAL and unset on purpose until the consoles issue
+          # them: absent means no meta tag, which is the correct absent state (an empty `content=""`
+          # is a FAILED verification rather than a missing one). They are plumbed here now so that
+          # obtaining them later is a `gh variable set`, not another code change — the failure this
+          # avoids is a token that exists, is set as a Fly runtime secret, and never reaches the
+          # page because NEXT_PUBLIC_* is inlined at BUILD time.
+          GOOGLE_VERIFY: ${{ vars.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }}
+          BING_VERIFY: ${{ vars.NEXT_PUBLIC_BING_SITE_VERIFICATION }}
         run: |
           set -euo pipefail
           umask 077
@@ -106,6 +123,8 @@ jobs:
             printf 'NEXT_PUBLIC_SITE_URL=%s\n' "$SITE_URL"
             [ -n "${PK_LIVE:-}" ] && printf 'STRIPE_LIVE_PUBLISHABLE_KEY=%s\n' "$PK_LIVE"
             [ -n "${PK_TEST:-}" ] && printf 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=%s\n' "$PK_TEST"
+            [ -n "${GOOGLE_VERIFY:-}" ] && printf 'NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=%s\n' "$GOOGLE_VERIFY"
+            [ -n "${BING_VERIFY:-}" ] && printf 'NEXT_PUBLIC_BING_SITE_VERIFICATION=%s\n' "$BING_VERIFY"
             true
           } > "$RUNNER_TEMP/deploy.env"
           # Prove the file has the shape the script greps for, without printing any value.

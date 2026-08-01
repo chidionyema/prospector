@@ -27,6 +27,8 @@ WEB_DIR="$PLATFORM_DIR/src/Store.Web"
 
 red() { printf '\033[31m%s\033[0m\n' "$*"; }
 grn() { printf '\033[32m%s\033[0m\n' "$*"; }
+# Advisory, for build-time vars whose absence degrades reporting but not the site.
+ylw() { printf '\033[33m%s\033[0m\n' "$*"; }
 
 TARGET="${1:-}"; shift || true
 DRY_RUN=0
@@ -59,6 +61,13 @@ read_var() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2- | t
 API_URL="${NEXT_PUBLIC_API_URL:-$(read_var NEXT_PUBLIC_API_URL)}"
 SITE_URL="${NEXT_PUBLIC_SITE_URL:-$(read_var NEXT_PUBLIC_SITE_URL)}"
 
+# Search-console ownership tokens. OPTIONAL, and therefore reported rather than validated below:
+# an unset one emits no meta tag, which is the correct absent state. They are still read here
+# because they are build-time (NEXT_PUBLIC_, inlined by Next), so a token set only as a runtime
+# Fly secret would never reach the page — the silent failure this script exists to catch.
+GOOGLE_VERIFY="${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:-$(read_var NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION)}"
+BING_VERIFY="${NEXT_PUBLIC_BING_SITE_VERIFICATION:-$(read_var NEXT_PUBLIC_BING_SITE_VERIFICATION)}"
+
 # First var for this target that holds a key of the right mode wins, so the live and test pairs
 # can coexist in .env under their own names.
 PK=""; PK_SRC=""
@@ -79,6 +88,14 @@ if [ -z "$SITE_URL" ]; then
   red "  MISSING   NEXT_PUBLIC_SITE_URL (site would ship with no canonical URL or social card)"
   fail=1
 else grn "  ok        NEXT_PUBLIC_SITE_URL=$SITE_URL"; fi
+
+# Reported, never fatal: the site indexes fine without them, they only unlock the consoles'
+# own reporting. Saying so out loud is the point — a token that is set in .env but silently
+# dropped looks identical to one that was never obtained.
+if [ -z "$GOOGLE_VERIFY" ]; then ylw "  absent    NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION (Search Console will report unverified)"
+else grn "  ok        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION set (len ${#GOOGLE_VERIFY})"; fi
+if [ -z "$BING_VERIFY" ]; then ylw "  absent    NEXT_PUBLIC_BING_SITE_VERIFICATION (Bing Webmaster Tools will report unverified)"
+else grn "  ok        NEXT_PUBLIC_BING_SITE_VERIFICATION set (len ${#BING_VERIFY})"; fi
 
 if [ -z "$PK" ]; then
   red "  MISSING   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
@@ -135,4 +152,6 @@ cd "$WEB_DIR"
 exec flyctl deploy . --config ../../deploy/fly/web.fly.toml \
   --build-arg "NEXT_PUBLIC_API_URL=$API_URL" \
   --build-arg "NEXT_PUBLIC_SITE_URL=$SITE_URL" \
-  --build-arg "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$PK"
+  --build-arg "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$PK" \
+  --build-arg "NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=$GOOGLE_VERIFY" \
+  --build-arg "NEXT_PUBLIC_BING_SITE_VERIFICATION=$BING_VERIFY"

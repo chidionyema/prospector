@@ -19,6 +19,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 from . import facets as facets_mod
+from . import indexnow
 from .models import Dossier, Decision
 from .pack_validation import validate_pack
 from .plain_text import plain_lines, to_plain_text
@@ -829,6 +830,16 @@ class EngineBridge:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if response.status_code == 200:
                 logger.info(f"EngineBridge: Successfully updated Catalog for {id}")
+                # Push the new URL to the IndexNow engines. Only for a LISTED pack: an unlisted
+                # one is unbuyable (Program.cs:206 / CheckoutEndpoints.cs:271), so submitting it
+                # would ask an index to fetch a page that cannot be sold from.
+                #
+                # Deliberately after the success branch and deliberately unchecked: this is a
+                # discovery optimisation, and a search engine being unreachable must never turn a
+                # completed publish into a failed one. `indexnow.submit` raises nothing and
+                # no-ops when unconfigured, which is every machine without INDEXNOW_KEY set.
+                if is_listed:
+                    indexnow.submit_pack(id)
                 return True
             else:
                 logger.error(f"EngineBridge: Store API returned {response.status_code}: {response.text}")

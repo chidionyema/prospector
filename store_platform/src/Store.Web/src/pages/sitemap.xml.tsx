@@ -1,6 +1,8 @@
 import type { GetServerSideProps } from 'next';
 
 import { fetchCatalog } from '@/lib/api/client';
+import { eligibleLandings, packMatchesLanding } from '@/lib/seo/landings';
+import { packOgImagePath } from '@/lib/seo/ogImage';
 
 /**
  * Dynamic /sitemap.xml — the PUBLIC marketing pages, plus one entry per live pack. Authed,
@@ -10,14 +12,18 @@ import { fetchCatalog } from '@/lib/api/client';
  */
 
 // Public, indexable routes. Kept as an explicit allow-list, not a directory scan, so a new authed
-// page never leaks into the sitemap by accident. `/pack/*` is NOT here — it is generated from the
-// live catalogue below, because the set changes on every publish.
+// page never leaks into the sitemap by accident. `/pack/*` and `/ideas/*` are NOT here — both are
+// generated from the live catalogue below, because the set changes on every publish.
+//
+// `/llms.txt` is deliberately absent: it is a machine-readable index found by convention at a fixed
+// path, not a page we want turning up as a search result for a human.
 const PUBLIC_PATHS = [
   '/',
   '/how-it-works',
   '/sample',
   '/kill-log',
   '/faq',
+  '/ideas',
   '/terms',
   '/privacy',
   '/refund',
@@ -54,8 +60,15 @@ function packLastmod(verifiedAt: string | undefined, fallback: string): string {
   return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : fallback;
 }
 
-function urlEntry(loc: string, lastmod: string, changefreq: string): string {
-  return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod><changefreq>${changefreq}</changefreq></url>`;
+// `image` is the absolute URL of the page's own social card, when it has one. Only the pack pages
+// do (see `lib/seo/ogImage.ts`); an image sitemap entry is how that card gets discovered for image
+// search, which a crawler will not otherwise do for a URL it has to render to find.
+//
+// No `<priority>`: Google states it ignores the element, so emitting one is noise that reads like a
+// signal. `<changefreq>` stays because it was already here and is equally advisory.
+function urlEntry(loc: string, lastmod: string, changefreq: string, image?: string): string {
+  const imageTag = image ? `<image:image><image:loc>${image}</image:loc></image:image>` : '';
+  return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod><changefreq>${changefreq}</changefreq>${imageTag}</url>`;
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
@@ -72,20 +85,40 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   // Best-effort, like `fetchCatalogStats`: a catalogue outage must degrade this to the marketing
   // pages, never 500 the sitemap. A sitemap that fails to load is worse than a short one.
   let packEntries: string[] = [];
+  let landingEntries: string[] = [];
   try {
     const packs = await fetchCatalog();
-    packEntries = packs
-      .filter((pack) => SAFE_PACK_ID.test(pack.id))
-      .map((pack) => urlEntry(`${origin}/pack/${pack.id}`, packLastmod(pack.verifiedAt, lastmod), 'monthly'));
+    const safe = packs.filter((pack) => SAFE_PACK_ID.test(pack.id));
+    packEntries = safe.map((pack) =>
+      urlEntry(
+        `${origin}/pack/${pack.id}`,
+        packLastmod(pack.verifiedAt, lastmod),
+        'monthly',
+        `${origin}${packOgImagePath(pack.id)}`,
+      ),
+    );
+
+    // Only the landings the live catalogue can actually fill — the same eligibility check the pages
+    // themselves run, so the sitemap can never advertise a URL that 404s on arrival. A landing's
+    // `lastmod` is the newest verification date among its own packs: that is genuinely when the page
+    // last changed, and it is what makes a re-crawl worth the crawler's time after a publish.
+    landingEntries = eligibleLandings(safe).map(({ landing }) => {
+      const dates = safe
+        .filter((pack) => packMatchesLanding(pack, landing))
+        .map((pack) => packLastmod(pack.verifiedAt, lastmod));
+      const newest = dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : lastmod;
+      return urlEntry(`${origin}/ideas/${landing.slug}`, newest, 'weekly');
+    });
   } catch (error) {
     console.error('Sitemap: catalog fetch failed, emitting marketing pages only:', error);
   }
 
   const urls = [
     ...PUBLIC_PATHS.map((p) => urlEntry(`${origin}${p === '/' ? '' : p}`, lastmod, changefreqFor(p))),
+    ...landingEntries,
     ...packEntries,
   ].join('\n');
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls}\n</urlset>\n`;
 
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=86400');
