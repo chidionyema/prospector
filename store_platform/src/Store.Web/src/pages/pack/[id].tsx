@@ -30,18 +30,39 @@ interface PackPageProps {
 }
 
 /**
- * The six attacks every idea must survive before it can be listed.
- * Framed as the attack that failed (refutational), not a positive rubber stamp:
- * refutational two-sided framing out-persuades one-sided "validated" claims
- * (Allen 1991, O'Keefe 1999, Eisend 2006).
+ * The six fronts an idea is attacked on before it can be listed.
+ *
+ * These name the FILTER, not this pack's findings — deliberately, because this page has no
+ * per-check verdicts to render (`PackDetails` in lib/api/client.ts carries none) and a static
+ * list therefore may only say what is true of every listed pack.
+ *
+ * The previous copy said "We tried to show the value would not last. **It held.**" beside a green
+ * success tick, six times. Two things make that a claim the page cannot support:
+ *
+ *   - a check that finds no matching passage returns `unverifiable`, which is silence, not a
+ *     finding. Across the 111 passing dossiers, `incumbency` has no positive finding for 71 of
+ *     them (59 unverifiable + 12 never run) and `legality` for 52;
+ *   - and not every check runs in every lane at all — the smb and side_hustle lanes never run
+ *     `value_durability` or `incumbency` (see the per-lane `hard_gates`/`score_checks` in
+ *     config.yaml). "We tried" is false for those packs before the second clause even arrives.
+ *
+ * What IS true of every listed pack is the gate: it died on the first front where we found cited
+ * evidence against it, and it did not die (kill_filter.is_hard_fail — only a cited killing
+ * verdict kills; silence never does). So the lines state the front, the prose states what
+ * surviving means, and the marker is a numeral rather than a green tick.
+ *
+ * Framing stays refutational — two-sided attack framing out-persuades one-sided "validated"
+ * claims (Allen 1991, O'Keefe 1999, Eisend 2006). The change is scope, not tone: this pack's own
+ * answers are real and directly below, in the scored axes with their weak ones left visible, and
+ * in the QA report inside the pack, which marks each individual claim SUPPORTED or not.
  */
 const CHECKS = [
-  'We tried to prove the pain was imagined. It was real.',
-  'We tried to show the value would not last. It held.',
-  'We tried to prove incumbents own the space. There was room.',
-  'We tried to find that no one would pay. A payer was there.',
-  'We tried to show it cannot reach a market. A route existed.',
-  'We tried to find a legal landmine. It came back clean.',
+  'Whether the pain is imagined',
+  'Whether the value decays',
+  'Whether incumbents already own the space',
+  'Whether anyone will actually pay',
+  'Whether it can reach a market at all',
+  'Whether there is a legal landmine',
 ];
 
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
@@ -314,21 +335,27 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
               />
             </div>
 
-            {/* Cleared all six checks — the proof block */}
+            {/* How the idea was attacked — the filter, stated as the filter. The per-pack answers
+                are the scored axes immediately below and the QA report inside the pack; see the
+                CHECKS doc comment for why this block deliberately makes no per-check claim. */}
             <div className="mt-12">
               <h2 className="text-xl font-bold tracking-tight text-text">Six ways we tried to kill it</h2>
               <p className="mt-2 text-sm text-muted">
-                Each check is an attack, not a rubber stamp. Every claim that survived is backed by a real
-                source you can open. Ideas that fail any one of the six never reach the store.
+                Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
+                cited evidence against it, and a listing means none of the six produced that evidence.
+                Finding nothing is not the same as finding a green light — so the scores below show where
+                this pack&rsquo;s case is strong and where it is thin.
               </p>
               <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {CHECKS.map((check) => (
+                {CHECKS.map((check, i) => (
                   <li
                     key={check}
                     className="flex items-center gap-3 rounded-lg border border-border bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
                   >
-                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success/10 text-success">
-                      <Icon name="check" size={13} />
+                    {/* A numeral, not a tick: a green success mark on a static line reads as this
+                        pack's verdict on that check, which is exactly what this page cannot know. */}
+                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border bg-bg font-mono text-[11px] font-bold text-muted">
+                      {i + 1}
                     </span>
                     <span className="text-sm font-medium text-text">{check}</span>
                   </li>
