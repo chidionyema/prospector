@@ -17,8 +17,8 @@ import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/d
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, FacetBar } from '@/components/discovery/FacetBar';
 import { FacetChips } from '@/components/discovery/FacetChips';
-import { Matchmaker, MatchmakerTrigger } from '@/components/discovery/Matchmaker';
-import { useCart } from '@/lib/cart';
+
+
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
@@ -29,14 +29,14 @@ import {
   cardHeading,
   decodeDiscoveryState,
   EMPTY_DISCOVERY_STATE,
-  EMPTY_MATCH_ANSWERS,
+
   encodeDiscoveryState,
   filterPacks,
   isFiltered,
   nearMisses,
-  rankMatches,
+
   type DiscoveryState,
-  type MatchAnswers,
+
 } from '@/lib/discovery';
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
@@ -470,23 +470,6 @@ function CatalogBrowser({
   const router = useRouter();
   const [state, setState] = React.useState<DiscoveryState>(initialState);
   const [sort, setSort] = React.useState<SortKey>('newest');
-  // The three-question router, closed on load. Owned here rather than inside `Matchmaker` because
-  // the control that opens it lives in the toolbar row below, not in the panel it opens.
-  const [matchOpen, setMatchOpen] = React.useState(false);
-  const cart = useCart();
-  const [matchAnswers, setMatchAnswers] = React.useState<MatchAnswers>(EMPTY_MATCH_ANSWERS);
-  const liveMatches = React.useMemo(() => rankMatches(packs, matchAnswers), [packs, matchAnswers]);
-  const hasAnswers = matchAnswers.advantages.length > 0 || matchAnswers.commitment !== null || matchAnswers.payer !== null;
-
-  // Auto-open the Matchmaker on a buyer's first visit to /, guarded against SSR by reading
-  // localStorage ONLY inside the effect (never at render time).
-  React.useEffect(() => {
-    const flag = localStorage.getItem('mumchimp.matchmaker.autoOpened.v1');
-    if (!flag && cart.ready && cart.count === 0) {
-      setMatchOpen(true);
-      localStorage.setItem('mumchimp.matchmaker.autoOpened.v1', '1');
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { open, setOpen, close, triggerRef } = useCommandPalette();
 
   const apply = React.useCallback(
@@ -585,7 +568,7 @@ function CatalogBrowser({
               <div className="w-full sm:w-64">
                 <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
               </div>
-              {!matchOpen && <MatchmakerTrigger onOpen={() => setMatchOpen(true)} count={liveMatches.ranked.length} countLabel={hasAnswers ? 'that fit your life' : 'total'} />}
+
             </div>
             <div className="flex items-center gap-3 sm:justify-end">
               <span className="whitespace-nowrap text-sm font-semibold text-muted">
@@ -603,13 +586,7 @@ function CatalogBrowser({
               height for it. */}
           <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
 
-          {/* Mounted only once opened, and never unmounted after, "Change my answers" on the
-              result screen has to land back on the form, not on the trigger they already used. */}
-          {matchOpen && (
-            <div className="mb-6">
-              <Matchmaker packs={packs} onShowAll={apply} onNoMatch={apply} onAnswersChange={setMatchAnswers} />
-            </div>
-          )}
+
 
           {visible.length > 0 ? (
             <>
