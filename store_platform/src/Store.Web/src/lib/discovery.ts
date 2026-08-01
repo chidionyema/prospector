@@ -607,7 +607,8 @@ export function similarPacks<T extends FacetedPack>(
 /** Comma, em dash, en dash, and a hyphen with spaces on both sides. A bare hyphen is left alone:
  *  it is usually part of a compound ("Private-Hire"), and splitting there mangles the name. The
  *  comma is the live separator since the marketeer rewrote the catalogue copy to drop em-dashes
- *  (the universal AI writing tell). */
+ *  (the universal AI writing tell); em-dash and en-dash are kept as a safety net for any
+ *  historical pack that resurfaces. */
 const TITLE_SEPARATORS = [', ', '—', '–', ' - '];
 
 /**

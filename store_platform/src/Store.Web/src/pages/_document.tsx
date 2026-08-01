@@ -35,6 +35,8 @@ export default function Document() {
       <Head>
         {/* Brand chrome (BRAND-AND-DESIGN §4/§9). SVG favicon for modern browsers; the legacy
             .ico is the fallback. theme-color paints the mobile browser bar in brand ink. */}
+        <link rel="preconnect" href="https://api.stripe.com" />
+        <link rel="preconnect" href="https://js.stripe.com" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon.svg" />

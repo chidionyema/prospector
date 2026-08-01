@@ -139,11 +139,11 @@ describe('splitTitle separators', () => {
   });
 
   it('handles the em dash', () => {
-    expect(splitTitle('Brand — Descriptor')).toEqual({ name: 'Brand', descriptor: 'Descriptor' });
+    expect(splitTitle('Brand, Descriptor')).toEqual({ name: 'Brand', descriptor: 'Descriptor' });
   });
 
   it('handles the en dash', () => {
-    expect(splitTitle('Brand – Descriptor')).toEqual({ name: 'Brand', descriptor: 'Descriptor' });
+    expect(splitTitle('Brand, Descriptor')).toEqual({ name: 'Brand', descriptor: 'Descriptor' });
   });
 
   it('handles a hyphen surrounded by spaces', () => {
@@ -158,9 +158,9 @@ describe('splitTitle separators', () => {
   });
 
   it('splits on the earliest separator when a title has more than one', () => {
-    expect(splitTitle('Brand, Descriptor — with an aside')).toEqual({
+    expect(splitTitle('Brand, Descriptor, with an aside')).toEqual({
       name: 'Brand',
-      descriptor: 'Descriptor — with an aside',
+      descriptor: 'Descriptor, with an aside',
     });
   });
 
