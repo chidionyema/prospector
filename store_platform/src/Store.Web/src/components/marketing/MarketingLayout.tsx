@@ -52,7 +52,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
 
       {/* 1. STICKY "PRIVATE CLUB" NAVIGATION */}
       <header
-        className={`sticky top-0 z-50 w-full transition-all duration-200 border-b pt-[env(safe-area-inset-top)] ${
+        className={`sticky top-0 z-30 w-full transition-all duration-200 border-b pt-[env(safe-area-inset-top)] ${
           scrolled ? 'bg-white/80 backdrop-blur-md border-border/60 shadow-sm' : 'bg-white border-transparent shadow-none'
         }`}
       >

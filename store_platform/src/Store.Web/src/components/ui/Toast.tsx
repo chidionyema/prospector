@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { cx } from './cx';
 
 type ToastTone = 'success' | 'info' | 'warning' | 'danger';
@@ -27,16 +27,51 @@ const TONES: Record<ToastTone, string> = {
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
 
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const remainingRef = useRef<Map<string, number>>(new Map());
+  const pausedRef = useRef(false);
+
   const dismiss = useCallback((id: string) => {
+    const t = timersRef.current.get(id);
+    if (t) clearTimeout(t);
+    timersRef.current.delete(id);
+    remainingRef.current.delete(id);
     setItems((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const scheduleDismiss = useCallback((id: string, delayMs: number) => {
+    const timer = setTimeout(() => {
+      timersRef.current.delete(id);
+      remainingRef.current.delete(id);
+      setItems((prev) => prev.filter((t) => t.id !== id));
+    }, delayMs);
+    timersRef.current.set(id, timer);
+  }, []);
+
+  const pauseAll = useCallback(() => {
+    pausedRef.current = true;
+    timersRef.current.forEach((timer, id) => {
+      clearTimeout(timer);
+      const remaining = remainingRef.current.get(id) ?? 5000;
+      remainingRef.current.set(id, remaining);
+    });
+    timersRef.current.clear();
+  }, []);
+
+  const resumeAll = useCallback(() => {
+    pausedRef.current = false;
+    remainingRef.current.forEach((remaining, id) => {
+      scheduleDismiss(id, remaining);
+    });
+    remainingRef.current.clear();
+  }, [scheduleDismiss]);
 
   const toast = useCallback((message: string, tone: ToastTone = 'info') => {
     const id = crypto.randomUUID();
     setItems((prev) => [...prev, { id, tone, message }]);
     // Auto-dismiss; the screen must still reflect the outcome in its own state.
-    setTimeout(() => dismiss(id), 5000);
-  }, [dismiss]);
+    scheduleDismiss(id, 5000);
+  }, [scheduleDismiss]);
 
   const api = useMemo<ToastApi>(() => ({ toast }), [toast]);
 
@@ -46,12 +81,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+        className="pointer-events-none fixed bottom-4 right-4 z-60 flex flex-col gap-2"
+        onMouseEnter={pauseAll}
+        onMouseLeave={resumeAll}
+        onFocusCapture={pauseAll}
+        onBlurCapture={resumeAll}
       >
         {items.map((t) => (
           <div
             key={t.id}
             role="status"
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard reachability per UI polish spec
+            tabIndex={0}
             className={cx(
               'pointer-events-auto max-w-sm rounded-md border-l-4 bg-surface px-4 py-3 text-small shadow-2',
               TONES[t.tone],

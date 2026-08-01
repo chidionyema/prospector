@@ -7,7 +7,7 @@ import { Seo } from '@/components/Seo';
 import { productJsonLd } from '@/lib/productJsonLd';
 import { breadcrumbNode, graph } from '@/lib/seo/schema';
 import { packOgImagePath } from '@/lib/seo/ogImage';
-import { Icon, CoverArt } from '@/components/ui';
+import { Icon, CoverArt, ErrorState, Breadcrumbs } from '@/components/ui';
 import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
@@ -25,10 +25,11 @@ import { paybackEquation } from '@/lib/payback';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 
 interface PackPageProps {
-  pack: PackDetails;
+  pack: PackDetails | null;
   /** The rest of the catalogue, for the "same mechanics" row. Empty when that fetch failed —
    *  a catalogue outage must never take down a page someone is trying to buy from. */
   catalog: Pack[];
+  error?: string;
 }
 
 /**
@@ -70,10 +71,42 @@ const CHECKS = [
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
 
-export default function PackPage({ pack, catalog }: PackPageProps) {
-  // A session created out of band opens the overlay directly, so the live render can be proven
-  // on a smoke-test-priced session instead of a full-price one. Ignored unless the value has the
-  // shape of a client secret; see lib/preopenedCheckout for why this leaks nothing.
+export default function PackPage({ pack, catalog, error }: PackPageProps) {
+  const router = useRouter();
+
+  // Hooks must run unconditionally. If the server couldn't fetch the pack, render an error
+  // panel — the inner component runs only when pack is non-null.
+  const packId = router.query.id as string;
+
+  if (!pack) {
+    return (
+      <MarketingLayout>
+        <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
+          <ErrorState
+            title="Could not load this pack"
+            message={error || 'The pack data could not be retrieved. The server may be temporarily unavailable.'}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              import('@/lib/api/client').then(({ fetchPackDetails }) => {
+                fetchPackDetails(packId).then(() => window.location.reload());
+              });
+            }}
+            className="mt-4"
+          >
+            Try again
+          </button>
+        </div>
+      </MarketingLayout>
+    );
+  }
+
+  return <PackPageContent pack={pack} catalog={catalog} />;
+}
+
+/** Inner component: all hooks that require a non-null pack live here. */
+function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[] }) {
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
 
@@ -277,13 +310,13 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
 
       <Section bg="bg" width="6xl" className="!pt-8 !pb-24">
         {/* Breadcrumb */}
-        <Link
-          href="/#catalog"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-muted transition-colors hover:text-text"
-        >
-          <Icon name="arrowRight" size={14} className="rotate-180" />
-          All packs
-        </Link>
+        <Breadcrumbs
+          items={[
+            { href: '/', label: 'Catalog' },
+            { href: '/ideas', label: 'Browse by category' },
+            { href: '#', label: pack.title },
+          ]}
+        />
 
         <div className="mt-6 flex flex-col gap-12 lg:flex-row">
           {/* Left: Content */}
@@ -684,8 +717,10 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
     };
   } catch (error) {
     console.error('Error fetching pack details:', error);
+    const message =
+      error instanceof Error ? error.message : 'Could not load pack details.';
     return {
-      notFound: true,
+      props: { pack: null, catalog: [], error: message },
     };
   }
 };

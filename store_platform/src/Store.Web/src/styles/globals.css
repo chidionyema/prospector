@@ -80,6 +80,8 @@
 }
 
 @theme inline {
+  --z-index-60: 60;
+  --z-index-70: 70;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface2: var(--surface2);
@@ -370,6 +372,22 @@ section {
   transform: scale(0.98);
   filter: brightness(0.95);
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* ── Reduced Motion ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  a, button, input, select, textarea, .card-transition {
+    transition: none !important;
+  }
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-rise,
+  .animate-pulse {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 /* ── Mobile Responsiveness Overrides ───────────────────────── */

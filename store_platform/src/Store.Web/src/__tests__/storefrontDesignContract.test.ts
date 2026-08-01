@@ -93,8 +93,16 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     return page.slice(start, end === -1 ? undefined : end);
   })();
 
-  /** The card's outermost `<Link>` — the element carrying surface, border, radius and hover. */
+  /** The card's outermost `<Link>` — the element carrying surface, border, radius and hover.
+   *  Accepts both plain string className and cx()-wrapped multi-line form. */
   const cardLinkClasses = (() => {
+    // Try the cx() form first (multi-line), then fall back to plain string form.
+    const cxMatch = /<Link[\s\S]*?className=\{cx\(([\s\S]*?)\)\}/.exec(packCard);
+    if (cxMatch) {
+      // Each arg to cx() is a JS string literal. Extract and join with space.
+      const strings = [...cxMatch[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
+      return strings.join(' ');
+    }
     const match = /<Link\s[^>]*className="([^"]*)"/.exec(packCard);
     expect(match, 'PackCard <Link> className not found').not.toBeNull();
     return match![1];
