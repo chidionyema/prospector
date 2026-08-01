@@ -29,6 +29,7 @@ import {
 } from '@/lib/discovery';
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
+import { cleanProofPoint } from '@/lib/proof';
 // Totals only — the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
 import killTotals from '@/data/kill-log-totals.json';
@@ -151,14 +152,22 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
   );
 }
 
-/** The single metadata row on a grid card: market, the strongest facets, sources, freshness.
- *  One capped row replaces the three stacked chip sections the card used to carry — measured on
- *  the live shelf those sections were the whole size problem (cards ran 585–660px tall depending
- *  on which sections a pack happened to have). A pack with nothing to claim renders no row at
- *  all: a chip is a claim, and absence stays absence (same rule as FacetChips). */
+/** The mechanism tier of a grid card: which market, then the strongest facets — what this is and
+ *  who pays for it. One capped row replaces the three stacked chip sections the card used to
+ *  carry; measured on the live shelf those sections were the whole size problem (cards ran
+ *  585–660px tall depending on which sections a pack happened to have). A pack with nothing to
+ *  claim renders no row at all: a chip is a claim, and absence stays absence (same rule as
+ *  FacetChips).
+ *
+ *  Sources and freshness used to sit at the end of this same capped list, at positions 7 and 8.
+ *  Measured against the live catalogue on 2026-08-01 (n=51): `verifiedAt` is present on 51 packs
+ *  and the freshness chip reached 2 of them; `sourceCount` is present on 51 and was cut on 12.
+ *  The cap was not choosing between claims of the same kind — it was letting a fifth descriptive
+ *  tag outrank the only evidence on the card, and it got stricter as facet coverage improved.
+ *  Proof is now its own tier below, and is not subject to this cap. */
 const CARD_META_MAX = 5;
 
-function CardMeta({ pack }: { pack: Pack }) {
+function FitChips({ pack }: { pack: Pack }) {
   const chips: { key: string; text: string; primary?: boolean }[] = [];
   if (pack.market) chips.push({ key: 'market', text: marketLabel(pack.market), primary: true });
   const facets: [FacetKind, string | null | undefined][] = [
@@ -174,11 +183,6 @@ function CardMeta({ pack }: { pack: Pack }) {
   if (pack.timeToFirstRevenue) {
     chips.push({ key: 'revenue', text: `Revenue in ${pack.timeToFirstRevenue}` });
   }
-  if (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) {
-    chips.push({ key: 'sources', text: `${pack.sourceCount} sources` });
-  }
-  const fresh = freshnessLabel(pack.verifiedAt);
-  if (fresh) chips.push({ key: 'fresh', text: fresh });
   if (chips.length === 0) return null;
   return (
     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -197,16 +201,52 @@ function CardMeta({ pack }: { pack: Pack }) {
   );
 }
 
+/** The proof tier: how much evidence stands behind the listing, and when it was last checked.
+ *
+ *  Deliberately not chips and deliberately not capped. It is the last thing a buyer reads before
+ *  the CTA because it is the claim the rest of the card rests on — every other line describes the
+ *  opportunity, this one says why we think it is real. It renders nothing when there is nothing
+ *  to cite, which is the same rule as everywhere else: we do not print a reassurance we cannot
+ *  back. */
+function ProofLine({ pack }: { pack: Pack }) {
+  const sources =
+    typeof pack.sourceCount === 'number' && pack.sourceCount > 0 ? pack.sourceCount : null;
+  const fresh = freshnessLabel(pack.verifiedAt);
+  if (sources === null && !fresh) return null;
+  return (
+    <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-muted">
+      <Icon name="verified" size={12} className="text-primary" />
+      {sources !== null && (
+        <span>
+          <span className="font-bold text-text/80">{sources}</span> sources
+        </span>
+      )}
+      {sources !== null && fresh && <span aria-hidden="true">·</span>}
+      {fresh && <span>{fresh}</span>}
+    </p>
+  );
+}
+
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
   // One description, not two. `oneLine` (the engine's opportunity line) wins; the title
   // descriptor is the fallback for packs published before the engine emitted one.
   const line = pack.oneLine || sub;
+  // Ghost hover: the card answers with light, not with movement. The `1px solid #E2E8F0` border
+  // and `translateY(-2px)` lift that used to live here are amendment 1 of the design contract —
+  // the reason is recorded in storefrontDesignContract.test.ts, which still fails if the lift
+  // comes back unannounced. A hairline ring at 6% still separates a white card from the #F8FAFC
+  // page, but at 42 cards a full-strength border draws 42 rectangles and the eye reads the grid
+  // before it reads any listing.
+  //
+  // Dropping the transform is the accessible answer rather than a cost of one: the lift was the
+  // card's only motion, so a `prefers-reduced-motion` visitor now gets exactly the same feedback
+  // as everyone else instead of a suppressed version of it.
   return (
     <Link
       href={`/pack/${pack.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)]"
+      className="group flex flex-col overflow-hidden rounded-lg bg-white ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200 hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.12]"
     >
       <Cover cat={cat} iconSize={104} className="h-28">
         <span className="absolute left-3.5 top-3.5">
@@ -240,7 +280,10 @@ function PackCard({ pack }: { pack: Pack }) {
         </h3>
         {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-text/75">{line}</p>}
 
-        <CardMeta pack={pack} />
+        {/* Outcome (heading + line) above, mechanism next, proof last. The order is the argument:
+            what you'd be selling, how it makes money, and why we believe it. */}
+        <FitChips pack={pack} />
+        <ProofLine pack={pack} />
 
         {/* Active CTA, basket beside it rather than replacing it: opening the pack stays the
             primary action, and a shelf where every card demands a cart decision is a worse
@@ -272,10 +315,11 @@ function PackCard({ pack }: { pack: Pack }) {
 function SpotlightCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
+  const proof = cleanProofPoint(pack.proofPoint);
   return (
     <Link
       href={`/pack/${pack.id}`}
-      className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] md:flex-row"
+      className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] hover:ring-black/[0.12] md:flex-row"
     >
       <Cover cat={cat} iconSize={200} className="min-h-[180px] md:w-[36%]">
         <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
@@ -302,6 +346,11 @@ function SpotlightCard({ pack }: { pack: Pack }) {
           {sub && <p className="mt-2 max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
         </div>
         {pack.oneLine && <CardFact label="The opportunity" clamp="line-clamp-3">{pack.oneLine}</CardFact>}
+        {/* The spotlight is the one card with room for the sentence itself rather than a count of
+            sources. Every pack has carried one since publish and no surface has ever shown it —
+            see lib/proof.ts. Cleaned at this boundary, because the .md a buyer downloads keeps
+            its markdown. Renders nothing if it cleans to nothing. */}
+        {proof && <CardFact label="The evidence" clamp="line-clamp-3">{proof}</CardFact>}
         <FacetChips pack={pack} compact max={5} />
         {/* The one place on the shelf the deliverable chips render — see the note on DELIVERABLES. */}
         <DeliverableChips />
