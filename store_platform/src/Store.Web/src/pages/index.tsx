@@ -8,6 +8,7 @@ import { Icon, IconName, Dropdown } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { DossierPreview } from '@/components/marketing/DossierPreview';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
@@ -28,6 +29,9 @@ import {
 } from '@/lib/discovery';
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
+// Totals only — the full kill log is a separate import on /kill-log so its 60 entries stay
+// out of the home page bundle. Both files come from tools/make_kill_log.py.
+import killTotals from '@/data/kill-log-totals.json';
 
 interface HomeProps {
   packs: Pack[];
@@ -662,49 +666,75 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
              guarantee that also sits under the grid. What is left is the claim, the price, and
              the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
              next block added above the grid fails a test instead of quietly undoing this. */}
-      <SectionBand bg="white" width="6xl" className="pt-5 pb-4 md:pt-7 md:pb-5 text-center animate-rise">
-        <p className="mb-2.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
+      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center animate-rise">
+        <p className="mb-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
-        <h1 className="mx-auto max-w-[24ch] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
+        {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
+            "0", so it means a different number of pixels in every font: the old max-w-[24ch]
+            measured 576px in SF Pro but 819px in Verdana. That made the headline's line count a
+            function of which font the platform happened to pick, back when --font-sans named
+            "Inter" and nothing ever downloaded it, so every OS picked a different one. macOS
+            landed on 2 lines and CI Linux on 3, putting the first card at y=718.5 with 1.5px
+            showing. Measured minimum width for 2 lines: SF Pro 652px, Arial/Liberation 736px,
+            Tahoma 768px, Verdana 872px — 56rem (896px) clears all of them. It does not widen the
+            headline, because text-balance shortens the lines to even them up: the longest
+            rendered line is 677px, narrower than the 736px box this replaces.
+
+            globals.css now really does load and apply Hanken Grotesk, so the platform no longer
+            gets a vote — but the absolute cap stays, and stays the thing under test. It is what
+            makes this headline survive the font being slow, blocked, or swapped: measured with
+            the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
+            is still 2 and the first card still clears the fold by 88px at worst. */}
+        <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           Skip 6 months of research. Launch a business that&apos;s already vetted.
         </h1>
-        <p className="mx-auto mt-3 max-w-[64ch] text-base leading-relaxed text-text/75">
+        <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75">
           Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics
           and a step-by-step go-to-market plan — every claim backed by a source you can open.
         </p>
         {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
-        <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="#catalog"
             onClick={() => track('catalog_cta_clicked')}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
           >
-            {survived > 0 ? `See the ${survived} that survived` : 'Browse vetted blueprints'} — £49
+            {/* "See the 44 that survived — £49" parses two ways, and the wrong one is the one a
+                cold visitor picks: that £49 buys you the LIST. Browsing is free; £49 is the price
+                of one pack. "each" is the whole fix — it attaches the price to a pack rather than
+                to the click, and keeps the qualifying number in the button where it does its
+                work. The catalogue count stays dynamic; it is never a literal. */}
+            {survived > 0 ? `Browse the ${survived} that survived` : 'Browse vetted blueprints'} — £49 each
           </Link>
+          {/* The sceptic's door, and deliberately not a neutral outline button. This is the
+              strongest asset on the page — a whole unredacted dossier for nothing — and it was
+              styled as the thing you ignore. It keeps a lighter weight than the shelf CTA so the
+              two do not compete, but the primary-tinted border and background make it read as an
+              offer rather than as a cancel button. */}
           <Link
             href="/sample"
             onClick={() => track('sample_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-8 py-3.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/40 bg-primary/5 px-8 py-3.5 text-sm font-bold text-text transition-colors hover:border-primary/70 hover:bg-primary/10 sm:w-auto"
           >
             <Icon name="download" size={15} className="text-primary" />
-            Read the free sample report
+            Read a full pack free
           </Link>
         </div>
         {/* One line, and it carries the two facts that decide whether the second button is
             clicked: the sample is the whole thing, and it costs nothing — not even an address. */}
-        <p className="mt-2.5 text-sm font-medium text-muted">
+        <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
       </SectionBand>
 
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
-      <Section bg="bg" width="7xl" className="!pt-5 !pb-16 md:!pt-6 md:!pb-20">
+      <Section bg="bg" width="7xl" className="!pt-3 !pb-16 md:!pt-3 md:!pb-20">
         {/* Heading and heartbeat share a row. Stacked, with the survivorship ratio in a third
             pill below them, this block was 206px of preamble sitting directly on top of the
             shelf — the same fold problem as the hero, in miniature. */}
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
             <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
             <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">
@@ -737,6 +767,11 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           <TrustPill icon="download" label="Instant download" />
         </div>
         <PackContentsSection heading="What’s inside your download" />
+        {/* The list above names the documents; this shows one. The fear on a digital download
+            page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
+            rows from the free sample, including the check that failed — a preview of eight
+            green ticks would advertise better and claim something the shop does not. */}
+        <DossierPreview />
         <ComparisonBlock />
       </Section>
 
@@ -756,13 +791,26 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
               cannot back a claim with a real source dies before it reaches this store. What you see is
               everything that survived.
             </p>
-            <Link
-              href="/how-it-works"
-              className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-white underline-offset-4 transition-opacity hover:opacity-80"
-            >
-              See exactly how it works
-              <Icon name="arrowRight" size={15} />
-            </Link>
+            {/* Two links, because this band makes two different promises. "How it works"
+                describes the process; the kill log is the only thing on the site that proves
+                it ran — the rejects, with the sourced argument that killed each one. A
+                stranger who doubts the claim above needs evidence, not a longer description. */}
+            <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-3">
+              <Link
+                href="/kill-log"
+                className="inline-flex items-center gap-2 text-sm font-bold text-white underline underline-offset-4 transition-opacity hover:opacity-80"
+              >
+                See the {killTotals.killed.toLocaleString('en-GB')} we rejected
+                <Icon name="arrowRight" size={15} />
+              </Link>
+              <Link
+                href="/how-it-works"
+                className="inline-flex items-center gap-2 text-sm font-bold text-white underline-offset-4 transition-opacity hover:opacity-80"
+              >
+                See exactly how it works
+                <Icon name="arrowRight" size={15} />
+              </Link>
+            </div>
           </div>
 
           <ul className="space-y-3">

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
+import { productJsonLd } from '@/lib/productJsonLd';
 import { Icon, CoverArt } from '@/components/ui';
 import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
@@ -52,19 +53,27 @@ const CHECKS = [
 export default function PackPage({ pack, catalog }: PackPageProps) {
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  /** Non-null while the embedded checkout is open. Null is not "failed" — it is also every
-   *  provider and build that pays through the hosted redirect instead. */
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  /** What this page has decided about the overlay, which is NOT the same question as whether it
+   *  is open — see `clientSecret` below.
+   *   - `undefined`: nothing decided yet, so a pre-opened session in the URL is free to win.
+   *   - `null`: decided closed. Also every provider and build that pays through the hosted
+   *     redirect instead; null is not "failed".
+   *   - a string: this session is open. */
+  const [checkoutSession, setCheckoutSession] = useState<string | null | undefined>(undefined);
 
   // A session created out of band opens the overlay directly, so the live render can be proven
   // on a smoke-test-priced session instead of a full-price one. Ignored unless the value has the
   // shape of a client secret; see lib/preopenedCheckout for why this leaks nothing.
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
-  useEffect(() => {
-    // eslint-disable-next-line -- preopened comes from router.query which populates after hydration
-    if (preopened) setClientSecret(preopened);
-  }, [preopened]);
+
+  // Derived, not copied into state by an effect. The URL is already a source of truth, so the
+  // effect that used to mirror it into state bought nothing and cost two things: a first paint
+  // with the overlay shut before the effect ran, and a re-open bug waiting to happen — closing
+  // sets null, and an effect keyed on `preopened` would put it straight back. The three-state
+  // above is what keeps "not decided yet" distinguishable from "closed": only the former defers
+  // to the query string.
+  const clientSecret = checkoutSession === undefined ? preopened : checkoutSession;
 
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
@@ -119,7 +128,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
     });
 
     if (route.kind === 'embedded') {
-      setClientSecret(route.clientSecret);
+      setCheckoutSession(route.clientSecret);
       return;
     }
     window.location.href = route.url;
@@ -137,7 +146,7 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
    * that itself fails leaves a visible error on the pack page instead of a frozen overlay.
    */
   const handleEmbeddedUnreachable = async () => {
-    setClientSecret(null);
+    setCheckoutSession(null);
     try {
       window.location.href = await createStripeCheckout(pack.id, buyerEmail);
     } catch {
@@ -316,13 +325,17 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
 
   return (
     <MarketingLayout>
-      <Seo title={`${pack.title} · A business idea that survived our filter`} />
+      <Seo
+        title={`${pack.title} · A business idea that survived our filter`}
+        description={pack.oneLine || undefined}
+        jsonLd={productJsonLd(pack)}
+      />
 
       {clientSecret && (
         <EmbeddedCheckoutPanel
           clientSecret={clientSecret}
           title={pack.title}
-          onClose={() => setClientSecret(null)}
+          onClose={() => setCheckoutSession(null)}
           onUnreachable={handleEmbeddedUnreachable}
         />
       )}
