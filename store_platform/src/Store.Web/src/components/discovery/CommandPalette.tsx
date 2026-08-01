@@ -301,6 +301,11 @@ function PaletteDialog({
                     )}
                     <FacetChips pack={pack} compact max={3} className="mt-1.5" />
                   </span>
+                  {index === active && (
+                    <kbd className="shrink-0 rounded border border-border bg-bg px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted">
+                      ↵
+                    </kbd>
+                  )}
                   <span className="shrink-0 text-sm font-black text-text">{formatPrice(pack.price)}</span>
                 </button>
               </li>

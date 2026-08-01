@@ -298,7 +298,7 @@ export function Matchmaker({
               Show me everything
             </Button>
             <Button variant="ghost" onClick={() => setSubmitted(false)}>
-              Change my answers
+              Revise answers
             </Button>
           </div>
         </div>
@@ -325,7 +325,7 @@ export function Matchmaker({
             Show me everything that matched
           </Button>
           <Button variant="ghost" onClick={() => setSubmitted(false)}>
-            Change my answers
+            Revise answers
           </Button>
         </div>
       </div>
@@ -343,7 +343,7 @@ export function Matchmaker({
         {/* The trigger promised "three questions"; the numbers keep that promise visibly and
             let a skimmer see the whole cost of the form before starting it. */}
         <legend className="text-base font-black tracking-tight text-text">
-          <span className="mr-2 font-mono text-xs font-bold text-primary">1/3</span>
+          <span className="mr-2 font-mono text-xs font-bold text-primary">Step 1 of 3</span>
           What have you already got?
         </legend>
         <span className="text-xs font-medium text-muted">Pick up to two.</span>
@@ -364,7 +364,7 @@ export function Matchmaker({
 
       <fieldset className="mt-6">
         <legend className="text-base font-black tracking-tight text-text">
-          <span className="mr-2 font-mono text-xs font-bold text-primary">2/3</span>
+          <span className="mr-2 font-mono text-xs font-bold text-primary">Step 2 of 3</span>
           How much time, honestly?
         </legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -382,7 +382,7 @@ export function Matchmaker({
 
       <fieldset className="mt-6">
         <legend className="text-base font-black tracking-tight text-text">
-          <span className="mr-2 font-mono text-xs font-bold text-primary">3/3</span>
+          <span className="mr-2 font-mono text-xs font-bold text-primary">Step 3 of 3</span>
           Who would you rather sell to?
         </legend>
         <span className="text-xs font-medium text-muted">Optional.</span>
