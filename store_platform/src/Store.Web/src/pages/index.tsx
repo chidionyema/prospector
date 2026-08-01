@@ -27,6 +27,7 @@ import { graph, itemListNode } from '@/lib/seo/schema';
 import {
   cardHeading,
   decodeDiscoveryState,
+  EMPTY_DISCOVERY_STATE,
   encodeDiscoveryState,
   filterPacks,
   isFiltered,
@@ -195,10 +196,7 @@ function FitChips({ pack }: { pack: Pack }) {
       {chips.slice(0, CARD_META_MAX).map((chip) => (
         <span
           key={chip.key}
-          className={cx(
-            'rounded-md px-2 py-1 text-[11px] font-semibold',
-            chip.primary ? 'bg-primary/10 uppercase tracking-wide text-primary' : 'bg-bg text-muted',
-          )}
+          className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted"
         >
           {chip.text}
         </span>
@@ -222,10 +220,14 @@ function ProofLine({ pack }: { pack: Pack }) {
   return (
     <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-muted">
       <Icon name="verified" size={12} className="text-primary" />
+      <span className="font-bold text-text/80">6 / 6</span>
       {sources !== null && (
-        <span>
-          <span className="font-bold text-text/80">{sources}</span> sources
-        </span>
+        <>
+          <span aria-hidden="true">·</span>
+          <span>
+            <span className="font-bold text-text/80">{sources}</span> sources
+          </span>
+        </>
       )}
       {sources !== null && fresh && <span aria-hidden="true">·</span>}
       {fresh && <span>{fresh}</span>}
@@ -254,7 +256,7 @@ function PackCard({ pack }: { pack: Pack }) {
       href={`/pack/${pack.id}`}
       className={cx(
         'group flex flex-col overflow-hidden rounded-lg bg-white ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200',
-        'hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.12]',
+        'hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.18]',
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
@@ -267,9 +269,7 @@ function PackCard({ pack }: { pack: Pack }) {
         <span className="absolute right-3.5 top-3.5 rounded-lg bg-white px-2.5 py-1 text-base font-black tracking-tight text-text shadow-sm">
           {formatPrice(pack.price)}
         </span>
-        <span className="absolute bottom-3.5 left-3.5">
-          <SurvivedSeal />
-        </span>
+
       </Cover>
 
       <div className="flex flex-1 flex-col p-6">
@@ -282,13 +282,17 @@ function PackCard({ pack }: { pack: Pack }) {
         )}
         <h3
           className={cx(
-            'line-clamp-2 text-base font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
+            'line-clamp-2 text-lg font-extrabold leading-tight tracking-tighter text-text transition-colors group-hover:text-primary',
             eyebrow && 'mt-1',
           )}
         >
           {heading}
         </h3>
         {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-text/75">{line}</p>}
+
+        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">
+          <Icon name="verified" size={12} /> Survived 6 checks
+        </span>
 
         {/* Outcome (heading + line) above, mechanism next, proof last. The order is the argument:
             what you'd be selling, how it makes money, and why we believe it. */}
@@ -300,24 +304,22 @@ function PackCard({ pack }: { pack: Pack }) {
             shelf. `mt-auto` pins the footer to the card's bottom edge (grid rows stretch), and
             the wrapper's `pt-4` guarantees the gap above the rule never collapses to zero. */}
         <div className="mt-auto pt-4">
-          <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-3.5">
-            <span className="text-sm font-bold text-text transition-colors group-hover:text-primary">
-              View blueprint
-            </span>
-            <div className="flex flex-none items-center gap-2">
-              {/* Buy before basket: a single pack is the common purchase, and the drawer carries
-                  the deliverables, the price and the refund right, so this is not a shortcut
-                  past the evidence. Both stay quieter than "View blueprint" — the pack page is
-                  still the primary action, because the evidence is the product. */}
-              <BuyNowButton pack={pack} />
-              <AddToCartButton
-                size="compact"
-                line={{ id: pack.id, title: name, price: pack.price }}
-              />
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg text-text transition-all group-hover:bg-primary group-hover:text-white">
-                <Icon name="arrowRight" size={15} />
-              </span>
-            </div>
+          <button
+            type="button"
+            className="w-full rounded-md border border-border bg-transparent px-4 py-2 text-sm font-bold text-text transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-white"
+          >
+            View blueprint →
+          </button>
+          <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3.5">
+            {/* Buy before basket: a single pack is the common purchase, and the drawer carries
+                the deliverables, the price and the refund right, so this is not a shortcut
+                past the evidence. Both stay quieter than "View blueprint" — the pack page is
+                still the primary action, because the evidence is the product. */}
+            <BuyNowButton pack={pack} />
+            <AddToCartButton
+              size="compact"
+              line={{ id: pack.id, title: name, price: pack.price }}
+            />
           </div>
         </div>
       </div>
@@ -638,7 +640,7 @@ function CatalogBrowser({
             </DiscoveryNearMiss>
           ) : (
             /* B. Nothing in the catalogue comes close. Only now is an email address the honest ask. */
-            <DiscoveryWaitlist query={state.q} />
+            <DiscoveryWaitlist query={state.q} onReset={() => apply(EMPTY_DISCOVERY_STATE)} />
           )}
         </div>
       </div>
