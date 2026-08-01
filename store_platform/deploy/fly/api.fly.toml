@@ -2,8 +2,13 @@
 #
 # Deploy from store_platform/ so the build context (the `.`) includes local-feed/ + Store.Catalog:
 #   fly deploy . --config deploy/fly/api.fly.toml
-# The `.` sets the build context; `dockerfile` below is resolved relative to THIS config file's
-# directory (deploy/fly/), hence the ../../ climb back to the context root.
+# `dockerfile` is resolved relative to the BUILD CONTEXT (the path argument), NOT to this config
+# file's directory. This file said the opposite and carried `../../src/Store.Api/Dockerfile`, which
+# climbs two levels ABOVE the context and out of the repo entirely. CI proved it on 2026-08-01:
+# `flyctl deploy store_platform --config store_platform/deploy/fly/api.fly.toml` died with
+#   dockerfile '/home/runner/work/prospector/src/Store.Api/Dockerfile' not found
+# — that path is store_platform/../../src, not deploy/fly/../../src. Keep this value relative to
+# store_platform/, and it works identically from CI and from a laptop.
 #
 # Secrets (Stripe keys, R2, internal keys) are set with `fly secrets set ...`, NOT here.
 # This file holds only non-secret config.
@@ -12,7 +17,7 @@ app = "prospector-store-api"          # rename to your Fly app name
 primary_region = "lhr"                # pick your region
 
 [build]
-  dockerfile = "../../src/Store.Api/Dockerfile"
+  dockerfile = "src/Store.Api/Dockerfile"
 
 [env]
   ASPNETCORE_ENVIRONMENT = "Production"
