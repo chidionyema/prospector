@@ -4,11 +4,11 @@ import { cx } from './cx';
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'inverse' | 'inverseGhost' | 'prominent';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  // Prominent = Deep Slate/Navy for ultimate conversion (LinkedIn-Grade).
+  // Prominent = Deep Teal for ultimate conversion.
   prominent: cx(
-    'bg-text text-white',
+    'bg-primary text-white hover:bg-primary-hover',
     'shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_12px_rgba(15,23,42,0.03)] hover:shadow-2',
-    'focus-visible:ring-text/20 focus-visible:ring-offset-2',
+    'focus-visible:ring-primary/20 focus-visible:ring-offset-2',
     'active:scale-[0.98]',
     'disabled:opacity-40 disabled:cursor-not-allowed',
   ),
