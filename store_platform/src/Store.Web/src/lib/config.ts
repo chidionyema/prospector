@@ -11,6 +11,8 @@ export const TOS_VERSION = '2026-06-15';
 
 export const BRAND = {
   name: 'Mumchimp',
+  /** Typographic wordmark split: first part in ink, second muted, period in teal. */
+  wordmark: { first: 'Mum', second: 'chimp' } as const,
 } as const;
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || undefined;

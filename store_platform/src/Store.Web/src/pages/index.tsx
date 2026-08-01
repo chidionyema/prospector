@@ -206,7 +206,7 @@ function PackCard({ pack }: { pack: Pack }) {
   return (
     <Link
       href={`/pack/${pack.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-text/15 hover:shadow-[0_18px_40px_rgba(0,0,0,0.10)]"
+      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-text/15 hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)]"
     >
       <Cover cat={cat} iconSize={104} className="h-28">
         <span className="absolute left-3.5 top-3.5">
@@ -222,7 +222,7 @@ function PackCard({ pack }: { pack: Pack }) {
         </span>
       </Cover>
 
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-6">
         {/* What it DOES leads; the brand name is the eyebrow. Nobody can buy from "PitchBrief"
             on a first visit, so the name is not the heading whenever the engine gave us a short
             line to use instead. `cardHeading` falls back to the old name-first hierarchy for
@@ -307,7 +307,7 @@ function SpotlightCard({ pack }: { pack: Pack }) {
         <DeliverableChips />
         <div className="mt-0.5 flex flex-wrap items-center gap-4">
           <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition group-hover:opacity-90">
+          <span className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary-hover">
             View vetted blueprint <Icon name="arrowRight" size={15} />
           </span>
           <AddToCartButton size="compact" line={{ id: pack.id, title: name, price: pack.price }} />
@@ -486,7 +486,7 @@ function CatalogBrowser({
           (`components/discovery/FacetBar.tsx`), so the mobile cost is one row, and the desktop
           sidebar is unchanged. The gap shrinks with it: 32px of air above the fold bought
           nothing when the thing above is a single button. */}
-      <div className="grid gap-4 lg:gap-8 lg:grid-cols-[15rem_1fr]">
+      <div className="grid gap-4 lg:gap-8 lg:grid-cols-[280px_1fr]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <FacetBar packs={packs} state={state} onChange={apply} />
         </aside>
@@ -640,7 +640,7 @@ function ComparisonBlock() {
           </dl>
           <Link
             href="#catalog"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-text px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover"
           >
             Browse the packs <Icon name="arrowRight" size={15} />
           </Link>
@@ -698,7 +698,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           <Link
             href="#catalog"
             onClick={() => track('catalog_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-text px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover sm:w-auto"
           >
             {/* "See the 44 that survived — £49" parses two ways, and the wrong one is the one a
                 cold visitor picks: that £49 buys you the LIST. Browsing is free; £49 is the price
