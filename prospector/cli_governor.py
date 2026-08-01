@@ -30,10 +30,30 @@ make the ceiling real across processes.
 
 How
 ---
-N lock files under `store/.cli_slots/<name>/`, each held with `fcntl.flock(LOCK_EX |
-LOCK_NB)`. Holding a slot file IS holding a slot, for every process on the machine.
+N lock files under a single machine-global directory, each held with `fcntl.flock(LOCK_EX
+| LOCK_NB)`. Holding a slot file IS holding a slot, for every process on the machine.
 flock is released by the kernel when the fd closes or the process dies, so a crashed or
 SIGKILLed pipeline cannot leak a slot — there is no stale-lock reaper to get wrong.
+
+Why the slot directory is NOT in the repo
+-----------------------------------------
+The first cut anchored the slot root to the checkout containing this file
+(`os.path.dirname(__file__)/../store/.cli_slots`), which reintroduced the exact bug it was
+written to kill — one directory per checkout instead of one per machine. Git worktrees are
+full checkouts, and on 2026-07-31 this machine held seven, five of them carrying their own
+copy of this module. Measured, not reasoned: two governors built with `n=1` from two
+different worktrees BOTH acquired.
+
+    slot root A: /Users/.../prospector/store/.cli_slots/proof
+    slot root B: /Users/.../prospector-waitlist-worktree/store/.cli_slots/proof
+    A.acquire(1s) -> True
+    B.acquire(1s) -> True      # a real ceiling of 1 must refuse the second
+
+So the effective ceiling was `n × checkouts`, and with `claude_concurrency: 8` that is up
+to 40 concurrent CLI subprocesses on 12 cores — which is how a 16GB box reached load 592
+with 18.49% CPU idle (i.e. blocked on page faults, not computing). Anchoring outside every
+checkout is what makes the word "machine-wide" true, and it keeps being true for worktrees
+that do not exist yet — nobody has to remember anything.
 
 The public surface is deliberately identical to `threading.Semaphore` (`acquire(timeout=)`
 / `release()`) so both call sites stay drop-in.
@@ -61,14 +81,24 @@ _POLL_S = 0.25
 
 
 def _slot_root(name: str) -> str | None:
-    """Directory holding this governor's slot files, or None if unusable."""
+    """Directory holding this governor's slot files, or None if unusable.
+
+    Deliberately independent of `__file__` and of cwd: every prospector process on this
+    machine must resolve the same path, whichever checkout or worktree it was started
+    from. See the module docstring for the measurement that forced this.
+    """
     if fcntl is None:
         return None
-    # Anchor to the repo so every prospector process on this machine agrees on the path
-    # regardless of cwd (the backfill and the daemon run from different directories).
-    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for base in (os.path.join(repo, "store", ".cli_slots"),
-                 os.path.join(tempfile.gettempdir(), "prospector_cli_slots")):
+    # PROSPECTOR_CLI_SLOTS is the escape hatch: tests that need a private ceiling point it
+    # at a tmpdir, and it is also the way to deliberately isolate a run from the machine's
+    # shared budget. Unset — the normal case — every process lands in the same home dir.
+    override = os.environ.get("PROSPECTOR_CLI_SLOTS")
+    bases = [override] if override else []
+    bases.append(os.path.join(os.path.expanduser("~"), ".prospector", "cli_slots"))
+    # Last resort only. $TMPDIR is per-user on macOS but is also periodically swept, and a
+    # swept slot directory silently widens the ceiling rather than failing loudly.
+    bases.append(os.path.join(tempfile.gettempdir(), "prospector_cli_slots"))
+    for base in bases:
         try:
             path = os.path.join(base, name)
             os.makedirs(path, exist_ok=True)
