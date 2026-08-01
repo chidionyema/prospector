@@ -905,39 +905,6 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         </p>
       </SectionBand>
 
-      {/* The address, asked for after the sample rather than in front of it.
-
-          The brief asked to gate the sample behind an email. That is the one change on this page
-          I will not make, and not on taste: the line directly above says "No payment, no email",
-          and a form standing between the visitor and the file would make the sentence we lead
-          with false at the moment it is read. The cost of gating is also concentrated on exactly
-          the visitor worth having — the sceptic, who came to check whether we are real and would
-          read a paywall as the answer.
-
-          What the brief actually wants is reachable without that. The list already exists, with
-          consent recorded and hashed (`WaitlistForm`), and it was only reachable by searching for
-          something we do not stock — a placement that can only be found by failing. Here it sits
-          under a door that is already open, phrased as what it is: a notification, not a
-          newsletter, offered to someone who has just been given the product for nothing. The
-          `source` tag keeps the two placements tellable apart, so the founder can see whether
-          asking after beats asking before rather than take my word for it. */}
-      <Section bg="white" width="4xl" className="!py-10 md:!py-12">
-        <div className="rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
-          <h2 className="text-lg font-bold tracking-tight text-text md:text-xl">
-            Want the next one, when it survives?
-          </h2>
-          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-muted">
-            Most ideas we run die on the incumbent test, so this is not a weekly send — there is
-            nothing to send most weeks. Leave an address and you get one email on the day a pack
-            clears all six checks. The sample above stays free either way, and this form is not in
-            front of it.
-          </p>
-          <div className="mt-5">
-            <WaitlistForm source="home-after-sample" submitLabel="Email me when one survives" />
-          </div>
-        </div>
-      </Section>
-
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-3 !pb-16 md:!pt-3 md:!pb-20">
@@ -1036,6 +1003,23 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           </ul>
         </div>
       </SectionBand>
+
+      <Section bg="white" width="4xl" className="!py-10 md:!py-12">
+        <div className="rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
+          <h2 className="text-lg font-bold tracking-tight text-text md:text-xl">
+            Want the next one, when it survives?
+          </h2>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-muted">
+            Most ideas we run die on the incumbent test, so this is not a weekly send — there is
+            nothing to send most weeks. Leave an address and you get one email on the day a pack
+            clears all six checks. The sample above stays free either way, and this form is not in
+            front of it.
+          </p>
+          <div className="mt-5">
+            <WaitlistForm source="home-after-sample" submitLabel="Email me when one survives" />
+          </div>
+        </div>
+      </Section>
 
       <CtaBand
         title="Find your next business for £49."
