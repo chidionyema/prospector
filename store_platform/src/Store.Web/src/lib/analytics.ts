@@ -24,7 +24,11 @@ export type AnalyticsEventName =
   | 'page_view'
   | 'sample_cta_clicked'
   | 'catalog_cta_clicked'
-  | 'checkout_completed';
+  | 'checkout_completed'
+  | 'pack_shared'
+  | 'basket_removed'
+  | 'matchmaker_answered'
+  | 'palette_search';
 
 /**
  * Fire-and-forget. Analytics must never break the page or delay navigation.

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { Button, Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { track } from '@/lib/analytics';
 import { formatPrice, type Pack } from '@/lib/api/client';
 import {
   EMPTY_MATCH_ANSWERS,
@@ -412,7 +413,7 @@ export function Matchmaker({
       </fieldset>
 
       <div className="mt-7 flex flex-wrap items-center gap-4">
-        <Button variant="prominent" disabled={!canSubmit} onClick={() => setSubmitted(true)}>
+        <Button variant="prominent" disabled={!canSubmit} onClick={() => { track('matchmaker_answered'); setSubmitted(true); }}>
           Show me mine
         </Button>
         {!canSubmit && (

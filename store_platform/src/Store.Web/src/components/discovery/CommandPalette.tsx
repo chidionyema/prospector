@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { track } from '@/lib/analytics';
 import { formatPrice, type Pack } from '@/lib/api/client';
 import { matchesQuery, splitTitle } from '@/lib/discovery';
 
@@ -158,6 +159,7 @@ function PaletteDialog({
   const rows = matches.slice(0, MAX_ROWS);
 
   const go = (pack: Pack) => {
+    track('palette_search', pack.id);
     onClose();
     void router.push(`/pack/${pack.id}`);
   };
