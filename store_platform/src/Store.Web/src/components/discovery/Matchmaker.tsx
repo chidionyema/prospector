@@ -34,13 +34,33 @@ import { FacetChips } from './FacetChips';
  * — sits in the toolbar row next to search and sort, where it costs no vertical space at all.
  */
 
-/** Q1 — multi-select, max 2. "None of these yet" is a real answer that must never dead-end. */
-const Q1_OPTIONS: ReadonlyArray<{ text: string; advantage: Advantage }> = [
+/**
+ * Q1 — multi-select, max 2, plus one mutually-exclusive escape hatch.
+ *
+ * "None of these yet" is a real answer that must never dead-end, and it carries
+ * `advantage: null` to keep that promise. This is the null rule (`facets.ts:18`) applied to the
+ * router: a buyer saying they hold none of these skills has not claimed they can build with
+ * no-code tools, and recording it as `nocode` turned "I have nothing" into an assertion nobody
+ * made.
+ *
+ * It mattered, not just semantically. `stateFromAnswers` copies the answer into the URL, so
+ * "Show me everything that matched" used to hand a beginner `?adv=nocode`, and
+ * `applyDiscoveryState` hard-filters on it. Measured on the live catalogue 2026-08-01, `nocode`
+ * is carried by **1 pack of 49** — so the least confident buyer in the funnel was filtered down
+ * to a single pack by answering honestly. `discovery.ts` had already dropped the spec's
+ * `hands_on` half of this mapping for dead-ending a beginner; the data now says the `nocode`
+ * half dead-ends them too.
+ *
+ * `nocode` is NOT retired from the vocabulary — one pack earns it on its own evidence (CureSafe
+ * Strip, whose dossier names a Shopify build in so many words). It is simply no longer the
+ * dumping ground for "nothing".
+ */
+const Q1_OPTIONS: ReadonlyArray<{ text: string; advantage: Advantage | null }> = [
   { text: 'I can build software', advantage: 'code' },
   { text: 'I can sell', advantage: 'sales' },
   { text: 'I can run operations', advantage: 'ops' },
   { text: 'I have an audience', advantage: 'audience' },
-  { text: 'None of these yet', advantage: 'nocode' },
+  { text: 'None of these yet', advantage: null },
 ];
 
 const Q2_OPTIONS: ReadonlyArray<{ text: string; commitment: Commitment }> = [
@@ -175,11 +195,24 @@ export function Matchmaker({
 }) {
   const [answers, setAnswers] = useState<MatchAnswers>(EMPTY_MATCH_ANSWERS);
   const [payerChoice, setPayerChoice] = useState<string | null>(null);
+  /**
+   * "None of these yet" needs its own flag because it is an *answer* that adds no constraint.
+   * Without it, `answers.advantages` stays `[]` and the form cannot tell "told us they have
+   * nothing" apart from "has not answered Q1 yet" — so the submit button would never enable.
+   */
+  const [noSkillsYet, setNoSkillsYet] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const outcome = useMemo(() => rankMatches(packs, answers), [packs, answers]);
 
-  const toggleAdvantage = (advantage: Advantage) => {
+  const chooseAdvantage = (advantage: Advantage | null) => {
+    // Mutually exclusive with every skill claim: nobody both has nothing and has something.
+    if (advantage === null) {
+      setNoSkillsYet((prev) => !prev);
+      setAnswers((prev) => ({ ...prev, advantages: [] }));
+      return;
+    }
+    setNoSkillsYet(false);
     setAnswers((prev) => {
       const has = prev.advantages.includes(advantage);
       if (has) return { ...prev, advantages: prev.advantages.filter((a) => a !== advantage) };
@@ -189,7 +222,7 @@ export function Matchmaker({
     });
   };
 
-  const canSubmit = answers.advantages.length > 0 && answers.commitment !== null;
+  const canSubmit = (answers.advantages.length > 0 || noSkillsYet) && answers.commitment !== null;
   const noMatch = submitted && outcome.winner === null;
 
   // Told in an effect, not during render: `onNoMatch` sets state on the page, and doing that
@@ -263,8 +296,10 @@ export function Matchmaker({
           {Q1_OPTIONS.map((option) => (
             <OptionButton
               key={option.text}
-              selected={answers.advantages.includes(option.advantage)}
-              onClick={() => toggleAdvantage(option.advantage)}
+              selected={
+                option.advantage === null ? noSkillsYet : answers.advantages.includes(option.advantage)
+              }
+              onClick={() => chooseAdvantage(option.advantage)}
             >
               {option.text}
             </OptionButton>

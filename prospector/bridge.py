@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 from datetime import datetime
 from urllib.parse import urlparse
 
+from . import facet_derive
 from . import facets as facets_mod
 from .models import Dossier, Decision
 from .pack_validation import validate_pack
@@ -424,6 +425,29 @@ class EngineBridge:
         # gone by here; to_wire drops the empties so a facet-light republish never untags a
         # pack the backfill tagged (the Store API only overwrites what it was sent).
         pack_facets = facets_mod.normalize(listing.get("facets"))
+        # Fill the holes generation left — but only for the two facets whose value restates a
+        # dossier field rather than making a judgement (`facet_derive.DERIVABLE` is exactly
+        # ("effort", "mechanism"); sector, payer, commitment and advantages are refused there and
+        # stay hand-resolved). Generation always outranks derivation: an asserted value is never
+        # overwritten, which is the same authority order tools/backfill_facets.py uses.
+        #
+        # Without this the mechanical half of the 2026-08-01 backfill is a one-off patch. It
+        # filled effort on 14 live packs by reading `automatability` and `structural_form` — two
+        # fields the publish path never looked at — so the identical hole would reopen on the very
+        # next pack whose generation dropped the facets block, and nothing here would notice.
+        derivation_source = {
+            "automatability": getattr(candidate, "automatability", None),
+            "structural_form": getattr(candidate, "structural_form", "") or "",
+        }
+        for facet_name, derived in facet_derive.derive(derivation_source).items():
+            if pack_facets.get(facet_name):
+                continue
+            pack_facets[facet_name] = derived.value
+            logger.info(
+                f"EngineBridge: {candidate_id} derived {facet_name}={derived.value} "
+                f"({derived.evidence})",
+                extra={"candidate_id": candidate_id, "facet": facet_name},
+            )
         catalog_meta.update(facets_mod.to_wire(pack_facets))
         # A sector-less pack is publishable — guessing one is worse, and the vocabulary has an
         # explicit `other` for "none of the eleven fit", so a missing sector means generation
