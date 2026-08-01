@@ -191,14 +191,29 @@ export function shortLabel(kind: FacetKind, value: string | null | undefined): s
  *
  * These are HEADINGS ONLY: they sit above a group of chips and are never dropped into a sentence.
  * Use `KIND_NOUN` for that — see below for why the distinction is not cosmetic.
+ *
+ * Revised 2026-08-01 toward a tighter register, per string rather than wholesale. The sidebar is
+ * `lg:grid-cols-[15rem_1fr]` (`pages/index.tsx:428`) and these render uppercase with
+ * `tracking-widest`, so a four-word heading wraps to two lines and the group reads as heavier than
+ * the chips underneath it. Three headings were replaced with the shorter conventional term; three
+ * were kept, and the reason each was kept is that the shorter alternative was jargon for the same
+ * idea rather than a clearer name for it:
+ *
+ * - `effort` keeps "How much is automated" over "Tech Enablement", which does not tell a buyer
+ *   what the options underneath it will say.
+ * - `mechanism` keeps "How it makes money" over "Revenue Model" — identical length, and one of
+ *   them is readable by someone who has never worked in a startup.
+ * - `advantage` takes "Skills you have" rather than "Founder Skillset": shorter than the original,
+ *   but without the word "Founder", because the `evenings` commitment lane exists precisely for
+ *   buyers who do not yet call themselves that.
  */
 export const KIND_LABEL: Record<FacetKind, string> = {
-  advantage: 'Skills you already have',
-  payer: 'Who the customer is',
+  advantage: 'Skills you have',
+  payer: 'Target market',
   effort: 'How much is automated',
-  commitment: 'Hours it needs from you',
+  commitment: 'Time commitment',
   mechanism: 'How it makes money',
-  sector: 'Sector it serves',
+  sector: 'Industry',
 };
 
 /**

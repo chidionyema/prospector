@@ -1,22 +1,37 @@
 {
   "0c6c74267f7485a3": {
     "_evidence": {
+      "advantages": "candidate.one_liner = \"fuses live storm-overflow discharge telemetry, rainfall, tide and historic FSA sampling results\" — four live feeds fused into a forecast is a build. Matches the vertical_tool precedent.",
+      "commitment": "Four third-party feeds (EDM, Met Office, tidal APIs, FSA sampling) each break or change independently, and candidate.who_pays prices \"£80–£250/month per lease\" — a subscription that must keep working through those breakages.",
       "effort": "candidate.automatability = \"high — EDM feeds, Met Office rainfall, tidal APIs and published FSA sampling/classification results are all ingestible by pipeline; the per-lease model retra...\" (opens with \"high\")",
       "mechanism": "candidate.structural_form = \"vertical_tool\"",
       "payer": "candidate.who_pays = \"Owner-operators of the ~350 classified shellfish production businesses in England, Wales and Scotland ... paying GBP 80-250/month per lease\" — a business buying a work tool, the same shape as FabQuote and PackProof (b2b).",
       "sector": "candidate.one_liner = \"a vertical tool for owner-operated UK oyster and mussel farms ... per-lease forecast of classification downgrades and harvest closures\"; candidate.tags include \"aquaculture\", \"shellfish\". No SECTOR member covers shellfish aquaculture. licensing_admin is the nearest and is wrong: the FSA classification is imposed on the lease by water quality, it is not a licence the farmer applies for, so naming it would be the coercion-to-nearest the vocabulary exists to stop."
     },
     "_title": "SpatWindow — The Independent Shellfish Farmer's Per-Lease Closure Forecast & Harvest-Window Optimiser",
-    "_unresolved": {
-      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)",
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"Lens: first_principles. Strip the problem to its physics: a shellfish farmer's revenue is gated by bacterial water-quality classification (A/B/C) of their exact lease, which lurches after sewage discharges and heavy rain, and the official F\". Allowed: ['evenings', 'part_time', 'full_time']"
-    },
-    "advantages": [],
-    "commitment": null,
+    "advantages": [
+      "code"
+    ],
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "vertical_tool",
     "payer": "b2b",
     "sector": "other"
+  },
+  "0ce623e80658e97c": {
+    "_evidence": {
+      "advantages": "candidate.hypothesis = \"they must register with HMRC as an employer, issue a written employment contract compliant with UK law, run payroll, auto-enrol the PA into a workplace pension, and lodge a declaration of compliance\" — the wedge is knowing and executing that sequence. Same as the transaction_broker packs already carrying ['ops']. No 'sales': candidate.who_pays reaches carers through the direct-payment route, not through a pitch.",
+      "commitment": "candidate.automatability = 0.95 and candidate.one_liner = \"for a one-off fee\" — a single machine-assembled setup per client with no counterparty to negotiate against, which is the RentPass / AccrueBack shape that earned evenings.",
+      "payer": "candidate.who_pays = \"A primary carer in England or Wales who receives a direct payment\" — a private individual spending their own care budget, not an organisation.",
+      "sector": "candidate.one_liner = \"Gets your direct payment personal assistant properly hired, with contracts, payroll, and pensions sorted\" — the work sold IS employment administration. care_benefits was considered and rejected: this is not a claim, it is becoming an employer."
+    },
+    "_title": "PAHireRight – the primary carer's fixed-fee personal assistant employment setup service",
+    "advantages": [
+      "ops"
+    ],
+    "commitment": "evenings",
+    "payer": "b2c",
+    "sector": "employment_pay"
   },
   "0f2109fb198341a4": {
     "_evidence": {
@@ -58,39 +73,43 @@
   },
   "176ec4f0fb04c4a5": {
     "_evidence": {
+      "advantages": "candidate.automatability = \"once branded and sourced from a reliable manufacturer, the business can run on a simple Shopify store with automa[ted fulfilment]\" — this is the only pack in the catalogue whose dossier names a no-code build path in so many words, so it is the only place 'nocode' is earned rather than assumed. 'ops' for the sourcing and stock.",
+      "commitment": "Same sentence: \"a simple Shopify store with automa[ted fulfilment]\" — after sourcing, the recurring work is restocking a £24 consumable.",
       "effort": "candidate.automatability = \"High — once branded and sourced from a reliable manufacturer, the business can run on a simple Shopify store with automated email reminders when a tech’s tes...\" (opens with \"high\")",
+      "mechanism": "candidate.structural_form = \"micro_ecommerce\" is off-vocabulary and was correctly refused by facet_derive. one_liner = \"A colour-change card ... to test their UV/LED lamp\" sourced from a manufacturer and shipped as a \"50-strip pack\" — sourcing, stocking and shipping a physical consumable is physical_ops.",
       "payer": "candidate.who_pays = \"Self-employed gel nail technicians and mobile beauty therapists in the UK, who buy their own supplies and carry professional indemnity insurance. They pay GBP 24 for a 50-strip pack\" — a sole trader buying a work supply, the same shape as The Tradie's Time-Capture Agent and SparkCert (b2b).",
       "sector": "candidate.one_liner = \"A colour-change card gel nail technicians use to test their UV/LED lamp, preventing undercured nails and allergic reactions\"; candidate.tags = [\"UV/LED lamp\",\"beauty\",\"consumable\",\"health & safety\",\"nail tech\"]. No SECTOR member covers the beauty trade. retail_inventory is about a stock problem (StockLift) and this is a consumable sold INTO a trade, not an inventory tool — \"other\" is the truthful answer."
     },
     "_title": "CureSafe Strip — the gel nail tech’s lamp-output test card that shows when curing power drops below safe levels",
-    "_unresolved": {
-      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)",
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"Self‑employed nail technicians rely on UV or LED lamps to cure gel polish. Bulbs and LEDs fade gradually, often without any visible sign, leading to undercured product. Clients then develop methacrylate allergies, causing painful skin react\". Allowed: ['evenings', 'part_time', 'full_time']",
-      "mechanism": "candidate.structural_form = \"micro_ecommerce\" — not one of the canonical eight; resolve by hand, do NOT map to the nearest form"
-    },
-    "advantages": [],
-    "commitment": null,
+    "advantages": [
+      "nocode",
+      "ops"
+    ],
+    "commitment": "evenings",
     "effort": "automatable",
-    "mechanism": null,
+    "mechanism": "physical_ops",
     "payer": "b2b",
     "sector": "other"
   },
   "1990c975d0a46ea8": {
-    "_title": "Done-for-you Amazon PPC & listing-optimisation agency for UK private-label sellers (£30k–£500k revenue)",
-    "_unresolved": {
-      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)",
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"\". Allowed: ['evenings', 'part_time', 'full_time']",
-      "effort": "candidate.automatability is null",
-      "mechanism": "candidate.structural_form is empty",
-      "payer": "no dossier field; decide from candidate.who_pays = \"\". Allowed: ['b2b', 'b2c', 'b2g']",
-      "sector": "no dossier field; decide from candidate.tags = [] and the title. Allowed: ['licensing_admin', 'employment_pay', 'housing_rental', 'care_benefits', 'trades_construction', 'pets_animals', 'creative_rights', 'property_probate', 'energy_planning', 'retail_inventory', 'professional_services', 'other']"
+    "_evidence": {
+      "advantages": "Running client ad accounts is the delivery (ops); a retainer agency exists only as long as it keeps winning and holding retainer clients (sales). Same pairing the file already uses for SparkCert and StockLift.",
+      "commitment": "\"monthly retainer plus ad-spend percentage\" means client cash is being spent on live auctions every day across a book of accounts. Ad spend left unwatched is the client's money burning, so this cannot be run in evenings — of everything in the catalogue this is the least ambiguous full_time.",
+      "effort": "candidate.automatability is absent, so facet_derive returned nothing. The one_liner says \"Done-for-you ... manages ... campaigns and listing optimisation ... on a monthly retainer plus ad-spend percentage\" — the operator does the work every month. This is the one honest reading; automatable would be a claim the dossier never makes.",
+      "mechanism": "candidate has an EMPTY structural_form, so nothing could be derived. one_liner = \"A specialist agency that manages Amazon Sponsored Products/Brands campaigns and listing optimisation ... on a monthly retainer\" — a defined, repeatable scope sold as a product, which is what productized_service names.",
+      "payer": "candidate.one_liner = \"for UK private-label sellers ... on a monthly retainer plus ad-spend percentage\". candidate.who_pays is EMPTY on this dossier, so the payer is read from the one_liner's named buyer instead; a retainer-billed agency client is a business.",
+      "sector": "candidate.one_liner = \"manages Amazon Sponsored Products/Brands campaigns and listing optimisation for UK private-label sellers\" — the sector served is online retail selling."
     },
-    "advantages": [],
-    "commitment": null,
-    "effort": null,
-    "mechanism": null,
-    "payer": null,
-    "sector": null
+    "_title": "Done-for-you Amazon PPC & listing-optimisation agency for UK private-label sellers (£30k–£500k revenue)",
+    "advantages": [
+      "ops",
+      "sales"
+    ],
+    "commitment": "full_time",
+    "effort": "hands_on",
+    "mechanism": "productized_service",
+    "payer": "b2b",
+    "sector": "retail_inventory"
   },
   "397f72ef3015a833": {
     "_evidence": {
@@ -133,22 +152,22 @@
   },
   "3e72d5a5f1a60068": {
     "_evidence": {
+      "advantages": "mechanism = risk_financing: candidate.hypothesis transplants \"the Lloyd's parametric weather-derivative mechanism (fixed payout on an objective observable trigger, no loss adjustment)\". Underwriting and claims administration, not software.",
+      "commitment": "Trigger is an HSE improvement/prohibition notice — published on the HSE notices database — paying a fixed daily sum. No loss adjustment means no per-claim casework.",
       "effort": "candidate.automatability = 0.75 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
-      "mechanism": "candidate.structural_form = \"risk_financing\""
+      "mechanism": "candidate.structural_form = \"risk_financing\"",
+      "payer": "Same who_pays: workshops insuring against an HSE shutdown of their trade premises.",
+      "sector": "candidate.who_pays = \"Self-employed and 1-3 person stone/quartz worktop fabrication and masonry workshops\"; tags include \"stone_fabrication\", \"hse_enforcement\"."
     },
     "_title": "DustHalt Hold — The Sole-Trader Stonemason & Worktop Fabricator's Silica Enforcement Stand-Down Income Bond",
-    "_unresolved": {
-      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)",
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"Lens: cross_sector — transplant the Lloyd's parametric weather-derivative mechanism (fixed payout on an objective observable trigger, no loss adjustment) out of agriculture and into occupational-health enforcement. A stonemason fabricating \". Allowed: ['evenings', 'part_time', 'full_time']",
-      "payer": "no dossier field; decide from candidate.who_pays = \"Self-employed and 1-3 person stone/quartz worktop fabrication and masonry workshops in the UK (roughly 2,000-3,000 units, concentrated around Leeds, Birmingham, Essex and Glasgow trade parks) — the owner-fabricator himself, who has business\". Allowed: ['b2b', 'b2c', 'b2g']",
-      "sector": "no dossier field; decide from candidate.tags = ['artifacts', 'audience', 'commodity_premortem', 'durable_wedge_type', 'hse_enforcement', 'manual_tradesperson', 'marketing', 'occupational_health', 'parametric_bond', 'proprietary_dataset', 'risk_financing', 'stone_fabrication'] and the title. Allowed: ['licensing_admin', 'employment_pay', 'housing_rental', 'care_benefits', 'trades_construction', 'pets_animals', 'creative_rights', 'property_probate', 'energy_planning', 'retail_inventory', 'professional_services', 'other']"
-    },
-    "advantages": [],
-    "commitment": null,
+    "advantages": [
+      "ops"
+    ],
+    "commitment": "evenings",
     "effort": "automatable",
     "mechanism": "risk_financing",
-    "payer": null,
-    "sector": null
+    "payer": "b2b",
+    "sector": "trades_construction"
   },
   "42bf9861ecc08079": {
     "_evidence": {},
@@ -238,19 +257,17 @@
   "5923c35906c3930b": {
     "_evidence": {
       "advantages": "candidate.structural_form = \"data_intelligence\" with automatability 0.85; the hypothesis describes a \"deterministic audit\" over NI/entitlement rules, which the buyer has to build.",
+      "commitment": "candidate.one_liner = \"A proprietary FOI-sourced dataset of tribunal outcomes and DWP recalculation eligibility matrices\" — per-customer delivery is a deterministic audit, but an FOI programme is hand-drafted, hand-chased and hand-read correspondence, and the DWP recalculation exercise it tracks is live and moving.",
       "effort": "candidate.automatability = 0.85 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
       "mechanism": "candidate.structural_form = \"data_intelligence\"",
       "payer": "candidate.who_pays names the primary buyer as \"Adult children aged 40-65 of retired parents (60-90)\" — an individual; \"private-client solicitors and IFAs\" are explicitly \"secondarily\".",
       "sector": "candidate.hypothesis: \"The DWP's live State Pension recalculation programme has identified £1bn+ in historic underpayments\" — the subject is recovery of an underpaid state benefit administered by DWP."
     },
     "_title": "The State Pension Underpayment Recovery Index",
-    "_unresolved": {
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"The DWP's live State Pension recalculation programme has identified £1bn+ in historic underpayments concentrated in the 1950s-women cohort, married retirees misclassified as single, over-80s on Category D, and those with short NI records — \". Allowed: ['evenings', 'part_time', 'full_time']"
-    },
     "advantages": [
       "code"
     ],
-    "commitment": null,
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "data_intelligence",
     "payer": "b2c",
@@ -259,40 +276,51 @@
   "5e8f3b69369be3a8": {
     "_evidence": {
       "advantages": "candidate.structural_form = \"productized_service\"; who_pays frames the work case-by-case (\"policy has been cancelled mid-term ... claim has been refused ... renewal has been loaded\"), i.e. per-client case handling rather than a built artefact.",
+      "commitment": "candidate.one_liner = \"reconstructs a young gig driver's telematics record from the insurer's own data via a DSAR, forensically audits the disputed eve[nt]\" — a DSAR is a one-month statutory round-trip per client followed by a hand-built rebuttal. Same casework shape as The Carer's Allowance Clawback Settlement, already part_time.",
       "effort": "candidate.automatability = 0.75 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
       "mechanism": "candidate.structural_form = \"productized_service\"",
       "payer": "candidate.who_pays: \"UK gig drivers aged 18-27 on telematics motor policies\" — individuals paying for their own case.",
       "sector": "No SECTOR member covers motor-insurance dispute work (tags: dsar, financial-ombudsman, insurance-dispute, gig-economy). \"other\" is the explicit catch-all; naming employment_pay or professional_services would be the coercion-to-nearest the contract forbids."
     },
     "_title": "PitchCall Forensics — The Under-27 Gig Driver's Insurance-Refusal Reversal & Telematics-Data Subject-Access Round",
-    "_unresolved": {
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"Lens: broaden — instead of drilling into one insurer or one claim type, take the entire telematics-scored driving life of an 18-27 year-old gig worker (black-box car policy, hire-and-reward top-up, food-delivery hour cover) as one contestab\". Allowed: ['evenings', 'part_time', 'full_time']"
-    },
     "advantages": [
       "ops"
     ],
-    "commitment": null,
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "productized_service",
     "payer": "b2c",
     "sector": "other"
   },
+  "60fa04b1387f0965": {
+    "_evidence": {
+      "advantages": "candidate.automatability = \"data extraction from public APIs and uploaded tacho files is fully automatable; the risk-model engine can be code[d]\" — the product IS the pipeline. Matches every existing vertical_tool entry.",
+      "commitment": "candidate.hypothesis = \"The DVSA ... increasingly uses a risk-based scoring algorithm\" — the forecast only holds if the scoring model is maintained against a regulator that keeps changing it, and tacho/MOT feeds break.",
+      "payer": "candidate.who_pays = \"The owner-driver of a micro haulage firm with 1-5 vehicles\" — a business buying a work tool.",
+      "sector": "candidate.one_liner names the O-licence and DVSA inspection regime; tags include \"DVSA\", \"compliance_prediction\". An operator licence is the definition of licensing_admin."
+    },
+    "_title": "LicencePipe — the small haulier's O‑licence compliance pipeline and DVSA audit forecaster",
+    "advantages": [
+      "code"
+    ],
+    "commitment": "part_time",
+    "payer": "b2b",
+    "sector": "licensing_admin"
+  },
   "622b2bef95335621": {
     "_evidence": {
       "advantages": "candidate.automatability: \"structured inputs (fleet specs, ground type, exposure category, event dates) drive deterministic calculations and templated pack generation\" — the buyer builds that engine.",
+      "commitment": "candidate.who_pays = \"paying £79-149/month during the April-October season plus per-pack fees off-season\" — a seasonal subscription with per-event packs, and the wind/ballast calculations are re-issued per event. Matches the vertical_tool precedent.",
       "effort": "candidate.automatability = \"high — structured inputs (fleet specs, ground type, exposure category, event dates) drive deterministic calculations and templated pack generation; the only ...\" (opens with \"high\")",
       "mechanism": "candidate.structural_form = \"vertical_tool\"",
       "payer": "candidate.who_pays: \"UK marquee, tipi and temporary event-structure hire companies with 1-15 staff ... paying GBP 79-149/month\" — a company signs the cheque.",
       "sector": "candidate.hypothesis: the buyer erects temporary structures and must produce \"a written wind management plan and ballast calculation per event\", otherwise they \"pay a structural engineer GBP 400-\". The trade and the artefact are both structural."
     },
     "_title": "GuyLine — The Marquee Hirer's Wind-Plan & Ballast Pack Engine",
-    "_unresolved": {
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"LENS: narrow — drill into one micro-niche of the events industry: the 2-15 person marquee and temporary-structure hire firm. Their daily friction: every corporate venue, council park and festival organiser now demands a written wind managem\". Allowed: ['evenings', 'part_time', 'full_time']"
-    },
     "advantages": [
       "code"
     ],
-    "commitment": null,
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "vertical_tool",
     "payer": "b2b",
@@ -301,19 +329,17 @@
   "65d1d898e62cf5b9": {
     "_evidence": {
       "advantages": "candidate.structural_form = \"productized_service\" delivered per claimant on contingency — the buyer runs recovery cases, rather than shipping a built artefact.",
+      "commitment": "candidate.one_liner = \"reclaims the foreign tax silently deducted ... overseas prize winnings\" — a reclaim is a multi-month correspondence chain with a foreign tax authority per claimant, not a generated pack. That is what separates it from PisteCheck and RentPass, whose single machine-run deliverable earned evenings.",
       "effort": "candidate.automatability = 0.8 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
       "mechanism": "candidate.structural_form = \"productized_service\"",
       "payer": "candidate.who_pays: \"Gen Z semi-pro esports players, online-poker and skill-game competitors, and creator-competitors aged 18-27\" — individuals, \"paid on contingency (a percentage of recovered cash)\".",
       "sector": "No SECTOR member covers cross-border withholding-tax reclaim on prize money (tags: esports, cross_border_tax, prize_money). \"other\" is the explicit catch-all; the alternatives would be coercion to nearest."
     },
     "_title": "WithholdBack — The Prize-Money Withholding Reclaim Desk for Young Competitors",
-    "_unresolved": {
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"Lens: analogical — lift the touring-musician / travelling-athlete withholding-tax reclaim model (specialists who recover the 15–30% that foreign tax authorities skim from cross-border performance income) and drop it onto competitive gaming,\". Allowed: ['evenings', 'part_time', 'full_time']"
-    },
     "advantages": [
       "ops"
     ],
-    "commitment": null,
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "productized_service",
     "payer": "b2c",
@@ -321,18 +347,18 @@
   },
   "6817348413f4658c": {
     "_evidence": {
+      "advantages": "candidate.one_liner = \"pre-clears and armours a young streamer's back-catalogue against DMCA takedowns\" — the wedge is running the clearance desk against a \"proprietary adverse-event database\" (candidate.hypothesis). The dossier never describes software the operator ships, so 'code' would be invented here.",
+      "commitment": "candidate.who_pays = \"paid as a per-channel monthly retainer\" — a retainer is recurring per-client work, and a back-catalogue keeps growing every week the streamer streams.",
       "effort": "candidate.automatability = 0.85 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
       "mechanism": "candidate.structural_form = \"productized_service\"",
       "payer": "candidate.who_pays = \"Gen Z Twitch/YouTube/Kick streamers ... whose weekly ad+sub income is now large enough to lose but too small to hire a manager — paid as a per-channel monthly retainer\" — bought to protect an income-earning channel, i.e. a work tool, the same shape as PetShift Console (b2b).",
       "sector": "candidate.one_liner = \"pre-clears and armours a young streamer's back-catalogue against DMCA takedowns, Content-ID claims and demonetisation\"; candidate.tags include \"copyright\", \"creator_economy\", \"streaming\". Copyright claims against a creator's own work is the definition of creative_rights, the same sector as The Creative Rights Recovery Agent."
     },
     "_title": "StrikeShield — The Micro-Streamer's Copyright-Claim Proofing Desk",
-    "_unresolved": {
-      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)",
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"Lens: analogical — transplant pharmacovigilance (drug-safety teams that maintain a proprietary adverse-event database to predict and pre-empt harm) onto the creator economy. A 20-year-old streamer with 300–3,000 followers who has just cross\". Allowed: ['evenings', 'part_time', 'full_time']"
-    },
-    "advantages": [],
-    "commitment": null,
+    "advantages": [
+      "ops"
+    ],
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "productized_service",
     "payer": "b2b",
@@ -340,6 +366,7 @@
   },
   "693fe24dd6d1735f": {
     "_evidence": {
+      "commitment": "candidate.hypothesis = \"accumulating an ever-improving data moat fr[om outcomes]\" — the moat is fed by appeal results that must be read back in, and the National Framework criteria it scores against are revised by NHS England. Matches all five existing vertical_tool packs, which are part_time.",
       "effort": "candidate.automatability = 0.95 (band: >=0.75 automatable, >=0.40 part_automatable, else hands_on)",
       "mechanism": "candidate.structural_form = \"vertical_tool\"",
       "payer": "Already live (same fetch). Re-derived: candidate.who_pays = \"Daughter/son in England (age 40-60) caring for a parent ... desperate to avoid selling the family home\" — an individual paying to fix their own family's claim, the same shape as The Carer's Allowance Clawback Settlement Desk (b2c).",
@@ -347,11 +374,10 @@
     },
     "_title": "CHC Appeal Builder",
     "_unresolved": {
-      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)",
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"Adult children caring for parents with dementia face widespread wrongful CHC denials, but solicitors charge £1,500+ and charity guides are static. An interactive tool that replicates the logic of a specialist advocate—automating evidence sc\". Allowed: ['evenings', 'part_time', 'full_time']"
+      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)"
     },
     "advantages": [],
-    "commitment": null,
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "vertical_tool",
     "payer": "b2c",
@@ -359,18 +385,18 @@
   },
   "69b3aa3980b3cc81": {
     "_evidence": {
+      "advantages": "candidate.automatability = \"forecast ingestion, threshold alerts, rebooking waves, deposit rollover and waitlist backfill are all rule-driven\" — that list is the product. Matches the vertical_tool precedent.",
+      "commitment": "Marine forecast feeds and per-boat sailability thresholds need tuning per skipper, and candidate.who_pays prices \"£49–79/month\" — a subscription carrying support.",
       "effort": "candidate.automatability = \"high — forecast ingestion, threshold alerts, rebooking waves, deposit rollover and waitlist backfill are all rule-driven automation on public APIs; the solo ...\" (opens with \"high\")",
       "mechanism": "candidate.structural_form = \"vertical_tool\"",
       "payer": "candidate.who_pays = \"... the skipper personally, at GBP 49-79/month\" for a rebooking and deposit-protection engine — an owner-operator buying a tool to run the business, the same shape as FabQuote (b2b).",
       "sector": "candidate.who_pays = \"UK licensed sea-angling charter skippers running single-boat, owner-operated businesses\"; candidate.tags include \"charter_fishing\", \"marine\". No SECTOR member covers charter boat operation. professional_services would misdescribe a skipper as a professional-services firm, so \"other\" is the catch-all, as with FabQuote (job-shop manufacturing)."
     },
     "_title": "SailCert — The Charter Skipper's Weather-IRROPS Rebooking & Sailability Engine",
-    "_unresolved": {
-      "advantages": "no dossier field; decide what the BUYER must already have from the hypothesis and delivery description. Allowed: ['code', 'nocode', 'sales', 'ops', 'audience'] (0-3)",
-      "commitment": "no dossier field; decide from candidate.hypothesis = \"LENS: analogical — airlines long ago solved the exact problem charter skippers face daily: a fixed-capacity asset whose departures are randomly cancelled by weather, with customers holding deposits who must be re-accommodated before they de\". Allowed: ['evenings', 'part_time', 'full_time']"
-    },
-    "advantages": [],
-    "commitment": null,
+    "advantages": [
+      "code"
+    ],
+    "commitment": "part_time",
     "effort": "automatable",
     "mechanism": "vertical_tool",
     "payer": "b2b",
@@ -395,6 +421,21 @@
     "payer": "b2c",
     "sector": "trades_construction"
   },
+  "7dc94c897c7d28f4": {
+    "_evidence": {
+      "advantages": "candidate.hypothesis = \"a data product that aggregates hundreds of Freedom of Information requests to HMRC and published First-tier Tribunal (Tax Cha[mber]) [decisions]\" — same build as The State Pension Underpayment Recovery Index, already resolved ['code'] on this file.",
+      "commitment": "\"hundreds of Freedom of Information requests\" (candidate.hypothesis) are drafted, chased and read by hand; the £49 report itself is machine-generated at automatability 0.9, but the dataset behind it is not self-maintaining.",
+      "payer": "candidate.who_pays = \"A retiree aged 60-75 ... or their adult child ... They pay £49\" — an individual buying a report about their own estate.",
+      "sector": "candidate.one_liner = \"how to negotiate your inheritance tax bill\"; tags include \"inheritance tax\", \"HMRC\". Valuing an estate for IHT is property_probate."
+    },
+    "_title": "IHT Valuation Barometer – the retiree's tool for challenging HMRC's inheritance tax valuations, backed by evidence of what HMRC actually settles for",
+    "advantages": [
+      "code"
+    ],
+    "commitment": "part_time",
+    "payer": "b2c",
+    "sector": "property_probate"
+  },
   "7fc5a381ad82c1ed": {
     "_evidence": {
       "advantages": "productized_service run against local authorities needs the certification workflow operated (ops) and electricians won one at a time (sales) — the same pair as PlateStart, the other licensing_admin productized_service",
@@ -414,6 +455,83 @@
     "mechanism": "productized_service",
     "payer": "b2b",
     "sector": "licensing_admin"
+  },
+  "823a9920812ab3d4": {
+    "_evidence": {
+      "advantages": "candidate.one_liner = \"forces cash-strapped councils to release the PA severance ... money\" — casework and negotiation against a local authority (ops). candidate.who_pays = \"paying a contingency fee (e.g. 25–30%) out of money recovered, so £0 up front\", and a contingency book only exists if cases are won in (sales). Same pairing as The Creative Rights Recovery Agent.",
+      "commitment": "A funding dispute with a council runs on the council's timetable — recurring casework per client, which is what the three existing transaction_broker packs were tagged.",
+      "payer": "candidate.who_pays = \"Primary carers (any age) ... paying a contingency\" — an individual.",
+      "sector": "candidate.tags = [\"adult_social_care\", \"direct_payments\", \"carer_employment\"]; the money recovered is adult-social-care funding. employment_pay was considered — the subject is severance — but the counterparty and the entitlement are both social care."
+    },
+    "_title": "SeverForce — The Carer's PA Redundancy-Funding Recovery Desk",
+    "advantages": [
+      "ops",
+      "sales"
+    ],
+    "commitment": "part_time",
+    "payer": "b2c",
+    "sector": "care_benefits"
+  },
+  "839afa0ef83b82be": {
+    "_evidence": {
+      "advantages": "candidate.one_liner = \"A paid weekly trade newsletter\" whose subscriber pool is the \"~1,200 SAIF+NAFD members\" in candidate.who_pays — a closed trade list you must be able to reach (audience), and the wedge is \"verified supplier-pricing benchmarks\", which are collected and verified by hand (ops). Deliberately NOT ['code','audience'] like the other audience_media pack: The Brief Winnow earned 'code' from an automatability that named scraping, and this dossier's automatability is a bare \"80\" with no build described.",
+      "commitment": "A weekly publication is a fixed weekly deadline, and the benchmarks that justify the price have to be gathered from the trade between issues — more than the single scheduled send off an automated scrape that earned The Brief Winnow its evenings.",
+      "payer": "candidate.who_pays = \"Independent UK funeral directors (~1,200 SAIF+NAFD members)\"; candidate.tags literally include \"B2B\".",
+      "sector": "candidate.one_liner = \"A paid weekly trade newsletter for independent funeral directors\"; the sector served is an independent professional practice."
+    },
+    "_title": "The Undertaker's Margin Memo — The Independent Funeral Director's Trade Brief",
+    "advantages": [
+      "audience",
+      "ops"
+    ],
+    "commitment": "part_time",
+    "payer": "b2b",
+    "sector": "professional_services"
+  },
+  "85bf91bd2895305c": {
+    "_evidence": {
+      "advantages": "mechanism = risk_financing: the wedge is underwriting — pricing the bond, holding the reserve and paying claims. candidate.hypothesis = \"The payout is a fixed sum, not linked to what you actually spend\", so there is no claims-investigation skill and no software product; there is a book to run.",
+      "commitment": "candidate.hypothesis = \"The trigger is public and works automatic[ally]\" — payout fires off the public MOT result with a fixed sum and no loss adjustment, which is the entire point of a parametric bond. Per-claim work is verification, not investigation.",
+      "payer": "Same shape as FabQuote/PackProof already resolved b2b in this file: a sole trader buying cover for the vehicle their trade depends on is a business expense, not a household one.",
+      "sector": "candidate.who_pays = \"Self-employed electricians, plumbers, carpenters, plasterers, and other tradespeople\"; tags include \"tradesperson income protection\"."
+    },
+    "_title": "VanFail Bridge — pays you for a hire van when your work van fails its MOT",
+    "advantages": [
+      "ops"
+    ],
+    "commitment": "evenings",
+    "payer": "b2b",
+    "sector": "trades_construction"
+  },
+  "85f8b738c8454c56": {
+    "_evidence": {
+      "advantages": "candidate.one_liner = \"reconstructs a primary carer's Universal Credit claim history, identifies un-awarded Carer Element months and mandatory-reconside[rations]\" — reconstruction and filing against the DWP is casework. Same as The Carer's Allowance Clawback Settlement, already ['ops'].",
+      "commitment": "candidate.hypothesis names \"four disconnected transaction counters (DWP UC journal, Carer's [Allowance] ...)\" that must be sequenced per client, and a mandatory reconsideration runs on the DWP's clock.",
+      "payer": "candidate.who_pays = \"Primary carers aged 30-60 ... on a reduced or zero income\".",
+      "sector": "candidate.one_liner = \"reconstructs a primary carer's Universal Credit claim history, identifies un-awarded Carer Element months\" — a benefits claim."
+    },
+    "_title": "BackpayVoyage — The Primary Carer's Universal Credit Carer Element & Backdate Recovery Broker",
+    "advantages": [
+      "ops"
+    ],
+    "commitment": "part_time",
+    "payer": "b2c",
+    "sector": "care_benefits"
+  },
+  "86a2b4eb9a66df28": {
+    "_evidence": {
+      "advantages": "candidate.one_liner = \"A web app that turns a parent's daily-life notes into a DWP-ready ... claim pack\". Matches every existing vertical_tool entry.",
+      "commitment": "candidate.automatability = \"the solo operator maintains the question bank and claim-mapping patterns, updates based [on outcomes]\" — the ongoing work is named in the dossier's own words.",
+      "payer": "candidate.who_pays = \"Parents ... They pay a one-off fee of £49-£99 per pack\".",
+      "sector": "candidate.one_liner = \"turns a parent's daily-life notes into a DWP-ready Disability Living Allowance claim pack\" — a benefits claim, which is what care_benefits names."
+    },
+    "_title": "DLAChild — The Primary Carer's DLA Child Claim Engine",
+    "advantages": [
+      "code"
+    ],
+    "commitment": "part_time",
+    "payer": "b2c",
+    "sector": "care_benefits"
   },
   "8c769d87f78016e3": {
     "_evidence": {
@@ -454,6 +572,13 @@
     "payer": "b2c",
     "sector": "employment_pay"
   },
+  "8dbeb92cb54de87e": {
+    "_evidence": {
+      "commitment": "candidate.automatability = \"85% – Ingestion of Tribunal decisions uses PDF scraping with some manual classification\" — the manual classification recurs with every new First-tier Tribunal decision, so the databank that IS the wedge needs hands on it after launch."
+    },
+    "_title": "LeasePrice Calc – the leaseholder's enfranchisement valuation and notice tool",
+    "commitment": "part_time"
+  },
   "9a55a9f8c57d6ed3": {
     "_evidence": {
       "advantages": "candidate.one_liner = \"negotiates and executes settlement ... taking a cut only of the debt it gets wiped\" - the work is casework and negotiation, not software",
@@ -472,6 +597,23 @@
     "mechanism": "transaction_broker",
     "payer": "b2c",
     "sector": "care_benefits"
+  },
+  "9d79ec9bd617b4c0": {
+    "_evidence": {
+      "advantages": "candidate.hypothesis = \"connects to the worker's platform accounts (read-only, via APIs where available, otherwise scrape‑tolerant), monitors rating changes in real time\" — unambiguously software the operator builds and keeps alive.",
+      "commitment": "The same sentence is the reason: \"scrape‑tolerant\" integrations against Uber, Deliveroo and Just Eat break whenever those apps change, and candidate.who_pays prices a £4.99/month subscription, so the repair work is continuous and unbillable.",
+      "mechanism": "candidate.structural_form = \"vertical_saas\", which prospector.facet_derive correctly REFUSED — it is off-vocabulary and nearness is not membership. This file is where that human call belongs: candidate.one_liner = \"A dashboard for gig workers that spots rating drops across delivery and rides apps\" is a tool sold into one vertical, which is what MECHANISM's vertical_tool names.",
+      "payer": "candidate.who_pays = \"The gig worker pays a monthly subscription (£4.99) or a one-off per-appeal fee (£9.99)\" — consumer-scale pricing paid by the worker personally.",
+      "sector": "candidate.one_liner = \"A dashboard for gig workers that spots rating drops\"; a rating is the worker's access to work. candidate.hypothesis frames it as income defence."
+    },
+    "_title": "RateGuard – the tool that catches unfair gig ratings and gets them overturned",
+    "advantages": [
+      "code"
+    ],
+    "commitment": "part_time",
+    "mechanism": "vertical_tool",
+    "payer": "b2c",
+    "sector": "employment_pay"
   },
   "a2c9948e0cc21cad": {
     "_evidence": {
@@ -493,6 +635,60 @@
     "payer": "b2c",
     "sector": "licensing_admin"
   },
+  "a5a6aeae4ad82f3c": {
+    "_evidence": {
+      "advantages": "candidate.hypothesis = \"a solo creates a dynamic decision tree that mirrors the legal checks and then outputs a custom claim letter with legal citations\" — the deliverable is the tool.",
+      "commitment": "one_liner = \"self-serve\"; the buyer runs their own claim. The operator's recurring work is refreshing the \"proprietary database of carrier refusal tactics\".",
+      "effort": "candidate.automatability is absent, so facet_derive returned nothing. candidate.one_liner = \"A comprehensive self-serve tool that generates airline compensation claims\" — self-serve means the buyer, not the operator, does the work.",
+      "payer": "candidate.who_pays = \"Squeezed_middle passenger who experienced a flight disruption and wants to reclaim up to £520 per passenger without sharing the payout.\"",
+      "sector": "candidate.tags = [\"travel\", \"legal\", \"compensation\", \"consumer_empowerment\"]. No SECTOR member covers air-passenger rights; `other` (\"Specialist niches\") is the honest home rather than stretching licensing_admin over an airline compensation claim."
+    },
+    "_title": "FlightBite DIY – The Delay Compensation Claim Kit",
+    "advantages": [
+      "code"
+    ],
+    "commitment": "evenings",
+    "effort": "automatable",
+    "payer": "b2c",
+    "sector": "other"
+  },
+  "ac755ca1473e57fa": {
+    "_evidence": {
+      "commitment": "candidate.hypothesis = \"the broker owns the WHOLE post-collapse value chain a carer cannot run while holding a job\" — three parallel statutory routes (s.75 chargeback, proof-of-debt filing, LA Free Entitlement reclaim), each on a deadline set by a card scheme or an administrator, across the \"40–200 households per collapse\" in candidate.who_pays. It is also the only pack in this batch whose effort is hands_on (automatability 0.72). Caveat recorded honestly: the work is bursty rather than evenly full-time — but when a collapse fires, the deadlines are not ours to move, so evenings would be the dishonest tag."
+    },
+    "_title": "NurseryDebt Bridge — The Primary Carer's Childcare-Provider Insolvency Fee-Recovery & Placement-Transfer Broker",
+    "commitment": "full_time"
+  },
+  "b1bb090fd9482af3": {
+    "_evidence": {
+      "advantages": "candidate.one_liner = \"using AI‑drafted escalation sequences and a proprietary delinquent[-payer dataset]\" — the escalation engine and the dataset are software the operator builds (the AccrueBack test for 'code'), and candidate.one_liner calls it a \"done-with-you service\", so replies still land on a human (ops).",
+      "commitment": "candidate.who_pays prices it at \"the £25‑40 flat recovery fee\" per invoice — volume economics, and every escalation sequence produces replies, disputes and part-payments that come back to a person.",
+      "sector": "candidate.one_liner = \"chases unpaid client invoices for freelance creatives and gig workers\" — being paid for work done, which is what \"Pay and worker rights\" names."
+    },
+    "_title": "Invoice Justice – The Freelancer's Non-Payment Recovery Service",
+    "advantages": [
+      "code",
+      "ops"
+    ],
+    "commitment": "part_time",
+    "sector": "employment_pay"
+  },
+  "b66e17703d0ef7c0": {
+    "_evidence": {
+      "advantages": "candidate.one_liner = \"A FOI + Land Registry + resale-scraped dataset\" — the scraping and merge is a build (code), the FOI programme is hand-run (ops). It carries both where The State Pension Index carries only ['code'] because its automatability is 0.7 (part_automatable) against that pack's 0.85 — the manual half is named in the source.",
+      "commitment": "candidate.hypothesis = \"As enforcement intensifies, the proprietary merging of Land Charges, FOI [and] freehold [records]\" — a merge that has to be re-run and re-reconciled as new developments and resales land.",
+      "payer": "candidate.who_pays = \"An adult child of a retiree ... and a retired person 60-75 themselves\".",
+      "sector": "candidate.one_liner tracks \"every UK retirement village development on resale losses, exit fees ... ground-rent escalation\"; tags include \"retirement_housing\", \"leasehold\". The subject is a home and its tenure. property_probate was considered and rejected: nobody has died in this transaction, it is a purchase decision."
+    },
+    "_title": "The Retirement Village Exit Penalty Atlas",
+    "advantages": [
+      "code",
+      "ops"
+    ],
+    "commitment": "part_time",
+    "payer": "b2c",
+    "sector": "housing_rental"
+  },
   "c0fff95b45d53f4a": {
     "_evidence": {
       "advantages": "mechanism = vertical_tool integrating Rover/Cat in a Flat/WhatsApp — the wedge is building and maintaining it. Matches FabQuote and PackProof, both [\"code\"]",
@@ -511,6 +707,21 @@
     "mechanism": "vertical_tool",
     "payer": "b2b",
     "sector": "pets_animals"
+  },
+  "c257b6298bc2c151": {
+    "_evidence": {
+      "advantages": "mechanism = risk_financing, same as VanFail Bridge: candidate.hypothesis describes \"the crop-hail parametric weather bond ... where payout triggers off an objective published index rather than loss adjustment\". The operator runs a book, not a build.",
+      "commitment": "The trigger is a National Bee Unit standstill notice — published, objective, and checked rather than investigated (candidate.tags include \"statutory_trigger\"). Fixed daily payout of £180 means no per-claim adjustment work.",
+      "payer": "Same who_pays: micro-businesses insuring commercial income streams.",
+      "sector": "candidate.who_pays = \"Sole-trader and micro-business beekeepers ... running 40-300 production hives with paid income streams\". No SECTOR member covers apiculture. pets_animals is the nearest and is WRONG — its label is \"The pet economy\" and these are commercial pollination and honey businesses, not pets. Coercing it would be the nearest-member guess the vocabulary exists to stop."
+    },
+    "_title": "SwarmHold — The Sole-Trader Beekeeper & Swarm-Removal Operator's Statutory Foulbrood Standstill Income Bond",
+    "advantages": [
+      "ops"
+    ],
+    "commitment": "evenings",
+    "payer": "b2b",
+    "sector": "other"
   },
   "d1f85d68e56da7e7": {
     "_evidence": {
@@ -549,6 +760,21 @@
     "mechanism": "vertical_tool",
     "payer": "b2b",
     "sector": "other"
+  },
+  "ea68dd43fa830db9": {
+    "_evidence": {
+      "advantages": "candidate.automatability = \"UC statements and payslips are structured PDFs; clash detection is date arithmetic against RTI pay events\" — parsing plus a rule engine is exactly the wedge that earned AccrueBack its ['code'], and these two are the same machine over different documents.",
+      "commitment": "candidate.who_pays = \"paying a fixed £39 audit fee, or a success-based £79\" and the detection is date arithmetic — delivery is a machine-run pack per customer, the AccrueBack / RentPass shape.",
+      "payer": "candidate.who_pays = \"18-27 year old casual and gig workers ... paying a fixed £39 audit fee\".",
+      "sector": "candidate.one_liner = \"audits a gig or casual worker's last 12 months of Universal Credit statements ... finds the assessment-period clash\" — the entitlement recovered is a benefits award, which is what care_benefits names."
+    },
+    "_title": "ClashBack — The Casual Worker's Universal Credit Pay-Cycle Audit & Backpay Pack",
+    "advantages": [
+      "code"
+    ],
+    "commitment": "evenings",
+    "payer": "b2c",
+    "sector": "care_benefits"
   },
   "f75365e48af08750": {
     "_evidence": {

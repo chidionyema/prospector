@@ -323,6 +323,46 @@ export function offeredFacetValues(
   );
 }
 
+/** What the filter bar renders once progressive disclosure has decided what to fold away. */
+export interface FacetGroupFold<T> {
+  /** The groups to render, in order. */
+  visible: T[];
+  /** How many groups are currently folded away — 0 when everything is on screen. */
+  foldedCount: number;
+  /** Whether to offer the expand/collapse control at all. */
+  canFold: boolean;
+}
+
+/**
+ * Decide which facet groups stay open (spec S9 / email US2 "progressive disclosure").
+ *
+ * This lives here rather than inline in `FacetBar` for one reason: the invariant it protects is
+ * not a rendering detail. Folding a group that holds an active selection puts a buyer under a
+ * constraint with no control on screen to see or release it — the exact way a shared or
+ * bookmarked URL strands someone on a near-empty shelf with no visible cause. So the fold is
+ * overridden whenever anything below the cut is selected, and the toggle is withdrawn with it,
+ * because a collapse control that can re-hide a live constraint is the same bug behind a click.
+ *
+ * `openCount <= 0` folds nothing (there is no "collapse everything" mode), and a group count at
+ * or below `openCount` reports `canFold: false` so the control never appears saying "0 more".
+ */
+export function foldFacetGroups<T extends { activeValues: readonly string[] }>(
+  groups: readonly T[],
+  openCount: number,
+  expanded: boolean,
+): FacetGroupFold<T> {
+  const all = [...groups];
+  if (openCount <= 0 || all.length <= openCount) {
+    return { visible: all, foldedCount: 0, canFold: false };
+  }
+  const folded = all.slice(openCount);
+  const constraining = folded.some((group) => group.activeValues.length > 0);
+  if (expanded || constraining) {
+    return { visible: all, foldedCount: 0, canFold: !constraining };
+  }
+  return { visible: all.slice(0, openCount), foldedCount: folded.length, canFold: true };
+}
+
 /** A pack that failed exactly one active facet constraint, plus the state that would include it. */
 export interface NearMiss<T extends FacetedPack = FacetedPack> {
   pack: T;
@@ -390,11 +430,19 @@ export function nearMisses<T extends FacetedPack>(
  * `payer: null` covers both "Don't mind" and skipping Q3 — the spec scores both as 0 rather
  * than as a miss, so declining to answer can never cost a pack points.
  *
- * Note on Q1's "None of these yet": the spec maps it to `nocode` + `hands_on`. Only the
- * `nocode` half is an answer field here, because the scoring table has no `effort` term and
- * the requirement attached to that answer is that it "must never dead-end". Applying
- * `hands_on` as a filter or a penalty would do exactly that — it would push a beginner away
- * from the automatable packs, which are the ones a beginner can actually run.
+ * Note on Q1's "None of these yet": the spec maps it to `nocode` + `hands_on`. NEITHER half is
+ * applied, because the requirement attached to that answer is that it "must never dead-end" and
+ * both halves break it. `hands_on` was dropped first — as a filter or a penalty it pushes a
+ * beginner away from the automatable packs, which are the ones a beginner can actually run. The
+ * `nocode` half was dropped on 2026-08-01 once the catalogue could be measured: `nocode` is
+ * carried by 1 pack of 49, so copying it into `advantages` here sent `?adv=nocode` through
+ * `stateFromAnswers` into `applyDiscoveryState`, which filtered the beginner's "show me
+ * everything that matched" down to that single pack.
+ *
+ * So "None of these yet" now contributes NO advantage: `advantages` stays empty and the buyer is
+ * routed on the answers they did give (commitment, payer, evidence). Empty is not a miss —
+ * `scoreMatch` is additive and never punishes an absent term, so a beginner still gets a ranked
+ * catalogue rather than a near-empty one.
  */
 export interface MatchAnswers {
   advantages: Advantage[];

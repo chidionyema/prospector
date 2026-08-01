@@ -8,6 +8,7 @@ import {
   activeFacetValues,
   facetCounts,
   filterPacks,
+  foldFacetGroups,
   offeredFacetValues,
   type DiscoveryState,
 } from '@/lib/discovery';
@@ -23,6 +24,9 @@ import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
  * - **A facet with no data anywhere in the catalogue does not render at all** (AC-12). A filter
  *   group whose every option returns nothing is a dead control that makes the catalogue look
  *   broken; the honest move is to omit it until the engine has tagged something.
+ * - **Only the first `OPEN_GROUPS` groups start open** (S9). The fold is decided by
+ *   `foldFacetGroups`, not here, because its one hard rule — a folded group may never hold an
+ *   active selection — is about buyer-visible constraint rather than layout, and needs a test.
  * - **Below `lg` the whole bar collapses behind one button.** The page grid is
  *   `lg:grid-cols-[15rem_1fr]` (`pages/index.tsx:428`) with this `<aside>` first, so under `lg`
  *   the grid is one column and every filter control stacked ABOVE the first product card. That
@@ -33,6 +37,21 @@ import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
 
 /** Order matters: the router's primary axis first, sector (display/exclusion only) last. */
 const GROUPS: FacetKind[] = ['advantage', 'commitment', 'payer', 'effort', 'mechanism', 'sector'];
+
+/**
+ * How many groups stay open before the rest fold away.
+ *
+ * Three is not a round number picked for looks: the first three entries of `GROUPS` are exactly
+ * the three facets the Matchmaker interrogates — advantages, commitment, payer
+ * (`Matchmaker.tsx`, scored in `discovery.ts` `rankMatches`). So the open set is "the questions
+ * we already believe decide a match" and the folded set is "the ways to refine afterwards",
+ * which is a claim the code can be checked against rather than a designer's preference.
+ *
+ * Six groups of chips is roughly 90 controls of vertical run in a 15rem rail; the cost of that
+ * is not aesthetic, it is that the sixth group is below the fold on a laptop and so the buyer
+ * never learns the first three exist as a set.
+ */
+const OPEN_GROUPS = 3;
 
 function ValueButton({
   active,
@@ -75,6 +94,7 @@ export function FacetBar({
   className?: string;
 }) {
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [expanded, setExpanded] = React.useState(false);
 
   // AC-12 now falls out of `offeredFacetValues`: a group with no offerable value renders nothing,
   // whether that is because the engine has tagged nothing or because every option it has is too
@@ -91,6 +111,14 @@ export function FacetBar({
   );
 
   const activeCount = activeFacetSelectionCount(state);
+
+  // `foldFacetGroups` owns the rule that a folded group may never hold an active selection, and
+  // withdraws the toggle when it would be able to re-hide one (`lib/discovery.ts`).
+  const { visible: visibleGroups, foldedCount, canFold } = foldFacetGroups(
+    groups,
+    OPEN_GROUPS,
+    expanded,
+  );
 
   if (groups.length === 0) return null;
 
@@ -113,7 +141,7 @@ export function FacetBar({
         Pick any option to narrow the shelf. The number beside it is how many packs match.
       </p>
 
-      {groups.map(({ kind, counts, activeValues, values }) => {
+      {visibleGroups.map(({ kind, counts, activeValues, values }) => {
         const isAdvantage = kind === 'advantage';
         return (
           <div key={kind}>
@@ -155,6 +183,17 @@ export function FacetBar({
           </div>
         );
       })}
+
+      {canFold && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          aria-expanded={foldedCount === 0}
+          className="self-start text-xs font-semibold text-text/70 underline underline-offset-4 hover:text-text"
+        >
+          {foldedCount === 0 ? 'Fewer ways to narrow' : `${foldedCount} more ways to narrow`}
+        </button>
+      )}
 
       {activeCount > 0 && (
         <button
