@@ -2,13 +2,17 @@
 #
 # Deploy from store_platform/ so the build context (the `.`) includes local-feed/ + Store.Catalog:
 #   fly deploy . --config deploy/fly/api.fly.toml
-# `dockerfile` is resolved relative to the BUILD CONTEXT (the path argument), NOT to this config
-# file's directory. This file said the opposite and carried `../../src/Store.Api/Dockerfile`, which
-# climbs two levels ABOVE the context and out of the repo entirely. CI proved it on 2026-08-01:
-# `flyctl deploy store_platform --config store_platform/deploy/fly/api.fly.toml` died with
+# `dockerfile` below is relative to THIS file's directory (deploy/fly/), hence the ../../ climb
+# back to the context root — the same convention as web.fly.toml and api.staging.fly.toml.
+#
+# Do not "fix" this path from a deploy error alone. On 2026-08-01 CI failed with
 #   dockerfile '/home/runner/work/prospector/src/Store.Api/Dockerfile' not found
-# — that path is store_platform/../../src, not deploy/fly/../../src. Keep this value relative to
-# store_platform/, and it works identically from CI and from a laptop.
+# and this value was changed to match, which changed nothing: the real fault was that flyctl had
+# loaded NO config file at all (it resolves --config relative to the working-directory argument)
+# and was building from the app's REMOTE config. The log line that says so is
+#   Validating --config path unset--
+# Check for that line before believing an error is about this value. CI now also passes
+# --dockerfile explicitly, so what gets built comes from the checkout, not from Fly's copy.
 #
 # Secrets (Stripe keys, R2, internal keys) are set with `fly secrets set ...`, NOT here.
 # This file holds only non-secret config.
@@ -17,7 +21,7 @@ app = "prospector-store-api"          # rename to your Fly app name
 primary_region = "lhr"                # pick your region
 
 [build]
-  dockerfile = "src/Store.Api/Dockerfile"
+  dockerfile = "../../src/Store.Api/Dockerfile"
 
 [env]
   ASPNETCORE_ENVIRONMENT = "Production"

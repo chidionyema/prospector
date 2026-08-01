@@ -88,8 +88,22 @@ jobs:
         run: |
           set -euo pipefail
           : "${FLY_API_TOKEN:?set repo secret FLY_API_TOKEN_API (flyctl tokens create deploy -a ${FLY_APP})}"
-          flyctl deploy store_platform \
-            --config store_platform/deploy/fly/api.fly.toml \
+          # Run from store_platform/ and keep every path relative to it. `--config` is resolved
+          # relative to the working-directory argument, NOT to the process cwd: passing
+          # `store_platform --config store_platform/deploy/fly/api.fly.toml` makes flyctl look for
+          # store_platform/store_platform/..., find nothing, and silently fall back to the app's
+          # REMOTE config instead of failing. On 2026-08-01 that cost two green-looking runs — the
+          # tell is in the log, `Validating --config path unset--`, meaning no config file was
+          # loaded at all, so edits to api.fly.toml had no effect and the error never changed.
+          #
+          # --dockerfile is passed explicitly for the same reason: it pins the image source to a
+          # path in THIS checkout, so a stale remote config cannot decide what gets built. The
+          # context stays store_platform/ because the Dockerfile copies local-feed/,
+          # Directory.*.props and src/Store.Catalog/ (see its header).
+          cd store_platform
+          flyctl deploy . \
+            --config deploy/fly/api.fly.toml \
+            --dockerfile src/Store.Api/Dockerfile \
             --app "$FLY_APP" \
             --remote-only
 
