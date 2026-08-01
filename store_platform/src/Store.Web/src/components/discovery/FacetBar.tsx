@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { cx } from '@/components/ui/cx';
 import type { Pack } from '@/lib/api/client';
+import { useCart } from '@/lib/cart';
 import {
   activeFacetSelectionCount,
   activeFacetValues,
@@ -14,6 +15,7 @@ import {
   type DiscoveryState,
 } from '@/lib/discovery';
 import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
+import { Q1_OPTIONS, Q2_OPTIONS, Q3_OPTIONS } from '@/components/discovery/Matchmaker';
 
 /**
  * The facet filter, a disclosure button below `lg`, a sidebar from `lg` up.
@@ -169,6 +171,83 @@ export function AppliedFilterChips({
   );
 }
 
+const MAX_Q1 = 2;
+
+function QuickStartPill({
+  label,
+  selectedLabel,
+  open,
+  setOpen,
+  children,
+}: {
+  label: string;
+  selectedLabel?: string;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open, setOpen]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={cx(
+          'flex items-center justify-between gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all duration-150',
+          open || selectedLabel
+            ? 'border-primary bg-primary/5 text-text'
+            : 'border-border bg-surface text-text/70 hover:border-text/20 hover:bg-bg',
+        )}
+      >
+        <span className="truncate">{selectedLabel ?? label}</span>
+        <span
+          aria-hidden="true"
+          className={cx('h-2 w-2 flex-none rotate-45 border-b-2 border-r-2 border-muted transition-transform', open && '-rotate-[135deg]')}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border border-border bg-white p-1 shadow-[0_18px_40px_rgba(0,0,0,0.12)]">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PillOption({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cx(
+        'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold',
+        selected ? 'bg-primary/5 text-text' : 'text-text/70 hover:bg-bg',
+      )}
+    >
+      {children}
+      {selected && <Icon name="check" size={12} className="text-primary flex-none" />}
+    </button>
+  );
+}
+
 export function FacetBar({
   packs,
   state,
@@ -182,6 +261,19 @@ export function FacetBar({
 }) {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
+  const [payerOpen, setPayerOpen] = useState(false);
+  const cart = useCart();
+
+  // Auto-open the mobile sheet on first visit, guarded by cart readiness.
+  useEffect(() => {
+    const flag = localStorage.getItem('mumchimp.matchmaker.autoOpened.v1');
+    if (!flag && cart.ready && cart.count === 0) {
+      setSheetOpen(true);
+      localStorage.setItem('mumchimp.matchmaker.autoOpened.v1', '1');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // AC-12 now falls out of `offeredFacetValues`: a group with no offerable value renders nothing,
   // whether that is because the engine has tagged nothing or because every option it has is too
@@ -220,8 +312,114 @@ export function FacetBar({
       mechanism: null,
     });
 
+  // Derive display labels from current state
+  const skillsLabel = state.advantage.length > 0
+    ? state.advantage.map((v) => Q1_OPTIONS.find((o) => o.advantage === v)?.text).filter(Boolean).join(', ')
+    : undefined;
+
+  const timeLabel = state.commitment
+    ? Q2_OPTIONS.find((o) => o.commitment === state.commitment)?.text
+    : undefined;
+
+  const payerLabel = state.payer
+    ? Q3_OPTIONS.find((o) => o.payer === state.payer)?.text
+    : undefined;
+
   const panel = (
     <div className="flex flex-col gap-5">
+      {/* Quick Start: three pill-dropdowns that map 1:1 onto the first three facet groups */}
+      <div>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+          Quick start
+        </span>
+        <div className="mt-2 grid grid-cols-3 gap-1.5">
+          {/* My skills -- maps to advantage, multi-select max 2 */}
+          <QuickStartPill
+            label="My skills"
+            selectedLabel={skillsLabel}
+            open={skillsOpen}
+            setOpen={setSkillsOpen}
+          >
+            {Q1_OPTIONS.map((option) => {
+              const active = option.advantage === null
+                ? false
+                : state.advantage.includes(option.advantage);
+              return (
+                <PillOption
+                  key={option.text}
+                  selected={active}
+                  onClick={() => {
+                    if (option.advantage === null) {
+                      onChange({ ...state, advantage: [] });
+                      return;
+                    }
+                    if (active) {
+                      onChange({ ...state, advantage: state.advantage.filter((v) => v !== option.advantage) });
+                    } else {
+                      const next = [...state.advantage, option.advantage].slice(-MAX_Q1);
+                      onChange({ ...state, advantage: next });
+                    }
+                  }}
+                >
+                  {option.text}
+                </PillOption>
+              );
+            })}
+          </QuickStartPill>
+
+          {/* My time -- maps to commitment, single select */}
+          <QuickStartPill
+            label="My time"
+            selectedLabel={timeLabel}
+            open={timeOpen}
+            setOpen={setTimeOpen}
+          >
+            {Q2_OPTIONS.map((option) => {
+              const active = state.commitment === option.commitment;
+              return (
+                <PillOption
+                  key={option.text}
+                  selected={active}
+                  onClick={() => {
+                    onChange({ ...state, commitment: active ? null : option.commitment });
+                  }}
+                >
+                  {option.text}
+                </PillOption>
+              );
+            })}
+          </QuickStartPill>
+
+          {/* My payer -- maps to payer, single select */}
+          <QuickStartPill
+            label="My payer"
+            selectedLabel={payerLabel}
+            open={payerOpen}
+            setOpen={setPayerOpen}
+          >
+            {Q3_OPTIONS.map((option) => {
+              const active = state.payer === option.payer;
+              return (
+                <PillOption
+                  key={option.id}
+                  selected={active}
+                  onClick={() => {
+                    onChange({ ...state, payer: active ? null : option.payer });
+                  }}
+                >
+                  {option.text}
+                </PillOption>
+              );
+            })}
+          </QuickStartPill>
+        </div>
+      </div>
+
+      {/* Separator */}
+      <div className="border-t border-border/40 pt-4">
+        <p className="text-[11px] font-medium text-muted">Or refine below</p>
+      </div>
+
       {/* Every group named an attribute, so nothing on screen said what clicking one would DO.
           One sentence, and the count already sitting beside each option explains itself. */}
       <p className="text-xs leading-relaxed text-muted">

@@ -550,3 +550,7 @@ backup: /private/var/folders/gq/jbt0858s1g99w05n7k7531040000gn/T/pytest-of-chidi
 hash: 78814b94251c
 moat_affecting: false
 ts: '2026-07-31T02:44:57.846125+00:00'
+backup: /private/var/folders/gq/jbt0858s1g99w05n7k7531040000gn/T/pytest-of-chidionyema/pytest-646/test_write_config_creates_back0/backups/config.yaml.bak.20260801T232911
+hash: 78814b94251c
+moat_affecting: false
+ts: '2026-08-01T23:29:11.322830+00:00'
