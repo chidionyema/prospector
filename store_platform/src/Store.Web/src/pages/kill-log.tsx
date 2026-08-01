@@ -13,7 +13,7 @@ import killLog from '@/data/kill-log.json';
 
   A visitor is asked for £49 on the strength of "these survived six brutal checks" and has no
   way to see the brutality. The conventional fix is testimonials, which we cannot honestly
-  show — there are no reviews to quote, and inventing one is both a lie and an offence under
+  show, there are no reviews to quote, and inventing one is both a lie and an offence under
   the DMCCA 2024 fake-review rules. On a storefront whose entire pitch is source-or-die it
   would also be self-refuting: a reader who checks one claim, finds it fabricated, and then
   disbelieves the other forty-three has reasoned correctly.
@@ -66,7 +66,7 @@ export default function KillLogPage() {
   return (
     <MarketingLayout>
       <Seo
-        title="The kill log — the ideas we rejected, and the sourced reason why"
+        title="The kill log, the ideas we rejected, and the sourced reason why"
         description={`We researched ${killed} business ideas and rejected ${rejectRate}% of them. Here are the rejects, with the evidence that killed each one.`}
       />
 
@@ -79,7 +79,7 @@ export default function KillLogPage() {
         </h1>
         <p className="mx-auto mt-6 max-w-[62ch] text-base leading-relaxed text-text/75 md:text-lg">
           Anyone can claim their research is rigorous. This is the receipt. Every idea below was
-          generated, researched against live sources, and then shot — with the argument that
+          generated, researched against live sources, and then shot, with the argument that
           killed it and, where a page was cited, a link so you can check it yourself.
         </p>
         <div className="mx-auto mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold text-muted">
@@ -182,7 +182,7 @@ export default function KillLogPage() {
         {/* Said plainly, because a page of rejections invites exactly this question. */}
         <p className="mx-auto mt-10 max-w-[68ch] text-center text-sm leading-relaxed text-muted">
           This is a sample of the log, not all {killed.toLocaleString('en-GB')} kills. Rejections whose
-          only reason was a score below the bar are left out — they are true, and they tell you
+          only reason was a score below the bar are left out, they are true, and they tell you
           nothing. What you see here is every kill that came with an argument.
         </p>
 

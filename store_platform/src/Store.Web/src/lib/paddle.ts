@@ -1,5 +1,5 @@
 /**
- * Paddle.js loader — the ONLY place the Paddle client token is read.
+ * Paddle.js loader, the ONLY place the Paddle client token is read.
  * 
  * Paddle Overlay checkout: the buyer's card data is handled by Paddle in a hosted iframe,
  * so PCI compliance is Paddle's responsibility (not ours). We just need to initialize
@@ -66,5 +66,5 @@ export function openPaddleCheckout(priceId: string, buyerEmail?: string): void {
   });
 }
 
-/** True when a client token is configured — gate Buy button on this. */
+/** True when a client token is configured, gate Buy button on this. */
 export const paddleConfigured = Boolean(PADDLE_SETTINGS.clientToken);

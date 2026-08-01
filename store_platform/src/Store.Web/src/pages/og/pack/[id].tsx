@@ -9,14 +9,14 @@ import { ApiError, fetchPackDetails } from '@/lib/api/client';
  * WHY. Every pack page previously nominated the same generic `/og.png`, so 49 different products
  * shared one image on X, LinkedIn, Slack, iMessage, and in the citation cards AI assistants now
  * render. The preview image is the largest element of a shared link and the only part that is
- * pack-specific here — a card naming the actual idea is the difference between a share that reads
+ * pack-specific here, a card naming the actual idea is the difference between a share that reads
  * as "someone linked a shop" and one that reads as "someone linked *this* business idea".
  *
  * WHERE. Not under `/api`: `next.config.ts` rewrites `/api/:path*` to the backend, and an array
- * rewrite is evaluated after static pages but BEFORE dynamic routes — so a dynamic
+ * rewrite is evaluated after static pages but BEFORE dynamic routes, so a dynamic
  * `/api/og/pack/[id]` route would lose to the proxy and 404 from the API. See `lib/seo/ogImage.ts`.
  *
- * RUNTIME. Rendered with `next/og` (satori + resvg, both bundled with Next — no new dependency)
+ * RUNTIME. Rendered with `next/og` (satori + resvg, both bundled with Next, no new dependency)
  * from `getServerSideProps` on the Node runtime, then written to the response as raw PNG bytes.
  * The Pages Router's documented path for `ImageResponse` is an edge API route, which is unavailable
  * to us for the routing reason above; `ImageResponse` is a plain `Response`, so consuming its body
@@ -69,7 +69,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
     // cache preview images for days.
     //
     // Which error matters, for the same caching reason: an unknown id is genuinely gone (404),
-    // but an unreachable API is temporary and must not be recorded as gone — hence the status on
+    // but an unreachable API is temporary and must not be recorded as gone, hence the status on
     // ApiError. `notFound` cannot express the second case at all: Next overrides `res.statusCode`
     // when `notFound` is returned, so a 503 set alongside it is served as 404 (measured on
     // /ideas/[slug], 2026-08-01).

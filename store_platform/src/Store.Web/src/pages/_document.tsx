@@ -2,10 +2,10 @@ import { Html, Head, Main, NextScript } from "next/document";
 import { graph, organizationNode, webSiteNode } from "@/lib/seo/schema";
 import { SEARCH_ENGINE_VERIFICATIONS } from "@/lib/seo/verification";
 
-// E30-002 (WR-037): site-wide JSON-LD — Organization + WebSite. Helps search engines understand the
+// E30-002 (WR-037): site-wide JSON-LD, Organization + WebSite. Helps search engines understand the
 // brand as an entity (knowledge-panel eligibility) without claiming anything we can't substantiate:
 // no aggregateRating / Review / Offer availability (zero-fabricated-proof guardrail). Gated on
-// SITE_URL exactly like the canonical tag — absolute URLs only emit in a configured (prod) build,
+// SITE_URL exactly like the canonical tag, absolute URLs only emit in a configured (prod) build,
 // and crawlers only see the production origin anyway.
 //
 // The node shapes moved to `lib/seo/schema.ts` so that per-page structured data can reference this
@@ -13,7 +13,7 @@ import { SEARCH_ENGINE_VERIFICATIONS } from "@/lib/seo/verification";
 // owns *where* the site-wide graph renders (once, on every page, from the document head).
 //
 // Rendered as a text-child <script> (NOT dangerouslySetInnerHTML, which the react/no-danger rail
-// bans). That means the serialized JSON must contain no `&`, `<`, or `>` — inside a raw-text <script>
+// bans). That means the serialized JSON must contain no `&`, `<`, or `>`, inside a raw-text <script>
 // element those would survive as literal entity text and corrupt the JSON. The builders emit plain
 // ASCII (apostrophes are fine); the assertion below is what stops that invariant rotting silently.
 const ORG_DESCRIPTION =

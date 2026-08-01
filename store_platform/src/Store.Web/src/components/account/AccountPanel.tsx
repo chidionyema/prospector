@@ -8,7 +8,7 @@ import { API_BASE_URL } from '@/lib/config';
  * Resolve the API's root-relative download path against the API origin.
  *
  * /download/{token} is served by the API and is NOT one of the paths next.config.ts proxies, so a
- * bare "/download/…" resolves against the STOREFRONT origin and 404s — the same trap already
+ * bare "/download/…" resolves against the STOREFRONT origin and 404s, the same trap already
  * recorded at pages/orders/[token].tsx:51-53, which this mirrors deliberately.
  *
  * Anything that is not an https URL or a single-leading-slash path is dropped rather than rendered.
@@ -27,7 +27,7 @@ function downloadHref(path: string | null): string | undefined {
  * The signed-in account: orders, details, security. One route, three tabs.
  *
  * Tabs rather than routes because all three are short and all three are read far more often than
- * written — a customer arriving to re-download something should not pay a navigation to find out
+ * written, a customer arriving to re-download something should not pay a navigation to find out
  * their orders are on a different page than the one the header linked to. The tab is local state,
  * not a URL segment, because nobody deep-links to their own security settings.
  */
@@ -129,7 +129,7 @@ function OrdersTab() {
         description={
           `This list is everything bought with ${account?.email ?? 'your email address'}, including ` +
           'guest purchases made before you created the account. If you paid under a different ' +
-          'address, use the permanent link from that order — or contact us and we will move it.'
+          'address, use the permanent link from that order, or contact us and we will move it.'
         }
       />
     );
@@ -201,7 +201,7 @@ function DetailsTab({ onSaved }: { onSaved: () => Promise<unknown> }) {
     setBusy(true);
     setError(null);
     try {
-      // PUT is a full replace, so the whole form is always sent — a partial body would clear the
+      // PUT is a full replace, so the whole form is always sent, a partial body would clear the
       // fields it omitted rather than leave them alone.
       await auth.updateProfile(form);
       await onSaved();
@@ -288,7 +288,7 @@ function SecurityTab() {
       toast(`${provider} disconnected.`, 'success');
       load();
     } catch (err) {
-      // The API refuses to remove the last way in (Auth.LastCredential) — otherwise disconnecting
+      // The API refuses to remove the last way in (Auth.LastCredential), otherwise disconnecting
       // a provider from an account that has no password locks the customer out permanently.
       toast(err instanceof AuthError ? err.message : 'Could not disconnect.', 'danger');
     }

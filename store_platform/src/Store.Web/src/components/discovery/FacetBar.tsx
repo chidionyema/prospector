@@ -16,7 +16,7 @@ import {
 import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
 
 /**
- * The facet filter — a disclosure button below `lg`, a sidebar from `lg` up.
+ * The facet filter, a disclosure button below `lg`, a sidebar from `lg` up.
  *
  * Rules it enforces visibly:
  *
@@ -26,8 +26,8 @@ import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
  *   group whose every option returns nothing is a dead control that makes the catalogue look
  *   broken; the honest move is to omit it until the engine has tagged something.
  * - **Only the first `OPEN_GROUPS` groups start open** (S9). The fold is decided by
- *   `foldFacetGroups`, not here, because its one hard rule — a folded group may never hold an
- *   active selection — is about buyer-visible constraint rather than layout, and needs a test.
+ *   `foldFacetGroups`, not here, because its one hard rule, a folded group may never hold an
+ *   active selection, is about buyer-visible constraint rather than layout, and needs a test.
  * - **Below `lg` the whole bar collapses behind one button.** The page grid is
  *   `lg:grid-cols-[15rem_1fr]` (`pages/index.tsx:428`) with this `<aside>` first, so under `lg`
  *   the grid is one column and every filter control stacked ABOVE the first product card. That
@@ -43,7 +43,7 @@ const GROUPS: FacetKind[] = ['advantage', 'commitment', 'payer', 'effort', 'mech
  * How many groups stay open before the rest fold away.
  *
  * Three is not a round number picked for looks: the first three entries of `GROUPS` are exactly
- * the three facets the Matchmaker interrogates — advantages, commitment, payer
+ * the three facets the Matchmaker interrogates, advantages, commitment, payer
  * (`Matchmaker.tsx`, scored in `discovery.ts` `rankMatches`). So the open set is "the questions
  * we already believe decide a match" and the folded set is "the ways to refine afterwards",
  * which is a claim the code can be checked against rather than a designer's preference.
@@ -94,11 +94,11 @@ function ValueButton({
  *
  * This exists for the state the sidebar cannot cover: below `lg` the filter controls live inside
  * a closed sheet, so once it closes the only trace of a selection is a count badge on the
- * "Filters" button — the buyer sees a shortened shelf with nothing on screen saying WHY, and
+ * "Filters" button, the buyer sees a shortened shelf with nothing on screen saying WHY, and
  * undoing one choice means reopening the sheet and finding it again. Each chip names one active
  * constraint in the same buyer-facing copy as the controls, and removes exactly that constraint
- * in one tap. On desktop the row doubles as confirmation at the point the eye actually rests —
- * the grid — rather than in sidebar peripheral vision.
+ * in one tap. On desktop the row doubles as confirmation at the point the eye actually rests,
+ * the grid, rather than in sidebar peripheral vision.
  *
  * The search query is a chip too: it constrains the shelf exactly like a facet, and it is even
  * less visible once the palette closes.

@@ -5,7 +5,7 @@ import type { IconName, ButtonVariant } from '@/components/ui';
 
 /**
  * Small presentational blocks shared across the WR-014 GTM marketing pages.
- * Semantic tokens only (raw hex/palette fails `npm run conformance`). No data, no API — these
+ * Semantic tokens only (raw hex/palette fails `npm run conformance`). No data, no API, these
  * are pure layout/typography so the pages stay static and Pact-free.
  */
 

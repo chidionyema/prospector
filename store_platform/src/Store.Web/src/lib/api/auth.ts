@@ -7,7 +7,7 @@ import { API_BASE_URL } from '@/lib/config';
  * The API sets an HttpOnly cookie named "jwt" on login, refresh and social callback
  * (Store.Api/Identity/JwtTokenService.cs:128) and reads it back on every request
  * (AuthServiceCollectionExtensions.cs, JwtBearerEvents.OnMessageReceived). Nothing here ever sees,
- * stores or forwards an access token, so there is no value for an XSS payload to steal — HttpOnly
+ * stores or forwards an access token, so there is no value for an XSS payload to steal, HttpOnly
  * means script cannot read the cookie even from our own origin. localStorage, sessionStorage and a
  * module-level variable all fail that test.
  *
@@ -19,20 +19,20 @@ import { API_BASE_URL } from '@/lib/config';
  *     the storefront after a domain change,
  *   • the CSP connect-src 'self' already covers it. (next.config.ts:29 derives the cross-origin
  *     allowance from NEXT_PUBLIC_API_URL defaulting to :8080 while config.ts:52 defaults the
- *     client to :5291 — a direct call with the variable unset is blocked by our own CSP.)
+ *     client to :5291, a direct call with the variable unset is blocked by our own CSP.)
  *
  * OAuth is the exception and MUST bypass the proxy. The provider's correlation cookie, and the
  * Identity.External cookie the callback reads, are set by the API on the API's own origin; routed
  * through the proxy they would be written against the web origin and the callback would fail
  * correlation. So the social buttons navigate to DIRECT_BASE. It is a top-level navigation, not a
- * fetch, so CSP connect-src does not apply — and it is location.assign rather than a form submit
+ * fetch, so CSP connect-src does not apply, and it is location.assign rather than a form submit
  * because next.config.ts:33 sets form-action 'self', which WOULD block a cross-origin form post.
  */
 
 /** Same-origin proxy for all data calls. next.config.ts rewrites /api/:path* → {API}/v1/:path*. */
 const PROXY_BASE = '/api';
 
-/** The API's real origin. Used ONLY for full-page OAuth navigation — see the note above. */
+/** The API's real origin. Used ONLY for full-page OAuth navigation, see the note above. */
 const DIRECT_BASE = `${API_BASE_URL.replace(/\/+$/, '')}/v1`;
 
 export class AuthError extends Error {
@@ -115,7 +115,7 @@ export interface OrderItem {
   pack_id: string;
   pack_title: string;
   status: string;
-  /** null when the entitlement is not Active — a refunded purchase stays visible but undownloadable. */
+  /** null when the entitlement is not Active, a refunded purchase stays visible but undownloadable. */
   download_path: string | null;
 }
 
@@ -163,7 +163,7 @@ export const auth = {
       body: JSON.stringify({ username, email, password, tos_version: tosVersion }),
     }),
 
-  /** The field is `username`, not `email` — LoginCommand accepts either value in it. */
+  /** The field is `username`, not `email`, LoginCommand accepts either value in it. */
   login: (username: string, password: string) =>
     call<AuthResponse>('/auth/login', {
       method: 'POST',
@@ -241,7 +241,7 @@ export const social = {
     }),
 
   /**
-   * Begin sign-in with a provider. A full-page navigation to the API origin — see the two-base
+   * Begin sign-in with a provider. A full-page navigation to the API origin, see the two-base
    * note at the top of this file. Never a fetch: the provider answers with a 302 the browser must
    * follow as a document navigation, and never a form, because CSP form-action is 'self'.
    */

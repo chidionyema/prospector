@@ -5,7 +5,7 @@ export interface PageHeaderProps {
   /** Small uppercase context label above the title (e.g. "Dashboard", "Board"). */
   eyebrow?: string;
   title: React.ReactNode;
-  /** One-line context under the title — keep it short and human. */
+  /** One-line context under the title, keep it short and human. */
   description?: React.ReactNode;
   /** Optional right-aligned primary action (a Button or Link). */
   action?: React.ReactNode;
@@ -13,7 +13,7 @@ export interface PageHeaderProps {
 }
 
 /**
- * The header every authed page wears — eyebrow + title + one-line context + an optional primary action,
+ * The header every authed page wears, eyebrow + title + one-line context + an optional primary action,
  * sitting on a hairline rule. This is the single element that gives the product a "designed" top instead
  * of a page that opens straight into a stack of cards (SITE-POLISH-SPEC §2.2). Restraint register: the
  * title carries the weight (display size, 600), the rule is a hairline, the action is the only colour.

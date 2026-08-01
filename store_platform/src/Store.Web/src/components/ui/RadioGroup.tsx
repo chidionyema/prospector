@@ -21,7 +21,7 @@ export interface RadioGroupProps<T extends string> {
 }
 
 /**
- * A vertical set of card-style radios — native inputs for a11y, the whole row a selectable surface that
+ * A vertical set of card-style radios, native inputs for a11y, the whole row a selectable surface that
  * lights up when checked (`has-[:checked]` + a pseudo dot). Use where a choice deserves room to breathe
  * (a funding option, an intro type) instead of a cramped inline radio list (SITE-POLISH-SPEC §2.6).
  */

@@ -1,7 +1,7 @@
 
-/* Operator legal facts (legalName, address, contactEmail) come from LEGAL in @/lib/config — set them there once before go-live. */
+/* Operator legal facts (legalName, address, contactEmail) come from LEGAL in @/lib/config, set them there once before go-live. */
 /*
- * Draft legal copy — review with qualified counsel before go-live.
+ * Draft legal copy, review with qualified counsel before go-live.
  * Covers: digital download licence, delivery, buyer obligations, limitation of liability,
  * no-warranty on AI-generated content, governing law England & Wales.
  */
@@ -34,7 +34,7 @@ export default function TermsPage() {
         We sell digital information products (&ldquo;Packs&rdquo;). Each Pack is an
         AI-generated, source-grounded business-opportunity dossier delivered as a
         digital download (a zip archive of Markdown documents). Packs are <strong>information
-        products only</strong> — they are not financial advice, investment advice, legal advice,
+        products only</strong>, they are not financial advice, investment advice, legal advice,
         or any other form of professional advisory service.
       </LegalText>
       <LegalText>
@@ -77,7 +77,7 @@ export default function TermsPage() {
       <LegalHeading>4. Prices and payment</LegalHeading>
       <LegalText>
         All prices are shown in GBP (£) and are inclusive of VAT where applicable. Payment is
-        processed by our third-party payment processor (currently Paddle or Stripe — see the
+        processed by our third-party payment processor (currently Paddle or Stripe, see the
         checkout page for the active processor). We do not store your full card details.
         A transaction is complete when you receive an order-confirmation email.
       </LegalText>
@@ -95,7 +95,7 @@ export default function TermsPage() {
         ]}
       />
 
-      <LegalHeading>6. Nature of AI-generated content — no warranty</LegalHeading>
+      <LegalHeading>6. Nature of AI-generated content, no warranty</LegalHeading>
       <LegalText>
         Packs are produced by automated AI systems and are provided <strong>&ldquo;as
         is&rdquo;</strong>. While we use source-grounding and editorial processes to improve

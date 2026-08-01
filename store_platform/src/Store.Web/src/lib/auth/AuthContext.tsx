@@ -5,7 +5,7 @@ import { auth, AuthError, type Account } from '@/lib/api/auth';
  * Session state for the storefront.
  *
  * The session itself lives in an HttpOnly cookie the browser holds and this code cannot read
- * (see lib/api/auth.ts). So "am I signed in?" is not a value we keep — it is a question only the
+ * (see lib/api/auth.ts). So "am I signed in?" is not a value we keep, it is a question only the
  * API can answer, and the answer is GET /auth/me: 200 means yes, 401 means no. That single fact
  * shapes everything below.
  *
@@ -24,14 +24,14 @@ interface AuthContextValue {
   refresh: () => Promise<Account | null>;
   signIn: (username: string, password: string) => Promise<Account>;
   signOut: () => Promise<void>;
-  /** Adopt an account we already hold — used by the OAuth callback after it exchanges its code. */
+  /** Adopt an account we already hold, used by the OAuth callback after it exchanges its code. */
   adopt: (account: Account) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
- * A 401 is the ordinary answer for a visitor with no cookie — not an error worth surfacing.
+ * A 401 is the ordinary answer for a visitor with no cookie, not an error worth surfacing.
  * Anything else (the API is down, a proxy misconfigured) is also treated as anonymous by the
  * callers below, because the alternative is holding the whole storefront in 'loading' forever.
  * The pages that need to say something about it read the failure from their own call.
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // The one session probe on mount. Written as an explicit promise chain rather than `void
   // refresh()` for two reasons: the cancelled flag stops a late answer writing to an unmounted
   // provider, and react-hooks/set-state-in-effect rejects an effect body that calls into a
-  // setState path directly — the state changes have to happen in the async continuation, which is
+  // setState path directly, the state changes have to happen in the async continuation, which is
   // where they genuinely belong.
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Server-side first: logout revokes the token's JTI and clears the cookie. Clearing local
       // state without it would show a signed-out storefront while the session stayed valid for
-      // anyone holding the cookie — the appearance of logging out, which is worse than none.
+      // anyone holding the cookie, the appearance of logging out, which is worse than none.
       await auth.logout();
     } finally {
       apply(null);

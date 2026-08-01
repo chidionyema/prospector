@@ -74,7 +74,7 @@ describe('label', () => {
     }
   });
 
-  it('renders nothing for an absent facet — the null rule at the copy layer', () => {
+  it('renders nothing for an absent facet, the null rule at the copy layer', () => {
     expect(label('payer', null)).toBeNull();
     expect(label('payer', undefined)).toBeNull();
     expect(label('payer', '')).toBeNull();

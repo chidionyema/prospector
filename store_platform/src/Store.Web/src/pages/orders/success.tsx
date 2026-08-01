@@ -13,7 +13,7 @@ import { track } from '@/lib/analytics';
 // the fulfilment webhook has been processed. So "not ready yet" is the expected first answer
 // and we poll rather than treat it as failure.
 const POLL_INTERVAL_MS = 2000;
-// ~24s. Was 20 (~40s), which was tuned for a webhook delay we have never actually observed —
+// ~24s. Was 20 (~40s), which was tuned for a webhook delay we have never actually observed,
 // Stripe delivers effectively instantly after payment. The long ceiling only ever prolonged the
 // cases that were never going to resolve, and those now end the poll immediately on their own
 // (see 'unfulfilled'/'revoked' below) rather than waiting for it.
@@ -39,7 +39,7 @@ export default function OrderSuccess() {
   // Resolved after mount, never during SSR: reading window on the server would either throw or
   // bake the build machine's origin into the HTML and cause a hydration mismatch.
   // useSyncExternalStore is the supported way to read a browser value that differs between
-  // server and client — the server snapshot is '' and React swaps in the real origin on
+  // server and client, the server snapshot is '' and React swaps in the real origin on
   // hydration, without a setState-in-effect and its extra render pass.
   const origin = React.useSyncExternalStore(
     subscribeToNothing,
@@ -73,14 +73,14 @@ export default function OrderSuccess() {
         }
         // Terminal answers: nothing further is coming, so stop rather than spend the remaining
         // attempts implying something is still on its way. This is the whole point of the API
-        // distinguishing them — a buyer who cannot be fulfilled gets their reference at once
+        // distinguishing them, a buyer who cannot be fulfilled gets their reference at once
         // instead of watching a spinner for the full timeout first.
         if (result.status === 'unfulfilled' || result.status === 'revoked') {
           setPollPhase(result.status);
           return;
         }
       } catch {
-        // Network hiccup or the API is briefly unavailable. Keep polling — the buyer's
+        // Network hiccup or the API is briefly unavailable. Keep polling, the buyer's
         // entitlement exists regardless of whether this particular request succeeded.
       }
       if (cancelled) return;
@@ -98,11 +98,11 @@ export default function OrderSuccess() {
     };
   }, [isReady, sessionId]);
 
-  // Count the purchase once the order actually resolved — not on page load, which also happens
+  // Count the purchase once the order actually resolved, not on page load, which also happens
   // on refresh and on redirects that never fulfil. Sending it again on a reload is harmless:
   // the checkout session id travels as the event's meta and the API deduplicates on it, so the
   // count stays honest without marking the buyer's browser. (It previously used a localStorage
-  // flag; that stored data on the device without consent — see lib/analytics.ts.)
+  // flag; that stored data on the device without consent, see lib/analytics.ts.)
   React.useEffect(() => {
     if (phase === 'ready' && sessionId) {
       track('checkout_completed', sessionId);
@@ -111,7 +111,7 @@ export default function OrderSuccess() {
 
   return (
     <MarketingLayout>
-      <Seo title="Order Confirmed – Mumchimp" />
+      <Seo title="Order Confirmed, Mumchimp" />
 
       <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-bg px-6 py-16">
         <div className="flex w-full max-w-2xl flex-col items-center text-center gap-8">
@@ -154,7 +154,7 @@ export default function OrderSuccess() {
                 <div className="rounded-xl border border-border bg-surface2 p-4 text-left">
                   <p className="text-sm font-semibold text-text">Save this link now</p>
                   <p className="mt-1 text-xs text-muted">
-                    It is your permanent access link — it does not expire. Bookmark it or copy it
+                    It is your permanent access link, it does not expire. Bookmark it or copy it
                     somewhere safe before closing this page.
                   </p>
                   <code className="mt-2 block break-all rounded-lg bg-bg px-3 py-2 font-mono text-[11px] text-text">
@@ -228,7 +228,7 @@ export default function OrderSuccess() {
                       still come good. */}
                   <p className="text-xs text-muted mt-0.5">
                     {phase === 'unfulfilled'
-                      ? 'Your payment went through, but this order did not release its download. That is our fault, not yours. Send us the reference below and we will get your pack to you — or refund you in full, whichever you prefer.'
+                      ? 'Your payment went through, but this order did not release its download. That is our fault, not yours. Send us the reference below and we will get your pack to you, or refund you in full, whichever you prefer.'
                       : phase === 'revoked'
                         ? 'This order was refunded, so its download has been withdrawn. Nothing further is owed. If that is unexpected, send us the reference below.'
                         : phase === 'timed-out'

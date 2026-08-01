@@ -1,13 +1,13 @@
 import { LEGAL } from '@/lib/config';
 
 /**
- * The FAQ copy — the ONE source both the visible page and the FAQPage structured data read.
+ * The FAQ copy, the ONE source both the visible page and the FAQPage structured data read.
  *
  * WHY IT IS NOT JUST JSX. Google requires the answer in `FAQPage` structured data to match the
  * answer a visitor actually reads; schema that says more than the page does gets dropped, and
  * repeat mismatches cost the whole site its rich-result eligibility. The answers here contain
  * inline links (refund policy, terms, support email) that matter for the human reader, so the
- * obvious two-copy fix — JSX for the page, a hand-written string for the schema — would put two
+ * obvious two-copy fix, JSX for the page, a hand-written string for the schema, would put two
  * versions of the same sentence in the repo and let them drift the first time someone edits one.
  *
  * So an answer is a list of segments instead: plain strings, and `{ text, href }` links. The page
@@ -15,7 +15,7 @@ import { LEGAL } from '@/lib/config';
  * text the schema publishes. Editing the copy updates both, and there is no second copy to forget.
  *
  * Apostrophes are written as the typographic `’` rather than escaped entities because these
- * strings are consumed as text by both renderers — JSX renders them literally and JSON.stringify
+ * strings are consumed as text by both renderers, JSX renders them literally and JSON.stringify
  * escapes them correctly.
  */
 
@@ -39,7 +39,7 @@ export function isLink(segment: FaqSegment): segment is FaqLink {
   return typeof segment !== 'string';
 }
 
-/** The answer as the plain prose the structured data publishes — a link contributes its own
+/** The answer as the plain prose the structured data publishes, a link contributes its own
  *  visible text, which is exactly what the reader sees on the page. */
 export function plainAnswer(item: FaqItem): string {
   return item.answer.map((segment) => (isLink(segment) ? segment.text : segment)).join('');
@@ -49,7 +49,7 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What am I actually buying?',
     answer: [
-      'A £49 pack: a grounded business opportunity dossier in four parts — a build spec, a go to market plan, an operations and financial model, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears.',
+      'A £49 pack: a grounded business opportunity dossier in four parts, a build spec, a go to market plan, an operations and financial model, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears.',
     ],
   },
   { category: 'packs',
@@ -61,7 +61,7 @@ export const FAQS: FaqItem[] = [
   { category: 'payment',
     question: 'How do I get the pack after I pay?',
     answer: [
-      'Checkout runs through Stripe. As soon as payment succeeds you get your download link on screen, so the pack is in your hands within seconds. The link is permanent — bookmark it and you can re-download whenever you need to.',
+      'Checkout runs through Stripe. As soon as payment succeeds you get your download link on screen, so the pack is in your hands within seconds. The link is permanent, bookmark it and you can re-download whenever you need to.',
     ],
   },
   { category: 'payment',
@@ -121,7 +121,7 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'If 500 other people buy the same pack, aren\'t 500 people copying my idea?',
     answer: [
-      'The bar is the moat, not a copy count. Every pack is sized to a specific niche, with a concrete route to market and granular buyer profile — the gates that kill most candidates. See the ',
+      'The bar is the moat, not a copy count. Every pack is sized to a specific niche, with a concrete route to market and granular buyer profile, the gates that kill most candidates. See the ',
       { text: 'kill log', href: '/kill-log' },
       ' to see how many ideas die on those very checks before they ever reach the store. A pack is grounded research, not a lottery ticket, and the value is in the execution you bring.',
     ],
@@ -131,7 +131,7 @@ export const FAQS: FaqItem[] = [
     answer: [
       'Every kill is logged with the reason it failed, and the argument that killed it is published in the ',
       { text: 'kill log', href: '/kill-log' },
-      '. The filter is auditable, not a black box — you can read exactly why each idea died and which gate fired.',
+      '. The filter is auditable, not a black box, you can read exactly why each idea died and which gate fired.',
     ],
   },
 ];

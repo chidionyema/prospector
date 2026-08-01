@@ -26,7 +26,7 @@ describe('preopenedClientSecret', () => {
     expect(preopenedClientSecret(TEST)).toBe(TEST);
   });
 
-  it('ignores an absent parameter — the ordinary page load', () => {
+  it('ignores an absent parameter, the ordinary page load', () => {
     expect(preopenedClientSecret(undefined)).toBeNull();
   });
 

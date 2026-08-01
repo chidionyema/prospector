@@ -2,12 +2,12 @@
  * Search-console ownership verification tokens.
  *
  * You cannot measure organic search without a verified property, and you cannot ask for a manual
- * recrawl without one either — so this is the prerequisite for every other SEO decision being
+ * recrawl without one either, so this is the prerequisite for every other SEO decision being
  * evidence-based rather than guessed.
  *
  * These are env-driven, not committed, for a mundane reason: a token is issued per property per
  * Google/Bing account. Hardcoding one means whoever owns the console today owns it forever, and a
- * token belonging to the wrong property fails verification silently — the tag renders, the console
+ * token belonging to the wrong property fails verification silently, the tag renders, the console
  * keeps saying "not verified", and nothing indicates why.
  *
  * Set the ones you use; unset vars emit no tag at all rather than an empty `content=""`, which

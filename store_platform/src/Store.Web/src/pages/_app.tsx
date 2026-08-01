@@ -10,7 +10,7 @@ import { AuthProvider } from "@/lib/auth/AuthContext";
 import { track } from "@/lib/analytics";
 
 // These three are the site's whole typeface. `variable` only publishes the family name as a CSS
-// custom property on whatever element carries the className — globals.css is where it is read;
+// custom property on whatever element carries the className, globals.css is where it is read;
 // without that read, next/font still downloads the file and nothing renders it.
 //
 // Weight 700 is loaded because `.font-bold` is used on the hero h1 and the CTAs. Without it the
@@ -25,13 +25,13 @@ const hanken = Hanken_Grotesk({
 // The editorial heading face, and the one font on this page with a history worth stating.
 //
 // Playfair Display used to sit here as --font-serif-pref, downloaded on every page load and read
-// by no rule at all, so the previous change removed it rather than wiring it — correct, because
+// by no rule at all, so the previous change removed it rather than wiring it, correct, because
 // --font-serif was mapped onto the sans stack and a serif had nowhere to render. This puts a
 // serif back deliberately: globals.css now points --font-serif at --font-serif-pref, so the
 // download buys something.
 //
 // Newsreader rather than Playfair. Headings here run from --text-hero (5.5rem) down to
-// --text-h3 (1.25rem/20px), and most of them are at the small end — card titles, section heads.
+// --text-h3 (1.25rem/20px), and most of them are at the small end, card titles, section heads.
 // Playfair is a high-contrast Didone whose hairlines are drawn for display sizes; Newsreader is
 // a text-first serif, so one family covers the whole range instead of looking authoritative in
 // the hero and thin on a card.

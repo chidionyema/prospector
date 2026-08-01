@@ -8,7 +8,7 @@
  * source behind it.
  *
  * The rule now: `sector` comes from the API or the pack has no category. An untagged pack gets
- * the neutral `unlabelled` treatment — honest, and visibly different from a real sector.
+ * the neutral `unlabelled` treatment, honest, and visibly different from a real sector.
  *
  * Class strings are FULL LITERALS (gradient + tint) so Tailwind keeps them at build time; never
  * interpolate them.
@@ -107,7 +107,7 @@ const PALETTE: Record<Sector, Palette> = {
 /**
  * The untagged treatment: a neutral cover, and NO label.
  *
- * This used to render a pill reading "Not yet tagged" — chosen over inventing a plausible
+ * This used to render a pill reading "Not yet tagged", chosen over inventing a plausible
  * category, which was the right call, but the wrong end of the choice. The pack is on the shelf
  * at £49; a badge announcing that our own tagging is incomplete is a defect notice, not candour,
  * and it appeared on four of the twenty-six packs live on 2026-07-31.
@@ -134,7 +134,7 @@ const CATEGORIES: Record<string, Category> = Object.fromEntries(
 
 /**
  * The category for a pack, read from the engine's `sector` and nothing else. A pack with no
- * sector — or with one this build does not know — gets `UNLABELLED`. No pack text is inspected.
+ * sector, or with one this build does not know, gets `UNLABELLED`. No pack text is inspected.
  */
 export function categoryFor(input: { sector?: string | null }): Category {
   const sector = input.sector;

@@ -6,7 +6,7 @@ import { BRAND, LEGAL, SITE_URL } from '@/lib/config';
  * WHY A SHARED MODULE. Before this, structured data lived in two places that could not refer to
  * each other: a site-wide Organization + WebSite graph hardcoded in `_document.tsx`, and a
  * standalone Product blob in `productJsonLd.ts`. Because the Product carried no `@id` reference
- * back to the Organization, a crawler read them as two unrelated entities — the pack pages did
+ * back to the Organization, a crawler read them as two unrelated entities, the pack pages did
  * not accrue to the brand. Everything here shares one `@id` scheme so the whole site describes a
  * single connected graph.
  *
@@ -14,12 +14,12 @@ import { BRAND, LEGAL, SITE_URL } from '@/lib/config';
  * only ever describe what the page actually shows. In particular nothing here emits
  * `aggregateRating` or `review`: we have no reviews, fabricating one is an offence under the
  * DMCCA 2024 fake-review provisions, and Google drops structured data that contradicts visible
- * page content — so it would be illegal, dishonest, and ineffective at once. If a builder below
+ * page content, so it would be illegal, dishonest, and ineffective at once. If a builder below
  * ever needs a fact the page does not display, the fix is to display it, not to assert it here.
  *
  * ABSOLUTE URLS. schema.org `@id`/`url` must be absolute, and `SITE_URL` is only configured in a
  * deployed build. Every builder therefore returns `undefined` when it is absent, exactly like the
- * canonical tag in `Seo.tsx` — a dev build emits no structured data rather than data pointing at
+ * canonical tag in `Seo.tsx`, a dev build emits no structured data rather than data pointing at
  * `undefined/pack/x`. Callers spread the result, so `undefined` simply drops the block.
  */
 
@@ -39,8 +39,8 @@ export const WEBSITE_ID = () => (SITE_URL ? `${SITE_URL}/#website` : undefined);
  * point and `knowsAbout` are the fields that make an entity resolvable into a knowledge panel,
  * and they are also what an AI assistant quotes when asked "what is Mumchimp".
  *
- * `contactPoint` uses the real support mailbox — the same one printed on /refund, /privacy and
- * every pack page — and MX for it is verified (`dig +short MX mumchimp.com` -> `5 smtp.google.com`,
+ * `contactPoint` uses the real support mailbox, the same one printed on /refund, /privacy and
+ * every pack page, and MX for it is verified (`dig +short MX mumchimp.com` -> `5 smtp.google.com`,
  * re-checked by `verify_store.sh` step 5; see the note on `LEGAL.contactEmail`). Do not add a
  * telephone here: we do not publish one, and a number a buyer cannot call is a false claim.
  *
@@ -68,7 +68,7 @@ export function organizationNode(description: string): Record<string, unknown> |
       availableLanguage: 'English',
     },
     // What this brand is *about*. This is the field that lets an assistant answer "who sells
-    // researched business ideas" — it is a topical claim, not a performance claim, so it is
+    // researched business ideas", it is a topical claim, not a performance claim, so it is
     // safe to state and is exactly what the catalogue demonstrably contains.
     knowsAbout: [
       'business opportunity research',
@@ -147,13 +147,13 @@ export interface FaqEntry {
 /**
  * FAQPage.
  *
- * Google's rule is that the question and answer here must match what a visitor reads — schema
+ * Google's rule is that the question and answer here must match what a visitor reads, schema
  * that says more than the page does gets the whole block dropped, and repeat offences cost the
  * site its rich-result eligibility. The FAQ page therefore does not author its answers twice:
  * it holds one structured copy (`src/lib/faqContent.ts`) that both the visible accordion and this
  * builder read, so the two cannot drift apart no matter who edits the copy later.
  *
- * FAQ rich results are now rare in Google's UI, so this is not primarily a rich-snippet play — it
+ * FAQ rich results are now rare in Google's UI, so this is not primarily a rich-snippet play, it
  * is the cheapest way to hand a question-shaped, quotable answer to the assistants that increasingly
  * mediate this kind of purchase research.
  */
@@ -179,7 +179,7 @@ export interface ListedItem {
  *
  * `itemListOrder` is stated, and it is stated as *unordered*, which is the one thing about these
  * lists that is verifiable. Without any order the reader has to guess whether position 1 means
- * "best" — a ranking claim we are not making, and the reason the field is here at all.
+ * "best", a ranking claim we are not making, and the reason the field is here at all.
  *
  * It says unordered rather than newest-first because newest-first is not true. Measured against
  * the live catalogue on 2026-08-01:
@@ -190,7 +190,7 @@ export interface ListedItem {
  * `verifiedAt` is a re-verification stamp that moves after publication, so the shelf order is not
  * a date order in the only date field a consumer can retrieve. The home page reorders again by
  * market. Declaring `ItemListOrderDescending` would therefore be asserting an ordering the data
- * disproves — exactly the kind of structured-data claim that gets a site's markup distrusted.
+ * disproves, exactly the kind of structured-data claim that gets a site's markup distrusted.
  */
 export function itemListNode(items: ListedItem[], name: string): Record<string, unknown> | undefined {
   if (!SITE_URL || items.length === 0) return undefined;
@@ -211,11 +211,11 @@ export function itemListNode(items: ListedItem[], name: string): Record<string, 
 /**
  * Merge nodes into one `@graph`, dropping the `undefined`s that the builders emit on an
  * unconfigured build. `Seo` accepts a single `jsonLd` object, and one graph is also the shape
- * crawlers prefer over several sibling script blocks — a node can then reference another by `@id`.
+ * crawlers prefer over several sibling script blocks, a node can then reference another by `@id`.
  *
  * A nested `@context` is stripped from each node. `productJsonLd` is a standalone document that
  * predates this module and still carries its own, and an inner `@context` inside a `@graph` is
- * not valid JSON-LD — it would be silently ignored along with, on some parsers, the node holding
+ * not valid JSON-LD, it would be silently ignored along with, on some parsers, the node holding
  * it. Stripping here means callers can pass any builder's output without knowing which vintage
  * it is.
  *

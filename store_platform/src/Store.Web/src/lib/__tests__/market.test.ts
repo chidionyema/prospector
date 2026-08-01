@@ -13,7 +13,7 @@ function pack(id: string, market?: string | null): MarketedPack {
   return { id, market };
 }
 
-describe('packMarket — the null-is-uk rule', () => {
+describe('packMarket, the null-is-uk rule', () => {
   it('treats an absent market as "uk"', () => {
     expect(packMarket(pack('a', null))).toBe('uk');
     expect(packMarket(pack('b', undefined))).toBe('uk');
@@ -39,7 +39,7 @@ describe('countryToMarket', () => {
   });
 });
 
-describe('resolveMarket — precedence order', () => {
+describe('resolveMarket, precedence order', () => {
   it('an explicit ?market= override wins over everything else', () => {
     expect(
       resolveMarket({ queryMarket: 'us', cookieMarket: 'uk', countryHeader: 'GB' }),
@@ -67,7 +67,7 @@ describe('resolveMarket — precedence order', () => {
   });
 
   it('an unknown ?market= is treated as absent, falling through to the cookie', () => {
-    // Clamped to KNOWN_MARKETS: junk input must never become the resolved market — it would
+    // Clamped to KNOWN_MARKETS: junk input must never become the resolved market, it would
     // empty the main shelf and, if echoed into Set-Cookie, let control chars 500 the page.
     expect(resolveMarket({ queryMarket: 'zz', cookieMarket: 'us' })).toBe('us');
   });
@@ -81,7 +81,7 @@ describe('resolveMarket — precedence order', () => {
   });
 });
 
-describe('groupByMarket — boost, don\'t block', () => {
+describe('groupByMarket, boost, don\'t block', () => {
   const packs = [
     pack('uk-1', 'uk'),
     pack('untagged-1', null),
@@ -117,7 +117,7 @@ describe('groupByMarket — boost, don\'t block', () => {
     expect(grouped.matching.map((p) => p.id)).toEqual(['us-1', 'us-2']);
   });
 
-  it('every pack is visible somewhere — boosting never hides', () => {
+  it('every pack is visible somewhere, boosting never hides', () => {
     for (const resolved of ['uk', 'us', 'fr']) {
       const grouped = groupByMarket(packs, resolved);
       const seen = [...grouped.matching, ...grouped.others.flatMap((g) => g.packs)].map(

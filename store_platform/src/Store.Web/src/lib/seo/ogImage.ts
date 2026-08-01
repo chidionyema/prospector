@@ -3,7 +3,7 @@
  *
  * NOT UNDER `/api`. `next.config.ts` rewrites `/api/:path*` to the backend API origin, so the
  * conventional `/api/og/...` route used by most Next examples would be proxied straight past this
- * app and 404 from the API. The route is a normal page path for that reason alone — if the proxy
+ * app and 404 from the API. The route is a normal page path for that reason alone, if the proxy
  * rule is ever removed, this is still correct, so there is no reason to move it back.
  *
  * `/og` is also NOT in the robots.txt disallow list (unlike `/api`), which matters: Google and
@@ -11,7 +11,7 @@
  * the same as no og:image.
  *
  * One module so the route, the `og:image` meta, the Product schema, and the image sitemap can
- * never disagree about the URL — four call sites is exactly the number at which a hardcoded
+ * never disagree about the URL, four call sites is exactly the number at which a hardcoded
  * string starts drifting.
  */
 

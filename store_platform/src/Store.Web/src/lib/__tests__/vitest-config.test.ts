@@ -5,7 +5,7 @@ import config from '../../../vitest.config';
 /**
  * The worker cap exists so that N agents running suites in parallel worktrees cannot each claim
  * a whole 12-core box. It shipped once as `test.poolOptions.forks.maxForks`, which vitest 4
- * removed — and an unknown key in this config is IGNORED at runtime, not rejected. The suite
+ * removed, and an unknown key in this config is IGNORED at runtime, not rejected. The suite
  * stayed green while the cap silently capped nothing:
  *
  *   main's version   -> createVitest(...).config.maxWorkers === undefined

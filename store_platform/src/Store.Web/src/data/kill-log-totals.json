@@ -1,20 +1,20 @@
 {
-  "killed": 960,
-  "passed": 103,
+  "killed": 1080,
+  "passed": 129,
   "shown": 60,
   "byGate": {
-    "min_composite": 511,
+    "min_composite": 551,
     "adversarial_decisive": 154,
-    "incumbency": 146,
-    "value_durability": 47,
-    "moat_ungrounded": 43,
-    "payer_solvency": 22,
-    "legality": 9,
+    "incumbency": 150,
+    "moat_ungrounded": 92,
+    "value_durability": 54,
+    "payer_solvency": 25,
+    "source_or_die": 16,
+    "legality": 12,
+    "pain_reality": 7,
     "route_to_market": 6,
-    "source_or_die": 5,
-    "pain_reality": 5,
     "currency": 5,
-    "distribution": 4,
+    "distribution": 5,
     "buyer_intent": 3
   }
 }

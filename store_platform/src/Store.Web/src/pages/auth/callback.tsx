@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
  * (ExternalAuthCodeStore) and redirects here with only that; this page POSTs the code back and the
  * API answers by setting the session cookie. A token in the query string would be written into
  * browser history, the Referer header of the next request, and any access log between here and
- * the server — none of which expire in 60 seconds.
+ * the server, none of which expire in 60 seconds.
  *
  * The exchange is guarded by a ref rather than left to the effect's dependencies: React 19 in
  * development mounts effects twice, the code is single-use, and the second call would consume
@@ -38,7 +38,7 @@ export default function AuthCallbackPage() {
     const failure = one(router.query.error);
     const linked = one(router.query.linked);
 
-    // Returning from connecting a provider to an account that is already signed in — no code to
+    // Returning from connecting a provider to an account that is already signed in, no code to
     // exchange, the link happened server-side.
     if (linked === '1') {
       void router.replace('/account');

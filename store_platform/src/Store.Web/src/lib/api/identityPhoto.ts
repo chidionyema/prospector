@@ -7,7 +7,7 @@
  * browser only ever talks to us.
  *
  * It lives under `src/lib/api/**` because that is the ONE place the foundation rails permit a raw
- * `fetch` (see web/eslint.config.mjs). The API route must call THIS — never `fetch` directly.
+ * `fetch` (see web/eslint.config.mjs). The API route must call THIS, never `fetch` directly.
  *
  * SSRF guard: this fetches an attacker-influenced URL (it arrives as a query param), so the host is
  * allow-listed to LinkedIn's CDN only. Without that, the route is an open proxy / SSRF pivot into
@@ -41,7 +41,7 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5 MB. A headshot is well under this; cap a
 
 /**
  * Fetch an allow-listed LinkedIn photo. Returns null on any failure (bad host, timeout, non-image,
- * oversize, upstream error) — the caller maps null to a 502 and the avatar degrades to initials.
+ * oversize, upstream error), the caller maps null to a 502 and the avatar degrades to initials.
  */
 export async function fetchIdentityPhoto(raw: string): Promise<IdentityPhoto | null> {
   if (!isAllowedPhotoUrl(raw)) return null;

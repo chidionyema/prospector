@@ -9,8 +9,8 @@ import { TOS_VERSION } from '@/lib/config';
 /**
  * Everything a signed-out visitor can do, on one route.
  *
- * The store has five auth journeys — sign in, register, forgot password, verify an address, reset
- * a password — and the-introduction-exchange gave each its own page. Four of those five are dead
+ * The store has five auth journeys, sign in, register, forgot password, verify an address, reset
+ * a password, and the-introduction-exchange gave each its own page. Four of those five are dead
  * ends: a customer who has just verified their address is looking at a page whose only remaining
  * purpose is to link them to the sign-in page. Collapsing them into one panel means every journey
  * ENDS on the form that finishes the job, with the address already filled in.
@@ -22,7 +22,7 @@ import { TOS_VERSION } from '@/lib/config';
 type Mode = 'signin' | 'register' | 'forgot' | 'verifying' | 'reset';
 
 interface AuthPanelProps {
-  /** Parsed from the query string by the page — the panel does no routing of its own. */
+  /** Parsed from the query string by the page, the panel does no routing of its own. */
   initial: {
     mode: Mode;
     userId?: string;
@@ -44,7 +44,7 @@ const OAUTH_ERRORS: Record<string, string> = {
 };
 
 /** A verify link that lost half of itself in an email client is treated exactly like an expired
- *  one — same message, same recovery — rather than spinning on "Confirming…" forever. */
+ *  one, same message, same recovery, rather than spinning on "Confirming…" forever. */
 const BAD_VERIFY_LINK =
   'That verification link is invalid or has expired. Enter your email below and we will send a new one.';
 
@@ -73,7 +73,7 @@ export function AuthPanel({ initial, returnTo }: AuthPanelProps) {
     setError(err instanceof AuthError ? err.message : fallback);
   }, []);
 
-  // Verification runs on arrival, not on a button: the customer already clicked the button — it
+  // Verification runs on arrival, not on a button: the customer already clicked the button, it
   // was in the email. Asking them to click a second one to confirm the first is friction with no
   // security value, because possession of the link is the whole proof.
   useEffect(() => {
@@ -91,7 +91,7 @@ export function AuthPanel({ initial, returnTo }: AuthPanelProps) {
       })
       .catch(() => {
         if (cancelled) return;
-        // The API answers a bad user id and a bad token identically, on purpose — a distinct
+        // The API answers a bad user id and a bad token identically, on purpose, a distinct
         // message would reveal which addresses have accounts. Offer the resend instead.
         setError(BAD_VERIFY_LINK);
         setMode('forgot');
@@ -108,7 +108,7 @@ export function AuthPanel({ initial, returnTo }: AuthPanelProps) {
     try {
       await signIn(username || email, password);
     } catch (err) {
-      // One message for a wrong password, an unknown account and an unverified address alike —
+      // One message for a wrong password, an unknown account and an unverified address alike,
       // the API returns the same Auth.InvalidCredentials for all three so the form cannot be used
       // to discover which addresses are registered.
       fail(err, 'Could not sign you in. Check your details and try again.');
@@ -141,7 +141,7 @@ export function AuthPanel({ initial, returnTo }: AuthPanelProps) {
     try {
       // Both of these always succeed, whether or not the address is registered. Sending them
       // together means one message covers "reset my password" and "resend my verification"
-      // without the panel — or an attacker — learning which of the two applied.
+      // without the panel, or an attacker, learning which of the two applied.
       await Promise.all([
         auth.forgotPassword(email).catch(() => undefined),
         auth.resendVerification(email).catch(() => undefined),

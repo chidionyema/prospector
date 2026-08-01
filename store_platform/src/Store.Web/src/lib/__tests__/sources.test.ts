@@ -8,14 +8,14 @@ import { CITED_FIGURES, citedFigure } from '../sources';
  * Source-or-die, pointed at ourselves.
  *
  * The engine refuses to publish a pack whose claims lack a retrievable source, and the storefront
- * that sells that refusal shipped "Typically $300 to $1,000 a year" — a price for somebody else's
+ * that sells that refusal shipped "Typically $300 to $1,000 a year", a price for somebody else's
  * product, from nowhere, hedged rather than sourced. The hedge is the tell: it is what you write
  * when you know the number is unbacked and want to keep it anyway.
  *
  * The rule these tests enforce draws the line at whose money it is:
  *
- *   £  — our price. We set it, so there is nothing to cite.
- *   $ € — someone else's price. It is a claim about the world and must come from `sources.ts`.
+ *   £ , our price. We set it, so there is nothing to cite.
+ *   $ €, someone else's price. It is a claim about the world and must come from `sources.ts`.
  *
  * That is why the scan below is not "no currency in the copy". It is narrower and, I think,
  * exactly right: a figure we invented needs no source, and a figure we observed always does.
@@ -38,7 +38,7 @@ describe('every cited figure is complete enough to check', () => {
 
   it('cites primary sources, never a site earning a referral on the answer', () => {
     // Affiliate review pages carry these prices too, and they are the easy fetch when the
-    // vendor's own page rate-limits — which is exactly what happened on 2026-08-01. A price
+    // vendor's own page rate-limits, which is exactly what happened on 2026-08-01. A price
     // sourced to a page paid to recommend the product is not sourced.
     const SECONDARY = /(?:^|\.)(?:toolsurf|tipsonblogging|g2|capterra|aipure|swipefile|maxaeo|preuve)\./;
     for (const source of CITED_FIGURES) {
@@ -60,13 +60,13 @@ describe('no unsourced price can reappear in the marketing copy', () => {
 
     // Comments are stripped first, deliberately. The doc comment on `ComparisonBlock` quotes the
     // exact string this test exists to keep out, because a fix whose reason is deleted grows back
-    // — and a test that forbade naming the old bug would force us to delete the reason.
+    //, and a test that forbade naming the old bug would force us to delete the reason.
     const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
     const offenders = [...code.matchAll(/.{0,60}[$€]\s?\d[\d,.]*.{0,30}/g)].map((m) => m[0].trim());
     expect(
       offenders,
-      'a $ or € figure is somebody else’s price — route it through lib/sources.ts',
+      'a $ or € figure is somebody else’s price, route it through lib/sources.ts',
     ).toEqual([]);
   });
 

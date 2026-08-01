@@ -5,7 +5,7 @@ import { SITE_URL, BRAND } from '@/lib/config';
 
 /**
  * Per-page document head (BRAND-AND-DESIGN §9, UX-STANDARDS §8 "link previews are
- * reassuring and leak-free"). Before this, the app shipped an empty <Head/> — blank
+ * reassuring and leak-free"). Before this, the app shipped an empty <Head/>, blank
  * browser-tab titles and bare link previews, off-brand for a "trusted private room".
  *
  * Defaults live here and render once from _app; a page overrides them with <Seo title=… />.
@@ -13,7 +13,7 @@ import { SITE_URL, BRAND } from '@/lib/config';
  * <title> dedupes automatically (last in tree order wins).
  *
  * PRIVACY: this is brand chrome only. Never pass a target's identity or a specific
- * bounty's brief into a title/description — the public pitch page in particular must stay
+ * bounty's brief into a title/description, the public pitch page in particular must stay
  * identity-blind in its link preview (it passes a generic title + noindex).
  */
 
@@ -35,7 +35,7 @@ export interface SeoProps {
    * Only ever describe what the page actually is. In particular this must never carry
    * `aggregateRating` or `review`: we have no reviews, a fabricated one is an offence under the
    * DMCCA 2024 fake-review provisions, and Google delists structured data that does not match
-   * visible page content — so inventing it would be illegal, dishonest and ineffective at once.
+   * visible page content, so inventing it would be illegal, dishonest and ineffective at once.
    */
   jsonLd?: Record<string, unknown>;
   /**
@@ -112,7 +112,7 @@ export function Seo({
       {ogImage && <meta key="twitter:image:alt" name="twitter:image:alt" content={ogImageAlt ?? fullTitle} />}
       {/* An indexable page opts IN to the largest preview treatments. These are not defaults:
           without `max-image-preview:large` Google shows a thumbnail or nothing at all for the
-          pack cards, and `max-snippet:-1` is what allows a full-length snippet to be quoted —
+          pack cards, and `max-snippet:-1` is what allows a full-length snippet to be quoted,
           which is precisely what an AI answer surface needs in order to cite this page usefully.
           A noindex page keeps its existing directive and gets none of this. */}
       {noindex ? (
@@ -124,7 +124,7 @@ export function Seo({
           content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
         />
       )}
-      {/* A noindex page never emits structured data — there is nothing to be structured for.
+      {/* A noindex page never emits structured data, there is nothing to be structured for.
           `<` is escaped because the payload carries operator-authored copy (pack titles), and an
           unescaped "</script>" inside a JSON string ends the block and drops the rest of it into
           the document as markup. */}

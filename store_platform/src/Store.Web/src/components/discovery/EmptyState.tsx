@@ -8,25 +8,25 @@ import { KIND_NOUN, label, type FacetKind } from '@/lib/facets';
 /**
  * Near miss before empty, and only then the waitlist (spec Part 7).
  *
- * The order is the point. A filtered empty state is common — most of the time the buyer had a
- * purchasable pack one facet away — and sending them straight to an email form burns a sale that
+ * The order is the point. A filtered empty state is common, most of the time the buyer had a
+ * purchasable pack one facet away, and sending them straight to an email form burns a sale that
  * was on the table. So: relax a constraint first, capture an address only when the catalogue
  * genuinely has nothing. That order holds as the catalogue grows; it is not tuned to a size.
  *
- * Named `Discovery*` on purpose — `components/ui` already exports an unrelated `EmptyState`.
+ * Named `Discovery*` on purpose, `components/ui` already exports an unrelated `EmptyState`.
  */
 
 export interface NearMissCandidate {
   pack: { id: string; title: string };
   /** Which active constraint this pack fails, in buyer-facing words. */
   missLabel: string;
-  /** The state that would include it — the one-tap relaxer. */
+  /** The state that would include it, the one-tap relaxer. */
   relaxedState: DiscoveryState;
   relaxLabel: string;
 }
 
 /**
- * A. Near miss — packs matching all but one active constraint, each with a chip naming the miss
+ * A. Near miss, packs matching all but one active constraint, each with a chip naming the miss
  * and a one-tap relaxer. No email form here: there is still something to sell.
  */
 export function DiscoveryNearMiss({
@@ -46,7 +46,7 @@ export function DiscoveryNearMiss({
   return (
     <div className="rounded-2xl border border-border bg-surface p-6">
       <h3 className="text-lg font-black tracking-tight text-text">
-        Nothing matches all of it. These come closest —
+        Nothing matches all of it. These come closest,
       </h3>
       <ul className="mt-3 flex flex-wrap gap-2">
         {candidates.map((candidate) => (
@@ -56,7 +56,7 @@ export function DiscoveryNearMiss({
               onClick={() => onRelax(candidate.relaxedState)}
               className="rounded-full bg-warning/10 px-3 py-1 text-[11px] font-semibold text-text/80 ring-1 ring-inset ring-warning/30 transition-colors hover:bg-warning/20"
             >
-              {candidate.pack.title.split(/[—–]/)[0].trim()}: {candidate.missLabel}
+              {candidate.pack.title.split(/\s*,\s*/)[0].trim()}: {candidate.missLabel}
             </button>
           </li>
         ))}
@@ -80,7 +80,7 @@ export function DiscoveryNearMiss({
 }
 
 /**
- * B. True empty, catalogue-wide — the waitlist.
+ * B. True empty, catalogue-wide, the waitlist.
  *
  * The form itself (and the consent wording the server hashes) now lives in
  * `components/waitlist/WaitlistForm`, shared with the standing callout on the sample report. This
@@ -91,7 +91,7 @@ export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?:
   return (
     <div className="rounded-2xl border border-border bg-surface p-6">
       <h3 className="text-lg font-black tracking-tight text-text">
-        No vetted pack for “{query.trim()}” — yet.
+        No vetted pack for “{query.trim()}”, yet.
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
         We only list an idea once it survives six checks with a clickable source behind every claim. Most

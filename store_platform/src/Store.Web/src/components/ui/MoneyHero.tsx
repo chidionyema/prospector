@@ -21,7 +21,7 @@ export interface MoneyHeroProps {
 const HELD_STATES = ['EscrowLocked', 'BridgeActive', 'Disputed', 'PendingMatch'];
 
 /**
- * The escrow figure as the hero of a surface — the largest, most confident thing on the dashboard and
+ * The escrow figure as the hero of a surface, the largest, most confident thing on the dashboard and
  * the bounty detail. The one place the "earned flourish" lands: a faint band-tinted vault wash for held
  * money, a brass wash for settled money (gold = settled-money signal only). Everything else on the page
  * recedes beneath it (SITE-POLISH-SPEC §2.3). For a compact inline figure use MoneyBand instead.

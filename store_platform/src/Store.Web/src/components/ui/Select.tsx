@@ -47,7 +47,7 @@ export function Select({
         >
           {children}
         </select>
-        {/* Custom chevron — the native one is suppressed by appearance-none. Pure CSS so no icon import
+        {/* Custom chevron, the native one is suppressed by appearance-none. Pure CSS so no icon import
             churn; sits inside the field, ignores pointer so the select still opens on click. */}
         <span
           aria-hidden="true"

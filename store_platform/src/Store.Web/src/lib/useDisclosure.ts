@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Accessible disclosure keyboard contract for the mobile-nav drawers — see
+ * Accessible disclosure keyboard contract for the mobile-nav drawers, see
  * docs/engineering/ACCESSIBILITY-STANDARDS.md §"Disclosures & menus".
  *
  * While `open`, Escape closes the panel and returns focus to the trigger button, so a keyboard or

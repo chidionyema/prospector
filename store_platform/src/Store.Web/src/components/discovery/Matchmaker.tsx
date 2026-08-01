@@ -18,11 +18,11 @@ import type { Advantage, Commitment, Payer } from '@/lib/facets';
 import { FacetChips } from './FacetChips';
 
 /**
- * The three-question router (spec Part 5). Copy is verbatim from the spec — it is the promise
+ * The three-question router (spec Part 5). Copy is verbatim from the spec, it is the promise
  * the result screen has to keep, including the promise to say "we haven't built it yet".
  *
  * The one thing this component must never do is produce a winner when nothing scored. A
- * fabricated match is the exact failure the whole story exists to fix — and it stays a failure at
+ * fabricated match is the exact failure the whole story exists to fix, and it stays a failure at
  * any catalogue size, so a top score of 0 routes to the near-miss state instead (AC-8).
  *
  * COLLAPSED BY DEFAULT, and this component is only mounted once it has been opened. Expanded, the
@@ -30,12 +30,12 @@ import { FacetChips } from './FacetChips';
  * first pack card was at y=1094, below a 720px fold, so a storefront whose entire pitch is "here is
  * what survived" opened on a questionnaire instead of on the product. The router is a shortcut for
  * a buyer who wants one, not a toll gate for the buyer who would rather just look. `open` lives in
- * the parent (`CatalogBrowser`) rather than here because the thing that opens it — `MatchmakerTrigger`
- * — sits in the toolbar row next to search and sort, where it costs no vertical space at all.
+ * the parent (`CatalogBrowser`) rather than here because the thing that opens it, `MatchmakerTrigger`
+ *, sits in the toolbar row next to search and sort, where it costs no vertical space at all.
  */
 
 /**
- * Q1 — multi-select, max 2, plus one mutually-exclusive escape hatch.
+ * Q1, multi-select, max 2, plus one mutually-exclusive escape hatch.
  *
  * "None of these yet" is a real answer that must never dead-end, and it carries
  * `advantage: null` to keep that promise. This is the null rule (`facets.ts:18`) applied to the
@@ -46,12 +46,12 @@ import { FacetChips } from './FacetChips';
  * It mattered, not just semantically. `stateFromAnswers` copies the answer into the URL, so
  * "Show me everything that matched" used to hand a beginner `?adv=nocode`, and
  * `applyDiscoveryState` hard-filters on it. Measured on the live catalogue 2026-08-01, `nocode`
- * is carried by **1 pack of 49** — so the least confident buyer in the funnel was filtered down
+ * is carried by **1 pack of 49**, so the least confident buyer in the funnel was filtered down
  * to a single pack by answering honestly. `discovery.ts` had already dropped the spec's
  * `hands_on` half of this mapping for dead-ending a beginner; the data now says the `nocode`
  * half dead-ends them too.
  *
- * `nocode` is NOT retired from the vocabulary — one pack earns it on its own evidence (CureSafe
+ * `nocode` is NOT retired from the vocabulary, one pack earns it on its own evidence (CureSafe
  * Strip, whose dossier names a Shopify build in so many words). It is simply no longer the
  * dumping ground for "nothing".
  */
@@ -70,7 +70,7 @@ const Q2_OPTIONS: ReadonlyArray<{ text: string; commitment: Commitment }> = [
 ];
 
 /**
- * `payer: null` is "Don't mind" — the spec scores it 0, never as a miss. The option carries its
+ * `payer: null` is "Don't mind", the spec scores it 0, never as a miss. The option carries its
  * own id so "Don't mind" can be a *chosen* answer that looks chosen, distinct from Q3 being
  * skipped; both produce the same `null` in the scored answers.
  */
@@ -93,7 +93,7 @@ function OptionButton({
   children: React.ReactNode;
 }) {
   // The tick is not decoration: selection here is a border-and-tint change, and on Q1 two
-  // options can be lit at once — a colour-only signal both fails low-vision buyers and reads
+  // options can be lit at once, a colour-only signal both fails low-vision buyers and reads
   // as "highlighted" rather than "chosen". aria-pressed already tells a screen reader; the
   // tick tells everyone else the same thing.
   return (
@@ -126,7 +126,7 @@ function OptionButton({
  * Sentence-slot phrases for the reason line, one per facet value that can score.
  *
  * The chip labels ("Suits builders", "Evenings-friendly") are heading fragments, and dropping
- * them into a sentence produced "It matches you on suits builders, evenings-friendly" — the
+ * them into a sentence produced "It matches you on suits builders, evenings-friendly", the
  * same heading-vs-noun trap `KIND_NOUN` exists for (`lib/facets.ts`). These strings are written
  * for exactly one slot: after "Picked because ". They live here and not in `facets.ts` because
  * the reason line is the only sentence that speaks about the buyer's own answers, and each
@@ -152,7 +152,7 @@ const REASON_PHRASES: Record<'advantage' | 'commitment' | 'payer', Record<string
   },
 };
 
-/** "a, b and c" — the serial join that keeps a three-reason sentence readable. */
+/** "a, b and c", the serial join that keeps a three-reason sentence readable. */
 function joinClauses(parts: string[]): string {
   if (parts.length <= 1) return parts.join('');
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
@@ -189,7 +189,7 @@ function WinnerCard({ result }: { result: MatchResult<Pack> }) {
       <FacetChips pack={pack} className="mt-4" />
       <div className="mt-5 flex flex-wrap items-center gap-4">
         <Link href={`/pack/${pack.id}`}>
-          <Button variant="prominent">See the pack — {formatPrice(pack.price)}</Button>
+          <Button variant="prominent">See the pack, {formatPrice(pack.price)}</Button>
         </Link>
       </div>
     </div>
@@ -227,7 +227,7 @@ export function MatchmakerTrigger({ onOpen, count, countLabel }: { onOpen: () =>
       aria-expanded={false}
       className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
     >
-      {count !== undefined ? `Find my fit — ${count} ${countLabel}` : 'Find my fit'}
+      {count !== undefined ? `Find my fit, ${count} ${countLabel}` : 'Find my fit'}
     </button>
   );
 }
@@ -251,7 +251,7 @@ export function Matchmaker({
   /**
    * "None of these yet" needs its own flag because it is an *answer* that adds no constraint.
    * Without it, `answers.advantages` stays `[]` and the form cannot tell "told us they have
-   * nothing" apart from "has not answered Q1 yet" — so the submit button would never enable.
+   * nothing" apart from "has not answered Q1 yet", so the submit button would never enable.
    */
   const [noSkillsYet, setNoSkillsYet] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -296,7 +296,7 @@ export function Matchmaker({
       return (
         <div className="rounded-2xl border border-border bg-surface p-6">
           <h3 className="text-xl font-black tracking-tight text-text">
-            We haven&apos;t built yours yet — and we&apos;re not going to pretend otherwise.
+            We haven&apos;t built yours yet, and we&apos;re not going to pretend otherwise.
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-muted">
             Nothing in the catalogue matches what you told us. Rather than hand you a pack that nearly fits,
@@ -344,7 +344,7 @@ export function Matchmaker({
   return (
     <div className="rounded-2xl border border-border bg-surface p-6 md:p-8">
       <p className="text-sm font-semibold leading-relaxed text-text/80">
-        Three questions. We&apos;ll tell you which one is yours — or tell you honestly that we haven&apos;t
+        Three questions. We&apos;ll tell you which one is yours, or tell you honestly that we haven&apos;t
         built it yet.
       </p>
 

@@ -11,8 +11,8 @@ import { PACK_CONTENTS } from '../PackContents';
  * file that no page ever mentioned. Nobody noticed because the only thing binding them was a
  * prose comment dated to a single afternoon's audit.
  *
- * This test is that binding, mechanised. It reads the tuple out of the Python source — the same
- * technique `lib/__tests__/facets.test.ts` uses against `PackFacets.cs` — so adding a file to the
+ * This test is that binding, mechanised. It reads the tuple out of the Python source, the same
+ * technique `lib/__tests__/facets.test.ts` uses against `PackFacets.cs`, so adding a file to the
  * bundle without advertising it, or advertising a file the bundle does not contain, fails here.
  *
  * Deliberately compared in ORDER, not as a set: the list is rendered to buyers top to bottom, and

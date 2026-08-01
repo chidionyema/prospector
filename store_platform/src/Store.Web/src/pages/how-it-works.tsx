@@ -52,7 +52,7 @@ export default function HowItWorks() {
       <Section
         bg="white"
         width="6xl"
-        title={<span className="font-black">The six checks — one kill, and it stops</span>}
+        title={<span className="font-black">The six checks, one kill, and it stops</span>}
       >
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-text/75">
           Every candidate faces the same six gates, in this order. The panel kills fast at the
@@ -133,13 +133,13 @@ export default function HowItWorks() {
           <p className="text-lg font-normal leading-relaxed text-text/80">
             After the six gates clear, a second agent attacks the surviving claim. It hunts for
             contradictions, weak citations, and gaps the first pass missed. The dossier survives
-            only if every objection can be answered with the evidence already on file — no new
+            only if every objection can be answered with the evidence already on file, no new
             research, no hand‑waving.
           </p>
           <p className="text-sm leading-relaxed text-muted">
             This is why silence in the evidence record means &ldquo;unverifiable,&rdquo; not
             &ldquo;false.&rdquo; The agent rules only on passages it actually fetched. If it
-            cannot find the evidence, it cannot mount the kill — so the bar is high, and the
+            cannot find the evidence, it cannot mount the kill, so the bar is high, and the
             surviving dossiers are the ones that cleared it honestly.
           </p>
         </div>
@@ -156,7 +156,7 @@ export default function HowItWorks() {
             Of 960 ideas researched, 103 survived.
           </p>
           <p className="text-base leading-relaxed text-text/80">
-            The rejects are published in full — each with the gate that fired and the sourced
+            The rejects are published in full, each with the gate that fired and the sourced
             argument that killed it. The filter is auditable, not a black box.
           </p>
           <Link
@@ -169,7 +169,7 @@ export default function HowItWorks() {
         </div>
       </Section>
 
-      {/* D. Honest limits — preserved verbatim */}
+      {/* D. Honest limits, preserved verbatim */}
       <Section
         bg="bg"
         width="6xl"

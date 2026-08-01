@@ -49,7 +49,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   //
   // The repetition is required, not sloppiness: a crawler that matches a specific `User-agent`
   // group ignores the `*` group completely. Emitting a bare `User-agent: GPTBot` with no rules
-  // would therefore grant it the authed paths that `*` protects — the exact opposite of the
+  // would therefore grant it the authed paths that `*` protects, the exact opposite of the
   // intent. See `lib/seo/crawlers.ts` for why these are allowed at all.
   const aiGroups = AI_CRAWLERS.flatMap(({ token, operator }) => [
     `# ${operator}`,

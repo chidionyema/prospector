@@ -5,7 +5,7 @@ import { Icon } from '@/components/ui';
  * The single source of truth for "what is in the £49 download".
  *
  * Deliberately shared by the homepage and every pack page: when this claim lives in two places it
- * drifts, and a drifted claim on a paid product is a refund. It drifted anyway — this list said
+ * drifts, and a drifted claim on a paid product is a refund. It drifted anyway, this list said
  * FOUR documents while `prospector/bridge.py::BUNDLE_FILES` had grown to eight, so three real
  * deliverables (executive summary, first-week checklist, marketing assets) were shipped to buyers
  * without ever being advertised. A prose audit note dated to one afternoon could not catch that.
@@ -68,7 +68,7 @@ export const PACK_CONTENTS: {
     title: 'The Financial Model',
     filename: '04_Financial_Model.md',
     desc:
-      'Pricing mechanics and unit economics. Figures the engine could not ground are marked as absent rather than filled in — no invented revenue, cost or TAM.',
+      'Pricing mechanics and unit economics. Figures the engine could not ground are marked as absent rather than filled in, no invented revenue, cost or TAM.',
   },
   {
     emoji: '✅',
@@ -82,7 +82,7 @@ export const PACK_CONTENTS: {
     title: 'Marketing Assets',
     filename: 'Marketing_Assets.md',
     desc:
-      'Launch copy you can send today — listing page, outreach and social drafts. Every asset passes the same claim-check as the research, so nothing here overstates the product.',
+      'Launch copy you can send today, listing page, outreach and social drafts. Every asset passes the same claim-check as the research, so nothing here overstates the product.',
   },
   {
     emoji: '🔗',
@@ -95,7 +95,7 @@ export const PACK_CONTENTS: {
 ];
 
 /**
- * "What's inside your download" — the deliverable breakdown.
+ * "What's inside your download", the deliverable breakdown.
  *
  * `sourceCount` is the pack's real cited-source count from the API; pass it on a pack page so the
  * receipts line is that pack's number, and omit it on the homepage where no single number is true.

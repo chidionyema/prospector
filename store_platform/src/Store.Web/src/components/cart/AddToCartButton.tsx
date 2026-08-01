@@ -13,7 +13,7 @@ interface AddToCartButtonProps {
  * Put a pack in the basket, or take it out again.
  *
  * Deliberately secondary everywhere it appears. The direct "Buy now" path stays one click, because
- * a basket is only a gain for the buyer who wants more than one pack — making everyone route
+ * a basket is only a gain for the buyer who wants more than one pack, making everyone route
  * through add → open → checkout would tax the far more common single purchase to serve the rarer
  * one. This button is the opt-in.
  */
