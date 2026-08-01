@@ -10,7 +10,7 @@ import zipfile
 
 import pytest
 
-from prospector.bridge import BUNDLE_FILES, EngineBridge
+from prospector.bridge import BUNDLE_FILES, EngineBridge, _SECTION_TITLES
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict
 
 
@@ -112,6 +112,33 @@ class TestIndexHtmlShipsAlongsideTheEightFiles:
             "The QA Report, with the receipts",
         ):
             assert title in html
+
+    def test_index_html_reads_in_the_bundle_files_order(self, bridge):
+        """REGRESSION: the reading order was the WRITE order, and nobody chose it.
+
+        `_create_bundle` writes the cheap artifacts first and the two deterministic floors
+        last, because those need `dossier.checks` in hand. While the index accumulated
+        alongside those writes, a buyer opening the pack got 01, 02, 03, 04, QA, Marketing,
+        00, 05 — landing on the build spec, meeting the Executive Summary seventh of eight,
+        and finding the First-Week Checklist, the only file that says what to DO, last.
+        Proven on a shipped bundle (publish/bundles/fbd10d6bdfcd5e31/*.zip): "Executive
+        Summary" at char 5212, "The Blueprint (Build Spec)" at 4806.
+
+        The test above asserts every title is PRESENT, which was true throughout and is why
+        this shipped. Presence was never the property that mattered.
+        """
+        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
+        html = _entries(path)["index.html"].decode()
+
+        positions = [(html.index(_SECTION_TITLES[name]), name) for name in BUNDLE_FILES]
+        assert positions == sorted(positions), (
+            "index.html reading order drifted from BUNDLE_FILES: "
+            f"{[n for _, n in sorted(positions)]}"
+        )
+        # The two that motivated the fix, asserted by name so a future reorder has to be
+        # deliberate about these specifically.
+        assert html.index("Executive Summary") < html.index("The Blueprint (Build Spec)")
+        assert html.index("First-Week Checklist") < html.index("The QA Report, with the receipts")
 
     def test_index_html_carries_the_pack_title_and_id(self, bridge):
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
