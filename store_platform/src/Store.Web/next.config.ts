@@ -62,6 +62,22 @@ const nextConfig: NextConfig = {
   // which breaks the Docker COPY and the dev server's dynamic routes. Pinning keeps server.js
   // flat at .next/standalone/server.js and silences the workspace-root warning.
   outputFileTracingRoot: import.meta.dirname,
+  // /og/pack/[id] renders its social card with next/og (ImageResponse). Next reaches the renderer
+  // through a RUNTIME `import()` inside dist/server/og/image-response.js, which static file tracing
+  // cannot see, so the standalone bundle shipped without it and the route threw
+  // ERR_MODULE_NOT_FOUND for @vercel/og/index.node.js — a 500 in production while returning 200 in
+  // dev and in `next start`, because both of those have the full node_modules on disk. Measured on
+  // prospector-store-web 2026-08-01. The glob must stay a directory wildcard: the renderer also
+  // loads resvg.wasm, yoga.wasm and Geist-Regular.ttf at runtime, none of which are reachable by
+  // tracing either, and naming only index.node.js would move the failure rather than fix it.
+  //
+  // The key is a GLOB, not a route literal. Next matches it with picomatch
+  // (build/collect-build-traces.js), where `[id]` is a character class matching one `i` or `d` — so
+  // the obvious key "/og/pack/[id]" matches nothing at all and fails SILENTLY, exactly like having
+  // written no include. Any dynamic route has to be reached with a wildcard for this reason.
+  outputFileTracingIncludes: {
+    "/og/pack/**": ["node_modules/next/dist/compiled/@vercel/og/**"],
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
