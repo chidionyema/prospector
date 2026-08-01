@@ -278,6 +278,24 @@ export class PacksUnavailableError extends Error {
   }
 }
 
+/** Raised when a catalogue read fails, carrying the HTTP status so a caller can tell "gone" from
+ *  "down". A bare Error collapses that distinction, and it matters wherever the answer becomes a
+ *  CACHED artefact: `/og/pack/[id]` must serve 404 for a pack that does not exist and 503 for an
+ *  API that is briefly unreachable, because social platforms cache a preview for days and would
+ *  otherwise keep serving the wrong one for a blip.
+ *
+ *  Not `AuthError` (`lib/api/auth.ts:38`): that one requires the auth API's stable `code`, which a
+ *  catalogue 503 does not have, so reusing it would mean inventing one. */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 /**
  * Ask the API to open one Stripe Checkout Session for a whole basket.
  *
@@ -322,9 +340,11 @@ function assertStripeCheckoutUrl(url: unknown): string {
   return url;
 }
 
+/** Throws `ApiError` (declared above) rather than a bare Error, so a caller can tell "gone" from
+ *  "down". Message and `instanceof Error` are unchanged, so existing catch blocks behave as before. */
 export async function fetchPackDetails(id: string): Promise<PackDetails> {
   const res = await fetch(`${API_FETCH_BASE}/catalog/${id}`);
-  if (!res.ok) throw new Error('Failed to fetch pack details');
+  if (!res.ok) throw new ApiError('Failed to fetch pack details', res.status);
   return res.json();
 }
 

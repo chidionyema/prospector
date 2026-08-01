@@ -15,6 +15,10 @@ import { useDisclosure } from '@/lib/useDisclosure';
 /** The public marketing nav — every entry points at a page that exists. */
 export const MARKETING_NAV = [
   { href: '/', label: 'Catalog' },
+  // `/ideas` is here rather than only in the sitemap because it is the hub every `/ideas/<slug>`
+  // landing hangs off: linked from the chrome, each landing is two clicks from the home page
+  // instead of being reachable only from a sitemap and its siblings.
+  { href: '/ideas', label: 'Browse by category' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/faq', label: 'FAQ' },
 ] as const;
@@ -160,6 +164,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               <h3 className="font-mono text-[10px] uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Store</h3>
               <ul className="flex flex-col gap-4">
                 <li><Link href="/" className="text-xs text-muted hover:text-text transition-colors">Catalog</Link></li>
+                <li><Link href="/ideas" className="text-xs text-muted hover:text-text transition-colors">Browse by category</Link></li>
                 <li><Link href="/how-it-works" className="text-xs text-muted hover:text-text transition-colors">How it works</Link></li>
                 <li><Link href="/kill-log" className="text-xs text-muted hover:text-text transition-colors">Kill log</Link></li>
                 <li><Link href="/faq" className="text-xs text-muted hover:text-text transition-colors">FAQ</Link></li>

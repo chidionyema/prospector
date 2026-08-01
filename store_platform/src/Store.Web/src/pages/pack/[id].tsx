@@ -5,6 +5,8 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { productJsonLd } from '@/lib/productJsonLd';
+import { breadcrumbNode, graph } from '@/lib/seo/schema';
+import { packOgImagePath } from '@/lib/seo/ogImage';
 import { Icon, CoverArt } from '@/components/ui';
 import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
@@ -249,7 +251,19 @@ export default function PackPage({ pack, catalog }: PackPageProps) {
       <Seo
         title={`${pack.title} · A business idea that survived our filter`}
         description={pack.oneLine || undefined}
-        jsonLd={productJsonLd(pack)}
+        ogType="product"
+        ogImagePath={packOgImagePath(pack.id)}
+        ogImageAlt={`${pack.title} — a £49 researched business pack from Mumchimp`}
+        jsonLd={graph(
+          productJsonLd(pack),
+          // The trail Google renders in place of the raw URL, so a result reads
+          // "Mumchimp › Business ideas › <pack>" instead of a 16-hex-character id.
+          breadcrumbNode([
+            { name: 'Mumchimp', path: '/' },
+            { name: 'Business ideas', path: '/ideas' },
+            { name: pack.title, path: `/pack/${pack.id}` },
+          ]),
+        )}
       />
 
       {clientSecret && (

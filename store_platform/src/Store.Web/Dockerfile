@@ -39,6 +39,18 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 # confirm a live PaymentIntent. scripts/deploy_web.sh enforces both facts before a build starts.
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+# Search-console ownership tokens (lib/seo/verification.ts -> _document.tsx). Same silent-discard
+# trap again: undeclared, the --build-arg is accepted and dropped, no meta tag is emitted, and the
+# console just keeps saying "ownership not verified" with nothing to debug. Both are OPTIONAL — an
+# unset one emits no tag at all, which is correct, because an empty `content=""` is a FAILED
+# verification rather than an absent one.
+ARG NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+ENV NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=$NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+ARG NEXT_PUBLIC_BING_SITE_VERIFICATION
+ENV NEXT_PUBLIC_BING_SITE_VERIFICATION=$NEXT_PUBLIC_BING_SITE_VERIFICATION
+# NOTE — INDEXNOW_KEY is deliberately NOT here. It is read at request time by
+# pages/indexnow-key.txt.tsx, so it is a runtime secret (`fly secrets set INDEXNOW_KEY=...`), and
+# baking it in would mean a rotation needs a rebuild. It must match the engine's own INDEXNOW_KEY.
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

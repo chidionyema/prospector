@@ -22,6 +22,7 @@ import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLab
 import { track } from '@/lib/analytics';
 import { citedFigure } from '@/lib/sources';
 import { categoryFor, type Category } from '@/lib/category';
+import { graph, itemListNode } from '@/lib/seo/schema';
 import {
   cardHeading,
   decodeDiscoveryState,
@@ -801,7 +802,19 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
     // above the header, and so a card anywhere on the page can reach it without prop threading.
     <BuyDrawerProvider>
     <MarketingLayout>
-      <Seo title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each" />
+      <Seo
+        title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each"
+        /* The catalogue as structured data. The shelf below is filtered and sorted in the browser,
+           so what a crawler keeps is whatever the server happened to send; this block states the
+           full list once, in order, with a real URL per pack. It is also the single cheapest thing
+           on the site for an assistant to quote when asked what Mumchimp currently sells. */
+        jsonLd={graph(
+          itemListNode(
+            packs.map((pack) => ({ name: pack.title, path: `/pack/${pack.id}` })),
+            'Business opportunity packs',
+          ),
+        )}
+      />
 
       {/* 1. HERO — deliberately short enough that the shelf starts above the fold.
              It was 606px tall at 1280x720 (measured), which put the first pack card at y=1094:

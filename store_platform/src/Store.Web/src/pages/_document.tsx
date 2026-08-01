@@ -1,5 +1,6 @@
 import { Html, Head, Main, NextScript } from "next/document";
-import { SITE_URL, BRAND } from "@/lib/config";
+import { graph, organizationNode, webSiteNode } from "@/lib/seo/schema";
+import { SEARCH_ENGINE_VERIFICATIONS } from "@/lib/seo/verification";
 
 // E30-002 (WR-037): site-wide JSON-LD — Organization + WebSite. Helps search engines understand the
 // brand as an entity (knowledge-panel eligibility) without claiming anything we can't substantiate:
@@ -7,37 +8,26 @@ import { SITE_URL, BRAND } from "@/lib/config";
 // SITE_URL exactly like the canonical tag — absolute URLs only emit in a configured (prod) build,
 // and crawlers only see the production origin anyway.
 //
+// The node shapes moved to `lib/seo/schema.ts` so that per-page structured data can reference this
+// Organization by `@id` instead of describing a second, unrelated brand entity. This file still
+// owns *where* the site-wide graph renders (once, on every page, from the document head).
+//
 // Rendered as a text-child <script> (NOT dangerouslySetInnerHTML, which the react/no-danger rail
 // bans). That means the serialized JSON must contain no `&`, `<`, or `>` — inside a raw-text <script>
-// element those would survive as literal entity text and corrupt the JSON. The values below are plain
-// ASCII (apostrophes are fine), so this is safe; keep it that way if you edit the description.
-const SITE = BRAND.name;
+// element those would survive as literal entity text and corrupt the JSON. The builders emit plain
+// ASCII (apostrophes are fine); the assertion below is what stops that invariant rotting silently.
 const ORG_DESCRIPTION =
   "Mumchimp sells grounded business opportunity packs. Each is a vetted idea with a " +
   "build spec, a GTM plan, operations and unit economics, and a sourced QA report.";
 
-const siteJsonLd = SITE_URL
-  ? JSON.stringify({
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          "@id": `${SITE_URL}/#organization`,
-          name: SITE,
-          url: SITE_URL,
-          logo: `${SITE_URL}/icon.svg`,
-          description: ORG_DESCRIPTION,
-        },
-        {
-          "@type": "WebSite",
-          "@id": `${SITE_URL}/#website`,
-          name: SITE,
-          url: SITE_URL,
-          publisher: { "@id": `${SITE_URL}/#organization` },
-        },
-      ],
-    })
-  : null;
+const siteGraph = graph(organizationNode(ORG_DESCRIPTION), webSiteNode());
+const serialized = siteGraph ? JSON.stringify(siteGraph) : null;
+
+// A raw-text <script> cannot carry these three characters (see above). Rather than trust a comment
+// to survive future edits, drop the block if the invariant is ever broken: no structured data is a
+// missed opportunity, but corrupted structured data is a parse error on every page of the site.
+// `lib/seo/__tests__/schema.test.ts` asserts the payload is clean, so this should never fire.
+const siteJsonLd = serialized && !/[&<>]/.test(serialized) ? serialized : null;
 
 export default function Document() {
   return (
@@ -49,6 +39,12 @@ export default function Document() {
         <link rel="alternate icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon.svg" />
         <meta name="theme-color" content="#0f172a" />
+        {/* Search-console ownership tokens. Empty until the operator sets the env vars, which is
+            why they are data-driven rather than pasted here: a token is per-property, and a wrong
+            one silently fails verification. See `lib/seo/verification.ts`. */}
+        {SEARCH_ENGINE_VERIFICATIONS.map(({ name, content }) => (
+          <meta key={name} name={name} content={content} />
+        ))}
         {siteJsonLd && (
           <script type="application/ld+json">{siteJsonLd}</script>
         )}
