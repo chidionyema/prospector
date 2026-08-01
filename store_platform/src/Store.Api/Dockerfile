@@ -22,6 +22,15 @@ COPY src/Store.Catalog/Store.Catalog.csproj src/Store.Catalog/
 RUN dotnet restore src/Store.Api/Store.Api.csproj
 
 # Build + publish.
+#
+# .editorconfig is part of the BUILD, not editor decoration: Directory.Build.props sets
+# TreatWarningsAsErrors=true, and .editorconfig is where the analyzer exceptions live with their
+# written rationale (MA0048/MA0051 set to none for the vertical-slice command and endpoint files).
+# Omitting it does not relax the build, it breaks it — the image build failed on 2026-08-01 with
+# ten MA0048/MA0051 errors against source that compiles clean everywhere else, which reads as a
+# code problem and is not one. It is copied in the build layer rather than the restore layer
+# because editing a severity should not invalidate the NuGet cache.
+COPY .editorconfig ./
 COPY src/Store.Api/ src/Store.Api/
 COPY src/Store.Catalog/ src/Store.Catalog/
 RUN dotnet publish src/Store.Api/Store.Api.csproj -c Release -o /app --no-restore
