@@ -6,6 +6,7 @@ import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { fetchOrderBySession, type SessionOrderItem } from '@/lib/api/client';
+import { PostPurchaseAccountNote } from '@/components/checkout/BuyerIdentityNote';
 import { track } from '@/lib/analytics';
 
 // The buyer lands here the instant the payment provider redirects, which is normally BEFORE
@@ -168,6 +169,10 @@ export default function OrderSuccess() {
                   >
                     {copied ? 'Copied ✓' : 'Copy link'}
                   </button>
+                  {/* The second route back, and the only one that survives losing the link above.
+                      A guest gets told what an account would do for them AFTER they have paid,
+                      never as a condition of paying. */}
+                  <PostPurchaseAccountNote className="mt-3 border-t border-border pt-3 text-xs leading-relaxed text-muted" />
                 </div>
               )}
             </div>

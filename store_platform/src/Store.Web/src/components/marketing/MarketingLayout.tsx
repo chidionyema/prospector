@@ -70,6 +70,20 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           <div className="flex items-center gap-2 h-full">
             {/* Renders nothing until there is something in it — see CartButton. */}
             <CartButton />
+
+            {/* Deliberately a plain link with a fixed label, so the header keeps the
+                identity-blindness noted above: it fetches nothing, renders the same markup for
+                every visitor, and stays cacheable. A "Sign in / Your account" toggle would have
+                to wait for the session before it could choose, so every returning customer would
+                watch it flip after hydration — and every page in the site would depend on the
+                session resolving. /account itself decides which of the two it is. */}
+            <Link
+              href="/account"
+              className="hidden md:inline-flex items-center gap-1.5 font-semibold text-sm text-muted hover:text-text transition-colors"
+            >
+              <Icon name="account" size={18} />
+              Account
+            </Link>
             <div className="flex items-center md:hidden h-full">
               <button
                 ref={menuButtonRef}
@@ -100,6 +114,14 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                     {item.label}
                   </Link>
                 ))}
+                {/* The desktop Account link is hidden below md, so the mobile menu carries it. */}
+                <Link
+                  href="/account"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-2 py-2 font-mono text-xs font-semibold text-muted hover:text-text"
+                >
+                  Account
+                </Link>
               </div>
               <div className="py-6">
                 <Link href="/" onClick={() => setMenuOpen(false)}>

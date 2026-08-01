@@ -10,6 +10,23 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
 
+    <!-- Identity & auth. Versions match the introduction-exchange exactly (its
+         Directory.Packages.props pins 9.0.4 across Identity/EF/JwtBearer), because the auth
+         layer is a port from that repo and a version skew there would land as a compile
+         break in ported code rather than as an obvious dependency problem. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.4" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.6.0" />
+    <!-- MediatR is PINNED to 12.4.1 on purpose: 12.x is Apache-2.0 (verified from disk at
+         ~/.nuget/packages/mediatr/12.4.1/mediatr.nuspec), 13.0+ moved to a paid commercial
+         licence. Bumping this is a licensing decision, not a dependency chore. -->
+    <PackageVersion Include="MediatR" Version="12.4.1" />
+    <PackageVersion Include="FluentValidation" Version="11.11.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+
     <!-- Stripe -->
     <PackageVersion Include="Stripe.net" Version="47.3.0" />
 
