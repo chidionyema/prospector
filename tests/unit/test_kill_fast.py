@@ -42,6 +42,10 @@ def cfg():
     c.retrieval.cache = False
     c.retrieval.queries_per_check = 1
     c.retrieval.results_per_query = 1
+    # This file asserts SERIAL kill-fast counts ("exactly 1 check run"); pin
+    # par=1 so the yaml's check_parallelism (waves) doesn't add wave-mates.
+    # Wave-mode counting semantics live in test_check_parallelism.py.
+    c.retrieval.check_parallelism = 1
     return c
 
 

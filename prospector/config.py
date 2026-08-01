@@ -93,6 +93,14 @@ class Retrieval:
     claude_concurrency: int = 2         # max concurrent claude CLI subprocesses
     cursor_concurrency: int = 2         # max concurrent Cursor agent CLI subprocesses
     vet_workers: int = 3                # candidates vetted in parallel; align to grounding slots
+    # Checks run in parallel WITHIN one candidate (WS2-P1, 2026-07-31). Kill-fast becomes
+    # wave-wise: this many checks run concurrently, gates are evaluated in run-order at
+    # each wave boundary, so a wave-1 kill still skips later waves; the only extra spend
+    # is the rest of the wave the kill lands in. 1 = the original strictly-serial loop.
+    # Size against the CLI slot pool: peak verdict-slot demand ≈ vet_workers ×
+    # check_parallelism; hold that near cursor_concurrency or slot-queue timeouts trip
+    # the breaker and fail the moat over to the provisional tail (2026-07-31 incident).
+    check_parallelism: int = 1
     # Completion-brain CLI budgets (CursorCliOperator / non-web Claude CLI). Distinct from
     # search_timeout (web-grounding). query_gen_* is the tight cap for non-critical
     # query-gen so one hung agent call cannot burn 6+ minutes per check.

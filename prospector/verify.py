@@ -665,28 +665,55 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
                 gen_queries_batched(op, cand, missing,
                                     n=cfg.retrieval.queries_per_check, cfg=cfg))
 
-    for idx, name in enumerate(run_order):
-        res = run_check(op, search, cfg, cand, name, query_op=query_op,
-                        precomputed_queries=precomputed_queries)
-        checks.append(res)
-        if on_check:
-            on_check(res)
-        
-        # Determine if this gate fired
-        gate_fired = False
-        if res.retrieval_failed and name in cfg.gate_map():
-            gate_fired = True
-            if first_failing_gate is None:
-                first_failing_gate = DEFER_GATE
-        elif is_hard_fail(name, res, cfg):
-            gate_fired = True
-            if first_failing_gate is None:
-                first_failing_gate = name
+    # WS2-P1 (2026-07-31): checks run in WAVES of `check_parallelism` (default 1 =
+    # the original strictly-serial loop, byte-identical behaviour). Within a wave the
+    # checks run concurrently; gates are evaluated in run-order at the wave boundary,
+    # so kill-fast still skips every later wave — the only extra spend on a kill is
+    # the remainder of the wave the kill landed in (those results are kept in the
+    # dossier: they're real grounded verdicts, not waste). Soft early-exit likewise
+    # moves to the wave boundary. DEFER / full_vet semantics unchanged.
+    par = max(1, int(getattr(cfg.retrieval, "check_parallelism", 1) or 1))
+    pos = 0
+    while pos < len(run_order):
+        wave = run_order[pos: pos + par]
+        pos += len(wave)
+        if len(wave) == 1:
+            wave_results = [run_check(op, search, cfg, cand, wave[0], query_op=query_op,
+                                      precomputed_queries=precomputed_queries)]
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+            # copy_context per submission: run_check reads the market_retrieval
+            # contextvar, which does not propagate into pool threads by itself.
+            with ThreadPoolExecutor(max_workers=len(wave)) as ex:
+                futs = [ex.submit(contextvars.copy_context().run, run_check,
+                                  op, search, cfg, cand, n2, query_op=query_op,
+                                  precomputed_queries=precomputed_queries)
+                        for n2 in wave]
+                wave_results = [f.result() for f in futs]
+
+        wave_gate_fired = False
+        for name, res in zip(wave, wave_results):
+            checks.append(res)
+            if on_check:
+                on_check(res)
+
+            # Determine if this gate fired (evaluated in run-order, exactly as serial)
+            if res.retrieval_failed and name in cfg.gate_map():
+                wave_gate_fired = True
+                if first_failing_gate is None:
+                    first_failing_gate = DEFER_GATE
+            elif is_hard_fail(name, res, cfg):
+                wave_gate_fired = True
+                if first_failing_gate is None:
+                    first_failing_gate = name
 
         # Short-circuit ONLY if not full_vet
-        if gate_fired and not full_vet:
-            logger.info(f"Kill-fast triggered by gate: {name}", extra={"gate": name})
+        if wave_gate_fired and not full_vet:
+            logger.info(f"Kill-fast triggered by gate: {first_failing_gate}",
+                        extra={"gate": first_failing_gate})
             return checks, None, first_failing_gate
+
+        name = wave[-1]  # for soft-exit logging: last check processed this wave
 
         # Soft early-exit: PASS already impossible (same decision as finishing the
         # run then failing source_or_die / moat_ungrounded / min_composite). Does NOT
@@ -698,7 +725,7 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
         # (otherwise no savings — leave gate=None for golden-set / skip_adversarial).
         if not full_vet and first_failing_gate not in (DEFER_GATE, "moat_exhausted"):
             from .pass_ceiling import pass_impossible_reason
-            remaining = list(run_order[idx + 1:])
+            remaining = list(run_order[pos:])
             gate_names = cfg.gate_map()
             remaining_hard = [n for n in remaining if n in gate_names]
             infra_failed = any(getattr(c, "retrieval_failed", False) for c in checks)

@@ -115,9 +115,16 @@ retrieval:
                                  # now that grounding resolves on ddg/exa — see chain above)
   cursor_concurrency: 8          # max concurrent Cursor agent CLI subprocesses = the knee above
                                  # (PROSPECTOR_CURSOR_CONCURRENCY env overrides when set)
-  vet_workers: 5                 # parallel candidates. Must stay <= cursor_concurrency: each vet
-                                 # holds at most one CLI slot at a time (checks run sequentially
-                                 # for kill-fast), so 5 workers draw 5 of the 8 slots.
+  vet_workers: 5                 # parallel candidates. With check_parallelism below, each vet
+                                 # can hold up to that many CLI slots at once; peak demand is
+                                 # vet_workers x check_parallelism (5x2=10) against the 8-slot
+                                 # cursor ceiling — mild queueing, inside queue_timeout.
+  check_parallelism: 2           # checks vetted concurrently per candidate (WS2-P1). Waves of 2:
+                                 # gates still evaluated in run order at each wave boundary, so
+                                 # kill-fast semantics hold; wall-clock per candidate ~halves.
+                                 # Do NOT raise past 2 without raising cursor_concurrency — the
+                                 # 20:07Z 2026-07-31 all-provisional batch came from slot-queue
+                                 # timeouts tripping the breaker into the minimax tail.
   # Sized from the observed SUCCESS distribution, not a guess (317 logged run_cursor_cli
   # successes as of 2026-07-31: mean 46.9s, p50 41.7s, max 279.3s; run_claude_cli n=63,
   # p50 76.8s, max 283.0s). The old 120/180 pair sat *inside* that distribution, so long-but-
@@ -215,11 +222,24 @@ weights:
 # single lane and overrides active_lanes; empty active_lanes => single-default (venture) run.
 active_lane: ""
 active_lanes: [side_hustle, smb, growth, venture]
+# Rebalanced 2026-08-01 (founder: "more startup ideas than just solo operator"). Weights are
+# EVIDENCE-LED, from historical per-lane PASS rate across the 221 tier-tagged dossiers — NOT a
+# guess at which tier sounds most ambitious:
+#     smb  6/51 = 11.8%   growth 2/41 = 4.9%   side_hustle 4/94 = 4.3%   venture 0/35 = 0.0%
+# So the weight goes to smb (small_team) and growth (startup) — the tiers that actually convert —
+# while side_hustle (the SOLO lane) steps down from the largest share to the smallest. venture
+# holds at 3 rather than rising: it has never produced a PASS, so buying more of it would buy
+# more kills, not more startups; it stays funded only so the 0% stays measured rather than
+# assumed. Revisit when venture records its first PASS.
+# NOTE these totals sum to exactly `schedule.batch_size` (15), so `_lane_counts` distributes them
+# 1:1 with no rounding nudge (run.py::_lane_counts). Changing batch_size re-proportions them.
+# Until 2026-08-01 this whole block was DEAD CONFIG for the daemon — see the comment in
+# scheduler/run_scheduled.py::_default_generate.
 lane_quota:                        # candidates generated per tier per multi-lane run
-  side_hustle: 4
-  smb: 3
-  growth: 3
-  venture: 3
+  side_hustle: 3                   # solo_agent  — was 4 (the largest share); now the smallest
+  smb: 5                           # small_team  — was 3; best converter at 11.8%
+  growth: 4                        # startup     — was 3
+  venture: 3                       # startup     — unchanged; 0 PASS in 35, do not over-buy
 lanes:
   venture:                         # unicorn-ambition: the durable-moat bar (= current default)
     hard_gates:
@@ -823,12 +843,16 @@ dedup_threshold: 0.85
 # Lower = stricter (drops more). Set to null to disable the token signal entirely.
 dedup_token_threshold: 0.34
 
-# batch_size 5 (was 20): measured 2026-07-02 on the claude_cli-grounded chain — a vetted
-# candidate takes ~10 min, so a 20-batch can NEVER finish inside the 45-min tick hard
-# deadline; the daemon force-exited every tick in a relaunch livelock (dossiers survived,
-# tick rows/diagnostics did not). 5 also matches the operating rule "bounded batches,
-# default 5 candidates per signal". Deadline re-sized to fit in run_scheduled.py.
-schedule: { cadence: daily, batch_size: 5 }
+# batch_size 15 (was 5): founder directive 2026-07-31 — the moat is now cursor_cli primary
+# (faster than the claude_cli chain that the old 5-batch was sized for), and with exa in the
+# grounding chain at position 2 (see retrieval chain above) the per-candidate wall time has
+# dropped. Tick hard deadline in run_scheduled.py bumped to 10800s (3h) to match.
+# market_rotation (2026-07-31, founder "US active now"): the daemon alternates whole
+# ticks between these markets (uk → us → uk …); pointer persists in
+# store/scheduler/market_rotation.json. US measured READY 2026-07-30 (store/markets/us/
+# READINESS.json: grounding 0.73/0.55, authority 0.53/0.25, discrimination 0.83/0.70).
+# Remove the key to return to single-market (default uk) behaviour.
+schedule: { cadence: daily, batch_size: 15, market_rotation: [uk, us] }
 
 spend:
   daily_cap_usd: 20.0

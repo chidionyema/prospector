@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import sys
 import threading
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 _QUIET = os.environ.get("PROSPECTOR_QUIET") == "1"
@@ -36,9 +37,10 @@ def _emit(line: str) -> None:
     global _QUIET
     if _QUIET:
         return
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     with _LOCK:
         try:
-            print(line, file=sys.stderr, flush=True)
+            print(f"{ts}  {line}", file=sys.stderr, flush=True)
         except BrokenPipeError:
             _QUIET = True
         except OSError as e:

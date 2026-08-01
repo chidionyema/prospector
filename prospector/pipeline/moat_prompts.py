@@ -7,6 +7,7 @@ disconfirming queries; the only LLM work is ruling on the fetched passages.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -14,8 +15,13 @@ from prospector.domain.primitives import CandidateSpec
 from prospector.pipeline.moat_contract import MoatVerificationContract
 
 # ── Ledger path (same as middleware) ──────────────────────────────────────
+# Overridable with PROSPECTOR_LEDGER_PATH, but bound at import: setenv only reaches
+# subprocesses. Tests isolate in-process by patching this attribute (tests/conftest.py).
 
-_LEDGER_PATH = Path(__file__).resolve().parents[2] / "storage" / "durable_ledger.md"
+_LEDGER_PATH = Path(
+    os.environ.get("PROSPECTOR_LEDGER_PATH")
+    or Path(__file__).resolve().parents[2] / "storage" / "durable_ledger.md"
+)
 
 
 def _load_ledger(max_lines: int = 15) -> str:

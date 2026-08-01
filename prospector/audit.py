@@ -12,8 +12,19 @@ Properties:
 
 Schema (every row has these fields):
   ts        : ISO8601 UTC timestamp
-  event     : one of "search" | "fallback_resolved" | "verify_search" | "verify_failed"
+  event     : one of "search" | "fallback_resolved" | "verify_search" | "verify_failed" |
+              "brain_fallthrough"
+  pid       : writing process id
+  run_id    : "<pid>-<process start ts>" — attributes interleaved rows (daemon vs
+              backfill vs manual run) to exactly one process
   ... event-specific fields ...
+
+Schema for event="brain_fallthrough" (a PROVISIONAL brain served while trusted moat
+brains were skipped or failing — the silent path behind the 2026-07-31 15/15-provisional
+batch):
+  served    : brain that answered (e.g. "minimax")
+  skipped   : list of "name(reason)" for trusted brains skipped without a call
+  last_err  : last failure message from a brain that was tried (may be empty)
 
 Schema for event="search":
   provider      : "fixture" | "gemini" | "brave" | "exa" | "deepseek" | "minimax" |
@@ -56,6 +67,13 @@ _AUDIT_DIR = Path(os.environ.get("PROSPECTOR_AUDIT_DIR", "store/scheduler/audit"
 _AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 _LOCK = threading.Lock()
 
+# One id per process, minted at import. Daemon ticks, the backfill, and manual runs all
+# interleave rows in the same per-day file; without an attribution key the log supports
+# confidently wrong verdicts (it did, twice, on 2026-07-31 — see memory
+# audit-log-not-attributable-2026-07-31). Every row carries pid + run_id so any slice of
+# the file can be attributed to exactly one process after the fact.
+RUN_ID = f"{os.getpid()}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+
 
 def _today_path() -> Path:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -71,6 +89,8 @@ def audit(event: str, **fields: Any) -> None:
         row = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "event": event,
+            "pid": os.getpid(),
+            "run_id": RUN_ID,
             **fields,
         }
         line = json.dumps(row, separators=(",", ":"), default=str)

@@ -6,7 +6,7 @@
 > is returned. This proves every pack's stored ProviderPriceId resolves in the connected
 > Stripe account and that checkout config (tax, currency) is accepted.
 
-**Date:** 2026-06-20 20:45:47 BST
+**Date:** 2026-07-31 19:47:19 BST
 **API:** `http://localhost:5293`
 **Packs proven:** 11
 **Verdict:** ✅ ALL 12 CHECKOUTS REAL

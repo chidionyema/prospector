@@ -11,7 +11,11 @@ from prospector.verify import verify
 
 @pytest.fixture
 def cfg():
-    return load_config()
+    c = load_config()
+    # This file asserts SERIAL kill-fast counts ("exactly N checks run"); pin
+    # par=1 so the yaml's check_parallelism (waves) doesn't add wave-mates.
+    c.retrieval.check_parallelism = 1
+    return c
 
 @pytest.fixture
 def cand():

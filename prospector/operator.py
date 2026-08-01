@@ -933,19 +933,36 @@ class FallbackOperator(Operator):
         from .health import DEFAULT_EXHAUSTION_S
         from .telemetry import logger
         last_err: Optional[Exception] = None
-        skipped = 0
+        skipped: list[str] = []
         for name, op in self.operators:
             br = self._breakers[name]
             # Persisted health (cross-run quota window) OR in-run breaker can skip it —
             # skipping a known-dead brain for free is the whole point: no re-probe cost.
             if self._health.is_dead(name) or not br.allow():
-                skipped += 1
+                # Record WHY, don't just count: this silent `continue` is the path that
+                # produced a 15/15-provisional batch (2026-07-31 20:07Z) with zero log
+                # evidence — 66 minimax verdicts and not one line saying the moat brains
+                # were being skipped. The reason string surfaces in the audit row below.
+                why = "health-dead" if self._health.is_dead(name) else f"breaker-{br.state}"
+                skipped.append(f"{name}({why})")
                 continue
             try:
                 out = op._raw(system, user, temperature)
                 br.record_success()
                 self._health.clear(name)   # proven alive — drop any stale dead mark
                 self._served.name = name   # record who served (for provisional marking)
+                if is_provisional_provider(name) and (skipped or last_err is not None):
+                    # The cheap emergency tail ruled while a trusted brain sat skipped or
+                    # failing. Legal (provisional never publishes) but it must be LOUD:
+                    # an audit row per call for the trail, a warning for the live log.
+                    from .audit import audit
+                    audit("brain_fallthrough", served=name, skipped=skipped,
+                          last_err=str(last_err)[:200] if last_err else "")
+                    logger.warning(
+                        f"PROVISIONAL SERVE: {name!r} ruled while trusted brain(s) "
+                        f"unavailable: skipped={skipped or 'none'}, "
+                        f"last_err={str(last_err)[:120] if last_err else 'none'}",
+                        extra={"provider": name, "skipped": skipped})
                 return out
             except Exception as e:
                 last_err = e
@@ -959,7 +976,8 @@ class FallbackOperator(Operator):
                     f"(breaker={br.state}); failing over to next",
                     extra={"provider": name, "error": str(e)[:200]})
         raise ProviderExhaustedError(
-            f"all brains exhausted/failed ({skipped} skipped, known-dead): {last_err}",
+            f"all brains exhausted/failed ({len(skipped)} skipped: "
+            f"{', '.join(skipped) or 'none'}): {last_err}",
             provider="+".join(n for n, _ in self.operators))
 
 

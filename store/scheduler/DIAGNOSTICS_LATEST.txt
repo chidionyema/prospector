@@ -1,23 +1,26 @@
 ════════════════════════════════════════════════════════════════════════
-BATCH DIAGNOSTICS  ·  2026-07-31T02:48:11.256935+00:00
+BATCH DIAGNOSTICS  ·  2026-08-01T14:34:43.475076+00:00
 ════════════════════════════════════════════════════════════════════════
 ── Funnel (top → bottom) ──
-  generated=5  dedup_dropped=0  rejection_fastpath=0  prescreen_in=5  prescreened_out=0  novelty_selected=5  vetted=5
-── Decisions ──  PASS 2 · KILL 3 · DEFER 0 · provisional 0 (of 5 vetted)
-  kill gates: min_composite=2, moat_ungrounded=1
-── Grounding ──  unverifiable 17.1%  ·  sources/check {1: 2, 2: 1, 3: 14, 4: 7, 5: 4, 6: 7}  ·  retrieval-empty checks 0
+  generated=15  dedup_dropped=0  rejection_fastpath=0  prescreen_in=15  prescreened_out=0  novelty_selected=15  vetted=15
+── Decisions ──  PASS 5 · KILL 10 · DEFER 0 · provisional 7 (of 15 vetted)
+  kill gates: min_composite=6, moat_ungrounded=4
+── Grounding ──  unverifiable 19.6%  ·  sources/check {1: 1, 2: 9, 3: 33, 4: 22, 5: 17, 6: 20}  ·  retrieval-empty checks 0
 ── Per-check verdicts (supported / refuted / unverifiable) ──
-  pain_reality       sup  3 | ref  0 | unv  1
-  value_durability   sup  2 | ref  0 | unv  0
-  incumbency         sup  0 | ref  0 | unv  2
-  payer_solvency     sup  2 | ref  1 | unv  1
-  distribution       sup  3 | ref  0 | unv  1
-  legality           sup  4 | ref  0 | unv  1
-── Confidence ──  supported med=0.585 (n=21)  ·  refuted med=0.581 (n=2)  ·  unverifiable med=0.732 (n=12)
-── Composite (need ≥2.5) ──  n=4 min=1.7 med=2.675 max=2.9 · within-0.5-of-bar=3
-── Brain ──  cursor_cli=35
+  pain_reality       sup  8 | ref  0 | unv  3
+  value_durability   sup  6 | ref  1 | unv  0
+  incumbency         sup  3 | ref  1 | unv  3
+  payer_solvency     sup  7 | ref  0 | unv  7
+  distribution       sup 11 | ref  0 | unv  3
+  legality           sup 11 | ref  0 | unv  4
+── Confidence ──  supported med=0.6 (n=75)  ·  refuted med=0.634 (n=4)  ·  unverifiable med=0.7 (n=23)
+── Composite (need ≥2.5) ──  n=11 min=1.25 med=2.6 max=4.15 · within-0.5-of-bar=8
+── Brain ──  minimax=54, claude_cli=48
 ── Closest-to-pass kills ──
-  2.45  BandBreak — the gig worker's fixed-fee council tax reduction claim service
-  1.70  OverpayGuard — gets you back the student loan money you didn’t know you overpaid
-── PASSES ──  RateGuard – the tool that catches unfair gig ratings and gets them overturned; CureSafe Strip — the gel nail tech’s lamp-output test card that shows when curing power drops below safe levels
-── Cost ──  {'total': {'calls': 185, 'web_calls': 149, 'input': 171222, 'output': 100267, 'total': 271489, 'cached': 0, 'self_corrections': 1}, 'total_cost_usd': 0.1565, 'by_phase': {'main': {'calls': 27, 'web_calls': 0, 'input': 152819, 'output': 77353, 'total': 230172, 'cached': 0, 'self_corrections': 1}, 'vetting': {'calls': 158, 'web_calls': 149, 'input': 18403, 'output': 22914, 'total': 41317, 'cached': 0, 'self_corrections': 0}}, 'by_provider': {'deepseek': {'calls': 35, 'web_calls': 0, 'input': 171222, 'output': 100267, 'total': 271489, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.156524}, 'fallback(deepseek+cursor_cli+minimax)': {'calls': 1, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 1, 'cost_usd': 0.0}, 'cache': {'calls': 70, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'ddg': {'calls': 9, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'exa': {'calls': 70, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}}}
+  2.85  PeakPence — the dashboard that tells you the highest-earning delivery windows in your postcode, built from real rider data
+  2.20  RiskReady – builds a job-specific method statement and risk assessment from your phone, so you walk on site with the right safety docs and look professional
+  2.20  HomeAdapt Bridge — the primary carer's fixed-fee loan broker that gets home adaptations started now with the council's own grant money
+  1.90  RAMSReady – the site risk assessment pack that gets you on site, built from real builders' examples
+  1.35  DepositClaim — the small shop's automated deposit return claim engine
+── PASSES ──  FridgePass Kit — the fridge logger that prints your FSA-ready log so the inspector sees a clean sheet, every time; WasteScope — the mobile audit squad that slashes your commercial waste bill by physically sorting your bins; RainDay Pay — daily income for delivery riders when the Met Office confirms heavy rain in your postcode, paid automatically, no questions asked; CareShare — sell a stake in your parent's home for cash now, with the council paid when the house sells; PayUp Now — the small business tool that sends statutory interest demands for every late invoice, so you get paid what you’re owed
+── Cost ──  {'total': {'calls': 741, 'web_calls': 408, 'input': 1517802, 'output': 806801, 'total': 4692370, 'cached': 1143825, 'self_corrections': 2}, 'total_cost_usd': 3.301, 'by_phase': {'main': {'calls': 192, 'web_calls': 0, 'input': 1233424, 'output': 652055, 'total': 2708536, 'cached': 350773, 'self_corrections': 1}, 'vetting': {'calls': 549, 'web_calls': 408, 'input': 284378, 'output': 154746, 'total': 1983834, 'cached': 793052, 'self_corrections': 1}}, 'by_provider': {'ddg': {'calls': 737, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'deepseek': {'calls': 472, 'web_calls': 0, 'input': 3589354, 'output': 1657513, 'total': 5246867, 'cached': 0, 'self_corrections': 0, 'cost_usd': 2.79239}, 'cache': {'calls': 736, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'fallback(deepseek+cursor_cli+minimax)': {'calls': 3, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 3, 'cost_usd': 0.0}, 'fallback(cursor_cli+claude_cli)': {'calls': 1, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 1, 'cost_usd': 0.0}, 'unknown': {'calls': 208, 'web_calls': 0, 'input': 416, 'output': 299315, 'total': 6709777, 'cached': 3188049, 'self_corrections': 0, 'cost_usd': 0.0}, 'fallback(cursor_cli+claude_cli+minimax)': {'calls': 13, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 13, 'cost_usd': 0.0}, 'minimax': {'calls': 290, 'web_calls': 0, 'input': 1279735, 'output': 415707, 'total': 1695442, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.508633}}}

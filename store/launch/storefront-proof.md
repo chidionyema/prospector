@@ -4,7 +4,7 @@
 > storefront depends on: catalogue listing + required fields, survivorship stats, single-pack
 > detail, 404 handling, the auth gates on /internal/catalog + /entitlements, and CORS.
 
-**Date:** 2026-06-20 21:32:55 BST
+**Date:** 2026-07-31 20:42:32 BST
 **API:** `http://localhost:5294`
 **Verdict:** ✅ ALL 10 CHECKS PASS
 
@@ -14,7 +14,7 @@
 - [x] **stats.200-shape** — GET /catalog/stats -> 200 {listed:11, registered:13}
 - [x] **stats.listed-le-registered** — 1 <= listed(11) <= registered(13)
 - [x] **stats.matches-catalog** — stats.listed(11) == /catalog count(11)
-- [x] **detail.200-resolves** — GET /catalog/{id} -> 200, id matches, 19 fields
+- [x] **detail.200-resolves** — GET /catalog/{id} -> 200, id matches, 27 fields
 - [x] **detail.unknown-404** — GET /catalog/<unknown> -> 404 (must be 404)
 - [x] **internal.auth-required** — POST /internal/catalog (no key) -> 401 (must reject, not 2xx)
 - [x] **entitlements.auth-required** — POST /entitlements (no token) -> 401 (must reject, not 2xx)

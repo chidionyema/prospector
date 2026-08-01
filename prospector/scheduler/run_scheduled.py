@@ -30,6 +30,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from prospector.audit import RUN_ID, audit
 from prospector.config import load_config
 from prospector.errors import GroundingInfrastructureError
 from prospector.scheduler.guard import guard_from_config
@@ -127,9 +128,20 @@ def _default_generate(cfg, batch_size: int) -> dict:
     environment) — that surfaces as an exception which the caller records as a soft error; the
     daemon keeps looping and the signal is recoverable via `generate --resume` / `vet --resume`.
     """
-    from prospector.run import run_signal
+    from prospector.run import run_signal, _resolve_lanes
 
-    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True)
+    # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
+    # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
+    # the single implicit default — `generation.operator_archetype: solo_agent`. The four
+    # configured lanes and their small_team/startup archetypes were dead config in the daemon:
+    # they were only ever resolved on the CLI paths (run.py:1182/1224/1277/1837). PROVEN by
+    # `ambition_tier` being absent from every one of the last 50 dossiers ordered by
+    # `created_at`, and by the batch mode-collapsing onto one shape (2026-08-01T03:25 batch:
+    # the PASS and all three closest-to-pass kills were "fixed-fee pack for one individual").
+    # `_resolve_lanes` honours the same precedence as the CLI (active_lane pins a single tier,
+    # else active_lanes); an empty config still yields None => the previous behaviour exactly.
+    lanes = _resolve_lanes(cfg, argparse.Namespace(lane=None))
+    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes)
 
     def _decision(d) -> str:
         # Dossier carries `.decision` (a Decision enum) — NOT `.verdict`. Reading the wrong
@@ -152,13 +164,13 @@ def _default_generate(cfg, batch_size: int) -> dict:
 # read hung the daemon 34+ min while the alert-only watchdog watched it sit dead for 8.5h). No
 # single tick may hang the process longer than this; on breach the daemon force-exits and launchd
 # KeepAlive (ThrottleInterval=30) relaunches a clean daemon. Default 75 min (env-overridable):
-# measured 2026-07-02 a fully-grounded vetted candidate takes ~10 min on the claude_cli chain,
-# so a batch of 5 legitimately runs ~55-60 min incl. generation — a tighter deadline force-exits
-# healthy ticks in a relaunch livelock (proven live: batch_size=20 + 45 min deadline meant NO
-# tick ever completed; dossiers survived but tick rows/diagnostics were lost every cycle).
+# measured 2026-07-02 a fully-grounded vetted candidate takes ~10 min on the claude_cli chain.
+# Batch size 15 + cursor_cli primary (faster) + exa in grounding → ~120-150 min per tick.
+# Default bumped to 10800s (3h) on founder directive 2026-07-31. Still env-overridable
+# via PROSPECTOR_TICK_DEADLINE_S for tuning without code changes.
 # The watchdog's 'generating' stall threshold is derived from this constant (see _liveness) so
 # the in-process deadline always fires first and the process self-heals before the watchdog acts.
-_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "4500"))  # 75 min
+_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "10800"))  # 3h
 
 # After an unproductive tick (error or 0 dossiers despite the guard allowing spend) retry soon
 # instead of burning the full 2h cadence idle — one provider blip cost days of ~$0 barren ticks.
@@ -195,6 +207,72 @@ def _tick_unproductive(tick: dict) -> bool:
     return False
 
 
+def _moat_preflight(cfg) -> tuple[bool, str]:
+    """Prove at least one TRUSTED moat brain answers before spending a batch.
+
+    The 2026-07-31 20:07Z batch burned a full k=15 run ruling 15/15 provisional: both
+    moat CLIs fell out (in-process breaker/skip path) and minimax served all 66 verdict
+    calls. Provisional never publishes, so a batch with no live moat brain is worth
+    almost nothing — skipping the tick and retrying in minutes is strictly cheaper than
+    generating candidates whose verdicts can't finalise. The probe is one real CLI call
+    (~5–15s when healthy); success also clears any stale persisted dead-mark, so a
+    wrongly-poisoned health file self-heals here instead of poisoning the whole batch.
+    """
+    from prospector.health import get_health
+    from prospector.operator import MOAT_PRIMARY, _build_operator
+
+    kinds = cfg.operator if isinstance(cfg.operator, list) else [cfg.operator]
+    trusted = [k for k in kinds if k in MOAT_PRIMARY]
+    if not trusted:
+        # mock/test chains have no moat brain; preflight is not their concern.
+        return True, "no trusted moat brain configured — preflight skipped"
+    health = get_health()
+    errors: list[str] = []
+    for kind in trusted:
+        try:
+            op = _build_operator(kind, cfg, fast=False)
+            out = op._raw("You are a health probe. Reply with exactly: OK", "ping", 0.0)
+            if out and out.strip():
+                health.clear(kind)  # answered live — drop any stale dead mark
+                return True, f"{kind} answered probe"
+        except Exception as exc:  # noqa: BLE001 — any probe failure means try next brain
+            errors.append(f"{kind}: {type(exc).__name__}: {str(exc)[:120]}")
+    return False, "no trusted moat brain answered: " + "; ".join(errors)
+
+
+def _next_market(cfg) -> str | None:
+    """Pick this tick's market from `schedule.market_rotation`, alternating per tick.
+
+    Rotation state persists in store/scheduler/market_rotation.json so the sequence
+    survives daemon restarts. No rotation key configured → None (single-market
+    behaviour, byte-for-byte the pre-rotation pipeline). The pointer advances at
+    selection time; a failed batch does not repeat its market — alternation is the
+    contract, per-market retry is not.
+    """
+    schedule = getattr(cfg, "schedule", None) or {}
+    if isinstance(schedule, dict):
+        rotation = schedule.get("market_rotation")
+    else:
+        rotation = getattr(schedule, "market_rotation", None)
+    if not rotation:
+        return None
+    rotation = [str(m) for m in rotation]
+    path = _store_dir(cfg) / "scheduler" / "market_rotation.json"
+    last = ""
+    try:
+        last = str(json.loads(path.read_text(encoding="utf-8")).get("last", ""))
+    except (OSError, ValueError):
+        pass
+    code = rotation[(rotation.index(last) + 1) % len(rotation)] if last in rotation else rotation[0]
+    try:
+        path.write_text(json.dumps({"last": code,
+                                    "ts": datetime.now(timezone.utc).isoformat()}),
+                        encoding="utf-8")
+    except OSError as exc:
+        logger.error("Failed to persist market rotation pointer: %s", exc)
+    return code
+
+
 def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, generate_fn=None) -> dict:
     """Execute one scheduler tick: evaluate the guard, then maybe run one batch.
 
@@ -212,6 +290,11 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
 
     tick = {
         "ts": datetime.now(timezone.utc).isoformat(),
+        # Attribution: ticks.jsonl rows were process-anonymous, so daemon/manual/backfill
+        # rows interleaved indistinguishably (two wrong verdicts drawn from that gap on
+        # 2026-07-31). run_id matches the audit-log rows this process writes.
+        "pid": os.getpid(),
+        "run_id": RUN_ID,
         "allowed": decision.can_run,
         "reason": decision.reason,
         "dry_run": dry_run,
@@ -233,7 +316,37 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         return tick
 
     gen = generate_fn or _default_generate
-    _write_heartbeat(cfg, phase="generating", batch_size=batch_size)
+
+    # Moat preflight — only for REAL generation (injected generate_fn = tests/stubs,
+    # which must not spawn CLI probes). A failed preflight records an errored tick, so
+    # the daemon's unproductive-tick backoff retries in minutes, not next cadence.
+    if generate_fn is None:
+        _write_heartbeat(cfg, phase="preflight", batch_size=batch_size)
+        moat_ok, moat_why = _moat_preflight(cfg)
+        tick["moat_preflight"] = moat_why
+        audit("moat_preflight", ok=moat_ok, detail=moat_why)
+        if not moat_ok:
+            tick["error"] = f"moat_preflight: {moat_why}"
+            logger.error("Moat preflight failed — skipping batch: %s", moat_why)
+            _append_tick(cfg, tick)
+            _emit_tick_alerts(cfg, tick)
+            _write_heartbeat(cfg, phase="idle", last_error=tick["error"])
+            return tick
+
+    # Market rotation (US expansion, founder go 2026-07-31): pick this tick's market and
+    # run the whole batch under that market's config. Bookkeeping (ticks, heartbeat,
+    # guard) stays on the base cfg — store paths must not vary by market.
+    market = _next_market(cfg)
+    run_cfg = cfg
+    if market:
+        tick["market"] = market
+        try:
+            run_cfg = cfg.for_market(market)
+        except Exception as exc:  # noqa: BLE001 — a bad market must not kill the tick
+            logger.error("for_market(%r) failed (%s); running default market", market, exc)
+            run_cfg = cfg
+
+    _write_heartbeat(cfg, phase="generating", batch_size=batch_size, market=market or "")
     # Hard wall-clock guard: if generation hangs past _TICK_HARD_DEADLINE_S the timer force-exits
     # the process (launchd relaunches it). Cancelled the instant generation returns.
     deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
@@ -242,8 +355,9 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     deadline.start()
     halt = False
     try:
-        logger.info("Tick: generating %d candidates (%s)", batch_size, decision.reason)
-        tick["result"] = gen(cfg, batch_size)
+        logger.info("Tick: generating %d candidates (market=%s) (%s)",
+                    batch_size, market or "default", decision.reason)
+        tick["result"] = gen(run_cfg, batch_size)
         logger.info("Tick complete: %s", tick["result"])
     except GroundingInfrastructureError as exc:
         # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent exit here
@@ -373,11 +487,22 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
             logger.info("Unproductive tick — retrying in %ds instead of %ds", sleep_target, interval)
         # Sleep in short slices so a stop request is honoured promptly mid-cadence.
         _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles)
+        # A PAUSE-refused cycle used to sleep the full cadence even after the founder
+        # removed PAUSE (observed 2026-07-31: rm PAUSE resumed nothing for up to 2h).
+        # While paused, watch for the file's removal and resume within ~5s — without
+        # re-running a tick (and appending a refusal row) every poll.
+        paused = (tick is not None and not tick.get("allowed")
+                  and "pause" in str(tick.get("reason", "")).lower())
+        pause_path = _store_dir(cfg) / "scheduler" / "PAUSE"
         slept = 0
         while slept < sleep_target and not flag.stop:
             chunk = min(5, sleep_target - slept)
             sleep_fn(chunk)
             slept += chunk
+            if paused and not pause_path.exists():
+                logger.info("PAUSE removed — resuming immediately (slept %ds of %ds)",
+                            slept, sleep_target)
+                break
     logger.info("Daemon stopped after %d cycle(s)", cycles)
     return cycles
 
@@ -523,7 +648,7 @@ def _liveness(cfg) -> tuple[bool, str]:
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
         if age_min > budget:
             return False, f"'sleeping' heartbeat {age_min:.0f} min old (> interval+grace {budget:.0f}); loop likely dead"
-    if phase in ("evaluating", "idle") and age_min > 45:
+    if phase in ("evaluating", "preflight", "idle") and age_min > 45:
         return False, f"stuck in '{phase}' for {age_min:.0f} min"
     return True, f"alive (phase={phase}, {age_min:.1f} min ago)"
 

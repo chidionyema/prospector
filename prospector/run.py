@@ -1079,6 +1079,20 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     seen_ids = {r.get("candidate_id", "") for r in deferred}
     pending = list(deferred) + [r for r in provisional
                                 if r.get("candidate_id", "") not in seen_ids]
+    # Bounded, money-first resume (2026-07-31): 155 deferred + 199 provisional were pending
+    # after the all-provisional batch incident. An unfiltered resume is unbounded spend
+    # (this path never consults the scheduler's daily-cap guard), and re-vetting a
+    # provisional KILL first changes nothing — it stays unpublished either way.
+    if getattr(args, "passes_only", False):
+        pending = [r for r in pending
+                   if str((store.get(r.get("candidate_id", "")) or {})
+                          .get("decision", "")).lower() == "pass"]
+        print(f"--passes-only: narrowed to {len(pending)} provisional PASS(es)")
+    if getattr(args, "resume_ids", None):
+        prefixes = tuple(p.strip() for p in args.resume_ids.split(",") if p.strip())
+        pending = [r for r in pending
+                   if str(r.get("candidate_id", "")).startswith(prefixes)]
+        print(f"--resume-ids: narrowed to {len(pending)} candidate(s)")
     if not pending:
         print("No deferred or provisional candidates to resume. Moat is healthy.")
         return
@@ -1916,6 +1930,14 @@ def main() -> None:
                        help="Re-vet all moat-deferred candidates (decision=defer).  "
                             "Uses the same operator/lane as the original run.  "
                             "Safe to re-run when the moat (Claude) comes back online.")
+    vet_p.add_argument("--passes-only", dest="passes_only", action="store_true",
+                       help="With --resume: only re-vet provisional PASSes — the rows the "
+                            "publish fence is actually holding out of the catalogue. "
+                            "Provisional KILLs stay unpublished either way; skip them.")
+    vet_p.add_argument("--resume-ids", dest="resume_ids", metavar="ID[,ID...]",
+                       help="With --resume: only re-vet candidates whose id starts with one "
+                            "of these comma-separated prefixes (bounded resume; manual runs "
+                            "never consult the scheduler's daily spend guard).")
 
     # ---- signal subcommand ----
     sig_p = sub.add_parser("signal", help="Run the full signal pipeline")

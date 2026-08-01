@@ -125,7 +125,11 @@ def test_liveness_fresh_sleeping_is_alive(tmp_path):
 
 
 def test_liveness_stuck_generating_is_dead(tmp_path):
-    _write_heartbeat(tmp_path, phase="generating", age_min=90)
+    # Derive the age from the deadline instead of hardcoding: the stall threshold is
+    # deadline + 10 min grace, and a fixed age silently goes stale every time the
+    # deadline moves (a hardcoded 90 broke when the deadline was bumped 45 min -> 3h).
+    stale_min = rs._TICK_HARD_DEADLINE_S / 60 + 20
+    _write_heartbeat(tmp_path, phase="generating", age_min=stale_min)
     ok, reason = rs._liveness(_cfg(tmp_path))
     assert not ok and "generating" in reason
 

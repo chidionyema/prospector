@@ -11,6 +11,7 @@ case E6) and a formal config schema (G4).
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,10 +23,14 @@ import yaml
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
+# All four bind at import (PROSPECTOR_STORE_DIR only reaches subprocesses). Redirecting
+# _CC_DIR alone does NOT move _CERT_PATH/_CONFIG_HISTORY — they were derived from it once,
+# at import. Anything isolating these must rebind all four; see tests/conftest.py.
 
 CONFIG_PATH = Path("config.yaml")
-_BACKUP_DIR = Path("store/control_center/backups")
-_CC_DIR = Path("store/control_center")
+_STORE_DIR = Path(os.environ.get("PROSPECTOR_STORE_DIR") or "store")
+_CC_DIR = _STORE_DIR / "control_center"
+_BACKUP_DIR = _CC_DIR / "backups"
 _CERT_PATH = _CC_DIR / "certification.json"
 _CONFIG_HISTORY = _CC_DIR / "config_history.jsonl"
 

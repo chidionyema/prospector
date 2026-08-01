@@ -38,6 +38,49 @@ def _isolate_audit_log(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "_AUDIT_DIR", audit_dir)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_durable_ledger(tmp_path, monkeypatch):
+    """Redirect the v2 durable ledger at a per-test temp file.
+
+    Without this, every TribunalMiddleware() built with no explicit ledger_path appends
+    real-looking "LAW:" bullets to storage/durable_ledger.md. That is not cosmetic: the
+    generator injects the LAST 15 bullets into every batch prompt (moat_prompts._load_ledger),
+    so test laws about spec ids "abc"/"abc123"/"test-2"/"test-3" become the entire law context
+    the real generator reasons from. As of 2026-08-01 the committed ledger held 826 bullets of
+    which only 5 were real — all 15 in the generator's window were test noise.
+
+    Patched on the module attributes, not the env var: both modules bind their ledger path at
+    import (middleware.py:24, moat_prompts.py:18), so setenv alone is a no-op in-process."""
+    import prospector.pipeline.middleware as MW
+    import prospector.pipeline.moat_prompts as MP
+    ledger = tmp_path / "durable_ledger.md"
+    monkeypatch.setenv("PROSPECTOR_LEDGER_PATH", str(ledger))
+    monkeypatch.setattr(MW, "_DEFAULT_LEDGER", ledger)
+    monkeypatch.setattr(MP, "_LEDGER_PATH", ledger)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_control_center_state(tmp_path, monkeypatch):
+    """Redirect the Control Center's on-disk state at a per-test temp dir.
+
+    config_editor.write_config() appends an audit row to store/control_center/config_history.jsonl
+    and rewrites certification.json. The existing tests rebind _CC_DIR and _BACKUP_DIR but NOT
+    _CONFIG_HISTORY, which was derived from _CC_DIR once at import (config_editor.py:30) — so the
+    history row landed in the production file while its "backup" field pointed at a pytest tmpdir.
+    All 138 rows committed as of 2026-08-01 were test rows of exactly that shape.
+
+    Rebinds all four; tests that redirect a subset still override this on top."""
+    import prospector.control_center.config_editor as CE
+    cc = tmp_path / "control_center"
+    cc.mkdir(parents=True, exist_ok=True)
+    # Deliberately NOT setting PROSPECTOR_STORE_DIR here: that env var redirects every store
+    # read as well, and many tests legitimately read the real catalogue.
+    monkeypatch.setattr(CE, "_CC_DIR", cc)
+    monkeypatch.setattr(CE, "_BACKUP_DIR", cc / "backups")
+    monkeypatch.setattr(CE, "_CERT_PATH", cc / "certification.json")
+    monkeypatch.setattr(CE, "_CONFIG_HISTORY", cc / "config_history.jsonl")
+
+
 @pytest.fixture
 def cfg() -> Config:
     """Load real config from config.yaml (fixture mode wired by individual tests)."""

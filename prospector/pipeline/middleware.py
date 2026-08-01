@@ -11,6 +11,7 @@ it becomes a ruling.  Four hard checks enforce structural integrity:
 from __future__ import annotations
 
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -20,8 +21,14 @@ from prospector.pipeline.moat_contract import MoatVerificationContract
 
 logger = logging.getLogger(__name__)
 
-# Default ledger path relative to repo root.
-_DEFAULT_LEDGER = Path(__file__).resolve().parents[2] / "storage" / "durable_ledger.md"
+# Default ledger path relative to repo root, overridable with PROSPECTOR_LEDGER_PATH.
+# NOTE: this binds at import, so setenv is a no-op for an already-imported module —
+# it only covers subprocesses. In-process isolation is done by patching this attribute
+# (see the _isolate_durable_ledger fixture in tests/conftest.py).
+_DEFAULT_LEDGER = Path(
+    os.environ.get("PROSPECTOR_LEDGER_PATH")
+    or Path(__file__).resolve().parents[2] / "storage" / "durable_ledger.md"
+)
 
 # Sentinel values the LLM uses when short-circuiting.
 _SHORT_CIRCUITED_SENTINEL = "SHORT_CIRCUITED"
@@ -136,6 +143,14 @@ class TribunalMiddleware:
         if not sanitized.strip():
             return
         line = f"\n* {sanitized.strip()}"
+        # The generator only reads the LAST 15 bullets (moat_prompts._load_ledger), so a law
+        # re-committed on every retry/re-entry of the same spec_id evicts every other law from
+        # the window. Appending an exact duplicate adds no information — skip it.
+        if self._already_committed(line.strip()):
+            logger.debug(
+                "[TRIBUNAL] Law already in ledger for Spec %s, not re-appending: %s",
+                spec_id, sanitized[:80])
+            return
         try:
             self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.ledger_path, "a", encoding="utf-8") as f:
@@ -147,3 +162,11 @@ class TribunalMiddleware:
             logger.error(
                 "[TRIBUNAL BREAKER] Failed to write law to ledger for Spec %s: %s",
                 spec_id, e)
+
+    def _already_committed(self, bullet: str) -> bool:
+        """True if this exact bullet is already in the ledger."""
+        try:
+            existing = self.ledger_path.read_text(encoding="utf-8")
+        except OSError:
+            return False
+        return any(ln.strip() == bullet for ln in existing.splitlines())
