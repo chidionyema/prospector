@@ -92,7 +92,7 @@ export function CartButton() {
               <span className="text-sm font-semibold text-muted">
                 {cart.count} {cart.count === 1 ? 'pack' : 'packs'}
               </span>
-              {/* Absent when the lines do not agree on a currency or a price will not parse —
+              {/* Absent when the lines do not agree on a currency or a price will not parse,
                   Stripe states the authoritative total on the next screen either way. */}
               {cart.total && <span className="text-2xl font-black tracking-tight text-text">{formatPrice(cart.total)}</span>}
             </div>

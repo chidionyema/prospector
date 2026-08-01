@@ -12,7 +12,7 @@ import { useDisclosure } from '@/lib/useDisclosure';
  * IDENTITY-BLINDNESS: never carries or fetches user identity.
  */
 
-/** The public marketing nav — every entry points at a page that exists. */
+/** The public marketing nav, every entry points at a page that exists. */
 export const MARKETING_NAV = [
   { href: '/', label: 'Catalog' },
   // `/ideas` is here rather than only in the sitemap because it is the hub every `/ideas/<slug>`
@@ -72,14 +72,14 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 h-full">
-            {/* Renders nothing until there is something in it — see CartButton. */}
+            {/* Renders nothing until there is something in it, see CartButton. */}
             <CartButton />
 
             {/* Deliberately a plain link with a fixed label, so the header keeps the
                 identity-blindness noted above: it fetches nothing, renders the same markup for
                 every visitor, and stays cacheable. A "Sign in / Your account" toggle would have
                 to wait for the session before it could choose, so every returning customer would
-                watch it flip after hydration — and every page in the site would depend on the
+                watch it flip after hydration, and every page in the site would depend on the
                 session resolving. /account itself decides which of the two it is. */}
             <Link
               href="/account"

@@ -4,7 +4,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 
 /**
- * 404. Calm, on-brand, and a clear way back — a dead-end with no exit reads as "this place is
+ * 404. Calm, on-brand, and a clear way back, a dead-end with no exit reads as "this place is
  * broken", off-key for a trusted store. Wrapped in the marketing chrome (nav + footer) so it stays
  * consistent with every other page and always offers a way onward. MarketingLayout is identity-blind
  * and fetches nothing, so this still renders identically whether the missing route was public or authed.

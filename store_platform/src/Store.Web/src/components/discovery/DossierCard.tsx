@@ -9,7 +9,7 @@ import { splitTitle } from '@/lib/discovery';
 import { FacetChips } from './FacetChips';
 
 /**
- * DossierCard — a mini-card matching PackCard's design language.
+ * DossierCard, a mini-card matching PackCard's design language.
  *
  * Same radius, hover treatment and proof line as the full PackCard, but smaller padding (p-5),
  * no BuyNow/AddToCart buttons, and no FitChips cap of 5. Used by SimilarPacks and PackGrid so

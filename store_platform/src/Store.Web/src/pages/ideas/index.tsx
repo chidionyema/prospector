@@ -10,7 +10,7 @@ import { eligibleLandings } from '@/lib/seo/landings';
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
 
 /**
- * `/ideas` — the hub the landing pages hang off.
+ * `/ideas`, the hub the landing pages hang off.
  *
  * It exists for two reasons beyond being a useful page. First, the pack pages' breadcrumb names
  * "Business ideas" as the parent, and a breadcrumb whose middle crumb 404s is worse than no

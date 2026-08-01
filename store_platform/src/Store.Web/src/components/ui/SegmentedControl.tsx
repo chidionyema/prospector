@@ -17,7 +17,7 @@ export interface SegmentedControlProps<T extends string> {
 }
 
 /**
- * A two-or-more segment switch — the generic version of ModeToggle. ARIA radiogroup with the roving
+ * A two-or-more segment switch, the generic version of ModeToggle. ARIA radiogroup with the roving
  * tabindex + arrow-key pattern (arrows move selection AND focus, with wrap; only the checked segment is
  * tabbable). The active segment is the one bright-blue affordance ("click"); the rest are quiet.
  */

@@ -59,7 +59,7 @@ export default function OrderPage() {
   // compromised or buggy. `\/(?!\/)` rejects protocol-relative `//evil.com`.
   //
   // The API returns downloadPath as a root-relative path ("/download/<token>"), but /download
-  // is served by the API, not by this storefront and not proxied to it — using the bare path
+  // is served by the API, not by this storefront and not proxied to it, using the bare path
   // resolved against the web origin and 404'd. Relative paths are resolved against the API.
   const rawDownload = order?.downloadPath ?? '';
   const downloadHref = /^https:\/\//.test(rawDownload)
@@ -90,7 +90,7 @@ export default function OrderPage() {
               ExpiresAt = null and a 50-download cap (DeliveryEndpoints.cs:25). Telling a paying
               customer their permanent recovery link is already dead is how a sale becomes a refund. */}
           <p className="text-xs text-muted mt-4 text-center">
-            Bookmark this page — it is your permanent access link and does not expire. You can
+            Bookmark this page, it is your permanent access link and does not expire. You can
             re-download your pack here whenever you need it.
           </p>
         </div>

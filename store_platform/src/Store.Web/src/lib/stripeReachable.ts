@@ -2,7 +2,7 @@
  * Can this browser reach Stripe's API at all?
  *
  * Why this exists: `resolveStripeCheckout` only falls back to hosted checkout when the SESSION
- * REQUEST fails. A session that is issued fine but cannot RENDER gets no fallback — Stripe's
+ * REQUEST fails. A session that is issued fine but cannot RENDER gets no fallback, Stripe's
  * iframe shows its own "the payment provider cannot be reached" copy and the buyer has nowhere
  * to go. That is not hypothetical: on 2026-07-31 a Chrome process rejected the certificate
  * chain for api.stripe.com (`net::ERR_CERT_AUTHORITY_INVALID`) while every other host, including
@@ -12,8 +12,8 @@
  * a reachable host yields an opaque response even for Stripe's 401, and an unreachable one
  * throws. Two probes that look equivalent and are NOT (both produced false positives while this
  * was being diagnosed):
- *   - fetching js.stripe.com — always throws, because our CSP `connect-src` does not list it;
- *   - navigating to api.stripe.com — always shows a Chrome error page, because Stripe answers
+ *   - fetching js.stripe.com, always throws, because our CSP `connect-src` does not list it;
+ *   - navigating to api.stripe.com, always shows a Chrome error page, because Stripe answers
  *     401 with a Basic-auth challenge.
  *
  * Deliberately fails SAFE: any ambiguity (no fetch available, abort, timeout) reports reachable,

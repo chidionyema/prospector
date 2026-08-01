@@ -2,11 +2,11 @@ import React from 'react';
 import { cx } from './cx';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Adds a quiet hover affordance (border-darken + 1px lift) — use for clickable list items. */
+  /** Adds a quiet hover affordance (border-darken + 1px lift), use for clickable list items. */
   interactive?: boolean;
 }
 
-/** Surface container — the quiet, bordered panel the brand leans on (UI-STANDARDS §2).
+/** Surface container, the quiet, bordered panel the brand leans on (UI-STANDARDS §2).
  *  Restrained register: a hairline border does the separation, not a drop shadow (the off-white
  *  --surface already lifts off the warm --bg). Interactive cards earn a quiet border-darken + 1px
  *  lift on hover rather than a heavier shadow (founder restraint review 2026-06-06). */

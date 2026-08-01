@@ -1,5 +1,5 @@
 /**
- * Market resolution and grouping — "boost, don't block" (spec: geo-aware storefront). A visitor
+ * Market resolution and grouping, "boost, don't block" (spec: geo-aware storefront). A visitor
  * from the US should see US-market packs first; every other market, including UK, stays fully
  * reachable underneath. Nothing is ever hidden by market, only reordered.
  *
@@ -17,12 +17,12 @@
 import { marketLabel } from './api/client';
 
 /** Older rows were published before the engine tracked markets at all; treat an absent value
- *  as "uk" everywhere a market is read, resolved, or grouped on — the same rule GET /catalog
+ *  as "uk" everywhere a market is read, resolved, or grouped on, the same rule GET /catalog
  *  applies server-side (Program.cs `?market=` filter) so the two sides can never disagree. */
 export const DEFAULT_MARKET = 'uk';
 
 /** Markets the storefront actually has shelves for. `resolveMarket` clamps to this set so an
- *  arbitrary `?market=` / cookie string can never become the resolved market — unclamped it
+ *  arbitrary `?market=` / cookie string can never become the resolved market, unclamped it
  *  would empty the main shelf (no pack matches "zz") and flow into a `Set-Cookie` header,
  *  where Node throws on control characters (a crafted URL would 500 the page). */
 export const KNOWN_MARKETS: readonly string[] = ['uk', 'us'];
@@ -40,7 +40,7 @@ export function packMarket(pack: MarketedPack): string {
 }
 
 /**
- * ISO-3166 alpha-2 country code (as seen on the `Fly-Client-Country` request header — both apps
+ * ISO-3166 alpha-2 country code (as seen on the `Fly-Client-Country` request header, both apps
  * run on Fly.io, see next.config.ts for why this is never browser geolocation) -> market code.
  *
  * Only "US" maps away from the default: "boost, don't block" has exactly two shelves to boost
@@ -52,11 +52,11 @@ export function countryToMarket(country?: string | null): string {
 }
 
 export interface MarketResolutionInput {
-  /** `?market=` on the current request. An explicit override always wins — it is what the
+  /** `?market=` on the current request. An explicit override always wins, it is what the
    *  market switcher sends, and a stale inference must never fight a visitor's own click. */
   queryMarket?: string | string[] | null;
   /** The `market` cookie: a stored explicit choice from a previous visit (set ONLY by the
-   *  switcher's `?market=` — never inferred). Outranks the header because a visitor travelling
+   *  switcher's `?market=`, never inferred). Outranks the header because a visitor travelling
    *  with a VPN or a work laptop keeps the market they picked, not the one their current IP
    *  happens to geolocate to. */
   cookieMarket?: string | null;
@@ -93,7 +93,7 @@ export interface GroupedByMarket<T extends MarketedPack> {
   /** Packs in the visitor's resolved market, in the order they were given (the catalogue is
    *  already newest-first from the API; this never re-sorts within a group). */
   matching: T[];
-  /** Every other market present, sorted by group size (desc) then market code (asc) — the
+  /** Every other market present, sorted by group size (desc) then market code (asc), the
    *  biggest "also available" shelf leads, and the order is deterministic across renders. */
   others: OtherMarketGroup<T>[];
 }

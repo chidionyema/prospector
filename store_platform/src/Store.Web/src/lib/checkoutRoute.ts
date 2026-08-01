@@ -3,8 +3,8 @@
  *
  * This exists as a separate unit because the rule it encodes is a money-rail guarantee, and a
  * guarantee that lives inline in a click handler cannot be tested: EMBEDDED IS PREFERRED BUT
- * NEVER REQUIRED. Every way the embedded attempt can fail — a thrown request, a session with
- * neither a client secret nor a URL, or no publishable key in the build at all — must still end
+ * NEVER REQUIRED. Every way the embedded attempt can fail, a thrown request, a session with
+ * neither a client secret nor a URL, or no publishable key in the build at all, must still end
  * on the hosted redirect that existed before embedded checkout was added.
  *
  * The failure that motivates the try/catch: gating or crashing the buy path on a surface
@@ -22,7 +22,7 @@ export type CheckoutRoute =
   | { kind: 'redirect'; url: string };
 
 export interface CheckoutRouteOptions {
-  /** False when the build carries no Stripe publishable key — skip embedded, never block. */
+  /** False when the build carries no Stripe publishable key, skip embedded, never block. */
   stripeConfigured: boolean;
   requestEmbedded: () => Promise<EmbeddedSession>;
   requestHosted: () => Promise<string>;

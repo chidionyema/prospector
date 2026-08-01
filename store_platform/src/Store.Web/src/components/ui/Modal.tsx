@@ -105,7 +105,7 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
           )}
         >
           {/* shrink-0 keeps the header at its natural height when the body grows past the
-              panel — without it, flexbox will squeeze the title/close row before the body
+              panel, without it, flexbox will squeeze the title/close row before the body
               scrolls, hiding the close button on a tall checkout. */}
           <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-6 py-4">
             <h2 id={titleId} className="text-h2 font-semibold text-text">

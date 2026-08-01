@@ -5,7 +5,7 @@ import { join } from 'node:path';
 /**
  * The Buy drawer lets someone spend £49 without opening the pack page. That is only defensible
  * while the drawer itself carries what the pack page would have told them first, so these tests
- * hold it to that — the doc comment saying so is not a mechanism.
+ * hold it to that, the doc comment saying so is not a mechanism.
  *
  * Source-reading rather than DOM-rendering because this repo's web tests are all source-level
  * (there is no jsdom/RTL setup here), and because the properties below are structural: which
@@ -71,7 +71,7 @@ describe('the buy path is shared, not copied', () => {
     // hid the whole shelf's checkout when the key was missing from the web build args.
     expect(hook).toContain('price_stub');
     expect(hook).toMatch(/canCheckout[\s\S]{0,200}hasProvisionedPrice/);
-    // stripeConfigured may still be consulted for the embedded PREFERENCE — it must simply not
+    // stripeConfigured may still be consulted for the embedded PREFERENCE, it must simply not
     // be what decides whether a sale is possible.
     const canCheckoutBlock = hook.slice(hook.indexOf('const canCheckout'));
     expect(canCheckoutBlock).not.toContain('stripeConfigured');

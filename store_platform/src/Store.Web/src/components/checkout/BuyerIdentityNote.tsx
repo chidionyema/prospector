@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
  * in their account, and a guest who uses an address they cannot open loses the only durable route
  * back to what they paid for. Nobody sees an error in either case.
  *
- * Guest checkout is a supported path, not a degraded one — neither checkout route requires
+ * Guest checkout is a supported path, not a degraded one, neither checkout route requires
  * authorization (CheckoutEndpoints.cs:24,40). So this does not nag a guest to sign in; it tells
  * them the one thing that is actually true and actionable about their address.
  */
@@ -28,7 +28,7 @@ export function BuyerIdentityNote({ className }: { className?: string }) {
     <p className={className ?? 'text-xs text-muted'}>
       {account ? (
         <>
-          Buying as <strong className="font-semibold text-text">{account.email}</strong> — that
+          Buying as <strong className="font-semibold text-text">{account.email}</strong>, that
           address is locked at the payment step, so this purchase lands in your account.
           {!account.email_confirmed && ' Confirm the address to see it there.'}
         </>
@@ -38,7 +38,7 @@ export function BuyerIdentityNote({ className }: { className?: string }) {
               secrets are unset (see orders/success.tsx:146-149), so "check your inbox" would be a
               lie that turns a completed sale into a refund. The permanent link on the success
               page is the guest's real route back, and an account is the second one. */}
-          Checking out as a guest — no account needed. Your download appears straight after
+          Checking out as a guest, no account needed. Your download appears straight after
           payment, on a permanent link. Use an address you can open:{' '}
           <Link href="/account?mode=register" className="underline">
             creating an account
@@ -55,7 +55,7 @@ export function BuyerIdentityNote({ className }: { className?: string }) {
  * genuinely different things.
  *
  * A signed-in buyer needs to know a second route exists so a lost tab is not a lost pack. A guest
- * needs to know the address they just typed is the one that will surface this order — the success
+ * needs to know the address they just typed is the one that will surface this order, the success
  * page already presses them to save the permanent link, and this is the durable alternative to it.
  */
 export function PostPurchaseAccountNote({ className }: { className?: string }) {
@@ -89,8 +89,8 @@ export function PostPurchaseAccountNote({ className }: { className?: string }) {
           <Link href="/account?mode=register" className="underline">
             Create an account
           </Link>{' '}
-          with the email address you just paid with and this order — and any other you have made
-          with it — shows up there permanently.
+          with the email address you just paid with and this order, and any other you have made
+          with it, shows up there permanently.
         </>
       )}
     </p>

@@ -10,8 +10,8 @@ import { formatPrice, Pack } from '@/lib/api/client';
 /**
  * Buy one pack without leaving the shelf.
  *
- * The friction this removes is real: a buyer persuaded by the card — which since the card
- * rewrite carries the outcome, the mechanism and a cited proof line — still had to load a new
+ * The friction this removes is real: a buyer persuaded by the card, which since the card
+ * rewrite carries the outcome, the mechanism and a cited proof line, still had to load a new
  * page, scroll to the sticky panel, and buy there. The basket does not solve it either: it is
  * deliberately secondary (`AddToCartButton`), and routing a single purchase through
  * add → open basket → checkout taxes the common case to serve the rarer one.
@@ -21,7 +21,7 @@ import { formatPrice, Pack } from '@/lib/api/client';
  * A £49 purchase made from a card the buyer cannot interrogate would be a worse-informed sale
  * than the pack page offers, on a storefront whose entire position is that it shows its
  * working. It would also drop the pre-contract information a distance sale owes the buyer
- * before they are bound (Consumer Contracts Regulations 2013, reg. 13 — main characteristics,
+ * before they are bound (Consumer Contracts Regulations 2013, reg. 13, main characteristics,
  * total price, and the cancellation right, given before the order is placed).
  *
  * So the drawer carries that set in full, and the whole page stays one click away:
@@ -32,7 +32,7 @@ import { formatPrice, Pack } from '@/lib/api/client';
  *   - cancellation right → the 14-day line and a link to /refund;
  *   - and the honesty note that a pack is grounded research, not a promise of success.
  *
- * The buy path itself is `usePackCheckout` — the same hook the pack page runs, not a copy. See
+ * The buy path itself is `usePackCheckout`, the same hook the pack page runs, not a copy. See
  * that module for the three production incidents its branches encode.
  */
 function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose: () => void }) {
@@ -94,20 +94,20 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
                 disabled={checkingOut}
                 className="w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                {/* True of both routes — the overlay opens in place, the hosted route navigates —
+                {/* True of both routes, the overlay opens in place, the hosted route navigates,
                     which is why it does not say "Redirecting". */}
-                {checkingOut ? 'Opening secure checkout…' : `Get instant access — ${priceLabel}`}
+                {checkingOut ? 'Opening secure checkout…' : `Get instant access, ${priceLabel}`}
               </button>
               <BuyerIdentityNote className="text-xs leading-relaxed text-muted" />
             </>
           ) : (
-            /* Not buyable yet. The drawer says so rather than showing a dead button — and sends
+            /* Not buyable yet. The drawer says so rather than showing a dead button, and sends
                the buyer to the full page, which owns the "notify me" path. */
             <Link
               href={`/pack/${pack.id}`}
               className="block w-full rounded-xl bg-text py-4 text-center text-sm font-bold uppercase tracking-wide text-white"
             >
-              Checkout opens shortly — see the pack
+              Checkout opens shortly, see the pack
             </Link>
           )}
         </div>
@@ -148,7 +148,7 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
           <Link href="/refund" className="font-semibold text-primary hover:underline">
             refund policy
           </Link>
-          . The full evidence — every check, every cited source — is on the{' '}
+          . The full evidence, every check, every cited source, is on the{' '}
           <Link href={`/pack/${pack.id}`} className="font-semibold text-primary hover:underline">
             pack page
           </Link>
@@ -174,7 +174,7 @@ export function BuyDrawerProvider({ children }: { children: React.ReactNode }) {
     <RequestBuyContext.Provider value={setPack}>
       {children}
       {/* Keyed by id so switching packs remounts the checkout state. Without the key, a session
-          opened for one pack would survive into the next drawer — and paying for the wrong pack
+          opened for one pack would survive into the next drawer, and paying for the wrong pack
           is the one bug this surface must not be able to have. */}
       {pack && <BuyDrawer key={pack.id} pack={pack} open onClose={() => setPack(null)} />}
     </RequestBuyContext.Provider>

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 /**
  * `lib/seo/schema.ts` reads `SITE_URL` from `lib/config`, which is a module-level const bound at
- * import time. Setting the env var after the fact therefore changes nothing — every test here
+ * import time. Setting the env var after the fact therefore changes nothing, every test here
  * imports the module fresh, under the env it wants, through this helper.
  *
  * That is also what makes the "unconfigured build" cases below meaningful rather than accidental:
@@ -156,7 +156,7 @@ describe('itemListNode', () => {
       'Test list',
     )!;
     expect(node.numberOfItems).toBe(2);
-    // Explicitly unordered, so position 1 is not read as a ranking claim — and NOT
+    // Explicitly unordered, so position 1 is not read as a ranking claim, and NOT
     // `ItemListOrderDescending`, because the live catalogue is measurably not date-ordered
     // (see the note on `itemListNode`). Pinned here so a future "helpful" change has to argue
     // with the measurement rather than with a comment.
@@ -204,7 +204,7 @@ describe('the site graph _document.tsx serialises', () => {
     // _document.tsx renders this JSON as a text child rather than via dangerouslySetInnerHTML
     // (the react/no-danger rail), so it is NOT escaped by React and NOT escaped by JSON.stringify.
     // A `<` or `&` reaching it would corrupt the document, so _document.tsx drops the payload if
-    // this ever fails — this test is what stops that silent drop shipping unnoticed.
+    // this ever fails, this test is what stops that silent drop shipping unnoticed.
     const { graph, organizationNode, webSiteNode } = await loadSchema(SITE);
     const serialized = JSON.stringify(
       graph(organizationNode('Researched business ideas, with a source for every claim.'), webSiteNode()),

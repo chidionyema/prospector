@@ -7,7 +7,7 @@ import { CHECK_NAMES, cleanProofPoint } from '../proof';
 /**
  * Two things are being held here.
  *
- * The vocabulary, against the engine that emits it — the same discipline `facets.test.ts`
+ * The vocabulary, against the engine that emits it, the same discipline `facets.test.ts`
  * applies to the C#. If someone adds a seventh check in Python, this fails rather than letting
  * its name quietly ship to a buyer as the opening word of our evidence.
  *
@@ -30,7 +30,7 @@ describe('CHECK_NAMES mirrors the engine', () => {
   });
 });
 
-describe('cleanProofPoint — strips our markup, never the buyer’s evidence', () => {
+describe('cleanProofPoint, strips our markup, never the buyer’s evidence', () => {
   it('removes a leading check name that leaked out of a rationale bullet', () => {
     // The exact shape measured on 20 of 51 live packs on 2026-08-01.
     expect(
@@ -46,7 +46,7 @@ describe('cleanProofPoint — strips our markup, never the buyer’s evidence', 
 
   it('keeps an attribution that merely looks like a label', () => {
     // The failure this prevents: a naive /^[a-z ]+:\s/ eats "Ofgem:" and the sentence stops
-    // being checkable — which is the entire value of printing it.
+    // being checkable, which is the entire value of printing it.
     expect(cleanProofPoint('Ofgem: the price cap fell to £1,690 in April 2024.')).toBe(
       'Ofgem: the price cap fell to £1,690 in April 2024.',
     );
@@ -87,7 +87,7 @@ describe('cleanProofPoint — strips our markup, never the buyer’s evidence', 
 
   it('never invents, reorders or truncates the words it keeps', () => {
     const sentence =
-      'California Department of Education reports the average public school teacher salary was $103,552 in 2024–25.';
+      'California Department of Education reports the average public school teacher salary was $103,552 in 2024 to 25.';
     expect(cleanProofPoint(sentence)).toBe(sentence);
     expect(cleanProofPoint(`incumbency: ${sentence}`)).toBe(sentence);
   });

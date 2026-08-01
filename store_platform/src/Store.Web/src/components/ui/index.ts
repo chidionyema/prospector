@@ -1,5 +1,5 @@
 /**
- * The UI primitive library — the ONLY source of buttons, inputs, money, status, etc.
+ * The UI primitive library, the ONLY source of buttons, inputs, money, status, etc.
  * Screens compose these; they never reach for raw <button>/<input> or raw palette
  * (enforced by ESLint + scripts/check-conformance.mjs). See docs/ux/UI-STANDARDS.md §2.
  */

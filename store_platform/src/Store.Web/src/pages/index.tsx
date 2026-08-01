@@ -41,7 +41,7 @@ import {
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
 import { cleanProofPoint } from '@/lib/proof';
-// Totals only — the full kill log is a separate import on /kill-log so its 60 entries stay
+// Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
 import killTotals from '@/data/kill-log-totals.json';
 
@@ -53,7 +53,7 @@ interface HomeProps {
   initialState: DiscoveryState;
   /** The visitor's resolved market (`?market=` override -> `market` cookie -> `Fly-Client-Country`
    *  -> "uk"; see `resolveMarket` in `lib/market.ts`). Boosts that market's packs to the top of
-   *  the grid — every other market is still fully shown, just below. */
+   *  the grid, every other market is still fully shown, just below. */
   market: string;
 }
 
@@ -71,10 +71,10 @@ function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
 }
 
 // The deliverable chips are identical for every pack (the bundle is the bundle), so they render
-// once — on the spotlight card — not on all forty grid cards, where measured on the live shelf
+// once, on the spotlight card, not on all forty grid cards, where measured on the live shelf
 // they cost ~90px per card and said nothing a buyer could compare on. The bundle carries
 // PACK_CONTENTS files (pinned to prospector/bridge.py::BUNDLE_FILES by a drift test): the chips
-// name the four a buyer decides on and the count chip carries the rest —
+// name the four a buyer decides on and the count chip carries the rest,
 // `PACK_CONTENTS.length - DELIVERABLES.length` rather than a literal, because a hardcoded "+4"
 // is exactly how this claim drifted the first time.
 const DELIVERABLES: { icon: IconName; label: string }[] = [
@@ -120,7 +120,7 @@ function DeliverableChips() {
 // Colour-coded sector label. `onLight` sits on a white card body; the default glass pill sits on the
 // coloured cover.
 function CategoryPill({ cat, onLight = false }: { cat: Category; onLight?: boolean }) {
-  // An untagged pack shows no pill at all — same rule as FacetChips below, and for the same
+  // An untagged pack shows no pill at all, same rule as FacetChips below, and for the same
   // reason: absence is rendered as absence, never as a badge about the state of our pipeline.
   if (!cat.tagged) return null;
   if (onLight) {
@@ -163,17 +163,17 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
   );
 }
 
-/** The mechanism tier of a grid card: which market, then the strongest facets — what this is and
+/** The mechanism tier of a grid card: which market, then the strongest facets, what this is and
  *  who pays for it. One capped row replaces the three stacked chip sections the card used to
  *  carry; measured on the live shelf those sections were the whole size problem (cards ran
- *  585–660px tall depending on which sections a pack happened to have). A pack with nothing to
+ *  585 to 660px tall depending on which sections a pack happened to have). A pack with nothing to
  *  claim renders no row at all: a chip is a claim, and absence stays absence (same rule as
  *  FacetChips).
  *
  *  Sources and freshness used to sit at the end of this same capped list, at positions 7 and 8.
  *  Measured against the live catalogue on 2026-08-01 (n=51): `verifiedAt` is present on 51 packs
  *  and the freshness chip reached 2 of them; `sourceCount` is present on 51 and was cut on 12.
- *  The cap was not choosing between claims of the same kind — it was letting a fifth descriptive
+ *  The cap was not choosing between claims of the same kind, it was letting a fifth descriptive
  *  tag outrank the only evidence on the card, and it got stricter as facet coverage improved.
  *  Proof is now its own tier below, and is not subject to this cap. */
 const CARD_META_MAX = 5;
@@ -212,7 +212,7 @@ function FitChips({ pack }: { pack: Pack }) {
 /** The proof tier: how much evidence stands behind the listing, and when it was last checked.
  *
  *  Deliberately not chips and deliberately not capped. It is the last thing a buyer reads before
- *  the CTA because it is the claim the rest of the card rests on — every other line describes the
+ *  the CTA because it is the claim the rest of the card rests on, every other line describes the
  *  opportunity, this one says why we think it is real. It renders nothing when there is nothing
  *  to cite, which is the same rule as everywhere else: we do not print a reassurance we cannot
  *  back. */
@@ -246,7 +246,7 @@ function PackCard({ pack }: { pack: Pack }) {
   // descriptor is the fallback for packs published before the engine emitted one.
   const line = pack.oneLine || sub;
   // Ghost hover: the card answers with light, not with movement. The `1px solid #E2E8F0` border
-  // and `translateY(-2px)` lift that used to live here are amendment 1 of the design contract —
+  // and `translateY(-2px)` lift that used to live here are amendment 1 of the design contract,
   // the reason is recorded in storefrontDesignContract.test.ts, which still fails if the lift
   // comes back unannounced. A hairline ring at 6% still separates a white card from the #F8FAFC
   // page, but at 42 cards a full-strength border draws 42 rectangles and the eye reads the grid
@@ -280,7 +280,7 @@ function PackCard({ pack }: { pack: Pack }) {
         {/* What it DOES leads; the brand name is the eyebrow. Nobody can buy from "PitchBrief"
             on a first visit, so the name is not the heading whenever the engine gave us a short
             line to use instead. `cardHeading` falls back to the old name-first hierarchy for
-            packs published before the engine emitted one — see lib/discovery.ts. */}
+            packs published before the engine emitted one, see lib/discovery.ts. */}
         {eyebrow && (
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
         )}
@@ -317,7 +317,7 @@ function PackCard({ pack }: { pack: Pack }) {
           <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3.5">
             {/* Buy before basket: a single pack is the common purchase, and the drawer carries
                 the deliverables, the price and the refund right, so this is not a shortcut
-                past the evidence. Both stay quieter than "View blueprint" — the pack page is
+                past the evidence. Both stay quieter than "View blueprint", the pack page is
                 still the primary action, because the evidence is the product. */}
             <BuyNowButton pack={pack} />
             <AddToCartButton
@@ -368,12 +368,12 @@ function SpotlightCard({ pack }: { pack: Pack }) {
         </div>
         {pack.oneLine && <CardFact label="The opportunity" clamp="line-clamp-3">{pack.oneLine}</CardFact>}
         {/* The spotlight is the one card with room for the sentence itself rather than a count of
-            sources. Every pack has carried one since publish and no surface has ever shown it —
+            sources. Every pack has carried one since publish and no surface has ever shown it,
             see lib/proof.ts. Cleaned at this boundary, because the .md a buyer downloads keeps
             its markdown. Renders nothing if it cleans to nothing. */}
         {proof && <CardFact label="The evidence" clamp="line-clamp-3">{proof}</CardFact>}
         <FacetChips pack={pack} compact max={5} />
-        {/* The one place on the shelf the deliverable chips render — see the note on DELIVERABLES. */}
+        {/* The one place on the shelf the deliverable chips render, see the note on DELIVERABLES. */}
         <DeliverableChips />
         <div className="mt-0.5 flex flex-wrap items-center gap-4">
           <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
@@ -422,7 +422,7 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
             •
           </span>
           {/* The survivorship ratio lives here rather than in a second pill under the heading.
-              It used to be both, and the duplicate row cost ~50px directly above the shelf —
+              It used to be both, and the duplicate row cost ~50px directly above the shelf,
               which is the one place on this page where vertical space is the scarce resource. */}
           <span>
             {stats.registered > stats.listed
@@ -508,7 +508,7 @@ function CatalogBrowser({
     });
   }, [packs, state, sort]);
 
-  // Only computed when the shelf came back empty — the near-miss row exists to rescue that case.
+  // Only computed when the shelf came back empty, the near-miss row exists to rescue that case.
   const candidates: NearMissCandidate[] = React.useMemo(() => {
     if (visible.length > 0) return [];
     return nearMisses(packs, state).map((miss) => ({
@@ -525,7 +525,7 @@ function CatalogBrowser({
   // other, so the grid can render "your market" first without ever dropping a pack.
   const grouped = React.useMemo(() => groupByMarket(visible, market), [visible, market]);
 
-  // Spotlight the newest survivor only on the unfiltered, unsorted, full view — when it is
+  // Spotlight the newest survivor only on the unfiltered, unsorted, full view, when it is
   // genuinely "newest" and there is a grid behind it to anchor. Drawn from the visitor's own
   // market only: the single biggest promotional slot on the page boosting a pack from a market
   // that then gets "Also available" below it would be the opposite of the point.
@@ -550,7 +550,7 @@ function CatalogBrowser({
   return (
     <>
       {/* Only shown once we have boosted away from the default shelf. A visitor already on "uk"
-          has nothing to be told — the grid below is already every pack, in the usual order. */}
+          has nothing to be told, the grid below is already every pack, in the usual order. */}
       {market !== DEFAULT_MARKET && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-bg/60 px-4 py-3 text-sm">
           <span className="text-text">Showing packs for {marketLabel(market)} first.</span>
@@ -566,7 +566,7 @@ function CatalogBrowser({
       )}
 
       {/* One column below `lg`, so this <aside> stacks ABOVE the first card on every phone.
-          It used to stack the whole filter bar there — six groups of chips before a buyer saw a
+          It used to stack the whole filter bar there, six groups of chips before a buyer saw a
           single product. FacetBar now collapses itself into one "Filters" button under `lg`
           (`components/discovery/FacetBar.tsx`), so the mobile cost is one row, and the desktop
           sidebar is unchanged. The gap shrinks with it: 32px of air above the fold bought
@@ -597,13 +597,13 @@ function CatalogBrowser({
             </div>
           </div>
 
-          {/* What is currently narrowing the shelf, one removable chip per constraint — the
+          {/* What is currently narrowing the shelf, one removable chip per constraint, the
               only always-visible trace of the filters on a phone, where the controls live in a
               closed sheet. Renders nothing when nothing is active, so the default view pays no
               height for it. */}
           <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
 
-          {/* Mounted only once opened, and never unmounted after — "Change my answers" on the
+          {/* Mounted only once opened, and never unmounted after, "Change my answers" on the
               result screen has to land back on the form, not on the trigger they already used. */}
           {matchOpen && (
             <div className="mb-6">
@@ -624,7 +624,7 @@ function CatalogBrowser({
               {grouped.others.map((group) => (
                 <div key={group.market} className="mt-10 border-t border-border pt-8">
                   <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
-                    Also available — {group.label}
+                    Also available, {group.label}
                   </h2>
                   <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                     {group.packs.map((pack) => (
@@ -640,14 +640,14 @@ function CatalogBrowser({
               {/* The waitlist ask sits AFTER the shelf on purpose: the deployed variant put it
                   between the hero and the first card, spending above-the-fold pixels on buyers
                   who had not yet seen a product. Down here it reaches the only buyer it converts
-                  — one who scrolled the shelf and still wants more. It renders ONLY on this
+                 , one who scrolled the shelf and still wants more. It renders ONLY on this
                   branch: the near-miss and empty states carry their own ask (DiscoveryWaitlist),
                   and two email forms on one screen is a duplicate ask that also breaks selector
                   uniqueness. Rationale in ShelfEndCapture.tsx. */}
               <ShelfEndCapture className="mt-10" />
             </>
           ) : candidates.length > 0 ? (
-            /* A. Something is one facet away — sell that before asking for an email address. */
+            /* A. Something is one facet away, sell that before asking for an email address. */
             <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
               <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                 {candidates.map((candidate) => {
@@ -683,7 +683,7 @@ function CatalogBrowser({
  *
  * The price is the exception, and it had to become one. This block used to read "Typically $300 to
  * $1,000 a year", hedged as typical precisely because nobody could say where it came from. An
- * unnamed range is not the cautious choice it looks like — it is a number about a competitor with
+ * unnamed range is not the cautious choice it looks like, it is a number about a competitor with
  * no way for the reader to check it, on a page whose entire pitch is that we do not do that. It now
  * cites one real published plan price, named and linked, and says so is one product rather than a
  * category average (`lib/sources.ts`).
@@ -696,7 +696,7 @@ function CatalogBrowser({
 /**
  * What the method costs when you commission it, next to what it costs here.
  *
- * The brief asked for a straight price anchor — "£3,500 agency vs £49" — and that exact figure is
+ * The brief asked for a straight price anchor, "£3,500 agency vs £49", and that exact figure is
  * the thing this block refuses to print, because nobody could tell me whose £3,500 it was. What
  * survived research is narrower and checkable: a market-research firm's own published price list,
  * with a row for the method a pack actually is. They call it documentary research; we call it
@@ -704,8 +704,8 @@ function CatalogBrowser({
  *
  * Two temptations were declined, and both would have produced a bigger number:
  *
- * A UK agency guide priced B2B market research at £15k–£80k, which is the figure a marketer would
- * pick. It is not comparable — that range buys depth interviews and commissioned surveys, primary
+ * A UK agency guide priced B2B market research at £15k to £80k, which is the figure a marketer would
+ * pick. It is not comparable, that range buys depth interviews and commissioned surveys, primary
  * research a pack does not contain and does not claim to. Anchoring against it would inflate the
  * gap by pricing work we do not do.
  *
@@ -763,7 +763,7 @@ function MethodCostAnchor() {
 function ComparisonBlock() {
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
-    // Counted, never typed. This row said "four documents" while the bundle had grown to eight —
+    // Counted, never typed. This row said "four documents" while the bundle had grown to eight,
     // the same drift `PACK_CONTENTS` was made the single source of truth to end, surviving in a
     // table two hundred lines away from it.
     { label: 'What arrives', feed: 'A stream of raw leads and trend signals', pack: `One finished opportunity, ${PACK_CONTENTS.length} documents` },
@@ -855,10 +855,10 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         )}
       />
 
-      {/* 1. HERO — deliberately short enough that the shelf starts above the fold.
+      {/* 1. HERO, deliberately short enough that the shelf starts above the fold.
              It was 606px tall at 1280x720 (measured), which put the first pack card at y=1094:
              a storefront whose entire argument is "here is what survived" opened on an argument
-             and no product. Nothing here was deleted outright — the long pitch paragraph is the
+             and no product. Nothing here was deleted outright, the long pitch paragraph is the
              "What you get for £49" section further down, and the trust pills restate the
              guarantee that also sits under the grid. What is left is the claim, the price, and
              the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
@@ -874,12 +874,12 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             "Inter" and nothing ever downloaded it, so every OS picked a different one. macOS
             landed on 2 lines and CI Linux on 3, putting the first card at y=718.5 with 1.5px
             showing. Measured minimum width for 2 lines: SF Pro 652px, Arial/Liberation 736px,
-            Tahoma 768px, Verdana 872px — 56rem (896px) clears all of them. It does not widen the
+            Tahoma 768px, Verdana 872px, 56rem (896px) clears all of them. It does not widen the
             headline, because text-balance shortens the lines to even them up: the longest
             rendered line is 677px, narrower than the 736px box this replaces.
 
             globals.css now really does load and apply Hanken Grotesk, so the platform no longer
-            gets a vote — but the absolute cap stays, and stays the thing under test. It is what
+            gets a vote, but the absolute cap stays, and stays the thing under test. It is what
             makes this headline survive the font being slow, blocked, or swapped: measured with
             the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
             is still 2 and the first card still clears the fold by 88px at worst. */}
@@ -888,7 +888,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         </h1>
         <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75">
           Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics
-          and a step-by-step go-to-market plan — every claim backed by a source you can open.
+          and a step-by-step go-to-market plan, every claim backed by a source you can open.
         </p>
         {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
         <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -897,15 +897,15 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             onClick={() => track('catalog_cta_clicked')}
             className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover sm:w-auto"
           >
-            {/* "See the 44 that survived — £49" parses two ways, and the wrong one is the one a
+            {/* "See the 44 that survived, £49" parses two ways, and the wrong one is the one a
                 cold visitor picks: that £49 buys you the LIST. Browsing is free; £49 is the price
-                of one pack. "each" is the whole fix — it attaches the price to a pack rather than
+                of one pack. "each" is the whole fix, it attaches the price to a pack rather than
                 to the click, and keeps the qualifying number in the button where it does its
                 work. The catalogue count stays dynamic; it is never a literal. */}
-            {survived > 0 ? `Browse the ${survived} that survived` : 'Browse vetted blueprints'} — £49 each
+            {survived > 0 ? `Browse the ${survived} that survived` : 'Browse vetted blueprints'}, £49 each
           </Link>
           {/* The sceptic's door, and deliberately not a neutral outline button. This is the
-              strongest asset on the page — a whole unredacted dossier for nothing — and it was
+              strongest asset on the page, a whole unredacted dossier for nothing, and it was
               styled as the thing you ignore. It keeps a lighter weight than the shelf CTA so the
               two do not compete, but the primary-tinted border and background make it read as an
               offer rather than as a cancel button. */}
@@ -919,18 +919,18 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           </Link>
         </div>
         {/* One line, and it carries the two facts that decide whether the second button is
-            clicked: the sample is the whole thing, and it costs nothing — not even an address. */}
+            clicked: the sample is the whole thing, and it costs nothing, not even an address. */}
         <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
       </SectionBand>
 
-      {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
+      {/* 2. THE STORE, products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-3 !pb-16 md:!pt-3 md:!pb-20">
         {/* Heading and heartbeat share a row. Stacked, with the survivorship ratio in a third
             pill below them, this block was 206px of preamble sitting directly on top of the
-            shelf — the same fold problem as the hero, in miniature. */}
+            shelf, the same fold problem as the hero, in miniature. */}
         <div className="mb-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
             <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
@@ -945,7 +945,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         <CatalogBrowser packs={packs} initialState={initialState} market={market} />
       </Section>
 
-      {/* 3. WHAT YOU GET — the deliverable breakdown. Format ambiguity is the biggest killer on a
+      {/* 3. WHAT YOU GET, the deliverable breakdown. Format ambiguity is the biggest killer on a
              digital download page: the buyer's real fear is paying £49 for a two-page Google Doc. */}
       <Section
         bg="white"
@@ -966,14 +966,14 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         <PackContentsSection heading="What’s inside your download" />
         {/* The list above names the documents; this shows one. The fear on a digital download
             page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
-            rows from the free sample, including the check that failed — a preview of eight
+            rows from the free sample, including the check that failed, a preview of eight
             green ticks would advertise better and claim something the shop does not. */}
         <DossierPreview />
         <MethodCostAnchor />
         <ComparisonBlock />
       </Section>
 
-      {/* 4. WHY TRUST IT — condensed reassurance, sits below the shelf, not above it. */}
+      {/* 4. WHY TRUST IT, condensed reassurance, sits below the shelf, not above it. */}
       <SectionBand bg="band" width="6xl" className="py-14 md:py-20">
         <div className="grid items-center gap-10 md:grid-cols-[1.4fr_1fr]">
           <div>
@@ -991,7 +991,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             </p>
             {/* Two links, because this band makes two different promises. "How it works"
                 describes the process; the kill log is the only thing on the site that proves
-                it ran — the rejects, with the sourced argument that killed each one. A
+                it ran, the rejects, with the sourced argument that killed each one. A
                 stranger who doubts the claim above needs evidence, not a longer description. */}
             <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-3">
               <Link
@@ -1030,7 +1030,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             Want the next one, when it survives?
           </h2>
           <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-muted">
-            Most ideas we run die on the incumbent test, so this is not a weekly send — there is
+            Most ideas we run die on the incumbent test, so this is not a weekly send, there is
             nothing to send most weeks. Leave an address and you get one email on the day a pack
             clears all six checks. The sample above stays free either way, and this form is not in
             front of it.
@@ -1070,7 +1070,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
 
   // An explicit `?market=` is a user choice and must persist, or the switcher would silently
   // revert on the visitor's very next request. This is the ONLY place the market cookie is
-  // ever set — geo inference stays per-request off the header, nothing stored (see
+  // ever set, geo inference stays per-request off the header, nothing stored (see
   // lib/market.ts header comment). `market` is safe in the header because resolveMarket
   // clamps to KNOWN_MARKETS; the queryMarket guard means a merely-inferred value never
   // persists, and the clamp means an unknown `?market=` resolved elsewhere, so it won't

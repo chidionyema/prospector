@@ -1,15 +1,15 @@
 /**
- * Wire types — snake_case, mirroring docs/ux/API-CONTRACT.md exactly.
+ * Wire types, snake_case, mirroring docs/ux/API-CONTRACT.md exactly.
  * Components import these; they do NOT redeclare backend shapes.
  *
  * IDENTITY-BLINDNESS (P0): `actual_name` / `linkedin_url` live ONLY on `ExternalTarget`
- * (the connector's own private roster). No buyer-facing type below carries them — a leak
+ * (the connector's own private roster). No buyer-facing type below carries them, a leak
  * therefore cannot even compile in a buyer view. Do not add them anywhere else.
  */
 
 // ── Auth ────────────────────────────────────────────────────────────────────
 export interface AuthResponse {
-  /** ⚠️ the access token — field is `token`, NOT `access_token`. */
+  /** ⚠️ the access token, field is `token`, NOT `access_token`. */
   token: string;
   refresh_token: string | null;
   user_id: string;
@@ -17,7 +17,7 @@ export interface AuthResponse {
   email: string | null;
   expires: string; // ISO 8601
   message: string | null;
-  /** E16: a fresh social signup with no role yet — the token only authorises select-role. */
+  /** E16: a fresh social signup with no role yet, the token only authorises select-role. */
   role_pending?: boolean;
 }
 
@@ -112,7 +112,7 @@ export interface UpdateProfileRequest {
   country?: string;
 }
 
-// ── Seeker FOMO (WR-045) — Shadow Queue ──────────────────────────────────────
+// ── Seeker FOMO (WR-045), Shadow Queue ──────────────────────────────────────
 export interface MarketHeat {
   peers_watching: number;
   active_briefs: number;
@@ -143,7 +143,7 @@ export interface OnboardingRefreshResponse {
   disabled_reason: string | null;
 }
 
-// ── Roster / targets (connector-private — HOLDS IDENTITY) ────────────────────
+// ── Roster / targets (connector-private, HOLDS IDENTITY) ────────────────────
 export interface ExternalTarget {
   id: string;
   connector_id: string;
@@ -198,7 +198,7 @@ export interface CreateBountyRequest {
   acknowledge_prohibited_category: boolean;
   expires_at?: string;
   // E25 (3a guided requests, WR-031): structured capture of the guided composer. Omitted for a
-  // free-text / escape-hatch post. Demand-side intent only — never a target name.
+  // free-text / escape-hatch post. Demand-side intent only, never a target name.
   brief_structured?: BriefStructured;
   // WR-044: the buyer-chosen introduction format (warm email / live video meeting / in-person). A
   // disclosed LABEL on the same verified-intro settlement; defaults to WarmEmailIntro server-side.
@@ -207,7 +207,7 @@ export interface CreateBountyRequest {
 
 export type PatchBountyRequest = Partial<CreateBountyRequest>;
 
-// ── E25 Discovery Layer — 3a guided requests (WR-031) ────────────────────────
+// ── E25 Discovery Layer, 3a guided requests (WR-031) ────────────────────────
 /** The structured selections from the guided composer, stored alongside the free-text brief. */
 export interface BriefStructured {
   goal: string;
@@ -217,7 +217,7 @@ export interface BriefStructured {
   template_id?: string;
 }
 
-/** A worked, fundable example ask — fields mirror the compose form so the client can pre-fill it. */
+/** A worked, fundable example ask, fields mirror the compose form so the client can pre-fill it. */
 export interface RequestExample {
   id: string;
   label: string;
@@ -236,14 +236,14 @@ export interface RequestGoal {
   examples: RequestExample[];
 }
 
-/** GET /v1/discovery/request-templates — the versioned guided-request taxonomy. */
+/** GET /v1/discovery/request-templates, the versioned guided-request taxonomy. */
 export interface RequestTemplateCatalog {
   version: string;
   goals: RequestGoal[];
 }
 
 // ── E25 admin: editable taxonomy + per-template funnel (WR-031) ───────────────
-/** GET /v1/admin/discovery/taxonomy — the live taxonomy plus where it came from. */
+/** GET /v1/admin/discovery/taxonomy, the live taxonomy plus where it came from. */
 export interface AdminTaxonomyResponse {
   version: string;
   goals: RequestGoal[];
@@ -264,7 +264,7 @@ export interface TemplateFunnelRow {
   replied: number;
 }
 
-/** GET /v1/admin/discovery/template-funnel — which guided templates convert. */
+/** GET /v1/admin/discovery/template-funnel, which guided templates convert. */
 export interface TemplateFunnelResponse {
   version: string;
   generated_at: string;
@@ -296,14 +296,14 @@ export interface FundResult {
 
 /**
  * How the target's acceptance was verified (E06-009). Mirrors the backend `VerificationMethod` enum;
- * the global JsonStringEnumConverter serialises verbatim (PascalCase) — keep these strings
+ * the global JsonStringEnumConverter serialises verbatim (PascalCase), keep these strings
  * byte-identical to the backend members.
  */
 export type VerificationMethod = 'None' | 'LinkedInOidcMatch' | 'PlatformChannelInvite';
 
 /**
  * The profile the buyer approved, snapshotted onto the bridge at approval (E06-001). The buyer's
- * comparison anchor — what they signed up to — shown beside the verified identity at BridgeActive.
+ * comparison anchor, what they signed up to, shown beside the verified identity at BridgeActive.
  */
 export interface ApprovedProfile {
   name: string | null;
@@ -315,8 +315,8 @@ export interface ApprovedProfile {
  * BridgeActive so a real face + verified name beside the approved profile exposes a same-name fake.
  * `email_verified` is the fraud signal (false ⇒ flag it loudly); the raw email is deliberately NOT
  * carried (WR-010 data-minimisation). `picture` may be null (render a no-photo state, not a blank).
- * `email_domain` is the corroborating `@company` part ONLY — never the local-part / a contactable
- * address — so the buyer can place where the person works; null when unknown.
+ * `email_domain` is the corroborating `@company` part ONLY, never the local-part / a contactable
+ * address, so the buyer can place where the person works; null when unknown.
  */
 export interface VerifiedIdentity {
   name: string | null;
@@ -374,7 +374,7 @@ export interface MeetingSession {
   display_name: string;
 }
 
-// POST /v1/bounties/{id}/meeting/schedule — `room_url` here is the TIE web join link
+// POST /v1/bounties/{id}/meeting/schedule, `room_url` here is the TIE web join link
 // (https://{webhost}/meet/{token}), NOT a Daily URL; null until the slot mints a room.
 export interface ScheduleMeetingResponse {
   status: string;
@@ -382,7 +382,7 @@ export interface ScheduleMeetingResponse {
   room_url: string | null;
 }
 
-// ── Marketplace board (connector view — NO identity, NO local_amount_units) ───
+// ── Marketplace board (connector view, NO identity, NO local_amount_units) ───
 export interface BoardBounty {
   id: string;
   target_persona: string;
@@ -405,7 +405,7 @@ export interface MarketplaceSearchParams {
   q?: string;
 }
 
-// ── My bounties (buyer's OWN funded intros — E28-001 dashboard) ──────────────
+// ── My bounties (buyer's OWN funded intros, E28-001 dashboard) ──────────────
 // GET /v1/bounties/mine. Owner-scoped (D-73), so it safely carries the buyer's own confidential deal
 // intent (persona, context, budget). `escrow_amount_cents` is the actual charged hold, never the raw
 // localized units (FIND-22). This is the buyer side of the authed dashboard.
@@ -433,7 +433,7 @@ export interface SubmitProposalRequest {
   external_target_id: string;
 }
 
-/** What the connector gets back on submit — carries the E04-008 KYC nudge flag. */
+/** What the connector gets back on submit, carries the E04-008 KYC nudge flag. */
 export interface ProposalCreated {
   id: string;
   bounty_id: string;
@@ -447,22 +447,22 @@ export interface ProposalCreated {
 }
 
 /**
- * G-A (WR-004) — the identity-free trust snapshot a buyer judges a blind pitch by. `completed_intros`
+ * G-A (WR-004), the identity-free trust snapshot a buyer judges a blind pitch by. `completed_intros`
  * (the raw settled-success count) is ALWAYS shown; the two percentages are WITHHELD (null) until the
  * connector has ≥ K settled receipts, so a tiny sample can't manufacture a 100%/0%. Carries no
- * connector id, no join key — the snapshot is computed server-side and the identity never crosses.
+ * connector id, no join key, the snapshot is computed server-side and the identity never crosses.
  */
 export interface ReputationSnapshot {
   completed_intros: number;
   success_rate_percent: number | null;
   dispute_rate_percent: number | null;
-  /** ≥ ProvenThreshold settled successes — gates the G5 "silence pays" path. */
+  /** ≥ ProvenThreshold settled successes, gates the G5 "silence pays" path. */
   is_proven: boolean;
   identity_verified: boolean;
   payout_ready: boolean;
 }
 
-/** Buyer view — identity is STRUCTURALLY EXCLUDED (no actual_name / linkedin_url). */
+/** Buyer view, identity is STRUCTURALLY EXCLUDED (no actual_name / linkedin_url). */
 export interface BlindProposal {
   id: string;
   blind_target_description: string;
@@ -474,7 +474,7 @@ export interface BlindProposal {
 }
 
 /**
- * G-C — a connector's own proposal as seen from GET /v1/proposals/mine, so the board can hydrate
+ * G-C, a connector's own proposal as seen from GET /v1/proposals/mine, so the board can hydrate
  * "already proposed" / Withdraw state across reloads. `external_target_id` is the connector's OWN
  * private roster handle (safe to return to its owner); `bounty_state` / `bounty_persona` come from a
  * left-join and are null if the bounty was since removed. No target identity is ever carried.

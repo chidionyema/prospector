@@ -16,7 +16,7 @@ import {
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
 
 /**
- * A topical landing page — one slice of the catalogue at a stable, indexable URL.
+ * A topical landing page, one slice of the catalogue at a stable, indexable URL.
  *
  * See `lib/seo/landings.ts` for why these exist, and for the three guards that stop a set of
  * category pages becoming the doorway-page pattern Google demotes. The one enforced HERE is the
@@ -46,7 +46,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
     all = await fetchCatalog();
   } catch (error) {
     // MEASURED, 2026-08-01: `res.statusCode = 503` together with `return { notFound: true }` does
-    // NOT serve a 503 — Next overrides it and the response is a 404. The server log showed
+    // NOT serve a 503, Next overrides it and the response is a 404. The server log showed
     // "/ideas/b2b-business-ideas: catalog fetch failed" on a request curl recorded as 404.
     //
     // That is the difference between "come back later" and "this page is gone", and Google acts
@@ -129,8 +129,8 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable }: 
         <PackGrid packs={packs} />
 
         <p className="mt-10 text-sm leading-relaxed text-muted">
-          Every pack on this page cleared the same six checks — real pain, durable value, room past
-          incumbents, a solvent payer, a route to distribution, and legality — and then survived an
+          Every pack on this page cleared the same six checks, real pain, durable value, room past
+          incumbents, a solvent payer, a route to distribution, and legality, and then survived an
           adversarial review.{' '}
           <Link href="/how-it-works" className="font-semibold text-text underline underline-offset-2">
             How the filter works

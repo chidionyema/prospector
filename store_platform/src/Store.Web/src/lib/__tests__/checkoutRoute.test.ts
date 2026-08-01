@@ -52,7 +52,7 @@ describe('resolveStripeCheckout', () => {
   });
 
   // A missing publishable key must degrade the surface, never hide or break the buy button.
-  it('skips embedded entirely — without calling it — when Stripe.js is not configured', async () => {
+  it('skips embedded entirely, without calling it, when Stripe.js is not configured', async () => {
     const requestEmbedded = vi.fn(async () => ({ clientSecret: 'cs_never_used', url: null }));
 
     const route = await resolveStripeCheckout({

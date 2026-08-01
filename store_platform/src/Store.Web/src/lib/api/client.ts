@@ -64,7 +64,7 @@ export interface Pack {
   headline?: string;
   /** The engine's own ≤60-char description of what the business DOES, written for the shelf.
    *  Absent on every pack published before the engine emitted it, and deliberately empty when
-   *  the operator could not write a truthful short line — so the card must always be able to
+   *  the operator could not write a truthful short line, so the card must always be able to
    *  fall back to the title. Length is enforced engine-side by dropping, never truncating
    *  (`prospector/artifacts.py::_card_line`). */
   cardLine?: string;
@@ -79,7 +79,7 @@ export interface Pack {
   sourceCount?: number;
   verifiedAt?: string;
   /** Discovery facets, straight from the engine's verified dossier. `null`/absent means the
-   *  engine could not justify a value — the browser must render nothing rather than a guess,
+   *  engine could not justify a value, the browser must render nothing rather than a guess,
    *  and such a pack appears only under "All". Vocabularies: `src/lib/facets.ts`. */
   sector?: Sector | null;
   payer?: Payer | null;
@@ -150,7 +150,7 @@ export async function fetchCatalog(): Promise<Pack[]> {
 
 export interface WaitlistSignup {
   email: string;
-  /** Must be explicitly true. The server rejects false — an unticked box is not consent. */
+  /** Must be explicitly true. The server rejects false, an unticked box is not consent. */
   consent: boolean;
   /** The exact sentence the person was shown. The server hashes this, not a client-supplied
    *  hash, so the stored evidence is of what was actually rendered. */
@@ -162,7 +162,7 @@ export interface WaitlistSignup {
 }
 
 /**
- * POST /catalog/waitlist — the honest end of a catalogue-wide miss.
+ * POST /catalog/waitlist, the honest end of a catalogue-wide miss.
  *
  * Returns the server's error string on rejection rather than throwing, because every rejection
  * here is a message the buyer needs to read (bad address, consent missing, rate limited).
@@ -186,19 +186,19 @@ export async function joinWaitlist(
 /**
  * The buyer's email on a checkout body, or nothing at all.
  *
- * An order is joined to an account by email address alone — `Order.BuyerEmail`, with no user id
- * column — so the address the provider records IS the link between a purchase and a customer.
+ * An order is joined to an account by email address alone, `Order.BuyerEmail`, with no user id
+ * column, so the address the provider records IS the link between a purchase and a customer.
  * Sending a signed-in customer's address does two things: Stripe pre-fills it AND makes the field
  * read-only (`CustomerEmail` on the session, StripeProvider.cs:385), so the recorded address
  * cannot drift from the account. Without it a signed-in buyer who types a different address at
- * Stripe gets a perfectly valid order that never appears in their account — no error, anywhere.
+ * Stripe gets a perfectly valid order that never appears in their account, no error, anywhere.
  *
  * Omitted for a guest, which is the supported case, not a fallback: neither checkout route
  * requires authorization (CheckoutEndpoints.cs:24,40), so the provider collects the address and
  * the webhook records whatever the buyer typed (StripeProvider.cs:133).
  *
  * The address is asserted by the client, because these two routes are called on the API origin
- * directly and carry no session cookie (see the D-63 note in next.config.ts — only `/api/*` is
+ * directly and carry no session cookie (see the D-63 note in next.config.ts, only `/api/*` is
  * proxied). That is not an escalation: filing an order under an address requires PAYING for it,
  * and reading that order back still requires proving the address (order history is gated on
  * EmailConfirmed). The server is free to override it if these routes ever move behind the proxy.
@@ -230,7 +230,7 @@ export async function createStripeCheckout(packId: string, buyerEmail?: string |
 
 /** What the API opened. `clientSecret` present means the card form can render on our own page;
  *  null means the server fell back to the hosted page and `url` is where the buyer must go. The
- *  caller must handle both — the server decides, not the client. */
+ *  caller must handle both, the server decides, not the client. */
 export interface CheckoutSession {
   clientSecret: string | null;
   url: string | null;
@@ -241,7 +241,7 @@ export interface CheckoutSession {
  *
  * Asking is not getting: the API answers with a hosted URL whenever the provider cannot render
  * embedded (Paddle, or a Stripe account without it). That is why this returns a session rather
- * than a client secret — there is no failure to report when the answer is "use the hosted page",
+ * than a client secret, there is no failure to report when the answer is "use the hosted page",
  * and turning it into one would block a buyer from paying over a cosmetic difference.
  */
 export async function createEmbeddedCheckout(
@@ -261,12 +261,12 @@ export async function createEmbeddedCheckout(
   return {
     clientSecret: typeof clientSecret === 'string' && clientSecret ? clientSecret : null,
     // The hosted URL keeps its allow-list check. A session that came back embedded has no URL at
-    // all, which is not an error — only a NON-Stripe URL is.
+    // all, which is not an error, only a NON-Stripe URL is.
     url: typeof url === 'string' && url ? assertStripeCheckoutUrl(url) : null,
   };
 }
 
-/** Raised when the API refuses specific packs — sold out, withdrawn, or not yet priced. Carries
+/** Raised when the API refuses specific packs, sold out, withdrawn, or not yet priced. Carries
  *  the ids so the basket can prune exactly those rather than making the buyer start again. */
 export class PacksUnavailableError extends Error {
   readonly packIds: string[];
@@ -360,7 +360,7 @@ export async function fetchCatalogStats(): Promise<CatalogStats | null> {
   }
 }
 
-/** Analytics beacon payload — the client half of the server-side allowlist contract
+/** Analytics beacon payload, the client half of the server-side allowlist contract
  *  (AnalyticsEndpoints.cs). Event-name typing lives in src/lib/analytics.ts. */
 export interface AnalyticsEventBody {
   name: string;
@@ -370,7 +370,7 @@ export interface AnalyticsEventBody {
 
 /** Fire-and-forget analytics beacon. keepalive lets the request survive a same-instant
  *  navigation (the hero CTAs navigate on click). Failures are swallowed: an uncounted
- *  event is the correct failure mode — analytics must never break the page. */
+ *  event is the correct failure mode, analytics must never break the page. */
 export function recordAnalyticsEvent(body: AnalyticsEventBody): void {
   try {
     void fetch(`${API_FETCH_BASE}/events`, {
@@ -413,7 +413,7 @@ export interface SessionOrderItem {
  *  `pending` is normal, not an error: the browser usually gets back from the payment provider
  *  before the fulfilment webhook lands, so the caller polls until the status turns `ready`.
  *
- *  `unfulfilled` and `revoked` are TERMINAL — the caller must stop polling. Both used to be
+ *  `unfulfilled` and `revoked` are TERMINAL, the caller must stop polling. Both used to be
  *  reported as `pending`, so a buyer whose order could never resolve watched the same spinner
  *  as one whose webhook was half a second away, until the poll timeout gave up on their behalf.
  *  `unfulfilled` means payment was recorded but fulfilment granted nothing (the API can prove

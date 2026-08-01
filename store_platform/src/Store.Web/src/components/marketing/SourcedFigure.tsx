@@ -7,7 +7,7 @@ import { citedFigure } from '@/lib/sources';
  *
  * The component takes an id, never a string. That is the whole design: there is no prop through
  * which a hand-typed number can enter this component, so a figure on the marketing pages either
- * resolves to a row in `sources.ts` — publisher, URL, date read — or it does not render at all.
+ * resolves to a row in `sources.ts`, publisher, URL, date read, or it does not render at all.
  * The previous arrangement failed precisely because the number and its provenance were separable,
  * and the number outlived the provenance.
  *
@@ -27,7 +27,7 @@ export function SourcedFigure({ id, className }: { id: string; className?: strin
         className="whitespace-nowrap underline decoration-dotted underline-offset-2 hover:text-text"
       >
         {source.publisher}
-        <span className="sr-only"> — opens the source in a new tab</span>
+        <span className="sr-only">, opens the source in a new tab</span>
       </a>
       {/* The date travels with the price because a price is perishable. A figure checked eight
           months ago and rendered as present tense is the next version of the same problem. */}

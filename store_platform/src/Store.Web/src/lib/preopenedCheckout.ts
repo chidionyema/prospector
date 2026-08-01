@@ -3,18 +3,18 @@
  *
  * Why this exists: the overlay is the one layer no API call can prove. Stripe.js accepts a
  * malformed publishable key and only fails once Elements paints, and `resolveStripeCheckout`
- * falls back to hosted only when the session REQUEST fails — never when the render is wrong. The
+ * falls back to hosted only when the session REQUEST fails, never when the render is wrong. The
  * proof is a human watching it paint against the LIVE key. This lets that happen on a session
  * priced by the API's smoke-test override, so seeing the form does not cost the listed price.
  *
  * Why a client secret in the URL is not a leak: a Checkout Session client secret is *designed* to
- * be handed to the browser — it is what Stripe.js receives on the ordinary path too. It is
+ * be handed to the browser, it is what Stripe.js receives on the ordinary path too. It is
  * single-use, expires, and Stripe binds it to the account behind our publishable key, so a
  * secret from another account cannot be made to render here. Nothing privileged crosses the
  * boundary: the internal API key that authorises the cheap price stays server-side, and the only
  * thing that reaches the browser is the same value a normal buy click would have produced.
  *
- * The shape check below is not a security control — Stripe enforces the real one. It exists so a
+ * The shape check below is not a security control, Stripe enforces the real one. It exists so a
  * mistyped parameter fails as an ignored URL rather than as an SDK exception on a page a real
  * buyer might be looking at.
  */

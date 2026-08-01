@@ -30,7 +30,7 @@ function pack(id: string, overrides: Partial<FacetedPack> = {}): FacetedPack {
 /** A pack the engine could not justify tagging. The subject of the null rule. */
 const untagged = pack('untagged');
 
-describe('filterPacks — the null rule (AC-10)', () => {
+describe('filterPacks, the null rule (AC-10)', () => {
   const tagged = pack('tagged', { effort: 'hands_on' });
   const other = pack('other', { effort: 'automatable' });
   const packs = [tagged, other, untagged];
@@ -80,7 +80,7 @@ describe('filterPacks — the null rule (AC-10)', () => {
 
 describe('matchesQuery (AC-13 regression guard)', () => {
   const plateStart = pack('plate', {
-    title: "PlateStart — The Gig Driver's Private-Hire Licence Route Optimizer",
+    title: "PlateStart, The Gig Driver's Private-Hire Licence Route Optimizer",
     oneLine: 'A route optimizer for drivers moving off Uber onto private hire work',
     whoPays: 'New private hire drivers leaving Uber',
   });
@@ -241,7 +241,7 @@ describe('rankMatches (AC-6, AC-8, AC-9)', () => {
       { ...pack('a', { advantages: ['code'] }), title: 'Alpha' },
     ];
     expect(rankMatches(packs, answers).winner?.pack.title).toBe('Alpha');
-    // Same input, reversed order in — same answer out.
+    // Same input, reversed order in, same answer out.
     expect(rankMatches([...packs].reverse(), answers).winner?.pack.title).toBe('Alpha');
   });
 
@@ -276,12 +276,12 @@ describe('rankMatches (AC-6, AC-8, AC-9)', () => {
   /**
    * The previous version of this test built a pack tagged `nocode` and proved the scorer scores
    * it. True, and vacuous: it never asked whether the *catalogue* holds such packs. Measured on
-   * the live catalogue 2026-08-01, `nocode` is carried by 1 pack of 49 — so the answer that was
+   * the live catalogue 2026-08-01, `nocode` is carried by 1 pack of 49, so the answer that was
    * documented as one that "must never dead-end" was routing a beginner into a one-pack shelf,
    * and this test reported green throughout. "None of these yet" now carries no advantage at
    * all, so these two assert the property that actually matters.
    */
-  it('never dead-ends "None of these yet" — no advantage constraint, still ranks (AC-9)', () => {
+  it('never dead-ends "None of these yet", no advantage constraint, still ranks (AC-9)', () => {
     const beginner = { advantages: [], commitment: 'evenings' as const, payer: null };
     const packs = [
       pack('evening-pack', { advantages: ['code'], commitment: 'evenings' }),
@@ -324,7 +324,7 @@ describe('scoreSimilar / similarPacks (AC-21)', () => {
     expect(scoreSimilar(target, pack('s', { sector: 'pets_animals' }))).toBe(-2);
   });
 
-  it('scores an untagged pack 0 on both sides — never a match by shared absence', () => {
+  it('scores an untagged pack 0 on both sides, never a match by shared absence', () => {
     expect(scoreSimilar(target, untagged)).toBe(0);
     expect(scoreSimilar(untagged, untagged)).toBe(0);
   });
@@ -355,7 +355,7 @@ describe('scoreSimilar / similarPacks (AC-21)', () => {
   });
 });
 
-describe('nearMisses — the rescue before the email form (AC-16)', () => {
+describe('nearMisses, the rescue before the email form (AC-16)', () => {
   const target = pack('target', { payer: 'b2b', effort: 'hands_on', commitment: 'evenings' });
   const oneOff = pack('one-off', { payer: 'b2c', effort: 'hands_on', commitment: 'evenings' });
   const twoOff = pack('two-off', { payer: 'b2c', effort: 'automatable', commitment: 'evenings' });
@@ -404,7 +404,7 @@ describe('nearMisses — the rescue before the email form (AC-16)', () => {
     expect(miss.relaxedState.payer).toBe('b2b');
   });
 
-  it('is empty when the text query is what failed — that is the waitlist case, not a near miss', () => {
+  it('is empty when the text query is what failed, that is the waitlist case, not a near miss', () => {
     const queried: DiscoveryState = { ...EMPTY_DISCOVERY_STATE, q: 'nothing-matches-this', payer: 'b2b' };
     expect(nearMisses(packs, queried)).toEqual([]);
   });
@@ -414,8 +414,8 @@ describe('nearMisses — the rescue before the email form (AC-16)', () => {
   });
 });
 
-describe('offeredFacetValues — which controls are worth rendering', () => {
-  // Three packs carry `evenings`, one carries `full_time` — the shape the live catalogue had on
+describe('offeredFacetValues, which controls are worth rendering', () => {
+  // Three packs carry `evenings`, one carries `full_time`, the shape the live catalogue had on
   // 2026-07-31 (part_time 13 / evenings 6 / full_time 1 of 42).
   const packs = [
     pack('a', { commitment: 'evenings', payer: 'b2b' }),
@@ -436,7 +436,7 @@ describe('offeredFacetValues — which controls are worth rendering', () => {
     expect(offeredFacetValues(packs, state, 'commitment')).toEqual(['evenings', 'full_time']);
   });
 
-  it('does not let another active filter delete an option — the threshold is catalogue-wide', () => {
+  it('does not let another active filter delete an option, the threshold is catalogue-wide', () => {
     // Under payer=b2c only ONE pack carries `evenings`. A pool-relative threshold would remove
     // the control the buyer is looking at mid-click; a catalogue-relative one does not.
     const state: DiscoveryState = { ...EMPTY_DISCOVERY_STATE, payer: 'b2c' };
@@ -459,7 +459,7 @@ describe('offeredFacetValues — which controls are worth rendering', () => {
   });
 });
 
-describe('foldFacetGroups — progressive disclosure that cannot hide a constraint', () => {
+describe('foldFacetGroups, progressive disclosure that cannot hide a constraint', () => {
   const group = (id: string, active: string[] = []) => ({ id, activeValues: active });
   const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => group(id));
 
@@ -479,7 +479,7 @@ describe('foldFacetGroups — progressive disclosure that cannot hide a constrai
 
   it('never folds a group holding an active selection, and withdraws the toggle with it', () => {
     // The failure this prevents: a buyer opens a shared URL carrying `?mechanism=vertical_tool`,
-    // sees a shelf cut to four packs, and has no control on screen naming the cut — because the
+    // sees a shelf cut to four packs, and has no control on screen naming the cut, because the
     // group that owns it is the fifth, below the fold. Collapsed is not an option here, so the
     // toggle must go too: leaving it would let one click re-hide the live constraint.
     const constrained = [...six.slice(0, 4), group('e', ['vertical_tool']), group('f')];
@@ -505,7 +505,7 @@ describe('foldFacetGroups — progressive disclosure that cannot hide a constrai
   });
 });
 
-describe('activeFacetSelectionCount — the "Filters (n)" badge', () => {
+describe('activeFacetSelectionCount, the "Filters (n)" badge', () => {
   it('counts every lit chip, not every AND-ed constraint', () => {
     const state: DiscoveryState = {
       ...EMPTY_DISCOVERY_STATE,

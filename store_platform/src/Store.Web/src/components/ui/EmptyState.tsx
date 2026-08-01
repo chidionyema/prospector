@@ -9,7 +9,7 @@ export interface EmptyStateProps {
   className?: string;
 }
 
-/** The calm "nothing here yet" panel — never an error, never alarming (UI-STANDARDS §2). */
+/** The calm "nothing here yet" panel, never an error, never alarming (UI-STANDARDS §2). */
 export function EmptyState({ title, description, action, className }: EmptyStateProps) {
   return (
     <div

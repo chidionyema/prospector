@@ -1,7 +1,7 @@
 
-/* Operator legal facts (legalName, address, contactEmail) come from LEGAL in @/lib/config — set them there once before go-live. */
+/* Operator legal facts (legalName, address, contactEmail) come from LEGAL in @/lib/config, set them there once before go-live. */
 /*
- * Draft legal copy — review with qualified counsel before go-live.
+ * Draft legal copy, review with qualified counsel before go-live.
  * Digital goods refund policy: UK Consumer Contracts Regulations 2013,
  * cancellation-right waiver on download commencement, discretionary window,
  * how to request, dispute/chargeback note.
@@ -15,7 +15,7 @@ import Disclaimer from '@/components/Disclaimer';
 /**
  * Refund Policy for the Mumchimp digital-download storefront.
  * Statutory basis: UK Consumer Contracts (Information, Cancellation and Additional Charges)
- * Regulations 2013, Regulation 37 — cancellation right is lost once digital content delivery
+ * Regulations 2013, Regulation 37, cancellation right is lost once digital content delivery
  * begins with the consumer's prior express consent and acknowledgement of loss of cancellation right.
  * Pending review by qualified legal counsel before go-live.
  */

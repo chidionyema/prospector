@@ -5,10 +5,10 @@
  * "Typically $300 to $1,000 a year", and the comment above it said, in writing:
  *
  *   > The "$300 to $1,000 a year" range is the figure this page already carried before this
- *   > rewrite — it is unsourced, so it is hedged as "typically".
+ *   > rewrite, it is unsourced, so it is hedged as "typically".
  *
  * A hedge is not a source. `CLAUDE.md` opens with "every factual claim and quantitative figure
- * must cite a retrievable source or be marked `unverifiable`. No unsourced numbers ship, ever" —
+ * must cite a retrievable source or be marked `unverifiable`. No unsourced numbers ship, ever",
  * and the page breaking that rule is the page that sells it. We reject other people's ideas for
  * exactly this, with a kill log to prove it, and then asked strangers to trust an invented range.
  *
@@ -22,7 +22,7 @@
  * On what is deliberately NOT in this file: IdeaBrowser publishes plan prices that a comparison
  * would have liked, and its pricing page returned HTTP 429 on 2026-08-01 for every attempt. It
  * is therefore not cited. Second-hand prices from affiliate review blogs were available and were
- * not used — a figure sourced to a page that is itself selling the referral is the failure this
+ * not used, a figure sourced to a page that is itself selling the referral is the failure this
  * registry exists to prevent, not a fallback when the primary is down.
  */
 
@@ -36,7 +36,7 @@ export interface CitedFigure {
   /** Who published it. Rendered, because an anonymous number is the thing being fixed. */
   publisher: string;
   /** The page the figure is on. Must be the primary source: the seller's own page, or the
-   *  publisher's own price list — never a review site quoting one. */
+   *  publisher's own price list, never a review site quoting one. */
   url: string;
   /** ISO date we last read the page ourselves. Rendered, because a price is perishable. */
   checkedOn: string;
@@ -61,13 +61,13 @@ export const CITED_FIGURES: readonly CitedFigure[] = [
   {
     id: 'documentary-research',
     figure: '€4,000 minimum, €6,000 average',
-    of: '“Documentary research” — their term for desk research through published sources',
+    of: '“Documentary research”, their term for desk research through published sources',
     publisher: 'IntoTheMinds',
     url: 'https://www.intotheminds.com/blog/en/market-research-what-does-it-cost/',
     checkedOn: '2026-08-01',
     publishedOn: '2025-02-26',
     caveat:
-      'Their price list, for a question a client brings them. A pack answers a question we chose and already ran, which is why it can cost what it costs — and why this is a comparison of method, not of service.',
+      'Their price list, for a question a client brings them. A pack answers a question we chose and already ran, which is why it can cost what it costs, and why this is a comparison of method, not of service.',
   },
 ];
 

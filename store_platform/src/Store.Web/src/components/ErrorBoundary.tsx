@@ -10,11 +10,11 @@ interface ErrorBoundaryState {
 
 /**
  * Top-level client error boundary. A render-time throw anywhere in the tree (a bad API shape, an
- * undefined field) would otherwise blank the whole page to white — for a money surface that reads
+ * undefined field) would otherwise blank the whole page to white, for a money surface that reads
  * as "the app is broken, is my hold gone?". This catches it and shows a calm, on-brand recovery
  * panel instead. Class component because React error boundaries have no hook equivalent.
  *
- * Scope: catches render/lifecycle errors only (not event handlers or async — those surface via
+ * Scope: catches render/lifecycle errors only (not event handlers or async, those surface via
  * toasts). Reload is the recovery path; we never expose the raw error to the user.
  */
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {

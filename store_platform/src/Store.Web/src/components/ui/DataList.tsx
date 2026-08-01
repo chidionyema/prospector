@@ -12,7 +12,7 @@ export interface DescriptionListProps {
 }
 
 /**
- * A proper key to value description list — term muted on the left, value on the right, hairline rows.
+ * A proper key to value description list, term muted on the left, value on the right, hairline rows.
  * Replaces the stacked `<p>label</p><p>value</p>` blocks that made settings read like a config dump
  * (SITE-POLISH-SPEC §2.5).
  */
@@ -30,12 +30,12 @@ export function DescriptionList({ items, className }: DescriptionListProps) {
 }
 
 export interface ListRowProps {
-  /** Leading slot — an icon, avatar, or status dot. */
+  /** Leading slot, an icon, avatar, or status dot. */
   leading?: React.ReactNode;
   title: React.ReactNode;
   /** Secondary line under the title. */
   meta?: React.ReactNode;
-  /** Trailing slot — an action, badge, or value. */
+  /** Trailing slot, an action, badge, or value. */
   trailing?: React.ReactNode;
   className?: string;
 }
