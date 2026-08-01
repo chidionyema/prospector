@@ -18,6 +18,13 @@ primary_region = "lhr"
   ASPNETCORE_ENVIRONMENT = "Production"
   ConnectionStrings__DefaultConnection = "Data Source=/data/store.db"
   payments__active_provider = "stripe"
+  # Storefront base for verification / password-reset / OAuth-landing links. Present for the same
+  # reason as in api.fly.toml: unset, EmailOptions.WebBaseUrl defaults to http://localhost:3000 and
+  # every account link dies silently. There is no staging storefront app yet (only
+  # prospector-store-web exists), so this points at prod: a staging token that lands on the prod
+  # storefront is REJECTED loudly, which is the failure mode we can see. Point it at the staging
+  # storefront the moment one exists.
+  Email__WebBaseUrl = "https://mumchimp.com"
 
 # Separate persistent SQLite db — staging packs never touch the prod volume. Single-writer:
 # exactly ONE machine.

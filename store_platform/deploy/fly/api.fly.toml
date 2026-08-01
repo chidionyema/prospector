@@ -27,6 +27,20 @@ primary_region = "lhr"                # pick your region
   ASPNETCORE_ENVIRONMENT = "Production"
   ConnectionStrings__DefaultConnection = "Data Source=/data/store.db"
   payments__active_provider = "stripe"
+  # The STOREFRONT base that user-facing links are built from: the email verification,
+  # password-reset and resend links (EmailOptions.WebBaseUrl, src/Store.Api/Common/EmailOptions.cs)
+  # and the post-consent OAuth landing (SafeRedirect in Auth/ExternalAuthEndpoints.cs).
+  #
+  # It lives HERE and not in `fly secrets` because it is a public URL with a DANGEROUS default:
+  # unset, the code falls back to http://localhost:3000. On 2026-08-01 production ran that way —
+  # every verification and reset email pointed at the buyer's own machine, and because order
+  # history is gated on EmailConfirmed, nobody who signed up could ever reach their orders. It
+  # failed silently: the API is healthy, the mail sends, only the link is wrong. A hand-set secret
+  # is exactly the thing a fresh environment forgets, so the correct value ships with the config.
+  #
+  # Not the API host — that is STORE_PUBLIC_URL, which serves /orders/{token}.
+  # Changing domains: scripts/switch_domain.sh sets this as a secret, which overrides this line.
+  Email__WebBaseUrl = "https://mumchimp.com"
 
 # Persistent SQLite catalogue/orders db. SQLite is a SINGLE-WRITER store, so this app must run
 # exactly ONE machine — do not scale the count above 1.

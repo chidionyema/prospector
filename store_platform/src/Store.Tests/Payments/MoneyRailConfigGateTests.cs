@@ -26,6 +26,9 @@ public sealed class MoneyRailConfigGateTests
             // AC-5 — Production now refuses to start without a post-payment redirect target,
             // so the shared fixture supplies one. Tests that exercise that guard blank it out.
             ["Store:AllowedOrigin"] = "https://storefront.example",
+            // Production also refuses to start without the storefront base that account emails
+            // link to, for the same reason. Tests that exercise that guard blank it out.
+            ["Email:WebBaseUrl"] = "https://storefront.example",
         };
         foreach (var (k, v) in extra)
         {
@@ -319,6 +322,52 @@ public sealed class MoneyRailConfigGateTests
     public async Task StartAsync_DevelopmentWithNoStorefrontUrl_Succeeds()
     {
         var config = StripeConfig(("Store:AllowedOrigin", ""), ("Store:StorefrontUrl", ""));
+        var gate = NewGate(config);
+
+        var exception = await Record.ExceptionAsync(() => gate.StartAsync(CancellationToken.None));
+
+        Assert.Null(exception);
+    }
+
+    // --- The storefront base that ACCOUNT links are built from (verification, password reset,
+    // OAuth landing). It ran unset in production on 2026-08-01 and every such link pointed at
+    // http://localhost:3000 — the recipient's own machine — while the API looked healthy. ---
+
+    [Fact]
+    public Task StartAsync_ProductionWithNoEmailWebBaseUrl_Throws()
+    {
+        var config = StripeConfig(
+            ("Store:InternalApiKey", "a-real-rotated-secret"),
+            ("Store:EntitlementsApiKey", "a-real-rotated-entitlements-secret"),
+            ("Email:WebBaseUrl", ""));
+        var gate = NewGate(config, "Production");
+
+        return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("http://localhost:3000")]
+    [InlineData("https://LOCALHOST")]
+    [InlineData("http://127.0.0.1:3000")]
+    [InlineData("http://[::1]:3000")]
+    public Task StartAsync_ProductionWithLoopbackEmailWebBaseUrl_Throws(string url)
+    {
+        // The regression this exists for was a NON-EMPTY bad value: the code's own default. A
+        // presence-only check would have passed it and shipped the same broken links.
+        var config = StripeConfig(
+            ("Store:InternalApiKey", "a-real-rotated-secret"),
+            ("Store:EntitlementsApiKey", "a-real-rotated-entitlements-secret"),
+            ("Email:WebBaseUrl", url));
+        var gate = NewGate(config, "Production");
+
+        return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task StartAsync_DevelopmentWithLocalhostEmailWebBaseUrl_Succeeds()
+    {
+        // localhost is the correct value in Development — the guard must not break local runs.
+        var config = StripeConfig(("Email:WebBaseUrl", "http://localhost:3000"));
         var gate = NewGate(config);
 
         var exception = await Record.ExceptionAsync(() => gate.StartAsync(CancellationToken.None));
