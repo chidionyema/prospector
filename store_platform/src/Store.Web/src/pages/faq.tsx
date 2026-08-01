@@ -58,36 +58,64 @@ export default function Faq() {
       <Section
         bg="white"
         width="7xl"
-        title={<span className="font-black">Buying a pack</span>}
+        title={<span className="font-black">About the packs</span>}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 mt-12 md:mt-16 items-start">
+        <div className="space-y-6 mt-12 md:mt-16">
+          {FAQS.filter((item) => item.category === 'packs').map((item, i) => (
+            <div key={i} className="bg-white border border-border p-8 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
+              <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
+              <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
+            </div>
+          ))}
+        </div>
+      </Section>
 
-          <div className="space-y-6">
-            {FAQS.map((item, i) => (
-              <div key={i} className="bg-white border border-border p-8 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
-                <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
-                <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
+      <Section
+        bg="bg"
+        width="7xl"
+        title={<span className="font-black">Payment &amp; access</span>}
+      >
+        <div className="space-y-6 mt-12 md:mt-16">
+          {FAQS.filter((item) => item.category === 'payment').map((item, i) => (
+            <div key={i} className="bg-white border border-border p-8 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
+              <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
+              <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section
+        bg="white"
+        width="7xl"
+        title={<span className="font-black">The vetting process</span>}
+      >
+        <div className="space-y-6 mt-12 md:mt-16">
+          {FAQS.filter((item) => item.category === 'process').map((item, i) => (
+            <div key={i} className="bg-white border border-border p-8 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
+              <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
+              <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section bg="white" width="7xl">
+        <aside className="space-y-6 max-w-sm mx-auto">
+          <div className="bg-white border border-border p-6 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
+            <h4 className="font-bold text-[10px] uppercase tracking-widest text-text mb-4">Contact Support</h4>
+            <div className="space-y-4 font-mono text-[11px]">
+              <div className="flex flex-col border-b border-border/60 pb-4">
+                <span className="text-muted uppercase font-bold tracking-tight mb-1">Email</span>
+                <a href={`mailto:${LEGAL.supportEmail}`} className="font-bold text-primary break-all hover:underline">{LEGAL.supportEmail}</a>
               </div>
-            ))}
-          </div>
-
-          <aside className="space-y-6 lg:sticky lg:top-24">
-            <div className="bg-white border border-border p-6 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
-              <h4 className="font-bold text-[10px] uppercase tracking-widest text-text mb-4">Contact Support</h4>
-              <div className="space-y-4 font-mono text-[11px]">
-                <div className="flex flex-col border-b border-border/60 pb-4">
-                  <span className="text-muted uppercase font-bold tracking-tight mb-1">Email</span>
-                  <a href={`mailto:${LEGAL.supportEmail}`} className="font-bold text-primary break-all hover:underline">{LEGAL.supportEmail}</a>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted uppercase font-bold tracking-tight mb-1">Response Time</span>
-                  <span className="font-bold text-text">&lt; 1 business day</span>
-                </div>
+              <div className="flex flex-col">
+                <span className="text-muted uppercase font-bold tracking-tight mb-1">Response Time</span>
+                <span className="font-bold text-text">&lt; 1 business day</span>
               </div>
             </div>
-          </aside>
-
-        </div>
+          </div>
+        </aside>
       </Section>
 
       <CtaBand
