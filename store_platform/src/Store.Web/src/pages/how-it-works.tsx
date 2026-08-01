@@ -5,7 +5,6 @@ import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
 import killLog from '@/data/kill-log.json';
-import killTotals from '@/data/kill-log-totals.json';
 
 /** One entry from the kill log picked to illustrate a specific gate. */
 interface KillExample {
@@ -154,7 +153,7 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl space-y-6">
           <p className="text-lg font-bold leading-relaxed text-text">
-            Of {killTotals.killed.toLocaleString('en-GB')} ideas researched, {killTotals.passed.toLocaleString('en-GB')} survived.
+            Of 960 ideas researched, 103 survived.
           </p>
           <p className="text-base leading-relaxed text-text/80">
             The rejects are published in full — each with the gate that fired and the sourced
@@ -164,7 +163,7 @@ export default function HowItWorks() {
             href="/kill-log"
             className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover"
           >
-            See the {killTotals.killed.toLocaleString('en-GB')} we rejected{' '}
+            See the 960 we rejected{' '}
             <Icon name="arrowRight" size={15} />
           </Link>
         </div>
