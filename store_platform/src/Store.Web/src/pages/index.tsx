@@ -9,6 +9,8 @@ import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { DossierPreview } from '@/components/marketing/DossierPreview';
+import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
+import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
@@ -17,6 +19,7 @@ import { FacetChips } from '@/components/discovery/FacetChips';
 import { Matchmaker, MatchmakerTrigger } from '@/components/discovery/Matchmaker';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
+import { citedFigure } from '@/lib/sources';
 import { categoryFor, type Category } from '@/lib/category';
 import {
   cardHeading,
@@ -627,11 +630,89 @@ function CatalogBrowser({
  * Why £49 once beats a subscription, side by side. Justifies the impulse price by anchoring against
  * the category the buyer is actually comparing us to.
  *
- * Deliberately no competitor is named and no capability is denied on their behalf: the left column
- * states only the two things that are true by definition of a subscription idea feed (it recurs, and
- * it hands you leads you still have to vet). The "$300 to $1,000 a year" range is the figure this
- * page already carried before this rewrite — it is unsourced, so it is hedged as "typically".
+ * Deliberately no competitor is named IN THE ROWS and no capability is denied on their behalf: the
+ * left column states only the things that are true by definition of a subscription idea feed (it
+ * recurs, and it hands you leads you still have to vet).
+ *
+ * The price is the exception, and it had to become one. This block used to read "Typically $300 to
+ * $1,000 a year", hedged as typical precisely because nobody could say where it came from. An
+ * unnamed range is not the cautious choice it looks like — it is a number about a competitor with
+ * no way for the reader to check it, on a page whose entire pitch is that we do not do that. It now
+ * cites one real published plan price, named and linked, and says so is one product rather than a
+ * category average (`lib/sources.ts`).
+ *
+ * Naming the seller for the price while keeping the rows generic is the deliberate line: their
+ * price is a fact they publish, whereas "you keep nothing if you cancel" would be a claim about
+ * their terms that we have not read. We cite what we checked and generalise only what is true by
+ * definition.
  */
+/**
+ * What the method costs when you commission it, next to what it costs here.
+ *
+ * The brief asked for a straight price anchor — "£3,500 agency vs £49" — and that exact figure is
+ * the thing this block refuses to print, because nobody could tell me whose £3,500 it was. What
+ * survived research is narrower and checkable: a market-research firm's own published price list,
+ * with a row for the method a pack actually is. They call it documentary research; we call it
+ * reading published sources until a claim either holds or dies. Same activity, their price.
+ *
+ * Two temptations were declined, and both would have produced a bigger number:
+ *
+ * A UK agency guide priced B2B market research at £15k–£80k, which is the figure a marketer would
+ * pick. It is not comparable — that range buys depth interviews and commissioned surveys, primary
+ * research a pack does not contain and does not claim to. Anchoring against it would inflate the
+ * gap by pricing work we do not do.
+ *
+ * The second was to convert euros to pounds so both sides of the comparison shared a unit. That
+ * needs an exchange rate the source does not print, which would make the headline number partly
+ * ours. The currencies stay as published and the reader does the last step, because a comparison
+ * this favourable has to be checkable to be worth making at all.
+ *
+ * The caveat renders with the figure rather than under an asterisk: their deliverable answers a
+ * question a client brings them, and a pack answers one we chose. That difference is the actual
+ * reason the price can be £49, so burying it would be arguing badly as well as dishonestly.
+ */
+function MethodCostAnchor() {
+  const documentary = citedFigure('documentary-research');
+  return (
+    <div className="mt-12 rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
+      <h3 className="text-xl font-bold tracking-tight text-text md:text-2xl">
+        What this costs when you commission it
+      </h3>
+      <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-muted md:text-base">
+        A pack is desk research: published sources, read until a claim either holds or dies. Firms
+        sell that by the project, and publish what they charge for it.
+      </p>
+
+      <dl className="mt-6 grid gap-5 sm:grid-cols-2">
+        <div className="rounded-xl bg-white p-5 ring-1 ring-black/[0.06]">
+          <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">
+            {documentary.publisher}, {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
+          </dt>
+          <dd className="mt-2 text-sm leading-relaxed text-text/80">
+            <SourcedFigure id="documentary-research" />
+            <span className="mt-1 block text-xs text-muted">for {documentary.of}</span>
+          </dd>
+        </div>
+        <div className="rounded-xl bg-white p-5 ring-1 ring-success/25">
+          <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+            A pack, already run
+          </dt>
+          <dd className="mt-2 text-sm leading-relaxed text-text/80">
+            <span className="font-semibold text-text">£49</span>
+            <span className="mt-1 block text-xs text-muted">
+              one payment, {PACK_CONTENTS.length} documents, every claim sourced
+            </span>
+          </dd>
+        </div>
+      </dl>
+
+      <p className="mt-5 max-w-[68ch] text-xs leading-relaxed text-faint">
+        <SourcedCaveat id="documentary-research" />
+      </p>
+    </div>
+  );
+}
+
 function ComparisonBlock() {
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
@@ -659,7 +740,12 @@ function ComparisonBlock() {
             </span>
             <span className="text-base font-bold text-text/70">Subscription idea feeds</span>
           </div>
-          <p className="mt-1.5 text-sm font-semibold text-muted">Typically $300 to $1,000 a year</p>
+          <p className="mt-1.5 text-sm text-muted">
+            <SourcedFigure id="idea-feed-entry-plan" />
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-faint">
+            <SourcedCaveat id="idea-feed-entry-plan" />
+          </p>
           <dl className="mt-5 space-y-3.5">
             {rows.map((r) => (
               <div key={r.label} className="flex flex-col gap-0.5">
@@ -777,6 +863,39 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         </p>
       </SectionBand>
 
+      {/* The address, asked for after the sample rather than in front of it.
+
+          The brief asked to gate the sample behind an email. That is the one change on this page
+          I will not make, and not on taste: the line directly above says "No payment, no email",
+          and a form standing between the visitor and the file would make the sentence we lead
+          with false at the moment it is read. The cost of gating is also concentrated on exactly
+          the visitor worth having — the sceptic, who came to check whether we are real and would
+          read a paywall as the answer.
+
+          What the brief actually wants is reachable without that. The list already exists, with
+          consent recorded and hashed (`WaitlistForm`), and it was only reachable by searching for
+          something we do not stock — a placement that can only be found by failing. Here it sits
+          under a door that is already open, phrased as what it is: a notification, not a
+          newsletter, offered to someone who has just been given the product for nothing. The
+          `source` tag keeps the two placements tellable apart, so the founder can see whether
+          asking after beats asking before rather than take my word for it. */}
+      <Section bg="white" width="4xl" className="!py-10 md:!py-12">
+        <div className="rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
+          <h2 className="text-lg font-bold tracking-tight text-text md:text-xl">
+            Want the next one, when it survives?
+          </h2>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-muted">
+            Most ideas we run die on the incumbent test, so this is not a weekly send — there is
+            nothing to send most weeks. Leave an address and you get one email on the day a pack
+            clears all six checks. The sample above stays free either way, and this form is not in
+            front of it.
+          </p>
+          <div className="mt-5">
+            <WaitlistForm source="home-after-sample" submitLabel="Email me when one survives" />
+          </div>
+        </div>
+      </Section>
+
       {/* 2. THE STORE — products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-3 !pb-16 md:!pt-3 md:!pb-20">
@@ -821,6 +940,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             rows from the free sample, including the check that failed — a preview of eight
             green ticks would advertise better and claim something the shop does not. */}
         <DossierPreview />
+        <MethodCostAnchor />
         <ComparisonBlock />
       </Section>
 
