@@ -219,7 +219,7 @@ function RunnerUp({ result }: { result: MatchResult<Pack> }) {
  * ("or we'll say we haven't built it yet") is the first line of the form itself, which is where
  * it is read by everyone who actually answers.
  */
-export function MatchmakerTrigger({ onOpen }: { onOpen: () => void }) {
+export function MatchmakerTrigger({ onOpen, count, countLabel }: { onOpen: () => void; count?: number; countLabel?: string }) {
   return (
     <button
       type="button"
@@ -227,7 +227,7 @@ export function MatchmakerTrigger({ onOpen }: { onOpen: () => void }) {
       aria-expanded={false}
       className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
     >
-      Answer three questions
+      {count !== undefined ? `Find my fit — ${count} ${countLabel}` : 'Find my fit'}
     </button>
   );
 }
@@ -236,12 +236,15 @@ export function Matchmaker({
   packs,
   onShowAll,
   onNoMatch,
+  onAnswersChange,
 }: {
   packs: Pack[];
   /** Drops the buyer into the filtered catalogue with the URL already populated. */
   onShowAll: (state: DiscoveryState) => void;
   /** Called when nothing scored, so the page can show the near-miss state (AC-8). */
   onNoMatch?: (state: DiscoveryState) => void;
+  /** Called whenever the buyer's answers change, so the trigger can show a live count. */
+  onAnswersChange?: (answers: MatchAnswers) => void;
 }) {
   const [answers, setAnswers] = useState<MatchAnswers>(EMPTY_MATCH_ANSWERS);
   const [payerChoice, setPayerChoice] = useState<string | null>(null);
@@ -254,6 +257,12 @@ export function Matchmaker({
   const [submitted, setSubmitted] = useState(false);
 
   const outcome = useMemo(() => rankMatches(packs, answers), [packs, answers]);
+
+  // Lift answers up to the parent so the trigger button can show a live count even
+  // after the panel is closed.
+  useEffect(() => {
+    onAnswersChange?.(answers);
+  }, [answers, onAnswersChange]);
 
   const chooseAdvantage = (advantage: Advantage | null) => {
     // Mutually exclusive with every skill claim: nobody both has nothing and has something.
