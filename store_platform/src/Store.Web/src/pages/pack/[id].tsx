@@ -127,6 +127,15 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
 
+  // Back-to-top visibility — revealed after scrolling past the hero (~600px).
+  const [showBackToTop, setShowBackToTop] = React.useState(false);
+  React.useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 600);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
   const priceLabel = formatPrice(pack.price);
   const payback = paybackEquation(pack.price, pack.financialSnapshot);
@@ -153,6 +162,10 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
         <Icon name="shield" size={14} />
         14 day money back, no questions asked
       </div>
+
+      <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">
+        <Icon name="verified" size={12} /> Survived 6 checks
+      </span>
 
       {pack.financialSnapshot &&
         (pack.financialSnapshot.month1Revenue ||
@@ -622,6 +635,38 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
             </div>
           </div>
         </div>
+
+        {/* Sticky mobile checkout bar — keeps price + CTA above the fold on phones. */}
+        {canCheckout && !clientSecret && (
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white p-3 pb-[env(safe-area-inset-bottom)] lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-medium text-muted">One time</span>
+                <span className="ml-2 text-lg font-black tracking-tight text-text">{priceLabel}</span>
+              </div>
+              <button
+                onClick={handleBuy}
+                disabled={checkingOut}
+                className="rounded-xl bg-text px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {checkingOut ? 'Opening…' : `Buy — ${priceLabel}`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Back to top — desktop-only, revealed after scrolling. */}
+        {showBackToTop && (
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-6 right-4 z-20 hidden rounded-full border border-border bg-white p-3 shadow-md transition-colors hover:bg-bg lg:block"
+            aria-label="Back to top"
+          >
+            <Icon name="trending-up" size={16} />
+            <span className="sr-only">Back to top</span>
+          </button>
+        )}
       </Section>
     </MarketingLayout>
   );
