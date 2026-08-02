@@ -358,6 +358,15 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
           ]}
         />
 
+        {/* Back to catalog — prominent, always visible */}
+        <Link
+          href="/"
+          className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-text transition-colors"
+        >
+          <Icon name="arrowRight" size={14} className="rotate-180" />
+          Back to catalog
+        </Link>
+
         <ShareRow title={pack.title} />
 
         <div className="mt-6 flex flex-col gap-12 lg:flex-row">
