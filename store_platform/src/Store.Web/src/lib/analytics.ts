@@ -28,7 +28,8 @@ export type AnalyticsEventName =
   | 'pack_shared'
   | 'basket_removed'
   | 'matchmaker_answered'
-  | 'palette_search';
+  | 'palette_search'
+  | 'copy_variant';
 
 /**
  * Fire-and-forget. Analytics must never break the page or delay navigation.
