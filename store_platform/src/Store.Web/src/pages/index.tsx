@@ -200,7 +200,10 @@ function FitChips({ pack }: { pack: Pack }) {
       {chips.slice(0, CARD_META_MAX).map((chip) => (
         <span
           key={chip.key}
-          className="rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted"
+          className={cx(
+            'rounded-md px-2 py-1 text-[11px] font-semibold',
+            chip.primary ? 'bg-primary/10 text-primary' : 'bg-bg text-muted',
+          )}
         >
           {chip.text}
         </span>
@@ -259,8 +262,8 @@ function PackCard({ pack }: { pack: Pack }) {
     <Link
       href={`/pack/${pack.id}`}
       className={cx(
-        'group flex flex-col overflow-hidden rounded-lg bg-white ring-1 ring-border transition-[background-color,box-shadow] duration-200',
-        'hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.18]',
+        'group flex flex-col overflow-hidden rounded-xl bg-white ring-1 ring-border transition-[background-color,box-shadow,transform] duration-200',
+        'hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.18] motion-safe:hover:-translate-y-0.5',
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
