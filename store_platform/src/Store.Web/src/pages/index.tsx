@@ -72,52 +72,6 @@ function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
 }
 
 // The deliverable chips are identical for every pack (the bundle is the bundle), so they render
-// once, on the spotlight card, not on all forty grid cards, where measured on the live shelf
-// they cost ~90px per card and said nothing a buyer could compare on. The bundle carries
-// PACK_CONTENTS files (pinned to prospector/bridge.py::BUNDLE_FILES by a drift test): the chips
-// name the four a buyer decides on and the count chip carries the rest,
-// `PACK_CONTENTS.length - DELIVERABLES.length` rather than a literal, because a hardcoded "+4"
-// is exactly how this claim drifted the first time.
-const DELIVERABLES: { icon: IconName; label: string }[] = [
-  { icon: 'briefcase', label: 'Blueprint' },
-  { icon: 'handshake', label: 'GTM plan' },
-  { icon: 'code', label: 'Ops & numbers' },
-  { icon: 'verified', label: 'Sources' },
-];
-
-const EXTRA_DELIVERABLES = PACK_CONTENTS.length - DELIVERABLES.length;
-
-/** One scannable label/value row on a card. Clamped hard: a card is read in three seconds, so a
- *  long engine-written sentence has to truncate rather than push the CTA off the shelf. */
-function CardFact({ label, children, clamp = 'line-clamp-2' }: { label: string; children: React.ReactNode; clamp?: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">{label}</span>
-      <span className={cx('text-xs leading-relaxed text-text/75', clamp)}>{children}</span>
-    </div>
-  );
-}
-
-function DeliverableChips() {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {DELIVERABLES.map((d) => (
-        <span
-          key={d.label}
-          className="inline-flex items-center gap-1.5 rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted"
-        >
-          <Icon name={d.icon} size={12} /> {d.label}
-        </span>
-      ))}
-      {EXTRA_DELIVERABLES > 0 && (
-        <span className="inline-flex items-center rounded-md bg-bg px-2 py-1 text-[11px] font-semibold text-muted">
-          +{EXTRA_DELIVERABLES} more
-        </span>
-      )}
-    </div>
-  );
-}
-
 // Colour-coded sector label. `onLight` sits on a white card body; the default glass pill sits on the
 // coloured cover.
 function CategoryPill({ cat, onLight = false }: { cat: Category; onLight?: boolean }) {
@@ -134,16 +88,6 @@ function CategoryPill({ cat, onLight = false }: { cat: Category; onLight?: boole
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
       <Icon name={cat.icon} size={12} className={cat.accent} /> {cat.label}
-    </span>
-  );
-}
-
-// The authority mark: every pack on the shelf cleared all six checks. Reads as a struck seal, not a
-// loose word in a box.
-function SurvivedSeal() {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg bg-text/85 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur">
-      <Icon name="verified" size={13} className="text-emerald-300" /> Survived 6 checks
     </span>
   );
 }
