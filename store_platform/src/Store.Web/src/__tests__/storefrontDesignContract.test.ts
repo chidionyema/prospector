@@ -116,21 +116,23 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     // reads any listing. The assertion stays rather than being deleted, because "no edge at all"
     // is a third design and should fail here.
     expect(cardLinkClasses, 'card 1px edge').toMatch(/border border-border|ring-1/);
-    // 8px radius = rounded-lg (the design token --radius-lg is 8px)
-    assertContains('card 8px radius', cardLinkClasses, 'rounded-lg');
+    // PR #49: 12px radius (rounded-xl) replaces the old 8px (rounded-lg).
+    assertContains('card 12px radius', cardLinkClasses, 'rounded-xl');
     // 24px padding = p-6, on the card's content well rather than the link itself (the cover
     // image is full-bleed, so padding cannot live on the outer element).
     assertContains('card 24px padding', packCard, 'p-6');
   });
 
-  it('answers hover with light rather than movement, and keeps the named shadow', () => {
-    // Amendment 1, 2026-08-01. The original contract asked for `translateY(-2px)`; the card tints
-    // instead. This assertion is inverted rather than deleted on purpose: an unexplained
-    // reintroduction of the lift should fail, because the lift was the card's only motion and
-    // removing it is what gives a `prefers-reduced-motion` visitor identical feedback to
-    // everyone else. Reinstating it means amending the spec again, deliberately.
-    expect(cardLinkClasses, 'card must not lift on hover').not.toMatch(
-      /hover:-translate-y|hover:\[transform:translateY/,
+  it('answers hover with light, a motion-safe lift, and keeps the named shadow', () => {
+    // Amendment 2, 2026-08-02 (PR #49). The original amendment removed the lift, but PR #49
+    // reinstated it with a motion-safe guard: `motion-safe:hover:-translate-y-0.5`. The guard
+    // is the part that matters — prefers-reduced-motion visitors still see the flat hover
+    // (identical feedback for everyone). The assertion now requires the motion-safe prefix
+    // rather than forbidding translate-y entirely.
+    assertContains('card motion-safe lift on hover', cardLinkClasses, 'motion-safe:hover:-translate-y');
+    // The unprefixed lift must NOT be present — it must be gated.
+    expect(cardLinkClasses, 'card lift must be motion-safe-gated').not.toMatch(
+      /(?<!motion-safe:)hover:-translate-y/,
     );
     assertContains('card ghost hover tint', cardLinkClasses, 'hover:bg-');
 

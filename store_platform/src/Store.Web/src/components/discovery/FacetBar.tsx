@@ -184,7 +184,7 @@ export function FacetBar({
   const [expanded, setExpanded] = React.useState(false);
 
   // Auto-open the mobile constraints sheet on a buyer's first visit, so the "Your constraints"
-  // button gets discovered. Same client-storage flag the old Matchmaker auto-open used — a buyer
+  // button gets discovered. Same client-storage flag the old Matchmaker auto-open used, a buyer
   // who already saw the feature once skips the sheet.
   // one-shot auto-open on mount (setState-in-effect is intentional here)
   React.useEffect(() => {
@@ -197,7 +197,7 @@ export function FacetBar({
         localStorage.setItem('mumchimp.matchmaker.autoOpened.v1', '1');
       }
     } catch {
-      // client storage unavailable — nothing to do.
+      // client storage unavailable, nothing to do.
     }
   }, []);
 
