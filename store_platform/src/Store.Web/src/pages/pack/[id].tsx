@@ -363,10 +363,9 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
         <div className="mt-6 flex flex-col gap-12 lg:flex-row">
           {/* Left: Content */}
           <div className="flex-1">
-            {/* Cover */}
-            <div className={`relative mb-8 h-28 overflow-hidden rounded-2xl ${coverFor(pack.id)}`}>
-              <CoverArt title={pack.title} />
-              <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-text shadow-sm">
+            {/* Document header: left-rule + verified badge, no decorative cover */}
+            <div className="mb-6 border-l-[3px] border-l-primary pl-5">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#0D9488' }}>
                 <Icon name="verified" size={13} /> Survived six checks
               </span>
             </div>
@@ -410,7 +409,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
             )}
 
             {/* Mobile purchase bar, keeps price + CTA above the fold on small screens */}
-            <div className="mt-8 rounded-2xl border border-border bg-surface p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
+            <div className="mt-8 border border-border bg-surface p-6 lg:hidden">
               {checkoutBody}
             </div>
 
@@ -439,7 +438,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 {CHECKS.map((check, i) => (
                   <li
                     key={check}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                    className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3"
                   >
                     {/* A numeral, not a tick: a green success mark on a static line reads as this
                         pack's verdict on that check, which is exactly what this page cannot know. */}
@@ -526,7 +525,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 <FacetChips pack={pack} className="mt-4" />
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {pack.market && (
-                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
+                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 sm:col-span-3">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Market
                       </span>
@@ -542,7 +541,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                     </div>
                   )}
                   {pack.whoPays && (
-                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
+                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 sm:col-span-3">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Who pays
                       </span>
@@ -550,7 +549,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                     </div>
                   )}
                   {pack.timeToFirstRevenue && (
-                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Time to first revenue
                       </span>
@@ -585,7 +584,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                   {pack.whatYouGet.map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-3 rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                      className="flex items-start gap-3 rounded-xl border border-border bg-surface p-5"
                     >
                       <span className="mt-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         {String(i + 1).padStart(2, '0')}
@@ -608,7 +607,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 {/* Peek inside: a page you are looking at the top of. The fade is over the page
                     itself, never over invented text, every line below is really in the pack, and
                     nothing is blurred to imply content that does not exist. */}
-                <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_18px_40px_rgba(0,0,0,0.07)]">
+                <div className="relative mt-6 overflow-hidden border border-border bg-surface">
                   <div className="flex items-center gap-2 border-b border-border bg-bg/60 px-5 py-3">
                     <Icon name="briefcase" size={14} className="text-primary" />
                     <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
@@ -659,7 +658,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
 
           {/* Right: Checkout (desktop sticky) */}
           <div className="hidden w-full shrink-0 lg:block lg:w-80">
-            <div className="sticky top-24 rounded-2xl border border-border bg-surface p-7 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
+            <div className="sticky top-24 border border-border bg-surface p-7">
               {checkoutBody}
             </div>
           </div>
@@ -722,7 +721,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
   const hasRealContent = headings.length > 0 || body.length > 0;
 
   return (
-    <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+    <div className="relative mt-6 overflow-hidden border border-border bg-surface">
       {/* aria-hidden + a fixed height: this is an image of a document, not content. A screen
           reader gets the real, unblurred lists further down the page instead, and the clamp
           stops a pack with many bullets rendering a metre of blur. */}
