@@ -318,11 +318,14 @@ function PackCard({ pack }: { pack: Pack }) {
         <div className="mt-auto pt-4">
           <button
             type="button"
-            className="w-full rounded-md border border-border bg-transparent px-4 py-2 text-sm font-bold text-text transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-white"
+            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
           >
-            View blueprint <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+            View pack · {formatPrice(pack.price)}
           </button>
-          <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3.5 opacity-50 group-hover:opacity-100 transition-opacity">
+          <p className="mt-1.5 text-center text-[10px] font-medium text-muted">
+            {killTotals.killed.toLocaleString('en-GB')} killed · {killTotals.passed} survived
+          </p>
+          <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3.5">
             {/* Buy before basket: a single pack is the common purchase, and the drawer carries
                 the deliverables, the price and the refund right, so this is not a shortcut
                 past the evidence. Both stay quieter than "View blueprint", the pack page is
@@ -872,51 +875,34 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           {variant.globalHookLead}
         </h1>
-        <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75">
+        <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
           {variant.globalHookDescription}
         </p>
         {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
         <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="#catalog"
-            onClick={() => track('catalog_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover sm:w-auto"
-          >
-            {/* "See the 44 that survived, £49" parses two ways, and the wrong one is the one a
-                cold visitor picks: that £49 buys you the LIST. Browsing is free; £49 is the price
-                of one pack. "each" is the whole fix, it attaches the price to a pack rather than
-                to the click, and keeps the qualifying number in the button where it does its
-                work. The catalogue count stays dynamic; it is never a literal. */}
-            {survived > 0 ? `Browse the ${survived} that survived` : 'Browse vetted blueprints'}, £49 each
-          </Link>
-          {/* The sceptic's door, and deliberately not a neutral outline button. This is the
-              strongest asset on the page, a whole unredacted dossier for nothing, and it was
-              styled as the thing you ignore. It keeps a lighter weight than the shelf CTA so the
-              two do not compete, but the primary-tinted border and background make it read as an
-              offer rather than as a cancel button. */}
-          <Link
             href="/sample"
             onClick={() => track('sample_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/40 bg-primary/5 px-8 py-3.5 text-sm font-bold text-text transition-colors hover:border-primary/70 hover:bg-primary/10 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover sm:w-auto"
           >
-            <Icon name="download" size={15} className="text-primary" />
-            Read a full pack free
+            Read a free report, no email
+          </Link>
+          <Link
+            href="#catalog"
+            onClick={() => track('catalog_cta_clicked')}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border bg-white px-6 py-3 text-sm font-medium text-text transition-colors hover:border-text/30 sm:w-auto"
+          >
+            {survived > 0 ? `Browse the ${survived} that survived` : 'Browse vetted blueprints'}, £49 each
           </Link>
         </div>
-        {/* One line, and it carries the two facts that decide whether the second button is
-            clicked: the sample is the whole thing, and it costs nothing, not even an address. */}
         <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
       </SectionBand>
 
-      {/* 2. THE STORE, products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
-      <Section bg="bg" width="7xl" className="!pt-3 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
-        {/* Heading and heartbeat share a row. Stacked, with the survivorship ratio in a third
-            pill below them, this block was 206px of preamble sitting directly on top of the
-            shelf, the same fold problem as the hero, in miniature. */}
-        <div className="mb-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
+        <div className="mb-2 flex-wrap items-end justify-between gap-x-6 gap-y-3 hidden sm:flex">
           <div>
             <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
             <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">

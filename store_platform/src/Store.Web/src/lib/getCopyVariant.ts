@@ -1,5 +1,7 @@
 import type { CopySlots, CopyVariant, VariantKey } from './copyConfig';
 
+export type { VariantKey };
+
 /**
  * The buyer's copy variant, resolved from query param → cookie → default.
  *
@@ -28,18 +30,9 @@ export function resolveVariant(
   return 'a';
 }
 
-/**
- * Look up ONE copy string for a given slot and variant.
- *
- * Every copy slot returns a plain string. The caller renders it into JSX;
- * this module owns only the text, never the markup.
- */
-export function copyForSlot(
-  variant: CopyVariant,
-  slot: keyof CopyVariant,
-): CopyVariant[typeof slot] {
-  return variant[slot];
+/** Look up ONE copy slot from the variant dictionary. */
+export function copyForSlot(variant: CopyVariant, slot: keyof CopySlots): string {
+  return variant[slot] as string;
 }
 
-/** All valid variant keys. */
 export const VARIANT_KEYS: VariantKey[] = ['a', 'b', 'c'];

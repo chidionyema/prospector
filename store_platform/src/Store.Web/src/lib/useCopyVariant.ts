@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import { resolveVariant } from './getCopyVariant';
-import { VARIANTS, type CopyVariant, type VariantKey } from './copyConfig';
+import { resolveVariant, type VariantKey } from './getCopyVariant';
+import { VARIANTS, type CopyVariant } from './copyConfig';
 import { track } from './analytics';
 
 const COOKIE_NAME = 'mumchimp.copy.variant';
@@ -40,7 +40,6 @@ export function useCopyVariant(): { variant: CopyVariant; key: VariantKey } {
     if (resolved === null) {
       track('copy_variant', variant);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResolved(variant);
   }, [router.query.variant, resolved]);
 
