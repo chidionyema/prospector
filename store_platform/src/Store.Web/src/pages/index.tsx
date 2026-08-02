@@ -41,6 +41,7 @@ import {
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
 import { cleanProofPoint } from '@/lib/proof';
+import { useCopyVariant } from '@/lib/useCopyVariant';
 // Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
 import killTotals from '@/data/kill-log-totals.json';
@@ -820,6 +821,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
   // Never a literal. The catalogue grows on every PASS, so the only honest number is the one the
   // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
   const survived = stats?.listed ?? packs.length;
+  const { variant } = useCopyVariant();
   return (
     // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
     // above the header, and so a card anywhere on the page can reach it without prop threading.
@@ -868,11 +870,10 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
             is still 2 and the first card still clears the fold by 88px at worst. */}
         <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
-          Skip 6 months of research. Launch a business that&apos;s already vetted.
+          {variant.globalHookLead}
         </h1>
         <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75">
-          Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics
-          and a step-by-step go-to-market plan, every claim backed by a source you can open.
+          {variant.globalHookDescription}
         </p>
         {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
         <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">

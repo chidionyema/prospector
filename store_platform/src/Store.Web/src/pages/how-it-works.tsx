@@ -4,6 +4,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { Icon } from '@/components/ui';
+import { useCopyVariant } from '@/lib/useCopyVariant';
 import killLog from '@/data/kill-log.json';
 
 /** One entry from the kill log picked to illustrate a specific gate. */
@@ -35,33 +36,28 @@ function truncateReason(reason: string, max: number): string {
 }
 
 export default function HowItWorks() {
+  const { variant } = useCopyVariant();
   return (
     <MarketingLayout>
       <Seo
         title="How it works"
-        description="How the Mumchimp works: every £49 pack is a grounded business opportunity, vetted against six checks and sourced to retrievable evidence before it can be listed."
+        description={variant.howItWorksSeoDescription}
       />
 
       <PageHero
-        eyebrow="The panel"
-        title={<span className="leading-tight tracking-tighter">Every idea faces a panel built to kill it.</span>}
-        lead="Before anything reaches the store, it runs a gauntlet of AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place."
+        eyebrow={variant.howItWorksEyebrow}
+        title={<span className="leading-tight tracking-tighter">{variant.howItWorksTitle}</span>}
+        lead={variant.howItWorksLead}
       />
 
       {/* A. The six checks, as a stepped timeline */}
       <Section
         bg="white"
         width="6xl"
-        title={<span className="font-black">The six checks, one kill, and it stops</span>}
+        title={<span className="font-black">{variant.sixChecksTitle}</span>}
       >
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-text/75">
-          Every candidate faces the same six gates, in this order. The panel kills fast at the
-          first hard fail. Only ideas that clear every gate and survive an adversarial
-          cross‑examination become a pack. Below is one real kill per gate, pulled from the{' '}
-          <Link href="/kill-log" className="font-semibold text-primary hover:underline">
-            kill log
-          </Link>
-          .
+          {variant.sixChecksDescription}
         </p>
 
         <div className="mt-12 space-y-8">
