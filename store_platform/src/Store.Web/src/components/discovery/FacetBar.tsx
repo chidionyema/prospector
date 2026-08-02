@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Icon } from '@/components/ui';
+import { Icon, type IconName } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { cx } from '@/components/ui/cx';
 import type { Pack } from '@/lib/api/client';
@@ -9,7 +9,6 @@ import {
   activeFacetValues,
   facetCounts,
   filterPacks,
-  foldFacetGroups,
   offeredFacetValues,
   type DiscoveryState,
 } from '@/lib/discovery';
@@ -40,19 +39,33 @@ import { KIND_LABEL, label, type FacetKind } from '@/lib/facets';
 const GROUPS: FacetKind[] = ['advantage', 'commitment', 'payer', 'effort', 'mechanism', 'sector'];
 
 /**
- * How many groups stay open before the rest fold away.
- *
- * Three is not a round number picked for looks: the first three entries of `GROUPS` are exactly
- * the three facets the Matchmaker interrogates, advantages, commitment, payer
- * (`Matchmaker.tsx`, scored in `discovery.ts` `rankMatches`). So the open set is "the questions
- * we already believe decide a match" and the folded set is "the ways to refine afterwards",
- * which is a claim the code can be checked against rather than a designer's preference.
- *
- * Six groups of chips is roughly 90 controls of vertical run in a 15rem rail; the cost of that
- * is not aesthetic, it is that the sixth group is below the fold on a laptop and so the buyer
- * never learns the first three exist as a set.
+ * The three primary groups shown as progressive questions.
+ * Order is deliberate: skills first (buyer identifies), then time (buyer commits), then market
+ * (buyer qualifies). These are the same three the old Matchmaker used, backed by the scoring in
+ * `rankMatches`. The remaining three groups (effort, mechanism, sector) are power-user filters
+ * behind "Advanced filters".
  */
-const OPEN_GROUPS = 0;
+const PRIMARY_GROUPS: FacetKind[] = ['advantage', 'commitment', 'payer'];
+const ADVANCED_GROUPS: FacetKind[] = ['effort', 'mechanism', 'sector'];
+
+const QUESTION_COPY: Record<FacetKind, { question: string; subtitle: string }> = {
+  advantage: { question: 'What skills do you bring?', subtitle: 'Pick as many as you like' },
+  commitment: { question: 'How much time can you commit?', subtitle: 'Choose the one that fits best' },
+  payer: { question: 'Who do you want to sell to?', subtitle: 'Pick your target market' },
+  effort: { question: '', subtitle: '' },
+  mechanism: { question: '', subtitle: '' },
+  sector: { question: '', subtitle: '' },
+};
+
+/** Pick an icon per facet value for the large cards. Falls back to 'check'. */
+function stepIcon(kind: FacetKind, _value: string): IconName {
+  const icons: Record<string, IconName> = {
+    code: 'code', sales: 'trending-up', ops: 'settings', audience: 'roster', nocode: 'plus',
+    evenings: 'pending', part_time: 'pending', full_time: 'scheduled',
+    b2b: 'briefcase', b2c: 'roster', b2g: 'building',
+  };
+  return icons[_value] ?? 'check';
+}
 
 function ValueButton({
   active,
@@ -181,30 +194,11 @@ export function FacetBar({
   className?: string;
 }) {
   const [sheetOpen, setSheetOpen] = React.useState(false);
-  const [expanded, setExpanded] = React.useState(false);
+  const [step, setStep] = React.useState(0);
+  const [showAdvanced, setShowAdvanced] = React.useState(false);
 
-  // Auto-open the mobile constraints sheet on a buyer's first visit, so the "Your constraints"
-  // button gets discovered. Same client-storage flag the old Matchmaker auto-open used, a buyer
-  // who already saw the feature once skips the sheet.
-  // one-shot auto-open on mount (setState-in-effect is intentional here)
-  React.useEffect(() => {
-    try {
-      // eslint-disable-next-line no-restricted-globals
-      if (!localStorage.getItem('mumchimp.matchmaker.autoOpened.v1')) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSheetOpen(true);
-        // eslint-disable-next-line no-restricted-globals
-        localStorage.setItem('mumchimp.matchmaker.autoOpened.v1', '1');
-      }
-    } catch {
-      // client storage unavailable, nothing to do.
-    }
-  }, []);
-
-  // AC-12 now falls out of `offeredFacetValues`: a group with no offerable value renders nothing,
-  // whether that is because the engine has tagged nothing or because every option it has is too
-  // rare to be worth a control.
-  const groups = React.useMemo(
+  // Build group data for primary + advanced, filtering out groups with no values
+  const allGroups = React.useMemo(
     () =>
       GROUPS.map((kind) => ({
         kind,
@@ -215,17 +209,12 @@ export function FacetBar({
     [packs, state],
   );
 
+  const primaryGroups = allGroups.filter((g) => (PRIMARY_GROUPS as FacetKind[]).includes(g.kind));
+  const advancedGroups = allGroups.filter((g) => (ADVANCED_GROUPS as FacetKind[]).includes(g.kind));
+  const currentGroup = primaryGroups[step] ?? null;
   const activeCount = activeFacetSelectionCount(state);
 
-  // `foldFacetGroups` owns the rule that a folded group may never hold an active selection, and
-  // withdraws the toggle when it would be able to re-hide one (`lib/discovery.ts`).
-  const { visible: visibleGroups, foldedCount, canFold } = foldFacetGroups(
-    groups,
-    OPEN_GROUPS,
-    expanded,
-  );
-
-  if (groups.length === 0) return null;
+  const matching = filterPacks(packs, state).length;
 
   const clearAll = () =>
     onChange({
@@ -238,79 +227,280 @@ export function FacetBar({
       mechanism: null,
     });
 
-  const panel = (
-    <div className="flex flex-col gap-5">
-      <p className="text-xs leading-relaxed text-muted">
-        Narrow the shelf. Counts appear once you pick an option.
-      </p>
+  // ── Active selection chips for the summary view ──
+  const activeChips: { key: string; text: string; remove: () => void }[] = [];
+  for (const kind of GROUPS) {
+    for (const value of activeFacetValues(state, kind)) {
+      const text = label(kind, value);
+      if (!text) continue;
+      activeChips.push({
+        key: `${kind}:${value}`,
+        text,
+        remove: () =>
+          onChange(
+            kind === 'advantage'
+              ? { ...state, advantage: state.advantage.filter((v) => v !== value) }
+              : { ...state, [kind]: null },
+          ),
+      });
+    }
+  }
 
-      {visibleGroups.map(({ kind, counts, activeValues, values }, groupIndex) => {
-        const isAdvantage = kind === 'advantage';
-        return (
-          <div key={kind}>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
-              {KIND_LABEL[kind]}
+  // ── Panel content: progressive flow or summary ──
+  const panel = (
+    <div className="flex flex-col">
+      {step >= 0 && currentGroup ? (
+        <>
+          {/* Step indicator */}
+          <div className="mb-5 flex items-center gap-2">
+            {primaryGroups.map((_, i) => (
+              <div
+                key={i}
+                className={cx(
+                  'h-1.5 flex-1 rounded-full transition-colors',
+                  i <= step ? 'bg-primary' : 'bg-border',
+                )}
+              />
+            ))}
+            <span className="ml-2 text-[11px] font-bold text-muted">
+              {step + 1} of {primaryGroups.length}
             </span>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <ValueButton
-                active={activeValues.length === 0}
-                onClick={() =>
-                  onChange(isAdvantage ? { ...state, advantage: [] } : { ...state, [kind]: null })
-                }
+          </div>
+
+          {/* Question */}
+          <h3 className="text-lg font-bold tracking-tight text-text">
+            {QUESTION_COPY[currentGroup.kind].question}
+          </h3>
+          <p className="mt-1 text-sm text-muted">
+            {QUESTION_COPY[currentGroup.kind].subtitle}
+          </p>
+
+          {/* Large cards */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {currentGroup.values.map((value) => {
+              const active = currentGroup.activeValues.includes(value);
+              const isAdvantage = currentGroup.kind === 'advantage';
+              const lbl = label(currentGroup.kind, value);
+              const count = currentGroup.counts[value];
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    if (isAdvantage) {
+                      const next = active
+                        ? state.advantage.filter((v) => v !== value)
+                        : [...state.advantage, value as (typeof state.advantage)[number]];
+                      onChange({ ...state, advantage: next });
+                    } else {
+                      onChange({ ...state, [currentGroup.kind]: active ? null : value });
+                    }
+                  }}
+                  className={cx(
+                    'flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition-all',
+                    active
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-white hover:border-text/20 hover:bg-bg/50',
+                  )}
+                >
+                  <Icon name={stepIcon(currentGroup.kind, value)} size={24} className="text-text/70" />
+                  <span className="text-sm font-bold text-text">{lbl}</span>
+                  {count !== undefined && (
+                    <span className="text-xs text-muted">{count} packs</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Navigation */}
+          <div className="mt-5 flex items-center justify-between">
+            <div className="flex gap-2">
+              {step > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => s - 1)}
+                  className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg"
+                >
+                  ← Back
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  // Skip: clear current group and advance
+                  const isAdv = currentGroup.kind === 'advantage';
+                  onChange(isAdv ? { ...state, advantage: [] } : { ...state, [currentGroup.kind]: null });
+                  if (step >= primaryGroups.length - 1) setStep(-1);
+                  else setStep((s) => s + 1);
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-muted transition-colors hover:text-text"
               >
-                All
-              </ValueButton>
-              {values.map((value) => {
-                const active = activeValues.includes(value);
-                return (
-                  <ValueButton
-                    key={value}
-                    active={active}
-                    count={activeValues.length > 0 ? counts[value] : undefined}
-                    onClick={() => {
-                      if (isAdvantage) {
-                        const next = active
-                          ? state.advantage.filter((v) => v !== value)
-                          : [...state.advantage, value as (typeof state.advantage)[number]];
-                        onChange({ ...state, advantage: next });
-                      } else {
-                        onChange({ ...state, [kind]: active ? null : value });
-                      }
-                    }}
-                  >
-                    {label(kind, value)}
-                  </ValueButton>
-                );
-              })}
+                Skip
+              </button>
+            </div>
+            {step < primaryGroups.length - 1 ? (
+              <button
+                type="button"
+                onClick={() => setStep((s) => s + 1)}
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+              >
+                Next →
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStep(-1)}
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+              >
+                Show {matching} {matching === 1 ? 'pack' : 'packs'}
+              </button>
+            )}
+          </div>
+
+          {/* Reset link */}
+          {activeCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="mt-3 self-center text-xs font-semibold text-muted underline underline-offset-4 hover:text-text"
+            >
+              Start over
+            </button>
+          )}
+        </>
+      ) : (
+        /* ── Summary / completed state ── */
+        <>
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
+              <Icon name="check" size={16} />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-text">
+                {activeCount > 0
+                  ? `${matching} ${matching === 1 ? 'pack' : 'packs'} match`
+                  : `Showing all ${matching} packs`}
+              </p>
+              {activeCount > 0 && (
+                <p className="text-xs text-muted">{activeCount} filter{activeCount !== 1 ? 's' : ''} active</p>
+              )}
             </div>
           </div>
-        );
-      })}
 
-      {canFold && (
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          aria-expanded={foldedCount === 0}
-          className="self-start text-xs font-semibold text-text/70 underline underline-offset-4 hover:text-text"
-        >
-          {foldedCount === 0 ? 'Fewer ways to narrow' : `${foldedCount} more ways to narrow`}
-        </button>
-      )}
+          {/* Active chips */}
+          {activeChips.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-1.5">
+              {activeChips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-text"
+                >
+                  {chip.text}
+                  <button
+                    type="button"
+                    onClick={chip.remove}
+                    aria-label={`Remove ${chip.text}`}
+                    className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-muted hover:bg-primary/20 hover:text-text"
+                  >
+                    <Icon name="close" size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
-      {activeCount > 0 && (
-        <button
-          type="button"
-          onClick={clearAll}
-          className="self-start text-xs font-semibold text-primary underline underline-offset-4"
-        >
-          Clear all filters
-        </button>
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStep(0)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+            >
+              Edit your answers
+            </button>
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={clearAll}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-muted transition-colors hover:text-text"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          {/* Advanced filters */}
+          {advancedGroups.length > 0 && (
+            <div className="mt-5 border-t border-border pt-5">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((prev) => !prev)}
+                className="flex w-full items-center justify-between text-xs font-bold uppercase tracking-widest text-muted hover:text-text"
+              >
+                Advanced filters
+                <Icon
+                  name="arrowRight"
+                  size={14}
+                  className={cx('transition-transform', showAdvanced && 'rotate-90')}
+                />
+              </button>
+              {showAdvanced && (
+                <div className="mt-3 flex flex-col gap-4">
+                  {advancedGroups.map(({ kind, counts, activeValues, values }) => {
+                    const isAdvantage = kind === 'advantage';
+                    return (
+                      <div key={kind}>
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+                          {KIND_LABEL[kind]}
+                        </span>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <ValueButton
+                            active={activeValues.length === 0}
+                            onClick={() =>
+                              onChange(
+                                isAdvantage
+                                  ? { ...state, advantage: [] }
+                                  : { ...state, [kind]: null },
+                              )
+                            }
+                          >
+                            All
+                          </ValueButton>
+                          {values.map((value) => {
+                            const active = activeValues.includes(value);
+                            return (
+                              <ValueButton
+                                key={value}
+                                active={active}
+                                count={counts[value]}
+                                onClick={() => {
+                                  if (isAdvantage) {
+                                    const next = active
+                                      ? state.advantage.filter((v) => v !== value)
+                                      : [...state.advantage, value as (typeof state.advantage)[number]];
+                                    onChange({ ...state, advantage: next });
+                                  } else {
+                                    onChange({ ...state, [kind]: active ? null : value });
+                                  }
+                                }}
+                              >
+                                {label(kind, value)}
+                              </ValueButton>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
-
-  const matching = filterPacks(packs, state).length;
 
   return (
     <div className={className}>
@@ -332,9 +522,6 @@ export function FacetBar({
           )}
         </button>
 
-        {/* Modal owns Escape, backdrop click, body-scroll lock and the focus trap
-            (`components/ui/Modal.tsx:20-25`), so the sheet inherits them rather than
-            re-implementing a dialog that gets one of them wrong. */}
         <Modal
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
