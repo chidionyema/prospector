@@ -61,7 +61,20 @@ function formatDate(iso: string) {
 
 export default function KillLogPage() {
   const [active, setActive] = React.useState<string | null>(null);
-  const shown = active ? entries.filter((e) => e.gate === active) : entries;
+  const [search, setSearch] = React.useState('');
+  const shown = React.useMemo(() => {
+    let items = active ? entries.filter((e) => e.gate === active) : entries;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      items = items.filter(
+        (e) =>
+          e.title.toLowerCase().includes(q) ||
+          e.oneLiner.toLowerCase().includes(q) ||
+          e.reason.toLowerCase().includes(q),
+      );
+    }
+    return items;
+  }, [active, search]);
 
   return (
     <MarketingLayout>
@@ -95,17 +108,26 @@ export default function KillLogPage() {
       </SectionBand>
 
       <Section bg="bg" width="6xl" className="!pt-6 !pb-24">
-        {/* Filter. Doubles as the honest summary of how ideas die around here: the top row is
-            "someone already does this" and "the buyer has no money", not exotic failures. */}
+        {/* Search + filter pills */}
+        <div className="relative mb-4">
+          <Icon name="search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search kills by title, description, or reason…"
+            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-sm text-text outline-none transition-colors focus:border-primary/40"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setActive(null)}
             className={cx(
-              'rounded-full px-3.5 py-1.5 text-xs font-bold transition',
+              'px-3.5 py-1.5 text-xs font-bold transition border',
               active === null
-                ? 'bg-text text-white'
-                : 'border border-border bg-surface text-text/70 hover:border-text/30',
+                ? 'bg-text text-white border-text'
+                : 'border-border bg-surface text-text/70 hover:border-text/30',
             )}
           >
             All {entries.length}
@@ -116,7 +138,7 @@ export default function KillLogPage() {
               type="button"
               onClick={() => setActive(gate === active ? null : gate)}
               className={cx(
-                'rounded-full px-3.5 py-1.5 text-xs font-bold transition',
+                'px-3.5 py-1.5 text-xs font-bold transition border',
                 gate === active
                   ? 'bg-text text-white'
                   : 'border border-border bg-surface text-text/70 hover:border-text/30',
@@ -164,7 +186,7 @@ export default function KillLogPage() {
                       href={c.url}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
-                      className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-bg px-2.5 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/10"
+                      className="inline-flex max-w-full items-center gap-1.5  bg-bg px-2.5 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/10"
                     >
                       <Icon name="arrowRight" size={12} className="-rotate-45" />
                       <span className="truncate">{c.domain}</span>
@@ -197,7 +219,7 @@ export default function KillLogPage() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/sample"
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+              className="inline-flex items-center gap-2  bg-primary px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
             >
               Read a full pack free
               <Icon name="arrowRight" size={15} />
