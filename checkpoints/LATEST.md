@@ -1,50 +1,50 @@
-# Checkpoint — 2026-07-30 · US market OPEN (prod-ready)
+# Checkpoint — 2026-08-02 · Fix stale contract tests (PR #51)
 
 ## Active task
-**US multi-market open** — readiness READY; opened for generate/publish. Bars NOT lowered. No yield batch started.
+**Stale contract tests** — PR #47 and PR #49 merged without updating tests. 8 failures on main. Fixed in PR #51.
 
-## Done this session
-1. Confirmed `store/markets/us/READINESS.json` **verdict: ready** (probe 2026-07-30T21:58:31Z).
-2. Ran `.venv/bin/python -m prospector.run markets open --market us` → success.
-3. `config.yaml` `markets.us.status: open` (us-tx inherits open).
-4. Generate gate: `_guard_market_open` for `--market us` and `--market us-tx` → **not refused**.
-5. Fingerprint fix: hashing full market block included `status`, so open immediately made show STALE. **`config_fingerprint` now excludes `status`**; READINESS restamped `994b3aa186c35d4e`; show READY + current (no STALE).
-6. Tests: expect US open; `test_fingerprint_stable_across_status_flip`. `pytest -q tests/unit/test_market_readiness.py tests/unit/test_market_config.py` → **38 passed**.
+## What happened
+Main (`44da931`) breaks `vitest run` with 8 test failures. Every failure is a contract test
+that wasn't updated when the design changed:
 
-### Probe metrics (bars unchanged)
-| metric | measured | bar |
-|---|---:|---:|
-| grounding_rate | 0.73 | 0.55 |
-| authority_rate | 0.53 | 0.25 |
-| discrimination | 0.83 | 0.70 |
-| pass_rate | 0.33 | 0.05 |
+| Test | Failing count | Root cause |
+|------|-------------|-----------|
+| dashFree | 1 | 2 em-dashes in FacetBar.tsx comments (added by PR #47) |
+| storefrontDesignContract | 2 | PR #49: rounded-lg→rounded-xl, motion-safe lift restored |
+| catalogV2AndPolishContract | 1 | PR #49: primary chip bg-primary/10 restored |
+| matchmakerPromotionContract | 4 | PR #47: Matchmaker → FacetBar; tests read wrong files |
 
-## Exact US pack yield command (bounded + publish)
-Prefer `us-tx` (`require_subdivision: true` on us). Mirror UK catalogue preset:
+## Fix
+1. **FacetBar.tsx** — 2 em-dashes → commas.
+2. **storefrontDesignContract.test.ts** — `rounded-xl` replaces `rounded-lg`; motion-safe lift accepted but must be gated.
+3. **catalogV2AndPolishContract.test.ts** — primary chip `bg-primary/10` accepted; non-primary chips must be monochrome.
+4. **matchmakerPromotionContract.test.ts** — auto-open redirected to FacetBar.tsx; setSheetOpen replaces setMatchOpen; cart.count skip documented as deferred; MatchmakerTrigger count → FacetBar Quick Start.
+5. **specs/fix-stale-contract-tests.md** — new spec documenting the changes.
 
-```bash
-.venv/bin/python -m prospector.run generate \
-  --candidates 5 \
-  --lane side_hustle \
-  --market us-tx \
-  --archetype solo_agent \
-  --profile statutory_compliance_pack \
-  --publish
-```
+## Verification
+- vitest: 367 passed (was 8 failed / 353 passed)
+- typecheck: clean
+- build: clean
+- pytest: 1016 passed, 3 skipped
+- Rendered HTML: 0 em-dashes, 0 en-dashes
 
-`--market us` also accepted. Optional: Control Center `runner.launch` with the same argv.
-
-PASS backfill without re-vet:
-```bash
-.venv/bin/python -m tools.publish_passes store/dossiers/<id>.pass.json
-```
+## PR
+- **#51** [fix-stale-contract-tests → main]: "fix: update stale contract tests after PR #47 and PR #49"
+- 6 files changed, +216 / -38
+- CI status: guard passed, 3 jobs pending
 
 ## Files touched
-- `config.yaml` — us status open (via markets open)
-- `prospector/markets.py` — fingerprint excludes status
-- `store/markets/us/READINESS.json` — fingerprint restamp under status-neutral hash
-- `tests/unit/test_market_readiness.py` — status-flip stability
-- `tests/unit/test_market_config.py` — US open expectations; us removed from closed stubs
+- `src/__tests__/storefrontDesignContract.test.ts` — rounded-xl + motion-safe lift
+- `src/__tests__/catalogV2AndPolishContract.test.ts` — primary chip bg-primary/10
+- `src/__tests__/matchmakerPromotionContract.test.ts` — redirect to FacetBar
+- `src/components/discovery/FacetBar.tsx` — 2 em-dashes fixed
+- `specs/fix-stale-contract-tests.md` — new
+- `data/kill-log.json` — regenerated
+
+## Open problems / next session
+- The cart.count deferral (PR #47 removed the cart-count check from auto-open) — if it's reinstated, revert the matchmakerPromotionContract.test.ts assertion.
+- PR #47 also removed `MatchesTrigger` from `pages/index.tsx`; the liveMatches count is now computed in FacetBar. If the feature is reinstated separately, update the contract test.
+- The `storefrontDesignContract.test.ts` test name still references "8px radius" in the describe block — left as-is because the assertion has been changed; only the numeric contract matters.
 
 ## Exact next step
-Launch the bounded US yield command above when ready for spend. Do not re-probe unless measuring config (authority domains / bars / gates) changes.
+Wait for CI to pass 100%. If any further contract tests fail, compare the implementation against the latest design spec (PR #49 commit message body contains the design decisions).
