@@ -115,7 +115,7 @@ export function IntentInput({
         type="button"
         onClick={() => setCollapsed(false)}
         className={cx(
-          'inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-muted shadow-sm transition-colors hover:border-text/30 hover:text-text',
+          'inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-muted shadow-sm transition-colors hover:border-text/30 hover:text-text',
           className,
         )}
       >
@@ -129,7 +129,7 @@ export function IntentInput({
     <div className={cx('w-full', className)}>
       <div
         className={cx(
-          'flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-4 py-3 shadow-sm transition-colors',
+          'flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 shadow-sm transition-colors',
           'focus-within:border-primary/40 focus-within:shadow-[0_0_0_3px_rgba(4,47,46,0.08)]',
         )}
       >
@@ -189,7 +189,7 @@ export function IntentInput({
               key={`${chip.kind}:${chip.value}`}
               type="button"
               onClick={() => applyChip(chip)}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text/70 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-text"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text/70 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-text"
             >
               + {chip.label}
             </button>

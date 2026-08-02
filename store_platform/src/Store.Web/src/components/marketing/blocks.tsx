@@ -19,7 +19,7 @@ const BAND_BG: Record<BandBg, string> = {
   surface2: 'bg-surface2',
   band: 'bg-band',
   'vault-wash': 'bg-surface2', // Unified wash to off-white
-  white: 'bg-white',
+  white: 'bg-surface',
   bg: 'bg-bg',
 };
 const BAND_WIDTH = { '2xl': 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl', '6xl': 'max-w-6xl', '7xl': 'max-w-7xl' } as const;
@@ -136,7 +136,7 @@ export function Step({
   return (
     <li className="flex gap-8 group">
       <div
-        className="flex h-12 w-12 flex-none items-center justify-center rounded-md border border-border bg-white text-sm font-bold text-text shadow-sm transition-transform group-hover:scale-110"
+        className="flex h-12 w-12 flex-none items-center justify-center rounded-md border border-border bg-surface text-sm font-bold text-text shadow-sm transition-transform group-hover:scale-110"
         aria-hidden="true"
       >
         {n.toString().padStart(2, '0')}
@@ -160,7 +160,7 @@ export function FeatureCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="space-y-4 p-8 bg-white border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all card-transition">
+    <Card className="space-y-4 p-8 bg-surface border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all card-transition">
       <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/5 text-primary border border-primary/10">
         <Icon name={icon} size={24} />
       </div>

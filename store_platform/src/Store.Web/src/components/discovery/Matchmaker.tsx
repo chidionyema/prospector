@@ -226,7 +226,7 @@ export function MatchmakerTrigger({ onOpen, count, countLabel }: { onOpen: () =>
       type="button"
       onClick={onOpen}
       aria-expanded={false}
-      className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
+      className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30 sm:w-auto"
     >
       {count !== undefined ? `Find my fit, ${count} ${countLabel}` : 'Find my fit'}
     </button>

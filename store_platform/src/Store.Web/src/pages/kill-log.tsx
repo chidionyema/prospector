@@ -105,7 +105,7 @@ export default function KillLogPage() {
               'rounded-full px-3.5 py-1.5 text-xs font-bold transition',
               active === null
                 ? 'bg-text text-white'
-                : 'border border-border bg-white text-text/70 hover:border-text/30',
+                : 'border border-border bg-surface text-text/70 hover:border-text/30',
             )}
           >
             All {entries.length}
@@ -119,7 +119,7 @@ export default function KillLogPage() {
                 'rounded-full px-3.5 py-1.5 text-xs font-bold transition',
                 gate === active
                   ? 'bg-text text-white'
-                  : 'border border-border bg-white text-text/70 hover:border-text/30',
+                  : 'border border-border bg-surface text-text/70 hover:border-text/30',
               )}
             >
               {gateLabel(gate)} {gateCounts[gate]}
@@ -131,7 +131,7 @@ export default function KillLogPage() {
           {shown.map((entry, i) => (
             <li
               key={`${entry.title}-${i}`}
-              className="rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-6"
+              className="rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-6"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -186,7 +186,7 @@ export default function KillLogPage() {
           nothing. What you see here is every kill that came with an argument.
         </p>
 
-        <div className="mt-10 rounded-2xl border border-border bg-white p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:p-10">
+        <div className="mt-10 rounded-2xl border border-border bg-surface p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:p-10">
           <h2 className="mx-auto max-w-[26ch] text-balance text-2xl font-black tracking-tight text-text md:text-3xl">
             Now read one that survived all of it.
           </h2>
@@ -204,7 +204,7 @@ export default function KillLogPage() {
             </Link>
             <Link
               href="/#catalog"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-6 py-3 text-sm font-bold text-text transition hover:border-text/30"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-6 py-3 text-sm font-bold text-text transition hover:border-text/30"
             >
               Browse the {passed} that survived
             </Link>

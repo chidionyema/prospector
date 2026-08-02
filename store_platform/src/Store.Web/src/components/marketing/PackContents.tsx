@@ -121,7 +121,7 @@ export function PackContentsSection({
         {PACK_CONTENTS.map((item) => (
           <li
             key={item.title}
-            className="flex gap-4 rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+            className="flex gap-4 rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
           >
             <span aria-hidden className="select-none text-2xl leading-none">
               {item.emoji}

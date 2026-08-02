@@ -95,7 +95,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               <li key={category.slug}>
                 <Link
                   href={`/ideas/${category.slug}`}
-                  className="flex h-full flex-col rounded-xl border border-border bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-text/20 hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)]"
+                  className="flex h-full flex-col rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-text/20 hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)]"
                 >
                   <span className="flex items-baseline justify-between gap-4">
                     <h2 className="text-lg font-black leading-snug tracking-tight text-text">
