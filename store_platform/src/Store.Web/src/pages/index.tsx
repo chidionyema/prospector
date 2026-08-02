@@ -465,7 +465,7 @@ function CatalogBrowser({
       {/* Only shown once we have boosted away from the default shelf. A visitor already on "uk"
           has nothing to be told, the grid below is already every pack, in the usual order. */}
       {market !== DEFAULT_MARKET && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-bg/60 px-4 py-3 text-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-border bg-bg/60 px-4 py-3 text-sm">
           <span className="text-text">Showing packs for {marketLabel(market)} first.</span>
           {/* Sets the `market` cookie server-side (getServerSideProps) on the next request, so
               the switch survives past this one click, not just this one page load. */}

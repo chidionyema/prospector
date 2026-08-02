@@ -71,7 +71,7 @@ export default function OrderPage() {
   return (
     <MarketingLayout>
       <div className="flex min-h-dvh items-center justify-center px-6 py-16">
-        <div className="bg-surface rounded-xl shadow-sm border border-border p-8 max-w-md w-full mx-4">
+        <div className="bg-surface border border-border p-8 max-w-md w-full mx-4">
           <h1 className="text-2xl font-bold text-text mb-2">Thank you for your purchase</h1>
           <p className="text-muted mb-6">
             Your order for <strong>{order?.packTitle}</strong> is ready.
@@ -79,7 +79,7 @@ export default function OrderPage() {
 
           <a
             href={downloadHref}
-            className="block w-full text-center bg-primary text-on-primary font-medium py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors"
+            className="block w-full text-center bg-primary text-on-primary font-medium py-3 px-6 hover:bg-primary/90 transition-colors"
             download
           >
             Download now
