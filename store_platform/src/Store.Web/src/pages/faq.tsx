@@ -207,7 +207,7 @@ export default function Faq() {
         )}
       </SectionBand>
 
-      {/* Support block — elevated, right after the accordions */}
+      {/* Support block -- elevated, right after the accordions */}
       <SectionBand bg="bg" width="6xl" className="!py-12">
         <div className="mx-auto max-w-md border border-border bg-surface p-6">
           <div className="flex items-center gap-3 mb-4">
