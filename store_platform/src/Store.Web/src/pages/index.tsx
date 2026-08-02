@@ -45,7 +45,6 @@ import { useCopyVariant } from '@/lib/useCopyVariant';
 // Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
 import killTotals from '@/data/kill-log-totals.json';
-import { useCopyVariant } from '@/lib/useCopyVariant';
 
 interface HomeProps {
   packs: Pack[];
