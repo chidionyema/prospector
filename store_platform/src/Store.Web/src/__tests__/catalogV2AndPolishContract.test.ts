@@ -34,8 +34,8 @@ describe('1.1 PackCard heading is heavier (font-extrabold tracking-tighter)', ()
 describe('1.2 CTA becomes a ghost button that fills on group-hover', () => {
   const index = read('pages/index.tsx');
 
-  it('PackCard CTA block contains group-hover:bg-primary (the ghost-button fill)', () => {
-    expect(index).toMatch(/group-hover:bg-primary/);
+  it('PackCard CTA is a solid primary button (e-commerce posture, replaces ghost button)', () => {
+    expect(index).toMatch(/bg-primary.*text-white/);
   });
 
   it('PackCard CTA block contains the literal "View blueprint"', () => {
