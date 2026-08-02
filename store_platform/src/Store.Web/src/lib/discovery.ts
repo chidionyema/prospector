@@ -18,6 +18,8 @@ import {
   PAYER,
   SECTOR,
   VOCABULARY,
+  label,
+  shortLabel,
   type Advantage,
   type Commitment,
   type Effort,
@@ -691,4 +693,111 @@ export function cardHeading(pack: FacetedPack): CardHeading {
   }
 
   return { name, heading: name, eyebrow: null, sub: descriptor };
+}
+
+// ── Discovery v2: intent extraction ──────────────────────────────────────
+
+/**
+ * Map free-text natural language to facet values using keyword matching.
+ * Returns a partial DiscoveryState with only the facets the text mentions.
+ * Never overrides existing selections; the caller merges.
+ *
+ * Matching uses word-boundary checks to avoid substring false positives
+ * ("part" should not match part_time, "even" should not match evenings).
+ */
+export function extractIntent(signal: string): Partial<DiscoveryState> {
+  if (!signal || !signal.trim()) return {};
+
+  const s = signal.toLowerCase().trim();
+  const result: Partial<DiscoveryState> = {};
+
+  // Word-boundary helper: token is a whole word/phrase in the signal
+  const hasWord = (word: string): boolean => {
+    // Escape special regex chars, then match with word boundaries
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i').test(s);
+  };
+
+  // ── advantage (multi-select) ──
+  const advantages: string[] = [];
+  if (hasWord('code') || hasWord('build') || hasWord('software') || hasWord('technical') || hasWord('developer') || hasWord('coding')) {
+    advantages.push('code');
+  }
+  if (hasWord('sell') || hasWord('sales') || hasWord('marketing') || hasWord('growth')) {
+    advantages.push('sales');
+  }
+  if (hasWord('ops') || hasWord('operations') || hasWord('systems') || hasWord('automate')) {
+    advantages.push('ops');
+  }
+  if (hasWord('design') || hasWord('creative') || hasWord('brand')) {
+    advantages.push('audience');
+  }
+  if (advantages.length > 0) result.advantage = advantages as Advantage[];
+
+  // ── commitment (single-select, last match wins) ──
+  if (hasWord('evenings') || hasWord('evening')) {
+    result.commitment = 'evenings';
+  }
+  if (hasWord('weekend') || hasWord('weekends') || hasWord('side hustle') || hasWord('spare time') || hasWord('part-time') || hasWord('part time')) {
+    result.commitment = 'part_time';
+  }
+  if (hasWord('full-time') || hasWord('fulltime') || hasWord('quit my job') || hasWord('quit') || hasWord('main job') || hasWord('primary')) {
+    result.commitment = 'full_time';
+  }
+
+  // ── payer (single-select, last match wins) ──
+  if (hasWord('b2b') || hasWord('business') || hasWord('businesses') || hasWord('company') || hasWord('enterprise') || hasWord('saas')) {
+    result.payer = 'b2b';
+  }
+  if (hasWord('b2c') || hasWord('consumer') || hasWord('consumers') || hasWord('people') || hasWord('individual')) {
+    result.payer = 'b2c';
+  }
+
+  // ── effort (single-select, last match wins) ──
+  if (hasWord('done for you') || hasWord('automated') || hasWord('automatable') || hasWord('passive') || hasWord('hands-off') || hasWord('hands off') || hasWord('low touch') || hasWord('low-touch')) {
+    result.effort = 'automatable';
+  }
+  if (hasWord('hands-on') || hasWord('hands on') || hasWord('active') || hasWord('build it') || hasWord('run it')) {
+    result.effort = 'hands_on';
+  }
+
+  return result;
+}
+
+/**
+ * Generate one-line match reasons for a pack given an intent.
+ * Returns up to 2 reasons, most specific first, in buyer-facing language.
+ * Returns empty array if nothing matches.
+ */
+export function matchReasons(pack: FacetedPack, intent: DiscoveryState): string[] {
+  const reasons: string[] = [];
+
+  // Advantage match
+  if (intent.advantage.length > 0 && pack.advantages) {
+    const matched = intent.advantage.filter((a) => pack.advantages!.includes(a));
+    if (matched.length > 0) {
+      const label = shortLabel('advantage', matched[0]);
+      if (label) reasons.push(`Matches your skills (${label})`);
+    }
+  }
+
+  // Payer match
+  if (intent.payer && pack.payer && pack.payer === intent.payer) {
+    const label = shortLabel('payer', intent.payer);
+    if (label) reasons.push(`${label} revenue model`);
+  }
+
+  // Commitment match
+  if (intent.commitment && pack.commitment && pack.commitment === intent.commitment) {
+    const label = shortLabel('commitment', intent.commitment);
+    if (label) reasons.push(`Fits your ${label.toLowerCase()} schedule`);
+  }
+
+  // Effort match
+  if (intent.effort && pack.effort && pack.effort === intent.effort) {
+    const label = shortLabel('effort', intent.effort);
+    if (label) reasons.push(`${label} — matches your preference`);
+  }
+
+  return reasons.slice(0, 2);
 }

@@ -93,7 +93,7 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     return page.slice(start, end === -1 ? undefined : end);
   })();
 
-  /** The card's outermost `<Link>` — the element carrying surface, border, radius and hover.
+  /** The card's outermost visual container — the element carrying surface, border, radius and hover.
    *  Accepts both plain string className and cx()-wrapped multi-line form. */
   const cardLinkClasses = (() => {
     // Try the cx() form first (multi-line), then fall back to plain string form.
@@ -315,13 +315,10 @@ describe('Design contract — layout', () => {
     ).toBe(true);
   });
 
-  it('desktop catalogue sidebar is 280px and sticky with top offset', () => {
-    // grid-cols-[280px_1fr] or w-[280px] or w-70 for the aside column
-    const sidebarColPattern = /lg:grid-cols-\[280px_1fr\]|lg:grid-cols-\[17\.5rem_1fr\]/;
-    expect(page, 'sidebar 280px column').toMatch(sidebarColPattern);
-
-    // sticky and top-24 (or top-6 for 24px)
-    expect(page, 'sidebar sticky').toMatch(/lg:sticky/);
-    expect(page, 'sidebar top offset').toMatch(/lg:top-(?:24|6)\b/);
+  it('desktop catalogue uses IntentInput as primary discovery surface', () => {
+    // Discovery v2: the old FacetBar sidebar grid-cols-[280px_1fr] is replaced
+    // by IntentInput above the shelf. The FacetBar is behind a "Refine" button.
+    expect(page).toContain('IntentInput');
+    expect(page).toContain('Refine');
   });
 });
