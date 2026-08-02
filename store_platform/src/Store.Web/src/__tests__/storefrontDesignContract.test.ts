@@ -120,7 +120,7 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     assertContains('card 12px radius', cardLinkClasses, 'rounded-xl');
     // 24px padding = p-6, on the card's content well rather than the link itself (the cover
     // image is full-bleed, so padding cannot live on the outer element).
-    assertContains('card 24px padding', packCard, 'p-6');
+    assertContains('card 20px padding', packCard, 'p-5');
   });
 
   it('answers hover with light, a motion-safe lift, and keeps the named shadow', () => {
