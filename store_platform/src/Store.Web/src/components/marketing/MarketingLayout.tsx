@@ -50,13 +50,13 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         Skip to content
       </a>
 
-      {/* 1. STICKY "PRIVATE CLUB" NAVIGATION */}
+      {/* Dark chrome header -- the council's signature. Deep green, light text, live counter. */}
       <header
         className={`sticky top-0 z-30 w-full transition-all duration-200 border-b pt-[env(safe-area-inset-top)] ${
-          scrolled ? 'bg-white/80 backdrop-blur-md border-border/60 shadow-sm' : 'bg-white border-transparent shadow-none'
+          scrolled ? 'bg-[#042F2E]/95 backdrop-blur-md border-[#0D4645]' : 'bg-[#042F2E] border-[#0D4645]'
         }`}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 h-16">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 h-14">
           {/* Left: Brand & Main Nav */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
@@ -65,7 +65,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
 
             <nav className="hidden md:flex items-center gap-6">
               {MARKETING_NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="font-semibold text-sm text-muted hover:text-text transition-colors">{item.label}</Link>
+                <Link key={item.href} href={item.href} className="font-medium text-sm text-on-band-muted hover:text-on-band transition-colors">{item.label}</Link>
               ))}
             </nav>
           </div>
@@ -83,7 +83,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 session resolving. /account itself decides which of the two it is. */}
             <Link
               href="/account"
-              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-text hover:bg-bg"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-[#0D4645] px-3 py-1.5 text-sm font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
             >
               <Icon name="account" size={18} />
               Account
@@ -92,7 +92,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               <button
                 ref={menuButtonRef}
                 type="button"
-                className="inline-flex items-center justify-center p-2 text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="inline-flex items-center justify-center p-2 text-on-band-muted hover:text-on-band focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 aria-label={menuOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={menuOpen}
                 aria-controls="marketing-menu"

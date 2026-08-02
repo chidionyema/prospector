@@ -14,15 +14,15 @@
      serif rather than to whatever the OS calls "serif" (on Windows, Times New Roman). */
   --font-fallback-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 
-  /* Enterprise SaaS Palette (LinkedIn-Grade) */
-  --bg: #f8fafc;          /* Cool Gray Canvas (Slate 50) */
-  --surface: #ffffff;     /* Pure White cards */
-  --surface2: #ffffff;    /* Deprecated, mapped to white */
-  --border: #e2e8f0;      /* Crisp 1px borders */
-  --text: #0F172A;        /* Slate 900 */
-  --muted: #64748B;       /* Slate 500 */
-  --faint: #cbd5e1;       /* Decorative faint elements (non-text only) */
-  --eyebrow: #475569;     /* Monospace metadata, contrast-safe */
+  /* Warm paper palette — research documents, not SaaS tiles */
+  --bg: #FEFDF9;          /* Warm off-white canvas */
+  --surface: #FEFDF9;     /* Cards match the canvas — one surface */
+  --surface2: #F5F1EB;    /* Secondary surface — slightly warmer */
+  --border: #D4C9B5;      /* Warm tan borders — physical, not digital */
+  --text: #1A1A1A;        /* Near-black for reading comfort */
+  --muted: #78716C;       /* Warm stone */
+  --faint: #D6D3D1;       /* Warm faint */
+  --eyebrow: #0D9488;     /* Teal — the verification color */
 
   /* Global Transition Standard */
   --transition-standard: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -57,10 +57,10 @@
 
   --navy: #0f172a;
 
-  --band: #0f172a;        /* Enterprise Footer/Header Dark Band */
-  --on-band: #ffffff;
-  --on-band-muted: #cbd5e1;
-  --on-band-faint: #94a3b8;
+  --band: #042F2E;        /* Dark chrome header — the council's Terminal DNA */
+  --on-band: #FEFDF9;
+  --on-band-muted: #94A3B8;
+  --on-band-faint: #5C7B7A;
 
   /* Brand Luxury Tech Palette */
   --brand-midnight-0: #070a13;
