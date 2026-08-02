@@ -38,17 +38,17 @@ describe('1.2 CTA becomes a ghost button that fills on group-hover', () => {
     expect(index).toMatch(/bg-primary.*text-white/);
   });
 
-  it('PackCard CTA block contains the literal "View blueprint"', () => {
-    expect(index).toContain('View blueprint');
+  it('PackCard CTA block contains the literal "View pack"', () => {
+    expect(index).toContain('View pack');
   });
 
   it('CTA is a real <button>, not a <span>', () => {
-    // The CTA must be a button (ghost-button pattern). The previous "View blueprint" span was
-    // a text link; this must change to <button>.
+    // The CTA must be a button. The previous "View blueprint" span was a text link;
+    // this must change to <button>. The text is now "View pack · £X".
     const packCardStart = index.indexOf('function PackCard');
     const packCardEnd = index.indexOf('// The hero of the shelf', packCardStart);
     const block = index.slice(packCardStart, packCardEnd);
-    expect(block).toMatch(/<button[\s\S]*?View blueprint/);
+    expect(block).toMatch(/<button[\s\S]*?View pack/);
   });
 });
 
@@ -60,23 +60,7 @@ describe('1.3 Evidence row carries the 6/6 check tally', () => {
   });
 });
 
-describe('1.4 Primary chip is colored, others monochrome (PR #49 restored primary accent)', () => {
-  const index = read('pages/index.tsx');
-
-  it('primary chip uses bg-primary/10, others are monochrome', () => {
-    // PR #49: primary chip (market) restored to bg-primary/10 text-primary for visual
-    // hierarchy. All other chips stay monochrome (bg-bg text-muted).
-    const fitChipsStart = index.indexOf('function FitChips');
-    const fitChipsEnd = index.indexOf('function ProofLine', fitChipsStart);
-    const block = index.slice(fitChipsStart, fitChipsEnd);
-    // The primary chip class uses bg-primary/10. Other chips must not.
-    expect(block).toMatch(/primary.*bg-primary\/10/);
-    // Ensure the non-primary path uses bg-bg (monochrome).
-    expect(block).toMatch(/bg-bg text-muted/);
-  });
-});
-
-describe('1.5 Survived seal moves off the cover, sits under the title', () => {
+describe('1.4 Survived seal moves off the cover, sits under the title', () => {
   const index = read('pages/index.tsx');
 
   it('PackCard does NOT render <SurvivedSeal /> inside <Cover>', () => {

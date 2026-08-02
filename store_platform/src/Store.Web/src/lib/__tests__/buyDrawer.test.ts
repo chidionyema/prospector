@@ -87,8 +87,8 @@ describe('the buy path is shared, not copied', () => {
 describe('the shelf keeps opening the pack as its primary action', () => {
   const index = readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8');
 
-  it('still leads with View blueprint on the card', () => {
-    expect(index).toContain('View blueprint');
+  it('still leads with View vetted blueprint on the spotlight card', () => {
+    expect(index).toContain('View vetted blueprint');
   });
 
   it('mounts exactly one drawer for the whole page', () => {

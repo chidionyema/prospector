@@ -39,7 +39,7 @@ import {
 
 } from '@/lib/discovery';
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
-import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
+import { KIND_NOUN } from '@/lib/facets';
 import { cleanProofPoint } from '@/lib/proof';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 // Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
@@ -164,55 +164,6 @@ function Cover({ cat, iconSize, className, children }: { cat: Category; iconSize
   );
 }
 
-/** The mechanism tier of a grid card: which market, then the strongest facets, what this is and
- *  who pays for it. One capped row replaces the three stacked chip sections the card used to
- *  carry; measured on the live shelf those sections were the whole size problem (cards ran
- *  585 to 660px tall depending on which sections a pack happened to have). A pack with nothing to
- *  claim renders no row at all: a chip is a claim, and absence stays absence (same rule as
- *  FacetChips).
- *
- *  Sources and freshness used to sit at the end of this same capped list, at positions 7 and 8.
- *  Measured against the live catalogue on 2026-08-01 (n=51): `verifiedAt` is present on 51 packs
- *  and the freshness chip reached 2 of them; `sourceCount` is present on 51 and was cut on 12.
- *  The cap was not choosing between claims of the same kind, it was letting a fifth descriptive
- *  tag outrank the only evidence on the card, and it got stricter as facet coverage improved.
- *  Proof is now its own tier below, and is not subject to this cap. */
-const CARD_META_MAX = 5;
-
-function FitChips({ pack }: { pack: Pack }) {
-  const chips: { key: string; text: string; primary?: boolean }[] = [];
-  if (pack.market) chips.push({ key: 'market', text: marketLabel(pack.market), primary: true });
-  const facets: [FacetKind, string | null | undefined][] = [
-    ['payer', pack.payer],
-    ['effort', pack.effort],
-    ['commitment', pack.commitment],
-    ['mechanism', pack.mechanism],
-  ];
-  for (const [kind, value] of facets) {
-    const text = shortLabel(kind, value);
-    if (text) chips.push({ key: kind, text });
-  }
-  if (pack.timeToFirstRevenue) {
-    chips.push({ key: 'revenue', text: `Revenue in ${pack.timeToFirstRevenue}` });
-  }
-  if (chips.length === 0) return null;
-  return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      {chips.slice(0, CARD_META_MAX).map((chip) => (
-        <span
-          key={chip.key}
-          className={cx(
-            'rounded-md px-2 py-1 text-[11px] font-semibold',
-            chip.primary ? 'bg-primary/10 text-primary' : 'bg-bg text-muted',
-          )}
-        >
-          {chip.text}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 /** The proof tier: how much evidence stands behind the listing, and when it was last checked.
  *
  *  Deliberately not chips and deliberately not capped. It is the last thing a buyer reads before
@@ -272,49 +223,51 @@ function PackCard({ pack }: { pack: Pack }) {
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
-      <Cover cat={cat} iconSize={104} className="h-24">
+      {/* Cover: thin coloured accent (56px). The old cover was 96px and said nothing a
+          sector label couldn't -- the gradient is the signal, not a hero image. */}
+      <Cover cat={cat} iconSize={64} className="h-14">
         <span className="absolute left-3.5 top-3.5">
           <CategoryPill cat={cat} />
         </span>
-        {/* The only price on the card. It was printed twice (here and in the footer), and at
-            42 cards the duplicate was pure height. */}
         <span className="absolute right-3.5 top-3.5 rounded-lg bg-white px-2.5 py-1 text-base font-black tracking-tight text-text shadow-sm">
           {formatPrice(pack.price)}
         </span>
-
       </Cover>
 
       <div className="flex flex-1 flex-col p-5">
-        {/* What it DOES leads; the brand name is the eyebrow. Nobody can buy from "PitchBrief"
-            on a first visit, so the name is not the heading whenever the engine gave us a short
-            line to use instead. `cardHeading` falls back to the old name-first hierarchy for
-            packs published before the engine emitted one, see lib/discovery.ts. */}
-        {eyebrow && (
-          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
-        )}
+        {/* One subdued line: brand name + market. A card is scanned in three seconds;
+            the market answers "is this for me" without needing a pill row. */}
+        <div className="flex items-baseline gap-2">
+          {eyebrow && (
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
+          )}
+          {pack.market && (
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{marketLabel(pack.market)}</span>
+          )}
+        </div>
         <h3
           className={cx(
             'line-clamp-2 text-base font-extrabold leading-tight tracking-tighter text-text transition-colors group-hover:text-primary',
-            eyebrow && 'mt-1',
+            (eyebrow || pack.market) && 'mt-1',
           )}
         >
           {heading}
         </h3>
         {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-text/75">{line}</p>}
 
-        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">
-          <Icon name="verified" size={12} /> Survived 6 checks
-        </span>
-
-        {/* Outcome (heading + line) above, mechanism next, proof last. The order is the argument:
-            what you'd be selling, how it makes money, and why we believe it. */}
-        <FitChips pack={pack} />
+        {/* Proof sits directly under the value prop -- what you'd sell, and why we believe
+            it. ProofLine carries the source count, the 6/6 checks, and the freshness age.
+            The old green "Survived 6 checks" badge was redundant with this line, and the
+            old FitChips pill row was removed: the market label above answers the only
+            chip question a buyer asks on a three-second scan. Outcome → proof → CTA:
+            three tiers, one path. */}
         <ProofLine pack={pack} />
 
-        {/* Active CTA, basket beside it rather than replacing it: opening the pack stays the
-            primary action, and a shelf where every card demands a cart decision is a worse
-            shelf. `mt-auto` pins the footer to the card's bottom edge (grid rows stretch), and
-            the wrapper's `pt-4` guarantees the gap above the rule never collapses to zero. */}
+        {/* One CTA. "View pack" opens the full dossier -- the primary action on a shelf.
+            The old Buy and +cart buttons are gone: the pack page has the purchase UI,
+            and a shelf where every card demands a cart decision is a worse shelf.
+            mt-auto pins the button to the card's bottom edge so every card in a row
+            aligns regardless of content height. */}
         <div className="mt-auto pt-4">
           <button
             type="button"
@@ -322,20 +275,6 @@ function PackCard({ pack }: { pack: Pack }) {
           >
             View pack · {formatPrice(pack.price)}
           </button>
-          {/* border-t on its own element with negative margins so the rule spans the
-              full card edge instead of being inset by the body's p-5 padding. */}
-          <div className="-mx-5 mt-3 border-t border-border/70" />
-          <div className="flex items-center gap-2 pt-3.5">
-            {/* Buy before basket: a single pack is the common purchase, and the drawer carries
-                the deliverables, the price and the refund right, so this is not a shortcut
-                past the evidence. Both stay quieter than "View blueprint", the pack page is
-                still the primary action, because the evidence is the product. */}
-            <BuyNowButton pack={pack} />
-            <AddToCartButton
-              size="compact"
-              line={{ id: pack.id, title: name, price: pack.price }}
-            />
-          </div>
         </div>
       </div>
     </Link>
