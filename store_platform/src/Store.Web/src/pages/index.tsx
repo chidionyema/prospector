@@ -169,7 +169,7 @@ function PackCard({ pack }: { pack: Pack }) {
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
-      {/* Category icon + label row — visual anchor, breaks text monotony */}
+      {/* Category icon + label row -- visual anchor, breaks text monotony */}
       <div className="flex items-center gap-2 mb-2">
         {cat.tagged && (
           <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: '#042F2E10' }}>
