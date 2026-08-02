@@ -131,7 +131,7 @@ export default function KillLogPage() {
           {shown.map((entry, i) => (
             <li
               key={`${entry.title}-${i}`}
-              className="rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-6"
+              className="rounded-xl border border-border bg-surface p-5 md:p-6"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -186,7 +186,7 @@ export default function KillLogPage() {
           nothing. What you see here is every kill that came with an argument.
         </p>
 
-        <div className="mt-10 rounded-2xl border border-border bg-surface p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:p-10">
+        <div className="mt-10 border border-border bg-surface p-8 text-center md:p-10">
           <h2 className="mx-auto max-w-[26ch] text-balance text-2xl font-black tracking-tight text-text md:text-3xl">
             Now read one that survived all of it.
           </h2>
