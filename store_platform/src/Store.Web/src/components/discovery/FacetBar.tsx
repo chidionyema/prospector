@@ -52,7 +52,7 @@ const GROUPS: FacetKind[] = ['advantage', 'commitment', 'payer', 'effort', 'mech
  * is not aesthetic, it is that the sixth group is below the fold on a laptop and so the buyer
  * never learns the first three exist as a set.
  */
-const OPEN_GROUPS = 3;
+const OPEN_GROUPS = 0;
 
 function ValueButton({
   active,
@@ -241,18 +241,13 @@ export function FacetBar({
   const panel = (
     <div className="flex flex-col gap-5">
       <p className="text-xs leading-relaxed text-muted">
-        Pick any option to narrow the shelf. The number beside it is how many packs match.
+        Narrow the shelf. Counts appear once you pick an option.
       </p>
 
       {visibleGroups.map(({ kind, counts, activeValues, values }, groupIndex) => {
         const isAdvantage = kind === 'advantage';
         return (
           <div key={kind}>
-            {groupIndex === 0 && (
-              <span className="block mb-3 font-mono text-[9px] font-black uppercase tracking-[0.15em] text-primary">
-                Filter
-              </span>
-            )}
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
               {KIND_LABEL[kind]}
             </span>
@@ -271,7 +266,7 @@ export function FacetBar({
                   <ValueButton
                     key={value}
                     active={active}
-                    count={counts[value]}
+                    count={activeValues.length > 0 ? counts[value] : undefined}
                     onClick={() => {
                       if (isAdvantage) {
                         const next = active
