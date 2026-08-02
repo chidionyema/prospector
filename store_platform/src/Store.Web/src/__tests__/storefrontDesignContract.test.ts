@@ -125,12 +125,12 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
 
   it('answers hover with light rather than movement, and keeps the named shadow', () => {
     // Amendment 1, 2026-08-01. The original contract asked for `translateY(-2px)`; the card tints
-    // instead. This assertion is inverted rather than deleted on purpose: an unexplained
-    // reintroduction of the lift should fail, because the lift was the card's only motion and
-    // removing it is what gives a `prefers-reduced-motion` visitor identical feedback to
-    // everyone else. Reinstating it means amending the spec again, deliberately.
-    expect(cardLinkClasses, 'card must not lift on hover').not.toMatch(
-      /hover:-translate-y|hover:\[transform:translateY/,
+    // reinstated via motion-safe: prefix (PR #49). The guard lets prefers-reduced-motion
+    // visitors see the flat hover while everyone else gets the lift.
+    assertContains('card motion-safe lift', cardLinkClasses, 'motion-safe:hover:-translate-y');
+    // The unprefixed lift must NOT be present.
+    expect(cardLinkClasses, 'card lift must be motion-safe-gated').not.toMatch(
+      /(?<!motion-safe:)hover:-translate-y|hover:\[transform:translateY/,
     );
     assertContains('card ghost hover tint', cardLinkClasses, 'hover:bg-');
 
