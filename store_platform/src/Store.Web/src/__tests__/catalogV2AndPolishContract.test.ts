@@ -46,7 +46,7 @@ describe('1.2 CTA becomes a ghost button that fills on group-hover', () => {
     const packCardStart = index.indexOf('function PackCard');
     const packCardEnd = index.indexOf('// The hero of the shelf', packCardStart);
     const block = index.slice(packCardStart, packCardEnd);
-    expect(block).toMatch(/<BuyNowButton/);
+    expect(block).toMatch(/Unlock for/);
   });
 });
 
