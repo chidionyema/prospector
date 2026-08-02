@@ -107,6 +107,17 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // FacetBar uses localStorage for the first-visit auto-open flag (same pattern as the
+  // old Matchmaker auto-open that lived in pages/index.tsx). The flag contains no PII.
+  {
+    name: "tie/facetbar-autoopen-exception",
+    files: ["src/components/discovery/FacetBar.tsx"],
+    rules: {
+      "no-restricted-globals": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
+
   // Override default ignores of eslint-config-next.
   globalIgnores([
     ".next/**",

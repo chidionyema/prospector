@@ -56,7 +56,7 @@ import { FacetChips } from './FacetChips';
  * Strip, whose dossier names a Shopify build in so many words). It is simply no longer the
  * dumping ground for "nothing".
  */
-const Q1_OPTIONS: ReadonlyArray<{ text: string; advantage: Advantage | null }> = [
+export const Q1_OPTIONS: ReadonlyArray<{ text: string; advantage: Advantage | null }> = [
   { text: 'I can build software', advantage: 'code' },
   { text: 'I can sell', advantage: 'sales' },
   { text: 'I can run operations', advantage: 'ops' },
@@ -64,7 +64,7 @@ const Q1_OPTIONS: ReadonlyArray<{ text: string; advantage: Advantage | null }> =
   { text: 'None of these yet', advantage: null },
 ];
 
-const Q2_OPTIONS: ReadonlyArray<{ text: string; commitment: Commitment }> = [
+export const Q2_OPTIONS: ReadonlyArray<{ text: string; commitment: Commitment }> = [
   { text: 'Evenings and weekends', commitment: 'evenings' },
   { text: 'Part time, ~20 hrs', commitment: 'part_time' },
   { text: 'Full time, this is the plan', commitment: 'full_time' },
@@ -75,7 +75,7 @@ const Q2_OPTIONS: ReadonlyArray<{ text: string; commitment: Commitment }> = [
  * own id so "Don't mind" can be a *chosen* answer that looks chosen, distinct from Q3 being
  * skipped; both produce the same `null` in the scored answers.
  */
-const Q3_OPTIONS: ReadonlyArray<{ id: string; text: string; payer: Payer | null }> = [
+export const Q3_OPTIONS: ReadonlyArray<{ id: string; text: string; payer: Payer | null }> = [
   { id: 'b2b', text: 'Businesses', payer: 'b2b' },
   { id: 'b2c', text: 'Consumers', payer: 'b2c' },
   { id: 'b2g', text: 'Councils and public bodies', payer: 'b2g' },
