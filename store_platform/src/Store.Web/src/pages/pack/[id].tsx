@@ -153,6 +153,16 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Track viewed pack for the 'Recently viewed' row on the catalog
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem('mumchimp.recentlyViewed');
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      const next = [pack.id, ...ids.filter((id) => id !== pack.id)].slice(0, 10);
+      localStorage.setItem('mumchimp.recentlyViewed', JSON.stringify(next));
+    } catch { /* storage unavailable */ }
+  }, [pack.id]);
+
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
   const priceLabel = formatPrice(pack.price);
   const payback = paybackEquation(pack.price, pack.financialSnapshot);

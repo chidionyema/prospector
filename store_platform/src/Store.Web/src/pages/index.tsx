@@ -387,9 +387,47 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
       <span aria-hidden className="text-faint">
         •
       </span>
-      <span>
+      <Link
+        href="/kill-log"
+        className="font-bold text-text hover:text-primary transition-colors"
+      >
         {killTotals.killed.toLocaleString('en-GB')} killed, {killTotals.passed} survived
-      </span>
+      </Link>
+    </div>
+  );
+}
+
+/** The last few packs the buyer viewed, from localStorage. Renders nothing on first visit. */
+function RecentlyViewed({ packs }: { packs: Pack[] }) {
+  const [viewed, setViewed] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem('mumchimp.recentlyViewed');
+      if (raw) setViewed(JSON.parse(raw).slice(0, 3));
+    } catch { /* storage unavailable */ }
+  }, []);
+
+  if (viewed.length === 0) return null;
+  const items = viewed
+    .map((id) => packs.find((p) => p.id === id))
+    .filter((p): p is Pack => !!p);
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mb-6">
+      <h3 className="text-sm font-bold text-text">Recently viewed</h3>
+      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {items.map((pack) => (
+          <Link
+            key={pack.id}
+            href={`/pack/${pack.id}`}
+            className="flex items-center gap-3 rounded-lg border border-border bg-white p-3 text-sm font-semibold text-text transition-colors hover:border-text/20 hover:bg-bg"
+          >
+            <Icon name="arrowRight" size={14} className="text-muted" />
+            {pack.cardLine || pack.title}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -542,10 +580,13 @@ function CatalogBrowser({
 
           {visible.length > 0 ? (
             <>
+              <RecentlyViewed packs={packs} />
               {spotlight && <SpotlightCard pack={spotlight} />}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {gridPacks.map((pack) => (
-                  <PackCard key={pack.id} pack={pack} />
+                {gridPacks.map((pack, i) => (
+                  <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
+                    <PackCard pack={pack} />
+                  </div>
                 ))}
               </div>
               {/* Boost, don't block: every other market's packs are still fully on the shelf,
