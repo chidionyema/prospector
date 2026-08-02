@@ -288,55 +288,37 @@ function PackCard({ pack }: { pack: Pack }) {
 function SpotlightCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
-  const proof = cleanProofPoint(pack.proofPoint);
-  // Outer div is the visual card container with overflow-hidden/rounded-3xl so
-  // clipping is reliable even on browsers where overflow on a flex <a> is buggy.
   return (
     <div className="group relative mb-6 overflow-hidden rounded-3xl bg-white ring-1 ring-border transition-[background-color,box-shadow] duration-200 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] hover:ring-black/[0.12]">
       <Link
         href={`/pack/${pack.id}`}
         className="flex flex-col md:flex-row"
       >
-        <Cover cat={cat} iconSize={200} className="min-h-[180px] md:w-[36%]">
-          <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
+        <Cover cat={cat} iconSize={120} className="min-h-[120px] md:w-[32%]">
+          <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
             <Icon name="trending-up" size={12} className={cat.accent} /> Latest to survive
-          </span>
-          <span className="absolute bottom-5 left-5">
-            <SurvivedSeal />
           </span>
         </Cover>
 
-        <div className="flex flex-1 flex-col justify-center gap-3.5 p-6 md:p-8">
-          {/* The cover pill already says this is the newest; a second "Newest in the catalogue"
-              line said it again, so the row now carries the sector and the brand name instead. */}
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-1 flex-col justify-center gap-2.5 p-5 md:p-6">
+          <div className="flex flex-wrap items-center gap-2">
             <CategoryPill cat={cat} onLight />
             {eyebrow && (
               <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
             )}
           </div>
           <div>
-            <h3 className="text-2xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-[1.75rem]">
+            <h3 className="text-xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-2xl">
               {heading}
             </h3>
-            {sub && <p className="mt-2 max-w-2xl text-base leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
+            {sub && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
           </div>
-          {pack.oneLine && <CardFact label="The opportunity" clamp="line-clamp-3">{pack.oneLine}</CardFact>}
-          {/* The spotlight is the one card with room for the sentence itself rather than a count of
-              sources. Every pack has carried one since publish and no surface has ever shown it,
-              see lib/proof.ts. Cleaned at this boundary, because the .md a buyer downloads keeps
-              its markdown. Renders nothing if it cleans to nothing. */}
-          {proof && <CardFact label="The evidence" clamp="line-clamp-3">{proof}</CardFact>}
-          <FacetChips pack={pack} compact max={5} />
-          {/* The one place on the shelf the deliverable chips render, see the note on DELIVERABLES. */}
-          <DeliverableChips />
-          <div className="mt-0.5 flex flex-wrap items-center gap-4">
-            <span className="text-2xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
-            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary-hover">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
+            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-primary-hover">
               View vetted blueprint <Icon name="arrowRight" size={15} />
             </span>
             <BuyNowButton pack={pack} />
-            <AddToCartButton size="compact" line={{ id: pack.id, title: name, price: pack.price }} />
           </div>
         </div>
       </Link>
