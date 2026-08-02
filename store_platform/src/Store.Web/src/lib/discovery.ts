@@ -796,7 +796,7 @@ export function matchReasons(pack: FacetedPack, intent: DiscoveryState): string[
   // Effort match
   if (intent.effort && pack.effort && pack.effort === intent.effort) {
     const label = shortLabel('effort', intent.effort);
-    if (label) reasons.push(`${label} — matches your preference`);
+    if (label) reasons.push(`${label} -- matches your preference`);
   }
 
   return reasons.slice(0, 2);

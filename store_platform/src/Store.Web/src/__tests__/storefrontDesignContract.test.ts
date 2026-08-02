@@ -315,8 +315,10 @@ describe('Design contract — layout', () => {
     ).toBe(true);
   });
 
-  it('desktop catalogue uses Refine button for discovery', () => {
-    // The Refine button opens a progressive 3-step question flow.
-    expect(page).toContain('Refine');
+  it('desktop catalogue shows StepFlow discovery by default', () => {
+    // Discovery v2: the progressive question flow is visible on page load.
+    // Step 1 ('What skills do you bring?') renders between toolbar and grid.
+    expect(page).toContain('What skills do you bring');
+    expect(page).toContain('StepFlow');
   });
 });
