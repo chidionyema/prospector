@@ -259,7 +259,7 @@ function PackCard({ pack }: { pack: Pack }) {
     <Link
       href={`/pack/${pack.id}`}
       className={cx(
-        'group flex flex-col overflow-hidden rounded-lg bg-white ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200',
+        'group flex flex-col overflow-hidden rounded-lg bg-white ring-1 ring-border transition-[background-color,box-shadow] duration-200',
         'hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.18]',
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
@@ -340,7 +340,7 @@ function SpotlightCard({ pack }: { pack: Pack }) {
   return (
     <Link
       href={`/pack/${pack.id}`}
-      className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] hover:ring-black/[0.12] md:flex-row"
+      className="group relative mb-6 flex flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-border transition-[background-color,box-shadow] duration-200 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] hover:ring-black/[0.12] md:flex-row"
     >
       <Cover cat={cat} iconSize={200} className="min-h-[180px] md:w-[36%]">
         <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
@@ -904,7 +904,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
 
       {/* 2. THE STORE, products lead. This is the page; everything else is reassurance below it. */}
       <div id="catalog" className="scroll-mt-20" />
-      <Section bg="bg" width="7xl" className="!pt-3 !pb-16 md:!pt-3 md:!pb-20">
+      <Section bg="bg" width="7xl" className="!pt-3 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
         {/* Heading and heartbeat share a row. Stacked, with the survivorship ratio in a third
             pill below them, this block was 206px of preamble sitting directly on top of the
             shelf, the same fold problem as the hero, in miniature. */}
