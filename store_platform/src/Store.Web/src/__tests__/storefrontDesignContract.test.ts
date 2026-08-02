@@ -317,8 +317,9 @@ describe('Design contract — layout', () => {
 
   it('desktop catalogue shows StepFlow discovery by default', () => {
     // Discovery v2: the progressive question flow is visible on page load.
-    // Step 1 ('What skills do you bring?') renders between toolbar and grid.
-    expect(page).toContain('What skills do you bring');
+    // StepFlow is imported and rendered between toolbar and grid.
     expect(page).toContain('StepFlow');
+    // The desktop FacetBar sidebar grid layout is gone.
+    expect(page).not.toMatch(/lg:grid-cols-\[280px_1fr\]/);
   });
 });
