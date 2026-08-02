@@ -15,7 +15,7 @@ import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { BuyDrawerProvider, BuyNowButton } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
-import { AppliedFilterChips, FacetBar } from '@/components/discovery/FacetBar';
+import { AppliedFilterChips, FacetBar, StepFlow } from '@/components/discovery/FacetBar';
 import { FacetChips } from '@/components/discovery/FacetChips';
 
 
@@ -429,7 +429,6 @@ function CatalogBrowser({
   const router = useRouter();
   const [state, setState] = React.useState<DiscoveryState>(initialState);
   const [sort, setSort] = React.useState<SortKey>('newest');
-  const [refineOpen, setRefineOpen] = React.useState(false);
   const { open, setOpen, close, triggerRef } = useCommandPalette();
 
   const apply = React.useCallback(
@@ -508,7 +507,7 @@ function CatalogBrowser({
         </div>
       )}
 
-      {/* Toolbar: search, count, sort, and Refine (progressive question flow). */}
+      {/* Toolbar: search, count, sort. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:w-64">
           <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
@@ -520,28 +519,18 @@ function CatalogBrowser({
           <div className="w-40">
             <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
           </div>
-          <button
-            type="button"
-            onClick={() => setRefineOpen((prev) => !prev)}
-            className={cx(
-              'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors',
-              refineOpen
-                ? 'border-primary bg-primary/10 text-text'
-                : 'border-border bg-white text-muted hover:border-text/30 hover:text-text',
-            )}
-          >
-            <Icon name="menu" size={15} />
-            Refine
-          </button>
         </div>
       </div>
 
-      {/* Collapsible progressive question flow */}
-      {refineOpen && (
-        <div className="mb-5 rounded-xl border border-border bg-white p-5 shadow-sm">
-          <FacetBar packs={packs} state={state} onChange={apply} />
-        </div>
-      )}
+      {/* Progressive discovery flow -- default visible. Buyer answers 3 questions
+          (skills → time → market) and the shelf filters in real time.
+          On desktop: always visible. On mobile: hidden, replaced by Filter button. */}
+      <div className="mb-5 hidden rounded-xl border border-border bg-white p-5 shadow-sm lg:block">
+        <StepFlow packs={packs} state={state} onChange={apply} />
+      </div>
+      <div className="lg:hidden">
+        <FacetBar packs={packs} state={state} onChange={apply} className="mb-5" />
+      </div>
 
           {/* What is currently narrowing the shelf, one removable chip per constraint, the
               only always-visible trace of the filters on a phone, where the controls live in a

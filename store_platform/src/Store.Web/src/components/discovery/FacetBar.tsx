@@ -182,22 +182,20 @@ export function AppliedFilterChips({
   );
 }
 
-export function FacetBar({
+// ── StepFlow: progressive question flow, standalone so CatalogBrowser can embed it ──
+
+export function StepFlow({
   packs,
   state,
   onChange,
-  className,
 }: {
   packs: Pack[];
   state: DiscoveryState;
   onChange: (next: DiscoveryState) => void;
-  className?: string;
 }) {
-  const [sheetOpen, setSheetOpen] = React.useState(false);
   const [step, setStep] = React.useState(0);
   const [showAdvanced, setShowAdvanced] = React.useState(false);
 
-  // Build group data for primary + advanced, filtering out groups with no values
   const allGroups = React.useMemo(
     () =>
       GROUPS.map((kind) => ({
@@ -213,7 +211,6 @@ export function FacetBar({
   const advancedGroups = allGroups.filter((g) => (ADVANCED_GROUPS as FacetKind[]).includes(g.kind));
   const currentGroup = primaryGroups[step] ?? null;
   const activeCount = activeFacetSelectionCount(state);
-
   const matching = filterPacks(packs, state).length;
 
   const clearAll = () =>
@@ -227,7 +224,7 @@ export function FacetBar({
       mechanism: null,
     });
 
-  // ── Active selection chips for the summary view ──
+  // Active chips for summary
   const activeChips: { key: string; text: string; remove: () => void }[] = [];
   for (const kind of GROUPS) {
     for (const value of activeFacetValues(state, kind)) {
@@ -246,8 +243,10 @@ export function FacetBar({
     }
   }
 
-  // ── Panel content: progressive flow or summary ──
-  const panel = (
+  // If no primary groups have values, don't render
+  if (primaryGroups.length === 0) return null;
+
+  return (
     <div className="flex flex-col">
       {step >= 0 && currentGroup ? (
         <>
@@ -328,7 +327,6 @@ export function FacetBar({
               <button
                 type="button"
                 onClick={() => {
-                  // Skip: clear current group and advance
                   const isAdv = currentGroup.kind === 'advantage';
                   onChange(isAdv ? { ...state, advantage: [] } : { ...state, [currentGroup.kind]: null });
                   if (step >= primaryGroups.length - 1) setStep(-1);
@@ -358,7 +356,6 @@ export function FacetBar({
             )}
           </div>
 
-          {/* Reset link */}
           {activeCount > 0 && (
             <button
               type="button"
@@ -370,69 +367,42 @@ export function FacetBar({
           )}
         </>
       ) : (
-        /* ── Summary / completed state ── */
+        /* Summary state */
         <>
-          <div className="mb-4 flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
-              <Icon name="check" size={16} />
-            </span>
-            <div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success/10 text-success">
+                <Icon name="check" size={14} />
+              </span>
               <p className="text-sm font-bold text-text">
                 {activeCount > 0
                   ? `${matching} ${matching === 1 ? 'pack' : 'packs'} match`
                   : `Showing all ${matching} packs`}
               </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setStep(0)}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                Edit
+              </button>
               {activeCount > 0 && (
-                <p className="text-xs text-muted">{activeCount} filter{activeCount !== 1 ? 's' : ''} active</p>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="text-xs font-semibold text-muted hover:text-text"
+                >
+                  Clear
+                </button>
               )}
             </div>
           </div>
 
-          {/* Active chips */}
-          {activeChips.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-1.5">
-              {activeChips.map((chip) => (
-                <span
-                  key={chip.key}
-                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-text"
-                >
-                  {chip.text}
-                  <button
-                    type="button"
-                    onClick={chip.remove}
-                    aria-label={`Remove ${chip.text}`}
-                    className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-muted hover:bg-primary/20 hover:text-text"
-                  >
-                    <Icon name="close" size={10} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setStep(0)}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
-            >
-              Edit your answers
-            </button>
-            {activeCount > 0 && (
-              <button
-                type="button"
-                onClick={clearAll}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-muted transition-colors hover:text-text"
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-
           {/* Advanced filters */}
           {advancedGroups.length > 0 && (
-            <div className="mt-5 border-t border-border pt-5">
+            <div className="mt-3 border-t border-border pt-3">
               <button
                 type="button"
                 onClick={() => setShowAdvanced((prev) => !prev)}
@@ -501,11 +471,27 @@ export function FacetBar({
       )}
     </div>
   );
+}
+
+// ── FacetBar: wraps StepFlow for mobile modal usage ──
+
+export function FacetBar({
+  packs,
+  state,
+  onChange,
+  className,
+}: {
+  packs: Pack[];
+  state: DiscoveryState;
+  onChange: (next: DiscoveryState) => void;
+  className?: string;
+}) {
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const activeCount = activeFacetSelectionCount(state);
+  const matching = filterPacks(packs, state).length;
 
   return (
     <div className={className}>
-      <div className="hidden lg:block">{panel}</div>
-
       <div className="lg:hidden">
         <button
           type="button"
@@ -536,7 +522,7 @@ export function FacetBar({
             </button>
           }
         >
-          {panel}
+          <StepFlow packs={packs} state={state} onChange={onChange} />
         </Modal>
       </div>
     </div>
