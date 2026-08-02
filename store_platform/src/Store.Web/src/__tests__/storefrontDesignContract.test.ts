@@ -315,10 +315,8 @@ describe('Design contract — layout', () => {
     ).toBe(true);
   });
 
-  it('desktop catalogue uses IntentInput as primary discovery surface', () => {
-    // Discovery v2: the old FacetBar sidebar grid-cols-[280px_1fr] is replaced
-    // by IntentInput above the shelf. The FacetBar is behind a "Refine" button.
-    expect(page).toContain('IntentInput');
+  it('desktop catalogue uses Refine button for discovery', () => {
+    // The Refine button opens a progressive 3-step question flow.
     expect(page).toContain('Refine');
   });
 });
