@@ -16,7 +16,6 @@ import { BuyDrawerProvider, BuyNowButton } from '@/components/checkout/BuyDrawer
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, FacetBar } from '@/components/discovery/FacetBar';
-import { IntentInput } from '@/components/discovery/IntentInput';
 import { FacetChips } from '@/components/discovery/FacetChips';
 
 
@@ -509,47 +508,40 @@ function CatalogBrowser({
         </div>
       )}
 
-      {/* Discovery v2: IntentInput replaces the old FacetBar sidebar.
-          A buyer types what they want; suggested chips appear. The full FacetBar
-          is still available behind "Refine" for power users. */}
-      <div className="mb-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex-1">
-            <IntentInput packs={packs} state={state} onChange={apply} />
-          </div>
-          <div className="flex items-center gap-3 sm:justify-end">
-            <span className="whitespace-nowrap text-sm font-semibold text-muted">
-              {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
-            </span>
-            <div className="w-40">
-              <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
-            </div>
-            <button
-              type="button"
-              onClick={() => setRefineOpen((prev) => !prev)}
-              className={cx(
-                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors',
-                refineOpen
-                  ? 'border-primary bg-primary/10 text-text'
-                  : 'border-border bg-white text-muted hover:border-text/30 hover:text-text',
-              )}
-            >
-              <Icon name="menu" size={15} />
-              Refine
-            </button>
-          </div>
-        </div>
-        {/* Search trigger -- Cmd+K palette */}
-        <div className="mt-3 w-full sm:w-64">
+      {/* Toolbar: search, count, sort, and Refine (progressive question flow). */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full sm:w-64">
           <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
         </div>
-        {/* Collapsible FacetBar */}
-        {refineOpen && (
-          <div className="mt-4 rounded-xl border border-border bg-white p-5 shadow-sm">
-            <FacetBar packs={packs} state={state} onChange={apply} />
+        <div className="flex items-center gap-3">
+          <span className="whitespace-nowrap text-sm font-semibold text-muted">
+            {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
+          </span>
+          <div className="w-40">
+            <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
           </div>
-        )}
+          <button
+            type="button"
+            onClick={() => setRefineOpen((prev) => !prev)}
+            className={cx(
+              'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors',
+              refineOpen
+                ? 'border-primary bg-primary/10 text-text'
+                : 'border-border bg-white text-muted hover:border-text/30 hover:text-text',
+            )}
+          >
+            <Icon name="menu" size={15} />
+            Refine
+          </button>
+        </div>
       </div>
+
+      {/* Collapsible progressive question flow */}
+      {refineOpen && (
+        <div className="mb-5 rounded-xl border border-border bg-white p-5 shadow-sm">
+          <FacetBar packs={packs} state={state} onChange={apply} />
+        </div>
+      )}
 
           {/* What is currently narrowing the shelf, one removable chip per constraint, the
               only always-visible trace of the filters on a phone, where the controls live in a
