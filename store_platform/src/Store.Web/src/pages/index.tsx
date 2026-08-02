@@ -12,7 +12,7 @@ import { DossierPreview } from '@/components/marketing/DossierPreview';
 import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
-import { BuyDrawerProvider, BuyNowButton } from '@/components/checkout/BuyDrawer';
+import { BuyDrawerProvider, BuyNowButton, useRequestBuy } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, StepFlow } from '@/components/discovery/FacetBar';
@@ -146,6 +146,7 @@ function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
   const line = pack.oneLine || sub;
+  const requestBuy = useRequestBuy();
 
   // Status badge from available data. Only show when it means something.
   const badge: string | null =
@@ -224,8 +225,11 @@ function PackCard({ pack }: { pack: Pack }) {
 
       <div className="mt-auto pt-4">
         <span
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center cursor-pointer"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (requestBuy) requestBuy(pack); }}
+          className={cx(
+            'w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center',
+            requestBuy ? 'cursor-pointer' : 'cursor-not-allowed opacity-50',
+          )}
         >
           Unlock for {formatPrice(pack.price)}
         </span>
