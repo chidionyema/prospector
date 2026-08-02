@@ -21,11 +21,11 @@ describe('Design contract — global tokens (globals.css)', () => {
   const css = readSource('../styles/globals.css');
 
   it('defines page surface text muted border colours', () => {
-    assertContains('page bg', css, /--bg:\s*#F8FAFC/i);
-    assertContains('surface', css, /--surface:\s*#FFFFFF/i);
-    assertContains('text', css, /--text:\s*#0F172A/i);
-    assertContains('muted', css, /--muted:\s*#64748B/i);
-    assertContains('border', css, /--border:\s*#E2E8F0/i);
+    assertContains('page bg', css, /--bg:\s*#FEFDF9/i);
+    assertContains('surface', css, /--surface:\s*#FEFDF9/i);
+    assertContains('text', css, /--text:\s*#1A1A1A/i);
+    assertContains('muted', css, /--muted:\s*#78716C/i);
+    assertContains('border', css, /--border:\s*#D4C9B5/i);
   });
 
   it('defines primary and primary-hover', () => {
@@ -108,41 +108,21 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     return match![1];
   })();
 
-  it('renders cards with white bg, a hairline edge, 8px radius, 24px padding', () => {
-    assertContains('card white bg', cardLinkClasses, 'bg-white');
-    // Amendment 1, 2026-08-01: the original `1px solid #E2E8F0` is now a `ring-1` at 6% black.
-    // Still a 1px edge and still a real separation of white card from the #F8FAFC page, but at
-    // 42 cards a full-strength border draws 42 rectangles and the eye reads the grid before it
-    // reads any listing. The assertion stays rather than being deleted, because "no edge at all"
-    // is a third design and should fail here.
-    expect(cardLinkClasses, 'card 1px edge').toMatch(/border border-border|ring-1/);
-    // PR #49: 12px radius (rounded-xl) replaces the old 8px (rounded-lg).
-    assertContains('card 12px radius', cardLinkClasses, 'rounded-xl');
-    // 24px padding = p-6, on the card's content well rather than the link itself (the cover
-    // image is full-bleed, so padding cannot live on the outer element).
-    assertContains('card 20px padding', packCard, 'p-5');
+  it('renders cards with left-rule document styling, no rounded shadow', () => {
+    // 'The Brief' direction: left-rule (3px primary), warm surface bg,
+    // rounded-r-sm for subtle right corners, border-l-primary for the document look.
+    assertContains('card surface bg', cardLinkClasses, 'bg-surface');
+    assertContains('card left rule', cardLinkClasses, 'border-l-primary');
+    assertContains('card 3px left border', cardLinkClasses, 'border-l-[3px]');
+    // No rounded-xl — cards are documents, not SaaS tiles
+    expect(cardLinkClasses, 'card must not have rounded-xl').not.toMatch(/rounded-xl/);
+    // Card body padding
+    assertContains('card padding', packCard, 'px-5');
   });
 
-  it('answers hover with light, a motion-safe lift, and keeps the named shadow', () => {
-    // Amendment 2, 2026-08-02 (PR #49). The original amendment removed the lift, but PR #49
-    // reinstated it with a motion-safe guard: `motion-safe:hover:-translate-y-0.5`. The guard
-    // is the part that matters — prefers-reduced-motion visitors still see the flat hover
-    // (identical feedback for everyone). The assertion now requires the motion-safe prefix
-    // rather than forbidding translate-y entirely.
-    assertContains('card motion-safe lift on hover', cardLinkClasses, 'motion-safe:hover:-translate-y');
-    // The unprefixed lift must NOT be present — it must be gated.
-    expect(cardLinkClasses, 'card lift must be motion-safe-gated').not.toMatch(
-      /(?<!motion-safe:)hover:-translate-y/,
-    );
-    assertContains('card ghost hover tint', cardLinkClasses, 'hover:bg-');
-
-    // The shadow survives the amendment unchanged — depth on hover was never the problem.
-    // Tailwind 4 JIT encodes spaces as underscores in arbitrary values.
-    assertContains(
-      'card hover shadow',
-      cardLinkClasses,
-      '0_10px_15px_-3px_rgba(15,23,42,0.08)',
-    );
+  it('answers hover with subtle warm shift', () => {
+    // 'The Brief': hover shifts to slightly warmer (#F8F5EF), no lift, no shadow
+    assertContains('card hover warm shift', cardLinkClasses, 'hover:bg-');
   });
 
   /**

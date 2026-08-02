@@ -145,83 +145,62 @@ function ProofLine({ pack }: { pack: Pack }) {
 function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
-  // One description, not two. `oneLine` (the engine's opportunity line) wins; the title
-  // descriptor is the fallback for packs published before the engine emitted one.
   const line = pack.oneLine || sub;
-  // Ghost hover: the card answers with light, not with movement. The `1px solid #E2E8F0` border
-  // and `translateY(-2px)` lift that used to live here are amendment 1 of the design contract,
-  // the reason is recorded in storefrontDesignContract.test.ts, which still fails if the lift
-  // comes back unannounced. A hairline ring at 6% still separates a white card from the #F8FAFC
-  // page, but at 42 cards a full-strength border draws 42 rectangles and the eye reads the grid
-  // before it reads any listing.
-  //
-  // Dropping the transform is the accessible answer rather than a cost of one: the lift was the
-  // card's only motion, so a `prefers-reduced-motion` visitor now gets exactly the same feedback
-  // as everyone else instead of a suppressed version of it.
+  // 'The Brief' direction: cards as research documents, not SaaS tiles.
+  // Left rule, warm paper, no shadow, no colored cover. Typography does the work.
   return (
     <Link
       href={`/pack/${pack.id}`}
       className={cx(
-        'group flex flex-col overflow-hidden rounded-xl bg-white ring-1 ring-border transition-[background-color,box-shadow,transform] duration-200',
-        'hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.18] motion-safe:hover:-translate-y-0.5',
+        'group flex flex-col border-l-[3px] border-l-primary bg-surface px-5 py-4 transition-colors',
+        'rounded-r-sm border border-border border-l-primary',
+        'hover:bg-[#F8F5EF] hover:border-l-primary',
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
-      {/* Cover: thin coloured accent (56px). The old cover was 96px and said nothing a
-          sector label couldn't -- the gradient is the signal, not a hero image. */}
-      <Cover cat={cat} iconSize={64} className="h-14">
-        <span className="absolute left-3.5 top-3.5">
-          <CategoryPill cat={cat} />
-        </span>
-        <span className="absolute right-3.5 top-3.5 rounded-lg bg-white px-2.5 py-1 text-base font-black tracking-tight text-text shadow-sm">
-          {formatPrice(pack.price)}
-        </span>
-      </Cover>
+      {/* Eyebrow: category + verification -- meaningful, not decorative */}
+      <div className="flex items-baseline gap-2">
+        {cat.tagged && (
+          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#0D9488' }}>
+            {cat.label}
+          </span>
+        )}
+        {eyebrow && (
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
+        )}
+        {pack.market && (
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{marketLabel(pack.market)}</span>
+        )}
+      </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        {/* One subdued line: brand name + market. A card is scanned in three seconds;
-            the market answers "is this for me" without needing a pill row. */}
-        <div className="flex items-baseline gap-2">
-          {eyebrow && (
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
-          )}
-          {pack.market && (
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{marketLabel(pack.market)}</span>
-          )}
-        </div>
-        <h3
-          className={cx(
-            'line-clamp-2 text-base font-extrabold leading-tight tracking-tighter text-text transition-colors group-hover:text-primary',
-            (eyebrow || pack.market) && 'mt-1',
-          )}
-        >
-          {heading}
-        </h3>
-        {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-text/75">{line}</p>}
+      <h3
+        className={cx(
+          'mt-1 line-clamp-2 text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
+        )}
+      >
+        {heading}
+      </h3>
+      {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted">{line}</p>}
 
-        {/* Proof sits directly under the value prop -- what you'd sell, and why we believe
-            it. ProofLine carries the source count, the 6/6 checks, and the freshness age.
-            The old green "Survived 6 checks" badge was redundant with this line, and the
-            old FitChips pill row was removed: the market label above answers the only
-            chip question a buyer asks on a three-second scan. Outcome → proof → CTA:
-            three tiers, one path. */}
-        <ProofLine pack={pack} />
+      {/* Verification mini-bar: 6 segments, one per check. Green = passed.
+          The 6/6 is always true for listed packs, but the bar performs
+          the brand promise before anyone reads a word. */}
+      <div className="mt-3 flex gap-[2px]" aria-hidden>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <span key={i} className="h-[3px] flex-1 rounded-full bg-[#0D9488]" />
+        ))}
+      </div>
 
-        {/* Two CTAs, one clear hierarchy. "Buy now" is primary: at £49 with a
-            14-day refund, the shelf should close the sale. The price badge in the
-            cover already shows £49, so the button carries the action. The whole
-            card is already a link to the pack page, so the secondary text just
-            signals the alternative path. Both sit inside mt-auto so every card
-            in a row aligns at the bottom. */}
-        <div className="mt-auto pt-4">
-          <BuyNowButton
-            pack={pack}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center"
-          />
-          <p className="mt-2 text-center text-[13px] font-semibold text-muted">
-            or view details <Icon name="arrowRight" size={13} className="inline align-middle" />
-          </p>
-        </div>
+      <ProofLine pack={pack} />
+
+      <div className="mt-auto pt-4">
+        <BuyNowButton
+          pack={pack}
+          className="w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center"
+        />
+        <p className="mt-2 text-center text-[13px] font-medium text-muted">
+          or view details <Icon name="arrowRight" size={13} className="inline align-middle" />
+        </p>
       </div>
     </Link>
   );
@@ -233,7 +212,7 @@ function SpotlightCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
   return (
-    <div className="group relative mb-6 overflow-hidden rounded-3xl bg-white ring-1 ring-border transition-[background-color,box-shadow] duration-200 hover:shadow-[0_24px_50px_rgba(0,0,0,0.12)] hover:ring-black/[0.12]">
+    <div className="group relative mb-6 overflow-hidden border-2 border-text bg-surface transition-all duration-150 hover:-translate-x-[1px] hover:-translate-y-[1px]" style={{ boxShadow: '3px 3px 0 #1A1A1A' }}>
       <Link
         href={`/pack/${pack.id}`}
         className="flex flex-col md:flex-row"
@@ -284,10 +263,7 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
   return (
     <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-muted shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       <span className="inline-flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-        </span>
+        <span className="inline-flex h-2 w-2 rounded-full bg-[#0DDB8B]" />
         <span className="text-text">Live database</span>
       </span>
       {label && (
