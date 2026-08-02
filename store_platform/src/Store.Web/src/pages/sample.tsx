@@ -149,7 +149,7 @@ export default function SamplePage() {
             {checks.map((ch, i) => (
               <li
                 key={i}
-                className="rounded-xl border border-border bg-surface p-5 md:p-6"
+                className="border border-border bg-surface p-5 md:p-6"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-base font-bold text-text">{ch.name}</h3>

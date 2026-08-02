@@ -153,7 +153,7 @@ export default function KillLogPage() {
           {shown.map((entry, i) => (
             <li
               key={`${entry.title}-${i}`}
-              className="rounded-xl border border-border bg-surface p-5 md:p-6"
+              className="border border-border bg-surface p-5 md:p-6"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">

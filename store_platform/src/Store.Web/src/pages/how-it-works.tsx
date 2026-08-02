@@ -70,7 +70,7 @@ export default function HowItWorks() {
               >
                 {/* Step number + vertical line */}
                 <div className="flex flex-col items-center flex-none">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-black text-white shadow-md">
+                  <span className="flex h-10 w-10 items-center justify-center bg-primary text-sm font-black text-white">
                     {i + 1}
                   </span>
                   {i < SIX_GATES.length - 1 && (
@@ -88,7 +88,7 @@ export default function HowItWorks() {
                   </p>
 
                   {example && (
-                    <div className="mt-5 rounded-xl border border-border bg-bg/40 p-5">
+                    <div className="mt-5 border border-border bg-bg/40 p-5">
                       <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         {example.gateLabel}
                       </p>
