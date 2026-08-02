@@ -7,6 +7,8 @@ import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { fetchCatalog } from '@/lib/api/client';
 import { eligibleLandings } from '@/lib/seo/landings';
+import { resolveVariant } from '@/lib/getCopyVariant';
+import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
 
 /**
@@ -23,9 +25,19 @@ interface Props {
   categories: { slug: string; h1: string; description: string; count: number }[];
   /** Total live packs, for the honest count in the lead. Zero when the catalogue is unreachable. */
   total: number;
+  /** Copy variant resolved server-side from cookie/query/UA. */
+  variant: VariantKey;
 }
 
-export const getServerSideProps: GetServerSideProps<Props> = async () => {
+export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
+  const { req, query } = context;
+
+  const variant = resolveVariant(
+    query.variant,
+    req?.cookies?.['mumchimp.copy.variant'],
+    req?.headers?.['user-agent'],
+  );
+
   try {
     const packs = await fetchCatalog();
     return {
@@ -37,17 +49,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async () => {
           description: landing.metaDescription,
           count,
         })),
+        variant,
       },
     };
   } catch (error) {
     // Degrade to an empty hub rather than 404ing: the page still explains what the catalogue is
     // and still links to it, which is more than a 404 does for a crawler that arrives mid-outage.
     console.error('/ideas: catalog fetch failed, rendering hub with no categories:', error);
-    return { props: { total: 0, categories: [] } };
+    return { props: { total: 0, categories: [], variant } };
   }
 };
 
-export default function IdeasHub({ categories, total }: Props) {
+export default function IdeasHub({ categories, total, variant }: Props) {
   return (
     <MarketingLayout>
       <Seo
@@ -86,7 +99,7 @@ export default function IdeasHub({ categories, total }: Props) {
                 >
                   <span className="flex items-baseline justify-between gap-4">
                     <h2 className="text-lg font-black leading-snug tracking-tight text-text">
-                      {category.h1}
+                      {VARIANTS[variant].categoryH1[category.slug] ?? category.h1}
                     </h2>
                     <span className="shrink-0 text-sm font-bold text-muted">{category.count}</span>
                   </span>

@@ -10,9 +10,13 @@ import { fetchCatalog, type Pack } from '@/lib/api/client';
 import {
   eligibleLandings,
   landingBySlug,
+  landingH1,
+  landingMetaTitle,
   packMatchesLanding,
   type Landing,
 } from '@/lib/seo/landings';
+import { resolveVariant } from '@/lib/getCopyVariant';
+import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
 
 /**
@@ -35,9 +39,19 @@ interface Props {
   siblings: { slug: string; h1: string; count: number }[];
   /** The catalogue was unreachable. Rendered as a 503 holding page, never indexed. */
   unavailable?: boolean;
+  /** Copy variant resolved server-side from cookie/query/UA. */
+  variant: VariantKey;
 }
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ params, res }) => {
+export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
+  const { params, res, req, query } = context;
+
+  const variant = resolveVariant(
+    query.variant,
+    req?.cookies?.['mumchimp.copy.variant'],
+    req?.headers?.['user-agent'],
+  );
+
   const landing = landingBySlug(typeof params?.slug === 'string' ? params.slug : undefined);
   if (!landing) return { notFound: true };
 
@@ -57,7 +71,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
     console.error(`/ideas/${landing.slug}: catalog fetch failed:`, error);
     res.statusCode = 503;
     res.setHeader('Retry-After', '120');
-    return { props: { landing, packs: [], siblings: [], unavailable: true } };
+    return { props: { landing, packs: [], siblings: [], unavailable: true, variant } };
   }
 
   const eligible = eligibleLandings(all);
@@ -71,11 +85,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
       siblings: eligible
         .filter((entry) => entry.landing.slug !== landing.slug)
         .map(({ landing: other, count }) => ({ slug: other.slug, h1: other.h1, count })),
+      variant,
     },
   };
 };
 
-export default function IdeasLanding({ landing, packs, siblings, unavailable }: Props) {
+export default function IdeasLanding({ landing, packs, siblings, unavailable, variant }: Props) {
   if (unavailable) {
     return (
       <MarketingLayout>
@@ -104,7 +119,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable }: 
   return (
     <MarketingLayout>
       <Seo
-        title={landing.metaTitle}
+        title={landingMetaTitle(landing.slug, variant)}
         description={landing.metaDescription}
         jsonLd={graph(
           itemListNode(
@@ -121,8 +136,8 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable }: 
 
       <PageHero
         eyebrow={`${packs.length} researched ${packs.length === 1 ? 'pack' : 'packs'}`}
-        title={<span className="leading-tight tracking-tighter">{landing.h1}</span>}
-        lead={landing.intro}
+        title={<span className="leading-tight tracking-tighter">{landingH1(landing.slug, variant)}</span>}
+        lead={landing.slug === 'automated-business-ideas' ? VARIANTS[variant].automatedIdeasIntro : landing.intro}
       />
 
       <Section bg="white" width="7xl">

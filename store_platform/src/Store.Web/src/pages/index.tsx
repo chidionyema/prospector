@@ -41,6 +41,7 @@ import {
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN, shortLabel, type FacetKind } from '@/lib/facets';
 import { cleanProofPoint } from '@/lib/proof';
+import { useCopyVariant } from '@/lib/useCopyVariant';
 // Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
 import killTotals from '@/data/kill-log-totals.json';
