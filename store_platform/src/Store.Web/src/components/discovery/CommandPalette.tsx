@@ -5,7 +5,7 @@ import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { track } from '@/lib/analytics';
 import { formatPrice, type Pack } from '@/lib/api/client';
-import { matchesQuery, splitTitle } from '@/lib/discovery';
+import { matchesQuery, splitTitle, extractIntent } from '@/lib/discovery';
 
 import { FacetChips } from './FacetChips';
 
@@ -152,10 +152,33 @@ function PaletteDialog({
     inputRef.current?.focus();
   }, []);
 
-  const matches = useMemo(
-    () => (query.trim() ? packs.filter((pack) => matchesQuery(pack, query)) : packs),
-    [packs, query],
-  );
+  const matches = useMemo(() => {
+    if (!query.trim()) return packs;
+    const intent = extractIntent(query);
+    const hasIntent = intent.advantage || intent.commitment || intent.payer || intent.effort;
+
+    // Keyword matches first
+    const keyword = packs.filter((pack) => matchesQuery(pack, query));
+
+    // Intent matches: packs that match extracted facet values but didn't appear in keyword results
+    if (hasIntent) {
+      const intentMatched = packs.filter((pack) => {
+        if (keyword.includes(pack)) return false; // already in keyword results
+        let match = false;
+        if (intent.advantage && pack.advantages) {
+          match = intent.advantage.some((a) => pack.advantages!.includes(a));
+        }
+        if (!match && intent.payer && pack.payer === intent.payer) match = true;
+        if (!match && intent.commitment && pack.commitment === intent.commitment) match = true;
+        if (!match && intent.effort && pack.effort === intent.effort) match = true;
+        return match;
+      });
+      // Intent matches after keyword, but before the rest
+      return [...keyword, ...intentMatched];
+    }
+
+    return keyword;
+  }, [packs, query]);
   const rows = matches.slice(0, MAX_ROWS);
 
   const go = (pack: Pack) => {
