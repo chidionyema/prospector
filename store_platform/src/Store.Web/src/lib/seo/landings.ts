@@ -1,5 +1,6 @@
 import type { Pack } from '@/lib/api/client';
 import type { FacetKind } from '@/lib/facets';
+import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 
 /**
  * Topical landing pages at `/ideas/<slug>`, one per facet value.
@@ -272,4 +273,19 @@ export function eligibleLandings(packs: Pack[]): { landing: Landing; count: numb
     landing,
     count: packs.filter((pack) => packMatchesLanding(pack, landing)).length,
   })).filter(({ count }) => count >= MIN_PACKS_FOR_LANDING);
+}
+
+/**
+ * Category landing-page `<h1>` for a given slug and copy variant.
+ * Falls back to the static landing definition, and finally to the slug itself.
+ */
+export function landingH1(slug: string, variant: VariantKey): string {
+  return VARIANTS[variant].categoryH1[slug] ?? landingBySlug(slug)?.h1 ?? slug;
+}
+
+/**
+ * Category landing-page `<title>` (minus the site suffix) for a given slug and copy variant.
+ */
+export function landingMetaTitle(slug: string, variant: VariantKey): string {
+  return VARIANTS[variant].categoryMetaTitle[slug] ?? landingBySlug(slug)?.metaTitle ?? '';
 }
