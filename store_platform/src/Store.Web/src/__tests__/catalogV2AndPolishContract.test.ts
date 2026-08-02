@@ -60,16 +60,19 @@ describe('1.3 Evidence row carries the 6/6 check tally', () => {
   });
 });
 
-describe('1.4 FitChips are fully monochrome (no bg-primary/10 on any chip)', () => {
+describe('1.4 Primary chip is colored, others monochrome (PR #49 restored primary accent)', () => {
   const index = read('pages/index.tsx');
 
-  it('FitChips does not use bg-primary/10 anywhere', () => {
-    // The FitChips function renders a chip per state value. The spec removes the accent
-    // entirely. We assert the source for FitChips has no `bg-primary/10` token.
+  it('primary chip uses bg-primary/10, others are monochrome', () => {
+    // PR #49: primary chip (market) restored to bg-primary/10 text-primary for visual
+    // hierarchy. All other chips stay monochrome (bg-bg text-muted).
     const fitChipsStart = index.indexOf('function FitChips');
     const fitChipsEnd = index.indexOf('function ProofLine', fitChipsStart);
     const block = index.slice(fitChipsStart, fitChipsEnd);
-    expect(block).not.toMatch(/bg-primary\/10/);
+    // The primary chip class uses bg-primary/10. Other chips must not.
+    expect(block).toMatch(/primary.*bg-primary\/10/);
+    // Ensure the non-primary path uses bg-bg (monochrome).
+    expect(block).toMatch(/bg-bg text-muted/);
   });
 });
 
