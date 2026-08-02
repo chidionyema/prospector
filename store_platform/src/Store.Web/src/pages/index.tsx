@@ -272,7 +272,7 @@ function PackCard({ pack }: { pack: Pack }) {
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
-      <Cover cat={cat} iconSize={104} className="h-28">
+      <Cover cat={cat} iconSize={104} className="h-24">
         <span className="absolute left-3.5 top-3.5">
           <CategoryPill cat={cat} />
         </span>
@@ -284,7 +284,7 @@ function PackCard({ pack }: { pack: Pack }) {
 
       </Cover>
 
-      <div className="flex flex-1 flex-col p-6">
+      <div className="flex flex-1 flex-col p-5">
         {/* What it DOES leads; the brand name is the eyebrow. Nobody can buy from "PitchBrief"
             on a first visit, so the name is not the heading whenever the engine gave us a short
             line to use instead. `cardHeading` falls back to the old name-first hierarchy for
@@ -294,7 +294,7 @@ function PackCard({ pack }: { pack: Pack }) {
         )}
         <h3
           className={cx(
-            'line-clamp-2 text-lg font-extrabold leading-tight tracking-tighter text-text transition-colors group-hover:text-primary',
+            'line-clamp-2 text-base font-extrabold leading-tight tracking-tighter text-text transition-colors group-hover:text-primary',
             eyebrow && 'mt-1',
           )}
         >
