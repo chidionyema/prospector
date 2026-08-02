@@ -887,13 +887,6 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           >
             Read a free report, no email
           </Link>
-          <Link
-            href="#catalog"
-            onClick={() => track('catalog_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border bg-white px-6 py-3 text-sm font-medium text-text transition-colors hover:border-text/30 sm:w-auto"
-          >
-            {survived > 0 ? `Browse the ${survived} that survived` : 'Browse vetted blueprints'}, £49 each
-          </Link>
         </div>
         <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.

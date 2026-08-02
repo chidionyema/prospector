@@ -250,7 +250,7 @@ export function FacetBar({
           <div key={kind}>
             {groupIndex === 0 && (
               <span className="block mb-3 font-mono text-[9px] font-black uppercase tracking-[0.15em] text-primary">
-                Quick start
+                Filter
               </span>
             )}
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
@@ -329,7 +329,7 @@ export function FacetBar({
           aria-haspopup="dialog"
           className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30"
         >
-          Your constraints
+          Filter
           {activeCount > 0 && (
             <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-white">
               {activeCount}
