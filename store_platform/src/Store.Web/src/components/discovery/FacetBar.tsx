@@ -183,6 +183,24 @@ export function FacetBar({
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
 
+  // Auto-open the mobile constraints sheet on a buyer's first visit, so the "Your constraints"
+  // button gets discovered. Same client-storage flag the old Matchmaker auto-open used — a buyer
+  // who already saw the feature once skips the sheet.
+  // one-shot auto-open on mount (setState-in-effect is intentional here)
+  React.useEffect(() => {
+    try {
+      // eslint-disable-next-line no-restricted-globals
+      if (!localStorage.getItem('mumchimp.matchmaker.autoOpened.v1')) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSheetOpen(true);
+        // eslint-disable-next-line no-restricted-globals
+        localStorage.setItem('mumchimp.matchmaker.autoOpened.v1', '1');
+      }
+    } catch {
+      // client storage unavailable — nothing to do.
+    }
+  }, []);
+
   // AC-12 now falls out of `offeredFacetValues`: a group with no offerable value renders nothing,
   // whether that is because the engine has tagged nothing or because every option it has is too
   // rare to be worth a control.
@@ -222,16 +240,19 @@ export function FacetBar({
 
   const panel = (
     <div className="flex flex-col gap-5">
-      {/* Every group named an attribute, so nothing on screen said what clicking one would DO.
-          One sentence, and the count already sitting beside each option explains itself. */}
       <p className="text-xs leading-relaxed text-muted">
         Pick any option to narrow the shelf. The number beside it is how many packs match.
       </p>
 
-      {visibleGroups.map(({ kind, counts, activeValues, values }) => {
+      {visibleGroups.map(({ kind, counts, activeValues, values }, groupIndex) => {
         const isAdvantage = kind === 'advantage';
         return (
           <div key={kind}>
+            {groupIndex === 0 && (
+              <span className="block mb-3 font-mono text-[9px] font-black uppercase tracking-[0.15em] text-primary">
+                Quick start
+              </span>
+            )}
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
               {KIND_LABEL[kind]}
             </span>
