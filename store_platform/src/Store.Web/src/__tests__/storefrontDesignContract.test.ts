@@ -199,7 +199,7 @@ describe('Design contract — primary CTAs', () => {
     expect(classes, 'spotlight CTA bg-primary').toMatch(/bg-primary/);
     expect(classes, 'spotlight CTA white text').toMatch(/text-white/);
     expect(classes, 'spotlight CTA text-sm').toMatch(/text-sm/);
-    expect(classes, 'spotlight CTA font-medium').toMatch(/font-medium/);
+    expect(classes, 'spotlight CTA font-bold').toMatch(/font-bold/);
   });
 
   it('comparison block "Browse the packs" uses primary CTA style', () => {
