@@ -268,7 +268,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
           <button
             onClick={handleBuy}
             disabled={checkingOut}
-            className="mt-4 w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+            className="mt-4 w-full bg-text py-4 text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {/* Not "Redirecting…": the embedded path opens a panel in place and never navigates,
                 so that label promised a page change that never came. This wording is true of both
@@ -289,7 +289,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
         <>
           <a
             href={notifyHref}
-            className="mt-4 block w-full rounded-xl bg-text py-4 text-center text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_16px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.24)] active:translate-y-0"
+            className="mt-4 block w-full bg-text py-4 text-center text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             Notify me when this opens
           </a>
@@ -499,7 +499,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 )}
 
                 {verdict.risk && (
-                  <div className="mt-6 rounded-xl border border-warning/30 bg-warning/5 p-5">
+                  <div className="mt-6 border border-warning/30 bg-warning/5 p-5">
                     <div className="flex items-center gap-2">
                       <Icon name="shield" size={15} className="text-warning" />
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-warning">
@@ -525,7 +525,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 <FacetChips pack={pack} className="mt-4" />
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {pack.market && (
-                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 sm:col-span-3">
+                    <div className="flex flex-col border border-border bg-surface p-5 sm:col-span-3">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Market
                       </span>
@@ -541,7 +541,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                     </div>
                   )}
                   {pack.whoPays && (
-                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 sm:col-span-3">
+                    <div className="flex flex-col border border-border bg-surface p-5 sm:col-span-3">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Who pays
                       </span>
@@ -549,7 +549,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                     </div>
                   )}
                   {pack.timeToFirstRevenue && (
-                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5">
+                    <div className="flex flex-col border border-border bg-surface p-5">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Time to first revenue
                       </span>
@@ -584,7 +584,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                   {pack.whatYouGet.map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-3 rounded-xl border border-border bg-surface p-5"
+                      className="flex items-start gap-3 border border-border bg-surface p-5"
                     >
                       <span className="mt-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         {String(i + 1).padStart(2, '0')}
@@ -633,7 +633,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
             )}
 
             {/* The receipts */}
-            <div className="mt-12 rounded-xl border border-border bg-surface p-6">
+            <div className="mt-12 border border-border bg-surface p-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <Icon name="verified" className="text-success" size={18} />
                 <span className="font-mono text-xs font-bold uppercase tracking-widest text-text">The receipts</span>
@@ -675,7 +675,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               <button
                 onClick={handleBuy}
                 disabled={checkingOut}
-                className="rounded-xl bg-text px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="bg-text px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {checkingOut ? 'Opening…' : `Buy, ${priceLabel}`}
               </button>

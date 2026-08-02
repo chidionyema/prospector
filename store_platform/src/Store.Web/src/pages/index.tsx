@@ -261,7 +261,7 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
   const label = freshnessLabel(latest);
   if (!label && !stats) return null;
   return (
-    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5  border border-border bg-surface px-4 py-2 text-xs font-semibold text-muted shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5  border border-border bg-surface px-4 py-2 text-xs font-semibold text-muted">
       <span className="inline-flex items-center gap-2">
         <span className="inline-flex h-2 w-2 rounded-full bg-[#0DDB8B]" />
         <span className="text-text">Live database</span>
@@ -587,7 +587,7 @@ function CatalogBrowser({
 function MethodCostAnchor() {
   const documentary = citedFigure('documentary-research');
   return (
-    <div className="mt-12 rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
+    <div className="mt-12 border border-border bg-bg/40 p-6 md:p-8">
       <h3 className="text-xl font-bold tracking-tight text-text md:text-2xl">
         What this costs when you commission it
       </h3>
@@ -597,7 +597,7 @@ function MethodCostAnchor() {
       </p>
 
       <dl className="mt-6 grid gap-5 sm:grid-cols-2">
-        <div className="rounded-xl bg-surface p-5 border border-border">
+        <div className="bg-surface p-5 border border-border">
           <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">
             {documentary.publisher}, {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
           </dt>
@@ -606,7 +606,7 @@ function MethodCostAnchor() {
             <span className="mt-1 block text-xs text-muted">for {documentary.of}</span>
           </dd>
         </div>
-        <div className="rounded-xl bg-surface p-5 border border-success/30">
+        <div className="bg-surface p-5 border border-success/30">
           <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
             A pack, already run
           </dt>
@@ -646,7 +646,7 @@ function ComparisonBlock() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Left: the category being compared against */}
-        <div className="flex flex-col rounded-2xl border border-border bg-bg/50 p-6">
+        <div className="flex flex-col border border-border bg-bg/50 p-6">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-text/5 text-muted">
               <Icon name="close" size={14} />
@@ -867,7 +867,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
       </SectionBand>
 
       <Section bg="white" width="4xl" className="!py-10 md:!py-12">
-        <div className="rounded-2xl border border-border bg-bg/40 p-6 md:p-8">
+        <div className="border border-border bg-bg/40 p-6 md:p-8">
           <h2 className="text-lg font-bold tracking-tight text-text md:text-xl">
             Want the next one, when it survives?
           </h2>

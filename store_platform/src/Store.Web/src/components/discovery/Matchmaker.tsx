@@ -182,7 +182,7 @@ function WinnerCard({ result }: { result: MatchResult<Pack> }) {
   const { pack } = result;
   const { name, descriptor } = splitTitle(pack.title, pack.headline);
   return (
-    <div className="rounded-2xl border border-primary/30 bg-surface p-6 shadow-[0_18px_40px_rgba(0,0,0,0.08)]">
+    <div className="rounded-2xl border border-primary/30 bg-surface p-6">
       <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-primary">Build this one.</span>
       <h3 className="mt-2 text-2xl font-black leading-tight tracking-tight text-text">{name}</h3>
       {descriptor && <p className="mt-1 text-sm leading-relaxed text-muted">{descriptor}</p>}

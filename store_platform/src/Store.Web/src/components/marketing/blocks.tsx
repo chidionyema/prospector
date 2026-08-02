@@ -160,8 +160,8 @@ export function FeatureCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="space-y-4 p-8 bg-surface border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all card-transition">
-      <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/5 text-primary border border-primary/10">
+    <Card className="space-y-4 p-8 bg-surface border-border transition-all card-transition">
+      <div className="inline-flex h-12 w-12 items-center justify-center bg-primary/5 text-primary border border-primary/10">
         <Icon name={icon} size={24} />
       </div>
       <h3 className="text-lg font-bold text-text leading-tight">{title}</h3>
