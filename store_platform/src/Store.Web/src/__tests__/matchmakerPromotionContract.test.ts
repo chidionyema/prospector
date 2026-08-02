@@ -16,23 +16,21 @@ const read = (rel: string) => readFileSync(`${SRC}/${rel}`, 'utf8');
 
 // ── 1. Auto-open on first visit ──────────────────────────────────────────────────────────────
 
-describe('1. One-shot constraints sheet auto-opens on a buyer\'s first visit to /', () => {
+describe('1. Progressive question flow replaces auto-open constraints sheet', () => {
   const facetBar = read('components/discovery/FacetBar.tsx');
 
-  it('declares the localStorage key in FacetBar (auto-open moved from Matchmaker in PR #47)', () => {
-    expect(facetBar).toContain('mumchimp.matchmaker.autoOpened.v1');
+  it('uses a step-based progressive question flow (step state)', () => {
+    // Discovery v2: the old auto-open localStorage pattern is replaced by a
+    // progressive 3-step question flow. The Refine button is always visible.
+    expect(facetBar).toContain('setStep');
   });
 
-  it('auto-opens the constraints sheet via a useEffect that reads the flag', () => {
-    // PR #47: setSheetOpen(true) replaces setMatchOpen(true) — same pattern, new component.
-    expect(facetBar).toMatch(/useEffect[\s\S]*?setSheetOpen\(true\)/);
+  it('renders PRIMARY_GROUPS as the three question steps', () => {
+    expect(facetBar).toContain('PRIMARY_GROUPS');
   });
 
-  it('skips auto-open when the buyer already has something in the cart', () => {
-    // PR #47 deferred the cart-count skip. The auto-open no longer checks cart.count
-    // before opening the constraints sheet. This test documents the deferral rather
-    // than the absence: if the skip is reinstated, update this test.
-    expect(facetBar).not.toMatch(/cart\.count/);
+  it('shows an Advanced filters section for remaining groups', () => {
+    expect(facetBar).toContain('Advanced filters');
   });
 });
 
@@ -48,8 +46,8 @@ describe('2. Reframe: Filters → Your constraints, Matchmaker → Find my fit',
     expect(matchmaker).toContain('Find my fit');
   });
 
-  it('FacetBar mobile disclosure label is "Your constraints"', () => {
-    expect(facetBar).toContain('Your constraints');
+  it('FacetBar mobile disclosure label is "Filter"', () => {
+    expect(facetBar).toContain('Filter');
   });
 
   it('FacetBar modal title is "Tell us what fits your life"', () => {
