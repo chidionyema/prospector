@@ -146,8 +146,19 @@ function PackCard({ pack }: { pack: Pack }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
   const line = pack.oneLine || sub;
-  // 'The Brief' direction: cards as research documents, not SaaS tiles.
-  // Left rule, warm paper, no shadow, no colored cover. Typography does the work.
+
+  // Status badge from available data. Only show when it means something.
+  const badge: string | null =
+    pack.sourceCount && pack.sourceCount >= 30 ? 'Trending' : null;
+
+  // Bold the hook: first sentence of the description as a secondary anchor.
+  const hookEnd = line ? Math.min(
+    line.indexOf('.') > 0 ? line.indexOf('.') + 1 : 60,
+    line.indexOf(',') > 0 ? line.indexOf(',') : 60,
+  ) : 0;
+  const hook = line && hookEnd > 0 && hookEnd < line.length ? line.slice(0, hookEnd) : null;
+  const rest = hook ? line!.slice(hookEnd).trim() : line;
+
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -158,33 +169,51 @@ function PackCard({ pack }: { pack: Pack }) {
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
-      {/* Eyebrow: category + verification -- meaningful, not decorative */}
-      <div className="flex items-baseline gap-2">
+      {/* Category icon + label row — visual anchor, breaks text monotony */}
+      <div className="flex items-center gap-2 mb-2">
         {cat.tagged && (
-          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#0D9488' }}>
-            {cat.label}
+          <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: '#042F2E10' }}>
+            <Icon name={cat.icon} size={14} className="text-primary" />
           </span>
         )}
-        {eyebrow && (
-          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
-        )}
-        {pack.market && (
-          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{marketLabel(pack.market)}</span>
+        <div className="flex items-baseline gap-2 flex-1 min-w-0">
+          {cat.tagged && (
+            <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#0D9488' }}>
+              {cat.label}
+            </span>
+          )}
+          {eyebrow && (
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted truncate">{eyebrow}</span>
+          )}
+          {pack.market && (
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{marketLabel(pack.market)}</span>
+          )}
+        </div>
+        {badge && (
+          <span className="flex-none text-[10px] font-bold uppercase tracking-wide px-2 py-0.5" style={{ color: '#0D9488', backgroundColor: '#0D948810' }}>
+            {badge}
+          </span>
         )}
       </div>
 
       <h3
         className={cx(
-          'mt-1 line-clamp-2 text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
+          'line-clamp-2 text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
         )}
       >
         {heading}
       </h3>
-      {line && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted">{line}</p>}
+      {line && (
+        <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted">
+          {hook ? (
+            <><span className="font-semibold text-text/80">{hook}</span>{rest}</>
+          ) : (
+            line
+          )}
+        </p>
+      )}
 
-      {/* Verification mini-bar: 6 segments, one per check. Green = passed.
-          The 6/6 is always true for listed packs, but the bar performs
-          the brand promise before anyone reads a word. */}
+      {/* Verification mini-bar */}
       <div className="mt-3 flex gap-[2px]" aria-hidden>
         {Array.from({ length: 6 }).map((_, i) => (
           <span key={i} className="h-[3px] flex-1 rounded-full bg-[#0D9488]" />
@@ -194,10 +223,12 @@ function PackCard({ pack }: { pack: Pack }) {
       <ProofLine pack={pack} />
 
       <div className="mt-auto pt-4">
-        <BuyNowButton
-          pack={pack}
-          className="w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center"
-        />
+        <span
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center cursor-pointer"
+        >
+          Unlock for {formatPrice(pack.price)}
+        </span>
         <p className="mt-2 text-center text-[13px] font-medium text-muted">
           or view details <Icon name="arrowRight" size={13} className="inline align-middle" />
         </p>
