@@ -105,7 +105,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         </div>
 
         {menuOpen && (
-          <div id="marketing-menu" className="border-t border-border bg-white md:hidden shadow-lg animate-rise">
+          <div id="marketing-menu" className="border-t border-border bg-surface md:hidden shadow-lg animate-rise">
             <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-6 py-4">
               <div className="py-4 space-y-4">
                 {MARKETING_NAV.map((item) => (

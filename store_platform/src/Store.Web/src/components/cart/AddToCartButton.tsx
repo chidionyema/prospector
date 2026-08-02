@@ -58,7 +58,7 @@ export function AddToCartButton({ line, size = 'full', className }: AddToCartBut
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
           inCart
             ? 'border-primary bg-primary text-white'
-            : 'border-border bg-white text-muted hover:border-primary hover:text-primary',
+            : 'border-border bg-surface text-muted hover:border-primary hover:text-primary',
           className,
         )}
       >

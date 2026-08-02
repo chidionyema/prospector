@@ -62,7 +62,7 @@ export default function Faq() {
       >
         <div className="space-y-6 mt-12 md:mt-16">
           {FAQS.filter((item) => item.category === 'packs').map((item, i) => (
-            <div key={i} className="bg-white border border-border p-5 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] group">
+            <div key={i} className="bg-surface border border-border p-5 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] group">
               <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
               <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
             </div>
@@ -77,7 +77,7 @@ export default function Faq() {
       >
         <div className="space-y-6 mt-12 md:mt-16">
           {FAQS.filter((item) => item.category === 'payment').map((item, i) => (
-            <div key={i} className="bg-white border border-border p-5 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] group">
+            <div key={i} className="bg-surface border border-border p-5 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] group">
               <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
               <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
             </div>
@@ -92,7 +92,7 @@ export default function Faq() {
       >
         <div className="space-y-6 mt-12 md:mt-16">
           {FAQS.filter((item) => item.category === 'process').map((item, i) => (
-            <div key={i} className="bg-white border border-border p-5 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] group">
+            <div key={i} className="bg-surface border border-border p-5 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] group">
               <h2 className="text-lg font-black text-text mb-4 leading-tight group-hover:text-primary transition-standard">{item.question}</h2>
               <div className="text-base text-text/80 leading-relaxed"><Answer item={item} /></div>
             </div>
@@ -102,7 +102,7 @@ export default function Faq() {
 
       <Section bg="white" width="7xl">
         <aside className="space-y-6 max-w-sm mx-auto">
-          <div className="bg-white border border-border p-6 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
+          <div className="bg-surface border border-border p-6 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-standard hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] group">
             <h4 className="font-bold text-[10px] uppercase tracking-widest text-text mb-4">Contact Support</h4>
             <div className="space-y-4 font-mono text-[11px]">
               <div className="flex flex-col border-b border-border/60 pb-4">

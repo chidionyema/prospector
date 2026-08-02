@@ -26,7 +26,7 @@ export function DossierCard({ pack }: { pack: Pack }) {
     <Link
       href={`/pack/${pack.id}`}
       className={cx(
-        'group flex h-full flex-col rounded-lg bg-white p-5 ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200',
+        'group flex h-full flex-col rounded-lg bg-surface p-5 ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200',
         'hover:bg-primary/[0.02] hover:shadow-[0_10px_15px_-3px_rgba(15,23,42,0.08)] hover:ring-black/[0.18]',
       )}
     >

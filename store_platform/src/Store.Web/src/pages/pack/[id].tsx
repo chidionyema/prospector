@@ -410,7 +410,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
             )}
 
             {/* Mobile purchase bar, keeps price + CTA above the fold on small screens */}
-            <div className="mt-8 rounded-2xl border border-border bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
+            <div className="mt-8 rounded-2xl border border-border bg-surface p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:hidden">
               {checkoutBody}
             </div>
 
@@ -439,7 +439,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 {CHECKS.map((check, i) => (
                   <li
                     key={check}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                    className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
                   >
                     {/* A numeral, not a tick: a green success mark on a static line reads as this
                         pack's verdict on that check, which is exactly what this page cannot know. */}
@@ -526,7 +526,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 <FacetChips pack={pack} className="mt-4" />
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {pack.market && (
-                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
+                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Market
                       </span>
@@ -542,7 +542,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                     </div>
                   )}
                   {pack.whoPays && (
-                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
+                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:col-span-3">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Who pays
                       </span>
@@ -550,7 +550,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                     </div>
                   )}
                   {pack.timeToFirstRevenue && (
-                    <div className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                    <div className="flex flex-col rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                       <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         Time to first revenue
                       </span>
@@ -585,7 +585,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                   {pack.whatYouGet.map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-3 rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                      className="flex items-start gap-3 rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
                     >
                       <span className="mt-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
                         {String(i + 1).padStart(2, '0')}
@@ -608,7 +608,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 {/* Peek inside: a page you are looking at the top of. The fade is over the page
                     itself, never over invented text, every line below is really in the pack, and
                     nothing is blurred to imply content that does not exist. */}
-                <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_18px_40px_rgba(0,0,0,0.07)]">
+                <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_18px_40px_rgba(0,0,0,0.07)]">
                   <div className="flex items-center gap-2 border-b border-border bg-bg/60 px-5 py-3">
                     <Icon name="briefcase" size={14} className="text-primary" />
                     <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
@@ -634,7 +634,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
             )}
 
             {/* The receipts */}
-            <div className="mt-12 rounded-xl border border-border bg-white p-6">
+            <div className="mt-12 rounded-xl border border-border bg-surface p-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <Icon name="verified" className="text-success" size={18} />
                 <span className="font-mono text-xs font-bold uppercase tracking-widest text-text">The receipts</span>
@@ -659,7 +659,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
 
           {/* Right: Checkout (desktop sticky) */}
           <div className="hidden w-full shrink-0 lg:block lg:w-80">
-            <div className="sticky top-24 rounded-2xl border border-border bg-white p-7 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
+            <div className="sticky top-24 rounded-2xl border border-border bg-surface p-7 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
               {checkoutBody}
             </div>
           </div>
@@ -667,7 +667,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
 
         {/* Sticky mobile checkout bar, keeps price + CTA above the fold on phones. */}
         {canCheckout && !clientSecret && (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white p-3 pb-[env(safe-area-inset-bottom)] lg:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-3 pb-[env(safe-area-inset-bottom)] lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-medium text-muted">One time</span>
@@ -689,7 +689,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-6 right-4 z-20 hidden rounded-full border border-border bg-white p-3 shadow-md transition-colors hover:bg-bg lg:block"
+            className="fixed bottom-6 right-4 z-20 hidden rounded-full border border-border bg-surface p-3 shadow-md transition-colors hover:bg-bg lg:block"
             aria-label="Back to top"
           >
             <Icon name="trending-up" size={16} />
@@ -722,7 +722,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
   const hasRealContent = headings.length > 0 || body.length > 0;
 
   return (
-    <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+    <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
       {/* aria-hidden + a fixed height: this is an image of a document, not content. A screen
           reader gets the real, unblurred lists further down the page instead, and the clamp
           stops a pack with many bullets rendering a metre of blur. */}
@@ -767,7 +767,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
         )}
       </div>
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-white via-white/70 to-white/30">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-xs font-bold text-text shadow-sm">
+        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text shadow-sm">
           <Icon name="lock" size={14} className="text-muted" />
           Unlocks the moment you buy
         </span>
@@ -795,7 +795,7 @@ function ShareRow({ title }: { title: string }) {
   }, [url]);
 
   const btnClass =
-    'rounded-full border border-border bg-white p-2 text-muted hover:text-text hover:border-text/30 transition-colors';
+    'rounded-full border border-border bg-surface p-2 text-muted hover:text-text hover:border-text/30 transition-colors';
 
   return (
     <div className="mt-4 flex items-center gap-2">

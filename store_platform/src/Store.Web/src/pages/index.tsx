@@ -261,7 +261,7 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
   const label = freshnessLabel(latest);
   if (!label && !stats) return null;
   return (
-    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-muted shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-muted shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       <span className="inline-flex items-center gap-2">
         <span className="inline-flex h-2 w-2 rounded-full bg-[#0DDB8B]" />
         <span className="text-text">Live database</span>
@@ -323,7 +323,7 @@ function RecentlyViewed({ packs }: { packs: Pack[] }) {
           <Link
             key={pack.id}
             href={`/pack/${pack.id}`}
-            className="flex items-center gap-3 rounded-lg border border-border bg-white p-3 text-sm font-semibold text-text transition-colors hover:border-text/20 hover:bg-bg"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-semibold text-text transition-colors hover:border-text/20 hover:bg-bg"
           >
             <Icon name="arrowRight" size={14} className="text-muted" />
             {pack.cardLine || pack.title}
@@ -417,7 +417,7 @@ function CatalogBrowser({
 
   if (packs.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-white py-20 text-center">
+      <div className="rounded-2xl border border-dashed border-border bg-surface py-20 text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-bg text-muted">
           <Icon name="search" size={20} />
         </div>
@@ -465,7 +465,7 @@ function CatalogBrowser({
       {/* Progressive discovery flow -- default visible. Buyer answers 3 questions
           (skills → time → market) and the shelf filters in real time.
           On desktop: always visible. On mobile: hidden, replaced by Filter button. */}
-      <div className="mb-5 hidden rounded-xl border border-border bg-white p-5 shadow-sm lg:block">
+      <div className="mb-5 hidden rounded-xl border border-border bg-surface p-5 shadow-sm lg:block">
         <StepFlow packs={packs} state={state} onChange={apply} />
       </div>
       <div className="lg:hidden">
@@ -601,7 +601,7 @@ function MethodCostAnchor() {
       </p>
 
       <dl className="mt-6 grid gap-5 sm:grid-cols-2">
-        <div className="rounded-xl bg-white p-5 ring-1 ring-black/[0.06]">
+        <div className="rounded-xl bg-surface p-5 ring-1 ring-black/[0.06]">
           <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">
             {documentary.publisher}, {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
           </dt>
@@ -610,7 +610,7 @@ function MethodCostAnchor() {
             <span className="mt-1 block text-xs text-muted">for {documentary.of}</span>
           </dd>
         </div>
-        <div className="rounded-xl bg-white p-5 ring-1 ring-success/25">
+        <div className="rounded-xl bg-surface p-5 ring-1 ring-success/25">
           <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
             A pack, already run
           </dt>
@@ -674,7 +674,7 @@ function ComparisonBlock() {
         </div>
 
         {/* Right: the offer */}
-        <div className="flex flex-col rounded-2xl border-2 border-success/40 bg-white p-6 shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+        <div className="flex flex-col rounded-2xl border-2 border-success/40 bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-success/10 text-success">
               <Icon name="check" size={14} />

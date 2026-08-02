@@ -86,7 +86,7 @@ export default function SamplePage() {
 
       <Section bg="bg" width="6xl" className="!pt-6 !pb-24">
         {/* The idea */}
-        <div className="rounded-2xl border border-border bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:p-9">
+        <div className="rounded-2xl border border-border bg-surface p-7 shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:p-9">
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
             The opportunity
           </span>
@@ -149,7 +149,7 @@ export default function SamplePage() {
             {checks.map((ch, i) => (
               <li
                 key={i}
-                className="rounded-xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-6"
+                className="rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-6"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-base font-bold text-text">{ch.name}</h3>
@@ -205,7 +205,7 @@ export default function SamplePage() {
         )}
 
         {/* CTA */}
-        <div className="mt-12 rounded-2xl border border-border bg-white p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:p-10">
+        <div className="mt-12 rounded-2xl border border-border bg-surface p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:p-10">
           <h2 className="mx-auto max-w-[24ch] text-balance text-2xl font-black tracking-tight text-text md:text-3xl">
             That was free. Every pack on the shelf is built like this.
           </h2>

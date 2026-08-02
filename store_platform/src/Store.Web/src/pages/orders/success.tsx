@@ -151,7 +151,7 @@ export default function OrderSuccess() {
                   paid for. Promising an inbox link we do not send is what turns a lost tab into a
                   refund. When Mailjet is configured, restore the "we emailed you a copy" line HERE. */}
               {items[0]?.orderPath && (
-                <div className="rounded-xl border border-border bg-white p-4 text-left">
+                <div className="rounded-xl border border-border bg-surface p-4 text-left">
                   <p className="text-sm font-semibold text-text">Save this link now</p>
                   <p className="mt-1 text-xs text-muted">
                     It is your permanent access link, it does not expire. Bookmark it or copy it
@@ -181,7 +181,7 @@ export default function OrderSuccess() {
           )}
 
           {phase === 'resolving' && (
-            <div className="bg-white border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-5">
+            <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-5">
               <div className="h-1 w-full bg-border overflow-hidden rounded-full">
                 <div
                   className="h-full bg-primary transition-all rounded-full"
@@ -200,7 +200,7 @@ export default function OrderSuccess() {
             phase === 'timed-out' ||
             phase === 'unfulfilled' ||
             phase === 'revoked') && (
-            <div className="bg-white border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-4">
+            <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full text-left space-y-4">
               {phase === 'timed-out' && (
                 <div className="h-1 w-full bg-border overflow-hidden rounded-full">
                   <div
@@ -269,14 +269,14 @@ export default function OrderSuccess() {
           <div className="flex flex-col sm:flex-row gap-4 mt-2">
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text hover:bg-white transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text hover:bg-surface transition-colors"
             >
               Browse more packs
             </Link>
             {packId && (
               <Link
                 href={`/pack/${packId}`}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text hover:bg-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text hover:bg-surface transition-colors"
               >
                 Back to pack
               </Link>

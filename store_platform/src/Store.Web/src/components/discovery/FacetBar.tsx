@@ -299,7 +299,7 @@ export function StepFlow({
                     'flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition-all',
                     active
                       ? 'border-primary bg-primary/5'
-                      : 'border-border bg-white hover:border-text/20 hover:bg-bg/50',
+                      : 'border-border bg-surface hover:border-text/20 hover:bg-bg/50',
                   )}
                 >
                   <Icon name={stepIcon(currentGroup.kind, value)} size={24} className="text-text/70" />
@@ -319,7 +319,7 @@ export function StepFlow({
                 <button
                   type="button"
                   onClick={() => setStep((s) => s - 1)}
-                  className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg"
+                  className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg"
                 >
                   ← Back
                 </button>
@@ -498,7 +498,7 @@ export function FacetBar({
           onClick={() => setSheetOpen(true)}
           aria-expanded={sheetOpen}
           aria-haspopup="dialog"
-          className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30"
+          className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30"
         >
           Filter
           {activeCount > 0 && (
