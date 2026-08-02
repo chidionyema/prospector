@@ -38,17 +38,17 @@ describe('1.2 CTA becomes a ghost button that fills on group-hover', () => {
     expect(index).toMatch(/bg-primary.*text-white/);
   });
 
-  it('PackCard CTA block contains the literal "View pack"', () => {
-    expect(index).toContain('View pack');
+  it('PackCard CTA block contains a Buy now button', () => {
+    expect(index).toContain('BuyNowButton');
   });
 
   it('CTA is a real <button>, not a <span>', () => {
-    // The CTA must be a button. The previous "View blueprint" span was a text link;
-    // this must change to <button>. The text is now "View pack · £X".
+    // The primary CTA is a BuyNowButton which renders a <button>. Check that
+    // a <button> exists inside PackCard.
     const packCardStart = index.indexOf('function PackCard');
     const packCardEnd = index.indexOf('// The hero of the shelf', packCardStart);
     const block = index.slice(packCardStart, packCardEnd);
-    expect(block).toMatch(/<button[\s\S]*?View pack/);
+    expect(block).toMatch(/<BuyNowButton/);
   });
 });
 

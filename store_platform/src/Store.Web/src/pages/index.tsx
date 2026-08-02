@@ -263,18 +263,20 @@ function PackCard({ pack }: { pack: Pack }) {
             three tiers, one path. */}
         <ProofLine pack={pack} />
 
-        {/* One CTA. "View pack" opens the full dossier -- the primary action on a shelf.
-            The old Buy and +cart buttons are gone: the pack page has the purchase UI,
-            and a shelf where every card demands a cart decision is a worse shelf.
-            mt-auto pins the button to the card's bottom edge so every card in a row
-            aligns regardless of content height. */}
+        {/* Two CTAs, one clear hierarchy. "Buy now" is primary: at £49 with a
+            14-day refund, the shelf should close the sale. The price badge in the
+            cover already shows £49, so the button carries the action. The whole
+            card is already a link to the pack page, so the secondary text just
+            signals the alternative path. Both sit inside mt-auto so every card
+            in a row aligns at the bottom. */}
         <div className="mt-auto pt-4">
-          <button
-            type="button"
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
-          >
-            View pack · {formatPrice(pack.price)}
-          </button>
+          <BuyNowButton
+            pack={pack}
+            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center"
+          />
+          <p className="mt-2 text-center text-[13px] font-semibold text-muted">
+            or view details <Icon name="arrowRight" size={13} className="inline align-middle" />
+          </p>
         </div>
       </div>
     </Link>
