@@ -358,7 +358,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
           ]}
         />
 
-        {/* Back to catalog — prominent, always visible */}
+        {/* Back to catalog -- prominent, always visible */}
         <Link
           href="/"
           className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-text transition-colors"
