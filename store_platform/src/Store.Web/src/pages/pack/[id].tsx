@@ -130,6 +130,20 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
 
+  // Map internal axis keys to buyer-facing labels so the scored section
+  // reads as consumer content, not internal tooling.
+  const axisLabel = (key: string): string => {
+    const labels: Record<string, string> = {
+      pain_acuity: 'Real demand',
+      money_provability: 'People will pay',
+      defensibility: 'Hard to copy',
+      distribution: 'Can reach buyers',
+      build_feasibility: 'You can build this',
+      automatability: 'Runs without you',
+    };
+    return labels[key] ?? key.replace(/_/g, ' ');
+  };
+
   // Back-to-top visibility, revealed after scrolling past the hero (~600px).
   const [showBackToTop, setShowBackToTop] = React.useState(false);
   React.useEffect(() => {
@@ -340,7 +354,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
           {/* Left: Content */}
           <div className="flex-1">
             {/* Cover */}
-            <div className={`relative mb-8 h-44 overflow-hidden rounded-2xl ${coverFor(pack.id)}`}>
+            <div className={`relative mb-8 h-28 overflow-hidden rounded-2xl ${coverFor(pack.id)}`}>
               <CoverArt title={pack.title} />
               <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-text shadow-sm">
                 <Icon name="verified" size={13} /> Survived six checks
@@ -439,10 +453,10 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 weak axes, plus the surfaced main risk. Hiding the cons would kill the pros. */}
             {(axes.length > 0 || verdict.risk) && (
               <div className="mt-12">
-                <h2 className="text-xl font-bold tracking-tight text-text">The stress test, scored</h2>
+                <h2 className="text-xl font-bold tracking-tight text-text">How it scores</h2>
                 <p className="mt-2 max-w-[60ch] text-sm text-muted">
-                  We score every survivor on six axes, out of five. We show you the weak ones too. A high
-                  bar is a strength, a low bar is a trade you should know about before you build.
+                  Six things we measure. The strong ones are strengths. The weaker ones are things
+                  you should know before you build.
                 </p>
 
                 {axes.length > 0 && (
@@ -453,7 +467,7 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                       return (
                         <div key={a.label} className="flex flex-col gap-1.5">
                           <div className="flex items-baseline justify-between gap-2">
-                            <dt className="text-sm font-semibold text-text">{a.label}</dt>
+                            <dt className="text-sm font-semibold text-text">{axisLabel(a.label)}</dt>
                             <dd className="font-mono text-xs font-bold text-muted">
                               {a.value} / {a.outOf}
                             </dd>
