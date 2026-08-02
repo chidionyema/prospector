@@ -446,6 +446,15 @@ function CatalogBrowser({
     !filtered && sort === 'newest' && grouped.matching.length > 2 ? grouped.matching[0] : null;
   const gridPacks = spotlight ? grouped.matching.slice(1) : grouped.matching;
 
+  // Trending: top 3 by source count, only on unfiltered default view
+  const trending = React.useMemo(() => {
+    if (filtered || sort !== 'newest') return [];
+    return [...packs]
+      .filter((p) => typeof p.sourceCount === 'number' && p.sourceCount > 0)
+      .sort((a, b) => (b.sourceCount ?? 0) - (a.sourceCount ?? 0))
+      .slice(0, 3);
+  }, [filtered, sort, packs]);
+
   if (packs.length === 0) {
     return (
       <div className=" border border-dashed border-border bg-surface py-20 text-center">
@@ -510,6 +519,33 @@ function CatalogBrowser({
           {visible.length > 0 ? (
             <>
               <RecentlyViewed packs={packs} />
+              {/* Trending picks: 3-card row, only on default unfiltered view */}
+              {trending.length === 3 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-text mb-3">Trending picks</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {trending.map((pack) => (
+                      <Link
+                        key={pack.id}
+                        href={`/pack/${pack.id}`}
+                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
+                      >
+                        <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
+                          <Icon name="trending-up" size={16} className="text-primary" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-text group-hover:text-primary transition-colors truncate">
+                            {pack.cardLine || pack.title}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            {pack.sourceCount ?? 0} sources · {formatPrice(pack.price)}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
               {spotlight && <SpotlightCard pack={spotlight} />}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {gridPacks.map((pack, i) => (
@@ -787,12 +823,12 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
           {variant.globalHookDescription}
         </p>
-        {/* Two clear next actions: the shelf for buyers, the free report for the sceptical. */}
+        {/* Hero CTA: ghost button so it doesn't compete with Buy buttons below */}
         <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/sample"
             onClick={() => track('sample_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/5 sm:w-auto"
           >
             Read a free report, no email
           </Link>
@@ -800,6 +836,27 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
+      </SectionBand>
+
+      {/* Trust band: three pillars, between hero and shelf */}
+      <SectionBand bg="bg" width="6xl" className="!py-6 md:!py-8">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            { icon: 'shield', label: '6 rigorous checks', sub: 'Every claim attacked before listing' },
+            { icon: 'verified', label: '100% sourced', sub: 'Every figure links to a live page' },
+            { icon: 'download', label: 'Ready to build', sub: 'Blueprint, GTM plan, ops + numbers' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-start gap-3 border border-border bg-surface p-4">
+              <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
+                <Icon name={item.icon as IconName} size={16} className="text-primary" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-text">{item.label}</p>
+                <p className="mt-0.5 text-xs text-muted">{item.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </SectionBand>
 
       <div id="catalog" className="scroll-mt-20" />
