@@ -227,17 +227,21 @@ function ProofLine({ pack }: { pack: Pack }) {
   return (
     <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-muted">
       <Icon name="verified" size={12} className="text-primary" />
-      <span className="font-bold text-text/80">6 / 6</span>
       {sources !== null && (
         <>
-          <span aria-hidden="true">·</span>
           <span>
             <span className="font-bold text-text/80">{sources}</span> sources
           </span>
+          <span aria-hidden="true">·</span>
         </>
       )}
-      {sources !== null && fresh && <span aria-hidden="true">·</span>}
-      {fresh && <span>{fresh}</span>}
+      <span className="font-bold text-text/80">6 / 6</span> checks
+      {fresh && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span>{fresh}</span>
+        </>
+      )}
     </p>
   );
 }
@@ -315,9 +319,9 @@ function PackCard({ pack }: { pack: Pack }) {
             type="button"
             className="w-full rounded-md border border-border bg-transparent px-4 py-2 text-sm font-bold text-text transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-white"
           >
-            View blueprint →
+            View blueprint <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
           </button>
-          <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3.5">
+          <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3.5 opacity-50 group-hover:opacity-100 transition-opacity">
             {/* Buy before basket: a single pack is the common purchase, and the drawer carries
                 the deliverables, the price and the refund right, so this is not a shortcut
                 past the evidence. Both stay quieter than "View blueprint", the pack page is
