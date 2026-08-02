@@ -35,7 +35,7 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = true,
               <p className="text-xs font-bold font-mono text-muted uppercase tracking-widest">Version {version}</p>
             </div>
             {interim && (
-              <div className="rounded-lg border border-border bg-bg/50 px-6 py-5 text-sm leading-relaxed text-muted shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+              <div className="border border-border bg-bg/50 px-6 py-5 text-sm leading-relaxed text-muted">
                 <strong className="text-text font-bold">Interim beta terms.</strong> This document reflects how the
                 platform actually works today and is pending final review by our legal counsel. We&apos;ll
                 post a new version here if anything material changes.

@@ -121,7 +121,7 @@ export function PackContentsSection({
         {PACK_CONTENTS.map((item) => (
           <li
             key={item.title}
-            className="flex gap-4 rounded-xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+            className="flex gap-4 border border-border bg-surface p-5"
           >
             <span aria-hidden className="select-none text-2xl leading-none">
               {item.emoji}
@@ -146,7 +146,7 @@ export function PackContentsSection({
       </ul>
 
       {/* Format ambiguity kills digital conversions. State the file format outright. */}
-      <div className="mt-5 flex flex-col gap-2 rounded-xl border border-border bg-bg/50 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 flex flex-col gap-2 border border-border bg-bg/50 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-text/75">
           <span className="font-bold text-text">Format:</span> one zip of plain Markdown files, 5,000+ words
           per pack. Open it anywhere, edit it, or paste it straight into Notion, Obsidian or your AI tool of

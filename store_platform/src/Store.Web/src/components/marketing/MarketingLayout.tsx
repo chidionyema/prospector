@@ -60,7 +60,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           {/* Left: Brand & Main Nav */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
-              <Logo className="text-xl" />
+              <Logo className="text-xl" onDark />
             </Link>
 
             <nav className="hidden md:flex items-center gap-6">

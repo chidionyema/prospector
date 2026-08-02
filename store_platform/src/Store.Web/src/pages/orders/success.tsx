@@ -140,7 +140,7 @@ export default function OrderSuccess() {
                 <a
                   key={item.packId}
                   href={`${API_BASE_URL}${item.downloadPath}`}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
                 >
                   <Icon name="download" size={16} />
                   Download {item.packTitle}
