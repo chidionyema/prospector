@@ -322,9 +322,6 @@ function PackCard({ pack }: { pack: Pack }) {
           >
             View pack · {formatPrice(pack.price)}
           </button>
-          <p className="mt-1.5 text-center text-[10px] font-medium text-muted">
-            {killTotals.killed.toLocaleString('en-GB')} killed · {killTotals.passed} survived
-          </p>
           <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3.5">
             {/* Buy before basket: a single pack is the common purchase, and the drawer carries
                 the deliverables, the price and the refund right, so this is not a shortcut
@@ -432,9 +429,6 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
           <span aria-hidden className="text-faint">
             •
           </span>
-          {/* The survivorship ratio lives here rather than in a second pill under the heading.
-              It used to be both, and the duplicate row cost ~50px directly above the shelf,
-              which is the one place on this page where vertical space is the scarce resource. */}
           <span>
             {stats.registered > stats.listed
               ? `${stats.listed} live now, of ${stats.registered} that reached final packaging`
@@ -442,6 +436,12 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
           </span>
         </>
       )}
+      <span aria-hidden className="text-faint">
+        •
+      </span>
+      <span>
+        {killTotals.killed.toLocaleString('en-GB')} killed, {killTotals.passed} survived
+      </span>
     </div>
   );
 }
