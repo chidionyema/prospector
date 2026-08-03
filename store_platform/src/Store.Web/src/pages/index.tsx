@@ -783,7 +783,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           {variant.globalHookDescription}
         </p>
 
-        {/* Trust badges — inline, not a separate band */}
+        {/* Trust badges -- inline, not a separate band */}
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {[
             { icon: 'shield', label: '6 rigorous checks', sub: 'Every claim attacked before listing' },
