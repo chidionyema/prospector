@@ -488,6 +488,11 @@ function CatalogBrowser({
         </div>
       )}
 
+      {/* Progressive discovery -- first thing in the catalog. No border box. */}
+      <div className="mb-6">
+        <StepFlow packs={packs} state={state} onChange={apply} />
+      </div>
+
       {/* Toolbar: search, count, sort. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:w-64">
@@ -503,16 +508,6 @@ function CatalogBrowser({
         </div>
       </div>
 
-      {/* Progressive discovery flow -- default visible. Buyer answers 3 questions
-          (skills → time → market) and the shelf filters in real time. */}
-      <div className="mb-5 border border-border bg-surface p-5">
-        <StepFlow packs={packs} state={state} onChange={apply} />
-      </div>
-
-          {/* What is currently narrowing the shelf, one removable chip per constraint, the
-              only always-visible trace of the filters on a phone, where the controls live in a
-              closed sheet. Renders nothing when nothing is active, so the default view pays no
-              height for it. */}
           <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
 
 
@@ -837,27 +832,6 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
-      </SectionBand>
-
-      {/* Trust band: three pillars, between hero and shelf */}
-      <SectionBand bg="bg" width="6xl" className="!py-6 md:!py-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[
-            { icon: 'shield', label: '6 rigorous checks', sub: 'Every claim attacked before listing' },
-            { icon: 'verified', label: '100% sourced', sub: 'Every figure links to a live page' },
-            { icon: 'download', label: 'Ready to build', sub: 'Blueprint, GTM plan, ops + numbers' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-start gap-3 border border-border bg-surface p-4">
-              <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
-                <Icon name={item.icon as IconName} size={16} className="text-primary" />
-              </span>
-              <div>
-                <p className="text-sm font-bold text-text">{item.label}</p>
-                <p className="mt-0.5 text-xs text-muted">{item.sub}</p>
-              </div>
-            </div>
-          ))}
-        </div>
       </SectionBand>
 
       <div id="catalog" className="scroll-mt-20" />
