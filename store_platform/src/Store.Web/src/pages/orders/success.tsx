@@ -256,7 +256,7 @@ export default function OrderSuccess() {
                         `My payment went through but I have not received my download.\n\nOrder reference: ${sessionId}\n`,
                       )}`
                     }
-                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                    className="mt-3 inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
                   >
                     <Icon name="mail" size={16} />
                     Email us about this order
@@ -269,14 +269,14 @@ export default function OrderSuccess() {
           <div className="flex flex-col sm:flex-row gap-4 mt-2">
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text hover:bg-surface transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-border text-sm font-semibold text-text hover:bg-surface transition-colors"
             >
               Browse more packs
             </Link>
             {packId && (
               <Link
                 href={`/pack/${packId}`}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text hover:bg-surface transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-border text-sm font-semibold text-text hover:bg-surface transition-colors"
               >
                 Back to pack
               </Link>
