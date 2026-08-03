@@ -770,7 +770,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
       />
 
       {/* 1. INTEGRATED HERO: value prop + trust + discovery, one surface.
-          The buyer sees what this is, why trust it, and starts filtering —
+          The buyer sees what this is, why trust it, and starts filtering --
           all before scrolling. */}
       <SectionBand bg="white" width="6xl" className="pt-6 pb-4 md:pt-8 md:pb-6 text-center">
         <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
@@ -808,6 +808,9 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
             Read a free report, no email
           </Link>
         </div>
+        <p className="mt-2 text-sm font-medium text-muted">
+          No payment, no email. A whole dossier, unredacted, every source clickable.
+        </p>
       </SectionBand>
 
       {/* 2. CATALOG: discovery sidebar + product grid */}
