@@ -335,6 +335,7 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
 }
 
 /** The last few packs the buyer viewed, from localStorage. Renders nothing on first visit. */
+/** Compact recently-viewed links for the sidebar. */
 function RecentlyViewed({ packs }: { packs: Pack[] }) {
   const [viewed, setViewed] = React.useState<string[]>([]);
   React.useEffect(() => {
@@ -351,16 +352,15 @@ function RecentlyViewed({ packs }: { packs: Pack[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="mb-6">
-      <h3 className="text-sm font-bold text-text">Recently viewed</h3>
-      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="mb-4">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-2">Recently viewed</p>
+      <div className="space-y-1.5">
         {items.map((pack) => (
           <Link
             key={pack.id}
             href={`/pack/${pack.id}`}
-            className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-semibold text-text transition-colors hover:border-text/20 hover:bg-bg"
+            className="block text-xs text-muted hover:text-text transition-colors truncate"
           >
-            <Icon name="arrowRight" size={14} className="text-muted" />
             {pack.cardLine || pack.title}
           </Link>
         ))}
@@ -507,6 +507,7 @@ function CatalogBrowser({
       <div className="gap-6 lg:flex">
         {/* Sidebar -- sticky, discovery surface */}
         <div className="mb-5 shrink-0 lg:sticky lg:top-20 lg:mb-0 lg:w-64 lg:self-start">
+          <RecentlyViewed packs={packs} />
           <div className="border border-border bg-surface p-4">
             <StepFlow packs={packs} state={state} onChange={apply} />
           </div>
@@ -518,7 +519,6 @@ function CatalogBrowser({
 
           {visible.length > 0 ? (
             <>
-              <RecentlyViewed packs={packs} />
               {trending.length === 3 && (
                 <div className="mb-5">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
