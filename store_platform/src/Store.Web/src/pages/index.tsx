@@ -491,7 +491,7 @@ function CatalogBrowser({
         </div>
       </div>
 
-      {/* Progressive flow — full width, no box, integrated */}
+      {/* Progressive flow -- full width, no box, integrated */}
       <div className="mb-6">
         <StepFlow packs={packs} state={state} onChange={apply} />
       </div>
