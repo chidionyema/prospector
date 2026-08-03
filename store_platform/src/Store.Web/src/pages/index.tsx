@@ -769,76 +769,48 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         )}
       />
 
-      {/* 1. HERO, deliberately short enough that the shelf starts above the fold.
-             It was 606px tall at 1280x720 (measured), which put the first pack card at y=1094:
-             a storefront whose entire argument is "here is what survived" opened on an argument
-             and no product. Nothing here was deleted outright, the long pitch paragraph is the
-             "What you get for £49" section further down, and the trust pills restate the
-             guarantee that also sits under the grid. What is left is the claim, the price, and
-             the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
-             next block added above the grid fails a test instead of quietly undoing this. */}
-      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center animate-rise">
-        <p className="mb-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
+      {/* 1. INTEGRATED HERO: value prop + trust + discovery, one surface.
+          The buyer sees what this is, why trust it, and starts filtering —
+          all before scrolling. */}
+      <SectionBand bg="white" width="6xl" className="pt-6 pb-4 md:pt-8 md:pb-6 text-center">
+        <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
-        {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
-            "0", so it means a different number of pixels in every font: the old max-w-[24ch]
-            measured 576px in SF Pro but 819px in Verdana. That made the headline's line count a
-            function of which font the platform happened to pick, back when --font-sans named
-            "Inter" and nothing ever downloaded it, so every OS picked a different one. macOS
-            landed on 2 lines and CI Linux on 3, putting the first card at y=718.5 with 1.5px
-            showing. Measured minimum width for 2 lines: SF Pro 652px, Arial/Liberation 736px,
-            Tahoma 768px, Verdana 872px, 56rem (896px) clears all of them. It does not widen the
-            headline, because text-balance shortens the lines to even them up: the longest
-            rendered line is 677px, narrower than the 736px box this replaces.
-
-            globals.css now really does load and apply Hanken Grotesk, so the platform no longer
-            gets a vote, but the absolute cap stays, and stays the thing under test. It is what
-            makes this headline survive the font being slow, blocked, or swapped: measured with
-            the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
-            is still 2 and the first card still clears the fold by 88px at worst. */}
         <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           {variant.globalHookLead}
         </h1>
         <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
           {variant.globalHookDescription}
         </p>
-        {/* Hero CTA: ghost button so it doesn't compete with Buy buttons below */}
-        <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href="/sample"
-            onClick={() => track('sample_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/5 sm:w-auto"
-          >
-            Read a free report, no email
-          </Link>
-        </div>
-        <p className="mt-2 text-sm font-medium text-muted">
-          A whole dossier, unredacted, every source clickable. No payment, no email.
-        </p>
-      </SectionBand>
 
-      {/* Trust band: three pillars, between hero and shelf */}
-      <SectionBand bg="bg" width="6xl" className="!py-6 md:!py-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Trust badges -- inline, not a separate band */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {[
             { icon: 'shield', label: '6 rigorous checks', sub: 'Every claim attacked before listing' },
             { icon: 'verified', label: '100% sourced', sub: 'Every figure links to a live page' },
             { icon: 'download', label: 'Ready to build', sub: 'Blueprint, GTM plan, ops + numbers' },
           ].map((item) => (
-            <div key={item.label} className="flex items-start gap-3 border border-border bg-surface p-4">
-              <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
-                <Icon name={item.icon as IconName} size={16} className="text-primary" />
-              </span>
-              <div>
-                <p className="text-sm font-bold text-text">{item.label}</p>
-                <p className="mt-0.5 text-xs text-muted">{item.sub}</p>
-              </div>
+            <div key={item.label} className="flex items-center gap-2 text-xs text-muted">
+              <Icon name={item.icon as IconName} size={13} className="text-primary" />
+              <span className="font-semibold text-text">{item.label}</span>
+              <span className="hidden sm:inline">{item.sub}</span>
             </div>
           ))}
         </div>
+
+        {/* Hero CTA: ghost button */}
+        <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            href="/sample"
+            onClick={() => track('sample_cta_clicked')}
+            className="inline-flex items-center gap-2 border-2 border-primary px-5 py-2.5 text-sm font-bold text-primary transition-all hover:bg-primary/5"
+          >
+            Read a free report, no email
+          </Link>
+        </div>
       </SectionBand>
 
+      {/* 2. CATALOG: discovery sidebar + product grid */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
         <CatalogBrowser packs={packs} initialState={initialState} market={market} />
