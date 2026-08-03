@@ -451,14 +451,6 @@ function CatalogBrowser({
   const gridPacks = spotlight ? grouped.matching.slice(1) : grouped.matching;
 
   // Trending: top 3 by source count, only on unfiltered default view
-  const trending = React.useMemo(() => {
-    if (filtered || sort !== 'newest') return [];
-    return [...packs]
-      .filter((p) => typeof p.sourceCount === 'number' && p.sourceCount > 0)
-      .sort((a, b) => (b.sourceCount ?? 0) - (a.sourceCount ?? 0))
-      .slice(0, 3);
-  }, [filtered, sort, packs]);
-
   if (packs.length === 0) {
     return (
       <div className=" border border-dashed border-border bg-surface py-20 text-center">
@@ -478,103 +470,70 @@ function CatalogBrowser({
       {market !== DEFAULT_MARKET && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-border bg-bg/60 px-4 py-3 text-sm">
           <span className="text-text">Showing packs for {marketLabel(market)} first.</span>
-          <Link
-            href={`/?market=${DEFAULT_MARKET}`}
-            className="whitespace-nowrap font-semibold text-primary hover:underline"
-          >
+          <Link href={`/?market=${DEFAULT_MARKET}`} className="whitespace-nowrap font-semibold text-primary hover:underline">
             Switch to {marketLabel(DEFAULT_MARKET)}
           </Link>
         </div>
       )}
 
-      {/* Toolbar: search, count, sort -- compact, above the split */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Toolbar */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:w-64">
           <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
         </div>
         <div className="flex items-center gap-3">
-          <Heartbeat packs={packs} stats={null} />
           <span className="whitespace-nowrap text-sm font-semibold text-muted">
             {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
           </span>
-          <div className="w-36">
+          <div className="w-32">
             <Dropdown<SortKey> label="Sort" value={sort} options={SORTS} onChange={setSort} />
           </div>
         </div>
       </div>
 
-      {/* Split layout: sidebar (discovery) + results (cards) */}
-      <div className="gap-6 lg:flex">
-        {/* Sidebar -- sticky, discovery surface */}
-        <div className="mb-5 shrink-0 lg:sticky lg:top-20 lg:mb-0 lg:w-64 lg:self-start">
-          <RecentlyViewed packs={packs} />
-          <div className="border border-border bg-surface p-4">
-            <StepFlow packs={packs} state={state} onChange={apply} />
-          </div>
-        </div>
-
-        {/* Results -- cards, spotlight, trending */}
-        <div className="min-w-0 flex-1">
-          <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
-
-          {visible.length > 0 ? (
-            <>
-              {trending.length === 3 && (
-                <div className="mb-5">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {trending.map((pack) => (
-                      <Link
-                        key={pack.id}
-                        href={`/pack/${pack.id}`}
-                        className="group flex items-center gap-2 border border-border bg-surface p-3 text-sm transition-colors hover:bg-[#F8F5EF]"
-                      >
-                        <Icon name="trending-up" size={14} className="text-primary" />
-                        <span className="font-semibold text-text truncate">{pack.cardLine || pack.title}</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {spotlight && <SpotlightCard pack={spotlight} />}
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {gridPacks.map((pack, i) => (
-                  <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
-                    <PackCard pack={pack} />
-                  </div>
-                ))}
-              </div>
-              {grouped.others.map((group) => (
-                <div key={group.market} className="mt-10 border-t border-border pt-8">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
-                    Also available, {group.label}
-                  </h2>
-                  <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                    {group.packs.map((pack) => (
-                      <PackCard key={pack.id} pack={pack} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
-                <Icon name="shield" size={15} className="text-success" />
-                Every pack carries a 14 day money back guarantee.
-              </p>
-              <ShelfEndCapture className="mt-10" />
-            </>
-          ) : candidates.length > 0 ? (
-            <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
-              <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                {candidates.map((candidate) => {
-                  const pack = packs.find((p) => p.id === candidate.pack.id);
-                  return pack ? <PackCard key={pack.id} pack={pack} /> : null;
-                })}
-              </div>
-            </DiscoveryNearMiss>
-          ) : (
-            <DiscoveryWaitlist query={state.q} onReset={() => apply(EMPTY_DISCOVERY_STATE)} />
-          )}
-        </div>
+      {/* Progressive flow — full width, no box, integrated */}
+      <div className="mb-6">
+        <StepFlow packs={packs} state={state} onChange={apply} />
       </div>
+
+      <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
+
+      {visible.length > 0 ? (
+        <>
+          {spotlight && <SpotlightCard pack={spotlight} />}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {gridPacks.map((pack, i) => (
+              <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
+                <PackCard pack={pack} />
+              </div>
+            ))}
+          </div>
+          {grouped.others.map((group) => (
+            <div key={group.market} className="mt-10 border-t border-border pt-8">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-muted">Also available, {group.label}</h2>
+              <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {group.packs.map((pack) => (<PackCard key={pack.id} pack={pack} />))}
+              </div>
+            </div>
+          ))}
+          <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
+            <Icon name="shield" size={15} className="text-success" />
+            Every pack carries a 14 day money back guarantee.
+          </p>
+          <ShelfEndCapture className="mt-10" />
+        </>
+      ) : candidates.length > 0 ? (
+        <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
+          <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+            {candidates.map((candidate) => {
+              const pack = packs.find((p) => p.id === candidate.pack.id);
+              return pack ? <PackCard key={pack.id} pack={pack} /> : null;
+            })}
+          </div>
+        </DiscoveryNearMiss>
+      ) : (
+        <DiscoveryWaitlist query={state.q} onReset={() => apply(EMPTY_DISCOVERY_STATE)} />
+      )}
 
       <CommandPalette
         packs={packs}
