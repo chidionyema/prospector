@@ -226,10 +226,7 @@ function PackCard({ pack }: { pack: Pack }) {
       <div className="mt-auto pt-4">
         <span
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (requestBuy) requestBuy(pack); }}
-          className={cx(
-            'w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center',
-            requestBuy ? 'cursor-pointer' : 'cursor-not-allowed opacity-50',
-          )}
+          className="w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center cursor-pointer"
         >
           Unlock for {formatPrice(pack.price)}
         </span>
@@ -335,7 +332,6 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
 }
 
 /** The last few packs the buyer viewed, from localStorage. Renders nothing on first visit. */
-/** Compact recently-viewed links for the sidebar. */
 function RecentlyViewed({ packs }: { packs: Pack[] }) {
   const [viewed, setViewed] = React.useState<string[]>([]);
   React.useEffect(() => {
@@ -352,15 +348,16 @@ function RecentlyViewed({ packs }: { packs: Pack[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="mb-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-2">Recently viewed</p>
-      <div className="space-y-1.5">
+    <div className="mb-6">
+      <h3 className="text-sm font-bold text-text">Recently viewed</h3>
+      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {items.map((pack) => (
           <Link
             key={pack.id}
             href={`/pack/${pack.id}`}
-            className="block text-xs text-muted hover:text-text transition-colors truncate"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-semibold text-text transition-colors hover:border-text/20 hover:bg-bg"
           >
+            <Icon name="arrowRight" size={14} className="text-muted" />
             {pack.cardLine || pack.title}
           </Link>
         ))}
@@ -451,6 +448,14 @@ function CatalogBrowser({
   const gridPacks = spotlight ? grouped.matching.slice(1) : grouped.matching;
 
   // Trending: top 3 by source count, only on unfiltered default view
+  const trending = React.useMemo(() => {
+    if (filtered || sort !== 'newest') return [];
+    return [...packs]
+      .filter((p) => typeof p.sourceCount === 'number' && p.sourceCount > 0)
+      .sort((a, b) => (b.sourceCount ?? 0) - (a.sourceCount ?? 0))
+      .slice(0, 3);
+  }, [filtered, sort, packs]);
+
   if (packs.length === 0) {
     return (
       <div className=" border border-dashed border-border bg-surface py-20 text-center">
@@ -467,17 +472,29 @@ function CatalogBrowser({
 
   return (
     <>
+      {/* Only shown once we have boosted away from the default shelf. A visitor already on "uk"
+          has nothing to be told, the grid below is already every pack, in the usual order. */}
       {market !== DEFAULT_MARKET && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-border bg-bg/60 px-4 py-3 text-sm">
           <span className="text-text">Showing packs for {marketLabel(market)} first.</span>
-          <Link href={`/?market=${DEFAULT_MARKET}`} className="whitespace-nowrap font-semibold text-primary hover:underline">
+          {/* Sets the `market` cookie server-side (getServerSideProps) on the next request, so
+              the switch survives past this one click, not just this one page load. */}
+          <Link
+            href={`/?market=${DEFAULT_MARKET}`}
+            className="whitespace-nowrap font-semibold text-primary hover:underline"
+          >
             Switch to {marketLabel(DEFAULT_MARKET)}
           </Link>
         </div>
       )}
 
-      {/* Toolbar */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Progressive discovery -- first thing in the catalog. No border box. */}
+      <div className="mb-6">
+        <StepFlow packs={packs} state={state} onChange={apply} />
+      </div>
+
+      {/* Toolbar: search, count, sort. */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:w-64">
           <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
         </div>
@@ -485,55 +502,95 @@ function CatalogBrowser({
           <span className="whitespace-nowrap text-sm font-semibold text-muted">
             {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
           </span>
-          <div className="w-32">
-            <Dropdown<SortKey> label="Sort" value={sort} options={SORTS} onChange={setSort} />
+          <div className="w-40">
+            <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
           </div>
         </div>
       </div>
 
-      {/* Progressive flow -- full width, no box, integrated */}
-      <div className="mb-6">
-        <StepFlow packs={packs} state={state} onChange={apply} />
-      </div>
+          <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
 
-      <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
 
-      {visible.length > 0 ? (
-        <>
-          {spotlight && <SpotlightCard pack={spotlight} />}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {gridPacks.map((pack, i) => (
-              <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
-                <PackCard pack={pack} />
+
+          {visible.length > 0 ? (
+            <>
+              <RecentlyViewed packs={packs} />
+              {/* Trending picks: 3-card row, only on default unfiltered view */}
+              {trending.length === 3 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-text mb-3">Trending picks</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {trending.map((pack) => (
+                      <Link
+                        key={pack.id}
+                        href={`/pack/${pack.id}`}
+                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
+                      >
+                        <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
+                          <Icon name="trending-up" size={16} className="text-primary" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-text group-hover:text-primary transition-colors truncate">
+                            {pack.cardLine || pack.title}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            {pack.sourceCount ?? 0} sources · {formatPrice(pack.price)}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {spotlight && <SpotlightCard pack={spotlight} />}
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {gridPacks.map((pack, i) => (
+                  <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
+                    <PackCard pack={pack} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          {grouped.others.map((group) => (
-            <div key={group.market} className="mt-10 border-t border-border pt-8">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-muted">Also available, {group.label}</h2>
-              <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {group.packs.map((pack) => (<PackCard key={pack.id} pack={pack} />))}
+              {/* Boost, don't block: every other market's packs are still fully on the shelf,
+                  clearly separated rather than mixed in or hidden. */}
+              {grouped.others.map((group) => (
+                <div key={group.market} className="mt-10 border-t border-border pt-8">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
+                    Also available, {group.label}
+                  </h2>
+                  <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {group.packs.map((pack) => (
+                      <PackCard key={pack.id} pack={pack} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
+                <Icon name="shield" size={15} className="text-success" />
+                Every pack carries a 14 day money back guarantee.
+              </p>
+              {/* The waitlist ask sits AFTER the shelf on purpose: the deployed variant put it
+                  between the hero and the first card, spending above-the-fold pixels on buyers
+                  who had not yet seen a product. Down here it reaches the only buyer it converts
+                 , one who scrolled the shelf and still wants more. It renders ONLY on this
+                  branch: the near-miss and empty states carry their own ask (DiscoveryWaitlist),
+                  and two email forms on one screen is a duplicate ask that also breaks selector
+                  uniqueness. Rationale in ShelfEndCapture.tsx. */}
+              <ShelfEndCapture className="mt-10" />
+            </>
+          ) : candidates.length > 0 ? (
+            /* A. Something is one facet away, sell that before asking for an email address. */
+            <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
+              <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                {candidates.map((candidate) => {
+                  const pack = packs.find((p) => p.id === candidate.pack.id);
+                  return pack ? <PackCard key={pack.id} pack={pack} /> : null;
+                })}
               </div>
-            </div>
-          ))}
-          <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
-            <Icon name="shield" size={15} className="text-success" />
-            Every pack carries a 14 day money back guarantee.
-          </p>
-          <ShelfEndCapture className="mt-10" />
-        </>
-      ) : candidates.length > 0 ? (
-        <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
-          <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
-            {candidates.map((candidate) => {
-              const pack = packs.find((p) => p.id === candidate.pack.id);
-              return pack ? <PackCard key={pack.id} pack={pack} /> : null;
-            })}
-          </div>
-        </DiscoveryNearMiss>
-      ) : (
-        <DiscoveryWaitlist query={state.q} onReset={() => apply(EMPTY_DISCOVERY_STATE)} />
-      )}
+            </DiscoveryNearMiss>
+          ) : (
+            /* B. Nothing in the catalogue comes close. Only now is an email address the honest ask. */
+            <DiscoveryWaitlist query={state.q} onReset={() => apply(EMPTY_DISCOVERY_STATE)} />
+          )}
 
       <CommandPalette
         packs={packs}
@@ -728,53 +785,68 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         )}
       />
 
-      {/* 1. INTEGRATED HERO: value prop + trust + discovery, one surface.
-          The buyer sees what this is, why trust it, and starts filtering --
-          all before scrolling. */}
-      <SectionBand bg="white" width="6xl" className="pt-6 pb-4 md:pt-8 md:pb-6 text-center">
-        <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
+      {/* 1. HERO, deliberately short enough that the shelf starts above the fold.
+             It was 606px tall at 1280x720 (measured), which put the first pack card at y=1094:
+             a storefront whose entire argument is "here is what survived" opened on an argument
+             and no product. Nothing here was deleted outright, the long pitch paragraph is the
+             "What you get for £49" section further down, and the trust pills restate the
+             guarantee that also sits under the grid. What is left is the claim, the price, and
+             the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
+             next block added above the grid fails a test instead of quietly undoing this. */}
+      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center animate-rise">
+        <p className="mb-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
+        {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
+            "0", so it means a different number of pixels in every font: the old max-w-[24ch]
+            measured 576px in SF Pro but 819px in Verdana. That made the headline's line count a
+            function of which font the platform happened to pick, back when --font-sans named
+            "Inter" and nothing ever downloaded it, so every OS picked a different one. macOS
+            landed on 2 lines and CI Linux on 3, putting the first card at y=718.5 with 1.5px
+            showing. Measured minimum width for 2 lines: SF Pro 652px, Arial/Liberation 736px,
+            Tahoma 768px, Verdana 872px, 56rem (896px) clears all of them. It does not widen the
+            headline, because text-balance shortens the lines to even them up: the longest
+            rendered line is 677px, narrower than the 736px box this replaces.
+
+            globals.css now really does load and apply Hanken Grotesk, so the platform no longer
+            gets a vote, but the absolute cap stays, and stays the thing under test. It is what
+            makes this headline survive the font being slow, blocked, or swapped: measured with
+            the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
+            is still 2 and the first card still clears the fold by 88px at worst. */}
         <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
           {variant.globalHookLead}
         </h1>
         <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
           {variant.globalHookDescription}
         </p>
-
-        {/* Trust badges -- inline, not a separate band */}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-          {[
-            { icon: 'shield', label: '6 rigorous checks', sub: 'Every claim attacked before listing' },
-            { icon: 'verified', label: '100% sourced', sub: 'Every figure links to a live page' },
-            { icon: 'download', label: 'Ready to build', sub: 'Blueprint, GTM plan, ops + numbers' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-xs text-muted">
-              <Icon name={item.icon as IconName} size={13} className="text-primary" />
-              <span className="font-semibold text-text">{item.label}</span>
-              <span className="hidden sm:inline">{item.sub}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Hero CTA: ghost button */}
+        {/* Hero CTA: ghost button so it doesn't compete with Buy buttons below */}
         <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/sample"
             onClick={() => track('sample_cta_clicked')}
-            className="inline-flex items-center gap-2 border-2 border-primary px-5 py-2.5 text-sm font-bold text-primary transition-all hover:bg-primary/5"
+            className="inline-flex w-full items-center justify-center gap-2 border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/5 sm:w-auto"
           >
             Read a free report, no email
           </Link>
         </div>
         <p className="mt-2 text-sm font-medium text-muted">
-          No payment, no email. A whole dossier, unredacted, every source clickable.
+          A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
       </SectionBand>
 
-      {/* 2. CATALOG: discovery sidebar + product grid */}
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
+        <div className="mb-2 flex-wrap items-end justify-between gap-x-6 gap-y-3 hidden sm:flex">
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
+            <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">
+              A pack is listed only once it clears every check, with a clickable source behind every
+              claim. Most ideas never make it.
+            </p>
+          </div>
+          <Heartbeat packs={packs} stats={stats} />
+        </div>
+
         <CatalogBrowser packs={packs} initialState={initialState} market={market} />
       </Section>
 
