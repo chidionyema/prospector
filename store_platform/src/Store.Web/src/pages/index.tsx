@@ -475,13 +475,9 @@ function CatalogBrowser({
 
   return (
     <>
-      {/* Only shown once we have boosted away from the default shelf. A visitor already on "uk"
-          has nothing to be told, the grid below is already every pack, in the usual order. */}
       {market !== DEFAULT_MARKET && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-border bg-bg/60 px-4 py-3 text-sm">
           <span className="text-text">Showing packs for {marketLabel(market)} first.</span>
-          {/* Sets the `market` cookie server-side (getServerSideProps) on the next request, so
-              the switch survives past this one click, not just this one page load. */}
           <Link
             href={`/?market=${DEFAULT_MARKET}`}
             className="whitespace-nowrap font-semibold text-primary hover:underline"
@@ -491,60 +487,49 @@ function CatalogBrowser({
         </div>
       )}
 
-      {/* Toolbar: search, count, sort. */}
+      {/* Toolbar: search, count, sort -- compact, above the split */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:w-64">
           <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
         </div>
         <div className="flex items-center gap-3">
+          <Heartbeat packs={packs} stats={null} />
           <span className="whitespace-nowrap text-sm font-semibold text-muted">
             {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
           </span>
-          <div className="w-40">
-            <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
+          <div className="w-36">
+            <Dropdown<SortKey> label="Sort" value={sort} options={SORTS} onChange={setSort} />
           </div>
         </div>
       </div>
 
-      {/* Progressive discovery flow -- default visible. Buyer answers 3 questions
-          (skills → time → market) and the shelf filters in real time. */}
-      <div className="mb-5 border border-border bg-surface p-5">
-        <StepFlow packs={packs} state={state} onChange={apply} />
-      </div>
+      {/* Split layout: sidebar (discovery) + results (cards) */}
+      <div className="gap-6 lg:flex">
+        {/* Sidebar -- sticky, discovery surface */}
+        <div className="mb-5 shrink-0 lg:sticky lg:top-20 lg:mb-0 lg:w-64 lg:self-start">
+          <div className="border border-border bg-surface p-4">
+            <StepFlow packs={packs} state={state} onChange={apply} />
+          </div>
+        </div>
 
-          {/* What is currently narrowing the shelf, one removable chip per constraint, the
-              only always-visible trace of the filters on a phone, where the controls live in a
-              closed sheet. Renders nothing when nothing is active, so the default view pays no
-              height for it. */}
+        {/* Results -- cards, spotlight, trending */}
+        <div className="min-w-0 flex-1">
           <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
-
-
 
           {visible.length > 0 ? (
             <>
               <RecentlyViewed packs={packs} />
-              {/* Trending picks: 3-card row, only on default unfiltered view */}
               {trending.length === 3 && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold text-text mb-3">Trending picks</h3>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="mb-5">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {trending.map((pack) => (
                       <Link
                         key={pack.id}
                         href={`/pack/${pack.id}`}
-                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
+                        className="group flex items-center gap-2 border border-border bg-surface p-3 text-sm transition-colors hover:bg-[#F8F5EF]"
                       >
-                        <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
-                          <Icon name="trending-up" size={16} className="text-primary" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-text group-hover:text-primary transition-colors truncate">
-                            {pack.cardLine || pack.title}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted">
-                            {pack.sourceCount ?? 0} sources · {formatPrice(pack.price)}
-                          </p>
-                        </div>
+                        <Icon name="trending-up" size={14} className="text-primary" />
+                        <span className="font-semibold text-text truncate">{pack.cardLine || pack.title}</span>
                       </Link>
                     ))}
                   </div>
@@ -558,8 +543,6 @@ function CatalogBrowser({
                   </div>
                 ))}
               </div>
-              {/* Boost, don't block: every other market's packs are still fully on the shelf,
-                  clearly separated rather than mixed in or hidden. */}
               {grouped.others.map((group) => (
                 <div key={group.market} className="mt-10 border-t border-border pt-8">
                   <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
@@ -576,17 +559,9 @@ function CatalogBrowser({
                 <Icon name="shield" size={15} className="text-success" />
                 Every pack carries a 14 day money back guarantee.
               </p>
-              {/* The waitlist ask sits AFTER the shelf on purpose: the deployed variant put it
-                  between the hero and the first card, spending above-the-fold pixels on buyers
-                  who had not yet seen a product. Down here it reaches the only buyer it converts
-                 , one who scrolled the shelf and still wants more. It renders ONLY on this
-                  branch: the near-miss and empty states carry their own ask (DiscoveryWaitlist),
-                  and two email forms on one screen is a duplicate ask that also breaks selector
-                  uniqueness. Rationale in ShelfEndCapture.tsx. */}
               <ShelfEndCapture className="mt-10" />
             </>
           ) : candidates.length > 0 ? (
-            /* A. Something is one facet away, sell that before asking for an email address. */
             <DiscoveryNearMiss candidates={candidates} onRelax={apply}>
               <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                 {candidates.map((candidate) => {
@@ -596,9 +571,10 @@ function CatalogBrowser({
               </div>
             </DiscoveryNearMiss>
           ) : (
-            /* B. Nothing in the catalogue comes close. Only now is an email address the honest ask. */
             <DiscoveryWaitlist query={state.q} onReset={() => apply(EMPTY_DISCOVERY_STATE)} />
           )}
+        </div>
+      </div>
 
       <CommandPalette
         packs={packs}
@@ -865,17 +841,6 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
 
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
-        <div className="mb-2 flex-wrap items-end justify-between gap-x-6 gap-y-3 hidden sm:flex">
-          <div>
-            <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
-            <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">
-              A pack is listed only once it clears every check, with a clickable source behind every
-              claim. Most ideas never make it.
-            </p>
-          </div>
-          <Heartbeat packs={packs} stats={stats} />
-        </div>
-
         <CatalogBrowser packs={packs} initialState={initialState} market={market} />
       </Section>
 
