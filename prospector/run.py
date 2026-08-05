@@ -803,6 +803,38 @@ def run_signal(
     except Exception as _diag_exc:  # never let diagnostics break a run
         logger.warning(f"batch diagnostics failed (non-fatal): {_diag_exc}")
 
+    # --- Metrics store recording (self-improvement infrastructure) ---
+    try:
+        from .metrics_store import MetricsStore
+        ms = MetricsStore(cfg.store_dir / "run_metrics.db")
+        # Compute kill rates by gate
+        kill_by_gate = {}
+        for d in dossiers:
+            if d.decision == Decision.KILL and d.gate_fired:
+                gate_name = d.gate_fired if isinstance(d.gate_fired, str) else d.gate_fired.value
+                kill_by_gate[gate_name] = kill_by_gate.get(gate_name, 0) + 1
+        # Compute diversity score (simple domain entropy)
+        import math
+        from collections import Counter
+        domains = [getattr(d, 'domain', None) or getattr(d, 'market', 'unknown') for d in dossiers]
+        domain_counts = Counter(domains)
+        total = len(domains) or 1
+        diversity = -sum((c/total) * math.log2(c/total) for c in domain_counts.values() if c > 0)
+        ms.record_run(
+            f"batch-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
+            {
+                "yield_rate": round(survival, 4),
+                "health_score": 0.5,  # placeholder — Hermes computes the real one
+                "diversity_score": round(diversity, 4),
+                "candidates_generated": len(candidates),
+                "candidates_passed": n_pass,
+                "kill_rate_by_gate": kill_by_gate,
+                "lane": getattr(cfg, 'active_lane', '') or '',
+            },
+        )
+    except Exception as _met_exc:
+        logger.warning(f"metrics recording failed (non-fatal): {_met_exc}")
+
     return dossiers
 
 
@@ -1878,6 +1910,248 @@ def _load_dotenv() -> None:
                 os.environ[key] = val
 
 
+def _cmd_self(args: argparse.Namespace, cfg: Config, log_path: Path) -> None:
+    """Dispatch for `prospector self ...` commands."""
+    from .metrics_store import MetricsStore
+    from .self_modify import SelfModificationLog, ConfigSnapshot
+    from .attribution import measure_effect, attribute_all_active
+    from .canary import CanaryRunner
+    from .simulation import simulate_runs
+    import json as _json
+
+    store_dir = cfg.store_dir
+    metrics_db = store_dir / "run_metrics.db"
+    mods_db = store_dir / "self_modifications.db"
+    snap_dir = store_dir / "config_snapshots"
+
+    if args.self_action == "dashboard":
+        ms = MetricsStore(metrics_db)
+        trend = ms.trend(window=args.window)
+        alerts = ms.alert_check(window=args.window)
+        latest = ms.latest()
+
+        if args.json:
+            print(_json.dumps({
+                "trend": trend, "alerts": alerts,
+                "latest": {k: str(v) if not isinstance(v, (int, float, bool, list, dict, type(None))) else v
+                           for k, v in (latest or {}).items()}
+            }, indent=2, default=str))
+            return
+
+        s = trend["summary"]
+        print("=" * 50)
+        print("📊 Otto Metrics Dashboard")
+        print("=" * 50)
+        print(f"Runs analyzed: {s['total_runs']}")
+        print(f"Mean yield:    {s['mean_yield']:.1%}")
+        print(f"Mean health:   {s['mean_health']:.3f}")
+        print()
+
+        # Yield trend sparkline
+        yields = [y for _, y in trend["yield_trend"]]
+        if yields:
+            bars = "▁▂▃▄▅▆▇█"
+            mn, mx = min(yields), max(yields)
+            if mx == mn: mx = mn + 0.01
+            spark = "".join(bars[min(int((y-mn)/(mx-mn)*(len(bars)-1)), len(bars)-1)] for y in yields[-14:])
+            print(f"Yield trend (14-run): {spark}  {yields[-1]:.1%}")
+
+        # Health sparkline
+        healths = [h for _, h in trend["health_trend"]]
+        if healths:
+            bars = "▁▂▃▄▅▆▇█"
+            mn, mx = min(healths), max(healths)
+            if mx == mn: mx = mn + 0.01
+            spark = "".join(bars[min(int((h-mn)/(mx-mn)*(len(bars)-1)), len(bars)-1)] for h in healths[-14:])
+            print(f"Health trend  (14-run): {spark}  {healths[-1]:.3f}")
+
+        # Gate distribution
+        avg_gates = trend.get("avg_kill_rates", {})
+        if avg_gates:
+            print("\nKill rate by gate:")
+            total = sum(avg_gates.values()) or 1
+            for gate, rate in sorted(avg_gates.items(), key=lambda x: x[1], reverse=True):
+                bar_len = int((rate / total) * 30)
+                print(f"  {gate:25s} {'█' * bar_len} {rate/total:.0%}")
+
+        # Alerts
+        if alerts:
+            print(f"\n⚠️  {len(alerts)} alert(s):")
+            for a in alerts:
+                icon = "🔴" if a["severity"] == "critical" else "🟡"
+                print(f"  {icon} [{a['type']}] {a['message']}")
+        else:
+            print("\n✅ No alerts")
+
+        if args.html:
+            _write_html_dashboard(trend, alerts, Path(args.html))
+            print(f"\nHTML dashboard written to {args.html}")
+
+    elif args.self_action == "changes":
+        ml = SelfModificationLog(mods_db)
+        changes = ml.list_active() if args.active else ml.list_recent(n=args.n)
+
+        if args.json:
+            print(_json.dumps(changes, indent=2, default=str))
+            return
+
+        if not changes:
+            print("No modifications recorded yet.")
+            return
+
+        print(f"{'ID':<45} {'Component':<20} {'Status':<12} {'Effect'}")
+        print("-" * 100)
+        for c in changes:
+            cid = c.get("change_id", "")[:42]
+            comp = f"{c.get('component','')}.{c.get('field','')}"[:18]
+            status = c.get("status", "")
+            measured = c.get("measured_effect", "")
+            eff_str = ""
+            if measured:
+                try:
+                    eff = _json.loads(measured) if isinstance(measured, str) else measured
+                    eff_str = f"{eff.get('direction','')} ({eff.get('magnitude',0):+.2f})"
+                except Exception:
+                    pass
+            print(f"{cid:<45} {comp:<20} {status:<12} {eff_str}")
+
+    elif args.self_action == "rollback":
+        ml = SelfModificationLog(mods_db)
+        cs = ConfigSnapshot(cfg.config_path if hasattr(cfg, 'config_path') else
+                           Path(__file__).resolve().parent.parent / "config.yaml",
+                           snap_dir)
+
+        if args.list:
+            active = ml.list_active()
+            if not active:
+                print("No active changes to rollback.")
+                return
+            print("Active changes (rollback-able):")
+            for c in active:
+                print(f"  {c['change_id']}: {c['component']}.{c['field']} — {c['trigger_signal'][:60]}")
+            return
+
+        if args.last:
+            active = ml.list_active()
+            if not active:
+                print("No active changes to rollback.")
+                return
+            change_id = active[0]["change_id"]
+        else:
+            change_id = args.change_id
+
+        if not args.force:
+            entry = ml.get(change_id)
+            if entry:
+                print(f"About to rollback: {entry['component']}.{entry['field']}")
+                print(f"  Old → New: {entry['old_value'][:60]} → {entry['new_value'][:60]}")
+                print(f"  Trigger: {entry['trigger_signal'][:80]}")
+                resp = input("Rollback? [y/N] ")
+                if resp.lower() not in ("y", "yes"):
+                    print("Cancelled.")
+                    return
+
+        ok = ml.rollback(change_id)
+        if ok:
+            cs.restore(change_id)
+            print(f"✅ Rolled back {change_id}")
+        else:
+            print(f"❌ Could not rollback {change_id} (not found or already rolled back)")
+
+    elif args.self_action == "canary":
+        ms = MetricsStore(metrics_db)
+        ml = SelfModificationLog(mods_db)
+        runner = CanaryRunner(store_dir, ms, ml)
+
+        if args.canary_action == "status":
+            st = runner.status()
+            if st is None or st.get("status") == "no_experiment":
+                print("No canary experiment running.")
+                print("Start one with: prospector self canary start --change-id <id>")
+                return
+            print(f"Canary: {st['change_id']}")
+            print(f"Status:  {st['status']}")
+            print(f"Runs:    {st.get('canary_runs',0)} canary / {st.get('control_runs',0)} control")
+            if st.get("verdict"):
+                print(f"Verdict: {st['verdict']} ({st.get('verdict_at','')})")
+        elif args.canary_action == "start":
+            state = runner.start_canary(args.change_id)
+            print(f"✅ Canary started: {state.change_id}")
+            print("   Record canary runs with --canary flag during vet/generate")
+        elif args.canary_action == "evaluate":
+            runner.min_canary_runs = args.min_runs
+            verdict = runner.evaluate()
+            print(f"Verdict: {verdict['verdict']}")
+            print(f"Reason:  {verdict['reason']}")
+        elif args.canary_action == "promote":
+            ok = runner.promote()
+            print("✅ Promoted" if ok else "❌ No active canary to promote")
+        elif args.canary_action == "revert":
+            ok = runner.revert()
+            print("✅ Reverted" if ok else "❌ No active canary to revert")
+
+    elif args.self_action == "simulate":
+        ms = MetricsStore(metrics_db)
+        ml = SelfModificationLog(mods_db)
+
+        if args.no_adapt:
+            result = simulate_runs(ms, n=args.runs, adaptation_enabled=False)
+            label = "Baseline (no adaptation)"
+        else:
+            result = simulate_runs(ms, n=args.runs, adaptation_enabled=True, mod_log=ml)
+            label = "Adaptation enabled"
+
+        if args.json:
+            print(_json.dumps(result, indent=2, default=str))
+            return
+
+        print(f"\n📊 Simulation: {label}")
+        print(f"   Runs:      {result['total']}")
+        print(f"   Passes:    {result['passes']}")
+        print(f"   Yield:     {result['yield']:.1%}")
+        print(f"   Diversity: {result['diversity']:.3f}")
+        print(f"   Steers:    {result['steer_count']} active domain steers")
+        print(f"   Domains:   {len(result['domain_distribution'])} unique")
+        if result.get("alerts"):
+            print(f"   Alerts:    {len(result['alerts'])}")
+            for a in result["alerts"]:
+                print(f"     - [{a['type']}] {a['message'][:80]}")
+
+
+def _write_html_dashboard(trend: dict, alerts: list, path: Path) -> None:
+    """Write a static HTML dashboard."""
+    s = trend["summary"]
+    yields = [y for _, y in trend.get("yield_trend", [])]
+    healths = [h for _, h in trend.get("health_trend", [])]
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>Prospector Metrics</title>
+<style>
+body{{font-family:-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;padding:20px;max-width:700px;margin:0 auto}}
+h1{{font-size:20px}}.card{{background:#13131a;border:1px solid #1e1e2e;border-radius:12px;padding:16px;margin:12px 0}}
+.metric{{font-size:32px;font-weight:700}}.label{{font-size:11px;color:#6b6b80;text-transform:uppercase}}
+.alert{{padding:8px 12px;border-radius:8px;margin:4px 0;font-size:13px}}
+.alert.critical{{background:rgba(255,68,102,0.1);border:1px solid rgba(255,68,102,0.3)}}
+.alert.warning{{background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.3)}}
+</style></head><body>
+<h1>📊 Prospector Metrics</h1>
+<div class="card">
+<div class="label">Runs Analyzed</div><div class="metric">{s['total_runs']}</div>
+<div class="label">Mean Yield</div><div class="metric">{s['mean_yield']:.1%}</div>
+<div class="label">Mean Health</div><div class="metric">{s['mean_health']:.3f}</div>
+</div>
+<div class="card"><div class="label">Yield trend (last {min(len(yields),14)}): {yields[-1] if yields else 0:.1%}</div></div>
+"""
+    if alerts:
+        html += '<div class="card"><div class="label">Alerts</div>'
+        for a in alerts:
+            html += f'<div class="alert {a["severity"]}"><strong>[{a["type"]}]</strong> {a["message"]}</div>'
+        html += '</div>'
+    html += '</body></html>'
+    path.write_text(html)
+
+
 def main() -> None:
     _load_dotenv()
     parser = argparse.ArgumentParser(
@@ -2082,6 +2356,59 @@ def main() -> None:
 
     lanes_act.add_parser("unset", help="Clear active_lane (return to multi-lane mode)")
 
+    # ---- self subcommand (self-improvement infrastructure) ----
+    self_p = sub.add_parser(
+        "self", help="Self-improvement: dashboard, changes, rollback, canary, simulate")
+    self_act = self_p.add_subparsers(dest="self_action", required=True)
+
+    # self dashboard
+    dash_p = self_act.add_parser("dashboard", help="Time-series metrics dashboard")
+    dash_p.add_argument("--window", type=int, default=50, metavar="N",
+                        help="Number of runs to analyze (default: 50)")
+    dash_p.add_argument("--json", action="store_true",
+                        help="Machine-readable JSON output")
+    dash_p.add_argument("--html", metavar="PATH",
+                        help="Write static HTML dashboard to PATH")
+
+    # self changes
+    changes_p = self_act.add_parser("changes", help="List recent self-modifications")
+    changes_p.add_argument("--n", type=int, default=20, metavar="N",
+                          help="Number of changes to show (default: 20)")
+    changes_p.add_argument("--active", action="store_true",
+                          help="Show only active changes")
+    changes_p.add_argument("--json", action="store_true",
+                          help="JSON output")
+
+    # self rollback
+    rb_p = self_act.add_parser("rollback", help="Rollback a self-modification")
+    rb_target = rb_p.add_mutually_exclusive_group(required=True)
+    rb_target.add_argument("--change-id", metavar="ID", help="Specific change to rollback")
+    rb_target.add_argument("--last", action="store_true", help="Rollback most recent change")
+    rb_target.add_argument("--list", action="store_true", help="List rollback-able changes")
+    rb_p.add_argument("--force", action="store_true",
+                     help="Skip confirmation prompt")
+
+    # self canary
+    canary_p = self_act.add_parser("canary", help="Manage A/B canary experiments")
+    canary_act = canary_p.add_subparsers(dest="canary_action", required=True)
+    canary_act.add_parser("status", help="Show current canary experiment status")
+    start_p = canary_act.add_parser("start", help="Start a canary for a change")
+    start_p.add_argument("--change-id", metavar="ID", required=True)
+    eval_p = canary_act.add_parser("evaluate", help="Evaluate current canary")
+    eval_p.add_argument("--min-runs", type=int, default=20,
+                       help="Minimum runs before evaluating (default: 20)")
+    canary_act.add_parser("promote", help="Manually promote canary to production")
+    canary_act.add_parser("revert", help="Manually revert canary experiment")
+
+    # self simulate
+    sim_p = self_act.add_parser("simulate", help="Run simulation harness")
+    sim_p.add_argument("--runs", type=int, default=100, metavar="N",
+                      help="Number of simulation runs (default: 100)")
+    sim_p.add_argument("--no-adaptation", dest="no_adapt", action="store_true",
+                      help="Run baseline without adaptation for comparison")
+    sim_p.add_argument("--json", action="store_true",
+                      help="JSON output")
+
     # ---- markets subcommand (Epic D: the Market-Readiness Gate) ----
     markets_p = sub.add_parser(
         "markets", help="Manage jurisdictions (list, show, probe, open, close)")
@@ -2141,6 +2468,8 @@ def main() -> None:
         _cmd_markets(args, cfg_for_log, log_path)
     elif args.command == "replicate":
         _cmd_replicate(args, log_path)
+    elif args.command == "self":
+        _cmd_self(args, cfg_for_log, log_path)
     else:
         parser.print_help()
         sys.exit(1)
