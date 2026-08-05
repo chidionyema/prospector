@@ -85,7 +85,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 session resolving. /account itself decides which of the two it is. */}
             <Link
               href="/account"
-              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-[#0D4645] px-3 py-1.5 text-sm font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-on-band-faint/40 px-3 py-1.5 text-sm font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
             >
               <Icon name="account" size={18} />
               Account

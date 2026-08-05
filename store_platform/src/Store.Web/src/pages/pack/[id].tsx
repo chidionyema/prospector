@@ -391,7 +391,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             <PackCover variant="hero" pack={pack} className="mb-6" />
             {/* Document header: left-rule + verified badge, no decorative cover */}
             <div className="mb-6 border-l-[3px] border-l-primary pl-5">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#0D9488' }}>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-primary">
                 <Icon name="verified" size={13} /> Survived six checks
               </span>
             </div>

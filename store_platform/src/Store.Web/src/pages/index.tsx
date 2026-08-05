@@ -179,7 +179,7 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
       className={cx(
         'group flex flex-col border-l-[3px] border-l-primary bg-surface transition-colors',
         'rounded-r-sm border border-border border-l-primary',
-        'hover:bg-[#F8F5EF] hover:border-l-primary overflow-hidden',
+        'hover:bg-surface2 hover:border-l-primary overflow-hidden',
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
@@ -197,7 +197,7 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
         )}
         <div className="flex items-baseline gap-2 flex-1 min-w-0">
           {cat.tagged && (
-            <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#0D9488' }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-eyebrow">
               {cat.label}
             </span>
           )}
@@ -209,7 +209,7 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
           )}
         </div>
         {badge && (
-          <span className="flex-none text-[10px] font-bold uppercase tracking-wide px-2 py-0.5" style={{ color: '#0D9488', backgroundColor: '#0D948810' }}>
+          <span className="flex-none text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 text-primary bg-primary/10">
             {badge}
           </span>
         )}
@@ -235,7 +235,7 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
       {/* Verification mini-bar */}
       <div className="mt-3 flex gap-[2px]" aria-hidden>
         {Array.from({ length: 6 }).map((_, i) => (
-          <span key={i} className="h-[3px] flex-1 rounded-full bg-[#0D9488]" />
+          <span key={i} className="h-[3px] flex-1 rounded-full bg-primary" />
         ))}
       </div>
 
@@ -319,7 +319,7 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
   return (
     <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5  border border-border bg-surface px-4 py-2 text-xs font-semibold text-muted">
       <span className="inline-flex items-center gap-2">
-        <span className="inline-flex h-2 w-2 rounded-full bg-[#0DDB8B]" />
+        <span className="inline-flex h-2 w-2 rounded-full bg-success" />
         <span className="text-text">Live database</span>
       </span>
       {label && (
@@ -554,7 +554,7 @@ function CatalogBrowser({
                       <Link
                         key={pack.id}
                         href={`/pack/${pack.id}`}
-                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
+                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-surface2"
                       >
                         <span className="flex h-8 w-8 flex-none items-center justify-center bg-primary/10">
                           <Icon name="verified" size={16} className="text-primary" />
@@ -583,7 +583,7 @@ function CatalogBrowser({
                       <Link
                         key={pack.id}
                         href={`/pack/${pack.id}`}
-                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
+                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-surface2"
                       >
                         <span className="flex h-8 w-8 flex-none items-center justify-center bg-primary/10">
                           <Icon name="trending-up" size={16} className="text-primary" />

@@ -105,8 +105,8 @@ export default function PackBuyButton({
   const visibleLabel = checkingOut ? 'Opening…' : label ?? canonicalLabel;
 
   // Canonical visual shape. Identical across every entry point; variant changes only the
-  // buy flow, never the markup. `#042F2E` and `#022C22` come from --primary /
-  // --primary-hover in globals.css; Tailwind v4 resolves `bg-primary` and
+  // buy flow, never the markup. Brand v2: --primary is vermillion `#FF5A1F` /
+  // --primary-hover `#E64500` in globals.css; Tailwind v4 resolves `bg-primary` and
   // `hover:bg-primary-hover` to those custom-property-backed color tokens.
   const shapeClasses = cx(
     'inline-flex items-center justify-center',

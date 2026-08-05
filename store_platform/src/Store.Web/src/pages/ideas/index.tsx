@@ -156,7 +156,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               <li key={cat.slug}>
                 <Link
                   href={`/ideas/${cat.slug}`}
-                  className="group flex h-full items-start gap-4 border border-border bg-surface p-5 transition-colors hover:bg-[#F8F5EF] hover:border-text/20"
+                  className="group flex h-full items-start gap-4 border border-border bg-surface p-5 transition-colors hover:bg-surface2 hover:border-text/20"
                 >
                   <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5 bg-primary/10">
                     <BespokeIcon kind={cat.slug} size={18} className="text-primary" />
@@ -166,7 +166,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
                       {VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1}
                     </h2>
                     <p className="mt-1 text-sm leading-relaxed text-muted line-clamp-2">{cat.description}</p>
-                    <span className="mt-2 inline-flex text-xs font-semibold" style={{ color: '#0D9488' }}>
+                    <span className="mt-2 inline-flex text-xs font-semibold text-primary">
                       {cat.count} pack{cat.count !== 1 ? 's' : ''}
                     </span>
                   </div>
