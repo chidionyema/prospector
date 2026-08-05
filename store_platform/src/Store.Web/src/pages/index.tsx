@@ -878,7 +878,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             makes this headline survive the font being slow, blocked, or swapped: measured with
             the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
             is still 2 and the first card still clears the fold by 88px at worst. */}
-        <h1 className="mx-auto w-full min-w-0 max-w-full text-pretty text-3xl font-bold leading-[1.08] tracking-tight text-text md:max-w-[56rem] md:text-balance md:text-5xl">
+        <h1 className="mx-auto w-full min-w-0 max-w-full text-3xl font-bold leading-[1.08] tracking-tight text-text md:max-w-[56rem] md:text-balance md:text-5xl">
           {variant.globalHookLead}
         </h1>
         <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
@@ -958,7 +958,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             <p className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.2em] text-on-band-faint">
               Why you can trust this
             </p>
-            <h2 className="max-w-[22ch] text-balance text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl">
+            <h2 className="max-w-full text-balance text-3xl font-bold leading-tight tracking-tight text-white md:max-w-[22ch] md:text-4xl">
               Stress tested the way a skeptical investor would.
             </h2>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-on-band-muted md:text-lg">
