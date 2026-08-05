@@ -33,9 +33,15 @@ Used for:
 
 ### MiniMax — Executor / Implementer
 
-Corrected 2026-08-05 (founder). **The live executor set is MiniMax and Claude — nothing else.**
-Earlier revisions of this file described an `agy` CLI running Gemini, and named Gemini and
-DeepSeek as executors. Both are gone. Do not go looking for that CLI; it is not the path.
+Corrected 2026-08-05 (founder). **For writing code, the executor set is MiniMax and Claude —
+nothing else.** Earlier revisions of this file described an `agy` CLI running Gemini; it is gone,
+so do not go looking for it.
+
+Be precise about the scope of that, because the two meanings of "executor" are easy to conflate.
+This section is about **delegating repo code**. It is *not* a statement about the engine's
+internal operator chain, where DeepSeek is still very much alive — `config.yaml` defines
+`model_defaults.deepseek`, and `DEEPSEEK_API_KEY` is set. DeepSeek runs inside the pipeline; it
+does not write code in this repo.
 
 MiniMax is dispatched **from inside a Claude session**, not from a second terminal, so there is
 no hand-off step and no waiting on a human to run something:

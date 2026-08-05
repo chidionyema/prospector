@@ -23,10 +23,15 @@ There are two kinds of agent on this project, and you must know which you are:
   runs triage, drafts content. Cheaper and faster. You take a precise spec, build
   exactly that, and leave the truth-critical machinery alone.
 
-  Corrected 2026-08-05 (founder): **the live model set is MiniMax and Claude only.**
-  Gemini and DeepSeek are gone, along with the `agy` CLI hand-off that older revisions
-  of `WORKFLOW.md` described. MiniMax is dispatched from inside a Claude session via
+  Corrected 2026-08-05 (founder): **for writing repo code, the executor set is MiniMax
+  and Claude only.** Gemini is gone, as is the `agy` CLI hand-off older revisions of
+  `WORKFLOW.md` described. MiniMax is dispatched from inside a Claude session via
   `prospector/operator.py` `MiniMaxOperator`; see `WORKFLOW.md` for the working pattern.
+
+  Do not read that as "DeepSeek is gone" — it is not. DeepSeek remains an operator in
+  the *engine's* chain (`config.yaml` `model_defaults.deepseek`, `DEEPSEEK_API_KEY` set).
+  "Executor" means two different things in this repo: a model that writes code here, and
+  a model the pipeline calls at runtime. This section is only about the first.
 
 **The founder fence (never crosses to an executor):** anything touching money,
 identity, contracts, migrations, or **the moat itself** (verdict ruling + the
