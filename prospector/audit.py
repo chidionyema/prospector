@@ -52,12 +52,42 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_AUDIT_DIR = Path(os.environ.get("PROSPECTOR_AUDIT_DIR", "store/scheduler/audit"))
-_AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+# Anchored to this file, not to the cwd. The default used to be the RELATIVE string
+# "store/scheduler/audit", so the audit trail followed whoever launched the process rather
+# than the checkout that owns the code: importing prospector from another project wrote
+# that project's own store/scheduler/audit/. Proven 2026-08-05: importing this module with
+# cwd set to an empty scratch directory created store/scheduler/audit/<today>.jsonl there
+# and wrote the row into it, and `~/Documents/code/sentinel-loop/store/scheduler/audit/`
+# holds 10KB of real prospector rows from 2026-06-26. (The two prospector worktrees also
+# carry audit trees, but those are git CHECKOUTS of the 27 tracked day-files — not evidence
+# of this bug. Checked before citing them.) Rows going somewhere no one reads is worse than
+# no audit log at all: the trail LOOKS intact from wherever you happen to be standing.
+#
+# NOT explained by this bug, and still open: store/scheduler/audit/2026-08-01.jsonl was
+# never written despite 101 grounded rulings that day, and all four com.prospector.*
+# launchd plists set WorkingDirectory to this repo — so the daemon's relative path always
+# resolved correctly. Something else drops audit days (2026-07-25 is missing too, and
+# 07-23/24/26/27 are 193-386 bytes). Audit rows carry no pid or run_id, so the log cannot
+# be attributed to a run; adding one is the check that would settle it.
+#
+# Unlike cli_governor's slot root — which is deliberately cwd- AND __file__-independent
+# because that ceiling must bind across every checkout on the machine — the audit log is
+# per-checkout data, so the checkout that owns the code is exactly the right anchor.
+_AUDIT_DIR = Path(
+    os.environ.get("PROSPECTOR_AUDIT_DIR")
+    or Path(__file__).resolve().parent.parent / "store" / "scheduler" / "audit"
+)
 _LOCK = threading.Lock()
 
 
 def _today_path() -> Path:
+    """Today's audit file, creating the directory on first write.
+
+    The mkdir is here rather than at module scope on purpose: an *import* must not touch
+    the filesystem. The old import-time mkdir meant every tool that merely imported this
+    module — including read-only reporting and state probes — left a directory behind.
+    """
+    _AUDIT_DIR.mkdir(parents=True, exist_ok=True)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return _AUDIT_DIR / f"{today}.jsonl"
 
