@@ -165,10 +165,27 @@ into C-work rather than relaxing the fence.
 
 1. **D1** (`pricing.py` + golden matrix) and **D2** (analytics) in parallel — independent, and D2's
    events want to be live before any price actually moves so the before/after is measurable.
+   **DONE 2026-08-05** — `prospector/pricing.py`, delegated to MiniMax, commit `0f9a6a7`.
 2. **C3** (`price_comparables`) — starts producing cited anchors immediately; every batch that runs
    without it is a batch whose anchor evidence is lost.
+   **DONE 2026-08-05** — `prospector/price_comparables.py`, `prompts/price_comparables.md`,
+   `tests/test_price_comparables.py` (32 tests). Shipped `enabled: true` (retrieve) with
+   `rung_adjust_enabled: false` (act) as two separate config keys, so landing it moves no price.
+   Barred from the kill path in code (`kill_filter.is_hard_fail` returns `False` for
+   `models.PRICING_CHECK`) and from `run_order` in `verify.py`, not by config omission — `hard_gates`
+   is data, and a data edit passes through neither code review nor the test suite.
 3. **C1** (backfill) — only after D1 is green, since the ladder is what decides each pack's rung.
+   **MEASURED 2026-08-05, not yet run.** Against the live `/catalog` (61 packs) cross-referenced
+   with 1412 stored dossiers, the ladder moves **13 packs**: 5 cuts, 8 rises, largest a 4× rise on
+   one venture/us pack. The other 48 hold at 4900 because their tier is unclassified. Blocked on L0
+   being deployed — the backfill is what `PATCH /internal/catalog/{id}/price` exists for.
 4. **C2** (`bridge.py` repoint) — after C1, so new packs and existing packs converge on one source.
+   **DONE 2026-08-05** — one `PriceDecision` now feeds both the Stripe mint (`amount_pence`) and the
+   catalogue row (`pricePence`); `_update_catalog`'s `price_pence` is a **required** parameter so no
+   caller can reintroduce a second source of truth. Guarded by
+   `tests/unit/test_bridge_pricing.py::test_the_minted_price_and_the_catalogue_row_are_the_same_number`.
+   A no-op on today's catalogue: every live pack carries `ambition_tier=""`, so all 61 still publish
+   at 4900 until lanes start tagging candidates (asserted, not assumed).
 5. **D3**, then **D4**, then **D5**.
 
 The L3 gated controller from the analysis spec (§5) is explicitly *not* in this plan. It consumes

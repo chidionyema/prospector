@@ -14,7 +14,7 @@
 
 **Follow RUN.md:** every run (on-demand vet, scheduled batch, signal intake) executes the eight steps in RUN.md exactly. The procedure is the guarantee.
 
-**Use web tools for grounding:** Gemini (default) or Claude retrieval grounds every check in real pages. DeepSeek/MiniMax are reserved for non-critical generation and triage ONLY — they never touch verification verdicts or adversarial analysis (the moat).
+**Use web tools for grounding:** every check is grounded in real fetched pages. The retrieval chain is `[ddg, exa, claude_cli]` (`config.yaml retrieval.provider`) — free DuckDuckGo first, Exa second, Claude Code's own web search as the always-available backstop. Gemini is gone: there is no `gemini` key anywhere in `config.yaml`. Verdicts are ruled only by a trusted moat brain — `MOAT_PRIMARY = {claude_cli, claude, cursor_cli}` (`prospector/operator.py:875`). DeepSeek/MiniMax are reserved for non-critical generation and triage ONLY; when one of them serves a verdict because the moat was exhausted, the ruling is stamped `provisional`, never publishes on PASS, and is auto re-vetted (`prospector/operator.py:878 is_provisional_provider`).
 
 **Write every run to store/:** capture input (signal or candidate), all verdicts + sources, the kill gate if applicable, cost, and timing. This log is the audit trail and the basis for learning.
 
@@ -28,19 +28,22 @@ The engine is composed of pluggable modules:
 
 - **config.py** — loads operator, model, retrieval, thresholds, weights, generation strategy; no hardcoded values
 - **models.py** — data classes for Candidate, Verdict, Claim, Dossier, Pack; the contracts
-- **operator.py** — swappable brain (Gemini, Claude, DeepSeek, MiniMax, Mock); routes calls to the active model. DeepSeek and MiniMax are used in tiered non-critical chains for generation, prescreen, and scoring. They never run kill-check verdicts or adversarial passes.
-- **retrieval.py** — Gemini grounding (query gen, live page fetch, caching); fixture support for offline test
-- **prompts.py** — loads and renders the eight prompts (generate, prescreen, query_gen, verdict, adversarial, score, content_gen, claim_check)
+- **operator.py** — swappable brain (Claude, Cursor CLI, DeepSeek, MiniMax, Mock); routes calls to the active model. `MOAT_PRIMARY` (`operator.py:875`) is the trusted set that may rule a verdict; DeepSeek and MiniMax sit in tiered non-critical chains for generation, prescreen, and scoring. If one of them rules because the moat is exhausted, the result is stamped `provisional` and re-vetted, never finalised.
+- **retrieval.py** — the grounding chain `[ddg, exa, claude_cli]` (live page fetch, caching, per-provider circuit breakers); fixture support for offline test. `GeminiGroundingProvider` still exists in the file but no config selects it.
+- **prompts.py** — loads and renders the prompts (generate, prescreen, query_gen, verdict, adversarial, score, content_gen, claim_check, price_comparables)
 - **generate.py** — entry point for generation; divergent candidate creation from signals
 - **dedup.py** — embed-match against existing catalogue; drop near-duplicates
 - **prescreen.py** — first triage gate (fast, cheap, preservation of novelty)
-- **verify.py** — the moat: runs six checks end-to-end (query gen → fetch → verdict) on Claude→Gemini; kill-fast short-circuit. Tracks provider_chain and per-check provider for audit. Raises ProviderExhaustedError when moat is down so callers can DEFER and resume.
+- **verify.py** — the moat: runs the lane's checks end-to-end (query gen → fetch → verdict) on a MOAT_PRIMARY brain; kill-fast short-circuit. Tracks provider_chain and per-check provider for audit. Raises ProviderExhaustedError when the moat is down so callers can DEFER and resume.
+- **price_comparables.py** — the seventh check, and the only evidence-only one: on a candidate that survived every gate, it extracts CITED prices buyers already pay from retrieved price pages. It can never kill (barred in `kill_filter.is_hard_fail` and in verify's run order) — "no price page on the open web" is a fact about the web, not the idea. Every anchor must appear literally in the passage it cites; FX is config-declared, never inferred.
+- **pricing.py** — the L1 price ladder: segment (ambition_tier × market) → a rung on a fixed ladder declared in `config.yaml listing.pricing`, never a computed continuous number. Comparables can move it at most one rung, and only when `comparables.rung_adjust_enabled` is on (default off).
 - **kill_filter.py** — deterministic gates; KILL or PASS verdict
 - **score.py** — ranks survivors on six axes; composite = Σ(score × weight)
 - **dossier.py** — composing primary + secondary artifacts; rendering to JSON
 - **store.py** — local catalogue state; reading/writing dossiers and listings
 - **publish.py** — publish stub; on PASS, write listing JSON + print syndication intent
-- **run.py** — CLI entry point; orchestrates the eight-step procedure in RUN.md. Builds tiered non-critical chains (DeepSeek → MiniMax → Gemini-flash) for generation/prescreen/score. Handles moat exhaustion with DEFER + `vet --resume`. Persists failed signals to `signals/pending/` for `generate --resume`.
+- **bridge.py** — the money rail's entry point: mints the provider Price object and writes the catalogue row. One `PriceDecision` feeds both, so the minted price and the catalogue price cannot drift (a drift charges the buyer and then fails the fulfilment fence).
+- **run.py** — CLI entry point; orchestrates the eight-step procedure in RUN.md. Builds the tiered non-critical chain `_NONCRITICAL_ORDER = (deepseek, cursor_cli, minimax)` (`run.py:177`) for generation/prescreen/score. Handles moat exhaustion with DEFER + `vet --resume`. Persists failed signals to `signals/pending/` for `generate --resume`.
 
 ## Key constraints
 
@@ -49,5 +52,6 @@ The engine is composed of pluggable modules:
 - **Golden-set regression gates all changes.** Part 13B acceptance tests block ship if a prompt change causes a regression on mixed-sector discrimination.
 - **Creativity lives in generation; constraint lives in verification.** Nothing is killed at generation time; all gates (pre-screen, verify, kill-filter) are downstream.
 - **Two loops never merge.** Sales metrics (demand) tune what to offer; truth metrics (grounding integrity, golden-set discrimination) veto what may ship. Demand never overrides truth.
-- **Non-critical chains never touch the moat.** Generation, prescreen, and scoring run on DeepSeek → MiniMax → Gemini-flash (a completely independent health file and circuit breaker). If all three tiers fail, the chain raises ProviderExhaustedError — it never silently falls back to Claude/Gemini. The signal is saved for `generate --resume`.
-- **Moat exhaustion = DEFER, not crash.** When both Claude AND Gemini are exhausted, the signal pipeline continues (generation/prescreen/score run on the non-critical chain), verification defers, and `vet --resume` picks up when the moat recovers.
+- **Non-critical chains never touch the moat.** Generation, prescreen, and scoring run on `deepseek → cursor_cli → minimax` (`run.py:177`), behind a completely independent health file and circuit breaker. If every tier fails, the chain raises ProviderExhaustedError — it never silently promotes itself onto the moat. The signal is saved for `generate --resume`.
+- **Moat exhaustion = DEFER, not crash.** When every MOAT_PRIMARY brain is exhausted, the signal pipeline continues (generation/prescreen/score run on the non-critical chain), verification defers, and `vet --resume` picks up when the moat recovers.
+- **Price is a rung, and evidence and action are separate decisions.** `price_comparables` retrieves cited willingness-to-pay anchors on by default; letting them move a price is a second, explicitly-enabled switch. Retrieving evidence and acting on it must never be the same config flag — that is how a catalogue re-prices itself the day a feature merges.

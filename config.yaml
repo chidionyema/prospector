@@ -853,6 +853,53 @@ listing:
       uk: 0
       us: 1
 
+    # ---- C3: price_comparables (prospector/price_comparables.py) ----
+    # The evidence side of pricing. Runs once per candidate that survived every hard gate,
+    # pooling the willingness-to-pay passages the six checks already fetched with a few
+    # price-page searches, and extracting CITED prices buyers demonstrably already pay.
+    # It can never kill (models.PRICING_CHECK is barred in kill_filter and in verify's
+    # run order) — "no price page on the open web" is a fact about the web, not the idea.
+    comparables:
+      # Retrieval and extraction. On, because the passages are already being paid for and
+      # binned; the marginal cost is 3 searches + 1 extraction call per SURVIVOR, and
+      # survivors are rare.
+      enabled: true
+
+      # Acting on the evidence. OFF, and separately from `enabled` on purpose: retrieving
+      # evidence and letting it move money are two decisions. Turn this on deliberately,
+      # after reading anchors that real runs produced — not on the day the check merges.
+      rung_adjust_enabled: false
+
+      # Aimed at price PAGES. "market size" queries return analyst press releases whose
+      # numbers are not prices, which is precisely the failure the bounds rail below
+      # exists to catch as a second line of defence.
+      queries:
+        - "{q} pricing how much does it cost"
+        - "{q} price per month subscription plans"
+        - "{q} course OR template OR toolkit price"
+
+      # FX is DECLARED, never inferred. An anchor in a currency absent from this map is
+      # kept as readable evidence in the dossier but carries no pence value and can never
+      # move a price — a guessed exchange rate is an unsourced number on the money path.
+      # Add a rate here only with a dated source next to the commit that adds it.
+      fx_to_gbp:
+        GBP: 1.0
+
+      # A monthly SaaS seat is not comparable to a one-off pack, and the multiplier that
+      # would make it so is a commercial judgement, not a retrievable fact. Only one_off
+      # anchors are eligible to move a rung; the rest still appear in the dossier.
+      cadence_eligible: ["one_off"]
+
+      # Sane price band in GBP pence, applied AFTER conversion. Below £1 is noise; above
+      # £5,000 is a contract value, a salary, or a market size the model mislabelled.
+      min_anchor_pence: 100
+      max_anchor_pence: 500000
+
+      # The bar for "evidence" rather than "anecdote". Domains are counted distinctly:
+      # three prices off one vendor's pricing page are one data point wearing three hats.
+      min_anchors: 3
+      min_domains: 2
+
 # Storefront payment rail. MUST match the provider the Store API bills through: checkout
 # builds a Stripe Checkout Session from the pack's ProviderPriceId, so a pack provisioned
 # under any other rail lists with a `price_stub_*` id and its checkout returns HTTP 500.

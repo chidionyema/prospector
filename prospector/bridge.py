@@ -21,9 +21,11 @@ from urllib.parse import urlparse
 from . import facet_derive
 from . import facets as facets_mod
 from . import indexnow
-from .models import Dossier, Decision
+from .models import Dossier, Decision, ScoreResult
 from .pack_validation import validate_pack
 from .plain_text import plain_lines, to_plain_text
+from .price_comparables import anchors_from_tags
+from .pricing import price_for
 
 logger = logging.getLogger("prospector.bridge")
 
@@ -479,6 +481,34 @@ class EngineBridge:
             logger.error(f"EngineBridge: Failed to create bundle for {candidate_id}")
             return False
 
+        # 2b. Decide the price ONCE, here (C2). Two things downstream need it — the
+        # provider Price object and the catalogue row — and they must not be able to
+        # disagree: the fulfilment fence compares what the buyer paid against the
+        # catalogue's floor, so a Stripe Price minted at one number and a row written at
+        # another is a pack that charges correctly and refuses to deliver. Both read
+        # `price` below, so drift is structurally impossible rather than merely unlikely.
+        #
+        # Until a pack carries an ambition_tier this resolves to exactly the old flat
+        # 4900 (pricing.price_for's unclassified default), so C2 is a no-op on today's
+        # catalogue and a live ladder the moment lanes start tagging candidates.
+        price = price_for(
+            candidate,
+            getattr(dossier, "score", None) or ScoreResult(scores={}, justification={}),
+            self.cfg,
+            anchors=anchors_from_tags(candidate),
+        )
+        logger.info(
+            f"EngineBridge: {candidate_id} priced at {price.price_pence}p — {price.rationale}",
+            extra={"candidate_id": candidate_id, "price_pence": price.price_pence,
+                   "rung": price.rung, "segment": price.segment,
+                   "price_evidence": price.evidence},
+        )
+        candidate.tags["price_decision"] = {
+            "price_pence": price.price_pence, "rung": price.rung,
+            "segment": price.segment, "rationale": price.rationale,
+            "evidence": price.evidence,
+        }
+
         # 3. Provision product with the active payment provider (P3 — provider-agnostic)
         provider_product_id = f"prov_stub_{candidate_id[:8]}"
         provider_price_id = f"price_stub_{candidate_id[:8]}"
@@ -500,11 +530,13 @@ class EngineBridge:
                     metadata=metadata
                 )
 
-                logger.info(f"EngineBridge: Creating {payment_provider} price for {provider_product_id}")
+                logger.info(f"EngineBridge: Creating {payment_provider} price for "
+                            f"{provider_product_id} at {price.price_pence}p ({price.rung})")
                 provider_price_id = prov.create_price(
                     product_id=provider_product_id,
-                    # P2 — single source of truth: config listing.price_pence (£49 default).
-                    amount_pence=int(self.cfg.listing.get("price_pence", 4900))
+                    # C2 — the L1 ladder decides, not a flat constant. The SAME
+                    # PriceDecision feeds the catalogue write below; see `price` above.
+                    amount_pence=price.price_pence
                 )
 
             except Exception as e:
@@ -599,6 +631,7 @@ class EngineBridge:
             content_key=content_key if is_listed else None,
             content_hash=content_hash if is_listed else None,
             content_version=content_version,
+            price_pence=price.price_pence,
             metadata=catalog_meta,
         )
 
@@ -835,11 +868,19 @@ class EngineBridge:
     def _update_catalog(self, id: str, title: str, one_line: str, dossier_ref: str,
                         payment_provider: str, provider_product_id: str, provider_price_id: str,
                         is_listed: bool,
+                        price_pence: int,
                         content_key: Optional[str] = None,
                         content_hash: Optional[str] = None,
                         content_version: int = 1,
                         metadata: Optional[Dict[str, Any]] = None) -> bool:
-        """Call the .NET Store API's /internal/catalog endpoint."""
+        """Call the .NET Store API's /internal/catalog endpoint.
+
+        `price_pence` is REQUIRED and has no default on purpose (C2). A default here would
+        be a second source of truth for the price, silently disagreeing with the provider
+        Price object the caller already minted — and the fulfilment fence reads the
+        catalogue's number, so that disagreement charges a buyer and then refuses delivery.
+        The caller passes the one `PriceDecision` it used for both.
+        """
         url = f"{self.store_api_url}/internal/catalog"
         payload = {
             "id": id,
@@ -850,8 +891,9 @@ class EngineBridge:
             "providerProductId": provider_product_id,
             "providerPriceId": provider_price_id,
             "isListed": is_listed,
-            # P2 — single source of truth: config listing.price_pence (£49 default).
-            "pricePence": int(self.cfg.listing.get("price_pence", 4900)),
+            # C2 — the caller's PriceDecision, the same one the provider Price was minted
+            # at. Never re-derived here (see the docstring).
+            "pricePence": int(price_pence),
             "contentVersion": content_version,
         }
         if content_key is not None:

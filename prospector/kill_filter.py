@@ -14,11 +14,19 @@ from __future__ import annotations
 from typing import Optional
 
 from .config import Config
-from .models import CheckResult
+from .models import PRICING_CHECK, CheckResult
 
 
 def is_hard_fail(check_name: str, result: CheckResult, cfg: Config) -> bool:
     """Does THIS check trip its hard gate? (used for kill-fast short-circuit)."""
+    # `price_comparables` (C3) is evidence-only and can NEVER kill, whatever config says.
+    # It answers "what do buyers already pay for the nearest alternative?" — a question
+    # about the open web's price pages, not about the idea. Finding no price page means
+    # nobody published one, which is not grounds to kill a candidate. Enforced here rather
+    # than by leaving it out of `hard_gates`, because hard_gates is config: adding it there
+    # is a data edit that passes through neither code review nor the test suite.
+    if check_name == PRICING_CHECK:
+        return False
     # A check whose retrieval failed wholesale is INCONCLUSIVE, not evidence: we never
     # got to look, so we cannot rule. It can never trip a gate — the candidate is
     # deferred for re-vet upstream (verify()). This is the line that stops an infra
