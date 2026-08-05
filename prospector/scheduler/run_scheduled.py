@@ -164,11 +164,21 @@ def _default_generate(cfg, batch_size: int) -> dict:
         try:
             resumed = resume_deferred(cfg, limit=n_resume, publish=True)
             logger.info("Tick resume pass: %s", resumed)
+            print(f"↻ tick resume pass: {resumed}", flush=True)
         except Exception as exc:  # noqa: BLE001
             # A drain failure must never cost the tick its generation batch — the backlog has
             # waited weeks already and can wait one more tick. Recorded, not raised.
             resumed = {"error": f"{type(exc).__name__}: {exc}"}
             logger.warning("Tick resume pass failed (generation continues): %s", resumed["error"])
+            # PRINTED, not just logged. The daemon's launchd log captures stdout/stderr but
+            # NOT logging below CRITICAL — verified 2026-08-05: "TICK HARD DEADLINE"
+            # (logger.critical) appears 18 times in launchd.err.log while "Daemon starting"
+            # and "Unproductive tick" (both logger.info) appear zero times. So the first live
+            # tick after this shipped swallowed the drain's outcome entirely and the pass was
+            # indistinguishable from never having run. A failure that only logs at WARNING is
+            # invisible here; that is the whole reason this line is a print.
+            print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
+                  flush=True)
 
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
