@@ -18,13 +18,13 @@ import { WaitlistForm } from './WaitlistForm';
 export function WaitlistCallout() {
   return (
     <div className="mt-6 border border-border bg-surface p-8 text-left md:p-10">
-      <h3 className="text-lg font-black tracking-tight text-text">
+      <h3 className="text-body font-black tracking-tight text-text">
         Nothing on the shelf for your space yet?
       </h3>
       {/* No subscriber count and no cadence. We have neither to honestly claim, and the consent
           text this form sends says "No newsletter", copy implying a regular send would contradict
           the very sentence being hashed as evidence one line below it. */}
-      <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-muted">
+      <p className="mt-2 max-w-[62ch] text-meta leading-relaxed text-muted">
         The catalogue grows only when an idea clears all six checks, so it grows slowly and
         unpredictably. Leave an address and we&apos;ll tell you when the next one does. That is the
         whole offer, no drip sequence, no pitch.

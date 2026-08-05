@@ -1,6 +1,7 @@
 import type { GetServerSideProps } from 'next';
 
 import { fetchCatalog, type Pack } from '@/lib/api/client';
+import { priceRange, formatGbp } from '@/lib/priceRange';
 
 /**
  * `/llms.txt`, a curated, plain-Markdown map of this site for large language models.
@@ -72,9 +73,19 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     console.error('llms.txt: catalog fetch failed, emitting guide sections only:', error);
   }
 
+  /* Computed, never written: this file is what an assistant quotes when asked what Mumchimp
+     sells, so a stale price here is repeated by third parties long after a deploy fixes the site.
+     No catalogue (the fetch above failed) means no price clause at all. */
+  const range = priceRange(packs);
+  const priceClause = range
+    ? range.uniform
+      ? ` for ${range.label} each`
+      : `, priced per pack from ${formatGbp(range.min)} to ${formatGbp(range.max)} (most are ${formatGbp(range.mode)})`
+    : '';
+
   const body = `# Mumchimp
 
-> Mumchimp sells researched business opportunity packs for £49 each. Every pack is one business
+> Mumchimp sells researched business opportunity packs${priceClause}. Every pack is one business
 > idea that passed an automated six-check filter, real pain, durable value, room past incumbents,
 > a solvent payer, a distribution route, and legality, and then survived an adversarial review.
 > Each claim in a pack cites a retrievable source.

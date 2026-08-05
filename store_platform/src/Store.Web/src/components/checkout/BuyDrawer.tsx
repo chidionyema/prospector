@@ -7,6 +7,7 @@ import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { formatPrice, Pack } from '@/lib/api/client';
+import { formatPriceForMarket, type Currency } from '@/lib/fx';
 
 /**
  * Buy one pack without leaving the shelf.
@@ -29,14 +30,27 @@ import { formatPrice, Pack } from '@/lib/api/client';
  *
  *   - main characteristics → the eight deliverables, from the same `PACK_CONTENTS` the pack
  *     page and homepage render, so the three surfaces can never promise different things;
- *   - total price → `formatPrice(pack.price)`, the catalogue's own string, never recomputed;
+ *   - total price → `formatPrice(pack.price)`, the catalogue's own string, never recomputed.
+ *     A non-GBP visitor also sees the converted figure, but the GBP line is the one labelled
+ *     "Total" and it is never replaced: reg. 13 wants the price the buyer will actually be
+ *     bound to, and an FX estimate from a 24-hour-cached table is not that number;
  *   - cancellation right → the 14-day line and a link to /refund;
  *   - and the honesty note that a pack is grounded research, not a promise of success.
  *
  * The buy path itself is `usePackCheckout`, the same hook the pack page runs, not a copy. See
  * that module for the three production incidents its branches encode.
  */
-function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose: () => void }) {
+function BuyDrawer({
+  pack,
+  open,
+  onClose,
+  currency = 'GBP',
+}: {
+  pack: Pack;
+  open: boolean;
+  onClose: () => void;
+  currency?: Currency;
+}) {
   const {
     checkingOut,
     checkoutError,
@@ -76,13 +90,24 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
       placement="right"
       footer={
         <div className="space-y-3">
+          {/* The anchor the visitor has been reading all the way down the shelf, then the exact
+              figure they will be bound to. Both, labelled, in one block -- the failure this
+              replaces was the two numbers sitting a line apart with neither one explained. */}
           <div className="flex items-baseline justify-between">
-            <span className="text-sm font-semibold text-muted">One time price</span>
-            <span className="text-2xl font-black tracking-tight text-text">{priceLabel}</span>
+            <span className="text-meta font-semibold text-muted">One time price</span>
+            <span className="text-h2 font-black tracking-tight text-text">
+              {currency === 'GBP' ? priceLabel : formatPriceForMarket(pack.price, currency)}
+            </span>
           </div>
+          {currency !== 'GBP' && (
+            <div className="flex items-baseline justify-between text-caption font-medium text-muted">
+              <span>Total charged</span>
+              <span className="font-mono">{priceLabel} GBP</span>
+            </div>
+          )}
 
           {checkoutError && (
-            <div className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-xs text-danger">
+            <div className="rounded-md border border-danger/20 bg-danger/5 p-3 text-caption text-danger">
               {checkoutError}
             </div>
           )}
@@ -99,16 +124,17 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
                 buy={buy}
                 checkingOut={checkingOut}
                 canCheckout={canCheckout}
+                currency={currency}
                 className="w-full"
               />
-              <BuyerIdentityNote className="text-xs leading-relaxed text-muted" />
+              <BuyerIdentityNote className="text-caption leading-relaxed text-muted" />
             </>
           ) : (
             /* Not buyable yet. The drawer says so rather than showing a dead button, and sends
                the buyer to the full page, which owns the "notify me" path. */
             <Link
               href={`/pack/${pack.id}`}
-              className="block w-full rounded-xl bg-text py-4 text-center text-sm font-bold uppercase tracking-wide text-white"
+              className="block w-full rounded-md bg-text py-4 text-center text-meta font-bold uppercase tracking-wide text-white"
             >
               Checkout opens shortly, see the pack
             </Link>
@@ -117,15 +143,15 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
       }
     >
       <div className="space-y-5">
-        {pack.oneLine && <p className="text-sm leading-relaxed text-muted">{pack.oneLine}</p>}
+        {pack.oneLine && <p className="text-meta leading-relaxed text-muted">{pack.oneLine}</p>}
 
         <div>
-          <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">
+     <span className="text-caption font-bold uppercase tracking-widest text-muted">
             What you get
           </span>
           <ul className="mt-2 space-y-1.5">
             {PACK_CONTENTS.map((item) => (
-              <li key={item.filename} className="flex items-start gap-2 text-sm text-text">
+              <li key={item.filename} className="flex items-start gap-2 text-meta text-text">
                 <span aria-hidden className="flex-none">{item.emoji}</span>
                 <span>{item.title}</span>
               </li>
@@ -139,14 +165,14 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
             { icon: 'download', text: 'Instant download the moment you pay' },
             { icon: 'lock', text: `Secure checkout via ${providerLabel}` },
           ] as const).map((feat) => (
-            <div key={feat.text} className="flex items-center gap-3 text-xs font-medium text-muted">
+            <div key={feat.text} className="flex items-center gap-3 text-caption font-medium text-muted">
               <Icon name={feat.icon} size={14} className="text-text/60" />
               {feat.text}
             </div>
           ))}
         </div>
 
-        <p className="text-[11px] leading-relaxed text-muted">
+        <p className="text-caption leading-relaxed text-muted">
           A pack is grounded research, not a promise of business success. See our{' '}
           <Link href="/refund" className="font-semibold text-primary hover:underline">
             refund policy
@@ -171,7 +197,14 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
  */
 const RequestBuyContext = React.createContext<((pack: Pack) => void) | null>(null);
 
-export function BuyDrawerProvider({ children }: { children: React.ReactNode }) {
+export function BuyDrawerProvider({
+  children,
+  currency = 'GBP',
+}: {
+  children: React.ReactNode;
+  /** The visitor's display currency, from the host page's `getServerSideProps` geo lookup. */
+  currency?: Currency;
+}) {
   const [pack, setPack] = React.useState<Pack | null>(null);
   return (
     <RequestBuyContext.Provider value={setPack}>
@@ -179,7 +212,9 @@ export function BuyDrawerProvider({ children }: { children: React.ReactNode }) {
       {/* Keyed by id so switching packs remounts the checkout state. Without the key, a session
           opened for one pack would survive into the next drawer, and paying for the wrong pack
           is the one bug this surface must not be able to have. */}
-      {pack && <BuyDrawer key={pack.id} pack={pack} open onClose={() => setPack(null)} />}
+      {pack && (
+        <BuyDrawer key={pack.id} pack={pack} open onClose={() => setPack(null)} currency={currency} />
+      )}
     </RequestBuyContext.Provider>
   );
 }

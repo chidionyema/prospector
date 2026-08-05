@@ -92,6 +92,9 @@ describe('the shelf keeps opening the pack as its primary action', () => {
   });
 
   it('mounts exactly one drawer for the whole page', () => {
-    expect(index.match(/<BuyDrawerProvider>/g)).toHaveLength(1);
+    // Matches the opening tag with or without props: the provider now takes the visitor's
+    // currency, and a literal `<BuyDrawerProvider>` would have made adding any prop look like
+    // "the drawer is gone" rather than "the assertion was too narrow".
+    expect(index.match(/<BuyDrawerProvider[\s>]/g)).toHaveLength(1);
   });
 });

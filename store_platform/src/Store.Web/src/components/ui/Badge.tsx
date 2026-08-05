@@ -6,10 +6,10 @@ type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
 const TONES: Record<Tone, string> = {
   neutral: 'bg-bg text-text/80 border border-border',
-  success: 'bg-success/10 text-success border border-success/20 shadow-sm',
-  warning: 'bg-warning/10 text-warning border border-warning/20 shadow-sm',
-  danger: 'bg-danger/10 text-danger border border-danger/20 shadow-sm',
-  info: 'bg-info/10 text-info border border-info/20 shadow-sm',
+  success: 'bg-success/10 text-success border border-success/20 shadow-none',
+  warning: 'bg-warning/10 text-warning border border-warning/20 shadow-none',
+  danger: 'bg-danger/10 text-danger border border-danger/20 shadow-none',
+  info: 'bg-info/10 text-info border border-info/20 shadow-none',
 };
 
 export interface BadgeProps {
@@ -25,7 +25,7 @@ export function Badge({ tone = 'neutral', icon, children, className }: BadgeProp
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-[11px] font-mono font-bold uppercase tracking-wider',
+        'inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-caption font-mono font-bold uppercase tracking-wider',
         TONES[tone],
         className,
       )}

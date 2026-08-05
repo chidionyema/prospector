@@ -4,7 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { track } from '@/lib/analytics';
-import { formatPrice, type Pack } from '@/lib/api/client';
+import { type Pack } from '@/lib/api/client';
+import { useCurrency } from '@/lib/currency';
+import { formatPriceForMarket } from '@/lib/fx';
 import { matchesQuery, splitTitle, extractIntent } from '@/lib/discovery';
 
 import { FacetChips } from './FacetChips';
@@ -74,13 +76,13 @@ export function SearchTrigger({
       type="button"
       onClick={onOpen}
       className={cx(
-        'flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-text/20',
+        'flex w-full items-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-text/20',
         className,
       )}
     >
       <Icon name="search" size={16} />
-      <span className="flex-1 text-sm font-medium text-muted">Search the catalogue</span>
-      <kbd className="hidden rounded border border-border bg-bg px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted sm:block">
+      <span className="flex-1 text-meta font-medium text-muted">Search the catalogue</span>
+      <kbd className="hidden rounded-md border border-border bg-bg px-1.5 py-0.5 font-mono text-caption font-bold text-muted sm:block">
         ⌘K
       </kbd>
     </button>
@@ -108,7 +110,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, at)}
-      <mark className="rounded bg-primary/15 px-0.5 text-text">{text.slice(at, at + needle.length)}</mark>
+      <mark className="rounded-md bg-text/10 px-0.5 text-text">{text.slice(at, at + needle.length)}</mark>
       {text.slice(at + needle.length)}
     </>
   );
@@ -142,6 +144,7 @@ function PaletteDialog({
   onSeeAll?: (query: string) => void;
 }) {
   const router = useRouter();
+  const currency = useCurrency();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -236,7 +239,7 @@ function PaletteDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Search the catalogue"
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_30px_80px_rgba(0,0,0,0.25)]"
+        className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface shadow-2"
       >
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <Icon name="search" size={16} />
@@ -254,7 +257,7 @@ function PaletteDialog({
             aria-expanded
             aria-controls="command-palette-results"
             aria-activedescendant={rows[active] ? `command-palette-row-${rows[active].id}` : undefined}
-            className="w-full bg-transparent text-base font-medium text-text outline-none placeholder:text-muted/70"
+            className="w-full bg-transparent text-body font-medium text-text outline-none placeholder:text-muted/70"
           />
           <button
             type="button"
@@ -298,7 +301,7 @@ function PaletteDialog({
                 id={`command-palette-row-${pack.id}`}
                 role="option"
                 aria-selected={index === active}
-                aria-label={`${name}${descriptor ? `, ${descriptor}` : ''}, ${formatPrice(pack.price)}`}
+                aria-label={`${name}${descriptor ? `, ${descriptor}` : ''}, ${formatPriceForMarket(pack.price, currency)}`}
               >
                 <button
                   type="button"
@@ -310,16 +313,16 @@ function PaletteDialog({
                   )}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-text">
+                    <span className="block truncate text-meta font-bold text-text">
                       <Highlight text={name} query={query} />
                     </span>
                     {context ? (
-                      <span className="block truncate text-xs text-muted">
+                      <span className="block truncate text-caption text-muted">
                         <Highlight text={context} query={query} />
                       </span>
                     ) : (
                       descriptor && (
-                        <span className="block truncate text-xs text-muted">
+                        <span className="block truncate text-caption text-muted">
                           <Highlight text={descriptor} query={query} />
                         </span>
                       )
@@ -327,11 +330,11 @@ function PaletteDialog({
                     <FacetChips pack={pack} compact max={3} className="mt-1.5" />
                   </span>
                   {index === active && (
-                    <kbd className="shrink-0 rounded border border-border bg-bg px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted">
+                    <kbd className="shrink-0 rounded-md border border-border bg-bg px-1.5 py-0.5 font-mono text-caption font-bold text-muted">
                       ↵
                     </kbd>
                   )}
-                  <span className="shrink-0 text-sm font-black text-text">{formatPrice(pack.price)}</span>
+                  <span className="shrink-0 text-meta font-black text-text">{formatPriceForMarket(pack.price, currency)}</span>
                 </button>
               </li>
             );
@@ -339,7 +342,7 @@ function PaletteDialog({
 
           {rows.length === 0 && (
             <li className="px-4 py-6">
-              <p className="text-sm font-medium text-muted">
+              <p className="text-meta font-medium text-muted">
                 Nothing in the catalogue matches “{query.trim()}”.
               </p>
               {/* Not a dead end: the old copy said "close this and we'll show you what to do
@@ -353,7 +356,7 @@ function PaletteDialog({
                     onSeeAll(query);
                     onClose();
                   }}
-                  className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-primary underline-offset-4 hover:underline"
+                  className="mt-3 inline-flex items-center gap-2 text-meta font-bold text-primary underline-offset-4 hover:underline"
                 >
                   Tell us to point the engine at it <Icon name="arrowRight" size={14} />
                 </button>
@@ -369,7 +372,7 @@ function PaletteDialog({
               onSeeAll?.(query);
               onClose();
             }}
-            className="w-full border-t border-border px-4 py-3 text-left text-xs font-bold text-primary hover:bg-bg"
+            className="w-full border-t border-border px-4 py-3 text-left text-caption font-bold text-primary hover:bg-bg"
           >
             See all {matches.length} matches
           </button>

@@ -44,6 +44,22 @@ describe('US-1 — One primary buy button', () => {
     expect(source, 'PackBuyButton must encode the canonical label').toMatch(/Unlock this pack/);
   });
 
+  it('does not prepend a currency symbol to an already-formatted price', () => {
+    // Regression guard. The label was `Unlock this pack · £${priceLabel}`, and
+    // priceLabel comes from formatPrice() in lib/api/client.ts, which only strips a trailing
+    // ".00" and never adds a symbol, because the API already sends "£49.00". So the primary
+    // buy CTA on every pack page rendered "Unlock this pack · ££49".
+    //
+    // The assertion above stayed green throughout: /Unlock this pack/ matched either way. This
+    // one pins the actual defect, a hardcoded currency symbol immediately before an interpolated
+    // price that already carries one.
+    if (!componentExists) return;
+    const source = readSource('../components/checkout/PackBuyButton.tsx');
+    expect(source, 'no hardcoded currency symbol before an interpolated price').not.toMatch(
+      /[£$€]\s*\$\{\s*(priceLabel|price)\b/,
+    );
+  });
+
   it('renders a <button> element with stopPropagation on click', () => {
     // The audit: "the buy button is a <button> outside the link with e.stopPropagation()".
     // The PackCard is a <Link>; nested <button> + stopPropagation prevents navigation.

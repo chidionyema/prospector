@@ -152,7 +152,10 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
               fontWeight: 800,
             }}
           >
-            {pack.price || '£49'}
+            {/* No `|| '£49'`: a pack whose price did not load renders no price. The OG card is
+                 cached by every social platform that scrapes it, so a guessed number here
+                 outlives any fix. */}
+            {pack.price || ''}
           </div>
         </div>
       </div>

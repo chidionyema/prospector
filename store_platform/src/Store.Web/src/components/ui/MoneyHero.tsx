@@ -44,7 +44,7 @@ export function MoneyHero({ cents, currency, state, label, caption, action, clas
   return (
     <div
       className={cx(
-        'relative overflow-hidden rounded-lg border border-border p-6 shadow-vault sm:p-8',
+        'relative overflow-hidden rounded-md border border-border p-6 shadow-2 sm:p-8',
         isReleased ? 'bg-settled-wash' : 'bg-vault-wash',
         className,
       )}
@@ -64,8 +64,8 @@ export function MoneyHero({ cents, currency, state, label, caption, action, clas
             />
             <span>{statusLabel}</span>
           </div>
-          <Money cents={cents} currency={currency} className="block text-hero text-text" />
-          {caption && <p className="max-w-md text-small text-muted">{caption}</p>}
+          <Money cents={cents} currency={currency} className="block text-display text-text" />
+          {caption && <p className="max-w-md text-body text-muted">{caption}</p>}
         </div>
         {action && <div className="shrink-0 sm:pb-1">{action}</div>}
       </div>

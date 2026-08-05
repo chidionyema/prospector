@@ -44,7 +44,7 @@ export function FacetChips({
       {chips.slice(0, max).map((chip) => (
         <li
           key={chip}
-          className="rounded-full bg-bg px-2.5 py-1 text-[11px] font-semibold text-text/70 ring-1 ring-inset ring-border"
+          className="rounded-full bg-bg px-2.5 py-1 text-caption font-semibold text-text/70 ring-1 ring-inset ring-border"
         >
           {chip}
         </li>

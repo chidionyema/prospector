@@ -46,7 +46,7 @@ export default function OrderPage() {
       <MarketingLayout>
         <div className="flex min-h-dvh items-center justify-center px-6">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-text mb-2">Order not found</h1>
+            <h1 className="text-h2 font-bold text-text mb-2">Order not found</h1>
             <p className="text-muted">{error}</p>
           </div>
         </div>
@@ -72,7 +72,7 @@ export default function OrderPage() {
     <MarketingLayout>
       <div className="flex min-h-dvh items-center justify-center px-6 py-16">
         <div className="bg-surface border border-border p-8 max-w-md w-full mx-4">
-          <h1 className="text-2xl font-bold text-text mb-2">Thank you for your purchase</h1>
+          <h1 className="text-h2 font-bold text-text mb-2">Thank you for your purchase</h1>
           <p className="text-muted mb-6">
             Your order for <strong>{order?.packTitle}</strong> is ready.
           </p>
@@ -89,7 +89,7 @@ export default function OrderPage() {
               R2 URL that /download mints internally, NOT this page. The buyer's grant token has
               ExpiresAt = null and a 50-download cap (DeliveryEndpoints.cs:25). Telling a paying
               customer their permanent recovery link is already dead is how a sale becomes a refund. */}
-          <p className="text-xs text-muted mt-4 text-center">
+          <p className="text-caption text-muted mt-4 text-center">
             Bookmark this page, it is your permanent access link and does not expire. You can
             re-download your pack here whenever you need it.
           </p>

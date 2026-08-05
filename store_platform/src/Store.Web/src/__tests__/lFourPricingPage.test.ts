@@ -30,11 +30,29 @@ describe('L4 - The pricing page', () => {
     expect(pageExists, 'pages/pricing.tsx must exist').toBe(true);
   });
 
-  it('renders the £49 headline price', () => {
+  it('takes its price from the catalogue rather than a literal', () => {
+    /*
+     * SUPERSEDED. This used to be `/£49|GBP\s*49|\$\{?49/.test(page)` -- "pages/pricing.tsx must
+     * render the £49 price". Two things went wrong with it.
+     *
+     * First it became false. The segment price ladder (`feat(pricing)` #105/#107) ended
+     * one-price, and on 2026-08-05 `GET https://api.mumchimp.com/catalog` returned 61 packs at
+     * £29 x5, £49 x48, £79 x5, £99, £149, £199. A pricing page headed "£49 a pack" was wrong for
+     * 13 of them.
+     *
+     * Second, and worse, a source-text regex for a NUMBER cannot tell rendered copy from a
+     * comment. Once the page carried a comment explaining the old price, the assertion passed on
+     * the comment -- green, and guarding nothing. So the contract asserted here is structural:
+     * the page must fetch, and must not contain a hardcoded price in its JSX at all.
+     */
     if (!pageExists) return;
     const page = readSource('../pages/pricing.tsx');
-    const hasPrice = /£49|GBP\s*49|\$\{?49/.test(page);
-    expect(hasPrice, 'pages/pricing.tsx must render the £49 price').toBe(true);
+    expect(page, 'the pricing page must read the live catalogue').toMatch(/getServerSideProps/);
+    expect(page).toMatch(/priceRange\(/);
+
+    const jsx = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const literals = jsx.match(/£\s?\d+/g) ?? [];
+    expect(literals, `hardcoded prices in JSX: ${literals.join(', ')}`).toEqual([]);
   });
 
   it('renders a "What\u2019s included" section', () => {

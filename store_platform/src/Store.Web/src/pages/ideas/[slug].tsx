@@ -101,7 +101,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
           lead="The catalogue is briefly unreachable, so this page cannot list its packs right now. Try again in a minute."
         />
         <Section bg="white" width="7xl">
-          <p className="text-base text-muted">
+          <p className="text-body text-muted">
             <Link href="/" className="font-semibold text-text underline underline-offset-2">
               Browse every pack
             </Link>{' '}
@@ -143,7 +143,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
       <Section bg="white" width="7xl">
         <PackGrid packs={packs} />
 
-        <p className="mt-10 text-sm leading-relaxed text-muted">
+        <p className="mt-10 text-meta leading-relaxed text-muted">
           Every pack on this page cleared the same six checks, real pain, durable value, room past
           incumbents, a solvent payer, a route to distribution, and legality, and then survived an
           adversarial review.{' '}
@@ -159,7 +159,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
 
         {siblings.length > 0 && (
           <nav className="mt-12 border-t border-border pt-8" aria-label="Other categories">
-            <h2 className="text-sm font-black uppercase tracking-widest text-muted">
+            <h2 className="text-meta font-black uppercase tracking-widest text-muted">
               Browse another way
             </h2>
             <ul className="mt-4 flex flex-wrap gap-2">
@@ -167,7 +167,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
                 <li key={sibling.slug}>
                   <Link
                     href={`/ideas/${sibling.slug}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-text transition-colors hover:border-text/30 hover:bg-bg"
+                    className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-meta font-semibold text-text transition-colors hover:border-text/30 hover:bg-bg"
                   >
                     {sibling.h1}
                     <span className="text-muted">{sibling.count}</span>

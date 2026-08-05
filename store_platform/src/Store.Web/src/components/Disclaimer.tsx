@@ -8,7 +8,7 @@ import React from 'react';
  */
 export default function Disclaimer() {
   return (
-    <aside className="border border-border bg-bg/50 px-6 py-5 text-sm leading-relaxed text-muted">
+    <aside className="border border-border bg-bg/50 px-6 py-5 text-meta leading-relaxed text-muted">
       <strong className="text-text font-bold">Not financial, investment, or professional advice.</strong>{' '}
       Mumchimp Packs are research and information products produced for general informational
       purposes only. Nothing in any Pack constitutes, or should be construed as, financial

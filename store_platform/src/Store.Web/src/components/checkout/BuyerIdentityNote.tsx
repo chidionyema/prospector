@@ -25,7 +25,7 @@ export function BuyerIdentityNote({ className }: { className?: string }) {
   if (status === 'loading') return null;
 
   return (
-    <p className={className ?? 'text-xs text-muted'}>
+    <p className={className ?? 'text-caption text-muted'}>
       {account ? (
         <>
           Buying as <strong className="font-semibold text-text">{account.email}</strong>, that
@@ -64,7 +64,7 @@ export function PostPurchaseAccountNote({ className }: { className?: string }) {
   if (status === 'loading') return null;
 
   return (
-    <p className={className ?? 'text-xs text-muted'}>
+    <p className={className ?? 'text-caption text-muted'}>
       {account ? (
         account.email_confirmed ? (
           <>

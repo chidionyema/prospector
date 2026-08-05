@@ -114,8 +114,8 @@ export function PackContentsSection({
   const hasCount = typeof sourceCount === 'number' && sourceCount > 0;
   return (
     <div className={className}>
-      <h2 className="text-xl font-bold tracking-tight text-text md:text-2xl">{heading}</h2>
-      {lead && <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted md:text-base">{lead}</p>}
+      <h2 className="text-h2 font-bold tracking-tight text-text md:text-h2">{heading}</h2>
+      {lead && <p className="mt-2 max-w-[64ch] text-meta leading-relaxed text-muted md:text-body">{lead}</p>}
 
       <ul className="mt-6 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
         {PACK_CONTENTS.map((item) => (
@@ -123,11 +123,11 @@ export function PackContentsSection({
             key={item.title}
             className="flex gap-4 border border-border bg-surface p-5"
           >
-            <span aria-hidden className="select-none text-2xl leading-none">
+            <span aria-hidden className="select-none text-h2 leading-none">
               {item.emoji}
             </span>
             <span className="flex flex-col">
-              <span className="text-base font-bold leading-snug text-text">
+              <span className="text-body font-bold leading-snug text-text">
                 {item.title}
                 {hasCount && item.showSourceCount && (
                   <span className="ml-1.5 font-normal text-muted">({sourceCount} sources)</span>
@@ -136,10 +136,10 @@ export function PackContentsSection({
               {/* The real zip entry. A buyer's fear at £49 is a thin Google Doc, and a filename
                   they can check against the download they receive is a falsifiable answer to it
                   in a way another adjective is not. */}
-              <span className="mt-1 font-mono text-[11px] font-semibold text-muted">
+              <span className="mt-1 font-mono text-caption font-semibold text-muted">
                 {item.filename}
               </span>
-              <span className="mt-1.5 text-sm leading-relaxed text-text/70">{item.desc}</span>
+              <span className="mt-1.5 text-meta leading-relaxed text-text/70">{item.desc}</span>
             </span>
           </li>
         ))}
@@ -147,12 +147,12 @@ export function PackContentsSection({
 
       {/* Format ambiguity kills digital conversions. State the file format outright. */}
       <div className="mt-5 flex flex-col gap-2 border border-border bg-bg/50 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm leading-relaxed text-text/75">
+        <p className="text-meta leading-relaxed text-text/75">
           <span className="font-bold text-text">Format:</span> one zip of plain Markdown files, 5,000+ words
           per pack. Open it anywhere, edit it, or paste it straight into Notion, Obsidian or your AI tool of
           choice. No PDF viewer, no login, no subscription.
         </p>
-        <span className="inline-flex flex-none items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-xs font-bold text-success">
+        <span className="inline-flex flex-none items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-caption font-bold text-success">
           <Icon name="download" size={14} />
           Instant download
         </span>

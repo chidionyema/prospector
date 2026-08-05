@@ -89,7 +89,7 @@ function ValueButton({
       onClick={onClick}
       aria-pressed={active}
       className={cx(
-        'flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+        'flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-caption font-semibold transition-colors',
         active
           ? 'border-primary bg-primary/10 text-text'
           : 'border-border bg-surface text-text/70 hover:border-text/20 hover:bg-bg',
@@ -97,7 +97,7 @@ function ValueButton({
       )}
     >
       {children}
-      {count !== undefined && <span className="text-[10px] font-bold text-muted">{count}</span>}
+      {count !== undefined && <span className="text-caption font-bold text-muted">{count}</span>}
     </button>
   );
 }
@@ -161,10 +161,10 @@ export function AppliedFilterChips({
           type="button"
           onClick={chip.remove}
           aria-label={`Remove filter: ${chip.text}`}
-          className="group/chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 py-1 pl-3 pr-2 text-xs font-semibold text-text transition-colors hover:border-primary/50"
+          className="group/chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 py-1 pl-3 pr-2 text-caption font-semibold text-text transition-colors hover:border-primary/50"
         >
           {chip.text}
-          <span className="flex h-4 w-4 items-center justify-center rounded-full text-muted transition-colors group-hover/chip:bg-primary group-hover/chip:text-white">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full text-muted transition-colors group-hover/chip:bg-primary group-hover/chip:text-on-primary">
             <Icon name="close" size={10} />
           </span>
         </button>
@@ -173,7 +173,7 @@ export function AppliedFilterChips({
         <button
           type="button"
           onClick={() => onChange({ ...state, q: '', advantage: [], sector: null, payer: null, effort: null, commitment: null, mechanism: null })}
-          className="ml-1 text-xs font-semibold text-muted underline underline-offset-4 hover:text-text"
+          className="ml-1 text-caption font-semibold text-muted underline underline-offset-4 hover:text-text"
         >
           Clear all
         </button>
@@ -257,20 +257,20 @@ export function StepFlow({
                 key={i}
                 className={cx(
                   'h-1.5 flex-1 rounded-full transition-colors',
-                  i <= step ? 'bg-primary' : 'bg-border',
+                  i <= step ? 'bg-text' : 'bg-border',
                 )}
               />
             ))}
-            <span className="ml-2 text-[11px] font-bold text-muted">
+            <span className="ml-2 text-caption font-bold text-muted">
               {step + 1} of {primaryGroups.length}
             </span>
           </div>
 
           {/* Question */}
-          <h3 className="text-lg font-bold tracking-tight text-text">
+          <h3 className="text-body font-bold tracking-tight text-text">
             {QUESTION_COPY[currentGroup.kind].question}
           </h3>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-meta text-muted">
             {QUESTION_COPY[currentGroup.kind].subtitle}
           </p>
 
@@ -296,16 +296,16 @@ export function StepFlow({
                     }
                   }}
                   className={cx(
-                    'flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition-all',
+                    'flex flex-col items-center gap-2 rounded-md border-2 p-4 text-center transition-all',
                     active
                       ? 'border-primary bg-primary/5'
                       : 'border-border bg-surface hover:border-text/20 hover:bg-bg/50',
                   )}
                 >
                   <Icon name={stepIcon(currentGroup.kind, value)} size={24} className="text-text/70" />
-                  <span className="text-sm font-bold text-text">{lbl}</span>
+                  <span className="text-meta font-bold text-text">{lbl}</span>
                   {count !== undefined && (
-                    <span className="text-xs text-muted">{count} packs</span>
+                    <span className="text-caption text-muted">{count} packs</span>
                   )}
                 </button>
               );
@@ -319,7 +319,7 @@ export function StepFlow({
                 <button
                   type="button"
                   onClick={() => setStep((s) => s - 1)}
-                  className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg"
+                  className="rounded-md border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
                 >
                   ← Back
                 </button>
@@ -332,7 +332,7 @@ export function StepFlow({
                   if (step >= primaryGroups.length - 1) setStep(-1);
                   else setStep((s) => s + 1);
                 }}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-muted transition-colors hover:text-text"
+                className="rounded-md px-4 py-2 text-meta font-semibold text-muted transition-colors hover:text-text"
               >
                 Skip
               </button>
@@ -341,7 +341,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep((s) => s + 1)}
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+                className="rounded-md bg-primary px-5 py-2 text-meta font-bold text-on-primary transition-colors hover:bg-primary-hover"
               >
                 Next →
               </button>
@@ -349,7 +349,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep(-1)}
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+                className="rounded-md bg-primary px-5 py-2 text-meta font-bold text-on-primary transition-colors hover:bg-primary-hover"
               >
                 Show {matching} {matching === 1 ? 'pack' : 'packs'}
               </button>
@@ -360,7 +360,7 @@ export function StepFlow({
             <button
               type="button"
               onClick={clearAll}
-              className="mt-3 self-center text-xs font-semibold text-muted underline underline-offset-4 hover:text-text"
+              className="mt-3 self-center text-caption font-semibold text-muted underline underline-offset-4 hover:text-text"
             >
               Start over
             </button>
@@ -374,7 +374,7 @@ export function StepFlow({
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success/10 text-success">
                 <Icon name="check" size={14} />
               </span>
-              <p className="text-sm font-bold text-text">
+              <p className="text-meta font-bold text-text">
                 {activeCount > 0
                   ? `${matching} ${matching === 1 ? 'pack' : 'packs'} match`
                   : `Showing all ${matching} packs`}
@@ -384,7 +384,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep(0)}
-                className="text-xs font-semibold text-primary hover:underline"
+                className="text-caption font-semibold text-primary hover:underline"
               >
                 Edit
               </button>
@@ -392,7 +392,7 @@ export function StepFlow({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="text-xs font-semibold text-muted hover:text-text"
+                  className="text-caption font-semibold text-muted hover:text-text"
                 >
                   Clear
                 </button>
@@ -406,7 +406,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setShowAdvanced((prev) => !prev)}
-                className="flex w-full items-center justify-between text-xs font-bold uppercase tracking-widest text-muted hover:text-text"
+                className="flex w-full items-center justify-between text-caption font-bold uppercase tracking-widest text-muted hover:text-text"
               >
                 Advanced filters
                 <Icon
@@ -421,7 +421,7 @@ export function StepFlow({
                     const isAdvantage = kind === 'advantage';
                     return (
                       <div key={kind}>
-                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+            <span className="text-caption font-bold uppercase tracking-widest text-muted">
                           {KIND_LABEL[kind]}
                         </span>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -498,11 +498,11 @@ export function FacetBar({
           onClick={() => setSheetOpen(true)}
           aria-expanded={sheetOpen}
           aria-haspopup="dialog"
-          className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-bold text-text transition-colors hover:border-text/30"
+          className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-4 py-2.5 text-meta font-bold text-text transition-colors hover:border-text/30"
         >
           Filter
           {activeCount > 0 && (
-            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-white">
+            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold text-on-primary">
               {activeCount}
             </span>
           )}
@@ -516,7 +516,7 @@ export function FacetBar({
             <button
               type="button"
               onClick={() => setSheetOpen(false)}
-              className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"
+              className="w-full rounded-md bg-primary px-4 py-2.5 text-meta font-bold text-on-primary"
             >
               Show {matching} {matching === 1 ? 'pack' : 'packs'}
             </button>

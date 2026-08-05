@@ -6,8 +6,8 @@ export type { VariantKey };
  * The buyer's copy variant, resolved from query param → cookie → default.
  *
  * Resolution order:
- *  1. `?variant=a|b|c` query param — sets cookie, returns that variant (preview mode)
- *  2. `mumchimp.copy.variant` cookie — persists across visits
+ *  1. `?variant=a|b|c` query param, sets cookie, returns that variant (preview mode)
+ *  2. `mumchimp.copy.variant` cookie, persists across visits
  *  3. Default: `'a'` (current live copy, zero change for existing visitors)
  *
  * Googlebot / crawler always gets variant 'a' to keep SEO stable.

@@ -42,7 +42,7 @@ export function Checkbox({ label, hint, error, id, className, disabled, ...rest 
           <span
             aria-hidden="true"
             className={cx(
-              'flex h-5 w-5 items-center justify-center rounded-[5px] border bg-surface text-on-primary transition-colors',
+              'flex h-5 w-5 items-center justify-center rounded-md border bg-surface text-on-primary transition-colors',
               'group-hover:border-muted/60',
               'peer-checked:border-primary peer-checked:bg-primary',
               'peer-focus-visible:ring-2 peer-focus-visible:ring-focus peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg',
@@ -55,7 +55,7 @@ export function Checkbox({ label, hint, error, id, className, disabled, ...rest 
           </span>
         </span>
         <span className="space-y-0.5">
-          <span className="block text-small text-text">{label}</span>
+          <span className="block text-body text-text">{label}</span>
           {hint && (
             <span id={`${inputId}-hint`} className="block text-caption text-muted">
               {hint}

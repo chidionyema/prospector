@@ -94,7 +94,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard reachability per UI polish spec
             tabIndex={0}
             className={cx(
-              'pointer-events-auto max-w-sm rounded-md border-l-4 bg-surface px-4 py-3 text-small shadow-2',
+              'pointer-events-auto max-w-sm rounded-md border-l-4 bg-surface px-4 py-3 text-body shadow-2',
               TONES[t.tone],
             )}
           >

@@ -131,20 +131,20 @@ export function EmbeddedCheckoutPanel({
       aria-label={`Checkout for ${title}`}
       className="fixed inset-0 z-70 flex items-start justify-center overflow-y-auto bg-text/40 p-4 backdrop-blur-sm sm:p-8"
     >
-      <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
+      <div className="w-full max-w-2xl rounded-md border border-border bg-surface shadow-2">
         <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+      <span className="text-caption font-bold uppercase tracking-widest text-muted">
               Secure checkout
             </span>
-            <p className="truncate text-sm font-bold text-text">{title}</p>
+            <p className="truncate text-meta font-bold text-text">{title}</p>
           </div>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label="Close checkout"
-            className="shrink-0 rounded-lg border border-border p-2 text-muted transition-colors hover:bg-bg hover:text-text"
+            className="shrink-0 rounded-md border border-border p-2 text-muted transition-colors hover:bg-bg hover:text-text"
           >
             <Icon name="close" size={16} />
           </button>
@@ -160,7 +160,7 @@ export function EmbeddedCheckoutPanel({
                 className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-text"
                 aria-hidden="true"
               />
-              <p className="text-xs font-medium text-muted" role="status">
+              <p className="text-caption font-medium text-muted" role="status">
                 Loading secure card form…
               </p>
             </div>

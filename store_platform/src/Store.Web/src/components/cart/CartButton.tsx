@@ -73,11 +73,11 @@ export function CartButton() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Basket, ${cart.count} ${cart.count === 1 ? 'pack' : 'packs'}`}
-        className="relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="relative inline-flex items-center gap-2 rounded-md px-3 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <Icon name="cart" size={18} />
         <span className="hidden sm:inline">Basket</span>
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-white">
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold text-on-primary">
           {justAdded ? <span className="animate-rise" data-just-added>{cart.count}</span> : cart.count}
         </span>
       </button>
@@ -90,16 +90,16 @@ export function CartButton() {
         footer={
           <div className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <span className="text-sm font-semibold text-muted">
+              <span className="text-meta font-semibold text-muted">
                 {cart.count} {cart.count === 1 ? 'pack' : 'packs'}
               </span>
-              {cart.total && <span className="text-2xl font-black tracking-tight text-text">{formatPrice(cart.total)}</span>}
+              {cart.total && <span className="text-h2 font-black tracking-tight text-text">{formatPrice(cart.total)}</span>}
             </div>
             <Button variant="primary" fullWidth loading={checkingOut} onClick={checkout}>
               Pay once for {cart.count === 1 ? 'this pack' : 'all of these'}
             </Button>
             {/* Trust badges */}
-            <div className="flex items-center justify-center gap-4 text-[11px] text-muted">
+            <div className="flex items-center justify-center gap-4 text-caption text-muted">
               <span className="inline-flex items-center gap-1">
                 <Icon name="lock" size={11} /> Secure checkout
               </span>
@@ -110,12 +110,12 @@ export function CartButton() {
                 <Icon name="shield" size={11} /> 14 day refund
               </span>
             </div>
-            <BuyerIdentityNote className="text-center text-xs leading-relaxed text-muted" />
+            <BuyerIdentityNote className="text-center text-caption leading-relaxed text-muted" />
           </div>
         }
       >
         {error && (
-          <p role="alert" className="mb-4 rounded-lg border border-warning bg-warning/5 p-3 text-sm text-text">
+          <p role="alert" className="mb-4 rounded-md border border-warning bg-warning/5 p-3 text-meta text-text">
             {error}
           </p>
         )}
@@ -127,11 +127,11 @@ export function CartButton() {
                 <Link
                   href={`/pack/${line.id}`}
                   onClick={() => setOpen(false)}
-                  className="text-sm font-bold leading-snug text-text hover:text-primary"
+                  className="text-meta font-bold leading-snug text-text hover:text-primary"
                 >
                   {line.title}
                 </Link>
-                <p className="mt-1 text-sm font-semibold text-muted">{formatPrice(line.price)}</p>
+                <p className="mt-1 text-meta font-semibold text-muted">{formatPrice(line.price)}</p>
               </div>
               <button
                 type="button"
@@ -142,7 +142,7 @@ export function CartButton() {
                 }}
                 aria-label={`Remove ${line.title} from basket`}
                 className={cx(
-                  'inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg text-muted transition-colors',
+                  'inline-flex h-8 w-8 flex-none items-center justify-center rounded-md text-muted transition-colors',
                   'hover:bg-danger/10 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                 )}
               >

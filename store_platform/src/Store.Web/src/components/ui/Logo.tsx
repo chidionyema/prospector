@@ -18,8 +18,8 @@ interface LogoProps {
  *
  * A drawn mark (a loupe, an assay punch) kept reading as a stock icon and dating the brand; a
  * confidently-set wordmark does not. So the identity IS the name: the first word in ink, the rest
- * muted, tight tracking. Size comes from the caller's `className` (e.g. `text-xl` in the header,
- * `text-3xl` in the footer) so one component serves every placement. The wordmark renders from the
+ * muted, tight tracking. Size comes from the caller's `className` (e.g. `text-h2` in the header,
+ * `text-h1` in the footer) so one component serves every placement. The wordmark renders from the
  * single configurable `BRAND.name` (lib/config) so it always matches the page title, OG/Twitter
  * meta, both footers, and email.
  *
@@ -37,7 +37,7 @@ export function Logo({ className, onDark = false, monogramOnly = false }: LogoPr
       <span
         aria-label={BRAND.name}
         className={cx(
-          'inline-flex h-9 w-9 flex-none items-center justify-center rounded-[10px] font-sans text-xl font-black leading-none',
+          'inline-flex h-9 w-9 flex-none items-center justify-center rounded-md font-sans text-h2 font-black leading-none',
           onDark ? 'bg-white text-text' : 'bg-band text-white',
           className,
         )}

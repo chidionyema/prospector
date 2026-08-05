@@ -6,8 +6,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'inve
 const VARIANTS: Record<ButtonVariant, string> = {
   // Prominent = Deep Teal for ultimate conversion.
   prominent: cx(
-    'bg-primary text-white hover:bg-primary-hover',
-    'shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_12px_rgba(15,23,42,0.03)] hover:shadow-2',
+    'bg-primary text-on-primary hover:bg-primary-hover',
+    'shadow-none hover:shadow-2',
     'focus-visible:ring-primary/20 focus-visible:ring-offset-2',
     'active:scale-[0.98]',
     'disabled:opacity-40 disabled:cursor-not-allowed',
@@ -15,13 +15,13 @@ const VARIANTS: Record<ButtonVariant, string> = {
   // Primary = Trust Blue.
   primary: cx(
     'bg-primary text-on-primary',
-    'shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_12px_rgba(15,23,42,0.03)] hover:shadow-2',
+    'shadow-none hover:shadow-2',
     'focus-visible:ring-primary/20 focus-visible:ring-offset-2',
     'active:scale-[0.98]',
     'disabled:opacity-40 disabled:cursor-not-allowed',
   ),
   secondary: cx(
-    'bg-surface text-text border border-border shadow-[0_1px_2px_rgba(0,0,0,0.05)]',
+    'bg-surface text-text border border-border shadow-none',
     'hover:bg-bg/80 hover:border-muted/30',
     'focus-visible:ring-focus/20 focus-visible:ring-offset-2',
     'active:scale-[0.98]',
@@ -80,7 +80,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.96] active:duration-75',
+        'inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5 text-meta font-medium transition-all duration-200 active:scale-[0.96] active:duration-75',
         'focus-visible:outline-none focus-visible:ring-2',
         VARIANTS[variant as ButtonVariant],
         fullWidth && 'w-full',

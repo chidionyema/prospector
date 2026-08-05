@@ -5,8 +5,7 @@ import type { GetServerSideProps } from 'next';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { Icon, type IconName } from '@/components/ui';
-import { cx } from '@/components/ui/cx';
+import { Icon } from '@/components/ui';
 import { fetchCatalog } from '@/lib/api/client';
 import { eligibleLandings } from '@/lib/seo/landings';
 import CategoryGraph, { type CategoryNode } from '@/components/discovery/CategoryGraph';
@@ -48,33 +47,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   }
 };
 
-/** Map category slugs to icons. Falls back to 'briefcase' for unknown. */
-function categoryIcon(slug: string): IconName {
-  const icons: Record<string, IconName> = {
-    'trades-and-site-work': 'settings',
-    'professional-services': 'briefcase',
-    'retail-and-stock': 'cart',
-    'housing-and-tenancy': 'building',
-    'care-and-benefits': 'roster',
-    'energy-and-planning': 'trending-up',
-    'creator-rights': 'code',
-    'pay-and-worker-rights': 'roster',
-    'property-and-probate': 'building',
-    'red-tape-and-licensing': 'gavel',
-    'the-pet-economy': 'roster',
-    'specialist-niches': 'search',
-  };
-  return icons[slug] ?? 'briefcase';
-}
-
-/** Pull out trending categories: highest count first, up to 3. */
-function trending(categories: Props['categories']): Props['categories'] {
-  return [...categories].sort((a, b) => b.count - a.count).slice(0, 3);
-}
-
 export default function IdeasHub({ categories, total, variant }: Props) {
   const [search, setSearch] = React.useState('');
-  const trendingCategories = trending(categories);
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return categories;
@@ -123,7 +97,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search industries, skills, or markets…"
-            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-sm text-text outline-none transition-colors focus:border-primary/40"
+            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-meta text-text outline-none transition-colors focus:border-primary/40"
           />
         </div>
 
@@ -133,7 +107,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             scan text, some scan visuals - keep both). */}
         {!search && categories.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-sm font-bold text-text mb-4">Browse the shape of the catalogue</h2>
+            <h2 className="text-meta font-bold text-text mb-4">Browse the shape of the catalogue</h2>
             <CategoryGraph
               categories={categories.map((c) => ({
                 kind: c.slug,
@@ -144,7 +118,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               filterPath={(kind) => `/ideas/${kind}`}
             />
             <div className="mt-6 border-t border-border pt-6">
-              <h2 className="text-sm font-bold text-text">All categories</h2>
+              <h2 className="text-meta font-bold text-text">All categories</h2>
             </div>
           </div>
         )}
@@ -158,15 +132,15 @@ export default function IdeasHub({ categories, total, variant }: Props) {
                   href={`/ideas/${cat.slug}`}
                   className="group flex h-full items-start gap-4 border border-border bg-surface p-5 transition-colors hover:bg-surface2 hover:border-text/20"
                 >
-                  <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5 bg-primary/10">
-                    <BespokeIcon kind={cat.slug} size={18} className="text-primary" />
+                  <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5 bg-surface2">
+                    <BespokeIcon kind={cat.slug} size={18} className="text-text/70" />
                   </span>
                   <div className="min-w-0">
-                    <h2 className="text-base font-bold text-text group-hover:text-primary transition-colors leading-snug">
+                    <h2 className="text-body font-bold text-text group-hover:text-primary transition-colors leading-snug">
                       {VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1}
                     </h2>
-                    <p className="mt-1 text-sm leading-relaxed text-muted line-clamp-2">{cat.description}</p>
-                    <span className="mt-2 inline-flex text-xs font-semibold text-primary">
+                    <p className="mt-1 text-meta leading-relaxed text-muted line-clamp-2">{cat.description}</p>
+                    <span className="mt-2 inline-flex text-caption font-semibold text-muted">
                       {cat.count} pack{cat.count !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -176,18 +150,18 @@ export default function IdeasHub({ categories, total, variant }: Props) {
           </ul>
         ) : (
           <div className="py-12 text-center">
-            <p className="text-sm text-muted">No categories match &ldquo;{search}&rdquo;.</p>
+            <p className="text-meta text-muted">No categories match &ldquo;{search}&rdquo;.</p>
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="mt-2 text-sm font-semibold text-primary hover:underline"
+              className="mt-2 text-meta font-semibold text-primary hover:underline"
             >
               Clear search
             </button>
           </div>
         )}
 
-        <p className="mt-10 text-sm leading-relaxed text-muted">
+        <p className="mt-10 text-meta leading-relaxed text-muted">
           Categories appear once enough packs have cleared the filter to fill them. Ideas that failed are in the{' '}
           <Link href="/kill-log" className="font-semibold text-text underline underline-offset-2">
             kill log

@@ -40,12 +40,24 @@ describe('N1 — Persistence of trust', () => {
     const source = readSource('../components/marketing/TrustGuaranteesRow.tsx');
     // The five facts: £49 once, 14 day refund, 1,968 researched,
     // 1,080 killed, 61 live. The component must reference each.
-    const hasPrice = /£49|GBP 49|\$\{?49|\b49\b/.test(source);
+    /*
+     * Was `/£49|GBP 49|\$\{?49|\b49\b/`. `\b49\b` matches any 49 anywhere in the file including
+     * a comment, so once the ladder shipped and a comment explained the old price, this assertion
+     * was green against a component that no longer rendered one. The fact still has to be there;
+     * what changed is that it is now a prop the caller computes from the live packs, and the
+     * literal is what must NOT be there.
+     */
+    const hasPrice = /price\.label|'One payment'/.test(source);
+    const strippedSource = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(
+      strippedSource.match(/£\s?\d+/g) ?? [],
+      'the trust row must not hardcode a price',
+    ).toEqual([]);
     const hasRefund = /14\s*day|refund/i.test(source);
     const hasResearched = /1,?968|researched/i.test(source);
     const hasKilled = /1,?080|killed/i.test(source);
     const hasLive = /\b61\b|live/i.test(source);
-    expect(hasPrice, 'TrustGuaranteesRow must render the £49 price').toBe(true);
+    expect(hasPrice, 'TrustGuaranteesRow must render the price fact').toBe(true);
     expect(hasRefund, 'TrustGuaranteesRow must render the 14 day refund').toBe(true);
     expect(hasResearched, 'TrustGuaranteesRow must render the researched count').toBe(true);
     expect(hasKilled, 'TrustGuaranteesRow must render the killed count').toBe(true);
@@ -77,5 +89,39 @@ describe('N1 — Persistence of trust', () => {
       trustRowIdx > 0 && ctaBandIdx > 0 && trustRowIdx < ctaBandIdx,
       'index.tsx must render <TrustGuaranteesRow> above <CtaBand>',
     ).toBe(true);
+  });
+
+  /*
+   * Regression: the home page rendered its live count twice, from two sources.
+   *
+   * `index.tsx` reads `stats.listed` off the live `GET /catalog`; this row read
+   * `kill-log-totals.json`, which is frozen at build time. Measured 2026-08-05 on the
+   * production build: the live catalog held 61 packs, `kill-log-totals.json` said
+   * `"shown": 60`, and the rendered home page carried the strings "61 live now, of 80
+   * that reached final packaging" AND "60 live now". Every pack published without a
+   * redeploy widens the gap, and a storefront whose position is "every claim is backed
+   * by a source you can open" cannot contradict itself in its own shop window.
+   *
+   * The fix is a `listed` prop fed from the live stats. The snapshot survives only as
+   * the fallback for callers with no live figure to hand.
+   */
+  describe('the live count comes from the live stats, not the build-time snapshot', () => {
+    it('TrustGuaranteesRow accepts a listed prop and prefers it over the snapshot', () => {
+      if (!trustRowExists) return;
+      const source = readSource('../components/marketing/TrustGuaranteesRow.tsx');
+      expect(source, 'must accept a `listed` prop').toMatch(/listed\??\s*:\s*number/);
+      expect(
+        source,
+        'the live figure must prefer `listed` and fall back to the snapshot, not the reverse',
+      ).toMatch(/const\s+live\s*=\s*listed\s*\?\?/);
+    });
+
+    it('the home page feeds it the live stats figure', () => {
+      if (!trustRowExists) return;
+      expect(
+        page,
+        'index.tsx must pass the live `stats.listed` into <TrustGuaranteesRow>',
+      ).toMatch(/<TrustGuaranteesRow[^>]*listed=\{stats\??\.listed\}/);
+    });
   });
 });

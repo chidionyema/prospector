@@ -3,7 +3,9 @@ import React from 'react';
 
 import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
-import { formatPrice, freshnessLabel, type Pack } from '@/lib/api/client';
+import { freshnessLabel, type Pack } from '@/lib/api/client';
+import { useCurrency } from '@/lib/currency';
+import { formatPriceForMarket } from '@/lib/fx';
 import { splitTitle } from '@/lib/discovery';
 
 import { FacetChips } from './FacetChips';
@@ -17,6 +19,10 @@ import { FacetChips } from './FacetChips';
  * catalogue card once.
  */
 export function DossierCard({ pack }: { pack: Pack }) {
+  // Ambient, not a prop: SimilarPacks and PackGrid are layout, they have no business knowing
+  // about money, and a card quoting GBP beside a converted headline is the exact defect
+  // measured on the pack page's related rail. See lib/currency.tsx.
+  const currency = useCurrency();
   const { name, descriptor } = splitTitle(pack.title, pack.headline);
   const sources =
     typeof pack.sourceCount === 'number' && pack.sourceCount > 0 ? pack.sourceCount : null;
@@ -26,20 +32,20 @@ export function DossierCard({ pack }: { pack: Pack }) {
     <Link
       href={`/pack/${pack.id}`}
       className={cx(
-        'group flex h-full flex-col rounded-lg bg-surface p-5 ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200',
+        'group flex h-full flex-col rounded-md bg-surface p-5 ring-1 ring-black/[0.06] transition-[background-color,box-shadow] duration-200',
         'hover:bg-primary/[0.02] hover:ring-black/[0.18]',
       )}
     >
-      <span className="text-sm font-bold leading-snug text-text transition-colors group-hover:text-primary">
+      <span className="text-meta font-bold leading-snug text-text transition-colors group-hover:text-primary">
         {name}
       </span>
-      {descriptor && <span className="mt-1 line-clamp-2 text-xs text-muted">{descriptor}</span>}
+      {descriptor && <span className="mt-1 line-clamp-2 text-caption text-muted">{descriptor}</span>}
 
       <FacetChips pack={pack} compact className="mt-3" />
 
       {(sources !== null || fresh) && (
-        <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-muted">
-          <Icon name="verified" size={12} className="text-primary" />
+        <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-caption font-medium text-muted">
+          <Icon name="verified" size={12} className="text-success" />
           <span className="font-bold text-text/80">6 / 6</span>
           {sources !== null && (
             <>
@@ -54,7 +60,7 @@ export function DossierCard({ pack }: { pack: Pack }) {
         </p>
       )}
 
-      <span className="mt-auto pt-4 text-sm font-black text-text">{formatPrice(pack.price)}</span>
+      <span className="mt-auto pt-4 text-meta font-black text-text">{formatPriceForMarket(pack.price, currency)}</span>
     </Link>
   );
 }

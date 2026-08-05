@@ -71,14 +71,38 @@ describe('US-2 — Pack cards with pack art', () => {
     ).toBe(true);
   });
 
-  it('pack detail page renders a 16:9 (hero) cover', () => {
-    // The pack detail page opens with a 16:9 hero cover, then the title, then the
-    // buy action. The hero is the buyer's first visual of the product.
-    const hasHeroCover = /<PackCover\s+[^>]*variant=["']hero["']/.test(packPage) ||
-      /<PackCover\s+[^>]*pack=\{pack\}/.test(packPage);
+  it('pack detail page opens on a sourced dossier excerpt, not a cover', () => {
+    /*
+     * SUPERSEDED, deliberately. This used to require `<PackCover variant="hero" />` on the pack
+     * page. US-2's problem was 45 identical left-rule documents, and a cover did solve that on
+     * the SHELF, where the job is to tell packs apart at a glance -- the square variant is still
+     * asserted above and still ships.
+     *
+     * On the detail page it did not: measured 2026-08-05 the 16:9 plate held the whole fold
+     * above the h1 and carried the pack ID, a market tag, a monogram and the title again, all of
+     * which the visitor already had. Worse, it renders identically for a pack with nothing
+     * behind it, so the prime slot on the money page was occupied by the one element that
+     * cannot be evidence.
+     *
+     * The replacement can only render when the claim is true: a line from this pack's own
+     * `sampleExtract` with its source resolved to a live anchor, and nothing at all when there
+     * is no such line.
+     */
     expect(
-      hasHeroCover,
-      'pack/[id].tsx must render <PackCover variant="hero" pack={pack} />',
+      /<PackCover\s+[^>]*variant=["']hero["']/.test(packPage),
+      'the empty hero cover must not come back to the pack page',
+    ).toBe(false);
+    expect(
+      /<DossierExcerptPlate\s+pack=\{pack\}/.test(packPage),
+      'pack/[id].tsx must open on <DossierExcerptPlate pack={pack} />',
+    ).toBe(true);
+
+    const plate = readSource('../components/marketing/DossierExcerptPlate.tsx');
+    expect(plate, 'the plate must read the pack\'s own extract').toMatch(/sampleExtract/);
+    expect(plate, 'the plate must resolve sources to anchors').toMatch(/parseCitations/);
+    expect(
+      /if\s*\(!first\)\s*return null/.test(plate),
+      'no sourced extract must render nothing, never an empty plate',
     ).toBe(true);
   });
 

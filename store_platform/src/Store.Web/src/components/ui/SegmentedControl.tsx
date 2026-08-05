@@ -62,7 +62,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             onKeyDown={(e) => onKeyDown(e, index)}
             className={cx(
-              'rounded-[5px] px-3 py-1.5 text-caption font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+              'rounded-md px-3 py-1.5 text-caption font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
               fullWidth && 'flex-1',
               active ? 'bg-primary text-on-primary' : 'text-muted hover:text-text',
             )}

@@ -66,11 +66,11 @@ export function PageHero({
     <SectionBand bg={bg} width="4xl" className="pt-20 pb-10 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 md:min-h-[calc(100dvh-4rem)] flex flex-col justify-start md:justify-center items-center animate-rise text-center">
       <div className="flex flex-col items-center justify-center flex-grow w-full">
         {eyebrow && (
-          <p className="font-mono text-xs font-semibold uppercase tracking-wide text-eyebrow mb-4 md:mb-6">{eyebrow}</p>
+     <p className="text-caption font-semibold uppercase tracking-wide text-eyebrow mb-4 md:mb-6">{eyebrow}</p>
         )}
-        <h1 className="max-w-[20ch] text-4xl md:text-6xl lg:text-[5.5rem] font-bold tracking-tight text-text leading-[1.15] mb-6 animate-fade-in-up text-balance">{title}</h1>
+        <h1 className="max-w-[20ch] text-h1 md:text-display lg:text-[5.5rem] font-bold tracking-tight text-text leading-[1.15] mb-6 animate-fade-in-up text-balance">{title}</h1>
         {lead && (
-          <div className="max-w-[50ch] text-base md:text-xl font-normal leading-relaxed text-text/80 mb-8 md:mb-12 animate-fade-in-up [animation-delay:200ms]">
+          <div className="max-w-[50ch] text-body md:text-h2 font-normal leading-relaxed text-text/80 mb-8 md:mb-12 animate-fade-in-up [animation-delay:200ms]">
             {lead}
           </div>
         )}
@@ -78,12 +78,12 @@ export function PageHero({
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center w-full px-4 sm:px-0">
             {primary && (
               <Link href={primary.href} onClick={primary.onClick} className="w-full sm:w-auto">
-                <Button variant={primary.variant || "primary"} className="h-14 w-full sm:w-auto px-8 text-sm font-bold uppercase tracking-wide">{primary.label}</Button>
+                <Button variant={primary.variant || "primary"} className="h-14 w-full sm:w-auto px-8 text-meta font-bold uppercase tracking-wide">{primary.label}</Button>
               </Link>
             )}
             {secondary && (
               <Link href={secondary.href} className="w-full sm:w-auto">
-                <Button variant={secondary.variant || "secondary"} className="h-14 w-full sm:w-auto px-8 text-sm font-bold uppercase tracking-wide border-border">{secondary.label}</Button>
+                <Button variant={secondary.variant || "secondary"} className="h-14 w-full sm:w-auto px-8 text-meta font-bold uppercase tracking-wide border-border">{secondary.label}</Button>
               </Link>
             )}
           </div>
@@ -114,8 +114,8 @@ export function Section({
     <SectionBand bg={bg} width={width} className={`py-12 md:py-24 scroll-mt-16 ${className ?? ''}`}>
       {(title || intro) && (
         <div className="mb-12">
-          {title && <h2 className="text-3xl md:text-4xl font-black tracking-tight text-text mb-6">{title}</h2>}
-          {intro && <div className="text-base md:text-lg font-normal leading-relaxed text-text/80">{intro}</div>}
+          {title && <h2 className="text-h1 md:text-h1 font-black tracking-tight text-text mb-6">{title}</h2>}
+          {intro && <div className="text-body md:text-body font-normal leading-relaxed text-text/80">{intro}</div>}
         </div>
       )}
       <div>{children}</div>
@@ -136,14 +136,14 @@ export function Step({
   return (
     <li className="flex gap-8 group">
       <div
-        className="flex h-12 w-12 flex-none items-center justify-center rounded-md border border-border bg-surface text-sm font-bold text-text shadow-sm transition-transform group-hover:scale-110"
+        className="flex h-12 w-12 flex-none items-center justify-center rounded-md border border-border bg-surface text-meta font-bold text-text shadow-none transition-transform group-hover:scale-110"
         aria-hidden="true"
       >
         {n.toString().padStart(2, '0')}
       </div>
       <div className="space-y-2 pt-1">
-        <h3 className="text-lg font-bold text-text leading-tight">{title}</h3>
-        <p className="text-sm leading-relaxed text-muted">{children}</p>
+        <h3 className="text-body font-bold text-text leading-tight">{title}</h3>
+        <p className="text-meta leading-relaxed text-muted">{children}</p>
       </div>
     </li>
   );
@@ -161,11 +161,11 @@ export function FeatureCard({
 }) {
   return (
     <Card className="space-y-4 p-8 bg-surface border-border transition-all card-transition">
-      <div className="inline-flex h-12 w-12 items-center justify-center bg-primary/5 text-primary border border-primary/10">
+      <div className="inline-flex h-12 w-12 items-center justify-center bg-surface2 text-text/70 border border-border">
         <Icon name={icon} size={24} />
       </div>
-      <h3 className="text-lg font-bold text-text leading-tight">{title}</h3>
-      <p className="text-sm leading-relaxed text-text/80">{children}</p>
+      <h3 className="text-body font-bold text-text leading-tight">{title}</h3>
+      <p className="text-meta leading-relaxed text-text/80">{children}</p>
     </Card>
   );
 }
@@ -184,15 +184,15 @@ export function CtaBand({
 }) {
   return (
     <SectionBand bg="band" width="3xl" className="py-24 sm:py-32 scroll-mt-16">
-      <h2 className="max-w-[15ch] text-balance text-4xl md:text-5xl font-bold tracking-tight text-white leading-none mb-8">{title}</h2>
-      {lead && <p className="mt-4 max-w-xl text-lg font-normal leading-relaxed text-on-band-muted">{lead}</p>}
+      <h2 className="max-w-[15ch] text-balance text-h1 md:text-display font-bold tracking-tight text-white leading-none mb-8">{title}</h2>
+      {lead && <p className="mt-4 max-w-xl text-body font-normal leading-relaxed text-on-band-muted">{lead}</p>}
       <div className="mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <Link href={primary.href}>
-          <Button variant="inverse" className="h-12 px-8 text-sm font-semibold">{primary.label}</Button>
+          <Button variant="inverse" className="h-12 px-8 text-meta font-semibold">{primary.label}</Button>
         </Link>
         {secondary && (
           <Link href={secondary.href}>
-            <Button variant="inverseGhost" className="h-12 px-8 text-sm font-semibold">{secondary.label}</Button>
+            <Button variant="inverseGhost" className="h-12 px-8 text-meta font-semibold">{secondary.label}</Button>
           </Link>
         )}
       </div>

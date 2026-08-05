@@ -55,12 +55,21 @@ describe('Design contract — global tokens (globals.css)', () => {
     expect(css).toMatch(/--color-verified-text:\s*var\(--verified-text\)/);
   });
 
-  it('sets H1 at 72px / weight 700 / line-height 1.05 / tracking -0.03em', () => {
-    // Brand v2: the h1 is 4.5rem (72px) on desktop, with a tighter
-    // line-height and tracking for a more confident 2026 hero.
-    expect(css).toMatch(/--text-h1:\s*4\.5rem/); // 72px
-    expect(css).toMatch(/--text-h1--line-height:\s*1\.05/);
-    expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.03em/);
+  it('sets H1 at 36px / line-height 1.1 / tracking -0.025em', () => {
+    // Was 4.5rem (72px). The 6-step consolidation (2026-08-05) set the scale from the sizes the
+    // pages actually used: no page ever rendered a 72px heading, the largest real one was
+    // `text-5xl` (48px), which is now --text-display. --text-h1 is the 36px `text-4xl` tier.
+    expect(css).toMatch(/--text-h1:\s*2\.25rem/); // 36px
+    expect(css).toMatch(/--text-h1--line-height:\s*1\.1/);
+    expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.025em/);
+  });
+
+  it('sets display at 48px, the largest step there is', () => {
+    expect(css).toMatch(/--text-display:\s*3rem/); // 48px
+    // A seventh step cannot be reached for: --text-hero/-h3/-small are deleted, not unused.
+    expect(css).not.toMatch(/--text-hero:/);
+    expect(css).not.toMatch(/--text-h3:/);
+    expect(css).not.toMatch(/--text-small:/);
   });
 
   it('sets H2 at 24px / weight 600 / line-height 1.3', () => {
@@ -73,9 +82,15 @@ describe('Design contract — global tokens (globals.css)', () => {
     expect(css).toMatch(/--text-body--line-height:\s*1\.6/);
   });
 
-  it('sets metadata at 13px / weight 500', () => {
-    expect(css).toMatch(/--text-meta:\s*0\.8125rem/); // 13px
-    expect(css).toMatch(/--text-meta--font-weight:\s*500/);
+  it('sets metadata at 14px, and does not also set a weight', () => {
+    // 0.875rem, not the old 0.8125rem, on purpose: --text-meta absorbed all 173 `text-sm`
+    // utilities, and 0.875rem IS `text-sm`, so the consolidation renames rather than restyles.
+    // --text-meta--font-weight: 500 was dropped for the same reason -- a size token that also set
+    // a weight would have bolded all 173 of them.
+    expect(css).toMatch(/--text-meta:\s*0\.875rem/); // 14px
+    // Anchored on the colon: `css` here is the raw stylesheet, and the comment above the scale
+    // block names this token while explaining why it went.
+    expect(css).not.toMatch(/--text-meta--font-weight\s*:/);
   });
 
   it('hints a monospace font for data/metadata', () => {
@@ -153,12 +168,25 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
   });
 });
 
+/*
+ * REVISED 2026-08-05: these three assertions pinned the literal `text-white` on primary CTAs.
+ *
+ * White on the brand vermillion #FF5A1F measures 3.12:1, below the WCAG 2.x AA floor of 4.5:1 for
+ * normal text, so the site's most important controls were unreadable to the contrast the standard
+ * assumes. The palette carries an `--on-primary` token for exactly this, and it now resolves to
+ * #0A0A0A (6.35:1), but 20 call sites hardcoded `text-white` and bypassed it, which is why editing
+ * the token alone changed nothing on screen.
+ *
+ * Pinning a raw colour in a design-contract test is what let that happen: it made the accessible
+ * fix fail CI. The contract is "the CTA uses the palette's on-primary pairing", not "the CTA is
+ * white", so these now assert the token.
+ */
 describe('Design contract — primary CTAs', () => {
   const page = readSource('../pages/index.tsx');
   const button = readSource('../components/ui/Button.tsx');
 
   it('hero "Browse the packs" / "See the N that survived" uses primary style', () => {
-    // The hero CTA links to #catalog. It should use bg-primary (#FF5A1F vermillion), white text,
+    // The hero CTA links to #catalog. It should use bg-primary (#FF5A1F vermillion), on-primary text,
     // text-sm (14px), font-medium (500), px-6 py-3 (12px 24px), rounded-md (6px).
     // We look for a Link with href="#catalog" that carries the CTA classes.
     const heroLinkPattern = /href="#catalog"[^>]*className="([^"]*)"/;
@@ -166,8 +194,9 @@ describe('Design contract — primary CTAs', () => {
     expect(match, 'hero #catalog link not found').not.toBeNull();
     const classes = match![1];
     expect(classes, 'hero CTA bg-primary').toMatch(/bg-primary/);
-    expect(classes, 'hero CTA white text').toMatch(/text-white/);
-    expect(classes, 'hero CTA text-sm').toMatch(/text-sm/);
+    expect(classes, 'hero CTA uses the on-primary token, not a hardcoded white')
+      .toMatch(/text-on-primary/);
+    expect(classes, 'hero CTA text-sm').toMatch(/text-meta/);
     expect(classes, 'hero CTA font-medium').toMatch(/font-medium/);
     expect(classes, 'hero CTA px-6').toMatch(/px-6/);
     expect(classes, 'hero CTA py-3').toMatch(/py-3/);
@@ -176,15 +205,16 @@ describe('Design contract — primary CTAs', () => {
 
   it('spotlight "View vetted blueprint" button uses primary CTA style', () => {
     assertContains('spotlight CTA', page, 'View vetted blueprint');
-    // The spotlight CTA surrounding span uses bg-primary, text-white, etc.
+    // The spotlight CTA surrounding span uses bg-primary, text-on-primary, etc.
     // Find the span containing "View vetted blueprint"
     const spotlightBtnPattern = /className="([^"]*)"[^>]*>\s*View vetted blueprint/;
     const match = spotlightBtnPattern.exec(page);
     expect(match, 'spotlight CTA not found').not.toBeNull();
     const classes = match![1];
     expect(classes, 'spotlight CTA bg-primary').toMatch(/bg-primary/);
-    expect(classes, 'spotlight CTA white text').toMatch(/text-white/);
-    expect(classes, 'spotlight CTA text-sm').toMatch(/text-sm/);
+    expect(classes, 'spotlight CTA uses the on-primary token, not a hardcoded white')
+      .toMatch(/text-on-primary/);
+    expect(classes, 'spotlight CTA text-sm').toMatch(/text-meta/);
     expect(classes, 'spotlight CTA font-bold').toMatch(/font-bold/);
   });
 
@@ -197,8 +227,9 @@ describe('Design contract — primary CTAs', () => {
     expect(match, 'comparison CTA not found').not.toBeNull();
     const classes = match![1];
     expect(classes, 'comparison CTA bg-primary').toMatch(/bg-primary/);
-    expect(classes, 'comparison CTA white text').toMatch(/text-white/);
-    expect(classes, 'comparison CTA text-sm').toMatch(/text-sm/);
+    expect(classes, 'comparison CTA uses the on-primary token, not a hardcoded white')
+      .toMatch(/text-on-primary/);
+    expect(classes, 'comparison CTA text-sm').toMatch(/text-meta/);
     expect(classes, 'comparison CTA font-medium').toMatch(/font-medium/);
     expect(classes, 'comparison CTA px-6').toMatch(/px-6/);
     expect(classes, 'comparison CTA py-3').toMatch(/py-3/);

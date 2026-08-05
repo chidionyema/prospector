@@ -62,12 +62,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           {/* Left: Brand & Main Nav */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
-              <Logo className="text-xl" onDark />
+              <Logo className="text-h2" onDark />
             </Link>
 
             <nav className="hidden md:flex items-center gap-6">
               {MARKETING_NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="font-medium text-sm text-on-band-muted hover:text-on-band transition-colors">{item.label}</Link>
+                <Link key={item.href} href={item.href} className="font-medium text-meta text-on-band-muted hover:text-on-band transition-colors">{item.label}</Link>
               ))}
             </nav>
           </div>
@@ -85,7 +85,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 session resolving. /account itself decides which of the two it is. */}
             <Link
               href="/account"
-              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-on-band-faint/40 px-3 py-1.5 text-sm font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-on-band-faint/40 px-3 py-1.5 text-meta font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
             >
               <Icon name="account" size={18} />
               Account
@@ -107,7 +107,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         </div>
 
         {menuOpen && (
-          <div id="marketing-menu" className="border-t border-border bg-surface md:hidden shadow-lg animate-rise">
+          <div id="marketing-menu" className="border-t border-border bg-surface md:hidden shadow-2 animate-rise">
             <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-6 py-4">
               <div className="py-4 space-y-4">
                 {MARKETING_NAV.map((item) => (
@@ -115,7 +115,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMenuOpen(false)}
-                    className="block px-2 py-2 font-mono text-xs font-semibold text-muted hover:text-text"
+          className="block px-2 py-2 text-caption font-semibold text-muted hover:text-text"
                   >
                     {item.label}
                   </Link>
@@ -124,14 +124,14 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 <Link
                   href="/account"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-2 py-2 font-mono text-xs font-semibold text-muted hover:text-text"
+         className="block px-2 py-2 text-caption font-semibold text-muted hover:text-text"
                 >
                   Account
                 </Link>
               </div>
               <div className="py-6">
                 <Link href="/" onClick={() => setMenuOpen(false)}>
-                  <Button fullWidth className="uppercase tracking-[0.2em] font-mono text-[10px] h-12 rounded-none bg-text text-bg border-none font-semibold">
+         <Button fullWidth className="uppercase tracking-[0.2em] text-caption h-12 rounded-none bg-text text-bg border-none font-semibold">
                     Browse packs
                   </Button>
                 </Link>
@@ -151,9 +151,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           {/* Top Section: Brand Statement */}
           <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-16 md:mb-20">
             <div className="max-w-md text-left">
-              <Logo className="text-3xl mb-6 text-text" />
-              <p className="text-xl font-normal text-muted leading-relaxed">
-                Business ideas that survived the filter. Fully sourced, ready to build, £49 each.
+              <Logo className="text-h1 mb-6 text-text" />
+              <p className="text-h2 font-normal text-muted leading-relaxed">
+                {/* "£49 each" removed: the footer renders on every page including ones with no
+                    catalogue loaded, and the shelf has not been one price since the segment
+                    ladder shipped. The live figures live on /pricing, which reads them. */}
+                Business ideas that survived the filter. Fully sourced, ready to build.
               </p>
             </div>
           </div>
@@ -163,31 +166,31 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
 
             {/* Column 1 */}
             <div className="py-8 md:py-10 md:pr-8 border-b border-border md:border-b-0">
-              <h3 className="font-mono text-[10px] uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Store</h3>
+       <h3 className="text-caption uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Store</h3>
               <ul className="flex flex-col gap-4">
-                <li><Link href="/" className="text-xs text-muted hover:text-text transition-colors">Catalog</Link></li>
-                <li><Link href="/ideas" className="text-xs text-muted hover:text-text transition-colors">Browse by category</Link></li>
-                <li><Link href="/how-it-works" className="text-xs text-muted hover:text-text transition-colors">How it works</Link></li>
-                <li><Link href="/kill-log" className="text-xs text-muted hover:text-text transition-colors">Kill log</Link></li>
-                <li><Link href="/faq" className="text-xs text-muted hover:text-text transition-colors">FAQ</Link></li>
+                <li><Link href="/" className="text-caption text-muted hover:text-text transition-colors">Catalog</Link></li>
+                <li><Link href="/ideas" className="text-caption text-muted hover:text-text transition-colors">Browse by category</Link></li>
+                <li><Link href="/how-it-works" className="text-caption text-muted hover:text-text transition-colors">How it works</Link></li>
+                <li><Link href="/kill-log" className="text-caption text-muted hover:text-text transition-colors">Kill log</Link></li>
+                <li><Link href="/faq" className="text-caption text-muted hover:text-text transition-colors">FAQ</Link></li>
               </ul>
             </div>
 
             {/* Column 2 */}
             <div className="py-8 md:py-10 md:px-8 border-b border-border md:border-b-0">
-              <h3 className="font-mono text-[10px] uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Legal</h3>
+       <h3 className="text-caption uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Legal</h3>
               <ul className="flex flex-col gap-4">
-                <li><Link href="/terms" className="text-xs text-muted hover:text-text transition-colors">Terms of Service</Link></li>
-                <li><Link href="/privacy" className="text-xs text-muted hover:text-text transition-colors">Privacy Policy</Link></li>
-                <li><Link href="/refund" className="text-xs text-muted hover:text-text transition-colors">Refund Policy</Link></li>
+                <li><Link href="/terms" className="text-caption text-muted hover:text-text transition-colors">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="text-caption text-muted hover:text-text transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/refund" className="text-caption text-muted hover:text-text transition-colors">Refund Policy</Link></li>
               </ul>
             </div>
 
             {/* Column 3 */}
             <div className="py-8 md:py-10 md:pl-8">
-              <h3 className="font-mono text-[10px] uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Contact</h3>
+       <h3 className="text-caption uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Contact</h3>
               <ul className="flex flex-col gap-4">
-                <li><a href={`mailto:${LEGAL.supportEmail}`} className="text-xs text-muted hover:text-text transition-colors break-all">{LEGAL.supportEmail}</a></li>
+                <li><a href={`mailto:${LEGAL.supportEmail}`} className="text-caption text-muted hover:text-text transition-colors break-all">{LEGAL.supportEmail}</a></li>
               </ul>
             </div>
 
@@ -195,13 +198,13 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
 
           {/* Bottom Section: Metadata */}
           <div className="border-t border-border pt-8 mt-4 flex flex-col md:flex-row justify-between items-center gap-8 text-left">
-            <p className="font-mono text-[10px] text-muted uppercase tracking-wide font-bold">
+      <p className="text-caption text-muted uppercase tracking-wide font-bold">
               &copy; 2026 {BRAND.name}. All rights reserved.
             </p>
           </div>
 
           {/* Digital-goods disclaimer */}
-          <p className="mt-12 md:mt-16 text-[10px] font-medium text-muted/50 leading-relaxed text-left max-w-5xl tracking-wide">
+          <p className="mt-12 md:mt-16 text-caption font-medium text-muted/50 leading-relaxed text-left max-w-5xl tracking-wide">
             Mumchimp packs are digital research products sold for information only, not financial, legal, or investment advice. Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
           </p>
 

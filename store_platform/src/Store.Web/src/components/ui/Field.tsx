@@ -28,7 +28,7 @@ export function Field({
     <div className={cx('flex flex-col gap-1', className)}>
       <label
         htmlFor={htmlFor}
-        className={cx('text-small font-semibold text-text', hideLabel && 'sr-only')}
+        className={cx('text-body font-semibold text-text', hideLabel && 'sr-only')}
       >
         {label}
         {required && <span className="text-danger"> *</span>}

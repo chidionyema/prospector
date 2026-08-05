@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon, IconName, Dropdown } from '@/components/ui';
+import { Icon, Dropdown } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
@@ -14,20 +14,19 @@ import LiveKillCard from '@/components/marketing/LiveKillCard';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
-import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, StepFlow } from '@/components/discovery/FacetBar';
-import { FacetChips } from '@/components/discovery/FacetChips';
 
 
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
-import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
-import { formatPriceForMarket, formatGbpNote, currencyForCountry, type Currency } from '@/lib/fx';
+import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
+import { formatPriceForMarket, formatChargeNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { track } from '@/lib/analytics';
 import { citedFigure } from '@/lib/sources';
+import { priceRange, formatGbp, type PriceRange } from '@/lib/priceRange';
 import { categoryFor, type Category } from '@/lib/category';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
@@ -46,7 +45,6 @@ import {
 } from '@/lib/discovery';
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
-import { cleanProofPoint } from '@/lib/proof';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 // Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
@@ -68,7 +66,7 @@ interface HomeProps {
   currency: Currency;
   /** N2: similar packs to the visitor's most recently viewed pack. Empty when
    *  the visitor has not viewed any pack yet (or the anchor pack is gone),
-   *  in which case the existing "Trending picks" row is the default. */
+   *  in which case the existing "Most sources" row is the default. */
   personalised: Pack[];
 }
 
@@ -76,7 +74,7 @@ type PillIcon = 'check' | 'shield' | 'download' | 'lock' | 'money';
 
 function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-medium text-text/70">
+    <div className="flex items-center gap-2 text-meta font-medium text-text/70">
       <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-success/10 text-success">
         <Icon name={icon} size={12} />
       </span>
@@ -94,13 +92,13 @@ function CategoryPill({ cat, onLight = false }: { cat: Category; onLight?: boole
   if (!cat.tagged) return null;
   if (onLight) {
     return (
-      <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide', cat.chip)}>
+      <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-bold uppercase tracking-wide', cat.chip)}>
         <Icon name={cat.icon} size={12} /> {cat.label}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-caption font-bold uppercase tracking-wide text-text shadow-none backdrop-blur">
       <Icon name={cat.icon} size={12} className={cat.accent} /> {cat.label}
     </span>
   );
@@ -135,8 +133,8 @@ function ProofLine({ pack }: { pack: Pack }) {
   const fresh = freshnessLabel(pack.verifiedAt);
   if (sources === null && !fresh) return null;
   return (
-    <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-muted">
-      <Icon name="verified" size={12} className="text-primary" />
+    <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-caption font-medium text-muted">
+      <Icon name="verified" size={12} className="text-success" />
       {sources !== null && (
         <>
           <span>
@@ -158,7 +156,7 @@ function ProofLine({ pack }: { pack: Pack }) {
 
 function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
   const cat = categoryFor(pack);
-  const { name, heading, eyebrow, sub } = cardHeading(pack);
+  const { heading, eyebrow, sub } = cardHeading(pack);
   const line = pack.oneLine || sub;
 
   // Status badge from available data. Only show when it means something.
@@ -178,7 +176,7 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
       href={`/pack/${pack.id}`}
       className={cx(
         'group flex flex-col border-l-[3px] border-l-primary bg-surface transition-colors',
-        'rounded-r-sm border border-border border-l-primary',
+        'rounded-r-md-sm border border-border border-l-primary',
         'hover:bg-surface2 hover:border-l-primary overflow-hidden',
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
@@ -191,25 +189,25 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
       {/* Category icon + label row -- visual anchor, breaks text monotony */}
       <div className="flex items-center gap-2 mb-2">
         {cat.tagged && (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
-            <Icon name={cat.icon} size={14} className="text-primary" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface2">
+            <Icon name={cat.icon} size={14} className="text-text/70" />
           </span>
         )}
         <div className="flex items-baseline gap-2 flex-1 min-w-0">
           {cat.tagged && (
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-eyebrow">
+            <span className="text-caption font-semibold uppercase tracking-wide text-eyebrow">
               {cat.label}
             </span>
           )}
           {eyebrow && (
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted truncate">{eyebrow}</span>
+      <span className="text-caption font-bold uppercase tracking-widest text-muted truncate">{eyebrow}</span>
           )}
           {pack.market && (
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{marketLabel(pack.market)}</span>
+      <span className="text-caption font-bold uppercase tracking-widest text-faint">{marketLabel(pack.market)}</span>
           )}
         </div>
         {badge && (
-          <span className="flex-none text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 text-primary bg-primary/10">
+          <span className="flex-none text-caption font-bold uppercase tracking-wide px-2 py-0.5 text-muted bg-surface2">
             {badge}
           </span>
         )}
@@ -217,13 +215,13 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
 
       <h3
         className={cx(
-          'line-clamp-2 text-lg font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
+          'line-clamp-2 text-body font-bold leading-snug tracking-tight text-text transition-colors group-hover:text-primary',
         )}
       >
         {heading}
       </h3>
       {line && (
-        <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted">
+        <p className="mt-1.5 line-clamp-2 text-caption leading-relaxed text-muted">
           {hook ? (
             <><span className="font-semibold text-text/80">{hook}</span>{rest}</>
           ) : (
@@ -235,23 +233,22 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
       {/* Verification mini-bar */}
       <div className="mt-3 flex gap-[2px]" aria-hidden>
         {Array.from({ length: 6 }).map((_, i) => (
-          <span key={i} className="h-[3px] flex-1 rounded-full bg-primary" />
+          <span key={i} className="h-[3px] flex-1 rounded-full bg-text" />
         ))}
       </div>
 
       <ProofLine pack={pack} />
 
       <div className="mt-auto pt-4">
-        <PackBuyButton pack={pack} variant="card" className="w-full" />
-        <p className="mt-2 text-center text-[13px] font-medium text-muted">
+        <PackBuyButton pack={pack} variant="card" className="w-full" currency={currency} />
+        <p className="mt-2 text-center text-caption font-medium text-muted">
           or view details <Icon name="arrowRight" size={13} className="inline align-middle" />
         </p>
       </div>
-      {/* US-5: small GBP note under the buy button so the source of truth is never hidden.
-          The headline price is in the visitor's currency; the GBP equivalent is one line below. */}
+      {/* The CTA above quotes the visitor's currency; the debit is in GBP. Both on screen. */}
       {currency !== 'GBP' && (
-        <p className="mt-1 text-center text-[11px] font-medium text-faint">
-          {formatGbpNote(pack.price)}
+        <p className="mt-1 text-center text-caption font-medium text-faint">
+          {formatChargeNote(pack.price, currency)}
         </p>
       )}
       </div>
@@ -263,15 +260,15 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
 // the grid is not eleven identical blocks. Anchors the page and breaks the pattern.
 function SpotlightCard({ pack, currency }: { pack: Pack; currency: Currency }) {
   const cat = categoryFor(pack);
-  const { name, heading, eyebrow, sub } = cardHeading(pack);
+  const { heading, eyebrow, sub } = cardHeading(pack);
   return (
-    <div className="group relative mb-6 overflow-hidden border-2 border-text bg-surface transition-all duration-150 hover:-translate-x-[1px] hover:-translate-y-[1px]" style={{ boxShadow: '3px 3px 0 #1A1A1A' }}>
+    <div className="group relative mb-6 overflow-hidden border-2 border-text bg-surface transition-all duration-150 hover:-translate-x-[1px] hover:-translate-y-[1px]" style={{ boxShadow: '3px 3px 0 var(--text)' }}>
       <Link
         href={`/pack/${pack.id}`}
         className="flex flex-col md:flex-row"
       >
         <Cover cat={cat} iconSize={120} className="min-h-[120px] md:w-[32%]">
-          <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-text shadow-sm backdrop-blur">
+          <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-caption font-bold uppercase tracking-wide text-text shadow-none backdrop-blur">
             <Icon name="trending-up" size={12} className={cat.accent} /> Latest to survive
           </span>
         </Cover>
@@ -280,24 +277,24 @@ function SpotlightCard({ pack, currency }: { pack: Pack; currency: Currency }) {
           <div className="flex flex-wrap items-center gap-2">
             <CategoryPill cat={cat} onLight />
             {eyebrow && (
-              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
+       <span className="text-caption font-bold uppercase tracking-widest text-muted">{eyebrow}</span>
             )}
           </div>
           <div>
-            <h3 className="text-xl font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-2xl">
+            <h3 className="text-h2 font-black leading-tight tracking-tight text-text transition-colors group-hover:text-primary md:text-h2">
               {heading}
             </h3>
-            {sub && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
+            {sub && <p className="mt-1.5 max-w-2xl text-meta leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xl font-black tracking-tight text-text">{formatPriceForMarket(pack.price, currency)}</span>
-            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-primary-hover">
+            <span className="text-h2 font-black tracking-tight text-text">{formatPriceForMarket(pack.price, currency)}</span>
+            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-meta font-bold text-on-primary transition hover:bg-primary-hover">
               View vetted blueprint <Icon name="arrowRight" size={15} />
             </span>
-            <PackBuyButton pack={pack} variant="drawer" />
+            <PackBuyButton pack={pack} variant="drawer" currency={currency} />
           </div>
           {currency !== 'GBP' && (
-            <p className="text-xs font-medium text-faint">{formatGbpNote(pack.price)}</p>
+            <p className="text-caption font-medium text-faint">{formatChargeNote(pack.price, currency)}</p>
           )}
         </div>
       </Link>
@@ -317,7 +314,7 @@ function Heartbeat({ packs, stats }: { packs: Pack[]; stats: CatalogStats | null
   const label = freshnessLabel(latest);
   if (!label && !stats) return null;
   return (
-    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5  border border-border bg-surface px-4 py-2 text-xs font-semibold text-muted">
+    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5  border border-border bg-surface px-4 py-2 text-caption font-semibold text-muted">
       <span className="inline-flex items-center gap-2">
         <span className="inline-flex h-2 w-2 rounded-full bg-success" />
         <span className="text-text">Live database</span>
@@ -373,13 +370,13 @@ function RecentlyViewed({ packs }: { packs: Pack[] }) {
 
   return (
     <div className="mb-6">
-      <h3 className="text-sm font-bold text-text">Recently viewed</h3>
+      <h3 className="text-meta font-bold text-text">Recently viewed</h3>
       <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {items.map((pack) => (
           <Link
             key={pack.id}
             href={`/pack/${pack.id}`}
-            className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-semibold text-text transition-colors hover:border-text/20 hover:bg-bg"
+            className="flex items-center gap-3 rounded-md border border-border bg-surface p-3 text-meta font-semibold text-text transition-colors hover:border-text/20 hover:bg-bg"
           >
             <Icon name="arrowRight" size={14} className="text-muted" />
             {pack.cardLine || pack.title}
@@ -475,7 +472,34 @@ function CatalogBrowser({
     !filtered && sort === 'newest' && grouped.matching.length > 2 ? grouped.matching[0] : null;
   const gridPacks = spotlight ? grouped.matching.slice(1) : grouped.matching;
 
-  // Trending: top 3 by source count, only on unfiltered default view
+  /*
+   * The shelf's editorial shape (spec section 7, 2026-08-05).
+   *
+   * Measured before this: `/` was 21,717px on desktop and 49,558px on mobile, 73% of it one flat
+   * grid of 61 cards with no hierarchy between pack #1 and pack #61. A shelf SHOULD dominate a
+   * storefront, so the height was never the defect; the absence of any way to form a shortlist
+   * was.
+   *
+   * Two rows carry meaning, and only on the default view -- once the visitor has filtered or
+   * re-sorted, THEY have stated the ordering and an editorial row talking over it is noise.
+   *
+   * The spec also proposed a "Cleared all six checks" row. It is deliberately not built: a pack
+   * only reaches the catalogue by clearing all six (CLAUDE.md, "Publish only on PASS"), so that
+   * row is every pack on the shelf. A label that selects nothing is decoration wearing the
+   * costume of a filter, which is the failure this whole pass is removing.
+   */
+  const editorial = !filtered && sort === 'newest';
+
+  /* The tail is capped, not dropped: every card stays in the server HTML and is only display-
+   * hidden, so a crawler and the "a filtered URL comes back filtered" e2e still see all of them
+   * while the buyer gets a page with an end. 24 = 8 rows of 3 (xl), 12 of 2 (sm). */
+  const SHELF_PAGE = 24;
+  const [showAll, setShowAll] = React.useState(false);
+  const newestRow = editorial ? gridPacks.slice(0, 3) : [];
+  const tailPacks = editorial ? gridPacks.slice(3) : gridPacks;
+  const shown = showAll ? tailPacks.length : Math.min(SHELF_PAGE, tailPacks.length);
+
+  // Most sources: top 3 by source count, only on unfiltered default view
   const trending = React.useMemo(() => {
     if (filtered || sort !== 'newest') return [];
     return [...packs]
@@ -491,7 +515,7 @@ function CatalogBrowser({
           <Icon name="search" size={20} />
         </div>
         <p className="font-semibold text-text">No packs are live right now.</p>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+        <p className="mx-auto mt-1 max-w-sm text-meta text-muted">
           We publish an opportunity the moment it clears every check. Check back shortly.
         </p>
       </div>
@@ -503,7 +527,7 @@ function CatalogBrowser({
       {/* Only shown once we have boosted away from the default shelf. A visitor already on "uk"
           has nothing to be told, the grid below is already every pack, in the usual order. */}
       {market !== DEFAULT_MARKET && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-border bg-bg/60 px-4 py-3 text-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-border bg-bg/60 px-4 py-3 text-meta">
           <span className="text-text">Showing packs for {marketLabel(market)} first.</span>
           {/* Sets the `market` cookie server-side (getServerSideProps) on the next request, so
               the switch survives past this one click, not just this one page load. */}
@@ -516,10 +540,17 @@ function CatalogBrowser({
         </div>
       )}
 
-      {/* Progressive discovery -- first thing in the catalog. No border box. */}
-      <div className="mb-6">
-        <StepFlow packs={packs} state={state} onChange={apply} />
-      </div>
+      {/* StepFlow used to sit HERE, as the first thing in the catalogue, and it is why
+          `e2e/discovery.spec.ts` "the first pack card is above the fold" was failing at -500px
+          (measured 2026-08-05, 1280x720). The spec's own comment records the form as 107px when
+          the fold was last fixed; it is now 397px, so it had grown 290px unnoticed -- exactly the
+          additive regression that test was written to catch, on a page whose entire pitch is
+          "here is what survived".
+
+          It now renders after the first product row instead (see below). A facet router is a tool
+          for narrowing a shelf, and it is asked for after the visitor has seen the shelf, not
+          before: at the top of the page it is a three-question quiz standing between a stranger
+          and the product. Nothing is removed and no step changes -- only the order. */}
 
       {/* Toolbar: search, count, sort. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -527,7 +558,7 @@ function CatalogBrowser({
           <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
         </div>
         <div className="flex items-center gap-3">
-          <span className="whitespace-nowrap text-sm font-semibold text-muted">
+          <span className="whitespace-nowrap text-meta font-semibold text-muted">
             {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
           </span>
           <div className="w-40">
@@ -543,12 +574,12 @@ function CatalogBrowser({
           {visible.length > 0 ? (
             <>
               {/* N2: "Based on your browsing" when the visitor has viewed a
-                  pack, otherwise the existing Trending picks row. Both rows
+                  pack, otherwise the existing Most sources row. Both rows
                   are 3-card compact summaries, the same shape, so the page
                   rhythm stays consistent. */}
               {personalised.length > 0 ? (
                 <div className="mb-6">
-                  <h3 className="text-sm font-bold text-text mb-3">Based on your browsing</h3>
+                  <h3 className="text-meta font-bold text-text mb-3">Based on your browsing</h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {personalised.slice(0, 3).map((pack) => (
                       <Link
@@ -556,14 +587,14 @@ function CatalogBrowser({
                         href={`/pack/${pack.id}`}
                         className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-surface2"
                       >
-                        <span className="flex h-8 w-8 flex-none items-center justify-center bg-primary/10">
-                          <Icon name="verified" size={16} className="text-primary" />
+                        <span className="flex h-8 w-8 flex-none items-center justify-center bg-surface2">
+                          <Icon name="verified" size={16} className="text-success" />
                         </span>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-text group-hover:text-primary transition-colors truncate">
+                          <p className="text-meta font-bold text-text group-hover:text-primary transition-colors truncate">
                             {pack.cardLine || pack.title}
                           </p>
-                          <p className="mt-0.5 text-xs text-muted">
+                          <p className="mt-0.5 text-caption text-muted">
                             {pack.sourceCount ?? 0} sources · {formatPriceForMarket(pack.price, currency)}
                           </p>
                         </div>
@@ -574,10 +605,13 @@ function CatalogBrowser({
               ) : (
                 <RecentlyViewed packs={packs} />
               )}
-              {/* Trending picks: 3-card row, only on default unfiltered view */}
+              {/* Most sources: 3-card row, only on default unfiltered view. Was headed "Trending
+                  picks", which is a traffic claim on a site that measures no traffic -- the row is
+                  and always was ordered by `sourceCount`. It now says what it sorts by, and each
+                  card prints the number, so the heading is checkable against the cards under it. */}
               {trending.length === 3 && (
                 <div className="mb-6">
-                  <h3 className="text-sm font-bold text-text mb-3">Trending picks</h3>
+                  <h3 className="text-meta font-bold text-text mb-3">Most sources</h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {trending.map((pack) => (
                       <Link
@@ -585,14 +619,14 @@ function CatalogBrowser({
                         href={`/pack/${pack.id}`}
                         className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-surface2"
                       >
-                        <span className="flex h-8 w-8 flex-none items-center justify-center bg-primary/10">
-                          <Icon name="trending-up" size={16} className="text-primary" />
+                        <span className="flex h-8 w-8 flex-none items-center justify-center bg-surface2">
+                          <Icon name="trending-up" size={16} className="text-text/70" />
                         </span>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-text group-hover:text-primary transition-colors truncate">
+                          <p className="text-meta font-bold text-text group-hover:text-primary transition-colors truncate">
                             {pack.cardLine || pack.title}
                           </p>
-                          <p className="mt-0.5 text-xs text-muted">
+                          <p className="mt-0.5 text-caption text-muted">
                             {pack.sourceCount ?? 0} sources · {formatPriceForMarket(pack.price, currency)}
                           </p>
                         </div>
@@ -601,19 +635,59 @@ function CatalogBrowser({
                   </div>
                 </div>
               )}
+              {/* The three-question router, moved down from above the toolbar. It sits after the
+                  first row of real packs, so the first thing on the page is product. */}
+              <div className="mb-6">
+                <StepFlow packs={packs} state={state} onChange={apply} />
+              </div>
               {spotlight && <SpotlightCard pack={spotlight} currency={currency} />}
+
+              {newestRow.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="mb-3 text-meta font-bold text-text">Newest survivors</h3>
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {newestRow.map((pack) => (
+                      <PackCard key={pack.id} pack={pack} currency={currency} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {editorial && tailPacks.length > 0 && (
+                <h3 className="mb-3 text-meta font-bold text-text">
+                  The rest of the catalogue, newest first
+                </h3>
+              )}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {gridPacks.map((pack, i) => (
-                  <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
+                {tailPacks.map((pack, i) => (
+                  <div
+                    key={pack.id}
+                    /* `hidden`, not unmounted. Dropping the nodes would strip 37 internal links
+                       out of the server HTML to win a scroll bar. */
+                    className={cx('animate-rise', i >= shown && 'hidden')}
+                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                  >
                     <PackCard pack={pack} currency={currency} />
                   </div>
                 ))}
               </div>
+              {shown < tailPacks.length && (
+                <div className="mt-8 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(true)}
+                    className="inline-flex items-center gap-2 border border-text bg-transparent px-6 py-3 text-meta font-bold text-text transition-colors hover:bg-text hover:text-white"
+                  >
+                    Browse all {tailPacks.length + newestRow.length + (spotlight ? 1 : 0)} packs
+                    <Icon name="arrowRight" size={15} />
+                  </button>
+                </div>
+              )}
               {/* Boost, don't block: every other market's packs are still fully on the shelf,
                   clearly separated rather than mixed in or hidden. */}
               {grouped.others.map((group) => (
                 <div key={group.market} className="mt-10 border-t border-border pt-8">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
+                  <h2 className="text-caption font-bold uppercase tracking-widest text-muted">
                     Also available, {group.label}
                   </h2>
                   <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -623,7 +697,7 @@ function CatalogBrowser({
                   </div>
                 </div>
               ))}
-              <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-muted">
+              <p className="mt-8 flex items-center justify-center gap-2 text-meta font-medium text-muted">
                 <Icon name="shield" size={15} className="text-success" />
                 Every pack carries a 14 day money back guarantee.
               </p>
@@ -706,49 +780,49 @@ function CatalogBrowser({
  * question a client brings them, and a pack answers one we chose. That difference is the actual
  * reason the price can be £49, so burying it would be arguing badly as well as dishonestly.
  */
-function MethodCostAnchor() {
+function MethodCostAnchor({ range }: { range: PriceRange | null }) {
   const documentary = citedFigure('documentary-research');
   return (
     <div className="mt-12 border border-border bg-bg/40 p-6 md:p-8">
-      <h3 className="text-xl font-bold tracking-tight text-text md:text-2xl">
+      <h3 className="text-h2 font-bold tracking-tight text-text md:text-h2">
         What this costs when you commission it
       </h3>
-      <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-muted md:text-base">
+      <p className="mt-2 max-w-[68ch] text-meta leading-relaxed text-muted md:text-body">
         A pack is desk research: published sources, read until a claim either holds or dies. Firms
         sell that by the project, and publish what they charge for it.
       </p>
 
       <dl className="mt-6 grid gap-5 sm:grid-cols-2">
         <div className="bg-surface p-5 border border-border">
-          <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">
+     <dt className="text-caption font-bold uppercase tracking-widest text-faint">
             {documentary.publisher}, {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
           </dt>
-          <dd className="mt-2 text-sm leading-relaxed text-text/80">
+          <dd className="mt-2 text-meta leading-relaxed text-text/80">
             <SourcedFigure id="documentary-research" />
-            <span className="mt-1 block text-xs text-muted">for {documentary.of}</span>
+            <span className="mt-1 block text-caption text-muted">for {documentary.of}</span>
           </dd>
         </div>
         <div className="bg-surface p-5 border border-success/30">
-          <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+     <dt className="text-caption font-bold uppercase tracking-widest text-muted">
             A pack, already run
           </dt>
-          <dd className="mt-2 text-sm leading-relaxed text-text/80">
-            <span className="font-semibold text-text">£49</span>
-            <span className="mt-1 block text-xs text-muted">
+          <dd className="mt-2 text-meta leading-relaxed text-text/80">
+            <span className="font-semibold text-text">{range ? range.label : 'One payment'}</span>
+            <span className="mt-1 block text-caption text-muted">
               one payment, {PACK_CONTENTS.length} documents, every claim sourced
             </span>
           </dd>
         </div>
       </dl>
 
-      <p className="mt-5 max-w-[68ch] text-xs leading-relaxed text-faint">
+      <p className="mt-5 max-w-[68ch] text-caption leading-relaxed text-faint">
         <SourcedCaveat id="documentary-research" />
       </p>
     </div>
   );
 }
 
-function ComparisonBlock() {
+function ComparisonBlock({ range }: { range: PriceRange | null }) {
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
     // Counted, never typed. This row said "four documents" while the bundle had grown to eight,
@@ -761,8 +835,13 @@ function ComparisonBlock() {
   ];
   return (
     <div className="mt-14">
-      <h2 className="text-xl font-bold tracking-tight text-text md:text-2xl">Why £49 once, not another subscription</h2>
-      <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted md:text-base">
+      {/* The number is the mode, not the floor: this heading is an argument about paying ONCE,
+          and quoting the cheapest pack under it would make the comparison flattering rather than
+          representative. `priceSentence` states both figures where the buyer is actually deciding. */}
+      <h2 className="text-h2 font-bold tracking-tight text-text md:text-h2">
+        Why {range ? `${formatGbp(range.mode)} once` : 'one payment'}, not another subscription
+      </h2>
+      <p className="mt-2 max-w-[64ch] text-meta leading-relaxed text-muted md:text-body">
         Idea feeds and trend tools sell you the search. We sell you the answer to one.
       </p>
 
@@ -773,19 +852,19 @@ function ComparisonBlock() {
             <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-text/5 text-muted">
               <Icon name="close" size={14} />
             </span>
-            <span className="text-base font-bold text-text/70">Subscription idea feeds</span>
+            <span className="text-body font-bold text-text/70">Subscription idea feeds</span>
           </div>
-          <p className="mt-1.5 text-sm text-muted">
+          <p className="mt-1.5 text-meta text-muted">
             <SourcedFigure id="idea-feed-entry-plan" />
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-faint">
+          <p className="mt-1 text-caption leading-relaxed text-faint">
             <SourcedCaveat id="idea-feed-entry-plan" />
           </p>
           <dl className="mt-5 space-y-3.5">
             {rows.map((r) => (
               <div key={r.label} className="flex flex-col gap-0.5">
-                <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-faint">{r.label}</dt>
-                <dd className="text-sm leading-relaxed text-text/65">{r.feed}</dd>
+        <dt className="text-caption font-bold uppercase tracking-widest text-faint">{r.label}</dt>
+                <dd className="text-meta leading-relaxed text-text/65">{r.feed}</dd>
               </div>
             ))}
           </dl>
@@ -797,20 +876,22 @@ function ComparisonBlock() {
             <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-success/10 text-success">
               <Icon name="check" size={14} />
             </span>
-            <span className="text-base font-bold text-text">A Mumchimp Pack</span>
+            <span className="text-body font-bold text-text">A Mumchimp Pack</span>
           </div>
-          <p className="mt-1.5 text-sm font-semibold text-success">£49 one time, yours forever</p>
+          <p className="mt-1.5 text-meta font-semibold text-success">
+            {range ? `${formatGbp(range.mode)} one time` : 'One payment'}, yours forever
+          </p>
           <dl className="mt-5 space-y-3.5">
             {rows.map((r) => (
               <div key={r.label} className="flex flex-col gap-0.5">
-                <dt className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">{r.label}</dt>
-                <dd className="text-sm font-medium leading-relaxed text-text/85">{r.pack}</dd>
+        <dt className="text-caption font-bold uppercase tracking-widest text-muted">{r.label}</dt>
+                <dd className="text-meta font-medium leading-relaxed text-text/85">{r.pack}</dd>
               </div>
             ))}
           </dl>
           <Link
             href="#catalog"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-meta font-medium text-on-primary transition-all hover:bg-primary-hover"
           >
             Browse the packs <Icon name="arrowRight" size={15} />
           </Link>
@@ -821,17 +902,22 @@ function ComparisonBlock() {
 }
 
 export default function Home({ packs, stats, initialState, market, currency, personalised }: HomeProps) {
-  // Never a literal. The catalogue grows on every PASS, so the only honest number is the one the
-  // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
-  const survived = stats?.listed ?? packs.length;
+  // The live "N live now" figure is rendered by <Heartbeat>, which takes `stats` directly, so the
+  // duplicate `stats?.listed ?? packs.length` that used to sit here was computed and dropped.
   const { variant } = useCopyVariant();
+  /* Every price claim on this page is computed from the packs this render already holds. The
+     shelf stopped being one price when the segment ladder shipped (`feat(pricing)` #105/#107);
+     see lib/priceRange.ts for the measurement that made each of the four claims below false. */
+  const range = priceRange(packs);
   return (
     // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
     // above the header, and so a card anywhere on the page can reach it without prop threading.
-    <BuyDrawerProvider>
+    <BuyDrawerProvider currency={currency}>
     <MarketingLayout>
       <Seo
-        title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each"
+        title={`Business ideas that survived six brutal checks. Researched and ready to build${
+          range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
+        }`}
         /* The catalogue as structured data. The shelf below is filtered and sorted in the browser,
            so what a crawler keeps is whatever the server happened to send; this block states the
            full list once, in order, with a real URL per pack. It is also the single cheapest thing
@@ -852,15 +938,20 @@ export default function Home({ packs, stats, initialState, market, currency, per
              guarantee that also sits under the grid. What is left is the claim, the price, and
              the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
              next block added above the grid fails a test instead of quietly undoing this. */}
-      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center md:text-left animate-rise">
+      {/* width="7xl" to match the catalogue Section immediately below. It was "6xl" (1152px) while
+          the shelf was "7xl" (1280px), so the hero's left edge sat 64px inside the grid's on any
+          viewport past 1280px: the headline and the first pack card did not line up, which reads
+          as a broken column rather than a deliberate one. The narrower editorial sections further
+          down are a separate, intentional rhythm; these two are stacked and must share an edge. */}
+      <SectionBand bg="white" width="7xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center md:text-left animate-rise">
         {/* US-3: 2-column hero on lg+. Copy on the left, live demonstration of the
             moat on the right. The card shows the engine's last 3 kills, last 3
             passes, and the live count, polled every 5s. The buyer sees the
             moat in motion, not described. */}
         <div className="flex flex-col gap-8 md:grid md:grid-cols-2 md:items-center">
           <div className="min-w-0 w-full">
-        <p className="mb-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
-          Stress tested business ideas · £49 each
+    <p className="mb-1.5 text-caption font-bold uppercase tracking-[0.2em] text-muted">
+          Stress tested business ideas{range ? ` · ${range.uniform ? `${range.label} each` : `from ${formatGbp(range.min)}`}` : ''}
         </p>
         {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
             "0", so it means a different number of pixels in every font: the old max-w-[24ch]
@@ -878,32 +969,38 @@ export default function Home({ packs, stats, initialState, market, currency, per
             makes this headline survive the font being slow, blocked, or swapped: measured with
             the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
             is still 2 and the first card still clears the fold by 88px at worst. */}
-        <h1 className="mx-auto w-full min-w-0 max-w-full text-3xl font-bold leading-[1.08] tracking-tight text-text md:max-w-[56rem] md:text-balance md:text-5xl">
+        <h1 className="mx-auto w-full min-w-0 max-w-full text-h1 font-bold leading-[1.08] tracking-tight text-text md:max-w-[56rem] md:text-balance md:text-display">
           {variant.globalHookLead}
         </h1>
-        <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
+        {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then a
+            CTA, then a ~120px void where the explanation should be. The one paragraph that says
+            what is actually being sold was withheld from the majority of visitors to save vertical
+            space it was not, in the end, saving. */}
+        <p className="mx-auto mt-3 max-w-[64ch] text-body leading-relaxed text-text/75">
           {variant.globalHookDescription}
         </p>
-        {/* Hero CTA: ghost button so it doesn't compete with Buy buttons below */}
-        <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        {/* Hero CTA: solid filled, the only action above the fold. A ghost button at this position
+            reads as "we are not sure we want you to click this". */}
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/sample"
             onClick={() => track('sample_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/5 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 bg-primary px-7 py-3.5 text-meta font-bold uppercase tracking-wide text-on-primary shadow-hard transition-all hover:bg-primary-hover hover:-translate-x-[1px] hover:-translate-y-[1px] sm:w-auto"
           >
             Read a free report, no email
+            <Icon name="arrowRight" size={16} />
           </Link>
         </div>
-        <p className="mt-2 text-sm font-medium text-muted">
+        <p className="mt-2 text-meta font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
           </div>
-          <div className="hidden md:block">
-            <LiveKillCard />
-          </div>
-          <div className="md:hidden mt-6">
-            <LiveKillCard />
-          </div>
+          {/* ONE instance. This was rendered twice, `hidden md:block` and `md:hidden`, which put
+              two copies in the DOM on every viewport: `display:none` hides an element, it does not
+              stop React mounting it or running its effects, so both copies ran their own 5s
+              interval for the whole session. The card is responsive on its own, so the breakpoint
+              pair was never needed. */}
+          <LiveKillCard className="w-full" />
         </div>
       </SectionBand>
 
@@ -911,8 +1008,8 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
         <div className="mb-2 flex-wrap items-end justify-between gap-x-6 gap-y-3 hidden sm:flex">
           <div>
-            <h2 className="text-2xl font-black tracking-tight text-text md:text-3xl">What survived</h2>
-            <p className="mt-1.5 max-w-[70ch] text-sm text-text/75">
+            <h2 className="text-h2 font-black tracking-tight text-text md:text-h1">What survived</h2>
+            <p className="mt-1.5 max-w-[70ch] text-meta text-text/75">
               A pack is listed only once it clears every check, with a clickable source behind every
               claim. Most ideas never make it.
             </p>
@@ -928,7 +1025,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <Section
         bg="white"
         width="6xl"
-        title={<span className="font-black">What you get for £49</span>}
+        title={<span className="font-black">What you get{range ? `, at every price` : ''}</span>}
         intro={`One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`}
         className="!py-14 md:!py-20"
       >
@@ -936,7 +1033,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             above the shelf; they answer "what am I actually buying and what if it's wrong?",
             which is a question asked at the deliverable list, not at the headline. */}
         <div className="mb-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
-          <TrustPill icon="money" label="£49, one payment" />
+          <TrustPill icon="money" label={range ? `${range.label}, one payment` : 'One payment'} />
           <TrustPill icon="shield" label="14 day money back" />
           <TrustPill icon="check" label="Every claim sourced" />
           <TrustPill icon="download" label="Instant download" />
@@ -947,21 +1044,21 @@ export default function Home({ packs, stats, initialState, market, currency, per
             rows from the free sample, including the check that failed, a preview of eight
             green ticks would advertise better and claim something the shop does not. */}
         <DossierPreview />
-        <MethodCostAnchor />
-        <ComparisonBlock />
+        <MethodCostAnchor range={range} />
+        <ComparisonBlock range={range} />
       </Section>
 
       {/* 4. WHY TRUST IT, condensed reassurance, sits below the shelf, not above it. */}
       <SectionBand bg="band" width="6xl" className="py-14 md:py-20">
         <div className="flex flex-col gap-10 md:grid md:grid-cols-[1.4fr_1fr] md:items-center">
           <div className="min-w-0 w-full">
-            <p className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.2em] text-on-band-faint">
+      <p className="mb-4 text-caption font-bold uppercase tracking-[0.2em] text-on-band-faint">
               Why you can trust this
             </p>
-            <h2 className="max-w-full text-balance text-3xl font-bold leading-tight tracking-tight text-white md:max-w-[22ch] md:text-4xl">
+            <h2 className="max-w-full text-balance text-h1 font-bold leading-tight tracking-tight text-white md:max-w-[22ch] md:text-h1">
               Stress tested the way a skeptical investor would.
             </h2>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-on-band-muted md:text-lg">
+            <p className="mt-6 max-w-xl text-body leading-relaxed text-on-band-muted md:text-body">
               Every opportunity walks into a room built to destroy it. Six hard checks: real demand, a payer
               who can actually pay, room past the incumbents, a route to market, and legality. Anything that
               cannot back a claim with a real source dies before it reaches this store. What you see is
@@ -974,14 +1071,14 @@ export default function Home({ packs, stats, initialState, market, currency, per
             <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-3">
               <Link
                 href="/kill-log"
-                className="inline-flex items-center gap-2 text-sm font-bold text-white underline underline-offset-4 transition-opacity hover:opacity-80"
+                className="inline-flex items-center gap-2 text-meta font-bold text-white underline underline-offset-4 transition-opacity hover:opacity-80"
               >
                 See the {killTotals.killed.toLocaleString('en-GB')} we rejected
                 <Icon name="arrowRight" size={15} />
               </Link>
               <Link
                 href="/how-it-works"
-                className="inline-flex items-center gap-2 text-sm font-bold text-white underline-offset-4 transition-opacity hover:opacity-80"
+                className="inline-flex items-center gap-2 text-meta font-bold text-white underline-offset-4 transition-opacity hover:opacity-80"
               >
                 See exactly how it works
                 <Icon name="arrowRight" size={15} />
@@ -991,11 +1088,11 @@ export default function Home({ packs, stats, initialState, market, currency, per
 
           <ul className="space-y-3">
             {['We tried to disprove the demand. It was real.', 'We tried to prove no one pays. Someone does.', 'We tried to crown the incumbents. There was room.', 'We tried to break every claim. Each cites a source.'].map((item) => (
-              <li key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3.5">
+              <li key={item} className="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-4 py-3.5">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success/20 text-white">
                   <Icon name="check" size={13} />
                 </span>
-                <span className="text-sm font-medium text-white">{item}</span>
+                <span className="text-meta font-medium text-white">{item}</span>
               </li>
             ))}
           </ul>
@@ -1004,10 +1101,10 @@ export default function Home({ packs, stats, initialState, market, currency, per
 
       <Section bg="white" width="4xl" className="!py-10 md:!py-12">
         <div className="border border-border bg-bg/40 p-6 md:p-8">
-          <h2 className="text-lg font-bold tracking-tight text-text md:text-xl">
+          <h2 className="text-body font-bold tracking-tight text-text md:text-h2">
             Want the next one, when it survives?
           </h2>
-          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-muted">
+          <p className="mt-2 max-w-[62ch] text-meta leading-relaxed text-muted">
             Most ideas we run die on the incumbent test, so this is not a weekly send, there is
             nothing to send most weeks. Leave an address and you get one email on the day a pack
             clears all six checks. The sample above stays free either way, and this form is not in
@@ -1022,10 +1119,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
       {/* N1: the single trust-and-guarantees row above the CtaBand. Five facts,
           one place. The buyer who scrolls the page from top to bottom sees
           the trust once, definitively. */}
-      <TrustGuaranteesRow />
+      {/* `price` computed from the packs this render already has, never a constant -- the shelf
+          stopped being one price when the segment ladder shipped (lib/priceRange.ts). */}
+      <TrustGuaranteesRow listed={stats?.listed} price={range ?? undefined} />
 
       <CtaBand
-        title="Find your next business for £49."
+        title={range ? `Find your next business from ${formatGbp(range.min)}.` : 'Find your next business.'}
         lead="One payment. Every claim sourced. 14 day money back guarantee."
         primary={{ href: '#catalog', label: 'Browse the packs' }}
         secondary={{ href: '/how-it-works', label: 'How it works' }}
@@ -1086,7 +1185,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
     const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
     // N2: derive the personalised row. The most recently viewed pack anchors
     // the similarity. If the cookie is empty or the anchor pack is no
-    // longer in the catalogue, the row is hidden and "Trending picks" is
+    // longer in the catalogue, the row is hidden and "Most sources" is
     // shown instead (the existing default).
     const personalised: Pack[] = (() => {
       if (recentlyViewedIds.length === 0) return [];

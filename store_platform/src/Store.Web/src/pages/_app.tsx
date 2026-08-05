@@ -7,6 +7,8 @@ import { ToastProvider } from "@/components/ui";
 import { Seo } from "@/components/Seo";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { CurrencyProvider } from "@/lib/currency";
+import { type Currency } from "@/lib/fx";
 import { track } from "@/lib/analytics";
 
 // These three are the site's whole typeface. `variable` only publishes the family name as a CSS
@@ -30,8 +32,8 @@ const hanken = Hanken_Grotesk({
 // serif back deliberately: globals.css now points --font-serif at --font-serif-pref, so the
 // download buys something.
 //
-// Newsreader rather than Playfair. Headings here run from --text-hero (5.5rem) down to
-// --text-h3 (1.25rem/20px), and most of them are at the small end, card titles, section heads.
+// Newsreader rather than Playfair. Headings here run from --text-display (5.5rem) down to
+// --text-h2 (1.25rem/20px), and most of them are at the small end, card titles, section heads.
 // Playfair is a high-contrast Didone whose hairlines are drawn for display sizes; Newsreader is
 // a text-first serif, so one family covers the whole range instead of looking authoritative in
 // the hero and thin on a card.
@@ -74,8 +76,14 @@ export default function App({ Component, pageProps }: AppProps) {
               "anonymous" with a single 401 for a visitor who has never signed in, which is the
               overwhelmingly common case on a storefront. */}
           <AuthProvider>
-            <Seo />
-            <Component {...pageProps} />
+            {/* The visitor's display currency, resolved once per request in each page's
+                getServerSideProps and made ambient here so no intermediary component has to
+                forward it. Pages that resolve no currency fall through to GBP, the currency
+                the catalogue is priced and charged in. See lib/currency.tsx. */}
+            <CurrencyProvider currency={(pageProps as { currency?: Currency }).currency}>
+              <Seo />
+              <Component {...pageProps} />
+            </CurrencyProvider>
           </AuthProvider>
         </ToastProvider>
       </ErrorBoundary>
