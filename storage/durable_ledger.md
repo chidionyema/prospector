@@ -832,3 +832,12 @@
 * LAW: Do not generate concepts related to test-3 after multiple failed wedge pivots.
 * LAW: Do not generate concepts related to test-3 after multiple failed wedge pivots.
 * LAW: Do not build wrappers on transparent markets.
+* LAW: Do not generate concepts related to abc123 after multiple failed wedge pivots.
+* LAW: Do not generate concepts related to abc123 after multiple failed wedge pivots.
+* LAW: Do not generate concepts related to abc after multiple failed wedge pivots.
+* LAW: Do not generate concepts related to abc after multiple failed wedge pivots.
+* LAW: Do not generate concepts related to test-2 after multiple failed wedge pivots.
+* LAW: Do not generate concepts related to test-2 after multiple failed wedge pivots.
+* LAW: Do not generate concepts related to test-3 after multiple failed wedge pivots.
+* LAW: Do not generate concepts related to test-3 after multiple failed wedge pivots.
+* LAW: Do not build wrappers on transparent markets.
