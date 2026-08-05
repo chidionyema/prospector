@@ -1,11 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { Seo } from '@/components/Seo';
 import { Icon, Skeleton } from '@/components/ui';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
-import { fetchOrderBySession, type SessionOrderItem } from '@/lib/api/client';
+import { fetchOrderBySession, fetchPackDetails, fetchCatalog, type SessionOrderItem, type Pack, type PackDetails } from '@/lib/api/client';
 import { PostPurchaseAccountNote } from '@/components/checkout/BuyerIdentityNote';
 import { track } from '@/lib/analytics';
 
@@ -35,6 +33,12 @@ export default function OrderSuccess() {
   const [pollAttempt, setPollAttempt] = React.useState(0);
   const [items, setItems] = React.useState<SessionOrderItem[]>([]);
   const [copied, setCopied] = React.useState(false);
+
+  // Pack details for the welcome. Fetched only after the order resolves, so we know which
+  // pack id to load. The catalogue fetch is opportunistic and best-effort: a partial
+  // "no cross-sell" is better than a hero that never paints.
+  const [pack, setPack] = React.useState<PackDetails | null>(null);
+  const [catalog, setCatalog] = React.useState<Pack[]>([]);
 
   // Resolved after mount, never during SSR: reading window on the server would either throw or
   // bake the build machine's origin into the HTML and cause a hydration mismatch.
@@ -69,6 +73,18 @@ export default function OrderSuccess() {
         if (result.status === 'ready' && result.items.length > 0) {
           setItems(result.items);
           setPollPhase('ready');
+          // US-8: once the order resolves, fetch the pack details for the welcome page
+          // (cover, title, one-liner) and the catalogue for cross-sell. Both are best-effort:
+          // the welcome is complete without them; the page degrades gracefully.
+          const firstPackId = result.items[0]?.packId;
+          if (firstPackId) {
+            void fetchPackDetails(firstPackId)
+              .then((p) => { if (!cancelled) setPack(p); })
+              .catch(() => { /* pack details are nice-to-have, not critical */ });
+          }
+          void fetchCatalog()
+            .then((c) => { if (!cancelled) setCatalog(c); })
+            .catch(() => { /* cross-sell is nice-to-have, not critical */ });
           return;
         }
         // Terminal answers: nothing further is coming, so stop rather than spend the remaining
@@ -109,10 +125,281 @@ export default function OrderSuccess() {
     }
   }, [phase, sessionId]);
 
-  return (
-    <MarketingLayout>
-      <Seo title="Order Confirmed, Mumchimp" />
+  // ERROR / EARLY STATES  -  no MarketingLayout wrapper, the buyer is post-purchase.
+  // The audit is specific: "the buyer is post-purchase; let them stay". Hiding the global
+  // nav removes the "Browse more packs" dopamine hit that competes with the download CTA.
+  if (phase !== 'ready') {
+    return (
+      <ResolutionFallback
+        phase={phase}
+        sessionId={sessionId}
+        origin={origin}
+        pollAttempt={pollAttempt}
+        copied={copied}
+        onCopy={() => setCopied(true)}
+        packId={packId}
+      />
+    );
+  }
 
+  // READY  -  the welcome. 8 sections, in order:
+  //  1. Pack cover plate (16:9 hero)
+  //  2. Pack title (h1)
+  //  3. Pack one-liner
+  //  4. Download link (full-width primary button)
+  //  5. Cross-sell: "Other packs in this category" (3 cards)
+  //  6. Share with a friend
+  //  7. Save your receipt
+  //  8. What's next?  -  4-step checklist
+  const firstItem = items[0];
+  const shareUrl = origin && packId ? `${origin}/pack/${packId}` : '';
+
+  // Cross-sell: same market, exclude the just-bought pack, top 3 by source count.
+  const crossSell = pack
+    ? catalog
+        .filter((p) => p.id !== pack.id && p.market === pack.market)
+        .sort((a, b) => (b.sourceCount ?? 0) - (a.sourceCount ?? 0))
+        .slice(0, 3)
+    : [];
+
+  return (
+    <main id="main" className="min-h-dvh bg-bg">
+      <Seo title="Order confirmed, your pack is ready" />
+
+      <div className="mx-auto max-w-3xl px-6 py-12 md:py-16">
+        {/* 1. Cover plate (16:9 hero). Use a colour-coded gradient as the placeholder until
+            the canonical pack art (US-2) lands. The category colour is the same fallback
+            the rest of the site uses for missing imagery. */}
+        <div className="relative mb-8 aspect-[16/9] overflow-hidden border border-border bg-primary">
+          <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_12%_-10%,rgba(255,255,255,0.25),transparent_55%)]" />
+          <div className="absolute inset-0 flex items-end p-8">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-text shadow-sm">
+              <Icon name="check" size={14} className="text-success" />
+              Order confirmed
+            </span>
+          </div>
+        </div>
+
+        {/* 2. Pack title */}
+        <h1 className="text-3xl font-black tracking-tight text-text md:text-4xl">
+          {pack?.title ?? firstItem?.packTitle ?? 'Your pack is ready'}
+        </h1>
+
+        {/* 3. Pack one-liner */}
+        <p className="mt-3 max-w-[60ch] text-lg leading-relaxed text-text/75">
+          {pack?.oneLine ?? 'Your payment was received. The download is ready below.'}
+        </p>
+
+        {/* 4. Download link  -  full-width primary button. The single most important action
+            on the page; the rest of the welcome is a scaffold around it. */}
+        {firstItem && (
+          <div className="mt-8">
+            <a
+              href={`${API_BASE_URL}${firstItem.downloadPath}`}
+              className="inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-4 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+            >
+              <Icon name="download" size={18} />
+              Download your pack
+            </a>
+            {/* The full evidence is the second route back. Refunded orders (revoked) and
+                pending orders (unfulfilled) also live here, both end the welcome early. */}
+            {firstItem.orderPath && (
+              <div className="mt-4 border border-border bg-surface p-4 text-left">
+                <p className="text-sm font-semibold text-text">Save this link now</p>
+                <p className="mt-1 text-xs text-muted">
+                  It is your permanent access link, it does not expire. Bookmark it or copy it
+                  somewhere safe before closing this page.
+                </p>
+                <code className="mt-2 block break-all rounded-lg bg-bg px-3 py-2 font-mono text-[11px] text-text">
+                  {origin}
+                  {firstItem.orderPath}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(`${origin}${firstItem.orderPath}`);
+                    setCopied(true);
+                  }}
+                  className="mt-2 text-xs font-semibold text-primary underline"
+                >
+                  {copied ? 'Copied ✓' : 'Copy link'}
+                </button>
+                <PostPurchaseAccountNote className="mt-3 border-t border-border pt-3 text-xs leading-relaxed text-muted" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5. Cross-sell: same market, top 3 by source count. Buyers who bought one pack
+            are likelier to buy another from the same market. The "more evidence than the
+            shop normally surfaces" framing makes the cross-sell credible, not cringe. */}
+        {crossSell.length > 0 && (
+          <section className="mt-12 border-t border-border pt-10">
+            <h2 className="text-xl font-bold tracking-tight text-text md:text-2xl">
+              Other packs in this category
+            </h2>
+            <p className="mt-2 max-w-[60ch] text-sm text-muted">
+              Same vetted filter, same evidence standard. Three more from the same market.
+            </p>
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {crossSell.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/pack/${p.id}`}
+                  className="group flex flex-col gap-2 border border-border bg-surface p-4 transition-colors hover:bg-bg"
+                >
+                  <p className="text-sm font-bold text-text group-hover:text-primary transition-colors line-clamp-2">
+                    {p.cardLine || p.title}
+                  </p>
+                  <p className="mt-auto text-xs font-semibold text-muted">
+                    {p.sourceCount ?? 0} sources
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 6. Share with a friend. The audit's "recommender persona": a buyer who wants
+            to share the pack with a friend needs one tap. The link is the pack page URL. */}
+        {shareUrl && (
+          <section className="mt-10 border-t border-border pt-10">
+            <h2 className="text-lg font-bold tracking-tight text-text">
+              Share with a friend
+            </h2>
+            <p className="mt-2 max-w-[60ch] text-sm text-muted">
+              If this helped, send it to the one person who would actually build it.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(shareUrl);
+                  setCopied(true);
+                }}
+                className="inline-flex items-center gap-2 border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg"
+              >
+                <Icon name="arrowRight" size={14} />
+                Copy link
+              </button>
+              <a
+                href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Vetted business pack from Mumchimp: ${pack?.title ?? ''}`)}&url=${encodeURIComponent(shareUrl)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg"
+              >
+                Share on X
+              </a>
+            </div>
+          </section>
+        )}
+
+        {/* 7. Save your receipt. The audit's "delivery surface, not a thank-you decoration".
+            The receipt is the order's orderPath opened with a print stylesheet hint. */}
+        {firstItem && (
+          <section className="mt-10 border-t border-border pt-10">
+            <h2 className="text-lg font-bold tracking-tight text-text">
+              Save your receipt
+            </h2>
+            <p className="mt-2 max-w-[60ch] text-sm text-muted">
+              Keep a copy for your records. The receipt is your orderPath; the bookmark
+              above is the same URL.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window === 'undefined') return;
+                window.print();
+              }}
+              className="mt-4 inline-flex items-center gap-2 border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg"
+            >
+              <Icon name="download" size={14} />
+              Print / save as PDF
+            </button>
+          </section>
+        )}
+
+        {/* 8. What's next?  -  4-step checklist. The pack is a multi-week project. The
+            checklist is the buyer's reason to come back. Each step is a tap away from
+            the relevant section of the pack. */}
+        <section className="mt-10 border-t border-border pt-10">
+          <h2 className="text-lg font-bold tracking-tight text-text">
+            {`What's next`}
+          </h2>
+          <p className="mt-2 max-w-[60ch] text-sm text-muted">
+            The pack is a built project, not a report. Four steps to a first customer.
+          </p>
+          <ol className="mt-6 space-y-3">
+            {[
+              'Read the executive summary, the 4-page read that frames the build',
+              'Skim the QA report, the one section that lists every sourcing caveat',
+              'Run the build spec for day one, the first deliverable in your first week',
+              'Pick your first customer, the persona dossier inside the pack',
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-3 border border-border bg-surface p-4">
+                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  {i + 1}
+                </span>
+                <span className="text-sm leading-relaxed text-text/80">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Quiet browser-back affordance. The audit said "let them stay", but a buyer
+            who wants to see the rest of the shop needs an exit too. */}
+        <div className="mt-12 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-muted hover:text-text transition-colors"
+          >
+            Browse more packs
+          </Link>
+          {packId && (
+            <Link
+              href={`/pack/${packId}`}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-muted hover:text-text transition-colors"
+            >
+              Back to pack
+            </Link>
+          )}
+        </div>
+
+        <p className="mt-8 text-center text-xs text-muted">
+          Need help with your order? Contact{' '}
+          <a href={`mailto:${LEGAL.supportEmail}`} className="underline">
+            {LEGAL.supportEmail}
+          </a>
+        </p>
+      </div>
+    </main>
+  );
+}
+
+/**
+ * The pre-resolution fallback (resolving, no-session, timed-out, unfulfilled, revoked).
+ * Lives in its own function so the ready-state welcome below can read as a single,
+ * buyer-facing flow without the error-state conditional noise.
+ */
+function ResolutionFallback({
+  phase,
+  sessionId,
+  origin,
+  pollAttempt,
+  copied,
+  onCopy,
+  packId,
+}: {
+  phase: Phase;
+  sessionId: string | null;
+  origin: string;
+  pollAttempt: number;
+  copied: boolean;
+  onCopy: () => void;
+  packId: string | null;
+}) {
+  return (
+    <main id="main" className="min-h-dvh bg-bg">
       <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-bg px-6 py-16">
         <div className="flex w-full max-w-2xl flex-col items-center text-center gap-8">
           <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
@@ -133,52 +420,6 @@ export default function OrderSuccess() {
                     : 'Your payment was received and your purchase is safe.'}
             </p>
           </div>
-
-          {phase === 'ready' && (
-            <div className="w-full max-w-sm flex flex-col gap-3">
-              {items.map((item) => (
-                <a
-                  key={item.packId}
-                  href={`${API_BASE_URL}${item.downloadPath}`}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  <Icon name="download" size={16} />
-                  Download {item.packTitle}
-                </a>
-              ))}
-              {/* No confirmation email is sent while MAILJET_API_KEY / MAILJET_API_SECRET are unset
-                  in production, so this page is currently the buyer's ONLY route back to what they
-                  paid for. Promising an inbox link we do not send is what turns a lost tab into a
-                  refund. When Mailjet is configured, restore the "we emailed you a copy" line HERE. */}
-              {items[0]?.orderPath && (
-                <div className="border border-border bg-surface p-4 text-left">
-                  <p className="text-sm font-semibold text-text">Save this link now</p>
-                  <p className="mt-1 text-xs text-muted">
-                    It is your permanent access link, it does not expire. Bookmark it or copy it
-                    somewhere safe before closing this page.
-                  </p>
-                  <code className="mt-2 block break-all rounded-lg bg-bg px-3 py-2 font-mono text-[11px] text-text">
-                    {origin}
-                    {items[0].orderPath}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(`${origin}${items[0].orderPath}`);
-                      setCopied(true);
-                    }}
-                    className="mt-2 text-xs font-semibold text-primary underline"
-                  >
-                    {copied ? 'Copied ✓' : 'Copy link'}
-                  </button>
-                  {/* The second route back, and the only one that survives losing the link above.
-                      A guest gets told what an account would do for them AFTER they have paid,
-                      never as a condition of paying. */}
-                  <PostPurchaseAccountNote className="mt-3 border-t border-border pt-3 text-xs leading-relaxed text-muted" />
-                </div>
-              )}
-            </div>
-          )}
 
           {phase === 'resolving' && (
             <div className="bg-surface border border-border p-6 max-w-sm w-full text-left space-y-5">
@@ -209,9 +450,6 @@ export default function OrderSuccess() {
                   />
                 </div>
               )}
-              {/* Do NOT tell the buyer to check their inbox: no fulfilment email is sent while
-                  the MAILJET_* secrets are unset. Sending them to an empty inbox loses the sale.
-                  Give them the one reference that actually lets support find the order. */}
               <div className="flex items-start gap-3">
                 <Icon name="shield" size={16} className="text-primary mt-0.5 shrink-0" />
                 <div>
@@ -222,10 +460,6 @@ export default function OrderSuccess() {
                         ? 'This order was refunded'
                         : 'Your purchase is safe'}
                   </p>
-                  {/* Each of these is a genuinely different situation, and saying so is the
-                      point. 'unfulfilled' in particular is not a timeout: we KNOW the pack did
-                      not go out, so it promises a person rather than implying the page might
-                      still come good. */}
                   <p className="text-xs text-muted mt-0.5">
                     {phase === 'unfulfilled'
                       ? 'Your payment went through, but this order did not release its download. That is our fault, not yours. Send us the reference below and we will get your pack to you, or refund you in full, whichever you prefer.'
@@ -243,11 +477,6 @@ export default function OrderSuccess() {
                   <code className="mt-1 block break-all rounded-lg bg-bg px-3 py-2 font-mono text-[11px] text-text">
                     {sessionId}
                   </code>
-                  {/* Telling someone to "send us the reference" and then leaving them to scroll,
-                      select a 60-character opaque string and compose the mail themselves is
-                      where a recoverable order quietly turns into a refund request. The
-                      reference is already in the subject and body here, so it takes one tap and
-                      arrives in a form support can actually search on. */}
                   <a
                     href={
                       `mailto:${LEGAL.supportEmail}` +
@@ -291,6 +520,16 @@ export default function OrderSuccess() {
           </p>
         </div>
       </div>
-    </MarketingLayout>
+    </main>
   );
+}
+
+/** Tiny inline SEO so the page has a `title` and an `id="main"` for the skip link,
+ *  without dragging the full MarketingLayout back in. The audit is specific: hide the
+ *  global nav, keep the page accessible. */
+function Seo({ title }: { title: string }) {
+  React.useEffect(() => {
+    document.title = title;
+  }, [title]);
+  return null;
 }

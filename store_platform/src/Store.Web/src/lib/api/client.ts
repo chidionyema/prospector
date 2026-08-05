@@ -148,6 +148,23 @@ export async function fetchCatalog(): Promise<Pack[]> {
   return res.json();
 }
 
+/**
+ * Fetch the live FX rates from open.er-api.com. The response shape is
+ * `{ result: 'success', base_code: 'USD', rates: { GBP: 0.78, EUR: 0.92, ... } }` with USD as
+ * the base. The caller (`lib/fx.ts`) is responsible for inverting to base = GBP and shaping
+ * the result. Network failure is the caller's concern: this function throws on non-OK and
+ * the caller falls back to BASE_RATES.
+ *
+ * The reason the fetch lives here and not in `lib/fx.ts` is the UI-STANDARDS rule
+ * "Components never call fetch directly" applies to `/lib/fx.ts` too. Raw HTTP belongs in
+ * the API client; `lib/fx.ts` is the typed domain module.
+ */
+export async function fetchFxRates(): Promise<{ rates: Record<string, number> }> {
+  const res = await fetch('https://open.er-api.com/v6/latest/USD');
+  if (!res.ok) throw new Error(`FX API responded ${res.status}`);
+  return res.json();
+}
+
 export interface WaitlistSignup {
   email: string;
   /** Must be explicitly true. The server rejects false, an unticked box is not consent. */

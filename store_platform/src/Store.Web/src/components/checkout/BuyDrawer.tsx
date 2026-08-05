@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Icon, Modal } from '@/components/ui';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
+import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { formatPrice, Pack } from '@/lib/api/client';
@@ -88,16 +89,18 @@ function BuyDrawer({ pack, open, onClose }: { pack: Pack; open: boolean; onClose
 
           {canCheckout ? (
             <>
-              <button
-                type="button"
-                onClick={buy}
-                disabled={checkingOut}
-                className="w-full rounded-xl bg-text py-4 text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
-              >
-                {/* True of both routes, the overlay opens in place, the hosted route navigates,
-                    which is why it does not say "Redirecting". */}
-                {checkingOut ? 'Opening secure checkout…' : `Get instant access, ${priceLabel}`}
-              </button>
+              {/* US-1: the drawer's buy action is the same canonical <PackBuyButton> the shelf
+                  and the pack page use. The drawer passes its own `usePackCheckout` flow so
+                  the button's click opens the embedded overlay the drawer is already rendering
+                  when `clientSecret` lands. */}
+              <PackBuyButton
+                pack={pack}
+                variant="drawer"
+                buy={buy}
+                checkingOut={checkingOut}
+                canCheckout={canCheckout}
+                className="w-full"
+              />
               <BuyerIdentityNote className="text-xs leading-relaxed text-muted" />
             </>
           ) : (
@@ -183,34 +186,4 @@ export function BuyDrawerProvider({ children }: { children: React.ReactNode }) {
 
 export function useRequestBuy() {
   return React.useContext(RequestBuyContext);
-}
-
-/**
- * The shelf's Buy affordance. Renders nothing when no drawer is mounted.
- *
- * Deliberately quieter than "View blueprint": opening the pack stays the primary action, because
- * the evidence is the product. This is for the buyer the card already convinced.
- */
-export function BuyNowButton({ pack, className }: { pack: Pack; className?: string }) {
-  const requestBuy = useRequestBuy();
-  if (!requestBuy) return null;
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        // Shelf cards wrap the whole tile in a <Link>; without this, buying also navigates away
-        // from the shelf underneath the drawer that is opening.
-        event.preventDefault();
-        event.stopPropagation();
-        requestBuy(pack);
-      }}
-      aria-label={`Buy ${pack.cardLine || pack.title}`}
-      className={
-        className ??
-        'inline-flex h-8 items-center rounded-lg border border-border/70 px-3 text-xs font-bold text-text transition-colors hover:border-text hover:bg-text hover:text-white'
-      }
-    >
-      Buy
-    </button>
-  );
 }

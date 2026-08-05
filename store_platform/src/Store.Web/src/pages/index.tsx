@@ -9,10 +9,14 @@ import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { DossierPreview } from '@/components/marketing/DossierPreview';
+import PackCover from '@/components/marketing/PackCover';
+import LiveKillCard from '@/components/marketing/LiveKillCard';
+import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
-import { BuyDrawerProvider, BuyNowButton, useRequestBuy } from '@/components/checkout/BuyDrawer';
+import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
+import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, StepFlow } from '@/components/discovery/FacetBar';
@@ -21,6 +25,7 @@ import { FacetChips } from '@/components/discovery/FacetChips';
 
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
+import { formatPriceForMarket, formatGbpNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { track } from '@/lib/analytics';
 import { citedFigure } from '@/lib/sources';
 import { categoryFor, type Category } from '@/lib/category';
@@ -34,6 +39,7 @@ import {
   filterPacks,
   isFiltered,
   nearMisses,
+  similarPacks,
 
   type DiscoveryState,
 
@@ -56,6 +62,14 @@ interface HomeProps {
    *  -> "uk"; see `resolveMarket` in `lib/market.ts`). Boosts that market's packs to the top of
    *  the grid, every other market is still fully shown, just below. */
   market: string;
+  /** The currency to render prices in. Decoupled from market: a French visitor sees UK packs
+   *  first (no EU market yet) but the price in EUR. Computed from the country header on the
+   *  server so the rendered HTML is correct on first paint. */
+  currency: Currency;
+  /** N2: similar packs to the visitor's most recently viewed pack. Empty when
+   *  the visitor has not viewed any pack yet (or the anchor pack is gone),
+   *  in which case the existing "Trending picks" row is the default. */
+  personalised: Pack[];
 }
 
 type PillIcon = 'check' | 'shield' | 'download' | 'lock' | 'money';
@@ -142,11 +156,10 @@ function ProofLine({ pack }: { pack: Pack }) {
   );
 }
 
-function PackCard({ pack }: { pack: Pack }) {
+function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
   const line = pack.oneLine || sub;
-  const requestBuy = useRequestBuy();
 
   // Status badge from available data. Only show when it means something.
   const badge: string | null =
@@ -164,12 +177,17 @@ function PackCard({ pack }: { pack: Pack }) {
     <Link
       href={`/pack/${pack.id}`}
       className={cx(
-        'group flex flex-col border-l-[3px] border-l-primary bg-surface px-5 py-4 transition-colors',
+        'group flex flex-col border-l-[3px] border-l-primary bg-surface transition-colors',
         'rounded-r-sm border border-border border-l-primary',
-        'hover:bg-[#F8F5EF] hover:border-l-primary',
+        'hover:bg-[#F8F5EF] hover:border-l-primary overflow-hidden',
         'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
       )}
     >
+      {/* US-2: pack cover plate. The 1:1 cover sits flush with the card edges so
+          the visual is the first thing the buyer sees, before the title. The
+          cover is part of the link; clicking it navigates to the detail page. */}
+      <PackCover variant="square" pack={pack} />
+      <div className="flex flex-col px-5 py-4">
       {/* Category icon + label row -- visual anchor, breaks text monotony */}
       <div className="flex items-center gap-2 mb-2">
         {cat.tagged && (
@@ -224,15 +242,18 @@ function PackCard({ pack }: { pack: Pack }) {
       <ProofLine pack={pack} />
 
       <div className="mt-auto pt-4">
-        <span
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (requestBuy) requestBuy(pack); }}
-          className="w-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover inline-flex items-center justify-center cursor-pointer"
-        >
-          Unlock for {formatPrice(pack.price)}
-        </span>
+        <PackBuyButton pack={pack} variant="card" className="w-full" />
         <p className="mt-2 text-center text-[13px] font-medium text-muted">
           or view details <Icon name="arrowRight" size={13} className="inline align-middle" />
         </p>
+      </div>
+      {/* US-5: small GBP note under the buy button so the source of truth is never hidden.
+          The headline price is in the visitor's currency; the GBP equivalent is one line below. */}
+      {currency !== 'GBP' && (
+        <p className="mt-1 text-center text-[11px] font-medium text-faint">
+          {formatGbpNote(pack.price)}
+        </p>
+      )}
       </div>
     </Link>
   );
@@ -240,7 +261,7 @@ function PackCard({ pack }: { pack: Pack }) {
 
 // The hero of the shelf: the newest survivor, given real visual weight (full width, horizontal) so
 // the grid is not eleven identical blocks. Anchors the page and breaks the pattern.
-function SpotlightCard({ pack }: { pack: Pack }) {
+function SpotlightCard({ pack, currency }: { pack: Pack; currency: Currency }) {
   const cat = categoryFor(pack);
   const { name, heading, eyebrow, sub } = cardHeading(pack);
   return (
@@ -269,12 +290,15 @@ function SpotlightCard({ pack }: { pack: Pack }) {
             {sub && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-text/75 line-clamp-2">{sub}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xl font-black tracking-tight text-text">{formatPrice(pack.price)}</span>
+            <span className="text-xl font-black tracking-tight text-text">{formatPriceForMarket(pack.price, currency)}</span>
             <span className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-primary-hover">
               View vetted blueprint <Icon name="arrowRight" size={15} />
             </span>
-            <BuyNowButton pack={pack} />
+            <PackBuyButton pack={pack} variant="drawer" />
           </div>
+          {currency !== 'GBP' && (
+            <p className="text-xs font-medium text-faint">{formatGbpNote(pack.price)}</p>
+          )}
         </div>
       </Link>
     </div>
@@ -393,10 +417,14 @@ function CatalogBrowser({
   packs,
   initialState,
   market,
+  currency,
+  personalised,
 }: {
   packs: Pack[];
   initialState: DiscoveryState;
   market: string;
+  currency: Currency;
+  personalised: Pack[];
 }) {
   const router = useRouter();
   const [state, setState] = React.useState<DiscoveryState>(initialState);
@@ -514,7 +542,38 @@ function CatalogBrowser({
 
           {visible.length > 0 ? (
             <>
-              <RecentlyViewed packs={packs} />
+              {/* N2: "Based on your browsing" when the visitor has viewed a
+                  pack, otherwise the existing Trending picks row. Both rows
+                  are 3-card compact summaries, the same shape, so the page
+                  rhythm stays consistent. */}
+              {personalised.length > 0 ? (
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-text mb-3">Based on your browsing</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {personalised.slice(0, 3).map((pack) => (
+                      <Link
+                        key={pack.id}
+                        href={`/pack/${pack.id}`}
+                        className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
+                      >
+                        <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
+                          <Icon name="verified" size={16} className="text-primary" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-text group-hover:text-primary transition-colors truncate">
+                            {pack.cardLine || pack.title}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            {pack.sourceCount ?? 0} sources · {formatPriceForMarket(pack.price, currency)}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <RecentlyViewed packs={packs} />
+              )}
               {/* Trending picks: 3-card row, only on default unfiltered view */}
               {trending.length === 3 && (
                 <div className="mb-6">
@@ -534,7 +593,7 @@ function CatalogBrowser({
                             {pack.cardLine || pack.title}
                           </p>
                           <p className="mt-0.5 text-xs text-muted">
-                            {pack.sourceCount ?? 0} sources · {formatPrice(pack.price)}
+                            {pack.sourceCount ?? 0} sources · {formatPriceForMarket(pack.price, currency)}
                           </p>
                         </div>
                       </Link>
@@ -542,11 +601,11 @@ function CatalogBrowser({
                   </div>
                 </div>
               )}
-              {spotlight && <SpotlightCard pack={spotlight} />}
+              {spotlight && <SpotlightCard pack={spotlight} currency={currency} />}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {gridPacks.map((pack, i) => (
                   <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
-                    <PackCard pack={pack} />
+                    <PackCard pack={pack} currency={currency} />
                   </div>
                 ))}
               </div>
@@ -559,7 +618,7 @@ function CatalogBrowser({
                   </h2>
                   <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                     {group.packs.map((pack) => (
-                      <PackCard key={pack.id} pack={pack} />
+                      <PackCard key={pack.id} pack={pack} currency={currency} />
                     ))}
                   </div>
                 </div>
@@ -583,7 +642,7 @@ function CatalogBrowser({
               <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                 {candidates.map((candidate) => {
                   const pack = packs.find((p) => p.id === candidate.pack.id);
-                  return pack ? <PackCard key={pack.id} pack={pack} /> : null;
+                  return pack ? <PackCard key={pack.id} pack={pack} currency={currency} /> : null;
                 })}
               </div>
             </DiscoveryNearMiss>
@@ -761,7 +820,7 @@ function ComparisonBlock() {
   );
 }
 
-export default function Home({ packs, stats, initialState, market }: HomeProps) {
+export default function Home({ packs, stats, initialState, market, currency, personalised }: HomeProps) {
   // Never a literal. The catalogue grows on every PASS, so the only honest number is the one the
   // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
   const survived = stats?.listed ?? packs.length;
@@ -793,7 +852,13 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
              guarantee that also sits under the grid. What is left is the claim, the price, and
              the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
              next block added above the grid fails a test instead of quietly undoing this. */}
-      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center animate-rise">
+      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center md:text-left animate-rise">
+        {/* US-3: 2-column hero on lg+. Copy on the left, live demonstration of the
+            moat on the right. The card shows the engine's last 3 kills, last 3
+            passes, and the live count, polled every 5s. The buyer sees the
+            moat in motion, not described. */}
+        <div className="grid items-center gap-8 md:grid-cols-2">
+          <div>
         <p className="mb-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
@@ -832,6 +897,14 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
+          </div>
+          <div className="hidden md:block">
+            <LiveKillCard />
+          </div>
+          <div className="md:hidden mt-6">
+            <LiveKillCard />
+          </div>
+        </div>
       </SectionBand>
 
       <div id="catalog" className="scroll-mt-20" />
@@ -847,7 +920,7 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
           <Heartbeat packs={packs} stats={stats} />
         </div>
 
-        <CatalogBrowser packs={packs} initialState={initialState} market={market} />
+        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} />
       </Section>
 
       {/* 3. WHAT YOU GET, the deliverable breakdown. Format ambiguity is the biggest killer on a
@@ -946,6 +1019,11 @@ export default function Home({ packs, stats, initialState, market }: HomeProps) 
         </div>
       </Section>
 
+      {/* N1: the single trust-and-guarantees row above the CtaBand. Five facts,
+          one place. The buyer who scrolls the page from top to bottom sees
+          the trust once, definitively. */}
+      <TrustGuaranteesRow />
+
       <CtaBand
         title="Find your next business for £49."
         lead="One payment. Every claim sourced. 14 day money back guarantee."
@@ -988,15 +1066,42 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
     context.res.setHeader('Set-Cookie', `market=${market}; Path=/; Max-Age=31536000; SameSite=Lax`);
   }
 
+  // N2: read the recently-viewed cookie set by the pack detail page. The
+  // personalised "Based on your browsing" row anchors on the most recent
+  // pack. The list is MRU-ordered by the pack detail's Set-Cookie write.
+  const recentlyViewedIds: string[] = (() => {
+    const raw = context.req.cookies.recentlyViewed;
+    if (!raw) return [];
+    return raw.split(',').filter(Boolean).slice(0, 10);
+  })();
+
+  // US-5: the currency is decoupled from the market. A US visitor sees US packing first AND
+  // the price in dollars; a French visitor sees UK packing first (no EU market yet) AND the
+  // price in euros. The country header is the single source of truth for the display side.
+  const currency = currencyForCountry(
+    typeof countryHeader === 'string' ? countryHeader : null,
+  );
+
   try {
     const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
+    // N2: derive the personalised row. The most recently viewed pack anchors
+    // the similarity. If the cookie is empty or the anchor pack is no
+    // longer in the catalogue, the row is hidden and "Trending picks" is
+    // shown instead (the existing default).
+    const personalised: Pack[] = (() => {
+      if (recentlyViewedIds.length === 0) return [];
+      const anchorId = recentlyViewedIds[0];
+      const anchor = packs.find((p) => p.id === anchorId);
+      if (!anchor) return [];
+      return similarPacks(anchor, packs);
+    })();
     return {
-      props: { packs, stats, initialState, market },
+      props: { packs, stats, initialState, market, currency, personalised },
     };
   } catch (error) {
     console.error('Error fetching catalog:', error);
     return {
-      props: { packs: [], stats: null, initialState, market },
+      props: { packs: [], stats: null, initialState, market, currency, personalised: [] },
     };
   }
 };

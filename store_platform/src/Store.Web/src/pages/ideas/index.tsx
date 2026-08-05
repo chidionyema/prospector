@@ -9,6 +9,8 @@ import { Icon, type IconName } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { fetchCatalog } from '@/lib/api/client';
 import { eligibleLandings } from '@/lib/seo/landings';
+import CategoryGraph, { type CategoryNode } from '@/components/discovery/CategoryGraph';
+import BespokeIcon from '@/components/marketing/BespokeIcon';
 import { resolveVariant } from '@/lib/getCopyVariant';
 import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
@@ -125,27 +127,22 @@ export default function IdeasHub({ categories, total, variant }: Props) {
           />
         </div>
 
-        {/* Trending row */}
-        {!search && trendingCategories.length > 0 && (
+        {/* US-7: the 2D category graph. Sized by pack count, placed by relatedness.
+            Tapping a node navigates to that category's landing page. Below the
+            graph, the existing flat list stays as the text fallback (some buyers
+            scan text, some scan visuals - keep both). */}
+        {!search && categories.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-sm font-bold text-text mb-4">Trending categories</h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {trendingCategories.map((cat) => (
-                <Link
-                  key={cat.slug}
-                  href={`/ideas/${cat.slug}`}
-                  className="group flex flex-col border-l-[3px] border-l-primary bg-surface p-5 transition-colors hover:bg-[#F8F5EF]"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
-                    <Icon name={categoryIcon(cat.slug)} size={20} className="text-primary" />
-                  </span>
-                  <h3 className="mt-3 text-base font-bold text-text group-hover:text-primary transition-colors">
-                    {VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1}
-                  </h3>
-                  <p className="mt-1 text-xs text-muted">{cat.count} pack{cat.count !== 1 ? 's' : ''} available</p>
-                </Link>
-              ))}
-            </div>
+            <h2 className="text-sm font-bold text-text mb-4">Browse the shape of the catalogue</h2>
+            <CategoryGraph
+              categories={categories.map((c) => ({
+                kind: c.slug,
+                label: VARIANTS[variant].categoryH1[c.slug] ?? c.h1,
+                count: c.count,
+                description: c.description,
+              })) as CategoryNode[]}
+              filterPath={(kind) => `/ideas/${kind}`}
+            />
             <div className="mt-6 border-t border-border pt-6">
               <h2 className="text-sm font-bold text-text">All categories</h2>
             </div>
@@ -162,7 +159,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
                   className="group flex h-full items-start gap-4 border border-border bg-surface p-5 transition-colors hover:bg-[#F8F5EF] hover:border-text/20"
                 >
                   <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5" style={{ backgroundColor: '#042F2E10' }}>
-                    <Icon name={categoryIcon(cat.slug)} size={18} className="text-primary" />
+                    <BespokeIcon kind={cat.slug} size={18} className="text-primary" />
                   </span>
                   <div className="min-w-0">
                     <h2 className="text-base font-bold text-text group-hover:text-primary transition-colors leading-snug">
