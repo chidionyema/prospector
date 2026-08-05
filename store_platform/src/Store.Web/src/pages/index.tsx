@@ -858,7 +858,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             passes, and the live count, polled every 5s. The buyer sees the
             moat in motion, not described. */}
         <div className="grid items-center gap-8 md:grid-cols-2">
-          <div>
+          <div className="min-w-0">
         <p className="mb-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">
           Stress tested business ideas · £49 each
         </p>
@@ -954,7 +954,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
       {/* 4. WHY TRUST IT, condensed reassurance, sits below the shelf, not above it. */}
       <SectionBand bg="band" width="6xl" className="py-14 md:py-20">
         <div className="grid items-center gap-10 md:grid-cols-[1.4fr_1fr]">
-          <div>
+          <div className="min-w-0">
             <p className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.2em] text-on-band-faint">
               Why you can trust this
             </p>
