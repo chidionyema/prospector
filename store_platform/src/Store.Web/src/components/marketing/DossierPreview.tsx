@@ -32,17 +32,17 @@ function domainOf(url: string): string {
 
 export function DossierPreview() {
   return (
-    <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-surface">
+    <div className="mt-10 overflow-hidden rounded-md border border-border bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-bg px-5 py-4 md:px-7">
         <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+     <p className="text-caption font-bold uppercase tracking-widest text-muted">
             A real page from a real pack
           </p>
-          <p className="mt-1 text-sm font-bold text-text">
+          <p className="mt-1 text-meta font-bold text-text">
             {report.title}, the verification dossier
           </p>
         </div>
-        <span className="font-mono text-[11px] font-semibold text-muted">
+        <span className="font-mono text-caption font-semibold text-muted">
           {report.supported} of {report.total} survived · {report.sourceCount} sources
         </span>
       </div>
@@ -64,17 +64,17 @@ export function DossierPreview() {
               >
                 <Icon name={supported ? 'check' : 'shield'} size={11} />
               </span>
-              <span className="min-w-0 flex-1 text-sm font-medium text-text">{check.name}</span>
+              <span className="min-w-0 flex-1 text-meta font-medium text-text">{check.name}</span>
               <span
                 className={cx(
-                  'font-mono text-[11px] font-bold uppercase tracking-wide',
+                  'font-mono text-caption font-bold uppercase tracking-wide',
                   supported ? 'text-success' : 'text-warning',
                 )}
               >
                 {supported ? 'Survived' : 'Pushed back'}
               </span>
               {domain && (
-                <span className="w-full font-mono text-[11px] text-muted md:w-auto md:min-w-[13rem] md:text-right">
+                <span className="w-full font-mono text-caption text-muted md:w-auto md:min-w-[13rem] md:text-right">
                   {domain}
                 </span>
               )}
@@ -84,12 +84,12 @@ export function DossierPreview() {
       </ul>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg px-5 py-4 md:px-7">
-        <p className="text-xs text-muted">
+        <p className="text-caption text-muted">
           Every source is a live link in the pack. This one is free to read in full.
         </p>
         <Link
           href="/sample"
-          className="inline-flex items-center gap-2 text-sm font-bold text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-2 text-meta font-bold text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
         >
           Read a full pack free
           <Icon name="arrowRight" size={14} />

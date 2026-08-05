@@ -56,7 +56,7 @@ export default function HowItWorks() {
         width="6xl"
         title={<span className="font-black">{variant.sixChecksTitle}</span>}
       >
-        <p className="mt-4 max-w-3xl text-base leading-relaxed text-text/75">
+        <p className="mt-4 max-w-3xl text-body leading-relaxed text-text/75">
           {variant.sixChecksDescription}
         </p>
 
@@ -70,7 +70,7 @@ export default function HowItWorks() {
               >
                 {/* Step number + vertical line */}
                 <div className="flex flex-col items-center flex-none">
-                  <span className="flex h-10 w-10 items-center justify-center bg-primary text-sm font-black text-white">
+                  <span className="flex h-10 w-10 items-center justify-center bg-text text-meta font-black text-bg">
                     {i + 1}
                   </span>
                   {i < SIX_GATES.length - 1 && (
@@ -80,27 +80,27 @@ export default function HowItWorks() {
 
                 {/* Card body */}
                 <div className="flex-1 pb-6">
-                  <h2 className="text-xl font-black text-text leading-tight">
+                  <h2 className="text-h2 font-black text-text leading-tight">
                     {gate.heading}
                   </h2>
-                  <p className="mt-1 font-mono text-xs font-bold uppercase tracking-widest text-primary">
-                    <code className="bg-bg px-1.5 py-0.5 rounded text-[11px]">{gate.gate}</code>
+         <p className="mt-1 text-caption font-bold uppercase tracking-widest text-muted">
+                    <code className="bg-bg px-1.5 py-0.5 rounded-md text-caption">{gate.gate}</code>
                   </p>
 
                   {example && (
                     <div className="mt-5 border border-border bg-bg/40 p-5">
-                      <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+           <p className="text-caption font-bold uppercase tracking-widest text-muted">
                         {example.gateLabel}
                       </p>
-                      <h3 className="mt-2 text-sm font-bold text-text leading-snug">
+                      <h3 className="mt-2 text-meta font-bold text-text leading-snug">
                         {example.title}
                       </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-text/75">
+                      <p className="mt-2 text-meta leading-relaxed text-text/75">
                         {truncateReason(example.reason, 160)}
                       </p>
                       <Link
                         href="/kill-log"
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-primary hover:underline"
                       >
                         See kill‑log <Icon name="arrowRight" size={12} />
                       </Link>
@@ -108,7 +108,7 @@ export default function HowItWorks() {
                   )}
 
                   {!example && (
-                    <p className="mt-4 text-sm italic text-muted">
+                    <p className="mt-4 text-meta italic text-muted">
                       No example found in the kill log for this gate.
                     </p>
                   )}
@@ -126,13 +126,13 @@ export default function HowItWorks() {
         title={<span className="font-black">The adversarial pass</span>}
       >
         <div className="max-w-3xl space-y-4">
-          <p className="text-lg font-normal leading-relaxed text-text/80">
+          <p className="text-body font-normal leading-relaxed text-text/80">
             After the six gates clear, a second agent attacks the surviving claim. It hunts for
             contradictions, weak citations, and gaps the first pass missed. The dossier survives
             only if every objection can be answered with the evidence already on file, no new
             research, no hand‑waving.
           </p>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-meta leading-relaxed text-muted">
             This is why silence in the evidence record means &ldquo;unverifiable,&rdquo; not
             &ldquo;false.&rdquo; The agent rules only on passages it actually fetched. If it
             cannot find the evidence, it cannot mount the kill, so the bar is high, and the
@@ -148,16 +148,16 @@ export default function HowItWorks() {
         title={<span className="font-black">Why most ideas die</span>}
       >
         <div className="max-w-3xl space-y-6">
-          <p className="text-lg font-bold leading-relaxed text-text">
+          <p className="text-body font-bold leading-relaxed text-text">
             Of 960 ideas researched, 103 survived.
           </p>
-          <p className="text-base leading-relaxed text-text/80">
+          <p className="text-body leading-relaxed text-text/80">
             The rejects are published in full, each with the gate that fired and the sourced
             argument that killed it. The filter is auditable, not a black box.
           </p>
           <Link
             href="/kill-log"
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-meta font-medium text-on-primary transition-all hover:bg-primary-hover"
           >
             See the 960 we rejected{' '}
             <Icon name="arrowRight" size={15} />
@@ -172,7 +172,7 @@ export default function HowItWorks() {
         title={<span className="font-black">The honest limits</span>}
       >
         <div className="max-w-3xl space-y-6">
-          <p className="text-lg font-normal leading-relaxed text-text/80">
+          <p className="text-body font-normal leading-relaxed text-text/80">
             A pack is grounded research, not a guarantee. It&apos;s a high quality, evidence backed starting point. The work of finding, vetting, and sourcing the opportunity is done for you. Execution is still yours, and no analysis can promise a business outcome.
           </p>
         </div>

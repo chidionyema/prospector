@@ -31,11 +31,11 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = true,
         <article className="space-y-10 py-12 md:py-16">
           <header className="space-y-6">
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold text-text tracking-tight leading-none">{title}</h1>
-              <p className="text-xs font-bold font-mono text-muted uppercase tracking-widest">Version {version}</p>
+              <h1 className="text-h1 font-bold text-text tracking-tight leading-none">{title}</h1>
+       <p className="text-caption font-bold text-muted uppercase tracking-widest">Version {version}</p>
             </div>
             {interim && (
-              <div className="border border-border bg-bg/50 px-6 py-5 text-sm leading-relaxed text-muted">
+              <div className="border border-border bg-bg/50 px-6 py-5 text-meta leading-relaxed text-muted">
                 <strong className="text-text font-bold">Interim beta terms.</strong> This document reflects how the
                 platform actually works today and is pending final review by our legal counsel. We&apos;ll
                 post a new version here if anything material changes.
@@ -44,7 +44,7 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = true,
           </header>
           <div className="space-y-8">{children}</div>
           <div className="border-t border-border pt-8 mt-12">
-            <Link href="/" className="text-sm font-bold text-primary hover:underline flex items-center gap-2 uppercase tracking-wide">
+            <Link href="/" className="text-meta font-bold text-primary hover:underline flex items-center gap-2 uppercase tracking-wide">
               &larr; Back to home
             </Link>
           </div>
@@ -56,18 +56,18 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = true,
 
 /** Section heading inside a legal doc. */
 export function LegalHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-xl font-bold text-text pt-4 tracking-tight leading-tight">{children}</h2>;
+  return <h2 className="text-h2 font-bold text-text pt-4 tracking-tight leading-tight">{children}</h2>;
 }
 
 /** Body paragraph inside a legal doc. */
 export function LegalText({ children }: { children: React.ReactNode }) {
-  return <p className="text-base leading-relaxed text-text/80">{children}</p>;
+  return <p className="text-body leading-relaxed text-text/80">{children}</p>;
 }
 
 /** Bulleted list inside a legal doc. */
 export function LegalList({ items }: { items: React.ReactNode[] }) {
   return (
-    <ul className="list-disc space-y-3 pl-5 text-base leading-relaxed text-text/80">
+    <ul className="list-disc space-y-3 pl-5 text-body leading-relaxed text-text/80">
       {items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}

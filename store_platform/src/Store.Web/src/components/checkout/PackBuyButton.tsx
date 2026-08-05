@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { cx } from '@/components/ui/cx';
 import { formatPrice, Pack } from '@/lib/api/client';
+import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { useRequestBuy } from '@/components/checkout/BuyDrawer';
 
 export interface PackBuyButtonProps {
@@ -21,7 +22,7 @@ export interface PackBuyButtonProps {
    *  - `sticky`: the mobile sticky buy bar. Same checkout flow as the detail variant.
    */
   variant: 'card' | 'drawer' | 'detail' | 'sticky';
-  /** Override the label. Defaults to `Unlock this pack · £{formatPrice(pack.price)}`. */
+  /** Override the label. Defaults to `Unlock this pack · {formatPrice(pack.price)}`. */
   label?: string;
   /** Optional className passthrough for layout (width, margin, custom backgrounds). */
   className?: string;
@@ -44,6 +45,17 @@ export interface PackBuyButtonProps {
   checkingOut?: boolean;
   /** Whether the pack is currently buyable. Required by `detail` to enable the notify-me path. */
   canCheckout?: boolean;
+  /**
+   * The visitor's display currency, resolved from `Fly-Client-Country` in the page's
+   * `getServerSideProps`. Defaults to GBP so any surface that has not been threaded through
+   * renders exactly what it rendered before this prop existed.
+   *
+   * This exists because the CTA has to agree with the price above it. On a US request the pack
+   * page headline read `$62.23` while this button read `Unlock this pack · £49` -- two prices,
+   * two currencies, one fold. Founder decision (2026-08-05): local currency is the anchor
+   * everywhere, and the GBP charge is disclosed next to the button instead.
+   */
+  currency?: Currency;
 }
 
 /**
@@ -79,6 +91,7 @@ export default function PackBuyButton({
   buy,
   checkingOut,
   canCheckout,
+  currency = 'GBP',
 }: PackBuyButtonProps) {
   // Card entry point: opens the shelf drawer. `null` outside the provider, the card's
   // `<Link>` is the learn action in that case, same behaviour as before the provider existed.
@@ -100,8 +113,15 @@ export default function PackBuyButton({
     }
   };
 
-  const priceLabel = formatPrice(pack.price);
-  const canonicalLabel = `Unlock this pack · £${priceLabel}`;
+  // GBP path stays on `formatPrice`: it strips a trailing `.00` from the API's price string and
+  // does NOT add a currency symbol, because the API already sends one ("£49.00" -> "£49").
+  // Prefixing another `£` here rendered the primary buy CTA as "Unlock this pack · ££49" on every
+  // pack page, and the test guarding this label only matched /Unlock this pack/, so it stayed
+  // green through the whole regression. Non-GBP goes through the FX formatter so the CTA quotes
+  // the same number as the headline price directly above it.
+  const priceLabel =
+    currency === 'GBP' ? formatPrice(pack.price) : formatPriceForMarket(pack.price, currency);
+  const canonicalLabel = `Unlock this pack · ${priceLabel}`;
   const visibleLabel = checkingOut ? 'Opening…' : label ?? canonicalLabel;
 
   // Canonical visual shape. Identical across every entry point; variant changes only the
@@ -110,8 +130,8 @@ export default function PackBuyButton({
   // `hover:bg-primary-hover` to those custom-property-backed color tokens.
   const shapeClasses = cx(
     'inline-flex items-center justify-center',
-    'rounded-lg bg-primary text-white',
-    'text-sm font-bold',
+    'rounded-md bg-primary text-on-primary',
+    'text-meta font-bold',
     'px-6 py-3.5',
     'transition-all duration-150',
     'hover:bg-primary-hover',

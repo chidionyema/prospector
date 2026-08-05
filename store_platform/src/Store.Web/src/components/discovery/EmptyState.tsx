@@ -45,7 +45,7 @@ export function DiscoveryNearMiss({
 
   return (
     <div className="border border-border bg-surface p-6">
-      <h3 className="text-lg font-black tracking-tight text-text">
+      <h3 className="text-body font-black tracking-tight text-text">
         Nothing matches all of it. These come closest,
       </h3>
       <ul className="mt-3 flex flex-wrap gap-2">
@@ -54,7 +54,7 @@ export function DiscoveryNearMiss({
             <button
               type="button"
               onClick={() => onRelax(candidate.relaxedState)}
-              className="rounded-full bg-warning/10 px-3 py-1 text-[11px] font-semibold text-text/80 ring-1 ring-inset ring-warning/30 transition-colors hover:bg-warning/20"
+              className="rounded-full bg-warning/10 px-3 py-1 text-caption font-semibold text-text/80 ring-1 ring-inset ring-warning/30 transition-colors hover:bg-warning/20"
             >
               {candidate.pack.title.split(/\s*,\s*/)[0].trim()}: {candidate.missLabel}
             </button>
@@ -90,10 +90,10 @@ export function DiscoveryNearMiss({
 export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?: () => void }) {
   return (
     <div className="border border-border bg-surface p-6">
-      <h3 className="text-lg font-black tracking-tight text-text">
+      <h3 className="text-body font-black tracking-tight text-text">
         No vetted pack for “{query.trim()}”, yet.
       </h3>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+      <p className="mt-2 max-w-2xl text-meta leading-relaxed text-muted">
         We only list an idea once it survives six checks with a clickable source behind every claim. Most
         ideas in a hot space die on the incumbent test. Tell us where to point the engine and we&apos;ll
         email you if one survives.
@@ -111,7 +111,7 @@ export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?:
         <WaitlistForm source="catalogue-empty-state" query={query} />
       </div>
 
-      <p className="mt-2 text-xs font-medium text-text/70">
+      <p className="mt-2 text-caption font-medium text-text/70">
         Meanwhile, the free sample report shows exactly what survives looks like →
       </p>
     </div>

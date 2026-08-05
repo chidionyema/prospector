@@ -78,4 +78,38 @@ describe('N1 — Persistence of trust', () => {
       'index.tsx must render <TrustGuaranteesRow> above <CtaBand>',
     ).toBe(true);
   });
+
+  /*
+   * Regression: the home page rendered its live count twice, from two sources.
+   *
+   * `index.tsx` reads `stats.listed` off the live `GET /catalog`; this row read
+   * `kill-log-totals.json`, which is frozen at build time. Measured 2026-08-05 on the
+   * production build: the live catalog held 61 packs, `kill-log-totals.json` said
+   * `"shown": 60`, and the rendered home page carried the strings "61 live now, of 80
+   * that reached final packaging" AND "60 live now". Every pack published without a
+   * redeploy widens the gap, and a storefront whose position is "every claim is backed
+   * by a source you can open" cannot contradict itself in its own shop window.
+   *
+   * The fix is a `listed` prop fed from the live stats. The snapshot survives only as
+   * the fallback for callers with no live figure to hand.
+   */
+  describe('the live count comes from the live stats, not the build-time snapshot', () => {
+    it('TrustGuaranteesRow accepts a listed prop and prefers it over the snapshot', () => {
+      if (!trustRowExists) return;
+      const source = readSource('../components/marketing/TrustGuaranteesRow.tsx');
+      expect(source, 'must accept a `listed` prop').toMatch(/listed\??\s*:\s*number/);
+      expect(
+        source,
+        'the live figure must prefer `listed` and fall back to the snapshot, not the reverse',
+      ).toMatch(/const\s+live\s*=\s*listed\s*\?\?/);
+    });
+
+    it('the home page feeds it the live stats figure', () => {
+      if (!trustRowExists) return;
+      expect(
+        page,
+        'index.tsx must pass the live `stats.listed` into <TrustGuaranteesRow>',
+      ).toMatch(/<TrustGuaranteesRow[^>]*listed=\{stats\??\.listed\}/);
+    });
+  });
 });

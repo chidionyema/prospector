@@ -42,7 +42,7 @@ export function RadioGroup<T extends string>({
       className={cx('flex flex-col gap-2', className)}
       aria-describedby={[hint && `${groupId}-hint`, error && `${groupId}-error`].filter(Boolean).join(' ') || undefined}
     >
-      <legend className="text-small font-semibold text-text">
+      <legend className="text-body font-semibold text-text">
         {label}
         {required && <span className="text-danger"> *</span>}
       </legend>
@@ -56,7 +56,7 @@ export function RadioGroup<T extends string>({
           <label
             key={opt.value}
             className={cx(
-              'flex cursor-pointer items-start gap-3 rounded-lg border bg-surface p-4 transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-md border bg-surface p-4 transition-colors',
               'hover:border-muted/50',
               'has-[:checked]:border-primary has-[:checked]:bg-primary/5',
               'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-bg',
@@ -80,7 +80,7 @@ export function RadioGroup<T extends string>({
               )}
             />
             <span className="space-y-0.5">
-              <span className="block text-small font-semibold text-text">{opt.label}</span>
+              <span className="block text-body font-semibold text-text">{opt.label}</span>
               {opt.description && (
                 <span className="block text-caption text-muted">{opt.description}</span>
               )}

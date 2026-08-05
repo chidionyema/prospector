@@ -75,8 +75,31 @@ export function currencyForCountry(country?: string | null): Currency {
 }
 
 /**
+ * Pull the numeric amount out of an API price string.
+ *
+ * The API sends the price WITH its currency symbol already attached: a live
+ * `GET https://api.mumchimp.com/catalog` returns `"price": "£49.00"`, not `"49.00"`.
+ * `parseFloat("£49.00")` is NaN, because parseFloat stops at the first character that cannot
+ * start a number and never skips a prefix.
+ *
+ * Both functions below took the un-stripped string, so both hit their NaN branch on every real
+ * pack, for every visitor. `formatPriceForMarket` returned the GBP string verbatim, which means
+ * currency conversion silently no-opped site-wide and US and EU buyers were shown £ despite the
+ * geo lookup resolving their currency correctly. `formatGbpNote` returned `£${price}`, rendering
+ * "££49.00".
+ *
+ * Neither showed up in tests because the unit tests passed `'49.00'`, the shape the doc comment
+ * assumed, rather than the shape the API actually sends.
+ *
+ * Commas are stripped so a four-figure price ("£1,049.00") parses too.
+ */
+function parseGbp(price: string): number {
+  return parseFloat(price.replace(/[^0-9.]/g, ''));
+}
+
+/**
  * Format a price string in the given currency. The input is what the API returns, e.g.
- * "49.00" or "49.50" (the catalogue only ever holds GBP, this is the source of truth). The
+ * "£49.00" or "£49.50" (the catalogue only ever holds GBP, this is the source of truth). The
  * output is the rendered string, e.g. "$61" or "€57.33".
  *
  * The function is intentionally pure: it does not mutate the cache, it does not fetch. Pass
@@ -88,9 +111,7 @@ export function formatPriceForMarket(
   currency: Currency,
   rates: Record<Exclude<Currency, 'GBP'>, number> = BASE_RATES.rates,
 ): string {
-  // The catalogue stores price as a decimal string ("49.00", "49.50"). parseFloat is
-  // fine here because the format is well-defined and we never see exponential notation.
-  const gbp = parseFloat(price);
+  const gbp = parseGbp(price);
   if (!Number.isFinite(gbp)) return price;
 
   if (currency === 'GBP') {
@@ -105,13 +126,42 @@ export function formatPriceForMarket(
 }
 
 /**
- * Format the GBP equivalent as a small note, e.g. "£49 at today's rate". Rendered under the
- * headline price for non-GBP buyers so the source of truth is never hidden.
+ * The charge disclosure, e.g. "Charged £49 GBP. Your card issuer sets the final rate."
+ *
+ * WHY THIS REPLACED `formatGbpNote`
+ *
+ * The old note read "£49 at today's rate", which described the wrong number: £49 is the
+ * *source* price the catalogue holds, not a figure derived from any rate. The converted number
+ * ($62.23) is the rate-derived one. A visitor reading carefully was told the opposite of what
+ * was happening.
+ *
+ * Worse, the page anchored on one currency and acted in another: the headline said `$62.23`
+ * while the buy CTA one line below said `Unlock this pack · £49`. Founder decision
+ * (2026-08-05): the *local* currency is the anchor everywhere, including the CTA, and the GBP
+ * charge is disclosed at the point of purchase rather than being the price the CTA quotes.
+ *
+ * "Your card issuer sets the final rate" is the honest part. Our conversion is a courtesy
+ * computed from a 24-hour-cached table; the buyer's actual debit is whatever their bank does to
+ * a GBP charge. Promising `$62.23` and then landing `$63.10` on the statement would be a
+ * grounding failure of exactly the kind this storefront sells against.
+ *
+ * Returns `''` for GBP buyers -- there is nothing to disclose when the anchor IS the charge.
  */
-export function formatGbpNote(price: string): string {
-  const gbp = parseFloat(price);
-  if (!Number.isFinite(gbp)) return `£${price}`;
-  return `£${formatNumber(gbp)} at today's rate`;
+export function formatChargeNote(price: string, currency: Currency): string {
+  if (currency === 'GBP') return '';
+  const gbp = parseGbp(price);
+  // No `£` prefix on the fallback: an unparseable price already carries its own symbol from the
+  // API, and prefixing it produced "££49.00".
+  const amount = Number.isFinite(gbp) ? `£${formatNumber(gbp)}` : price;
+  return `Charged ${amount} GBP. Your card issuer sets the final rate.`;
+}
+
+/**
+ * The one-line qualifier that sits directly under a converted headline price, e.g.
+ * "approx., at today's rate". Empty for GBP, where the price is exact and needs no hedge.
+ */
+export function formatApproxNote(currency: Currency): string {
+  return currency === 'GBP' ? '' : "approx., at today's rate";
 }
 
 function formatNumber(n: number): string {
@@ -127,7 +177,7 @@ function formatNumber(n: number): string {
  * Fetch the live GBP exchange rates. Cached for 24 hours. Falls back to BASE_RATES on any
  * failure. Safe to call multiple times; concurrent calls share a single in-flight request.
  *
- * The underlying `fetch` lives in `@/lib/api/client.ts` (FX_FETCH) — the UI-STANDARDS rule
+ * The underlying `fetch` lives in `@/lib/api/client.ts` (FX_FETCH), the UI-STANDARDS rule
  * "Components never call fetch directly" applies to `/lib/fx.ts` too, and the right place
  * for raw HTTP is the API client. We expose a typed result here so the rendering side
  * remains a pure function of the cached rates.

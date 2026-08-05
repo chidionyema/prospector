@@ -18,7 +18,6 @@ import {
   PAYER,
   SECTOR,
   VOCABULARY,
-  label,
   shortLabel,
   type Advantage,
   type Commitment,
@@ -611,7 +610,9 @@ export function similarPacks<T extends FacetedPack>(
  *  comma is the live separator since the marketeer rewrote the catalogue copy to drop em-dashes
  *  (the universal AI writing tell); em-dash and en-dash are kept as a safety net for any
  *  historical pack that resurfaces. */
-const TITLE_SEPARATORS = [', ', '—', '–', ' - '];
+// These are the separators this parser strips OUT of API-supplied pack titles, so the
+// characters have to appear here literally rather than as displayed copy.
+const TITLE_SEPARATORS = [', ', '—', '–', ' - ']; // dash-free-ignore
 
 /**
  * Split "Brand, long descriptive subtitle" into a name a buyer can hold in their head and a

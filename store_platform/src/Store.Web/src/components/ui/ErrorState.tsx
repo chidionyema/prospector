@@ -23,12 +23,12 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry, c
     <div
       role="alert"
       className={cx(
-        'flex flex-col items-center gap-2 rounded-lg border border-border bg-surface px-6 py-12 text-center',
+        'flex flex-col items-center gap-2 rounded-md border border-border bg-surface px-6 py-12 text-center',
         className,
       )}
     >
       <TitleTag className="text-h2 font-semibold text-danger">{title}</TitleTag>
-      <p className="max-w-sm text-small text-muted">{message}</p>
+      <p className="max-w-sm text-body text-muted">{message}</p>
       {onRetry && (
         <Button variant="secondary" onClick={onRetry} className="mt-2">
           Try again

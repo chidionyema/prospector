@@ -121,7 +121,7 @@ export function Dropdown<T extends string>({
             openList();
           }
         }}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm font-semibold text-text shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition hover:border-text/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-text"
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-white px-3.5 py-2.5 text-meta font-semibold text-text shadow-none transition hover:border-text/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-text"
       >
         <span className="truncate">{current?.label}</span>
         <span
@@ -138,7 +138,7 @@ export function Dropdown<T extends string>({
           aria-activedescendant={`${labelId}-opt-${active}`}
           tabIndex={-1}
           onKeyDown={onListKeyDown}
-          className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-border bg-white p-1 shadow-[0_18px_40px_rgba(0,0,0,0.12)] focus:outline-none"
+          className="absolute z-30 mt-2 w-full overflow-hidden rounded-md border border-border bg-white p-1 shadow-2 focus:outline-none"
         >
           {options.map((opt, i) => {
             const selected = opt.value === value;
@@ -158,7 +158,7 @@ export function Dropdown<T extends string>({
                 onMouseEnter={() => setActive(i)}
                 onClick={() => choose(i)}
                 className={cx(
-                  'flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-semibold',
+                  'flex cursor-pointer items-center justify-between gap-2 rounded-md px-3 py-2 text-meta font-semibold',
                   i === active ? 'bg-bg text-text' : 'text-text/80',
                 )}
               >

@@ -7,13 +7,14 @@ import { Seo } from '@/components/Seo';
 import { productJsonLd } from '@/lib/productJsonLd';
 import { breadcrumbNode, graph } from '@/lib/seo/schema';
 import { packOgImagePath } from '@/lib/seo/ogImage';
-import { Icon, CoverArt, ErrorState, Breadcrumbs } from '@/components/ui';
+import { Icon, ErrorState, Breadcrumbs, SourcedLine, CitationList } from '@/components/ui';
+import { parseCitations } from '@/lib/citations';
 import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
-import { formatPriceForMarket, formatGbpNote, currencyForCountry, type Currency } from '@/lib/fx';
+import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
@@ -24,7 +25,6 @@ import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopened
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { LEGAL } from '@/lib/config';
-import { coverFor } from '@/lib/cover';
 import { paybackEquation } from '@/lib/payback';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 
@@ -144,6 +144,17 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
 
+  // Every source this page can actually hand the visitor, right now, without buying anything.
+  // Distinct from `pack.sourceCount` (51 on some packs), which counts what is INSIDE the pack.
+  // The two numbers must never be presented as one: claiming "51 sources" on a page that lets
+  // you open three is precisely the unearned-assertion move the six checks exist to kill.
+  const openSources = React.useMemo(() => {
+    const seen = new Set<string>();
+    return (pack.sampleExtract ?? []).flatMap((line) =>
+      parseCitations(line).citations.filter((c) => !seen.has(c.url) && seen.add(c.url)),
+    );
+  }, [pack.sampleExtract]);
+
   // Map internal axis keys to buyer-facing labels so the scored section
   // reads as consumer content, not internal tooling.
   const axisLabel = (key: string): string => {
@@ -190,24 +201,25 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
   // React instantiates it independently at each position.
   const checkoutBody = (
     <>
-      <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted">One time price</span>
+   <span className="text-caption font-bold uppercase tracking-widest text-muted">One time price</span>
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-4xl font-black tracking-tight text-text">{priceLabel}</span>
-        <span className="text-sm font-medium text-muted">once</span>
+        <span className="text-h1 font-black tracking-tight text-text">{priceLabel}</span>
+        <span className="text-meta font-medium text-muted">once</span>
       </div>
+      {/* The hedge sits with the number it hedges. The old note ("£49 at today's rate") named
+          the wrong figure -- £49 is the catalogue's source price, the converted one is what the
+          rate produced -- and it sat below a green guarantee box, four elements away from the
+          price. */}
+      {currency !== 'GBP' && (
+        <p className="mt-1 text-caption font-medium text-faint">{formatApproxNote(currency)}</p>
+      )}
 
-      <div className="mt-4 flex items-center gap-2 rounded-lg bg-success/5 px-3 py-2 text-xs font-semibold text-success">
+      <div className="mt-4 flex items-center gap-2 rounded-md bg-success/5 px-3 py-2 text-caption font-semibold text-success">
         <Icon name="shield" size={14} />
         14 day money back, no questions asked
       </div>
 
-      {/* US-5: small GBP note under the price so the source of truth is never hidden.
-          The headline price is in the visitor's currency; the GBP equivalent is one line below. */}
-      {currency !== 'GBP' && (
-        <p className="mt-2 text-xs font-medium text-faint">{formatGbpNote(pack.price)}</p>
-      )}
-
-      <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">
+      <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-caption font-bold text-success">
         <Icon name="verified" size={12} /> Survived 6 checks
       </span>
 
@@ -215,11 +227,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
         (pack.financialSnapshot.month1Revenue ||
           pack.financialSnapshot.ltvCac ||
           pack.financialSnapshot.paybackMonths) && (
-          <div className="mt-4 rounded-lg border border-border/70 bg-bg/40 p-3">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+          <div className="mt-4 rounded-md border border-border/70 bg-bg/40 p-3">
+      <span className="text-caption font-bold uppercase tracking-widest text-muted">
               Modelled economics
             </span>
-            <dl className="mt-2 space-y-1.5 text-xs">
+            <dl className="mt-2 space-y-1.5 text-caption">
               {pack.financialSnapshot.month1Revenue && (
                 <div className="flex items-baseline justify-between gap-2">
                   <dt className="text-muted">Month 1 revenue</dt>
@@ -239,7 +251,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 </div>
               )}
             </dl>
-            <p className="mt-2 text-[10px] leading-relaxed text-muted">
+            <p className="mt-2 text-caption leading-relaxed text-muted">
               Computed by the engine from the pack&apos;s verified inputs. Your own results will differ.
             </p>
           </div>
@@ -253,29 +265,29 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           revenue fails to clear the price: this must never be a widget that appears only when
           it flatters the sale. */}
       {payback && (
-        <div className="mt-4 rounded-lg border border-border/70 bg-bg/40 p-3">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+        <div className="mt-4 rounded-md border border-border/70 bg-bg/40 p-3">
+     <span className="text-caption font-bold uppercase tracking-widest text-muted">
             What it has to earn back
           </span>
-          <p className="mt-2 font-mono text-xs leading-relaxed text-text">
+          <p className="mt-2 font-mono text-caption leading-relaxed text-text">
             {payback.revenueLabel} <span className="text-muted">modelled month 1</span> ÷{' '}
             {payback.priceLabel} <span className="text-muted">pack</span> ={' '}
             <span className="font-bold">{payback.multiple}×</span>
           </p>
-          <p className="mt-2 text-xs leading-relaxed text-text/80">
+          <p className="mt-2 text-caption leading-relaxed text-text/80">
             One month at the modelled rate covers the pack {payback.multiple} times over
             {payback.paybackMonths ? `, with the build itself modelled to pay back in ${payback.paybackMonths}` : ''}.
           </p>
           {/* The same hedge as the Modelled economics box below, a model, not a forecast, and
               not a claim about this buyer. It travels with the number wherever the number goes. */}
-          <p className="mt-2 text-[10px] leading-relaxed text-muted">
+          <p className="mt-2 text-caption leading-relaxed text-muted">
             Computed by the engine from the pack&apos;s verified inputs. Your own results will differ.
           </p>
         </div>
       )}
 
       {checkoutError && (
-        <div className="mt-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-xs text-danger">
+        <div className="mt-4 rounded-md border border-danger/20 bg-danger/5 p-3 text-caption text-danger">
           {checkoutError}
         </div>
       )}
@@ -292,13 +304,22 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               buy={handleBuy}
               checkingOut={checkingOut}
               canCheckout={canCheckout}
+              currency={currency}
               className="w-full"
             />
+            {/* The charge disclosure goes here, against the button, because this is the moment
+                the buyer commits. The CTA quotes their currency; the debit is in GBP; both facts
+                are on screen at the point of decision rather than one of them being implied. */}
+            {currency !== 'GBP' && (
+              <p className="mt-2 text-center text-caption leading-relaxed text-muted">
+                {formatChargeNote(pack.price, currency)}
+              </p>
+            )}
           </div>
           {/* Under the button, not above it: the address only matters once the buyer has decided,
               and putting an account-shaped sentence in front of the price is how a storefront
               teaches guests that they need an account. They do not. */}
-          <BuyerIdentityNote className="mt-3 text-xs leading-relaxed text-muted" />
+          <BuyerIdentityNote className="mt-3 text-caption leading-relaxed text-muted" />
           {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
               only a gain for someone who wants several, so it never sits in front of the direct path. */}
           <div className="mt-3">
@@ -309,11 +330,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
         <>
           <a
             href={notifyHref}
-            className="mt-4 block w-full bg-text py-4 text-center text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
+            className="mt-4 block w-full bg-text py-4 text-center text-meta font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             Notify me when this opens
           </a>
-          <p className="mt-2 text-xs font-medium text-muted">
+          <p className="mt-2 text-caption font-medium text-muted">
             Checkout is opening shortly. Tap to get a single email the moment this pack goes live.
           </p>
         </>
@@ -325,14 +346,14 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           { icon: 'lock', text: `Secure checkout via ${providerLabel}` },
           { icon: 'mail', text: 'A private link sent straight to you' },
         ] satisfies { icon: IconName; text: string }[]).map((feat, i) => (
-          <div key={i} className="flex items-center gap-3 text-xs font-medium text-muted">
+          <div key={i} className="flex items-center gap-3 text-caption font-medium text-muted">
             <Icon name={feat.icon} size={14} className="text-text/60" />
             {feat.text}
           </div>
         ))}
       </div>
 
-      <p className="mt-6 text-center text-[11px] leading-relaxed text-muted">
+      <p className="mt-6 text-center text-caption leading-relaxed text-muted">
         A pack is grounded research, not a promise of business success. See our{' '}
         <Link href="/refund" className="font-semibold text-primary hover:underline">refund policy</Link>.
       </p>
@@ -381,7 +402,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
         {/* Back to catalog -- prominent, always visible */}
         <Link
           href="/"
-          className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-text transition-colors"
+          className="mt-3 inline-flex items-center gap-1.5 text-meta font-semibold text-muted hover:text-text transition-colors"
         >
           <Icon name="arrowRight" size={14} className="rotate-180" />
           Back to catalog
@@ -399,17 +420,17 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             <PackCover variant="hero" pack={pack} className="mb-6" />
             {/* Document header: left-rule + verified badge, no decorative cover */}
             <div className="mb-6 border-l-[3px] border-l-primary pl-5">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-primary">
+              <span className="inline-flex items-center gap-1.5 text-caption font-bold uppercase tracking-wide text-muted">
                 <Icon name="verified" size={13} /> Survived six checks
               </span>
             </div>
 
-            <h1 className="text-4xl font-black leading-tight tracking-tight text-text md:text-5xl">
+            <h1 className="text-h1 font-black leading-tight tracking-tight text-text md:text-display">
               {pack.title}
             </h1>
-            <p className="mt-5 max-w-[65ch] text-lg leading-relaxed text-text/80">{pack.oneLine}</p>
+            <p className="mt-5 max-w-[65ch] text-body leading-relaxed text-text/80">{pack.oneLine}</p>
             {pack.subhead && (
-              <p className="mt-3 max-w-[65ch] text-base leading-relaxed text-text/70">{pack.subhead}</p>
+              <p className="mt-3 max-w-[65ch] text-body leading-relaxed text-text/70">{pack.subhead}</p>
             )}
 
             {/* US-6: the strongest case against the pack moves to the top, right after
@@ -421,12 +442,17 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               <div className="mt-6 border border-warning/30 bg-warning/5 p-5">
                 <div className="flex items-center gap-2">
                   <Icon name="shield" size={15} className="text-warning" />
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-warning">
+                  <span className="font-mono text-caption font-bold uppercase tracking-widest text-warning">
                     Where this could break
                   </span>
                 </div>
-                <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-text/80">{verdict.risk}</p>
-                <p className="mt-2 text-xs text-muted">
+                {/* Also a SourcedLine: today `qaVerdictSummary` carries no URL, but the moment the
+                    engine grounds a risk the page links it instead of printing it. An unsourced
+                    string renders identically, so this costs nothing to leave in place. */}
+                <SourcedLine className="mt-2 block max-w-[62ch] text-meta leading-relaxed text-text/80">
+                  {verdict.risk}
+                </SourcedLine>
+                <p className="mt-2 text-caption text-muted">
                   The strongest case against the idea, with its source, also lives inside the pack.
                 </p>
               </div>
@@ -436,7 +462,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               freshnessLabel(pack.verifiedAt) ||
               (typeof pack.sourceCount === 'number' && pack.sourceCount > 0) ||
               verdict.summary) && (
-              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-muted">
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-caption font-medium text-muted">
                 {/* Near the title, not just in the "Is this for you?" section further down,
                     a buyer landing here from the "Also available" shelf should see straight
                     away which market this pack is for, without scrolling. */}
@@ -483,14 +509,14 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 they care. The disclosure is open by default on lg+ where the page
                 has the room. */}
             <details className="mt-12 group" open={undefined}>
-              <summary className="cursor-pointer text-xl font-bold tracking-tight text-text hover:text-primary transition-colors list-none">
+              <summary className="cursor-pointer text-h2 font-bold tracking-tight text-text hover:text-primary transition-colors list-none">
                 <span className="inline-flex items-center gap-2">
                   <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
                   Six ways we tried to kill it
                 </span>
               </summary>
               <div className="mt-4">
-                <p className="text-sm text-muted">
+                <p className="text-meta text-muted">
                   Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
                   cited evidence against it, and a listing means none of the six produced that evidence.
                   Finding nothing is not the same as finding a green light, so the scores below show where
@@ -500,20 +526,20 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   {CHECKS.map((check, i) => (
                     <li
                       key={check}
-                      className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3"
+                      className="flex items-center gap-3 rounded-md border border-border bg-surface px-4 py-3"
                     >
                       {/* A numeral, not a tick: a green success mark on a static line reads as this
                           pack's verdict on that check, which is exactly what this page cannot know. */}
-                      <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border bg-bg font-mono text-[11px] font-bold text-muted">
+           <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border bg-bg text-caption font-bold text-muted">
                         {i + 1}
                       </span>
-                      <span className="text-sm font-medium text-text">{check}</span>
+                      <span className="text-meta font-medium text-text">{check}</span>
                     </li>
                   ))}
                 </ul>
                 <Link
                   href="/how-it-works"
-                  className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+                  className="mt-5 inline-flex items-center gap-1.5 text-meta font-bold text-primary hover:underline"
                 >
                   See how each check works
                   <Icon name="arrowRight" size={14} />
@@ -526,14 +552,14 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 result sees the buy button first, the methodology on demand. */}
             {(axes.length > 0 || verdict.risk) && (
               <details className="mt-12 group">
-                <summary className="cursor-pointer text-xl font-bold tracking-tight text-text hover:text-primary transition-colors list-none">
+                <summary className="cursor-pointer text-h2 font-bold tracking-tight text-text hover:text-primary transition-colors list-none">
                   <span className="inline-flex items-center gap-2">
                     <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
                     How it scores
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <p className="max-w-[60ch] text-sm text-muted">
+                  <p className="max-w-[60ch] text-meta text-muted">
                     Six things we measure. The strong ones are strengths. The weaker ones are things
                     you should know before you build.
                   </p>
@@ -542,12 +568,12 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
                     {axes.map((a) => {
                       const tone =
-                        a.value >= 4 ? 'bg-success' : a.value === 3 ? 'bg-primary' : 'bg-warning';
+                        a.value >= 4 ? 'bg-success' : a.value === 3 ? 'bg-text/40' : 'bg-warning';
                       return (
                         <div key={a.label} className="flex flex-col gap-1.5">
                           <div className="flex items-baseline justify-between gap-2">
-                            <dt className="text-sm font-semibold text-text">{axisLabel(a.label)}</dt>
-                            <dd className="font-mono text-xs font-bold text-muted">
+                            <dt className="text-meta font-semibold text-text">{axisLabel(a.label)}</dt>
+                            <dd className="font-mono text-caption font-bold text-muted">
                               {a.value} / {a.outOf}
                             </dd>
                           </div>
@@ -572,12 +598,12 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   <div className="mt-6 border border-warning/30 bg-warning/5 p-5">
                     <div className="flex items-center gap-2">
                       <Icon name="shield" size={15} className="text-warning" />
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-warning">
+                      <span className="font-mono text-caption font-bold uppercase tracking-widest text-warning">
                         Where this could break
                       </span>
                     </div>
-                    <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-text/80">{verdict.risk}</p>
-                    <p className="mt-2 text-xs text-muted">
+                    <p className="mt-2 max-w-[62ch] text-meta leading-relaxed text-text/80">{verdict.risk}</p>
+                    <p className="mt-2 text-caption text-muted">
                       The strongest case against the idea, with its source, also lives inside the pack.
                     </p>
                   </div>
@@ -589,7 +615,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             {/* Is this for you?, the concrete fit signals, when the pack carries them */}
             {(pack.market || pack.whoPays || pack.timeToFirstRevenue) && (
               <div className="mt-12">
-                <h2 className="text-xl font-bold tracking-tight text-text">Is this for you?</h2>
+                <h2 className="text-h2 font-bold tracking-tight text-text">Is this for you?</h2>
                 {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
                     "Effort to build" used to print the legacy `effortTag` string, which was never
                     defined to mean how much of delivery is machine-doable (spec 2.3). */}
@@ -597,15 +623,15 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {pack.market && (
                     <div className="flex flex-col border border-border bg-surface p-5 sm:col-span-3">
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+           <span className="text-caption font-bold uppercase tracking-widest text-muted">
                         Market
                       </span>
-                      <span className="mt-1.5 text-sm font-semibold text-text">
+                      <span className="mt-1.5 text-meta font-semibold text-text">
                         {marketLabel(pack.market)}
                       </span>
                       {/* State it plainly: the research is about this jurisdiction, and the
                           pack is still sold in GBP. Leaving that implicit invites a refund. */}
-                      <span className="mt-1.5 text-xs leading-relaxed text-muted">
+                      <span className="mt-1.5 text-caption leading-relaxed text-muted">
                         The opportunity, its evidence and its economics are researched for this
                         market. The pack itself is priced and sold in GBP.
                       </span>
@@ -613,18 +639,18 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   )}
                   {pack.whoPays && (
                     <div className="flex flex-col border border-border bg-surface p-5 sm:col-span-3">
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+           <span className="text-caption font-bold uppercase tracking-widest text-muted">
                         Who pays
                       </span>
-                      <span className="mt-1.5 text-sm leading-relaxed text-text/80">{pack.whoPays}</span>
+                      <span className="mt-1.5 text-meta leading-relaxed text-text/80">{pack.whoPays}</span>
                     </div>
                   )}
                   {pack.timeToFirstRevenue && (
                     <div className="flex flex-col border border-border bg-surface p-5">
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+           <span className="text-caption font-bold uppercase tracking-widest text-muted">
                         Time to first revenue
                       </span>
-                      <span className="mt-1.5 text-sm font-semibold text-text">{pack.timeToFirstRevenue}</span>
+                      <span className="mt-1.5 text-meta font-semibold text-text">{pack.timeToFirstRevenue}</span>
                     </div>
                   )}
                 </div>
@@ -633,8 +659,8 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
 
             {/* The per-pack table of contents. The generic four-asset breakdown is higher up the page. */}
             <div className="mt-12">
-              <h2 className="text-xl font-bold tracking-tight text-text">The table of contents</h2>
-              <p className="mt-2 max-w-[60ch] text-sm text-muted">
+              <h2 className="text-h2 font-bold tracking-tight text-text">The table of contents</h2>
+              <p className="mt-2 max-w-[60ch] text-meta text-muted">
                 Exactly what this pack covers, plus a blurred look at the document you receive.
               </p>
 
@@ -657,10 +683,10 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                       key={i}
                       className="flex items-start gap-3 border border-border bg-surface p-5"
                     >
-                      <span className="mt-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+           <span className="mt-0.5 text-caption font-bold uppercase tracking-widest text-muted">
                         {String(i + 1).padStart(2, '0')}
                       </span>
-                      <span className="text-sm leading-relaxed text-text/80">{item}</span>
+                      <span className="text-meta leading-relaxed text-text/80">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -670,33 +696,38 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             {/* A look inside, real sourced lines lifted straight from the pack */}
             {pack.sampleExtract && pack.sampleExtract.length > 0 && (
               <div className="mt-12">
-                <h2 className="text-xl font-bold tracking-tight text-text">A look inside</h2>
-                <p className="mt-2 text-sm text-muted">
-                  Real, sourced lines taken straight from the pack. This is the level of grounding behind
-                  every claim you are buying.
+                <h2 className="text-h2 font-bold tracking-tight text-text">A look inside</h2>
+                <p className="mt-2 max-w-[60ch] text-meta text-muted">
+                  Real, sourced lines taken straight from the pack. Every source below is a live link
+                  &mdash; open one and check the claim before you buy.
                 </p>
                 {/* Peek inside: a page you are looking at the top of. The fade is over the page
                     itself, never over invented text, every line below is really in the pack, and
                     nothing is blurred to imply content that does not exist. */}
                 <div className="relative mt-6 overflow-hidden border border-border bg-surface">
                   <div className="flex items-center gap-2 border-b border-border bg-bg/60 px-5 py-3">
-                    <Icon name="briefcase" size={14} className="text-primary" />
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Icon name="briefcase" size={14} className="text-text/70" />
+          <span className="text-caption font-bold uppercase tracking-widest text-muted">
                       Extract · verification dossier
                     </span>
                   </div>
-                  <ul className="list-none space-y-3 p-6 pb-16">
+                  {/* The claim, then the sources it stands on. Until this shipped these lines
+                      printed "(source: https://...)" as plain text -- the page promised a
+                      clickable source behind every claim and rendered zero anchors. The parse
+                      happens at the render boundary (`lib/citations.ts`); the API contract for
+                      `sampleExtract` is unchanged, so an email or a PDF of the same string still
+                      reads correctly. */}
+                  <ul className="list-none space-y-5 p-6 pb-16">
                     {pack.sampleExtract.map((line, i) => (
-                      <li
-                        key={i}
-                        className="border-l-2 border-l-success pl-4 text-sm leading-relaxed text-text/80"
-                      >
-                        {line}
+                      <li key={i} className="border-l-2 border-l-success pl-4">
+                        <SourcedLine className="block text-meta leading-relaxed text-text/80">
+                          {line}
+                        </SourcedLine>
                       </li>
                     ))}
                   </ul>
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent" />
-                  <span className="absolute inset-x-0 bottom-4 text-center text-xs font-semibold text-muted">
+                  <span className="absolute inset-x-0 bottom-4 text-center text-caption font-semibold text-muted">
                     The rest of this section, and three more documents, are in the pack.
                   </span>
                 </div>
@@ -707,16 +738,36 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             <div className="mt-12 border border-border bg-surface p-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <Icon name="verified" className="text-success" size={18} />
-                <span className="font-mono text-xs font-bold uppercase tracking-widest text-text">The receipts</span>
+        <span className="text-caption font-bold uppercase tracking-widest text-text">The receipts</span>
               </div>
-              <p className="max-w-[64ch] text-sm leading-relaxed text-text/70">
+              <p className="max-w-[64ch] text-meta leading-relaxed text-text/70">
                 Every figure and claim in this pack is traced to external evidence you can open and check.
                 No hand waving, no vibes. Audit reference{' '}
-                <span className="font-mono text-xs text-muted">{pack.dossierRef}</span>.
+                <span className="font-mono text-caption text-muted">{pack.dossierRef}</span>.
               </p>
+
+              {/* The proof, not the promise. The paragraph above is a claim; these are the actual
+                  pages, openable before paying. The count is deliberately the number of sources
+                  on THIS page, never `pack.sourceCount` -- see `openSources` above. */}
+              {openSources.length > 0 && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="text-caption font-semibold text-muted">
+                    {openSources.length === 1
+                      ? 'One of them, open it now:'
+                      : `${openSources.length} of them, open any of these now:`}
+                  </p>
+                  <CitationList citations={openSources} className="mt-2" />
+                  {typeof pack.sourceCount === 'number' && pack.sourceCount > openSources.length && (
+                    <p className="mt-3 text-caption text-muted">
+                      The other {pack.sourceCount - openSources.length} are cited inside the pack, each
+                      against the claim it supports.
+                    </p>
+                  )}
+                </div>
+              )}
               <Link
                 href="/sample"
-                className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+                className="mt-4 inline-flex items-center gap-1.5 text-meta font-bold text-primary hover:underline"
               >
                 Want to see the depth first? Read the free sample report
                 <Icon name="arrowRight" size={14} />
@@ -740,8 +791,8 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-3 pb-[env(safe-area-inset-bottom)] lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <span className="text-xs font-medium text-muted">One time</span>
-                <span className="ml-2 text-lg font-black tracking-tight text-text">{priceLabel}</span>
+                <span className="text-caption font-medium text-muted">One time</span>
+                <span className="ml-2 text-body font-black tracking-tight text-text">{priceLabel}</span>
               </div>
               <PackBuyButton
                 pack={pack}
@@ -749,6 +800,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 buy={handleBuy}
                 checkingOut={checkingOut}
                 canCheckout={canCheckout}
+                currency={currency}
               />
             </div>
           </div>
@@ -759,7 +811,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-6 right-4 z-20 hidden rounded-full border border-border bg-surface p-3 shadow-md transition-colors hover:bg-bg lg:block"
+            className="fixed bottom-6 right-4 z-20 hidden rounded-full border border-border bg-surface p-3 shadow-none transition-colors hover:bg-bg lg:block"
             aria-label="Back to top"
           >
             <Icon name="trending-up" size={16} />
@@ -799,15 +851,18 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
       <div aria-hidden className="max-h-[320px] select-none overflow-hidden p-7 blur-[5px]">
         {hasRealContent ? (
           <div className="space-y-3">
-            <p className="text-[13px] font-black leading-tight tracking-tight text-text">{pack.title}</p>
+            <p className="text-caption font-black leading-tight tracking-tight text-text">{pack.title}</p>
             {headings.slice(0, 2).map((h, i) => (
               <div key={`h-${i}`} className="space-y-1.5">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-primary">
+                <p className="text-caption font-bold uppercase tracking-widest text-muted">
                   {String(i + 1).padStart(2, '0')} · {h}
                 </p>
                 {body.slice(i * 2, i * 2 + 2).map((line, j) => (
-                  <p key={`b-${i}-${j}`} className="text-[10px] leading-relaxed text-text/70">
-                    {line}
+                  /* Prose only. A raw `(source: https://…)` run reads as text noise even at
+                     blur(5px), and this element is aria-hidden, so a chip would be unreachable
+                     anyway -- the citations render for real, clickable, further down the page. */
+                  <p key={`b-${i}-${j}`} className="text-caption leading-relaxed text-text/70">
+                    {parseCitations(line).text}
                   </p>
                 ))}
               </div>
@@ -815,9 +870,9 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
             {figures.length > 0 && (
               <div className="flex gap-3 pt-1">
                 {figures.slice(0, 3).map(([label, value]) => (
-                  <div key={label} className="flex-1 rounded-lg bg-bg p-2.5">
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted">{label}</p>
-                    <p className="mt-1 text-[13px] font-black text-text">{value}</p>
+                  <div key={label} className="flex-1 rounded-md bg-bg p-2.5">
+                    <p className="text-caption font-bold uppercase tracking-widest text-muted">{label}</p>
+                    <p className="mt-1 text-caption font-black text-text">{value}</p>
                   </div>
                 ))}
               </div>
@@ -826,18 +881,18 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
         ) : (
           /* No real content to show. Neutral shapes that claim nothing. */
           <div className="space-y-2.5">
-            <div className="h-3 w-2/5 rounded bg-text/80" />
-            <div className="h-2 w-full rounded bg-text/15" />
-            <div className="h-2 w-11/12 rounded bg-text/15" />
-            <div className="h-2 w-10/12 rounded bg-text/15" />
-            <div className="mt-4 h-3 w-1/3 rounded bg-primary/70" />
-            <div className="h-2 w-full rounded bg-text/15" />
-            <div className="h-2 w-9/12 rounded bg-text/15" />
+            <div className="h-3 w-2/5 rounded-md bg-text/80" />
+            <div className="h-2 w-full rounded-md bg-text/15" />
+            <div className="h-2 w-11/12 rounded-md bg-text/15" />
+            <div className="h-2 w-10/12 rounded-md bg-text/15" />
+            <div className="mt-4 h-3 w-1/3 rounded-md bg-text/40" />
+            <div className="h-2 w-full rounded-md bg-text/15" />
+            <div className="h-2 w-9/12 rounded-md bg-text/15" />
           </div>
         )}
       </div>
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-white via-white/70 to-white/30">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text shadow-sm">
+        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-caption font-bold text-text shadow-none">
           <Icon name="lock" size={14} className="text-muted" />
           Unlocks the moment you buy
         </span>
@@ -872,7 +927,7 @@ function ShareRow({ title }: { title: string }) {
       {/* Copy link */}
       <button type="button" onClick={handleCopy} className={btnClass} aria-label="Copy link">
         {copied ? (
-          <span className="font-mono text-[10px] font-bold text-success">Copied ✓</span>
+     <span className="text-caption font-bold text-success">Copied ✓</span>
         ) : (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         )}

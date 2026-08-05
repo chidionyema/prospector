@@ -15,7 +15,7 @@ export default function ServerError() {
       <Seo title="Something went wrong" noindex />
       <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
         <div className="max-w-md text-center">
-          <p className="text-small font-semibold uppercase tracking-wide text-muted">500</p>
+          <p className="text-body font-semibold uppercase tracking-wide text-muted">500</p>
           <h1 className="mt-2 text-h1 font-semibold text-text">Something went wrong on our side</h1>
           <p className="mt-3 text-body text-muted">
             This is on us, not you. Your account and any funded request are unaffected. Please try
@@ -23,7 +23,7 @@ export default function ServerError() {
           </p>
           <Link
             href="/"
-            className="mt-6 inline-flex items-center justify-center rounded-sm bg-primary px-5 py-2.5 text-small font-semibold text-on-primary hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+            className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-body font-semibold text-on-primary hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
             Back to home
           </Link>

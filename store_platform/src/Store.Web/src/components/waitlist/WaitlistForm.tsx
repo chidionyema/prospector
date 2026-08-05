@@ -85,7 +85,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
 
   if (state === 'queued') {
     return (
-      <p className="text-sm leading-relaxed text-muted">
+      <p className="text-meta leading-relaxed text-muted">
         <span className="font-bold text-text">You&apos;re in the queue.</span> We&apos;ll email you from
         support@mumchimp.com {query ? 'if a pack in this space survives the six checks' : 'if a new pack survives the six checks'}. Nothing else.
       </p>
@@ -114,7 +114,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
         </Button>
       </form>
 
-      <p className="mt-3 text-xs italic text-muted">{WAITLIST_CONSENT_TEXT}</p>
+      <p className="mt-3 text-caption italic text-muted">{WAITLIST_CONSENT_TEXT}</p>
     </>
   );
 }

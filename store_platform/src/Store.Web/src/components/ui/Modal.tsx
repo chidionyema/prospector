@@ -100,7 +100,7 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
           tabIndex={-1}
           className={cx(
             'flex max-h-full w-full flex-col outline-none',
-            isDrawer ? 'h-full animate-rise border-l border-border bg-surface' : 'rounded-lg border border-border animate-rise bg-surface',
+            isDrawer ? 'h-full animate-rise border-l border-border bg-surface' : 'rounded-md border border-border animate-rise bg-surface',
             className,
           )}
         >

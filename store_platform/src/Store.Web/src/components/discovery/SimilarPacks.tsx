@@ -21,8 +21,8 @@ export function SimilarPacks({ pack, all }: { pack: Pack; all: Pack[] }) {
 
   return (
     <section className="mt-12">
-      <h2 className="text-xl font-black tracking-tight text-text">Same mechanics, different world</h2>
-      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+      <h2 className="text-h2 font-black tracking-tight text-text">Same mechanics, different world</h2>
+      <p className="mt-1 max-w-2xl text-meta leading-relaxed text-muted">
         Like how this one makes money but not the industry it sits in? These work the same way somewhere
         else.
       </p>

@@ -1,13 +1,13 @@
 /**
  * Centralised A/B/C copy dictionary.
  *
- * OWNER: the founder. Every string below is the founder's copy — no AI generation,
+ * OWNER: the founder. Every string below is the founder's copy, no AI generation,
  * no runtime modification. Changing a string here changes what a variant's buyer sees.
  *
  * VARIANT KEYS
- *   'a' — The Indie Builder  (technical, fast execution)
- *   'b' — The Domain Expert  (non-technical, reliable systems)
- *   'c' — The Data Skeptic   (analytical, risk-averse, needs proof)
+ *   'a': The Indie Builder  (technical, fast execution)
+ *   'b': The Domain Expert  (non-technical, reliable systems)
+ *   'c': The Data Skeptic   (analytical, risk-averse, needs proof)
  *
  * SLOTS
  *   Each slot maps to one place in the UI. The consumer (`pages/*`, `lib/seo/*`) reads
@@ -44,7 +44,7 @@ export interface CopySlots {
   /** Six-checks section description. */
   sixChecksDescription: string;
 
-  /** `/ideas/automated-business-ideas` — the landing-page intro. */
+  /** `/ideas/automated-business-ideas`, the landing-page intro. */
   automatedIdeasIntro: string;
 
   /** Category landing-page `<h1>` (keyed by slug). */
@@ -88,7 +88,7 @@ const CATEGORY_H1_B: Record<string, string> = {
 
 const CATEGORY_H1_C: Record<string, string> = {
   ...CATEGORY_H1_A,
-  'automated-business-ideas': 'High‑leverage operations',
+  'automated-business-ideas': 'High-leverage operations',
   'b2b-business-ideas': 'B2B markets',
   'b2c-business-ideas': 'B2C markets',
   'evening-business-ideas': 'Asynchronous operations',
@@ -101,10 +101,16 @@ const CATEGORY_H1_C: Record<string, string> = {
 /** Every variant, every slot, one source of truth. */
 export const VARIANTS: Record<VariantKey, CopyVariant> = {
   a: {
-    globalHookLead:
-      'Skip 6 months of research. Validated ideas you can actually ship today. Zero fluff, ready to build. £49 a pack.',
+    // ONE claim. This read "Skip 6 months of research. Validated ideas you can actually ship
+    // today. Zero fluff, ready to build. £49 a pack." -- four assertions racing each other, and a
+    // headline making four claims makes none: the eye picks whichever one it happens to land on.
+    // The price left the h1 because it is already in the eyebrow directly above it and in the lead
+    // paragraph directly below; it was stated three times within 120px. Each variant now tests one
+    // distinct promise (research done / economics verified / every number sourced) rather than
+    // three overlapping paragraphs, which is also the only shape an A/B result can be read from.
+    globalHookLead: 'Business ideas with the research already done.',
     globalHookDescription:
-      'Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan — every claim backed by a source you can open.',
+      'Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
 
     howItWorksEyebrow: 'The panel',
     howItWorksTitle: 'Every idea faces a panel built to kill it.',
@@ -118,17 +124,16 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
       'Every candidate faces the same six gates, in this order. The panel kills fast at the first hard fail. Only ideas that clear every gate and survive an adversarial cross‑examination become a pack, and every kill is logged with its reason, so the filter is auditable, not a black box.',
 
     automatedIdeasIntro:
-      'Code does the heavy lifting. These ideas scale on software, not your time. The core delivery — gathering data, generating docs, running checks — is automated rather than billed by the hour. We will tell you exactly where you still need a human in the loop.',
+      'Code does the heavy lifting. These ideas scale on software, not your time. The core delivery (gathering data, generating docs, running checks) is automated rather than billed by the hour. We will tell you exactly where you still need a human in the loop.',
 
     categoryH1: CATEGORY_H1_A,
     categoryMetaTitle: CATEGORY_H1_A, // mirror for now
   },
 
   b: {
-    globalHookLead:
-      'Skip 6 months of research. We verify the economics, you get the step-by-step blueprint to actually start. £49 per pack.',
+    globalHookLead: 'Business ideas with the economics already verified.',
     globalHookDescription:
-      'Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan — every claim backed by a source you can open.',
+      'Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
 
     howItWorksEyebrow: 'The panel',
     howItWorksTitle: 'Every idea is tested to destruction.',
@@ -149,10 +154,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   },
 
   c: {
-    globalHookLead:
-      'Skip 6 months of diligence. We stress-test the models, verify the demand, and cite every source so you do not have to. £49 per dossier.',
+    globalHookLead: 'Business ideas with a source behind every number.',
     globalHookDescription:
-      'Each £49 dossier is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan — every claim backed by a source you can open.',
+      'Each £49 dossier is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
 
     howItWorksEyebrow: 'The methodology',
     howItWorksTitle: 'An adversarial review process.',
@@ -166,7 +170,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
       'Every dossier must satisfy six rigid criteria: verified market pain, quantifiable value, fragmented incumbents, a solvent payer base, viable acquisition channels, and regulatory compliance.',
 
     automatedIdeasIntro:
-      'High‑leverage operations. The core unit of delivery in these models is machine-executable — data parsing, document generation, and compliance checks. This decouples revenue from billable hours. Each dossier explicitly outlines the operational bottlenecks that still require human oversight.',
+      'High-leverage operations. The core unit of delivery in these models is machine-executable: data parsing, document generation, and compliance checks. This decouples revenue from billable hours. Each dossier explicitly outlines the operational bottlenecks that still require human oversight.',
 
     categoryH1: CATEGORY_H1_C,
     categoryMetaTitle: CATEGORY_H1_C,

@@ -15,7 +15,7 @@ export interface StatCardProps {
  *  beside (never competes with) the MoneyHero (SITE-POLISH-SPEC §2.3). */
 export function StatCard({ label, value, sub, icon, className }: StatCardProps) {
   return (
-    <div className={cx('rounded-lg border border-border bg-surface p-5', className)}>
+    <div className={cx('rounded-md border border-border bg-surface p-5', className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-caption font-semibold uppercase tracking-wider text-muted">{label}</p>
         {icon && <Icon name={icon} size={16} className="text-faint" />}

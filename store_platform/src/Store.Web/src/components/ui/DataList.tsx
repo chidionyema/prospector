@@ -21,8 +21,8 @@ export function DescriptionList({ items, className }: DescriptionListProps) {
     <dl className={cx('divide-y divide-border', className)}>
       {items.map((item, i) => (
         <div key={i} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
-          <dt className="text-small text-muted">{item.term}</dt>
-          <dd className="text-small text-text sm:text-right">{item.description}</dd>
+          <dt className="text-body text-muted">{item.term}</dt>
+          <dd className="text-body text-text sm:text-right">{item.description}</dd>
         </div>
       ))}
     </dl>
@@ -50,7 +50,7 @@ export function ListRow({ leading, title, meta, trailing, className }: ListRowPr
     <div className={cx('flex items-center gap-4 py-3', className)}>
       {leading && <div className="shrink-0">{leading}</div>}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-small font-semibold text-text">{title}</div>
+        <div className="truncate text-body font-semibold text-text">{title}</div>
         {meta && <div className="truncate text-caption text-muted">{meta}</div>}
       </div>
       {trailing && <div className="shrink-0">{trailing}</div>}

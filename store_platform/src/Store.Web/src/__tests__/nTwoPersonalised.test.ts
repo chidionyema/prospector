@@ -1,13 +1,9 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 function readSource(relativePath: string): string {
   return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
-}
-
-function existsRelative(relativePath: string): boolean {
-  return existsSync(fileURLToPath(new URL(relativePath, import.meta.url)));
 }
 
 /**

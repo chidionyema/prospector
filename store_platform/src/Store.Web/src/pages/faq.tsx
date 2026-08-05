@@ -53,7 +53,7 @@ function AccordionItem({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-4 p-5 text-left"
       >
-        <h2 className="text-base font-bold text-text leading-snug pr-8">{item.question}</h2>
+        <h2 className="text-body font-bold text-text leading-snug pr-8">{item.question}</h2>
         <Icon
           name="arrowRight"
           size={16}
@@ -65,17 +65,17 @@ function AccordionItem({
       </button>
       {open && (
         <div className="px-5 pb-5 -mt-1">
-          <div className="text-sm leading-relaxed text-text/75">
+          <div className="text-meta leading-relaxed text-text/75">
             <Answer item={item} />
           </div>
           {/* Was this helpful? */}
           <div className="mt-4 flex items-center gap-3 border-t border-border/60 pt-3">
-            <span className="text-[11px] text-muted">Was this helpful?</span>
+            <span className="text-caption text-muted">Was this helpful?</span>
             <button
               type="button"
               onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
               className={cx(
-                'text-sm transition-colors',
+                'text-meta transition-colors',
                 feedback === 'up' ? 'text-success' : 'text-muted hover:text-text',
               )}
               aria-label="Yes"
@@ -86,7 +86,7 @@ function AccordionItem({
               type="button"
               onClick={() => setFeedback(feedback === 'down' ? null : 'down')}
               className={cx(
-                'text-sm transition-colors',
+                'text-meta transition-colors',
                 feedback === 'down' ? 'text-warning' : 'text-muted hover:text-text',
               )}
               aria-label="No"
@@ -118,8 +118,6 @@ export default function Faq() {
     return items;
   }, [search, activeCategory]);
 
-  const query = search.trim().toLowerCase();
-
   return (
     <MarketingLayout>
       <Seo
@@ -149,7 +147,7 @@ export default function Faq() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search FAQs…"
-            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-sm text-text outline-none transition-colors focus:border-primary/40"
+            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-meta text-text outline-none transition-colors focus:border-primary/40"
           />
         </div>
 
@@ -159,7 +157,7 @@ export default function Faq() {
             type="button"
             onClick={() => setActiveCategory(null)}
             className={cx(
-              'px-3 py-1.5 text-xs font-semibold transition-colors border',
+              'px-3 py-1.5 text-caption font-semibold transition-colors border',
               !activeCategory
                 ? 'border-primary bg-primary/10 text-text'
                 : 'border-border bg-surface text-muted hover:border-text/20',
@@ -173,7 +171,7 @@ export default function Faq() {
               type="button"
               onClick={() => setActiveCategory(cat.key)}
               className={cx(
-                'px-3 py-1.5 text-xs font-semibold transition-colors border',
+                'px-3 py-1.5 text-caption font-semibold transition-colors border',
                 activeCategory === cat.key
                   ? 'border-primary bg-primary/10 text-text'
                   : 'border-border bg-surface text-muted hover:border-text/20',
@@ -189,11 +187,11 @@ export default function Faq() {
       <SectionBand bg="white" width="6xl" className="!pt-0 !pb-16">
         {filtered.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-sm text-muted">No questions match &ldquo;{search}&rdquo;.</p>
+            <p className="text-meta text-muted">No questions match &ldquo;{search}&rdquo;.</p>
             <button
               type="button"
               onClick={() => { setSearch(''); setActiveCategory(null); }}
-              className="mt-2 text-sm font-semibold text-primary hover:underline"
+              className="mt-2 text-meta font-semibold text-primary hover:underline"
             >
               Clear search
             </button>
@@ -214,9 +212,9 @@ export default function Faq() {
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
               <Icon name="mail" size={14} />
             </span>
-            <h4 className="font-bold text-sm text-text">A human reads every email</h4>
+            <h4 className="font-bold text-meta text-text">A human reads every email</h4>
           </div>
-          <div className="space-y-3 font-mono text-xs">
+     <div className="space-y-3 text-caption">
             <div className="flex flex-col border-b border-border/60 pb-3">
               <span className="text-muted uppercase font-bold tracking-tight mb-1">Email</span>
               <a href={`mailto:${LEGAL.supportEmail}`} className="font-bold text-primary break-all hover:underline">{LEGAL.supportEmail}</a>
@@ -228,7 +226,7 @@ export default function Faq() {
           </div>
           <Link
             href="/"
-            className="mt-5 inline-flex items-center gap-2 bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+            className="mt-5 inline-flex items-center gap-2 bg-primary px-4 py-2 text-meta font-semibold text-on-primary transition-colors hover:bg-primary-hover"
           >
             Browse the catalogue <Icon name="arrowRight" size={14} />
           </Link>

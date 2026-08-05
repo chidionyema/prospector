@@ -29,10 +29,10 @@ export function ShelfEndCapture({ className }: { className?: string }) {
       <div className="border border-border bg-surface px-6 py-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
           <div className="max-w-md">
-            <h2 className="text-base font-black tracking-tight text-text">
+            <h2 className="text-body font-black tracking-tight text-text">
               Seen the whole shelf? The next survivor can come to you.
             </h2>
-            <p className="mt-1 text-sm leading-relaxed text-muted">
+            <p className="mt-1 text-meta leading-relaxed text-muted">
               Most ideas the engine vets die on the six checks. When one survives, we can send it,
               one email per survivor, nothing else.
             </p>

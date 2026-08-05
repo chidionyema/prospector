@@ -71,4 +71,7 @@ export type { IconName } from './Icon';
 
 export { ToastProvider, useToast } from './Toast';
 
+export { CitationChip, CitationList, SourcedLine } from './Citation';
+export type { CitationChipProps, CitationListProps, SourcedLineProps } from './Citation';
+
 export { cx } from './cx';
