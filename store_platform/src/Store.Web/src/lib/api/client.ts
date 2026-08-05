@@ -57,6 +57,12 @@ export interface Pack {
   title: string;
   oneLine: string;
   price: string;
+  /** The same amount as `price`, in pence, for the analytics beacon (build plan D2). Optional
+   *  because web and API stay deployable in either order: a web bundle running against an API
+   *  that predates this field must render the price exactly as before and simply emit no
+   *  `price_viewed`, rather than emit a beacon carrying NaN. Never use it to render -- `price`
+   *  is the display path, and a second one would be free to drift from it. */
+  pricePence?: number;
   paymentProvider: string;
   providerPriceId: string;
   // Per-pack conversion specifics. Optional: only packs published by the newer engine carry

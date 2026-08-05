@@ -20,7 +20,15 @@ public static class AnalyticsEndpoints
 {
     /// <summary>
     /// Server-side allowlist. Free-text event names would make the table an unbounded
-    /// namespace anyone can spam; four known counters is the entire contract.
+    /// namespace anyone can spam; a known set of counters is the entire contract.
+    ///
+    /// This list and <c>AnalyticsEventName</c> in <c>Store.Web/src/lib/analytics.ts</c> are two
+    /// halves of one contract, and they had silently drifted: the storefront was emitting
+    /// pack_shared, basket_removed, matchmaker_answered, palette_search and copy_variant from
+    /// live call sites, every one of which 400d here and was counted nowhere. A dropped beacon
+    /// looks identical to a visitor who never acted, so the drift reads as "nobody uses this
+    /// feature" rather than as a bug. <c>AnalyticsNameContractTests</c> now pins the two lists
+    /// together so the next addition cannot land on one side only.
     /// </summary>
     private static readonly HashSet<string> AllowedNames = new(StringComparer.Ordinal)
     {
@@ -28,6 +36,16 @@ public static class AnalyticsEndpoints
         "sample_cta_clicked",
         "catalog_cta_clicked",
         "checkout_completed",
+        "pack_shared",
+        "basket_removed",
+        "matchmaker_answered",
+        "palette_search",
+        "copy_variant",
+        // The pricing instrument (build plan D2). price_viewed is the denominator and
+        // checkout_started the numerator of the only conversion rate that moves fast enough
+        // to evaluate a ladder change; purchases are far too rare an event to learn from.
+        "price_viewed",
+        "checkout_started",
     };
 
     /// <summary>

@@ -264,6 +264,12 @@ app.MapGet("/catalog", async (StoreDbContext db, string? market) =>
         p.Title,
         p.OneLine,
         Price = Money.ToDisplayString(p.PricePence, "£"),
+        // The same number the display string is rendered from, in pence, for the analytics
+        // beacon (build plan D2). Emitted as a raw integer rather than left to the client to
+        // parse back out of "£49.00": the beacon is the instrument a ladder change is judged
+        // by, and an instrument that depends on reversing a display format breaks the day the
+        // format does. Display still reads Price — this is not a second rendering path.
+        p.PricePence,
         p.PaymentProvider,
         p.ProviderPriceId,
         // Per-pack card specifics so the catalogue sells each pack on its own merits.
@@ -320,6 +326,8 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
         pack.Title,
         pack.OneLine,
         Price = Money.ToDisplayString(pack.PricePence, "£"),
+        // See the /catalog projection: the beacon's number, not a second display path.
+        pack.PricePence,
         pack.PaymentProvider,
         pack.ProviderPriceId,
         pack.DossierRef,
