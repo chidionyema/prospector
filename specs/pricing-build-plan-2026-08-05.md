@@ -175,10 +175,16 @@ into C-work rather than relaxing the fence.
    `models.PRICING_CHECK`) and from `run_order` in `verify.py`, not by config omission — `hard_gates`
    is data, and a data edit passes through neither code review nor the test suite.
 3. **C1** (backfill) — only after D1 is green, since the ladder is what decides each pack's rung.
-   **MEASURED 2026-08-05, not yet run.** Against the live `/catalog` (61 packs) cross-referenced
-   with 1412 stored dossiers, the ladder moves **13 packs**: 5 cuts, 8 rises, largest a 4× rise on
-   one venture/us pack. The other 48 hold at 4900 because their tier is unclassified. Blocked on L0
-   being deployed — the backfill is what `PATCH /internal/catalog/{id}/price` exists for.
+   **DONE 2026-08-05 22:07Z** — `scripts/backfill_ladder_prices.py --apply`. 13 of 61 packs moved
+   (5 cuts side_hustle/uk 4900→2900; 8 rises to 7900/9900/14900/19900), 48 held at 4900 because
+   their dossier tier is unclassified, 0 packs without a dossier. Each pack: mint the Stripe Price
+   first (an orphaned Price is inert; a catalogue row pointing at a nonexistent price is a listed
+   pack that cannot take money), then PATCH, then **read back from `/catalog`** — abort the run on
+   the first mismatch. All 13 read back correct. The drain behaved as designed: cuts took
+   `floor = new price` immediately, rises held `floor = 4900` until `2026-08-07T00:07Z`. Every pack
+   was `IsListed` (that is what `/catalog` filters on, `Program.cs:245`), so the endpoint ran
+   `CanBillPriceAsync` against prod Stripe on each new price id before committing
+   (`Program.cs:847-865`). Post-state: re-running the planner reports `move: 0  hold: 61`.
 4. **C2** (`bridge.py` repoint) — after C1, so new packs and existing packs converge on one source.
    **DONE 2026-08-05** — one `PriceDecision` now feeds both the Stripe mint (`amount_pence`) and the
    catalogue row (`pricePence`); `_update_catalog`'s `price_pence` is a **required** parameter so no
