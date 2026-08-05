@@ -56,6 +56,56 @@ public sealed class AnalyticsEndpointsTests : IClassFixture<StoreApiFactory>
         Assert.True(row.GetProperty("count").GetInt32() >= 1);
     }
 
+    /// <summary>
+    /// The pricing instrument (build plan D2) proven by BEHAVIOUR, not by reading the allowlist.
+    /// A grep for the name in the source would still pass if the beacon 400d for any other
+    /// reason, and a beacon that 400s is indistinguishable from a visitor who never acted —
+    /// which is how five storefront events (pack_shared, basket_removed, matchmaker_answered,
+    /// palette_search, copy_variant) went uncounted from live call sites until this change.
+    /// </summary>
+    [Theory]
+    [InlineData("price_viewed")]
+    [InlineData("checkout_started")]
+    [InlineData("pack_shared")]
+    [InlineData("basket_removed")]
+    [InlineData("matchmaker_answered")]
+    [InlineData("palette_search")]
+    [InlineData("copy_variant")]
+    public async Task Storefront_emitted_event_is_accepted_and_counted(string name)
+    {
+        var before = await CountAsync(name);
+
+        var response = await PostEventAsync(new
+        {
+            name,
+            path = "/pack/fbd10d6bdfcd5e31",
+            meta = """{"pack_id":"fbd10d6bdfcd5e31","price_pence":19900}""",
+        });
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(before + 1, await CountAsync(name));
+    }
+
+    /// <summary>
+    /// The denominator has to be able to count the same (pack, price) twice. The unique index
+    /// is filtered to checkout_completed for exactly this reason; if it ever widened, a
+    /// price→checkout rate would silently become a count of distinct prices.
+    /// </summary>
+    [Fact]
+    public async Task Repeat_price_views_at_the_same_price_are_all_counted()
+    {
+        var meta = """{"pack_id":"0cc434887c47cb9a","price_pence":2900}""";
+        var before = await CountAsync("price_viewed");
+
+        foreach (var _ in Enumerable.Range(0, 3))
+        {
+            var response = await PostEventAsync(new { name = "price_viewed", path = "/pack/0cc434887c47cb9a", meta });
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        }
+
+        Assert.Equal(before + 3, await CountAsync("price_viewed"));
+    }
+
     [Fact]
     public async Task Unknown_event_name_is_rejected()
     {

@@ -14,7 +14,7 @@ import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { formatPriceForMarket, formatGbpNote, currencyForCountry, type Currency } from '@/lib/fx';
-import { track } from '@/lib/analytics';
+import { track, trackPriceEvent } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import PackCover from '@/components/marketing/PackCover';
@@ -132,6 +132,14 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
     handleUnreachable: handleEmbeddedUnreachable,
     closeOverlay,
   } = usePackCheckout(pack, preopened);
+
+  // The denominator of the price→checkout rate. Keyed on (id, pricePence) rather than fired once
+  // per mount, so a price that changes under a client-side navigation is counted as the separate
+  // view it is — the rate exists to compare prices, and folding two prices into one view would
+  // erase the only thing being measured.
+  React.useEffect(() => {
+    trackPriceEvent('price_viewed', pack);
+  }, [pack.id, pack.pricePence]);
 
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);

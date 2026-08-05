@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { trackPriceEvent } from '@/lib/analytics';
 import { createEmbeddedCheckout, createStripeCheckout } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { resolveStripeCheckout } from '@/lib/checkoutRoute';
@@ -11,6 +12,10 @@ export interface PackCheckoutTarget {
   title: string;
   paymentProvider: string;
   providerPriceId: string;
+  /** For the `checkout_started` beacon only, never for the sale. Optional for the same reason
+   *  it is optional on `Pack`: an older API does not serve it, and a missing beacon must never
+   *  be able to stop a checkout. */
+  pricePence?: number;
 }
 
 /**
@@ -84,6 +89,13 @@ export function usePackCheckout(pack: PackCheckoutTarget, preopenedSecret?: stri
   const buy = async () => {
     setCheckingOut(true);
     setCheckoutError(null);
+
+    // Fires on INTENT, before the provider call, and deliberately not inside the try: it is the
+    // numerator of the price→checkout rate, and a rate that only counts checkouts the provider
+    // managed to open would hide exactly the case a price change is most likely to cause. It is
+    // also fire-and-forget by construction (`track` never throws, never awaits), so it cannot
+    // delay or fail the sale -- incident 1 in the module doc is what that rule is made of.
+    trackPriceEvent('checkout_started', pack);
 
     try {
       if (provider === 'stripe') {

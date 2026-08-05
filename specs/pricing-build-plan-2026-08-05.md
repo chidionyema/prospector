@@ -165,7 +165,48 @@ into C-work rather than relaxing the fence.
 
 1. **D1** (`pricing.py` + golden matrix) and **D2** (analytics) in parallel — independent, and D2's
    events want to be live before any price actually moves so the before/after is measurable.
-   **DONE 2026-08-05** — `prospector/pricing.py`, delegated to MiniMax, commit `0f9a6a7`.
+   **D1 DONE 2026-08-05** — `prospector/pricing.py`, delegated to MiniMax, commit `0f9a6a7`.
+
+   **D2 DONE 2026-08-05, but LATE, and the lateness cost something specific.** D2 was not built
+   alongside D1; it landed after C1 had already moved 13 packs. The stated reason D2 went first was
+   that its events must be live before any price moves, so the before/after is measurable — that
+   window is closed and the before/after on the 2026-08-05 22:07Z reprice is unrecoverable. D2 is
+   the instrument for the *next* move, not for the one already made. Do not read a later
+   price→checkout rate as evidence about that reprice.
+
+   What shipped: `price_viewed` (denominator) and `checkout_started` (numerator), each carrying
+   `pack_id` and `price_pence`. `price_viewed` fires from the pack page keyed on
+   `(pack.id, pack.pricePence)`, so a price that changes under a client-side navigation counts as
+   the separate view it is. `checkout_started` fires from `usePackCheckout.buy()` — the ONE shared
+   buy path, used by both the pack page and the shelf's Buy drawer — and fires on *intent*, before
+   the provider call and outside the `try`, because a numerator that only counted checkouts the
+   provider managed to open would hide exactly the failure a price change is most likely to cause.
+
+   `price_pence` is also the rung. The ladder is a fixed set of seven values, so pence maps to a
+   rung one-to-one and a separate rung field would be a second source of truth for one fact, free
+   to disagree with the price it labels — the C2 failure mode one layer up. Which ladder was in
+   force is recovered by joining on the event's server-side `CreatedAt`, never on a label the
+   browser wrote.
+
+   The storefront had no pence to report: `/catalog` served only the display string `"£49.00"`.
+   `PricePence` is now on both catalogue projections (`Program.cs`) and optional on the client
+   `Pack`, so web and API stay deployable in either order; against an older API the beacon emits
+   *nothing* rather than a view at an unknown price, because a denominator inflated by unknowns is
+   worse than a smaller honest one.
+
+   **Trap found, pre-existing and live in production:** the client `AnalyticsEventName` union and
+   the server `AllowedNames` allowlist are two halves of one contract and had silently drifted.
+   `pack_shared`, `basket_removed`, `matchmaker_answered`, `palette_search` and `copy_variant` were
+   all being emitted from live call sites and all 400d server-side, counted nowhere. A dropped
+   beacon is indistinguishable from a visitor who never acted, so the bug read as "nobody uses this
+   feature". All five are now allowlisted, and the drift is pinned from both sides.
+
+   *Verified:* `503 passed` (43 files, `npx vitest run`), `tsc --noEmit` clean,
+   `Passed! - Failed: 0, Passed: 257` (Store.Tests, +8 new). The contract test was proven
+   non-vacuous by deleting `"pack_shared"` from the allowlist and confirming it fails with
+   `expected [ 'pack_shared' ] to deeply equal []`, then restoring. The seven storefront event
+   names are additionally proven by behaviour (`POST /events` → 202 and a counter delta), not by
+   grepping the allowlist — a grep would still pass if the beacon 400d for some other reason.
 2. **C3** (`price_comparables`) — starts producing cited anchors immediately; every batch that runs
    without it is a batch whose anchor evidence is lost.
    **DONE 2026-08-05** — `prospector/price_comparables.py`, `prompts/price_comparables.md`,

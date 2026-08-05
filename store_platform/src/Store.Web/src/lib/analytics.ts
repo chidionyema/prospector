@@ -29,7 +29,9 @@ export type AnalyticsEventName =
   | 'basket_removed'
   | 'matchmaker_answered'
   | 'palette_search'
-  | 'copy_variant';
+  | 'copy_variant'
+  | 'price_viewed'
+  | 'checkout_started';
 
 /**
  * Fire-and-forget. Analytics must never break the page or delay navigation.
@@ -44,4 +46,32 @@ export function track(name: AnalyticsEventName, meta?: string): void {
     path: window.location.pathname,
     meta: meta ?? null,
   });
+}
+
+/**
+ * The pricing instrument (build plan D2). `price_viewed` is the denominator and
+ * `checkout_started` the numerator of the only conversion rate that moves fast enough to
+ * evaluate a ladder change -- purchases are far too rare an event to learn from, which is the
+ * whole argument for these two existing.
+ *
+ * `pack_id` and `price_pence` are the required fields, and `price_pence` is ALSO the rung: the
+ * ladder is a fixed set of seven values (`config.yaml listing.pricing.rungs`), so pence maps to
+ * a rung one-to-one and a separate rung field would be a second source of truth for one fact --
+ * free to disagree with the price it claims to label. Which ladder was in force is recovered by
+ * joining on the event's server-side `CreatedAt`, not by trusting a label the browser wrote.
+ *
+ * Emits NOTHING when `pricePence` is absent, which is what an older API serves. A beacon
+ * carrying `null` would be counted as a view at an unknown price, and a denominator inflated by
+ * unknowns is worse than a smaller honest one.
+ *
+ * Not deduplicated: the unique index is filtered to `Name = 'checkout_completed'`
+ * (`20260731124037_DropAnalyticsSessionId.cs:45-50`), so repeat views at the same price are
+ * counted repeatedly -- which is exactly what a denominator has to do.
+ */
+export function trackPriceEvent(
+  name: 'price_viewed' | 'checkout_started',
+  pack: { id: string; pricePence?: number },
+): void {
+  if (typeof pack.pricePence !== 'number' || !Number.isFinite(pack.pricePence)) return;
+  track(name, JSON.stringify({ pack_id: pack.id, price_pence: pack.pricePence }));
 }
