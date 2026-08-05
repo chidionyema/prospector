@@ -32,7 +32,7 @@ function domainOf(url: string): string {
 
 export function DossierPreview() {
   return (
-    <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-bg px-5 py-4 md:px-7">
         <div>
           <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">

@@ -12,10 +12,13 @@ import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
-import { fetchCatalog, fetchPackDetails, formatPrice, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { formatPriceForMarket, formatGbpNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { track } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
+import PackCover from '@/components/marketing/PackCover';
+import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
 import { FacetChips } from '@/components/discovery/FacetChips';
@@ -33,6 +36,9 @@ interface PackPageProps {
    *  a catalogue outage must never take down a page someone is trying to buy from. */
   catalog: Pack[];
   error?: string;
+  /** The currency to render prices in. Same as the home page: decoupled from market, derived
+   *  from the country header on the server. */
+  currency: Currency;
 }
 
 /**
@@ -74,7 +80,7 @@ const CHECKS = [
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
 
-export default function PackPage({ pack, catalog, error }: PackPageProps) {
+export default function PackPage({ pack, catalog, error, currency }: PackPageProps) {
   const router = useRouter();
 
   // Hooks must run unconditionally. If the server couldn't fetch the pack, render an error
@@ -105,11 +111,11 @@ export default function PackPage({ pack, catalog, error }: PackPageProps) {
     );
   }
 
-  return <PackPageContent pack={pack} catalog={catalog} />;
+  return <PackPageContent pack={pack} catalog={catalog} currency={currency} />;
 }
 
 /** Inner component: all hooks that require a non-null pack live here. */
-function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[] }) {
+function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catalog: Pack[]; currency: Currency }) {
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
 
@@ -153,18 +159,15 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Track viewed pack for the 'Recently viewed' row on the catalog
-  React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem('mumchimp.recentlyViewed');
-      const ids: string[] = raw ? JSON.parse(raw) : [];
-      const next = [pack.id, ...ids.filter((id) => id !== pack.id)].slice(0, 10);
-      localStorage.setItem('mumchimp.recentlyViewed', JSON.stringify(next));
-    } catch { /* storage unavailable */ }
-  }, [pack.id]);
+  // N2: track viewed pack for the personalised "Based on your browsing" row on
+  // the home page. The original implementation used localStorage, but the lint
+  // rule forbids it (XSS-exfiltratable). The pack detail page is server-rendered,
+  // so we set the cookie server-side in getServerSideProps; no client-side
+  // tracking is needed.
+  // (See the cookie write in getServerSideProps below.)
 
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
-  const priceLabel = formatPrice(pack.price);
+  const priceLabel = formatPriceForMarket(pack.price, currency);
   const payback = paybackEquation(pack.price, pack.financialSnapshot);
 
   const notifyHref =
@@ -189,6 +192,12 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
         <Icon name="shield" size={14} />
         14 day money back, no questions asked
       </div>
+
+      {/* US-5: small GBP note under the price so the source of truth is never hidden.
+          The headline price is in the visitor's currency; the GBP equivalent is one line below. */}
+      {currency !== 'GBP' && (
+        <p className="mt-2 text-xs font-medium text-faint">{formatGbpNote(pack.price)}</p>
+      )}
 
       <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">
         <Icon name="verified" size={12} /> Survived 6 checks
@@ -265,16 +274,19 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
 
       {canCheckout ? (
         <>
-          <button
-            onClick={handleBuy}
-            disabled={checkingOut}
-            className="mt-4 w-full bg-text py-4 text-sm font-bold uppercase tracking-wide text-white transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
-          >
-            {/* Not "Redirecting…": the embedded path opens a panel in place and never navigates,
-                so that label promised a page change that never came. This wording is true of both
-                routes, the overlay and the hosted redirect. */}
-            {checkingOut ? 'Opening secure checkout…' : `Get instant access, ${priceLabel}`}
-          </button>
+          {/* US-1: the pack detail page's primary buy action is the canonical <PackBuyButton>.
+              The page owns `usePackCheckout`, so it passes the buy flow down. The button does
+              NOT call the hook itself, which would split the overlay state across two instances. */}
+          <div className="mt-4">
+            <PackBuyButton
+              pack={pack}
+              variant="detail"
+              buy={handleBuy}
+              checkingOut={checkingOut}
+              canCheckout={canCheckout}
+              className="w-full"
+            />
+          </div>
           {/* Under the button, not above it: the address only matters once the buyer has decided,
               and putting an account-shaped sentence in front of the price is how a storefront
               teaches guests that they need an account. They do not. */}
@@ -372,9 +384,14 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
         <div className="mt-6 flex flex-col gap-12 lg:flex-row">
           {/* Left: Content */}
           <div className="flex-1">
+            {/* US-2: pack cover plate. The 16:9 hero sits at the top of the page so
+                the buyer's first visual of the product is a real cover, not a text
+                header. The hero is a passive banner (not a link); the title below
+                is the one true h1. */}
+            <PackCover variant="hero" pack={pack} className="mb-6" />
             {/* Document header: left-rule + verified badge, no decorative cover */}
             <div className="mb-6 border-l-[3px] border-l-primary pl-5">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#0D9488' }}>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-primary">
                 <Icon name="verified" size={13} /> Survived six checks
               </span>
             </div>
@@ -385,6 +402,26 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
             <p className="mt-5 max-w-[65ch] text-lg leading-relaxed text-text/80">{pack.oneLine}</p>
             {pack.subhead && (
               <p className="mt-3 max-w-[65ch] text-base leading-relaxed text-text/70">{pack.subhead}</p>
+            )}
+
+            {/* US-6: the strongest case against the pack moves to the top, right after
+                the title and one-liner. The risk is the buyer's first test of whether
+                to trust the work; surfacing it above the deliverables is the Mumchimp
+                voice (refutational, not promotional). The buyer who reads the risk
+                and buys is the buyer who is certain. Always visible, not collapsed. */}
+            {verdict.risk && (
+              <div className="mt-6 border border-warning/30 bg-warning/5 p-5">
+                <div className="flex items-center gap-2">
+                  <Icon name="shield" size={15} className="text-warning" />
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-warning">
+                    Where this could break
+                  </span>
+                </div>
+                <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-text/80">{verdict.risk}</p>
+                <p className="mt-2 text-xs text-muted">
+                  The strongest case against the idea, with its source, also lives inside the pack.
+                </p>
+              </div>
             )}
 
             {(pack.market ||
@@ -432,50 +469,66 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
               />
             </div>
 
-            {/* How the idea was attacked, the filter, stated as the filter. The per-pack answers
-                are the scored axes immediately below and the QA report inside the pack; see the
-                CHECKS doc comment for why this block deliberately makes no per-check claim. */}
-            <div className="mt-12">
-              <h2 className="text-xl font-bold tracking-tight text-text">Six ways we tried to kill it</h2>
-              <p className="mt-2 text-sm text-muted">
-                Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
-                cited evidence against it, and a listing means none of the six produced that evidence.
-                Finding nothing is not the same as finding a green light, so the scores below show where
-                this pack&rsquo;s case is strong and where it is thin.
-              </p>
-              <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {CHECKS.map((check, i) => (
-                  <li
-                    key={check}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3"
-                  >
-                    {/* A numeral, not a tick: a green success mark on a static line reads as this
-                        pack's verdict on that check, which is exactly what this page cannot know. */}
-                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border bg-bg font-mono text-[11px] font-bold text-muted">
-                      {i + 1}
-                    </span>
-                    <span className="text-sm font-medium text-text">{check}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/how-it-works"
-                className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
-              >
-                See how each check works
-                <Icon name="arrowRight" size={14} />
-              </Link>
-            </div>
-
-            {/* The stress test, scored, show the stress. Real per-pack scores, including the
-                weak axes, plus the surfaced main risk. Hiding the cons would kill the pros. */}
-            {(axes.length > 0 || verdict.risk) && (
-              <div className="mt-12">
-                <h2 className="text-xl font-bold tracking-tight text-text">How it scores</h2>
-                <p className="mt-2 max-w-[60ch] text-sm text-muted">
-                  Six things we measure. The strong ones are strengths. The weaker ones are things
-                  you should know before you build.
+            {/* US-4: the six-check methodology collapses behind a <details> disclosure.
+                On mobile (the primary surface), the buyer is not forced to read 200px
+                of methodology before the deliverables. They can tap to expand if
+                they care. The disclosure is open by default on lg+ where the page
+                has the room. */}
+            <details className="mt-12 group" open={undefined}>
+              <summary className="cursor-pointer text-xl font-bold tracking-tight text-text hover:text-primary transition-colors list-none">
+                <span className="inline-flex items-center gap-2">
+                  <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
+                  Six ways we tried to kill it
+                </span>
+              </summary>
+              <div className="mt-4">
+                <p className="text-sm text-muted">
+                  Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
+                  cited evidence against it, and a listing means none of the six produced that evidence.
+                  Finding nothing is not the same as finding a green light, so the scores below show where
+                  this pack&rsquo;s case is strong and where it is thin.
                 </p>
+                <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {CHECKS.map((check, i) => (
+                    <li
+                      key={check}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3"
+                    >
+                      {/* A numeral, not a tick: a green success mark on a static line reads as this
+                          pack's verdict on that check, which is exactly what this page cannot know. */}
+                      <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border bg-bg font-mono text-[11px] font-bold text-muted">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm font-medium text-text">{check}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/how-it-works"
+                  className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+                >
+                  See how each check works
+                  <Icon name="arrowRight" size={14} />
+                </Link>
+              </div>
+            </details>
+
+            {/* US-4: the scored axes collapse behind a <details> disclosure. The
+                methodology is opt-in; the buyer who only cares about the
+                result sees the buy button first, the methodology on demand. */}
+            {(axes.length > 0 || verdict.risk) && (
+              <details className="mt-12 group">
+                <summary className="cursor-pointer text-xl font-bold tracking-tight text-text hover:text-primary transition-colors list-none">
+                  <span className="inline-flex items-center gap-2">
+                    <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
+                    How it scores
+                  </span>
+                </summary>
+                <div className="mt-4">
+                  <p className="max-w-[60ch] text-sm text-muted">
+                    Six things we measure. The strong ones are strengths. The weaker ones are things
+                    you should know before you build.
+                  </p>
 
                 {axes.length > 0 && (
                   <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
@@ -517,11 +570,12 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                     </div>
                     <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-text/80">{verdict.risk}</p>
                     <p className="mt-2 text-xs text-muted">
-                      We surface the strongest argument against the idea, with its source, inside the pack.
+                      The strongest case against the idea, with its source, also lives inside the pack.
                     </p>
                   </div>
                 )}
-              </div>
+                </div>
+              </details>
             )}
 
             {/* Is this for you?, the concrete fit signals, when the pack carries them */}
@@ -681,13 +735,13 @@ function PackPageContent({ pack, catalog }: { pack: PackDetails; catalog: Pack[]
                 <span className="text-xs font-medium text-muted">One time</span>
                 <span className="ml-2 text-lg font-black tracking-tight text-text">{priceLabel}</span>
               </div>
-              <button
-                onClick={handleBuy}
-                disabled={checkingOut}
-                className="bg-text px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {checkingOut ? 'Opening…' : `Buy, ${priceLabel}`}
-              </button>
+              <PackBuyButton
+                pack={pack}
+                variant="sticky"
+                buy={handleBuy}
+                checkingOut={checkingOut}
+                canCheckout={canCheckout}
+              />
             </div>
           </div>
         )}
@@ -841,9 +895,37 @@ function ShareRow({ title }: { title: string }) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+export const getServerSideProps: GetServerSideProps = async ({ params, req, res }) => {
+  // US-5: the currency is decoupled from the market. Same source as the home page: the
+  // country header, server-side, so the rendered HTML is correct on first paint.
+  const countryHeader = req.headers['fly-client-country'];
+  const currency = currencyForCountry(
+    typeof countryHeader === 'string' ? countryHeader : null,
+  );
+
+  // N2: track the viewed pack in a first-party cookie so the home page can
+  // show a personalised "Based on your browsing" row. The cookie is the same
+  // shape the home page reads, a comma-separated list of pack ids in MRU
+  // order. Server-side set, server-side read; no client JS needed. The cookie
+  // is set ONLY when the pack loads successfully, so 404s do not pollute the
+  // list. Path=/ so the home page sees it.
+  const id = params?.id as string;
+  if (id) {
+    try {
+      const raw = req.cookies.recentlyViewed;
+      const ids: string[] = raw ? raw.split(',').filter(Boolean) : [];
+      const next = [id, ...ids.filter((x) => x !== id)].slice(0, 10);
+      res.setHeader(
+        'Set-Cookie',
+        `recentlyViewed=${encodeURIComponent(next.join(','))}; Path=/; Max-Age=2592000; SameSite=Lax`,
+      );
+    } catch {
+      // Cookie write failure must not 500 the page; the buy path is the
+      // critical thing here. The next request will re-set it.
+    }
+  }
+
   try {
-    const id = params?.id as string;
     // Fetched together, not in series: the "same mechanics" row needs the catalogue, and paying
     // two sequential round trips before first byte would be a real cost for a decorative row.
     // The catalogue is best-effort, a failure there must not 404 a page someone is buying from.
@@ -852,14 +934,14 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
       fetchCatalog().catch(() => [] as Pack[]),
     ]);
     return {
-      props: { pack, catalog },
+      props: { pack, catalog, currency },
     };
   } catch (error) {
     console.error('Error fetching pack details:', error);
     const message =
       error instanceof Error ? error.message : 'Could not load pack details.';
     return {
-      props: { pack: null, catalog: [], error: message },
+      props: { pack: null, catalog: [], error: message, currency },
     };
   }
 };

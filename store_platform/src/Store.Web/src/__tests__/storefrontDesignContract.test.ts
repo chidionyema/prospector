@@ -21,16 +21,21 @@ describe('Design contract — global tokens (globals.css)', () => {
   const css = readSource('../styles/globals.css');
 
   it('defines page surface text muted border colours', () => {
-    assertContains('page bg', css, /--bg:\s*#FEFDF9/i);
-    assertContains('surface', css, /--surface:\s*#FEFDF9/i);
-    assertContains('text', css, /--text:\s*#1A1A1A/i);
-    assertContains('muted', css, /--muted:\s*#78716C/i);
-    assertContains('border', css, /--border:\s*#D4C9B5/i);
+    // Brand v2 (2026-08-05): the warm-paper palette was rejected as dated.
+    // The v2 uses clean white (#FFFFFF) for bg and surface, a higher-contrast
+    // neutral (#E5E5E5) for border, and a darker text (#0A0A0A).
+    assertContains('page bg', css, /--bg:\s*#FFFFFF/i);
+    assertContains('surface', css, /--surface:\s*#FFFFFF/i);
+    assertContains('text', css, /--text:\s*#0A0A0A/i);
+    assertContains('muted', css, /--muted:\s*#6B6B6B/i);
+    assertContains('border', css, /--border:\s*#E5E5E5/i);
   });
 
   it('defines primary and primary-hover', () => {
-    assertContains('primary', css, /--primary:\s*#042F2E/i);
-    assertContains('primary-hover', css, /--primary-hover:\s*#022C22/i);
+    // Brand v2: --primary is the bold vermillion #FF5A1F (was the muddy
+    // deep teal #042F2E, rejected by stakeholder on 2026-08-05).
+    assertContains('primary', css, /--primary:\s*#FF5A1F/i);
+    assertContains('primary-hover', css, /--primary-hover:\s*#E64500/i);
   });
 
   it('defines verified background and text tokens', () => {
@@ -50,11 +55,12 @@ describe('Design contract — global tokens (globals.css)', () => {
     expect(css).toMatch(/--color-verified-text:\s*var\(--verified-text\)/);
   });
 
-  it('sets H1 at 48px / weight 700 / line-height 1.1 / tracking -0.02em', () => {
-    // --text-h1 is the h1 size token
-    expect(css).toMatch(/--text-h1:\s*3rem/); // 48px
-    expect(css).toMatch(/--text-h1--line-height:\s*1\.1/);
-    expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.02em/);
+  it('sets H1 at 72px / weight 700 / line-height 1.05 / tracking -0.03em', () => {
+    // Brand v2: the h1 is 4.5rem (72px) on desktop, with a tighter
+    // line-height and tracking for a more confident 2026 hero.
+    expect(css).toMatch(/--text-h1:\s*4\.5rem/); // 72px
+    expect(css).toMatch(/--text-h1--line-height:\s*1\.05/);
+    expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.03em/);
   });
 
   it('sets H2 at 24px / weight 600 / line-height 1.3', () => {
@@ -152,7 +158,7 @@ describe('Design contract — primary CTAs', () => {
   const button = readSource('../components/ui/Button.tsx');
 
   it('hero "Browse the packs" / "See the N that survived" uses primary style', () => {
-    // The hero CTA links to #catalog. It should use bg-primary (#042F2E), white text,
+    // The hero CTA links to #catalog. It should use bg-primary (#FF5A1F vermillion), white text,
     // text-sm (14px), font-medium (500), px-6 py-3 (12px 24px), rounded-md (6px).
     // We look for a Link with href="#catalog" that carries the CTA classes.
     const heroLinkPattern = /href="#catalog"[^>]*className="([^"]*)"/;

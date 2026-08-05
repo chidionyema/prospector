@@ -50,10 +50,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         Skip to content
       </a>
 
-      {/* Dark chrome header -- the council's signature. Deep green, light text, live counter. */}
+      {/* Dark chrome header -- the brand's signature surface. Brand v2: the
+          band is pure black (#0A0A0A), not the old muddy teal. The accent
+          dot in the logo is the vermillion primary. */}
       <header
-        className={`sticky top-0 z-30 w-full transition-all duration-200 border-b pt-[env(safe-area-inset-top)] ${
-          scrolled ? 'bg-[#042F2E]/95 backdrop-blur-md border-[#0D4645]' : 'bg-[#042F2E] border-[#0D4645]'
+        className={`sticky top-0 z-30 w-full transition-all duration-200 border-b border-text/10 pt-[env(safe-area-inset-top)] ${
+          scrolled ? 'bg-band/95 backdrop-blur-md' : 'bg-band'
         }`}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 h-14">
@@ -83,7 +85,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 session resolving. /account itself decides which of the two it is. */}
             <Link
               href="/account"
-              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-[#0D4645] px-3 py-1.5 text-sm font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-on-band-faint/40 px-3 py-1.5 text-sm font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
             >
               <Icon name="account" size={18} />
               Account

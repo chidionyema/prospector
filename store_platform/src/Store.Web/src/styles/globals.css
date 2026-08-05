@@ -6,61 +6,69 @@
 */
 
 :root {
-  /* What we fall back to when the webfont has not arrived (or was never wired). Named once so
-     the three font stacks below and the .fonts-wired rule cannot drift apart. */
+  /* What we fall back to when the webfont has not arrived (or was never wired). Two families
+     only: sans for body, serif for display. Mono falls back to ui-monospace (the system
+     mono is good enough for data markers, no third family is needed). */
   --font-fallback-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-fallback-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  /* Named faces before generic `serif` so a headline that falls back still falls back to a text
-     serif rather than to whatever the OS calls "serif" (on Windows, Times New Roman). */
   --font-fallback-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 
-  /* Warm paper palette — research documents, not SaaS tiles */
-  --bg: #FEFDF9;          /* Warm off-white canvas */
-  --surface: #FEFDF9;     /* Cards match the canvas — one surface */
-  --surface2: #F5F1EB;    /* Secondary surface — slightly warmer */
-  --border: #D4C9B5;      /* Warm tan borders — physical, not digital */
-  --text: #1A1A1A;        /* Near-black for reading comfort */
-  --muted: #78716C;       /* Warm stone */
-  --faint: #D6D3D1;       /* Warm faint */
-  --eyebrow: #0D9488;     /* Teal — the verification color */
+  /* Brand v2 palette: clean white canvas, high-contrast borders, bold vermillion
+     primary. The deep teal #042F2E was muddy and dated (rejected by stakeholder
+     on 2026-08-05). The v2 commits to a bold 2026 accent: vermillion #FF5A1F.
+     Figma, Stripe, Mercury all use this lane. It is the visual signal that
+     Mumchimp is not a blue SaaS brand. */
+  --bg: #FFFFFF;            /* Clean white canvas. The warm paper (#FEFDF9) read
+                                as "suburban wellness brand"; clean white reads as
+                                "research ledger" (Linear, Stripe, Mercury). */
+  --surface: #FFFFFF;       /* Cards on bg. No elevation needed at base. */
+  --surface2: #F7F7F5;      /* Elevated cards, modals, popovers. A subtle
+                                warm tint (#F7F7F5) keeps the "paper" feel
+                                without losing the clean white. */
+  --border: #E5E5E5;        /* High-contrast neutral. The warm tan (#D4C9B5)
+                                was 2020; 2026 UIs use high-contrast borders. */
+  --text: #0A0A0A;          /* Near-black, higher contrast than the old
+                                #1A1A1A. The 2026 standard. */
+  --muted: #6B6B6B;         /* Warm stone, more visible than the old #78716C. */
+  --faint: #B5B5B5;         /* Subtle dividers. */
+  --eyebrow: #FF5A1F;       /* The brand accent, used as a data marker. */
 
-  /* Global Transition Standard */
-  --transition-standard: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Global Transition Standard: 0.3s with the Apple-like cubic-bezier. The
+     previous 0.2s with cubic-bezier(0.4, 0, 0.2, 1) was a 2020 Material
+     ripple. The v2 is slower, more confident, more cinematic. */
+  --transition-standard: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  --transition-fast: all 0.15s cubic-bezier(0.32, 0.72, 0, 1);
+  --transition-slow: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* Cold-vs-warm accent tints (retained for Marketing) */
-  --cold-bg: #fbf7f7;
-  --cold-border: #f0dede;
-  --cold-text: #7c5560;
-  --cold-icon: #be123c;
-  --cold-head: #9f1239;
-  --icon-well: #f1f3f7;
-
-  --primary: #042F2E;     /* Deep Teal */
+  --primary: #FF5A1F;       /* Vermillion — the bold brand accent. */
   --on-primary: #ffffff;
-  --primary-hover: #022C22;
-  --verified-bg: #ECFDF5;
+  --primary-hover: #E64500; /* Deeper vermillion for hover/active. */
+  --verified-bg: #ECFDF5;   /* The verification green, kept (this is the
+                                "6/6 checks passed" semantic, distinct from
+                                the brand accent). */
   --verified-text: #065F46;
-  --accent: #042F2E;
+  --accent: #FF5A1F;        /* Same as primary; kept for backward compat. */
   --on-accent: #ffffff;
 
-  --success: #15803d;     /* Value Anchor / Success Green */
+  --success: #10B981;       /* Vibrant emerald (was #15803d, more vibrant). */
   --on-success: #ffffff;
-  --warning: #b91c1c;     /* System Warning (mapped from warning to danger for urgency) */
+  --warning: #DC2626;       /* Red 600, more urgent than the old #b91c1c. */
   --on-warning: #ffffff;
-  --danger: #b91c1c;      /* System Warning / Red */
+  --danger: #DC2626;        /* Same as warning. */
   --on-danger: #ffffff;
-  --info: #0a66c2;        /* Trust Blue */
+  --info: #0EA5E9;          /* Sky 500, more vibrant than the old #0a66c2. */
   --on-info: #ffffff;
 
-  --focus: #0f172a;
-  --gold: #15803d;        /* Re-map gold to success green for consistency */
+  --focus: #0A0A0A;         /* Focus ring colour (high contrast on white). */
+  --gold: #10B981;          /* Re-mapped to emerald for consistency. */
 
-  --navy: #0f172a;
+  --navy: #0A2540;          /* Deep ink navy, available for editorial use. */
 
-  --band: #042F2E;        /* Dark chrome header — the council's Terminal DNA */
-  --on-band: #FEFDF9;
-  --on-band-muted: #94A3B8;
-  --on-band-faint: #5C7B7A;
+  --band: #0A0A0A;          /* Dark chrome header — was the muddy deep teal,
+                                now pure black for the dark band. */
+  --on-band: #FFFFFF;       /* White text on the dark band. */
+  --on-band-muted: #A1A1AA; /* Zinc 400, readable on black. */
+  --on-band-faint: #71717A;  /* Zinc 500, secondary on black. */
 
   /* Brand Luxury Tech Palette */
   --brand-midnight-0: #070a13;
@@ -132,7 +140,9 @@
   /* Explicit Mathematical Leading & Tracking */
   --text-hero: 5.5rem;      --text-hero--line-height: 1.1;     --text-hero--letter-spacing: -0.05em;
   --text-display: 3.5rem;   --text-display--line-height: 1.1;  --text-display--letter-spacing: -0.025em;
-  --text-h1: 3rem;          --text-h1--line-height: 1.1;       --text-h1--letter-spacing: -0.02em;
+  --text-h1: 4.5rem;       --text-h1--line-height: 1.05;      --text-h1--letter-spacing: -0.03em;
+  --text-display: 5.5rem;   --text-display--line-height: 1.05; --text-display--letter-spacing: -0.035em;
+  --text-hero: 7rem;       --text-hero--line-height: 1.0;     --text-hero--letter-spacing: -0.04em;
   --text-h2: 1.5rem;        --text-h2--line-height: 1.3;       --text-h2--letter-spacing: -0.025em;
   --text-h3: 1.25rem;       --text-h3--line-height: 1.4;
   --text-body: 1rem;        --text-body--line-height: 1.6;
@@ -185,6 +195,23 @@ html {
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
+
+/*
+  N5 (REVERTED 2026-08-05): the dark-mode palette implemented in this branch
+  looked cheap and outdated (the brighter-teal-on-near-black is the
+  exact Tailwind v2-era anti-pattern that modern dark mode moved away
+  from). A real dark mode needs a design pass: contrast, surface
+  hierarchy, accent role, motion in dark, focus rings, form controls,
+  image treatment, the whole system. A code-only implementation cannot
+  ship that.
+
+  The right move is to treat dark mode as a brand-led workstream, not
+  a code task. Until that pass lands, the storefront stays light-only;
+  the `prefers-color-scheme: dark` media query is intentionally not
+  implemented. The semantic tokens (--bg, --surface, --border, --text,
+  --muted, --primary) are the inversion surface; when a designer ships a
+  dark palette, it lands here as one block.
+*/
 
 /*
   The one place the downloaded webfont is actually put in front of the system stack. Carried by
@@ -311,18 +338,16 @@ a:active, button:active, .card-transition:active {
 }
 
 
-/* Premium Noise Grain (Low-fidelity visual substance) */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.02;
-  pointer-events: none;
-  z-index: 100;
-}
+/*
+  Brand v2: the 2020-2021 "premium noise grain" was a texture trick that
+  reads as decorative noise in 2026. Clean white is the 2026 look. The
+  body::before grain is removed entirely. A future rebrand can re-add a
+  much subtler texture (sub-1% opacity, only on the bg) if it ever earns
+  its weight; for now, plain white is the strongest surface.
+*/
 
-/* Custom Selection — Matches the high-contrast ink aesthetic */
+
+/* Custom Selection — high-contrast ink on white. */
 ::selection {
   background-color: var(--text);
   color: var(--bg);

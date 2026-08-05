@@ -17,7 +17,7 @@ import { WaitlistForm } from './WaitlistForm';
  */
 export function WaitlistCallout() {
   return (
-    <div className="mt-6 rounded-2xl border border-border bg-surface p-8 text-left md:p-10">
+    <div className="mt-6 border border-border bg-surface p-8 text-left md:p-10">
       <h3 className="text-lg font-black tracking-tight text-text">
         Nothing on the shelf for your space yet?
       </h3>

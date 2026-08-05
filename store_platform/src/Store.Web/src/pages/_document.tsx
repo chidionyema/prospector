@@ -40,7 +40,7 @@ export default function Document() {
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon.svg" />
-        <meta name="theme-color" content="#0f172a" />
+        <meta name="theme-color" content="#0A0A0A" />
         {/* Search-console ownership tokens. Empty until the operator sets the env vars, which is
             why they are data-driven rather than pasted here: a token is per-property, and a wrong
             one silently fails verification. See `lib/seo/verification.ts`. */}
