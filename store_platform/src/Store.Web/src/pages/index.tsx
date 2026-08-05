@@ -878,7 +878,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             makes this headline survive the font being slow, blocked, or swapped: measured with
             the family forced to each of Verdana/Tahoma/Georgia/Courier New/Arial, the line count
             is still 2 and the first card still clears the fold by 88px at worst. */}
-        <h1 className="mx-auto max-w-[56rem] text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:text-5xl">
+        <h1 className="mx-auto max-w-full text-balance text-3xl font-bold leading-[1.08] tracking-tight text-text md:max-w-[56rem] md:text-5xl">
           {variant.globalHookLead}
         </h1>
         <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
