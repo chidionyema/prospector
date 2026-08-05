@@ -75,6 +75,15 @@ def _store_dir(cfg) -> Path:
     return Path(getattr(cfg, "store_dir", "store"))
 
 
+# How many backlogged (DEFER / provisional) candidates one tick may re-vet before it
+# generates. Deliberately small: measured 2026-07-02 a fully-grounded candidate takes ~10 min
+# on the claude_cli chain, and the tick's hard deadline is 3h with generation already using
+# most of it. At 3 per tick and a 2h interval this drains the 113-item backlog found on
+# 2026-08-05 in roughly three days without displacing a single generation batch.
+# Override in config under `schedule.resume_per_tick`; 0 disables the drain entirely.
+_RESUME_PER_TICK_DEFAULT = 3
+
+
 def _batch_size(cfg, override: int | None) -> int:
     if override is not None:
         return override
@@ -120,14 +129,46 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
         logger.error("Failed to write heartbeat: %s", exc)
 
 
+def _resume_per_tick(cfg) -> int:
+    """How many backlogged candidates one tick may re-vet. 0 disables the drain."""
+    schedule = getattr(cfg, "schedule", None) or {}
+    if isinstance(schedule, dict):
+        return max(0, int(schedule.get("resume_per_tick", _RESUME_PER_TICK_DEFAULT) or 0))
+    return max(0, int(getattr(schedule, "resume_per_tick", _RESUME_PER_TICK_DEFAULT) or 0))
+
+
 def _default_generate(cfg, batch_size: int) -> dict:
     """Run one bounded blue-sky generation batch in-process and publish PASSes.
 
     Returns a small summary dict. Generation may DEFER (moat providers exhausted in a headless
     environment) — that surfaces as an exception which the caller records as a soft error; the
     daemon keeps looping and the signal is recoverable via `generate --resume` / `vet --resume`.
+
+    Before generating, this drains a few of the DEFER/provisional backlog. That drain is the
+    thing the phrase "auto re-vet via `vet --resume`" in `alerts.py` promised and nothing
+    delivered: measured 2026-08-05 there were 113 `*.defer.json` dossiers on disk, the oldest
+    from 2026-06-24, and no scheduler path or launchd plist ever invoked the command. Every one
+    of them had already been paid for through generation and prescreen and was then stranded by
+    a transient moat outage.
+
+    It runs BEFORE generation, not after, on purpose: a backlogged candidate is strictly cheaper
+    to finish than a new one is to create (generation and prescreen are already spent on it), and
+    the tick's hard deadline can force-exit mid-tick — whatever runs second is what gets dropped.
+    It is bounded per tick because the spend guard evaluates once, before the tick.
     """
-    from prospector.run import run_signal, _resolve_lanes
+    from prospector.run import run_signal, _resolve_lanes, resume_deferred
+
+    resumed = None
+    n_resume = _resume_per_tick(cfg)
+    if n_resume:
+        try:
+            resumed = resume_deferred(cfg, limit=n_resume, publish=True)
+            logger.info("Tick resume pass: %s", resumed)
+        except Exception as exc:  # noqa: BLE001
+            # A drain failure must never cost the tick its generation batch — the backlog has
+            # waited weeks already and can wait one more tick. Recorded, not raised.
+            resumed = {"error": f"{type(exc).__name__}: {exc}"}
+            logger.warning("Tick resume pass failed (generation continues): %s", resumed["error"])
 
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
@@ -155,8 +196,11 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # the trusted moat is down but the cheap tail kept ruling — a silent failure mode that the
     # all-DEFER `moat_deferred` alert misses entirely (provisional batches defer nothing).
     provisional = sum(1 for d in dossiers if getattr(d, "provisional", False))
-    return {"dossiers": len(dossiers), "passes": passes, "defers": defers,
-            "provisional": provisional}
+    out = {"dossiers": len(dossiers), "passes": passes, "defers": defers,
+           "provisional": provisional}
+    if resumed is not None:
+        out["resumed"] = resumed
+    return out
 
 
 # A trickled LLM response body defeats per-recv socket timeouts (proven 2026-07-01: a MiniMax TLS

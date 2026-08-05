@@ -100,6 +100,11 @@ def test_costs_parses_audit_log(tmp_path):
 
 def test_costs_missing_log(tmp_path):
     assert "No audit log" in costs_report(tmp_path / "nope.jsonl")
+    # A directory is not an audit log. Six call sites in run.py pass `log_path or ''`, and
+    # `Path('')` resolves to `Path('.')` — which `exists()` accepts, so the report used to
+    # raise IsADirectoryError at the last line of the command instead of degrading.
+    assert "No audit log" in costs_report("")
+    assert "No audit log" in costs_report(tmp_path)
 
 
 def test_costs_counts_claude_usage_and_folds_cost(tmp_path):

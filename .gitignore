@@ -91,6 +91,13 @@ store_platform/.delivery-proof/
 # Agent/keystore scratch — NEVER commit (.lux/keys holds a private agent.pem)
 .lux/
 .pi/
+# Subagent transcripts + review artifacts. Same class as `.pi/`, and it was NOT covered by
+# it: `git add -A` at the repo root staged 14 of these on 2026-08-05.
+.pi-subagents/
+
+# Node deps. `store_platform/src/Store.Web/.gitignore` has a rooted `/node_modules`, which by
+# design does not reach the repo root, so a stray root-level install was fully committable.
+node_modules/
 
 # Editor backups + SQLite write-ahead/shared-memory sidecars
 *.save

@@ -288,7 +288,13 @@ def trend_report(store: Store, windows: tuple[int, ...] = (7, 30, 90)) -> str:
 # ---------------------------------------------------------------------------
 def costs_report(jsonl_path: str | Path) -> str:
     p = Path(jsonl_path)
-    if not p.exists():
+    # `is_file()`, not `exists()`. Every caller in run.py spells this `costs_report(log_path
+    # or '')`, and `Path('')` is `Path('.')` — a directory, which `exists()` happily accepts
+    # and `p.open()` then raises IsADirectoryError on. So with no audit log the report did not
+    # degrade to its own "no audit log" message, it crashed the command at its last line.
+    # Found 2026-08-05 via the daemon's new in-process resume pass, which is the first caller
+    # that legitimately has no log path.
+    if not p.is_file():
         return f"No audit log at {p} — run something first."
 
     # Parse full log for lifetime metrics

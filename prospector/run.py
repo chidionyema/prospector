@@ -1060,7 +1060,7 @@ def _cmd_replicate(args: argparse.Namespace, log_path: Path) -> None:
 
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
-                log_path: Optional[Path] = None) -> None:
+                log_path: Optional[Path] = None) -> dict:
     """Re-vet all moat-deferred candidates.
 
     Called when `vet --resume` is used or when the moat comes back online after an outage.
@@ -1068,6 +1068,15 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     the moat is now available, so we run everything), and overwrites the DEFER decision
     with the fresh verdict.  Candidates that were deferred due to a real retrieval
     outage (not moat exhaustion) are also retried.
+
+    `args.limit` bounds one pass. The unattended daemon sets it (see
+    `scheduler/run_scheduled.py::_default_generate`) because the spend guard is evaluated
+    once per tick, BEFORE the tick runs — an unbounded drain of a large backlog would run
+    entirely inside a single guard decision and could clear the daily cap in one tick.
+    On the CLI it defaults to unbounded, which is the behaviour this command has always had.
+
+    Returns a summary dict so a caller (the daemon) can record what the pass did; the CLI
+    ignores the return and reads the printed report.
     """
     # Two populations need the moat to revisit them:
     #   1. DEFER  — the moat was unavailable, so no verdict was reached at all.
@@ -1079,13 +1088,21 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     seen_ids = {r.get("candidate_id", "") for r in deferred}
     pending = list(deferred) + [r for r in provisional
                                 if r.get("candidate_id", "") not in seen_ids]
+    backlog = len(pending)
     if not pending:
         print("No deferred or provisional candidates to resume. Moat is healthy.")
-        return
+        return {"backlog": 0, "attempted": 0, "resumed": 0,
+                "passes": 0, "kills": 0, "defers": 0}
 
-    n_prov = len(pending) - len(deferred)
-    print(f"Found {len(deferred)} deferred + {n_prov} provisional candidate(s). "
-          f"Re-vetting with moat...")
+    limit = getattr(args, "limit", None)
+    if limit is not None and limit > 0:
+        # Oldest first. `store.all` returns catalogue order; the oldest DEFERs are the ones
+        # that have been waiting longest (this backlog reaches back to 2026-06-24), and
+        # draining newest-first would starve them forever at 3 per tick.
+        pending = sorted(pending, key=lambda r: str(r.get("created_at", "")))[:limit]
+
+    print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
+          f"{len(pending)} of them with the moat...")
     from .models import Candidate
     from .telemetry import get_usage_summary, reset_usage
     from . import progress
@@ -1142,6 +1159,35 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     usage = get_usage_summary()
     from .report import costs_report
     print(f"\n{costs_report(log_path or '')}")
+    return {"backlog": backlog, "attempted": len(pending), "resumed": len(resumed_dossiers),
+            "passes": n_pass, "kills": n_kill, "defers": n_defer}
+
+
+def resume_deferred(cfg: Config, *, limit: int | None = None,
+                    publish: bool = False) -> dict:
+    """Run one bounded re-vet pass over the DEFER + provisional backlog, in-process.
+
+    THE GAP THIS CLOSES. `vet --resume` has always existed and always worked, but nothing
+    ever called it. Measured 2026-08-05: 113 `*.defer.json` dossiers on disk, oldest
+    2026-06-24, while `alerts.py:219` was telling the operator they "auto re-vet ... once
+    the moat recovers". `grep -- --resume` over the repo found only log strings, the
+    argparse flag, and docs — no scheduler path and none of the four launchd plists. So
+    candidates that had already cost generation + prescreen sat unvetted for six weeks
+    because a transient moat outage happened to catch them.
+
+    Operators are built here the same way `_cmd_signal` builds them, so the daemon does not
+    have to import the CLI's argparse plumbing.
+    """
+    from .operator import make_operator
+    from .telemetry import reset_usage
+    reset_usage()
+    op = make_operator(cfg)
+    fast_op = make_operator(cfg, fast=True)
+    args = argparse.Namespace(limit=limit, publish=publish, board=None,
+                              fixtures=None, search=None)
+    search = _make_search(cfg, args)
+    store = Store(cfg)
+    return _cmd_resume(args, cfg, op, fast_op, search, store)
 
 
 def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:
@@ -1916,6 +1962,12 @@ def main() -> None:
                        help="Re-vet all moat-deferred candidates (decision=defer).  "
                             "Uses the same operator/lane as the original run.  "
                             "Safe to re-run when the moat (Claude) comes back online.")
+    vet_p.add_argument("--limit", type=int, metavar="N",
+                       help="With --resume: re-vet only the N oldest deferred/provisional "
+                            "candidates instead of the whole backlog. Default unbounded. "
+                            "The daemon always passes a limit — the spend guard is evaluated "
+                            "once per tick, so an unbounded drain would run inside a single "
+                            "guard decision.")
 
     # ---- signal subcommand ----
     sig_p = sub.add_parser("signal", help="Run the full signal pipeline")

@@ -31,6 +31,13 @@ logger = logging.getLogger(__name__)
 
 CRITICAL = "critical"
 WARNING = "warning"
+
+# How many backlogged candidates the daemon re-vets per tick. Duplicated from
+# `run_scheduled._RESUME_PER_TICK_DEFAULT` rather than imported, because `run_scheduled`
+# imports this module. `tests/unit/test_scheduler_resume_drain.py` asserts the two agree, so
+# the copy cannot drift silently — which matters, since these strings are the ONLY thing the
+# operator sees, and until 2026-08-05 they promised an "auto re-vet" that no code performed.
+_RESUME_HINT = 3
 INFO = "info"
 
 _ICON = {CRITICAL: "🚨", WARNING: "⚠️", INFO: "ℹ️"}
@@ -203,8 +210,10 @@ def alerts_for_tick(tick: dict, consecutive_barren: int = 0) -> list[dict]:
         # down. This is an infra OUTAGE, not a calibration result; flag it distinctly + loudly.
         return [{"severity": CRITICAL, "key": "moat_deferred",
                  "title": f"Moat outage: all {defers} candidates DEFERRED",
-                 "message": ("Verification could not run — both moat providers exhausted (or "
-                             "grounding is down). Nothing was vetted; `vet --resume` once it recovers."),
+                 "message": ("Verification could not run — every moat provider exhausted (or "
+                             "grounding is down). Nothing was vetted. The daemon re-vets "
+                             f"{_RESUME_HINT} of the backlog at the head of each tick; "
+                             "`vet --resume` drains the rest in one pass."),
                  "ts_tick": tick.get("ts")}]
     if provisional > 0:
         # The trusted moat (Claude/Gemini) was exhausted, so the guardrailed cheap tail
@@ -214,11 +223,13 @@ def alerts_for_tick(tick: dict, consecutive_barren: int = 0) -> list[dict]:
         # the founder hears nothing. Fire CRITICAL — "if it fails for ANY reason, I need to know".
         return [{"severity": CRITICAL, "key": "moat_provisional",
                  "title": f"Moat degraded: {provisional}/{dossiers} verdicts ruled by FALLBACK brain",
-                 "message": ("The trusted moat (Claude/Gemini) was exhausted, so the cheap tail "
+                 "message": ("The trusted moat was exhausted, so the cheap tail "
                              "(deepseek/minimax) ruled these candidates PROVISIONALLY — they will "
-                             "NOT publish and auto re-vet via `vet --resume` once the moat recovers. "
-                             "Restore a trusted brain (claude_cli on the subscription, or fund the "
-                             "Gemini/Anthropic API)."),
+                             "NOT publish. The daemon re-vets "
+                             f"{_RESUME_HINT} of the DEFER/provisional backlog at the head of each "
+                             "tick once the moat recovers; `vet --resume` drains the rest in one "
+                             "pass. Restore a trusted brain (claude_cli on the subscription, or "
+                             "fund the Anthropic API)."),
                  "ts_tick": tick.get("ts")}]
     if passes == 0:
         extra = f" ({defers} deferred — partial moat trouble)" if defers else ""
