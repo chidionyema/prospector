@@ -70,7 +70,7 @@ export default function HowItWorks() {
               >
                 {/* Step number + vertical line */}
                 <div className="flex flex-col items-center flex-none">
-                  <span className="flex h-10 w-10 items-center justify-center bg-primary text-sm font-black text-white">
+                  <span className="flex h-10 w-10 items-center justify-center bg-primary text-sm font-black text-on-primary">
                     {i + 1}
                   </span>
                   {i < SIX_GATES.length - 1 && (
@@ -157,7 +157,7 @@ export default function HowItWorks() {
           </p>
           <Link
             href="/kill-log"
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-on-primary transition-all hover:bg-primary-hover"
           >
             See the 960 we rejected{' '}
             <Icon name="arrowRight" size={15} />

@@ -215,7 +215,7 @@ export default function SamplePage() {
           </p>
           <Link
             href="/#catalog"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-on-primary shadow-sm transition hover:opacity-90"
           >
             Browse the packs
             <Icon name="arrowRight" size={15} />

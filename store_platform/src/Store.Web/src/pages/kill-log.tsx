@@ -219,7 +219,7 @@ export default function KillLogPage() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/sample"
-              className="inline-flex items-center gap-2  bg-primary px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+              className="inline-flex items-center gap-2  bg-primary px-6 py-3 text-sm font-bold text-on-primary shadow-sm transition hover:opacity-90"
             >
               Read a full pack free
               <Icon name="arrowRight" size={15} />

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon, IconName, Dropdown } from '@/components/ui';
+import { Icon, Dropdown } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
@@ -14,17 +14,15 @@ import LiveKillCard from '@/components/marketing/LiveKillCard';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
-import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, StepFlow } from '@/components/discovery/FacetBar';
-import { FacetChips } from '@/components/discovery/FacetChips';
 
 
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
-import { fetchCatalog, fetchCatalogStats, formatPrice, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
+import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { formatPriceForMarket, formatGbpNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { track } from '@/lib/analytics';
 import { citedFigure } from '@/lib/sources';
@@ -46,7 +44,6 @@ import {
 } from '@/lib/discovery';
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
-import { cleanProofPoint } from '@/lib/proof';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 // Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
 // out of the home page bundle. Both files come from tools/make_kill_log.py.
@@ -158,7 +155,7 @@ function ProofLine({ pack }: { pack: Pack }) {
 
 function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
   const cat = categoryFor(pack);
-  const { name, heading, eyebrow, sub } = cardHeading(pack);
+  const { heading, eyebrow, sub } = cardHeading(pack);
   const line = pack.oneLine || sub;
 
   // Status badge from available data. Only show when it means something.
@@ -263,9 +260,9 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
 // the grid is not eleven identical blocks. Anchors the page and breaks the pattern.
 function SpotlightCard({ pack, currency }: { pack: Pack; currency: Currency }) {
   const cat = categoryFor(pack);
-  const { name, heading, eyebrow, sub } = cardHeading(pack);
+  const { heading, eyebrow, sub } = cardHeading(pack);
   return (
-    <div className="group relative mb-6 overflow-hidden border-2 border-text bg-surface transition-all duration-150 hover:-translate-x-[1px] hover:-translate-y-[1px]" style={{ boxShadow: '3px 3px 0 #1A1A1A' }}>
+    <div className="group relative mb-6 overflow-hidden border-2 border-text bg-surface transition-all duration-150 hover:-translate-x-[1px] hover:-translate-y-[1px]" style={{ boxShadow: '3px 3px 0 var(--text)' }}>
       <Link
         href={`/pack/${pack.id}`}
         className="flex flex-col md:flex-row"
@@ -291,7 +288,7 @@ function SpotlightCard({ pack, currency }: { pack: Pack; currency: Currency }) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xl font-black tracking-tight text-text">{formatPriceForMarket(pack.price, currency)}</span>
-            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-primary-hover">
+            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-on-primary transition hover:bg-primary-hover">
               View vetted blueprint <Icon name="arrowRight" size={15} />
             </span>
             <PackBuyButton pack={pack} variant="drawer" />
@@ -810,7 +807,7 @@ function ComparisonBlock() {
           </dl>
           <Link
             href="#catalog"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary-hover"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-on-primary transition-all hover:bg-primary-hover"
           >
             Browse the packs <Icon name="arrowRight" size={15} />
           </Link>
@@ -821,9 +818,8 @@ function ComparisonBlock() {
 }
 
 export default function Home({ packs, stats, initialState, market, currency, personalised }: HomeProps) {
-  // Never a literal. The catalogue grows on every PASS, so the only honest number is the one the
-  // API just reported; with no stats endpoint answer we fall back to what we were actually sent.
-  const survived = stats?.listed ?? packs.length;
+  // The live "N live now" figure is rendered by <Heartbeat>, which takes `stats` directly, so the
+  // duplicate `stats?.listed ?? packs.length` that used to sit here was computed and dropped.
   const { variant } = useCopyVariant();
   return (
     // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
@@ -852,7 +848,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
              guarantee that also sits under the grid. What is left is the claim, the price, and
              the two doors. `e2e/discovery.spec.ts` asserts the resulting fold position, so the
              next block added above the grid fails a test instead of quietly undoing this. */}
-      <SectionBand bg="white" width="6xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center md:text-left animate-rise">
+      {/* width="7xl" to match the catalogue Section immediately below. It was "6xl" (1152px) while
+          the shelf was "7xl" (1280px), so the hero's left edge sat 64px inside the grid's on any
+          viewport past 1280px: the headline and the first pack card did not line up, which reads
+          as a broken column rather than a deliberate one. The narrower editorial sections further
+          down are a separate, intentional rhythm; these two are stacked and must share an edge. */}
+      <SectionBand bg="white" width="7xl" className="pt-4 pb-3 md:pt-4 md:pb-3 text-center md:text-left animate-rise">
         {/* US-3: 2-column hero on lg+. Copy on the left, live demonstration of the
             moat on the right. The card shows the engine's last 3 kills, last 3
             passes, and the live count, polled every 5s. The buyer sees the
@@ -881,29 +882,35 @@ export default function Home({ packs, stats, initialState, market, currency, per
         <h1 className="mx-auto w-full min-w-0 max-w-full text-3xl font-bold leading-[1.08] tracking-tight text-text md:max-w-[56rem] md:text-balance md:text-5xl">
           {variant.globalHookLead}
         </h1>
-        <p className="mx-auto mt-2 max-w-[64ch] text-base leading-relaxed text-text/75 hidden sm:block">
+        {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then a
+            CTA, then a ~120px void where the explanation should be. The one paragraph that says
+            what is actually being sold was withheld from the majority of visitors to save vertical
+            space it was not, in the end, saving. */}
+        <p className="mx-auto mt-3 max-w-[64ch] text-base leading-relaxed text-text/75">
           {variant.globalHookDescription}
         </p>
-        {/* Hero CTA: ghost button so it doesn't compete with Buy buttons below */}
-        <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        {/* Hero CTA: solid filled, the only action above the fold. A ghost button at this position
+            reads as "we are not sure we want you to click this". */}
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/sample"
             onClick={() => track('sample_cta_clicked')}
-            className="inline-flex w-full items-center justify-center gap-2 border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/5 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 bg-primary px-7 py-3.5 text-sm font-bold uppercase tracking-wide text-on-primary shadow-[3px_3px_0_#0A0A0A] transition-all hover:bg-primary-hover hover:-translate-x-[1px] hover:-translate-y-[1px] sm:w-auto"
           >
             Read a free report, no email
+            <Icon name="arrowRight" size={16} />
           </Link>
         </div>
         <p className="mt-2 text-sm font-medium text-muted">
           A whole dossier, unredacted, every source clickable. No payment, no email.
         </p>
           </div>
-          <div className="hidden md:block">
-            <LiveKillCard />
-          </div>
-          <div className="md:hidden mt-6">
-            <LiveKillCard />
-          </div>
+          {/* ONE instance. This was rendered twice, `hidden md:block` and `md:hidden`, which put
+              two copies in the DOM on every viewport: `display:none` hides an element, it does not
+              stop React mounting it or running its effects, so both copies ran their own 5s
+              interval for the whole session. The card is responsive on its own, so the breakpoint
+              pair was never needed. */}
+          <LiveKillCard className="w-full" />
         </div>
       </SectionBand>
 
@@ -1022,7 +1029,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
       {/* N1: the single trust-and-guarantees row above the CtaBand. Five facts,
           one place. The buyer who scrolls the page from top to bottom sees
           the trust once, definitively. */}
-      <TrustGuaranteesRow />
+      <TrustGuaranteesRow listed={stats?.listed} />
 
       <CtaBand
         title="Find your next business for £49."

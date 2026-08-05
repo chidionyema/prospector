@@ -30,7 +30,10 @@ export function PageHeader({ eyebrow, title, description, action, className }: P
         {eyebrow && (
           <p className="text-caption font-bold uppercase tracking-wide text-eyebrow">{eyebrow}</p>
         )}
-        <h1 className="text-display font-bold text-text leading-tight tracking-tight">{title}</h1>
+        {/* `text-display` is 5.5rem / 88px with no responsive step built into the token, so this
+            shipped an 88px heading at every width, including a 390px phone where /account's title
+            overflowed its column. Scales up to the token only once there is room for it. */}
+        <h1 className="text-3xl font-bold leading-tight tracking-tight text-text sm:text-4xl lg:text-display">{title}</h1>
         {description && <p className="max-w-2xl text-base font-normal leading-relaxed text-muted">{description}</p>}
       </div>
       {action && <div className="shrink-0 sm:pb-0.5">{action}</div>}

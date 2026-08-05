@@ -72,7 +72,7 @@ const POSITIONS: Record<string, { x: number; y: number }> = {
 };
 
 /** Fallback position for any kind not in the table: bottom-right, scaled by index. */
-function positionFor(kind: string, index: number, total: number): { x: number; y: number } {
+function positionFor(kind: string, index: number): { x: number; y: number } {
   if (POSITIONS[kind]) return POSITIONS[kind];
   // Distribute unknown kinds across a 4x4 grid by their index.
   const col = index % 4;
@@ -118,7 +118,7 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
         aria-label="Catalogue categories, sized by pack count"
       >
         {categories.map((node, i) => {
-          const pos = positionFor(node.kind, i, categories.length);
+          const pos = positionFor(node.kind, i);
           const cx = PADDING + cellW * (pos.x + 0.5);
           const cy = PADDING + cellH * (pos.y + 0.5);
           const r = radiusFor(node.count);
@@ -146,7 +146,7 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
                 className="pointer-events-none select-none"
                 fontSize={Math.max(10, r / 3.2)}
                 fontWeight={600}
-                fill="#1A1A1A"
+                fill="var(--text)"
               >
                 {truncate(node.label, Math.floor(r / 6))}
               </text>

@@ -31,7 +31,11 @@
                                 #1A1A1A. The 2026 standard. */
   --muted: #6B6B6B;         /* Warm stone, more visible than the old #78716C. */
   --faint: #B5B5B5;         /* Subtle dividers. */
-  --eyebrow: #FF5A1F;       /* The brand accent, used as a data marker. */
+  /* The eyebrow is always SMALL uppercase text on white, so it cannot carry the raw brand
+     vermillion: #FF5A1F on #FFFFFF measures 3.12:1, below the 4.5:1 WCAG AA needs for normal
+     text. This is the same hue pushed dark enough to pass at 5.73:1. The brand accent itself is
+     unchanged below; this token exists precisely so text and surface can diverge. */
+  --eyebrow: #B93A00;
 
   /* Global Transition Standard: 0.3s with the Apple-like cubic-bezier. The
      previous 0.2s with cubic-bezier(0.4, 0, 0.2, 1) was a 2020 Material
@@ -40,47 +44,52 @@
   --transition-fast: all 0.15s cubic-bezier(0.32, 0.72, 0, 1);
   --transition-slow: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 
-  --primary: #FF5A1F;       /* Vermillion — the bold brand accent. */
-  --on-primary: #ffffff;
-  --primary-hover: #E64500; /* Deeper vermillion for hover/active. */
+  --primary: #FF5A1F;       /* Vermillion — the bold brand accent. Unchanged. */
+  /* Near-black, NOT white. White on #FF5A1F measures 3.12:1 and fails WCAG AA (4.5:1) — that was
+     every primary CTA and every buy button on the site. Near-black on the same vermillion measures
+     6.35:1 and passes, with zero change to the brand hue. It also matches the brutalist
+     offset-shadow the hero CTA already casts in --text. */
+  --on-primary: #0A0A0A;
+  --primary-hover: #E64500; /* Deeper vermillion for hover/active. 4.03:1 on white — surfaces and
+                                large text only, never small text; use --eyebrow for that. */
   --verified-bg: #ECFDF5;   /* The verification green, kept (this is the
                                 "6/6 checks passed" semantic, distinct from
                                 the brand accent). */
   --verified-text: #065F46;
   --accent: #FF5A1F;        /* Same as primary; kept for backward compat. */
-  --on-accent: #ffffff;
+  --on-accent: #0A0A0A;     /* Same reason as --on-primary. */
 
-  --success: #10B981;       /* Vibrant emerald (was #15803d, more vibrant). */
-  --on-success: #ffffff;
-  --warning: #DC2626;       /* Red 600, more urgent than the old #b91c1c. */
+  /* Emerald #10B981 measured 2.54:1 on white and was being used as BODY TEXT (the
+     "£49 one time, yours forever" line). This is the same green at 5.48:1. */
+  --success: #047857;
+  --on-success: #ffffff;    /* 5.48:1 on the new --success. */
+  --warning: #DC2626;       /* Red 600. 4.83:1 on white, passes. */
   --on-warning: #ffffff;
   --danger: #DC2626;        /* Same as warning. */
   --on-danger: #ffffff;
-  --info: #0EA5E9;          /* Sky 500, more vibrant than the old #0a66c2. */
+  --info: #0369A1;          /* Sky 500 (#0EA5E9) measured 2.77:1 on white. This is 5.93:1. */
   --on-info: #ffffff;
 
   --focus: #0A0A0A;         /* Focus ring colour (high contrast on white). */
-  --gold: #10B981;          /* Re-mapped to emerald for consistency. */
-
-  --navy: #0A2540;          /* Deep ink navy, available for editorial use. */
+  --gold: #047857;          /* Re-mapped to --success so the two cannot drift apart. */
 
   --band: #0A0A0A;          /* Dark chrome header — was the muddy deep teal,
                                 now pure black for the dark band. */
   --on-band: #FFFFFF;       /* White text on the dark band. */
-  --on-band-muted: #A1A1AA; /* Zinc 400, readable on black. */
-  --on-band-faint: #71717A;  /* Zinc 500, secondary on black. */
+  --on-band-muted: #A1A1AA; /* Zinc 400. 7.72:1 on the band, passes. */
+  /* Zinc 500 (#71717A) measured 4.10:1 on the band, under AA for the small uppercase eyebrows it
+     carries. Lifted to 6.69:1. */
+  --on-band-faint: #9296A1;
+  /* Semantic colours for the dark band and the dark terminal card. The white-canvas --success and
+     --danger are tuned against #FFFFFF and are far too dark here: --danger #DC2626 measured
+     4.10:1 on #0A0A0A (already failing before the palette pass) and the AA-corrected --success
+     #047857 would have been 3.61:1. These are the same two hues lifted for a dark surface,
+     10.30:1 and 7.16:1. Any red/green on a dark surface uses these, never --success/--danger. */
+  --on-band-success: #34D399;
+  --on-band-danger: #F87171;
 
-  /* Brand Luxury Tech Palette */
-  --brand-midnight-0: #070a13;
-  --brand-midnight-60: #0f172a;
-  --brand-midnight-100: #1e293b;
-  --brand-sapphire-0: #1d4ed8;
-  --brand-sapphire-40: #2563eb;
-  --brand-sapphire-100: #38bdf8;
-  --brand-shadow-black: #000000;
-  --brand-reflection: #ffffff;
-
-  /* Layered elite shadows for physical depth */
+  /* Layered elevation. Four steps, and every shadow in the UI should be one of them — see the
+     `--shadow-*` bridges in the theme block below. */
   --elev-1: 0 1px 2px rgba(0,0,0,0.02), 0 1px 3px rgba(0,0,0,0.05);
   --elev-2: 0 4px 6px -1px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.05);
   --elev-premium: 0 20px 25px -5px rgba(0,0,0,0.03), 0 10px 10px -5px rgba(0,0,0,0.02);
@@ -113,6 +122,8 @@
   --color-on-band: var(--on-band);
   --color-on-band-muted: var(--on-band-muted);
   --color-on-band-faint: var(--on-band-faint);
+  --color-on-band-success: var(--on-band-success);
+  --color-on-band-danger: var(--on-band-danger);
 
   /* Typography Overhaul - Exclusively Sans. These name the family _app.tsx actually downloads.
      The list used to start with "Inter", which nothing ever loaded, so the real typeface was
@@ -137,12 +148,15 @@
   --font-serif: var(--font-serif-pref, ui-serif), var(--font-fallback-serif);
   --font-mono: var(--font-mono-pref, ui-monospace), var(--font-fallback-mono);
 
-  /* Explicit Mathematical Leading & Tracking */
-  --text-hero: 5.5rem;      --text-hero--line-height: 1.1;     --text-hero--letter-spacing: -0.05em;
-  --text-display: 3.5rem;   --text-display--line-height: 1.1;  --text-display--letter-spacing: -0.025em;
-  --text-h1: 4.5rem;       --text-h1--line-height: 1.05;      --text-h1--letter-spacing: -0.03em;
+  /* Explicit Mathematical Leading & Tracking.
+     --text-hero and --text-display were each declared TWICE here, with different values. The
+     first of each pair was dead (last declaration wins), so `text-hero` shipped at 7rem while
+     _app.tsx's comment still described it as 5.5rem. One declaration each now.
+     These are raw sizes with no responsive step built in — anything wearing `text-display` or
+     `text-hero` must add its own mobile size, see ui/PageHeader.tsx. */
+  --text-hero: 7rem;        --text-hero--line-height: 1.0;     --text-hero--letter-spacing: -0.04em;
   --text-display: 5.5rem;   --text-display--line-height: 1.05; --text-display--letter-spacing: -0.035em;
-  --text-hero: 7rem;       --text-hero--line-height: 1.0;     --text-hero--letter-spacing: -0.04em;
+  --text-h1: 4.5rem;        --text-h1--line-height: 1.05;      --text-h1--letter-spacing: -0.03em;
   --text-h2: 1.5rem;        --text-h2--line-height: 1.3;       --text-h2--letter-spacing: -0.025em;
   --text-h3: 1.25rem;       --text-h3--line-height: 1.4;
   --text-body: 1rem;        --text-body--line-height: 1.6;
@@ -157,7 +171,10 @@
   --shadow-1: var(--elev-1);
   --shadow-2: var(--elev-2);
   --shadow-premium: var(--elev-premium);
-  --shadow-vault: var(--elev-vault);
+  /* Was var(--elev-vault), which is a variable that has never existed, so `shadow-vault` resolved
+     to nothing and ui/MoneyHero.tsx has been rendering with no shadow at all. Pointed at the
+     deepest elevation that does exist. */
+  --shadow-vault: var(--elev-premium);
   --shadow-tactile: var(--elev-tactile);
 
   /* Global Transitions */
@@ -166,7 +183,6 @@
   --animate-fade-in: fadeIn 0.4s ease-out forwards;
   --animate-fade-in-up: fadeInUp 0.8s cubic-bezier(0.2, 0, 0, 1) forwards;
   --animate-rise: rise 0.6s cubic-bezier(0.2, 0, 0, 1) forwards;
-  --animate-ticker: ticker 30s linear infinite;
 
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -183,10 +199,6 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  @keyframes ticker {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-  }
 }
 
 html {
@@ -245,69 +257,15 @@ html {
   font-family: var(--font-sans);
 }
 
-.hover-shadow-premium {
-  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-}
-
-.hover-shadow-premium:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-premium);
-}
-
-/* ── Category of One — Institutional Utilities ─────────────────────── */
-
-/** Full-bleed data ledger (Bloomberg-style density). */
-.terminal-ledger {
-  @apply w-full border-separate border-spacing-0;
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-/* Hide scrollbar for IE, Edge and Firefox */
-.hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-.terminal-ledger th {
-  @apply py-4 px-6 text-left font-mono text-[10px] font-semibold uppercase tracking-widest text-muted border-b border-border bg-surface2/50;
-}
-
-.terminal-ledger td {
-  @apply py-5 px-6 text-sm border-b border-border bg-white transition-colors;
-}
-
-.terminal-ledger tr:hover td {
-  @apply bg-surface2/30;
-}
-
-/** Merit-based signal meter (1-5 bars). */
-.signal-strength {
-  @apply flex gap-0.5 items-end h-3;
-}
-
-.signal-strength-bar {
-  @apply w-1 bg-border rounded-t-[1px] transition-colors;
-}
-
-.signal-strength-bar.active {
-  @apply bg-accent;
-}
-
-/** Path Clearance Overlay (Positive Friction). */
-.clearance-overlay {
-  @apply fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white animate-fade-in;
-}
-
-.clearance-progress {
-  @apply w-64 h-1 bg-border relative overflow-hidden;
-}
-
-.clearance-progress-fill {
-  @apply absolute inset-y-0 left-0 bg-primary transition-all duration-[3000ms] ease-in-out;
-}
+/*
+  Removed on 2026-08-05, all verified unreferenced across src/, e2e/ and public/ before deletion:
+  `.hover-shadow-premium`, `.terminal-ledger` (+ th/td/hover), `.signal-strength` (+ bar/active),
+  `.clearance-overlay`, `.clearance-progress` (+ fill), `.hide-scrollbar`. Roughly 60 lines of
+  utilities for features that either never shipped or were removed, still being served to every
+  visitor. `.terminal-ledger td` also hardcoded `bg-white` rather than `bg-surface`, which is
+  exactly the kind of thing that makes the eventual dark-mode pass more expensive than it needs
+  to be.
+*/
 
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -327,13 +285,30 @@ body {
   text-rendering: optimizeLegibility; /* Enables kerning & ligatures */
 }
 
-/* Global Transition Blanket (Institutional organic acceleration) */
+/*
+  Default interactive transition.
+
+  This used to be `transition: all 0.15s … !important`, which was a blanket that quietly beat every
+  transition the design system defines: --transition-standard (0.3s), .btn-primary (0.2s) and
+  .hover-shadow-premium (0.3s) all lost to it, verified in the built stylesheet. The whole
+  "0.3s confident, cinematic" standard declared at the top of this file was dead on arrival.
+
+  Two changes: the !important is gone, so a component can now opt into its own timing; and the
+  property list is explicit rather than `all`, so a transition can never animate a layout property
+  (width/height/top) and cause the jank that `all` invites.
+*/
 a, button, input, select, textarea, .card-transition {
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke,
+    opacity, box-shadow, transform, filter;
+  transition-duration: 0.15s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Tactile Active States */
-a:active, button:active, .card-transition:active {
+/*
+  Tactile active state. Scoped to real controls: this was on `a` too, which meant every inline text
+  link and every nav item shrank when tapped, including links inside body copy.
+*/
+button:active, [role="button"]:active, .card-transition:active {
   transform: scale(0.98);
 }
 
@@ -380,35 +355,35 @@ section {
   scroll-margin-top: 4rem;
 }
 
-/* Tactile texture and micro-interactions for primary buttons */
-.btn-primary {
-  background: linear-gradient(180deg, #3b82f6 0%, var(--primary) 100%);
-  box-shadow: var(--shadow-tactile);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
-}
-
-.btn-primary:hover {
-  filter: brightness(1.05);
-  box-shadow: var(--shadow-2), var(--shadow-tactile);
-}
-
-.btn-primary:active {
-  transform: scale(0.98);
-  filter: brightness(0.95);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-}
+/*
+  `.btn-primary` was removed on 2026-08-05. It was referenced by zero components (grepped across
+  src/, e2e/ and public/) yet shipped in the production stylesheet, and what it shipped was
+  `linear-gradient(180deg, #3b82f6 …)` — a BLUE gradient, left over from the pre-v2 palette, on a
+  brand whose stated purpose is "the visual signal that Mumchimp is not a blue SaaS brand".
+  Dead weight and a live trap: anyone who reached for the obvious class name got a blue button.
+  Buttons come from components/ui/Button.tsx.
+*/
 
 /* ── Reduced Motion ────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  a, button, input, select, textarea, .card-transition {
+  /* Catch-all rather than a hand-maintained list of class names. The previous version named four
+     animation classes explicitly, so any animation added later was silently exempt from the user's
+     stated accessibility preference, and inline `style={{ animation: … }}` was never covered at
+     all. This form cannot fall out of date. */
+  *, *::before, *::after {
+    /* Animations keep a near-zero duration rather than `animation: none` so `animationend` still
+       fires and any sequence waiting on it completes instead of stalling. Transitions are cut
+       outright: nothing in this codebase listens for `transitionend` (grep: zero matches), so the
+       shorthand is safe here and it resets delay and property in one declaration. */
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition: none !important;
+    scroll-behavior: auto !important;
   }
-  .animate-fade-in,
-  .animate-fade-in-up,
-  .animate-rise,
-  .animate-pulse {
-    animation: none !important;
+  /* The tactile press. Not covered by the durations above, it is a transform, and a control that
+     jumps to 0.98 scale instantly is worse than one that does not move. */
+  button:active, [role="button"]:active, .card-transition:active {
+    transform: none;
   }
   html {
     scroll-behavior: auto;

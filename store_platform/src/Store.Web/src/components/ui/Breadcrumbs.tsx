@@ -9,7 +9,16 @@ export function Breadcrumbs({ items }: { items: { href: string; label: string }[
           return (
             <li key={i} className="flex items-center gap-x-1.5">
               {isLast ? (
-                <span aria-current="page" className="font-semibold text-text">
+                /* Capped and clipped. Pack titles run past 100 characters ("StorySprout, the custom
+                   printed social story book that helps your autistic child navigate a new
+                   situation, made from your own details"), and the trail rendered the whole thing,
+                   so the breadcrumb became the widest line on the page and pushed the real content
+                   down. The full text stays available to assistive tech via `title`. */
+                <span
+                  aria-current="page"
+                  title={item.label}
+                  className="block max-w-[24ch] truncate font-semibold text-text sm:max-w-[40ch]"
+                >
                   {item.label}
                 </span>
               ) : (

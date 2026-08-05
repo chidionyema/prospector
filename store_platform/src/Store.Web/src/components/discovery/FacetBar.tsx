@@ -164,7 +164,7 @@ export function AppliedFilterChips({
           className="group/chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 py-1 pl-3 pr-2 text-xs font-semibold text-text transition-colors hover:border-primary/50"
         >
           {chip.text}
-          <span className="flex h-4 w-4 items-center justify-center rounded-full text-muted transition-colors group-hover/chip:bg-primary group-hover/chip:text-white">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full text-muted transition-colors group-hover/chip:bg-primary group-hover/chip:text-on-primary">
             <Icon name="close" size={10} />
           </span>
         </button>
@@ -341,7 +341,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep((s) => s + 1)}
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-on-primary transition-colors hover:bg-primary-hover"
               >
                 Next →
               </button>
@@ -349,7 +349,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep(-1)}
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-on-primary transition-colors hover:bg-primary-hover"
               >
                 Show {matching} {matching === 1 ? 'pack' : 'packs'}
               </button>
@@ -502,7 +502,7 @@ export function FacetBar({
         >
           Filter
           {activeCount > 0 && (
-            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-white">
+            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-on-primary">
               {activeCount}
             </span>
           )}
@@ -516,7 +516,7 @@ export function FacetBar({
             <button
               type="button"
               onClick={() => setSheetOpen(false)}
-              className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"
+              className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-on-primary"
             >
               Show {matching} {matching === 1 ? 'pack' : 'packs'}
             </button>

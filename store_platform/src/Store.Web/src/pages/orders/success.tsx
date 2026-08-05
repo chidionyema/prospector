@@ -133,10 +133,7 @@ export default function OrderSuccess() {
       <ResolutionFallback
         phase={phase}
         sessionId={sessionId}
-        origin={origin}
         pollAttempt={pollAttempt}
-        copied={copied}
-        onCopy={() => setCopied(true)}
         packId={packId}
       />
     );
@@ -196,7 +193,7 @@ export default function OrderSuccess() {
           <div className="mt-8">
             <a
               href={`${API_BASE_URL}${firstItem.downloadPath}`}
-              className="inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-4 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+              className="inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-4 text-base font-bold text-on-primary transition-colors hover:bg-primary-hover"
             >
               <Icon name="download" size={18} />
               Download your pack
@@ -337,7 +334,7 @@ export default function OrderSuccess() {
               'Pick your first customer, the persona dossier inside the pack',
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3 border border-border bg-surface p-4">
-                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-on-primary">
                   {i + 1}
                 </span>
                 <span className="text-sm leading-relaxed text-text/80">{step}</span>
@@ -384,18 +381,12 @@ export default function OrderSuccess() {
 function ResolutionFallback({
   phase,
   sessionId,
-  origin,
   pollAttempt,
-  copied,
-  onCopy,
   packId,
 }: {
   phase: Phase;
   sessionId: string | null;
-  origin: string;
   pollAttempt: number;
-  copied: boolean;
-  onCopy: () => void;
   packId: string | null;
 }) {
   return (
@@ -485,7 +476,7 @@ function ResolutionFallback({
                         `My payment went through but I have not received my download.\n\nOrder reference: ${sessionId}\n`,
                       )}`
                     }
-                    className="mt-3 inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                    className="mt-3 inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-3 text-sm font-semibold text-on-primary transition-colors hover:bg-primary/90"
                   >
                     <Icon name="mail" size={16} />
                     Email us about this order

@@ -5,8 +5,7 @@ import type { GetServerSideProps } from 'next';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { Icon, type IconName } from '@/components/ui';
-import { cx } from '@/components/ui/cx';
+import { Icon } from '@/components/ui';
 import { fetchCatalog } from '@/lib/api/client';
 import { eligibleLandings } from '@/lib/seo/landings';
 import CategoryGraph, { type CategoryNode } from '@/components/discovery/CategoryGraph';
@@ -48,33 +47,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   }
 };
 
-/** Map category slugs to icons. Falls back to 'briefcase' for unknown. */
-function categoryIcon(slug: string): IconName {
-  const icons: Record<string, IconName> = {
-    'trades-and-site-work': 'settings',
-    'professional-services': 'briefcase',
-    'retail-and-stock': 'cart',
-    'housing-and-tenancy': 'building',
-    'care-and-benefits': 'roster',
-    'energy-and-planning': 'trending-up',
-    'creator-rights': 'code',
-    'pay-and-worker-rights': 'roster',
-    'property-and-probate': 'building',
-    'red-tape-and-licensing': 'gavel',
-    'the-pet-economy': 'roster',
-    'specialist-niches': 'search',
-  };
-  return icons[slug] ?? 'briefcase';
-}
-
-/** Pull out trending categories: highest count first, up to 3. */
-function trending(categories: Props['categories']): Props['categories'] {
-  return [...categories].sort((a, b) => b.count - a.count).slice(0, 3);
-}
-
 export default function IdeasHub({ categories, total, variant }: Props) {
   const [search, setSearch] = React.useState('');
-  const trendingCategories = trending(categories);
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return categories;

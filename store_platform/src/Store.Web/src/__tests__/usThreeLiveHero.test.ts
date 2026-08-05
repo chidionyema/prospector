@@ -11,15 +11,36 @@ function existsRelative(relativePath: string): boolean {
 }
 
 /**
- * US-3 — Hero with a live demonstration of the moat.
+ * Strip block and line comments.
  *
- * The audit (§4.3) found the home page hero was a single text stack on a beige
- * rectangle. The buyer saw no product, no proof, no motion. The fix is a
- * 2-column hero: copy on the left, a live terminal-style card on the right
- * showing the last 3 kills, last 3 passes, and a live count, polled every
- * 5 seconds. The moat is demonstrated, not described.
+ * The absence-assertions below ("no setInterval", "no hardcoded relative dates") must run against
+ * code, not prose. LiveKillCard.tsx documents at length why each of those was removed, quoting the
+ * offending literals verbatim, so matching the raw file makes the test fail on its own changelog
+ * and pressures the next author to delete the explanation. Naive but sufficient here: no source in
+ * this component contains a `//` or `/*` sequence inside a string literal.
  */
-describe('US-3 — Hero with a live demonstration', () => {
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}
+
+/**
+ * US-3 - Hero with a demonstration of the moat.
+ *
+ * The audit found the home page hero was a single text stack on a beige rectangle: no product,
+ * no proof. The fix is a 2-column hero, copy on the left, a terminal-style card on the right.
+ *
+ * REVISED 2026-08-05. The original spec asked for "the last 3 kills, last 3 passes, and a live
+ * count, polled every 5 seconds", and this file enforced the `aria-live="polite"` that went with
+ * it. That spec shipped as three hardcoded pass strings with frozen relative dates ("2 days ago")
+ * under a pulsing LIVE badge, over data that is a build-time JSON snapshot and never changed.
+ *
+ * On a storefront selling a six-gate source-or-die filter, fabricated proof in the hero is
+ * disqualifying, so the passes row and the liveness claim were removed rather than reworded. The
+ * assertions below now enforce the opposite: the card must be sourced from the audit trail, and
+ * must NOT claim a freshness it does not have. Re-adding aria-live is only correct alongside a
+ * real data feed.
+ */
+describe('US-3 - Hero with a demonstration of the moat', () => {
   const liveCardExists = existsRelative('../components/marketing/LiveKillCard.tsx');
   const page = readSource('../pages/index.tsx');
 
@@ -27,27 +48,52 @@ describe('US-3 — Hero with a live demonstration', () => {
     expect(liveCardExists, 'components/marketing/LiveKillCard.tsx must exist').toBe(true);
   });
 
-  it('LiveKillCard renders the last 3 kills and last 3 passes', () => {
+  it('LiveKillCard sources every figure it shows from the audit trail', () => {
     if (!liveCardExists) return;
     const source = readSource('../components/marketing/LiveKillCard.tsx');
-    // The audit: "showing the last 3 kills, the last 3 passes, and a
-    // current count." The component must reference both.
-    const mentionsKills = /kill/i.test(source);
-    const mentionsPasses = /pass|survive|live/i.test(source);
-    expect(mentionsKills, 'LiveKillCard must render kills').toBe(true);
-    expect(mentionsPasses, 'LiveKillCard must render passes').toBe(true);
+    // The old version of this assertion was `/pass|survive|live/i.test(source)`, which the
+    // filename "LiveKillCard" satisfied on its own. It passed while the component rendered three
+    // invented pass rows, so it proved nothing. Both figures must now trace to the same JSON the
+    // /kill-log page renders.
+    expect(source, 'kill rows must come from data/kill-log.json').toMatch(
+      /from ['"]@\/data\/kill-log\.json['"]/,
+    );
+    expect(source, 'the totals must come from data/kill-log-totals.json').toMatch(
+      /from ['"]@\/data\/kill-log-totals\.json['"]/,
+    );
   });
 
-  it('LiveKillCard has aria-live="polite" for screen reader updates', () => {
-    // The audit: "The card has a monospace font, a blinking cursor, and a
-    // subtle pulse on the kill counter. The card is aria-live='polite'."
+  it('LiveKillCard claims no freshness it cannot back', () => {
     if (!liveCardExists) return;
-    const source = readSource('../components/marketing/LiveKillCard.tsx');
-    const hasAriaLive = /aria-live=["']polite["']/.test(source);
-    expect(
-      hasAriaLive,
-      'LiveKillCard must declare aria-live="polite" so screen readers announce updates',
-    ).toBe(true);
+    const source = stripComments(readSource('../components/marketing/LiveKillCard.tsx'));
+
+    // aria-live announces that a region updates. The card is a build-time snapshot with no timer,
+    // so the region never changes and the promise is empty. It also announced fabricated content.
+    expect(source, 'no aria-live over static build-time data').not.toMatch(/aria-live=/);
+
+    // No timer: two of these ran per homepage session, because index.tsx mounted the card twice
+    // behind `hidden md:block` / `md:hidden`, and display:none does not stop an effect.
+    expect(source, 'no polling timer behind a static snapshot').not.toMatch(
+      /\bset(Interval|Timeout)\s*\(/,
+    );
+
+    // No hardcoded relative dates. "2 days ago" as a literal is frozen at the moment it was typed.
+    expect(source, 'no hardcoded relative dates').not.toMatch(
+      /['"]\d+\s+(second|minute|hour|day|week|month|year)s?\s+ago['"]/i,
+    );
+
+    // Inline `style={{ animation }}` is unreachable by the prefers-reduced-motion rule in
+    // globals.css, which is why the pulsing dot ignored the user's stated preference.
+    expect(source, 'no inline animation, it escapes prefers-reduced-motion').not.toMatch(
+      /style=\{\{[^}]*animation/,
+    );
+  });
+
+  it('home page mounts LiveKillCard exactly once', () => {
+    if (!liveCardExists) return;
+    // Both breakpoint copies mounted and both ran their interval. One instance, responsive.
+    const mounts = page.match(/<LiveKillCard\b/g) ?? [];
+    expect(mounts.length, 'index.tsx must render exactly one <LiveKillCard>').toBe(1);
   });
 
   it('home page renders LiveKillCard inside the hero', () => {

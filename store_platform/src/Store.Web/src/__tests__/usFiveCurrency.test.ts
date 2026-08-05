@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it, vi } from 'vitest';
-import { formatPriceForMarket, currencyForCountry } from '../lib/fx';
+import { describe, expect, it } from 'vitest';
+import { formatPriceForMarket, formatGbpNote, currencyForCountry } from '../lib/fx';
 
 /**
  * US-5 — Currency by visitor market.
@@ -39,6 +39,46 @@ describe('US-5 — Currency converter unit tests', () => {
 
   it('formatPriceForMarket returns the GBP price for GBP', () => {
     expect(formatPriceForMarket('49.00', 'GBP')).toBe('£49');
+  });
+
+  /*
+   * The shape the API ACTUALLY sends.
+   *
+   * Every case in this file fed a bare '49.00'. A live `GET https://api.mumchimp.com/catalog`
+   * returns `"price": "£49.00"`, symbol included, and `parseFloat('£49.00')` is NaN, so
+   * formatPriceForMarket took its `return price` fallback for every real pack and conversion
+   * silently no-opped in production while this suite stayed green. A US visitor was shown
+   * "£49.00" even though currencyForCountry('US') correctly resolved USD.
+   *
+   * These cases pin the real input shape so the same divergence cannot recur.
+   */
+  describe('the price shape the API actually returns (symbol included)', () => {
+    it('converts a symbol-prefixed price to USD instead of passing it through', () => {
+      const result = formatPriceForMarket('£49.00', 'USD');
+      expect(result, 'must not fall through to the raw GBP string').not.toBe('£49.00');
+      expect(result, 'must render in dollars').toMatch(/^\$/);
+      const numeric = parseFloat(result.replace(/[^\d.]/g, ''));
+      expect(numeric).toBeGreaterThanOrEqual(60);
+      expect(numeric).toBeLessThanOrEqual(65);
+    });
+
+    it('converts a symbol-prefixed price to EUR', () => {
+      const result = formatPriceForMarket('£49.00', 'EUR');
+      expect(result).toMatch(/^€/);
+    });
+
+    it('renders a symbol-prefixed price once, not twice, for GBP', () => {
+      expect(formatPriceForMarket('£49.00', 'GBP')).toBe('£49');
+    });
+
+    it('parses a four-figure price with a thousands separator', () => {
+      expect(formatPriceForMarket('£1,049.00', 'GBP')).toBe('£1049');
+    });
+
+    it('formatGbpNote never doubles the currency symbol', () => {
+      expect(formatGbpNote('£49.00')).toBe("£49 at today's rate");
+      expect(formatGbpNote('£49.00')).not.toMatch(/££/);
+    });
   });
 
   it('formatPriceForMarket returns the USD price for USD', () => {

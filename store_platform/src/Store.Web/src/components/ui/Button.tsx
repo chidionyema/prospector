@@ -6,7 +6,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'inve
 const VARIANTS: Record<ButtonVariant, string> = {
   // Prominent = Deep Teal for ultimate conversion.
   prominent: cx(
-    'bg-primary text-white hover:bg-primary-hover',
+    'bg-primary text-on-primary hover:bg-primary-hover',
     'shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_12px_rgba(15,23,42,0.03)] hover:shadow-2',
     'focus-visible:ring-primary/20 focus-visible:ring-offset-2',
     'active:scale-[0.98]',

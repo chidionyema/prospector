@@ -21,7 +21,7 @@ export interface PackBuyButtonProps {
    *  - `sticky`: the mobile sticky buy bar. Same checkout flow as the detail variant.
    */
   variant: 'card' | 'drawer' | 'detail' | 'sticky';
-  /** Override the label. Defaults to `Unlock this pack · £{formatPrice(pack.price)}`. */
+  /** Override the label. Defaults to `Unlock this pack · {formatPrice(pack.price)}`. */
   label?: string;
   /** Optional className passthrough for layout (width, margin, custom backgrounds). */
   className?: string;
@@ -101,7 +101,11 @@ export default function PackBuyButton({
   };
 
   const priceLabel = formatPrice(pack.price);
-  const canonicalLabel = `Unlock this pack · £${priceLabel}`;
+  // `formatPrice` strips a trailing `.00` from the API's price string, it does NOT add a currency
+  // symbol, the API already sends one ("£49.00" -> "£49"). Prefixing another `£` here rendered the
+  // primary buy CTA as "Unlock this pack · ££49" on every pack page. The test that guards this
+  // label only matched /Unlock this pack/, so it stayed green through the whole regression.
+  const canonicalLabel = `Unlock this pack · ${priceLabel}`;
   const visibleLabel = checkingOut ? 'Opening…' : label ?? canonicalLabel;
 
   // Canonical visual shape. Identical across every entry point; variant changes only the
@@ -110,7 +114,7 @@ export default function PackBuyButton({
   // `hover:bg-primary-hover` to those custom-property-backed color tokens.
   const shapeClasses = cx(
     'inline-flex items-center justify-center',
-    'rounded-lg bg-primary text-white',
+    'rounded-lg bg-primary text-on-primary',
     'text-sm font-bold',
     'px-6 py-3.5',
     'transition-all duration-150',

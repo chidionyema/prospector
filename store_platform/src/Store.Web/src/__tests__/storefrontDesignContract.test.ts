@@ -153,12 +153,25 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
   });
 });
 
+/*
+ * REVISED 2026-08-05: these three assertions pinned the literal `text-white` on primary CTAs.
+ *
+ * White on the brand vermillion #FF5A1F measures 3.12:1, below the WCAG 2.x AA floor of 4.5:1 for
+ * normal text, so the site's most important controls were unreadable to the contrast the standard
+ * assumes. The palette carries an `--on-primary` token for exactly this, and it now resolves to
+ * #0A0A0A (6.35:1), but 20 call sites hardcoded `text-white` and bypassed it, which is why editing
+ * the token alone changed nothing on screen.
+ *
+ * Pinning a raw colour in a design-contract test is what let that happen: it made the accessible
+ * fix fail CI. The contract is "the CTA uses the palette's on-primary pairing", not "the CTA is
+ * white", so these now assert the token.
+ */
 describe('Design contract — primary CTAs', () => {
   const page = readSource('../pages/index.tsx');
   const button = readSource('../components/ui/Button.tsx');
 
   it('hero "Browse the packs" / "See the N that survived" uses primary style', () => {
-    // The hero CTA links to #catalog. It should use bg-primary (#FF5A1F vermillion), white text,
+    // The hero CTA links to #catalog. It should use bg-primary (#FF5A1F vermillion), on-primary text,
     // text-sm (14px), font-medium (500), px-6 py-3 (12px 24px), rounded-md (6px).
     // We look for a Link with href="#catalog" that carries the CTA classes.
     const heroLinkPattern = /href="#catalog"[^>]*className="([^"]*)"/;
@@ -166,7 +179,8 @@ describe('Design contract — primary CTAs', () => {
     expect(match, 'hero #catalog link not found').not.toBeNull();
     const classes = match![1];
     expect(classes, 'hero CTA bg-primary').toMatch(/bg-primary/);
-    expect(classes, 'hero CTA white text').toMatch(/text-white/);
+    expect(classes, 'hero CTA uses the on-primary token, not a hardcoded white')
+      .toMatch(/text-on-primary/);
     expect(classes, 'hero CTA text-sm').toMatch(/text-sm/);
     expect(classes, 'hero CTA font-medium').toMatch(/font-medium/);
     expect(classes, 'hero CTA px-6').toMatch(/px-6/);
@@ -176,14 +190,15 @@ describe('Design contract — primary CTAs', () => {
 
   it('spotlight "View vetted blueprint" button uses primary CTA style', () => {
     assertContains('spotlight CTA', page, 'View vetted blueprint');
-    // The spotlight CTA surrounding span uses bg-primary, text-white, etc.
+    // The spotlight CTA surrounding span uses bg-primary, text-on-primary, etc.
     // Find the span containing "View vetted blueprint"
     const spotlightBtnPattern = /className="([^"]*)"[^>]*>\s*View vetted blueprint/;
     const match = spotlightBtnPattern.exec(page);
     expect(match, 'spotlight CTA not found').not.toBeNull();
     const classes = match![1];
     expect(classes, 'spotlight CTA bg-primary').toMatch(/bg-primary/);
-    expect(classes, 'spotlight CTA white text').toMatch(/text-white/);
+    expect(classes, 'spotlight CTA uses the on-primary token, not a hardcoded white')
+      .toMatch(/text-on-primary/);
     expect(classes, 'spotlight CTA text-sm').toMatch(/text-sm/);
     expect(classes, 'spotlight CTA font-bold').toMatch(/font-bold/);
   });
@@ -197,7 +212,8 @@ describe('Design contract — primary CTAs', () => {
     expect(match, 'comparison CTA not found').not.toBeNull();
     const classes = match![1];
     expect(classes, 'comparison CTA bg-primary').toMatch(/bg-primary/);
-    expect(classes, 'comparison CTA white text').toMatch(/text-white/);
+    expect(classes, 'comparison CTA uses the on-primary token, not a hardcoded white')
+      .toMatch(/text-on-primary/);
     expect(classes, 'comparison CTA text-sm').toMatch(/text-sm/);
     expect(classes, 'comparison CTA font-medium').toMatch(/font-medium/);
     expect(classes, 'comparison CTA px-6').toMatch(/px-6/);

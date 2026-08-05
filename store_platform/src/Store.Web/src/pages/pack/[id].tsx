@@ -7,7 +7,7 @@ import { Seo } from '@/components/Seo';
 import { productJsonLd } from '@/lib/productJsonLd';
 import { breadcrumbNode, graph } from '@/lib/seo/schema';
 import { packOgImagePath } from '@/lib/seo/ogImage';
-import { Icon, CoverArt, ErrorState, Breadcrumbs } from '@/components/ui';
+import { Icon, ErrorState, Breadcrumbs } from '@/components/ui';
 import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
 import { Section } from '@/components/marketing/blocks';
@@ -24,7 +24,6 @@ import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopened
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { LEGAL } from '@/lib/config';
-import { coverFor } from '@/lib/cover';
 import { paybackEquation } from '@/lib/payback';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 

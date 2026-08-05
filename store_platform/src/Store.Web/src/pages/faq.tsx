@@ -118,8 +118,6 @@ export default function Faq() {
     return items;
   }, [search, activeCategory]);
 
-  const query = search.trim().toLowerCase();
-
   return (
     <MarketingLayout>
       <Seo
@@ -228,7 +226,7 @@ export default function Faq() {
           </div>
           <Link
             href="/"
-            className="mt-5 inline-flex items-center gap-2 bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+            className="mt-5 inline-flex items-center gap-2 bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
           >
             Browse the catalogue <Icon name="arrowRight" size={14} />
           </Link>
