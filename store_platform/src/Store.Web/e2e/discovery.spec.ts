@@ -154,10 +154,21 @@ test('the privacy notice states the waitlist basis and its retention', async ({ 
 // that has to be made with the re-verification, not by a test quietly agreeing.
 const QUARANTINED_2026_07_31 = ['42bf9861ecc08079', 'f7783abea10a4216', '54f775d91cbe09d8'];
 
+// THE SECOND HALF, found 2026-08-05: the API was fixed, the storefront was not. Measured against
+// production for all three ids below:
+//
+//     api.mumchimp.com/catalog/{id}  ->  404, and absent from /catalog   (the fix worked)
+//     mumchimp.com/pack/{id}         ->  200, robots "index, follow"     (the fix was undone here)
+//
+// `getServerSideProps` caught every fetch failure into `props: { pack: null }`, which Next serves
+// as a 200. So a quarantined pack still had a live, indexable URL -- a soft-404. This test was
+// red for months and read as a stale expectation rather than the open defect it was.
 for (const id of QUARANTINED_2026_07_31) {
   test(`a withdrawn pack is gone, not just unlisted: ${id}`, async ({ page }) => {
     const res = await page.goto(`/pack/${id}`);
-    expect(res?.status()).toBe(404);
+    // A HARD 404. A 200 carrying an error panel satisfies every visible expectation below while
+    // still telling a crawler the URL is a live page, which is the exact defect this caught.
+    expect(res?.status(), 'a withdrawn pack must 404, not soft-404').toBe(404);
     await expect(page.getByRole('button', { name: /instant access/i })).toHaveCount(0);
   });
 }

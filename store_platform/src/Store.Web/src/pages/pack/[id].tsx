@@ -14,7 +14,7 @@ import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
-import { fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
@@ -37,6 +37,10 @@ interface PackPageProps {
    *  a catalogue outage must never take down a page someone is trying to buy from. */
   catalog: Pack[];
   error?: string;
+  /** True when the pack could not be read because the API was unreachable, NOT because the pack
+   *  is gone (a gone pack returns `notFound` and never reaches this component). Drives `noindex`,
+   *  so a blip does not get a retry-able page dropped from the index the way a 404 would. */
+  unavailable?: boolean;
   /** The currency to render prices in. Same as the home page: decoupled from market, derived
    *  from the country header on the server. */
   currency: Currency;
@@ -81,7 +85,7 @@ const CHECKS = [
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
 
-export default function PackPage({ pack, catalog, error, currency }: PackPageProps) {
+export default function PackPage({ pack, catalog, error, unavailable, currency }: PackPageProps) {
   const router = useRouter();
 
   // Hooks must run unconditionally. If the server couldn't fetch the pack, render an error
@@ -91,6 +95,11 @@ export default function PackPage({ pack, catalog, error, currency }: PackPagePro
   if (!pack) {
     return (
       <MarketingLayout>
+        {/* This branch is only ever an OUTAGE now -- a withdrawn pack returns `notFound` from
+            getServerSideProps and renders the 404 page instead. The page still served
+            "index, follow" here, which is how a temporarily-down pack could be crawled and
+            recorded as a thin live page. `noindex` also suppresses the canonical (Seo.tsx:79). */}
+        <Seo title="Pack temporarily unavailable" noindex={unavailable !== false} />
         <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
           <ErrorState
             title="Could not load this pack"
@@ -1011,10 +1020,37 @@ export const getServerSideProps: GetServerSideProps = async ({ params, req, res 
     };
   } catch (error) {
     console.error('Error fetching pack details:', error);
+
+    /* "Gone" and "down" are not the same page, and this branch used to serve both as a 200.
+     *
+     * Measured on production 2026-08-05, for all three pack ids the e2e has been failing on
+     * (42bf9861ecc08079, f7783abea10a4216, 54f775d91cbe09d8):
+     *
+     *     api.mumchimp.com/catalog/{id}  ->  404, and absent from /catalog
+     *     mumchimp.com/pack/{id}         ->  200, empty ErrorState, robots "index, follow"
+     *
+     * A 200 on a withdrawn pack is a soft-404: the crawler is told the URL is a live page, keeps
+     * it in the index, and keeps sending buyers to a dead end. `ApiError` has carried `status`
+     * since it was written for exactly this distinction (see its docstring in lib/api/client.ts);
+     * `/og/pack/[id]` already splits on it and this page never did.
+     *
+     * The two halves have to be different, and the memory of getting this wrong is why:
+     * `notFound: true` OVERRIDES any `res.statusCode` set beside it, so collapsing the transient
+     * case into it would tell Google a page is permanently gone every time the API blips. So:
+     * gone -> a real 404 with no props; down -> 503 + Retry-After + noindex, keeping the
+     * retry-able ErrorState the visitor can act on, and keeping the URL in the index.
+     */
+    const status = error instanceof ApiError ? error.status : 0;
+    if (status === 404 || status === 410) {
+      return { notFound: true };
+    }
+
+    res.statusCode = 503;
+    res.setHeader('Retry-After', '60');
     const message =
       error instanceof Error ? error.message : 'Could not load pack details.';
     return {
-      props: { pack: null, catalog: [], error: message, currency },
+      props: { pack: null, catalog: [], error: message, currency, unavailable: true },
     };
   }
 };
