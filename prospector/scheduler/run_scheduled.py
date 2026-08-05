@@ -220,6 +220,28 @@ _TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "10800"
 _RETRY_BACKOFF_S = 300  # 5 min
 
 
+def _retry_sleep_s(consecutive: int, interval: int) -> int:
+    """Seconds to sleep after `consecutive` unproductive ticks in a row.
+
+    The retry was flat: EVERY unproductive tick slept 300s, forever, with no escalation.
+    That is right for the blip it was written for and wrong for an outage. Measured on the
+    2026-08-01/02 moat outage: 144 real ticks, 131 of them failing
+    `moat_preflight: no trusted moat brain answered: cursor_cli: ProviderExhaustedError`,
+    retrying every 5 minutes for two days — 24x the normal 7200s cadence, each one paying
+    for a preflight CLI call to re-learn the same fact. The moat recovered on its own;
+    nothing the daemon did during those two days helped it.
+
+    So: keep the first retry fast (a blip is still the common case), then double, capped at
+    the normal cadence. An outage costs ~6 probes before it settles to the ordinary
+    heartbeat, instead of 288 a day. Never longer than `interval`, because a recovered moat
+    must not wait longer than a healthy daemon would to notice.
+    """
+    if consecutive <= 0:
+        return interval
+    backoff = _RETRY_BACKOFF_S * (2 ** (consecutive - 1))
+    return max(1, min(interval, backoff))
+
+
 def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -> None:
     logger.critical(
         "TICK HARD DEADLINE (%ds) exceeded during generation (batch=%s) — force-exiting so "
@@ -408,6 +430,7 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
 
     logger.info("Daemon starting: interval=%ds, store=%s", interval, _store_dir(cfg))
     cycles = 0
+    consecutive_unproductive = 0
     while not flag.stop:
         tick = None
         try:
@@ -424,8 +447,15 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
         # A guard-blocked tick (spend cap) is intentional, not a failure — full cadence.
         sleep_target = interval
         if tick is not None and _tick_unproductive(tick):
-            sleep_target = min(interval, _RETRY_BACKOFF_S)
-            logger.info("Unproductive tick — retrying in %ds instead of %ds", sleep_target, interval)
+            consecutive_unproductive += 1
+            sleep_target = _retry_sleep_s(consecutive_unproductive, interval)
+            logger.info("Unproductive tick #%d in a row — retrying in %ds instead of %ds",
+                        consecutive_unproductive, sleep_target, interval)
+        else:
+            # Reset on ANY productive tick, including a guard-blocked one: the spend cap
+            # firing is the system working, not a failure, and must not inherit an outage's
+            # backoff. `_tick_unproductive` already excludes it.
+            consecutive_unproductive = 0
         # Sleep in short slices so a stop request is honoured promptly mid-cadence.
         _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles)
         slept = 0
