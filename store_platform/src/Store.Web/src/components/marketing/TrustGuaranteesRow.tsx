@@ -48,7 +48,7 @@ export default function TrustGuaranteesRow({ className }: { className?: string }
         <p className="mb-4 text-center font-mono text-[10px] font-bold uppercase tracking-widest text-muted">
           Trust and guarantees
         </p>
-        <ul className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {facts.map((fact) => (
             <li
               key={fact.value}

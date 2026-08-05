@@ -133,9 +133,9 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
                 cx={cx}
                 cy={cy}
                 r={r}
-                fill="#042F2E"
+                fill="currentColor"
                 fillOpacity={0.08}
-                stroke="#042F2E"
+                stroke="currentColor"
                 strokeWidth={1.5}
                 className="transition-all hover:fill-opacity-20"
               />

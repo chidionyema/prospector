@@ -30,10 +30,13 @@ import { ApiError, fetchPackDetails } from '@/lib/api/client';
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 
-/** Same brand ink as the site (`globals.css:35`, `--primary: #042F2E` Deep Teal). */
-const TEAL = '#042F2E';
-const CREAM = '#FDFCF9';
-const MUTED = '#5B6B68';
+/** Brand v2 (2026-08-05): vermillion is the new primary; the OG image must
+ *  match the live site. Cream is gone (clean white is the canvas); the
+ *  OG image still uses a subtle off-white because the social card
+ *  renders against any background and a white-on-white card disappears. */
+const VERMILLION = '#FF5A1F';
+const CREAM = '#FAFAF8';
+const MUTED = '#6B6B6B';
 
 /** Long titles must not overflow the card. Cut on a word boundary and ellipsize, so the card
  *  degrades to a readable truncation rather than clipped glyphs at the frame edge. */
@@ -97,7 +100,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
           padding: '72px 80px',
           // The brand's teal edge, so the card is recognisable as this site at thumbnail size
           // before any of the text is legible.
-          borderLeft: `24px solid ${TEAL}`,
+          borderLeft: `24px solid ${VERMILLION}`,
           fontFamily: 'sans-serif',
         }}
       >
@@ -121,7 +124,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
               fontSize: title.length > 60 ? 58 : 70,
               lineHeight: 1.12,
               fontWeight: 800,
-              color: TEAL,
+              color: VERMILLION,
               letterSpacing: -1.5,
             }}
           >
@@ -131,7 +134,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
 
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', fontSize: 34, fontWeight: 800, color: TEAL }}>
+            <div style={{ display: 'flex', fontSize: 34, fontWeight: 800, color: VERMILLION }}>
               Mumchimp
             </div>
             {proof ? (
@@ -141,7 +144,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
           <div
             style={{
               display: 'flex',
-              backgroundColor: TEAL,
+              backgroundColor: VERMILLION,
               color: CREAM,
               borderRadius: 999,
               padding: '16px 36px',

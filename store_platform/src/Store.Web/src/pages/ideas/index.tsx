@@ -158,7 +158,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
                   href={`/ideas/${cat.slug}`}
                   className="group flex h-full items-start gap-4 border border-border bg-surface p-5 transition-colors hover:bg-[#F8F5EF] hover:border-text/20"
                 >
-                  <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5" style={{ backgroundColor: '#042F2E10' }}>
+                  <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5 bg-primary/10">
                     <BespokeIcon kind={cat.slug} size={18} className="text-primary" />
                   </span>
                   <div className="min-w-0">

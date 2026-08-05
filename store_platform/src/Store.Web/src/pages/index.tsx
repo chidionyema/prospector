@@ -191,7 +191,7 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
       {/* Category icon + label row -- visual anchor, breaks text monotony */}
       <div className="flex items-center gap-2 mb-2">
         {cat.tagged && (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: '#042F2E10' }}>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
             <Icon name={cat.icon} size={14} className="text-primary" />
           </span>
         )}
@@ -556,7 +556,7 @@ function CatalogBrowser({
                         href={`/pack/${pack.id}`}
                         className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
                       >
-                        <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
+                        <span className="flex h-8 w-8 flex-none items-center justify-center bg-primary/10">
                           <Icon name="verified" size={16} className="text-primary" />
                         </span>
                         <div className="min-w-0">
@@ -585,7 +585,7 @@ function CatalogBrowser({
                         href={`/pack/${pack.id}`}
                         className="group flex items-start gap-3 border border-border bg-surface p-4 transition-colors hover:bg-[#F8F5EF]"
                       >
-                        <span className="flex h-8 w-8 flex-none items-center justify-center" style={{ backgroundColor: '#042F2E10' }}>
+                        <span className="flex h-8 w-8 flex-none items-center justify-center bg-primary/10">
                           <Icon name="trending-up" size={16} className="text-primary" />
                         </span>
                         <div className="min-w-0">
