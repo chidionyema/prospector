@@ -28,6 +28,7 @@ from prospector.bridge import EngineBridge
 from prospector.config import Config
 from prospector.models import (Candidate, CheckResult, Decision, Dossier, ScoreResult,
                                Verdict)
+from prospector.price_rationale import read_rationale
 from prospector.pricing import price_for
 
 AXES = ["pain_acuity", "money_provability", "automatability", "distribution",
@@ -144,6 +145,29 @@ def test_the_price_decision_is_recorded_on_the_candidate(bridge, cfg):
     assert rec and rec["price_pence"] == 7900
     assert "growth" in rec["rationale"]
     assert rec["segment"] == {"ambition_tier": "growth", "market": "uk"}
+
+
+def test_publishing_writes_a_rationale_record_and_the_ref_resolves(bridge, cfg):
+    """D3 on the publish path. `PricePatchRequest.RationaleRef` is the auditor's pointer,
+    but a re-priced pack is not the only price decision the system takes — the first one is
+    taken here, at publish. Without this, the publish path would be the single money-moving
+    act with no derivation record behind it.
+
+    The ref is resolved and parsed, not merely asserted non-empty: a ref that points at
+    nothing reads exactly like provenance until someone follows it."""
+    dossier = _dossier("c2-rationale", "growth", "uk")
+    minted, catalogued = _publish_and_capture(bridge, dossier)
+
+    ref = dossier.candidate.tags.get("price_rationale_ref")
+    assert ref, "publish took a price decision and left no rationale record"
+
+    record = read_rationale(ref)          # resolves via PROSPECTOR_RATIONALE_ROOT (conftest)
+    assert record["pack_id"] == "c2-rationale"
+    assert record["source"] == "prospector/bridge.py"
+    # The record must document the price that was actually minted and catalogued, not a
+    # re-derivation: a rationale describing a different number is worse than none.
+    assert record["decision"]["price_pence"] == minted == catalogued
+    assert record["ladder"]["rungs"] == list(cfg.listing["pricing"]["rungs"])
 
 
 def test_update_catalog_has_no_default_price(bridge):

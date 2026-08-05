@@ -830,6 +830,13 @@ listing:
     # deterministic and so moving one is a visible, reviewable act.
     rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
 
+    # A human-readable label for the ladder below, recorded on every D3 rationale record
+    # (prospector/price_rationale.py). It is a LABEL, not the truth: a stale label that
+    # nobody bumped after editing `rungs` would misattribute a price. The record also
+    # carries the rung numbers themselves plus a `fingerprint` digest over them, and the
+    # fingerprint is what proves which ladder actually ran.
+    ladder_version: L1-ladder-2026-08-05
+
     # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4900: an
     # unclassified pack is one we know nothing about, and guessing at its price is
     # strictly worse than holding the price the whole catalogue already sells at.

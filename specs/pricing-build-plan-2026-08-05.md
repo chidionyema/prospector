@@ -235,6 +235,30 @@ into C-work rather than relaxing the fence.
    at 4900 until lanes start tagging candidates (asserted, not assumed).
 5. **D3**, then **D4**, then **D5**.
 
+   **D3 DONE 2026-08-05** — `prospector/price_rationale.py`, `tests/test_price_rationale.py`
+   (11 tests) + one on the publish path in `tests/unit/test_bridge_pricing.py`. Records land
+   under `store/pricing/rationale/<pack_id>/<timestamp>-<digest12>.json`, and that path is what
+   `scripts/backfill_ladder_prices.py` now puts in `rationaleRef` — it previously carried
+   `specs/pricing-build-plan-2026-08-05.md#C1`, a spec anchor no record backed.
+
+   Three decisions worth the words:
+   - **The ladder is snapshotted onto every record, not named.** `config.yaml` is a live file,
+     so a record saying only `L1-ladder-2026-08-05` would be reinterpreted against whatever
+     `rungs` says on the day it is read. The record carries the numbers plus a `fingerprint`
+     digest over them; `ladder_version` is recorded too, but as a label. The label is the part
+     that can go stale without anyone noticing, which is why it is not the evidence.
+   - **The record's own digest is in its path**, so an edited record no longer matches the ref
+     that points at it and `read_rationale` refuses it. A price audit is read precisely when
+     someone asks why a buyer was charged what they were charged.
+   - **The publish path writes one too**, not just the re-pricing PATCH — otherwise the first
+     price decision a pack ever gets would be the one money-moving act with no provenance. It
+     is non-fatal: a read-only `store/` must not stop a correctly-priced pack from publishing.
+
+   Both acceptance tests were mutation-checked, not merely run: nulling `evidence` in
+   `build_record` fails the round-trip test; restoring the spec-anchor `rationaleRef` fails the
+   PATCH test; removing the bridge wiring fails the publish test. Suite: `1213 passed, 3
+   skipped`.
+
 The L3 gated controller from the analysis spec (§5) is explicitly *not* in this plan. It consumes
 D2's events and D4's simulator, neither of which has produced anything yet, and building a
 controller before its inputs exist is the failure mode the analysis argues against.

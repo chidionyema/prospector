@@ -25,6 +25,7 @@ from .models import Dossier, Decision, ScoreResult
 from .pack_validation import validate_pack
 from .plain_text import plain_lines, to_plain_text
 from .price_comparables import anchors_from_tags
+from .price_rationale import write_rationale
 from .pricing import price_for
 
 logger = logging.getLogger("prospector.bridge")
@@ -508,6 +509,21 @@ class EngineBridge:
             "segment": price.segment, "rationale": price.rationale,
             "evidence": price.evidence,
         }
+
+        # D3 — the derivation record. Every price decision leaves one, not only the ones
+        # taken by a re-pricing PATCH, or the publish path would be the one money-moving
+        # act in the system with no auditable provenance.
+        #
+        # Non-fatal by design: this is an audit artifact, and a full disk or a read-only
+        # `store/` must not stop a pack from publishing at a price that was correctly
+        # decided. The failure is logged loudly and the ref is simply absent.
+        try:
+            candidate.tags["price_rationale_ref"] = write_rationale(
+                candidate_id, price, self.cfg,
+                actor="price-engine", source="prospector/bridge.py")
+        except Exception as e:  # pragma: no cover - filesystem failure path
+            logger.error(f"EngineBridge: could not write price rationale for "
+                         f"{candidate_id}: {e}")
 
         # 3. Provision product with the active payment provider (P3 — provider-agnostic)
         provider_product_id = f"prov_stub_{candidate_id[:8]}"
