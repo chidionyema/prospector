@@ -11,6 +11,7 @@ import { Icon, ErrorState, Breadcrumbs, SourcedLine, CitationList } from '@/comp
 import { parseCitations } from '@/lib/citations';
 import type { IconName } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
+import { categoryFor } from '@/lib/category';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
@@ -18,7 +19,7 @@ import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCo
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
-import PackCover from '@/components/marketing/PackCover';
+import DossierExcerptPlate from '@/components/marketing/DossierExcerptPlate';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
@@ -143,6 +144,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
 
   const axes = scoreAxes(pack.financialSnapshot);
   const verdict = splitVerdict(pack.qaVerdictSummary);
+  const cat = categoryFor(pack);
 
   // Every source this page can actually hand the visitor, right now, without buying anything.
   // Distinct from `pack.sourceCount` (51 on some packs), which counts what is INSIDE the pack.
@@ -367,7 +369,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
         description={pack.oneLine || undefined}
         ogType="product"
         ogImagePath={packOgImagePath(pack.id)}
-        ogImageAlt={`${pack.title}, a £49 researched business pack from Mumchimp`}
+        ogImageAlt={`${pack.title}, a researched business pack from Mumchimp${pack.price ? ` (${pack.price})` : ''}`}
         jsonLd={graph(
           productJsonLd(pack),
           // The trail Google renders in place of the raw URL, so a result reads
@@ -395,7 +397,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           items={[
             { href: '/', label: 'Catalog' },
             { href: '/ideas', label: 'Browse by category' },
-            { href: '#', label: pack.title },
+            // Was `{ href: '#', label: pack.title }`. The title was rendered three times inside
+            // the fold (breadcrumb, cover caption, h1) on a page where titles run past 100
+            // characters, so the trail was competing with the headline instead of locating it.
+            // The trail now ends where a trail should: the section this pack sits in.
+            { href: '#', label: cat.tagged ? cat.label : 'Pack' },
           ]}
         />
 
@@ -408,16 +414,13 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           Back to catalog
         </Link>
 
-        <ShareRow title={pack.title} />
-
         <div className="mt-6 flex flex-col gap-12 lg:flex-row">
           {/* Left: Content */}
           <div className="flex-1">
-            {/* US-2: pack cover plate. The 16:9 hero sits at the top of the page so
-                the buyer's first visual of the product is a real cover, not a text
-                header. The hero is a passive banner (not a link); the title below
-                is the one true h1. */}
-            <PackCover variant="hero" pack={pack} className="mb-6" />
+            {/* Proof, not decoration, in the prime visual slot -- see the header comment on
+                DossierExcerptPlate for what the 16:9 cover here was doing and why a cover cannot
+                carry this page's claim. Renders nothing when the pack has no sourced extract. */}
+            <DossierExcerptPlate pack={pack} />
             {/* Document header: left-rule + verified badge, no decorative cover */}
             <div className="mb-6 border-l-[3px] border-l-primary pl-5">
               <span className="inline-flex items-center gap-1.5 text-caption font-bold uppercase tracking-wide text-muted">
@@ -425,7 +428,9 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               </span>
             </div>
 
-            <h1 className="text-h1 font-black leading-tight tracking-tight text-text md:text-display">
+            {/* No `md:text-display` (48px). Titles here average ~90 characters, so at 48px the
+                h1 alone consumed ~400px and was still unfinished at the fold. One step, 36px. */}
+            <h1 className="text-h1 font-black leading-tight tracking-tight text-text">
               {pack.title}
             </h1>
             <p className="mt-5 max-w-[65ch] text-body leading-relaxed text-text/80">{pack.oneLine}</p>
@@ -776,6 +781,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
 
             {/* Hides itself unless at least two packs genuinely score (AC-21). */}
             <SimilarPacks pack={pack} all={catalog} />
+
+            {/* Share sat at y~247, above the product, before the visitor knew what it was.
+                Nobody shares a thing they have not read, so it moves to the foot of the article,
+                where someone who has just read it might. */}
+            <ShareRow title={pack.title} />
           </div>
 
           {/* Right: Checkout (desktop sticky) */}

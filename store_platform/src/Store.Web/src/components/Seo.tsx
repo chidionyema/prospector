@@ -18,8 +18,16 @@ import { SITE_URL, BRAND } from '@/lib/config';
  */
 
 const SITE = BRAND.name;
+/*
+ * No price here, deliberately. This string and `fullTitle` below are the two surfaces a search
+ * engine caches for months, and this component has no catalogue to read: it is rendered on
+ * /privacy, /terms and every static page. It said "£49 packs" and "£49 each" while the live
+ * shelf ran £29 to £199 (see lib/priceRange.ts for the measurement), so the buyer arrived
+ * already told a number that was wrong for 13 of 61 packs. A surface that cannot check a price
+ * does not quote one.
+ */
 const DEFAULT_DESCRIPTION =
-  'Mumchimp sells £49 business opportunity packs. Each is a grounded idea passed by the ' +
+  'Mumchimp sells grounded business opportunity packs. Each is an idea passed by the ' +
   'Mumchimp engine: build spec, GTM plan, operations and unit economics, and a QA report with ' +
   'every claim sourced. Instant download.';
 
@@ -61,7 +69,7 @@ export function Seo({
   ogImageAlt,
   ogType = 'website',
 }: SeoProps) {
-  const fullTitle = title ? `${title} · ${SITE}` : `${SITE} · grounded business packs, £49 each.`;
+  const fullTitle = title ? `${title} · ${SITE}` : `${SITE} · grounded business packs.`;
 
   // Canonical/og:url need an absolute URL, so they only emit when SITE_URL is configured (prod).
   // Path only: strip the query string so canonical points at the clean page, not a tracked variant.

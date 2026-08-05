@@ -12,8 +12,18 @@ test('a pack page carries Product structured data matching its visible price', a
   expect(href).toBeTruthy();
   await page.goto(href!);
 
+  // Nodes may sit at the top level or inside an `@graph`, and both shapes ship today: the pack
+  // page composes Product + BreadcrumbList through `graph()` (src/lib/seo/schema.ts), while
+  // `_document` emits its own Organization + WebSite block. Matching only the top-level shape is
+  // how this test went quietly red when #35 introduced the graph — it kept asserting, against
+  // nothing. Flattening both is what makes it a claim about the served page rather than a claim
+  // about one serialisation of it.
   const blocks = await page.locator('script[type="application/ld+json"]').allTextContents();
-  const product = blocks.map((b) => JSON.parse(b)).find((d) => d['@type'] === 'Product');
+  const nodes = blocks.flatMap((b) => {
+    const parsed = JSON.parse(b);
+    return Array.isArray(parsed['@graph']) ? parsed['@graph'] : [parsed];
+  });
+  const product = nodes.find((d) => d['@type'] === 'Product');
   expect(product, 'no Product ld+json on the pack page').toBeTruthy();
 
   expect(product.name).toBeTruthy();

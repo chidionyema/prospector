@@ -153,7 +153,10 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
             <div className="max-w-md text-left">
               <Logo className="text-h1 mb-6 text-text" />
               <p className="text-h2 font-normal text-muted leading-relaxed">
-                Business ideas that survived the filter. Fully sourced, ready to build, £49 each.
+                {/* "£49 each" removed: the footer renders on every page including ones with no
+                    catalogue loaded, and the shelf has not been one price since the segment
+                    ladder shipped. The live figures live on /pricing, which reads them. */}
+                Business ideas that survived the filter. Fully sourced, ready to build.
               </p>
             </div>
           </div>

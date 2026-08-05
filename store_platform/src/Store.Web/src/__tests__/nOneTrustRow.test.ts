@@ -40,12 +40,24 @@ describe('N1 — Persistence of trust', () => {
     const source = readSource('../components/marketing/TrustGuaranteesRow.tsx');
     // The five facts: £49 once, 14 day refund, 1,968 researched,
     // 1,080 killed, 61 live. The component must reference each.
-    const hasPrice = /£49|GBP 49|\$\{?49|\b49\b/.test(source);
+    /*
+     * Was `/£49|GBP 49|\$\{?49|\b49\b/`. `\b49\b` matches any 49 anywhere in the file including
+     * a comment, so once the ladder shipped and a comment explained the old price, this assertion
+     * was green against a component that no longer rendered one. The fact still has to be there;
+     * what changed is that it is now a prop the caller computes from the live packs, and the
+     * literal is what must NOT be there.
+     */
+    const hasPrice = /price\.label|'One payment'/.test(source);
+    const strippedSource = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(
+      strippedSource.match(/£\s?\d+/g) ?? [],
+      'the trust row must not hardcode a price',
+    ).toEqual([]);
     const hasRefund = /14\s*day|refund/i.test(source);
     const hasResearched = /1,?968|researched/i.test(source);
     const hasKilled = /1,?080|killed/i.test(source);
     const hasLive = /\b61\b|live/i.test(source);
-    expect(hasPrice, 'TrustGuaranteesRow must render the £49 price').toBe(true);
+    expect(hasPrice, 'TrustGuaranteesRow must render the price fact').toBe(true);
     expect(hasRefund, 'TrustGuaranteesRow must render the 14 day refund').toBe(true);
     expect(hasResearched, 'TrustGuaranteesRow must render the researched count').toBe(true);
     expect(hasKilled, 'TrustGuaranteesRow must render the killed count').toBe(true);

@@ -19,7 +19,7 @@ export default function AboutPage() {
   return (
     <MarketingLayout>
       <Seo
-        title={`About ${BRAND.name} - the engine behind the £49 pack`}
+        title={`About ${BRAND.name} - the engine behind the packs`}
         description={`How ${BRAND.name} works: an engine that tries to kill every business idea on six checks. ${totals.killed} killed, ${totals.passed} survived.`}
       />
 

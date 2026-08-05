@@ -26,6 +26,7 @@ import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, Cat
 import { formatPriceForMarket, formatChargeNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { track } from '@/lib/analytics';
 import { citedFigure } from '@/lib/sources';
+import { priceRange, formatGbp, type PriceRange } from '@/lib/priceRange';
 import { categoryFor, type Category } from '@/lib/category';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
@@ -65,7 +66,7 @@ interface HomeProps {
   currency: Currency;
   /** N2: similar packs to the visitor's most recently viewed pack. Empty when
    *  the visitor has not viewed any pack yet (or the anchor pack is gone),
-   *  in which case the existing "Trending picks" row is the default. */
+   *  in which case the existing "Most sources" row is the default. */
   personalised: Pack[];
 }
 
@@ -471,7 +472,34 @@ function CatalogBrowser({
     !filtered && sort === 'newest' && grouped.matching.length > 2 ? grouped.matching[0] : null;
   const gridPacks = spotlight ? grouped.matching.slice(1) : grouped.matching;
 
-  // Trending: top 3 by source count, only on unfiltered default view
+  /*
+   * The shelf's editorial shape (spec section 7, 2026-08-05).
+   *
+   * Measured before this: `/` was 21,717px on desktop and 49,558px on mobile, 73% of it one flat
+   * grid of 61 cards with no hierarchy between pack #1 and pack #61. A shelf SHOULD dominate a
+   * storefront, so the height was never the defect; the absence of any way to form a shortlist
+   * was.
+   *
+   * Two rows carry meaning, and only on the default view -- once the visitor has filtered or
+   * re-sorted, THEY have stated the ordering and an editorial row talking over it is noise.
+   *
+   * The spec also proposed a "Cleared all six checks" row. It is deliberately not built: a pack
+   * only reaches the catalogue by clearing all six (CLAUDE.md, "Publish only on PASS"), so that
+   * row is every pack on the shelf. A label that selects nothing is decoration wearing the
+   * costume of a filter, which is the failure this whole pass is removing.
+   */
+  const editorial = !filtered && sort === 'newest';
+
+  /* The tail is capped, not dropped: every card stays in the server HTML and is only display-
+   * hidden, so a crawler and the "a filtered URL comes back filtered" e2e still see all of them
+   * while the buyer gets a page with an end. 24 = 8 rows of 3 (xl), 12 of 2 (sm). */
+  const SHELF_PAGE = 24;
+  const [showAll, setShowAll] = React.useState(false);
+  const newestRow = editorial ? gridPacks.slice(0, 3) : [];
+  const tailPacks = editorial ? gridPacks.slice(3) : gridPacks;
+  const shown = showAll ? tailPacks.length : Math.min(SHELF_PAGE, tailPacks.length);
+
+  // Most sources: top 3 by source count, only on unfiltered default view
   const trending = React.useMemo(() => {
     if (filtered || sort !== 'newest') return [];
     return [...packs]
@@ -546,7 +574,7 @@ function CatalogBrowser({
           {visible.length > 0 ? (
             <>
               {/* N2: "Based on your browsing" when the visitor has viewed a
-                  pack, otherwise the existing Trending picks row. Both rows
+                  pack, otherwise the existing Most sources row. Both rows
                   are 3-card compact summaries, the same shape, so the page
                   rhythm stays consistent. */}
               {personalised.length > 0 ? (
@@ -577,10 +605,13 @@ function CatalogBrowser({
               ) : (
                 <RecentlyViewed packs={packs} />
               )}
-              {/* Trending picks: 3-card row, only on default unfiltered view */}
+              {/* Most sources: 3-card row, only on default unfiltered view. Was headed "Trending
+                  picks", which is a traffic claim on a site that measures no traffic -- the row is
+                  and always was ordered by `sourceCount`. It now says what it sorts by, and each
+                  card prints the number, so the heading is checkable against the cards under it. */}
               {trending.length === 3 && (
                 <div className="mb-6">
-                  <h3 className="text-meta font-bold text-text mb-3">Trending picks</h3>
+                  <h3 className="text-meta font-bold text-text mb-3">Most sources</h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {trending.map((pack) => (
                       <Link
@@ -610,13 +641,48 @@ function CatalogBrowser({
                 <StepFlow packs={packs} state={state} onChange={apply} />
               </div>
               {spotlight && <SpotlightCard pack={spotlight} currency={currency} />}
+
+              {newestRow.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="mb-3 text-meta font-bold text-text">Newest survivors</h3>
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {newestRow.map((pack) => (
+                      <PackCard key={pack.id} pack={pack} currency={currency} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {editorial && tailPacks.length > 0 && (
+                <h3 className="mb-3 text-meta font-bold text-text">
+                  The rest of the catalogue, newest first
+                </h3>
+              )}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {gridPacks.map((pack, i) => (
-                  <div key={pack.id} className="animate-rise" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
+                {tailPacks.map((pack, i) => (
+                  <div
+                    key={pack.id}
+                    /* `hidden`, not unmounted. Dropping the nodes would strip 37 internal links
+                       out of the server HTML to win a scroll bar. */
+                    className={cx('animate-rise', i >= shown && 'hidden')}
+                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                  >
                     <PackCard pack={pack} currency={currency} />
                   </div>
                 ))}
               </div>
+              {shown < tailPacks.length && (
+                <div className="mt-8 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(true)}
+                    className="inline-flex items-center gap-2 border border-text bg-transparent px-6 py-3 text-meta font-bold text-text transition-colors hover:bg-text hover:text-white"
+                  >
+                    Browse all {tailPacks.length + newestRow.length + (spotlight ? 1 : 0)} packs
+                    <Icon name="arrowRight" size={15} />
+                  </button>
+                </div>
+              )}
               {/* Boost, don't block: every other market's packs are still fully on the shelf,
                   clearly separated rather than mixed in or hidden. */}
               {grouped.others.map((group) => (
@@ -714,7 +780,7 @@ function CatalogBrowser({
  * question a client brings them, and a pack answers one we chose. That difference is the actual
  * reason the price can be £49, so burying it would be arguing badly as well as dishonestly.
  */
-function MethodCostAnchor() {
+function MethodCostAnchor({ range }: { range: PriceRange | null }) {
   const documentary = citedFigure('documentary-research');
   return (
     <div className="mt-12 border border-border bg-bg/40 p-6 md:p-8">
@@ -741,7 +807,7 @@ function MethodCostAnchor() {
             A pack, already run
           </dt>
           <dd className="mt-2 text-meta leading-relaxed text-text/80">
-            <span className="font-semibold text-text">£49</span>
+            <span className="font-semibold text-text">{range ? range.label : 'One payment'}</span>
             <span className="mt-1 block text-caption text-muted">
               one payment, {PACK_CONTENTS.length} documents, every claim sourced
             </span>
@@ -756,7 +822,7 @@ function MethodCostAnchor() {
   );
 }
 
-function ComparisonBlock() {
+function ComparisonBlock({ range }: { range: PriceRange | null }) {
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
     // Counted, never typed. This row said "four documents" while the bundle had grown to eight,
@@ -769,7 +835,12 @@ function ComparisonBlock() {
   ];
   return (
     <div className="mt-14">
-      <h2 className="text-h2 font-bold tracking-tight text-text md:text-h2">Why £49 once, not another subscription</h2>
+      {/* The number is the mode, not the floor: this heading is an argument about paying ONCE,
+          and quoting the cheapest pack under it would make the comparison flattering rather than
+          representative. `priceSentence` states both figures where the buyer is actually deciding. */}
+      <h2 className="text-h2 font-bold tracking-tight text-text md:text-h2">
+        Why {range ? `${formatGbp(range.mode)} once` : 'one payment'}, not another subscription
+      </h2>
       <p className="mt-2 max-w-[64ch] text-meta leading-relaxed text-muted md:text-body">
         Idea feeds and trend tools sell you the search. We sell you the answer to one.
       </p>
@@ -807,7 +878,9 @@ function ComparisonBlock() {
             </span>
             <span className="text-body font-bold text-text">A Mumchimp Pack</span>
           </div>
-          <p className="mt-1.5 text-meta font-semibold text-success">£49 one time, yours forever</p>
+          <p className="mt-1.5 text-meta font-semibold text-success">
+            {range ? `${formatGbp(range.mode)} one time` : 'One payment'}, yours forever
+          </p>
           <dl className="mt-5 space-y-3.5">
             {rows.map((r) => (
               <div key={r.label} className="flex flex-col gap-0.5">
@@ -832,13 +905,19 @@ export default function Home({ packs, stats, initialState, market, currency, per
   // The live "N live now" figure is rendered by <Heartbeat>, which takes `stats` directly, so the
   // duplicate `stats?.listed ?? packs.length` that used to sit here was computed and dropped.
   const { variant } = useCopyVariant();
+  /* Every price claim on this page is computed from the packs this render already holds. The
+     shelf stopped being one price when the segment ladder shipped (`feat(pricing)` #105/#107);
+     see lib/priceRange.ts for the measurement that made each of the four claims below false. */
+  const range = priceRange(packs);
   return (
     // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
     // above the header, and so a card anywhere on the page can reach it without prop threading.
     <BuyDrawerProvider currency={currency}>
     <MarketingLayout>
       <Seo
-        title="Business ideas that survived six brutal checks. Researched and ready to build, £49 each"
+        title={`Business ideas that survived six brutal checks. Researched and ready to build${
+          range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
+        }`}
         /* The catalogue as structured data. The shelf below is filtered and sorted in the browser,
            so what a crawler keeps is whatever the server happened to send; this block states the
            full list once, in order, with a real URL per pack. It is also the single cheapest thing
@@ -872,7 +951,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
         <div className="flex flex-col gap-8 md:grid md:grid-cols-2 md:items-center">
           <div className="min-w-0 w-full">
     <p className="mb-1.5 text-caption font-bold uppercase tracking-[0.2em] text-muted">
-          Stress tested business ideas · £49 each
+          Stress tested business ideas{range ? ` · ${range.uniform ? `${range.label} each` : `from ${formatGbp(range.min)}`}` : ''}
         </p>
         {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
             "0", so it means a different number of pixels in every font: the old max-w-[24ch]
@@ -946,7 +1025,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <Section
         bg="white"
         width="6xl"
-        title={<span className="font-black">What you get for £49</span>}
+        title={<span className="font-black">What you get{range ? `, at every price` : ''}</span>}
         intro={`One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`}
         className="!py-14 md:!py-20"
       >
@@ -954,7 +1033,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             above the shelf; they answer "what am I actually buying and what if it's wrong?",
             which is a question asked at the deliverable list, not at the headline. */}
         <div className="mb-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
-          <TrustPill icon="money" label="£49, one payment" />
+          <TrustPill icon="money" label={range ? `${range.label}, one payment` : 'One payment'} />
           <TrustPill icon="shield" label="14 day money back" />
           <TrustPill icon="check" label="Every claim sourced" />
           <TrustPill icon="download" label="Instant download" />
@@ -965,8 +1044,8 @@ export default function Home({ packs, stats, initialState, market, currency, per
             rows from the free sample, including the check that failed, a preview of eight
             green ticks would advertise better and claim something the shop does not. */}
         <DossierPreview />
-        <MethodCostAnchor />
-        <ComparisonBlock />
+        <MethodCostAnchor range={range} />
+        <ComparisonBlock range={range} />
       </Section>
 
       {/* 4. WHY TRUST IT, condensed reassurance, sits below the shelf, not above it. */}
@@ -1040,10 +1119,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
       {/* N1: the single trust-and-guarantees row above the CtaBand. Five facts,
           one place. The buyer who scrolls the page from top to bottom sees
           the trust once, definitively. */}
-      <TrustGuaranteesRow listed={stats?.listed} />
+      {/* `price` computed from the packs this render already has, never a constant -- the shelf
+          stopped being one price when the segment ladder shipped (lib/priceRange.ts). */}
+      <TrustGuaranteesRow listed={stats?.listed} price={range ?? undefined} />
 
       <CtaBand
-        title="Find your next business for £49."
+        title={range ? `Find your next business from ${formatGbp(range.min)}.` : 'Find your next business.'}
         lead="One payment. Every claim sourced. 14 day money back guarantee."
         primary={{ href: '#catalog', label: 'Browse the packs' }}
         secondary={{ href: '/how-it-works', label: 'How it works' }}
@@ -1104,7 +1185,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
     const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
     // N2: derive the personalised row. The most recently viewed pack anchors
     // the similarity. If the cookie is empty or the anchor pack is no
-    // longer in the catalogue, the row is hidden and "Trending picks" is
+    // longer in the catalogue, the row is hidden and "Most sources" is
     // shown instead (the existing default).
     const personalised: Pack[] = (() => {
       if (recentlyViewedIds.length === 0) return [];

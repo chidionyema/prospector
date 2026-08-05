@@ -110,14 +110,14 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // three overlapping paragraphs, which is also the only shape an A/B result can be read from.
     globalHookLead: 'Business ideas with the research already done.',
     globalHookDescription:
-      'Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
+      'Each pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
 
     howItWorksEyebrow: 'The panel',
     howItWorksTitle: 'Every idea faces a panel built to kill it.',
     howItWorksLead:
       'Before anything reaches the store, it runs a gauntlet of AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every £49 pack is a grounded business opportunity, vetted against six checks and sourced to retrievable evidence before it can be listed.',
+      'How Mumchimp works: every pack is a grounded business opportunity, vetted against six checks and sourced to retrievable evidence before it can be listed.',
 
     sixChecksTitle: 'The six checks, one kill, and it stops',
     sixChecksDescription:
@@ -133,7 +133,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   b: {
     globalHookLead: 'Business ideas with the economics already verified.',
     globalHookDescription:
-      'Each £49 pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
+      'Each pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
 
     howItWorksEyebrow: 'The panel',
     howItWorksTitle: 'Every idea is tested to destruction.',
@@ -156,7 +156,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   c: {
     globalHookLead: 'Business ideas with a source behind every number.',
     globalHookDescription:
-      'Each £49 dossier is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
+      'Each dossier is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
 
     howItWorksEyebrow: 'The methodology',
     howItWorksTitle: 'An adversarial review process.',

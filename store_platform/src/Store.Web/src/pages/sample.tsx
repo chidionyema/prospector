@@ -63,7 +63,7 @@ export default function SamplePage() {
         </h1>
         <p className="mx-auto mt-6 max-w-[60ch] text-body leading-relaxed text-text/75 md:text-body">
           This is one full verification dossier, unredacted. Every check, every verdict, and every clickable
-          source behind it. The same rigour sits behind every £49 pack in the catalogue. Read this one first,
+          source behind it. The same rigour sits behind every pack in the catalogue. Read this one first,
           on the house.
         </p>
         <div className="mx-auto mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-meta font-semibold text-muted">
@@ -210,7 +210,7 @@ export default function SamplePage() {
             That was free. Every pack on the shelf is built like this.
           </h2>
           <p className="mx-auto mt-3 max-w-[56ch] text-body leading-relaxed text-text/75">
-            The £49 pack adds the build spec, the go to market plan, and the operations playbook on top of the
+            A pack adds the build spec, the go to market plan, and the operations playbook on top of the
             dossier you just read. One payment, yours to keep.
           </p>
           <Link

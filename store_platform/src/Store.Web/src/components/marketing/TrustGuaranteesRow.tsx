@@ -17,7 +17,22 @@ import killTotals from '@/data/kill-log-totals.json';
  * page from top to bottom sees the trust once, definitively, and links to
  * the rest of the trust surface from here.
  */
-export default function TrustGuaranteesRow({ className, listed }: { className?: string; listed?: number }) {
+export default function TrustGuaranteesRow({
+  className,
+  listed,
+  price,
+}: {
+  className?: string;
+  listed?: number;
+  /*
+   * The price fact, computed by the caller from the packs it already has
+   * (`priceRange(packs)`). It was the hardcoded string "£49 once" while 13 of the 61 live packs
+   * were not £49 -- and this row is the page's canonical "what am I actually buying?" surface,
+   * so it was the most load-bearing wrong number on the site. Omitted (no catalogue to hand)
+   * falls back to the claim that is true at any price: one payment.
+   */
+  price?: { label: string; uniform: boolean };
+}) {
   // Source: the canonical kill-log totals. killed + passed is the total
   // "researched" figure. Those two are historical, so a build-time snapshot is
   // the right shape for them.
@@ -40,7 +55,11 @@ export default function TrustGuaranteesRow({ className, listed }: { className?: 
   const researched = killed + passed;
 
   const facts: { icon: 'money' | 'shield' | 'verified' | 'shield' | 'released'; label: string; value: string }[] = [
-    { icon: 'money', value: '£49 once', label: 'no subscription, no renewal' },
+    price
+      ? price.uniform
+        ? { icon: 'money' as const, value: `${price.label} once`, label: 'no subscription, no renewal' }
+        : { icon: 'money' as const, value: price.label, label: 'one payment, priced per pack' }
+      : { icon: 'money' as const, value: 'One payment', label: 'no subscription, no renewal' },
     { icon: 'shield', value: '14 day money back', label: 'no questions, no forms' },
     { icon: 'verified', value: `${researched.toLocaleString('en-GB')} researched`, label: 'every one cited' },
     { icon: 'shield', value: `${killed.toLocaleString('en-GB')} killed`, label: 'the ones that did not survive' },

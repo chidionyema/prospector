@@ -49,7 +49,7 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What am I actually buying?',
     answer: [
-      'A £49 pack: a grounded business opportunity dossier in four parts, a build spec, a go to market plan, an operations and financial model, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears.',
+      'A pack: a grounded business opportunity dossier in four parts, a build spec, a go to market plan, an operations and financial model, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears. Packs are priced individually and the price is shown on every pack page; whichever you pick it is one payment, with no subscription.',
     ],
   },
   { category: 'packs',
