@@ -808,13 +808,97 @@ personas:
       min_composite_to_pass: 3.4
 
 listing:
-  price_pence: 4900              # Single £49 pack — the commerce path is the truth
+  price_pence: 4900              # The DEFAULT rung. An unclassified pack holds here, forever.
   publish_on: pass
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
   exclusivity: true
   subscription: true
-  pricing: { driver: composite, premium_axis: automatability }
+  pricing:
+    driver: composite            # legacy, unread — the ladder below decides price
+    premium_axis: automatability # legacy, unread
+
+    # ---- L1 price ladder (spec: specs/d1-pricing-ladder-spec.md) ----
+    # Price is a rung on a fixed ladder, never a computed continuous number. Discrete
+    # rungs are what make a price change legible ("we moved smb/uk up one rung"),
+    # comparable across packs, and safe to reason about — a continuous function
+    # produces £63.41 and nobody can say why.
+    #
+    # These numbers are a HYPOTHESIS, not a finding. There is no willingness-to-pay
+    # evidence behind them yet; that is what the price_comparables check (C3) and the
+    # storefront events (D2) exist to produce. They are pinned here so the ladder is
+    # deterministic and so moving one is a visible, reviewable act.
+    rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
+
+    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4900: an
+    # unclassified pack is one we know nothing about, and guessing at its price is
+    # strictly worse than holding the price the whole catalogue already sells at.
+    default_rung_index: 2
+
+    # The ambition tier is the BAR the idea was vetted against, which is the closest
+    # proxy we have for the buyer's own scale — a side_hustle pack is bought by an
+    # individual, a venture pack by someone raising against it. side_hustle sits at
+    # 2900 because config already calls it "the £30-pack lane" (see lanes.side_hustle).
+    tier_rung_index:
+      side_hustle: 1             # 2900
+      smb: 2                     # 4900
+      growth: 3                  # 7900
+      venture: 5                 # 14900
+
+    # `market` is the jurisdiction the OPPORTUNITY lives in, not the buyer's locale —
+    # packs sell in GBP wherever they sell (models.py Candidate.market). A US-market
+    # opportunity addresses a larger economy, so it earns one rung, not a multiplier.
+    # An offset keeps every output on the ladder; a multiplier would not.
+    market_rung_offset:
+      uk: 0
+      us: 1
+
+    # ---- C3: price_comparables (prospector/price_comparables.py) ----
+    # The evidence side of pricing. Runs once per candidate that survived every hard gate,
+    # pooling the willingness-to-pay passages the six checks already fetched with a few
+    # price-page searches, and extracting CITED prices buyers demonstrably already pay.
+    # It can never kill (models.PRICING_CHECK is barred in kill_filter and in verify's
+    # run order) — "no price page on the open web" is a fact about the web, not the idea.
+    comparables:
+      # Retrieval and extraction. On, because the passages are already being paid for and
+      # binned; the marginal cost is 3 searches + 1 extraction call per SURVIVOR, and
+      # survivors are rare.
+      enabled: true
+
+      # Acting on the evidence. OFF, and separately from `enabled` on purpose: retrieving
+      # evidence and letting it move money are two decisions. Turn this on deliberately,
+      # after reading anchors that real runs produced — not on the day the check merges.
+      rung_adjust_enabled: false
+
+      # Aimed at price PAGES. "market size" queries return analyst press releases whose
+      # numbers are not prices, which is precisely the failure the bounds rail below
+      # exists to catch as a second line of defence.
+      queries:
+        - "{q} pricing how much does it cost"
+        - "{q} price per month subscription plans"
+        - "{q} course OR template OR toolkit price"
+
+      # FX is DECLARED, never inferred. An anchor in a currency absent from this map is
+      # kept as readable evidence in the dossier but carries no pence value and can never
+      # move a price — a guessed exchange rate is an unsourced number on the money path.
+      # Add a rate here only with a dated source next to the commit that adds it.
+      fx_to_gbp:
+        GBP: 1.0
+
+      # A monthly SaaS seat is not comparable to a one-off pack, and the multiplier that
+      # would make it so is a commercial judgement, not a retrievable fact. Only one_off
+      # anchors are eligible to move a rung; the rest still appear in the dossier.
+      cadence_eligible: ["one_off"]
+
+      # Sane price band in GBP pence, applied AFTER conversion. Below £1 is noise; above
+      # £5,000 is a contract value, a salary, or a market size the model mislabelled.
+      min_anchor_pence: 100
+      max_anchor_pence: 500000
+
+      # The bar for "evidence" rather than "anecdote". Domains are counted distinctly:
+      # three prices off one vendor's pricing page are one data point wearing three hats.
+      min_anchors: 3
+      min_domains: 2
 
 # Storefront payment rail. MUST match the provider the Store API bills through: checkout
 # builds a Stripe Checkout Session from the pack's ProviderPriceId, so a pack provisioned

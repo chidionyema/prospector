@@ -59,7 +59,19 @@ CHECKS: dict[str, str] = {
     "claims_verifiable": ("Can the core factual claims be checked against retrievable public sources "
                           "rather than merely asserted — and do the sources confirm rather than "
                           "contradict them?"),
+    # ---- Evidence-only check (C3). NEVER a kill gate; see PRICING_CHECK below. ----
+    "price_comparables": ("What do buyers demonstrably ALREADY pay for the closest existing "
+                          "alternatives to this — a priced product, service, tool, or course that "
+                          "solves the same problem? Only a price stated in a retrieved passage "
+                          "counts; an unpriced competitor is not evidence of anything."),
 }
+
+# `price_comparables` produces a cited price ANCHOR, not a verdict about the idea's merit.
+# It is barred from the kill path structurally (kill_filter.is_hard_fail, verify run_order)
+# rather than by config omission, because a config edit is a data change that never passes
+# through code review — and a pricing check that could kill would let "no comparable found"
+# read as "this idea is dead", which it is not.
+PRICING_CHECK = "price_comparables"
 
 # The default run set when no ambition lane is active (the original universal moat checks,
 # in kill-fast order). Lanes declare their own run set via hard_gates + `score_checks`.
@@ -209,6 +221,58 @@ class AdversarialResult:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass
+class PriceAnchor:
+    """One price a buyer demonstrably already pays, lifted from a retrieved passage.
+
+    Every field except `amount_pence_gbp` comes from the passage. `amount_pence_gbp` is the
+    only DERIVED number here, and it is populated only when config declares an FX rate for
+    `currency` — an anchor we cannot convert is kept (it is still evidence a human can read)
+    but is never eligible to move a price, because a made-up exchange rate is exactly the
+    unsourced number the source-or-die rule exists to keep off the money path.
+    """
+    amount: float
+    currency: str            # "GBP" / "USD" / "" when the passage did not say
+    cadence: str             # one_off | monthly | annual | unknown
+    what: str                # what the money buys, in the passage's own terms
+    source_id: str
+    url: str = ""
+    amount_pence_gbp: Optional[int] = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class ComparablesResult:
+    """The output of the `price_comparables` check for one candidate.
+
+    `rejected` is deliberately part of the record, not a log line. It is the receipt that
+    the grounding rails actually ran: an anchor the model invented, or cited to a passage
+    that never mentions that number, appears here with its reason rather than vanishing.
+    """
+    anchors: list[PriceAnchor] = field(default_factory=list)
+    rejected: list[dict[str, Any]] = field(default_factory=list)
+    queries: list[str] = field(default_factory=list)
+    sources: list[Source] = field(default_factory=list)
+    rationale: str = ""
+    provider: str = ""
+    provisional: bool = False
+    degraded: bool = False   # no passages, or the extraction call failed — never a kill
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "anchors": [a.to_dict() for a in self.anchors],
+            "rejected": list(self.rejected),
+            "queries": list(self.queries),
+            "sources": [s.to_dict() for s in self.sources],
+            "rationale": self.rationale,
+            "provider": self.provider,
+            "provisional": self.provisional,
+            "degraded": self.degraded,
+        }
 
 
 @dataclass

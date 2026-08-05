@@ -16,8 +16,8 @@ from typing import Callable, Optional
 from .config import Config
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .kill_filter import is_hard_fail
-from .models import (CHECKS, DEFAULT_CHECKS, DEFER_GATE, AdversarialResult, Candidate,
-                     CheckResult, Source, Verdict)
+from .models import (CHECKS, DEFAULT_CHECKS, DEFER_GATE, PRICING_CHECK, AdversarialResult,
+                     Candidate, CheckResult, Source, Verdict)
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
@@ -634,7 +634,12 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
         run_order = gated + extras
     else:
         run_order = gated + [c for c in DEFAULT_CHECKS if c not in gated]
-    
+    # PRICING_CHECK never joins the kill-fast run order, however config names it. It is not
+    # a verdict on the idea and the generic verdict prompt would produce a meaningless
+    # supported/refuted for it; it runs after the run set survives, via
+    # price_comparables.run_price_comparables, and produces anchors instead of a verdict.
+    run_order = [c for c in run_order if c != PRICING_CHECK]
+
     first_failing_gate = None
 
     # BATCHED LLM query-gen: ONE call decomposes the idea into real-world search queries
@@ -736,6 +741,30 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
                             "after_check": name,
                         }
                     return checks, None, soft
+
+    # C3 — price_comparables. Runs ONLY on a candidate that survived every hard gate: a
+    # killed idea is never priced, so anchoring one is spend with no consumer. Its output
+    # is evidence, never a verdict, so it is attached to the candidate rather than appended
+    # to `checks` — putting it in `checks` would let it reach kill_filter/apply_gates and
+    # the pass-ceiling logic, none of which should ever see it.
+    #
+    # `skip_adversarial` is the golden-set harness isolating the six-check logic
+    # (see the docstring above); anchors are not part of that contract, so skip the spend.
+    if (first_failing_gate is None and not skip_adversarial
+            and getattr(cand, "tags", None) is not None):
+        from .price_comparables import comparables_config, run_price_comparables
+        if comparables_config(cfg)["enabled"]:
+            try:
+                pooled = [s for c in checks for s in (c.sources or [])]
+                comps = run_price_comparables(op, search, cfg, cand,
+                                              pooled_sources=pooled)
+                cand.tags["price_comparables"] = comps.to_dict()
+            except GroundingInfrastructureError:
+                raise  # all retrieval providers dead — halt the run, same as a check
+            except Exception as e:
+                # Evidence-only: a failure here must never change the verdict on the idea.
+                logger.error(f"price_comparables step failed (continuing unpriced): {e}",
+                             extra={"candidate_id": getattr(cand, "candidate_id", None)})
 
     # adversarial() calls op.complete_json — if the moat chain (Claude → Gemini) is
     # exhausted, it raises ProviderExhaustedError.  Catch it here so the candidate

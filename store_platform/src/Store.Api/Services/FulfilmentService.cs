@@ -71,23 +71,9 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
             return;
         }
 
-        // SECURITY (founder fence) — the catalogue price is the source of truth, never the
-        // webhook body. A valid signature only proves the payload came from the provider; it
-        // does not prove the buyer paid the listed price. Coupons, a $0/discounted session, a
-        // mispriced provider product, or — if a webhook signing secret ever leaks — a forged
-        // underpayment would otherwise mint a full entitlement. Refuse to grant unless the
-        // paid currency is the store currency and the amount covers Pack.PricePence. Money is
-        // never dropped: the Order is already recorded above; route the item to unfulfilled so
-        // the operator reconciles it instead of the buyer getting paid content for free.
-        if (!string.Equals(txn.Currency, StoreCurrency, StringComparison.OrdinalIgnoreCase))
+        if (UnderpaymentReason(txn, item, pack) is { } refusal)
         {
-            unfulfilled.Add($"{item.ProductId} (currency {txn.Currency} != {StoreCurrency})");
-            return;
-        }
-
-        if (item.AmountPence < pack.PricePence)
-        {
-            unfulfilled.Add($"{item.ProductId} (paid {item.AmountPence}p < price {pack.PricePence}p)");
+            unfulfilled.Add(refusal);
             return;
         }
 
@@ -104,6 +90,39 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
         };
         db.Entitlements.Add(entitlement);
         created.Add(entitlement);
+    }
+
+    /// <summary>
+    /// SECURITY (founder fence) — returns why this payment must not be granted, or null to grant.
+    ///
+    /// The catalogue is the source of truth, never the webhook body. A valid signature only proves
+    /// the payload came from the provider; it does not prove the buyer paid what we asked. Coupons,
+    /// a discounted or zero-value session, a mispriced provider product, or — if a webhook signing
+    /// secret ever leaks — a forged underpayment would otherwise mint a full entitlement.
+    ///
+    /// Money is never dropped when this refuses: the Order is already recorded by the caller, and
+    /// the item is routed to unfulfilled so an operator reconciles it, rather than the buyer
+    /// receiving paid content for free.
+    ///
+    /// The amount is checked against the pack's effective FLOOR, not against its current price.
+    /// Those are the same number except while a price change drains, and checking the price is
+    /// what made any price change strand paying buyers: a Checkout Session lives up to 24h, so at
+    /// the moment of a rise there are live sessions minted at the old, lower price, and gating
+    /// them on the new price refuses a payment that has already been taken. The floor is the
+    /// lowest amount any live session could carry, so it refuses genuine underpayment and nothing
+    /// else. See Pack.EffectiveFloorPence.
+    /// </summary>
+    private static string? UnderpaymentReason(PaymentTransaction txn, PurchasedItem item, Pack pack)
+    {
+        if (!string.Equals(txn.Currency, StoreCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{item.ProductId} (currency {txn.Currency} != {StoreCurrency})";
+        }
+
+        var floorPence = pack.EffectiveFloorPence(DateTime.UtcNow);
+        return item.AmountPence < floorPence
+            ? $"{item.ProductId} (paid {item.AmountPence}p < floor {floorPence}p)"
+            : null;
     }
 
     private async Task<FulfilmentOutcome> CommitAsync(

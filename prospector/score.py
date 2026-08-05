@@ -54,8 +54,8 @@ def score_candidate(op: Operator, cfg: Config, cand: Candidate,
 def passes_composite(score: Optional[ScoreResult], cfg: Config) -> bool:
     return bool(score) and score.composite >= cfg.thresholds.min_composite_to_pass
 
-
-def listing_price_signal(score: ScoreResult, cfg: Config) -> float:
-    """Price tracks composite, automatability weighted hardest (Part 6)."""
-    premium = cfg.listing.get("pricing", {}).get("premium_axis", "automatability")
-    return round(score.composite + 0.5 * float(score.scores.get(premium, 0)), 4)
+# `listing_price_signal` lived here: a composite-driven continuous price that nothing ever
+# called (zero callers repo-wide when it was removed on 2026-08-05). Price is now decided by
+# the segment ladder in prospector/pricing.py, deliberately NOT by the composite — see
+# test_pricing.test_score_does_not_move_the_price for why letting a score with a fail-safe
+# all-zero mode move money is a bad trade.

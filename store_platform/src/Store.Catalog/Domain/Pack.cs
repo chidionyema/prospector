@@ -6,6 +6,49 @@ public class Pack
     public required string Title { get; set; }
     public required string OneLine { get; set; }
     public long PricePence { get; set; }
+
+    // The fulfilment floor, which is NOT the same thing as the price and must not be confused
+    // with it. PricePence is the amount a freshly created checkout session mints at, and the
+    // amount the storefront shows. This is the lowest amount that any session which could still
+    // be paid right now was minted at.
+    //
+    // They are the same number in the steady state and diverge only while a price change drains.
+    // The reason they must be separate is that fulfilment gates delivery on the pack's CURRENT
+    // price (FulfilmentService, the founder-fence check), while Stripe Checkout Sessions live up
+    // to 24h — so a single column breaks in BOTH directions. On a cut from £49 to £29 with the
+    // provider changed first, the buyer pays 2900 while the pack still says 4900, and is charged
+    // without being delivered. On a rise from £49 to £79 with the catalogue changed first, a buyer
+    // holding a session minted at £49 pays 4900 against a 7900 floor, and is likewise charged
+    // without being delivered.
+    //
+    // Opposite orderings, so no ordering of two writes to one column is safe for both. Splitting
+    // the columns removes the race entirely rather than narrowing it.
+    //
+    // Use EffectiveFloorPence(now) to read it — never this field directly. The drain is expressed
+    // as data (this value plus MinBillableEffectiveAt) rather than as a scheduled job, so there is
+    // no tick to miss, no cron to drift, and the floor is correct even if the process was down for
+    // the whole drain window.
+    public long MinBillablePence { get; set; }
+
+    // When the drain ends and the floor rejoins PricePence. In the past (or default) means the
+    // pack is in its steady state and PricePence is the floor.
+    public DateTime MinBillableEffectiveAt { get; set; }
+
+    /// <summary>
+    /// The amount a payment must cover to be fulfilled, as of <paramref name="now"/>.
+    ///
+    /// Deliberately conservative: while a rise drains, this is the OLD, lower floor, so a buyer
+    /// who is mid-checkout at the old price is still served. A cut needs no drain — the new price
+    /// is already the minimum, so old higher-priced sessions clear it — and the mutator sets
+    /// MinBillableEffectiveAt to now in that case, making this return the new price immediately.
+    ///
+    /// Never returns more than the floor a live session could have been minted at, which is the
+    /// whole invariant: this fence exists to refuse genuine underpayment, and it must never be
+    /// the reason a paying customer is refused.
+    /// </summary>
+    public long EffectiveFloorPence(DateTime now) =>
+        now >= MinBillableEffectiveAt ? PricePence : MinBillablePence;
+
     public string PaymentProvider { get; set; } = "paddle";
     public string? ProviderProductId { get; set; }
     public string? ProviderPriceId { get; set; }
