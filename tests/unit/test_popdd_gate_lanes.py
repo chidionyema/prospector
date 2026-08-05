@@ -83,6 +83,28 @@ class TestTheLaneMapCoversEachSourceKind:
         assert any("test" in c for c in commands), commands
         assert web.cwd.name == "Store.Web"
 
+    def test_a_stylesheet_selects_the_web_lane(self, runner):
+        """The gate's header used to state CSS was uncoverable "short of a full next build".
+
+        It is not: five vitest suites read src/styles/globals.css as source text
+        (brandV2.test.ts:44, storefrontDesignContract.test.ts:21, uiPolishContract.test.ts:21,
+        monoIsTheDataVoice.test.ts:48, twoRadiiTwoShadows.test.ts:42) and assert the design
+        contract over it. Before this, a globals.css edit printed "nothing to prove" and
+        exited 0 — the same silent-pass shape that lost `.tsx`.
+        """
+        lanes, unclassified = runner.lanes_for(
+            ["store_platform/src/Store.Web/src/styles/globals.css"]
+        )
+        assert lanes == ["web"]
+        assert unclassified == []
+
+    def test_a_stylesheet_outside_the_storefront_blocks_rather_than_passing_silently(self, runner):
+        """globals.css is the only tracked .css today. A second one landing elsewhere has no
+        suite reading it, so it must be named as unproven, not treated as a non-source file."""
+        lanes, unclassified = runner.lanes_for(["docs/site/theme.css"])
+        assert lanes == []
+        assert unclassified == ["docs/site/theme.css"]
+
     def test_python_source_selects_the_python_lane(self, runner):
         assert runner.lanes_for(["prospector/verify.py"])[0] == ["python"]
 
@@ -124,6 +146,7 @@ class TestTheLaneMapCoversEachSourceKind:
             ".cjs": "store_platform/src/Store.Web/src/x.cjs",
             ".cs": "store_platform/src/Store.Api/X.cs",
             ".csproj": "store_platform/src/Store.Api/Store.Api.csproj",
+            ".css": "store_platform/src/Store.Web/src/styles/globals.css",
         }
         assert set(samples) == runner.SOURCE_EXTS, "a new source extension needs a lane + a sample"
         for ext, path in samples.items():

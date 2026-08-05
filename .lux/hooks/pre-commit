@@ -39,8 +39,21 @@
 #
 # LIMITATION (stated, not hidden): this proves "the lane's suite is green at
 # commit time", not per-function POPDD. Tighten later with `lux spec verify <fn>`
-# + action=='verify' receipts. `.css` under Store.Web is still uncovered — no
-# cheap local proof exists for it short of a full `next build`.
+# + action=='verify' receipts.
+#
+# CSS is now covered, but only to a stated depth. `.css` under Store.Web selects
+# the web lane, because five vitest suites read src/styles/globals.css as source
+# text and assert the design contract over it. That proves the declared tokens,
+# the one-colour rule and the radius/shadow set survive an edit. It does NOT
+# prove anything renders: the two CSS bugs this repo has shipped (a var()
+# resolved at its declaration site; an @theme token no consumer reached) were
+# green in every suite, and a `next build` would have been green on both.
+#
+# STILL UNCOVERED, deliberately: pi-governance/src/index.ts. It has no proof to
+# run — pi-governance/package.json declares no scripts, there is no tsconfig.json
+# and no node_modules, so there is nothing to typecheck it with. It therefore
+# BLOCKS as unproven rather than passing, which is the correct answer to "I
+# cannot prove this" and is asserted by tests/unit/test_popdd_gate_lanes.py.
 # Bypass is `--no-verify` (logged by git as a choice).
 #
 # Install:  ln -sf ../../.lux/hooks/pre-commit .git/hooks/pre-commit

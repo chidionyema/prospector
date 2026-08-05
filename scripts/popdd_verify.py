@@ -64,11 +64,22 @@ TEST_TIMEOUT_SECONDS = int(os.environ.get("POPDD_TEST_TIMEOUT", "600"))
 
 # Extensions that must be covered by SOME lane. A file with one of these that matches no
 # lane blocks the commit rather than sailing through unproven.
-SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj"}
+SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj", ".css"}
 
 # Extensions the storefront's own proof (tsc + vitest) can speak to. `.json` is here for
 # package.json / tsconfig.json, which change what typecheck and vitest actually run.
-WEB_EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json"}
+#
+# `.css` is here because the claim "no cheap local proof exists for CSS short of a full
+# `next build`" is false, and was checked: five suites read src/styles/globals.css as
+# source text and assert design-contract invariants over it —
+#   brandV2.test.ts:44, storefrontDesignContract.test.ts:21, uiPolishContract.test.ts:21,
+#   monoIsTheDataVoice.test.ts:48, twoRadiiTwoShadows.test.ts:42.
+# What that buys is narrow and worth naming: it proves the declared tokens, the one-colour
+# rule and the radius/shadow set survive an edit. It does NOT prove anything renders — the
+# two CSS bugs this repo has actually shipped (a var() resolved at its declaration site, an
+# @theme token no consumer reached) were both green in every suite, and a `next build`
+# would have been green on both too. So this is a real net, not the whole net.
+WEB_EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css"}
 
 WEB_REL = "store_platform/src/Store.Web/"
 
