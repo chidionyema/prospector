@@ -808,13 +808,50 @@ personas:
       min_composite_to_pass: 3.4
 
 listing:
-  price_pence: 4900              # Single £49 pack — the commerce path is the truth
+  price_pence: 4900              # The DEFAULT rung. An unclassified pack holds here, forever.
   publish_on: pass
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
   exclusivity: true
   subscription: true
-  pricing: { driver: composite, premium_axis: automatability }
+  pricing:
+    driver: composite            # legacy, unread — the ladder below decides price
+    premium_axis: automatability # legacy, unread
+
+    # ---- L1 price ladder (spec: specs/d1-pricing-ladder-spec.md) ----
+    # Price is a rung on a fixed ladder, never a computed continuous number. Discrete
+    # rungs are what make a price change legible ("we moved smb/uk up one rung"),
+    # comparable across packs, and safe to reason about — a continuous function
+    # produces £63.41 and nobody can say why.
+    #
+    # These numbers are a HYPOTHESIS, not a finding. There is no willingness-to-pay
+    # evidence behind them yet; that is what the price_comparables check (C3) and the
+    # storefront events (D2) exist to produce. They are pinned here so the ladder is
+    # deterministic and so moving one is a visible, reviewable act.
+    rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
+
+    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4900: an
+    # unclassified pack is one we know nothing about, and guessing at its price is
+    # strictly worse than holding the price the whole catalogue already sells at.
+    default_rung_index: 2
+
+    # The ambition tier is the BAR the idea was vetted against, which is the closest
+    # proxy we have for the buyer's own scale — a side_hustle pack is bought by an
+    # individual, a venture pack by someone raising against it. side_hustle sits at
+    # 2900 because config already calls it "the £30-pack lane" (see lanes.side_hustle).
+    tier_rung_index:
+      side_hustle: 1             # 2900
+      smb: 2                     # 4900
+      growth: 3                  # 7900
+      venture: 5                 # 14900
+
+    # `market` is the jurisdiction the OPPORTUNITY lives in, not the buyer's locale —
+    # packs sell in GBP wherever they sell (models.py Candidate.market). A US-market
+    # opportunity addresses a larger economy, so it earns one rung, not a multiplier.
+    # An offset keeps every output on the ladder; a multiplier would not.
+    market_rung_offset:
+      uk: 0
+      us: 1
 
 # Storefront payment rail. MUST match the provider the Store API bills through: checkout
 # builds a Stripe Checkout Session from the pack's ProviderPriceId, so a pack provisioned
