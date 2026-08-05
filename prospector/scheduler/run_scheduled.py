@@ -164,7 +164,15 @@ def _default_generate(cfg, batch_size: int) -> dict:
         try:
             resumed = resume_deferred(cfg, limit=n_resume, publish=True)
             logger.info("Tick resume pass: %s", resumed)
-            print(f"↻ tick resume pass: {resumed}", flush=True)
+            # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
+            # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and
+            # every other daemon diagnostic — the whole progress stream, progress.py:43 —
+            # goes to stderr. Measured 2026-08-05 while the daemon held fd 1 open on it:
+            # launchd.out.log was 1 byte, mtime Jun 24. So a print to stdout is not "the
+            # daemon log"; it is a file no operator and no probe has ever read. Printing
+            # the drain's outcome into a second, empty file is the same invisibility this
+            # print exists to fix, just relocated.
+            print(f"↻ tick resume pass: {resumed}", file=sys.stderr, flush=True)
         except Exception as exc:  # noqa: BLE001
             # A drain failure must never cost the tick its generation batch — the backlog has
             # waited weeks already and can wait one more tick. Recorded, not raised.
@@ -176,9 +184,10 @@ def _default_generate(cfg, batch_size: int) -> dict:
             # and "Unproductive tick" (both logger.info) appear zero times. So the first live
             # tick after this shipped swallowed the drain's outcome entirely and the pass was
             # indistinguishable from never having run. A failure that only logs at WARNING is
-            # invisible here; that is the whole reason this line is a print.
+            # invisible here; that is the whole reason this line is a print. It goes to
+            # STDERR for the reason spelled out on the success branch above.
             print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
-                  flush=True)
+                  file=sys.stderr, flush=True)
 
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
@@ -304,6 +313,12 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         "dry_run": dry_run,
         "today_spend_usd": decision.today_spend_usd,
         "daily_cap_usd": decision.daily_cap_usd,
+        # Recorded even though only the metered leg is enforced by default: for weeks the tick
+        # row carried one figure covering 2% of the day's model consumption and every reader
+        # (probe, control centre, me) took it for the whole. See scheduler/guard.py.
+        "today_subscription_usd": decision.today_subscription_usd,
+        "daily_subscription_cap_usd": decision.daily_subscription_cap_usd,
+        "spend_day": decision.day,  # LOCAL calendar day, not UTC — the rollover misled once
         "batch_size": batch_size if decision.can_run else None,
         "result": None,
         "error": None,
@@ -567,7 +582,12 @@ def _status_lines(cfg) -> list[str]:
     d = guard_from_config(cfg).evaluate()
     pause = "PAUSED (store/scheduler/PAUSE present)" if not d.can_run and "pause" in d.reason.lower() else d.reason
     out.append(f"  guard       : {'OK' if d.can_run else 'BLOCKED'} — {pause}")
-    out.append(f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap")
+    out.append(f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap "
+               f"(metered/billed, local day {d.day})")
+    sub_cap = (f"of ${d.daily_subscription_cap_usd:.2f} cap"
+               if d.daily_subscription_cap_usd > 0 else "UNCAPPED")
+    out.append(f"  cli usage   : ${d.today_subscription_usd:.2f} {sub_cap} "
+               f"(Claude Code subscription-equivalent, not billed)")
 
     agg = _aggregate_ticks(cfg)
     if agg["ticks"]:

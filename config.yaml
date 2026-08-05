@@ -934,8 +934,17 @@ dedup_token_threshold: 0.34
 schedule: { cadence: daily, batch_size: 15 }
 
 spend:
+  # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
   daily_cap_usd: 20.0
   warn_at_usd: 15.0
+  # Claude Code CLI burn, which `daily_cap_usd` structurally cannot see: the CLI logs its own
+  # cost under `cost_usd` with no `event: spend` tag, so the ledger scan skips it. Measured
+  # 2026-08-05: metered $1.64, CLI $71.94 — the rail covered 2% of the day's consumption.
+  # It is subscription-equivalent, not invoiced, so it is NOT part of the liability cap.
+  # 0 = report only (current behaviour). Set a number to halt the daemon when the Max plan's
+  # usage allowance is the constraint you actually care about — CLAUDE.md's "run bounded
+  # batches inside the usage allowance".
+  daily_subscription_cap_usd: 0.0
 
 store:
   dir: store

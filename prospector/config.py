@@ -146,6 +146,12 @@ class Thresholds:
 class Spend:
     daily_cap_usd: float = 20.0
     warn_at_usd: float = 15.0
+    # Ceiling on SUBSCRIPTION-equivalent burn — the Claude Code CLI's own `total_cost_usd`,
+    # which `daily_cap_usd` cannot see (see scheduler/guard.py for the full measurement).
+    # 0 = disabled, which is the historical behaviour and the default: this is not billed
+    # money, so capping it is a decision about the Max plan's usage allowance, not about
+    # liability, and arming it silently would halt a daemon that is currently legal.
+    daily_subscription_cap_usd: float = 0.0
 
 
 @dataclass

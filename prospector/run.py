@@ -1095,14 +1095,57 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 "passes": 0, "kills": 0, "defers": 0}
 
     limit = getattr(args, "limit", None)
-    if limit is not None and limit > 0:
-        # Oldest first. `store.all` returns catalogue order; the oldest DEFERs are the ones
-        # that have been waiting longest (this backlog reaches back to 2026-06-24), and
-        # draining newest-first would starve them forever at 3 per tick.
-        pending = sorted(pending, key=lambda r: str(r.get("created_at", "")))[:limit]
+    if limit is not None and limit <= 0:
+        # 0 means "drain nothing" — NOT "drain everything". The old test was
+        # `if limit is not None and limit > 0`, so a 0 fell through to the unsliced
+        # `pending` and re-vetted the entire backlog (411 items on 2026-08-05) inside a
+        # single guard decision. The daemon guards the call with `if n_resume:`, so it was
+        # unreachable from there, but `schedule.resume_per_tick: 0` is documented as
+        # "disables the drain entirely" (run_scheduled.py:83) and `_resume_per_tick` floors
+        # negatives to 0 — one config edit or one direct call away from the exact unbounded
+        # pass the spend rail exists to prevent. Only `None` (the CLI default) means
+        # unbounded, which is what `vet --resume` has always done.
+        print(f"Found {backlog} deferred + provisional candidate(s); limit={limit} "
+              f"disables the drain — re-vetting none.")
+        return {"backlog": backlog, "attempted": 0, "resumed": 0,
+                "passes": 0, "kills": 0, "defers": 0}
+    # Oldest first. `store.all` returns catalogue order; the oldest DEFERs are the ones that
+    # have been waiting longest (this backlog reaches back to 2026-06-14), and draining
+    # newest-first would starve them forever at 3 per tick.
+    pending = sorted(pending, key=lambda r: str(r.get("created_at", "")))
+
+    # ORPHANS MUST NOT CONSUME THE BOUNDED PASS.
+    #
+    # The index and the disk disagree: some rows have no dossier JSON behind them. The loop
+    # below prints "dossier JSON missing, skipping" and moves on — which is right per row, and
+    # wrong for a bounded pass that always re-takes the OLDEST rows. The same unreadable rows
+    # were re-selected every single tick, so the pass burned its whole budget on them and did
+    # nothing else, forever.
+    #
+    # PROVEN on the live store 2026-08-06, first tick that ever ran the drain:
+    #   ticks.jsonl result -> 'resumed': {'backlog': 406, 'attempted': 3, 'resumed': 0, ...}
+    #   backlog 406, orphaned 46, leading unbroken run of orphans 45 (2026-06-14..06-21)
+    # At 3 per tick that is 15 consecutive ticks — ~1.2 days — of no-op drains reporting
+    # `attempted: 3` before the pass reaches its first real candidate.
+    #
+    # So the bound is spent on rows that can actually be re-vetted, and the orphan count is
+    # REPORTED rather than silently absorbed: a row in the index with nothing on disk is a
+    # store inconsistency the operator should see, not a slot the drain quietly wastes.
+    orphaned = 0
+    if limit is not None:
+        selected: list = []
+        for row in pending:
+            if len(selected) >= limit:
+                break
+            if store.get(row.get("candidate_id", "")):
+                selected.append(row)
+            else:
+                orphaned += 1
+        pending = selected
 
     print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
-          f"{len(pending)} of them with the moat...")
+          f"{len(pending)} of them with the moat..."
+          + (f" (skipped {orphaned} with no dossier JSON on disk)" if orphaned else ""))
     from .models import Candidate
     from .telemetry import get_usage_summary, reset_usage
     from . import progress
@@ -1159,8 +1202,13 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     usage = get_usage_summary()
     from .report import costs_report
     print(f"\n{costs_report(log_path or '')}")
-    return {"backlog": backlog, "attempted": len(pending), "resumed": len(resumed_dossiers),
-            "passes": n_pass, "kills": n_kill, "defers": n_defer}
+    summary = {"backlog": backlog, "attempted": len(pending), "resumed": len(resumed_dossiers),
+               "passes": n_pass, "kills": n_kill, "defers": n_defer}
+    if orphaned:
+        # Surfaced into the tick row so a store inconsistency is visible in ticks.jsonl and the
+        # state probe instead of showing up as an inexplicable `attempted: 3, resumed: 0`.
+        summary["orphaned"] = orphaned
+    return summary
 
 
 def resume_deferred(cfg: Config, *, limit: int | None = None,

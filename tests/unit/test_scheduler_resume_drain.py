@@ -110,8 +110,11 @@ def test_disabling_the_drain_skips_it_entirely(monkeypatch):
 class _FakeStore:
     """Minimal stand-in for Store — only the two readers `_cmd_resume` uses."""
 
-    def __init__(self, rows):
+    def __init__(self, rows, on_disk=None):
         self._rows = rows
+        # None => nothing is on disk (every row orphaned), which is the historical default
+        # here and the path that prints "dossier JSON missing, skipping".
+        self._on_disk = on_disk
 
     def all(self, decision=None):
         return [r for r in self._rows if r["decision"] == decision]
@@ -120,10 +123,29 @@ class _FakeStore:
         return [r for r in self._rows if r.get("provisional")]
 
     def get(self, cid):
-        return None  # forces the "dossier JSON missing, skipping" path — no vetting happens
+        if self._on_disk is None:
+            return None
+        return ({"candidate": {"title": cid}, "decision": "defer"}
+                if cid in self._on_disk else None)
 
 
-def test_the_bounded_pass_takes_the_oldest_first(capsys):
+def _stub_vetting(monkeypatch, seen):
+    """Replace the real vet with a recorder, so a test asserts on WHAT WAS RE-VETTED.
+
+    The old version of the ordering test asserted on printed output from a store where every
+    row was orphaned — so it passed while proving only that the banner mentioned the oldest id,
+    never that the candidate was actually put through the moat.
+    """
+    from prospector.models import Decision
+
+    def fake_vet(cand, *_a, **_k):
+        seen.append(cand.title)
+        return types.SimpleNamespace(decision=Decision.KILL)
+
+    monkeypatch.setattr("prospector.run.vet_candidate", fake_vet)
+
+
+def test_the_bounded_pass_takes_the_oldest_first(monkeypatch):
     """At 3 per tick, newest-first would starve the June backlog forever."""
     rows = [
         {"candidate_id": "new", "decision": "defer", "created_at": "2026-08-05T09:54:00+00:00"},
@@ -132,17 +154,80 @@ def test_the_bounded_pass_takes_the_oldest_first(capsys):
     ]
     from prospector import run as run_mod
 
+    seen: list[str] = []
+    _stub_vetting(monkeypatch, seen)
     summary = run_mod._cmd_resume(
         argparse.Namespace(limit=1, publish=False, board=None),
-        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={"new", "old", "mid"}),
     )
 
-    out = capsys.readouterr().out
-    assert "old" in out and "new" not in out, (
+    assert seen == ["old"], (
         "the bounded pass must start at the oldest deferral; this backlog reaches back weeks"
     )
     assert summary["backlog"] == 3
     assert summary["attempted"] == 1
+    assert summary["resumed"] == 1
+
+
+def test_the_drain_outcome_lands_on_the_stream_that_is_the_daemon_log(monkeypatch, capsys):
+    """The drain's trace must go to STDERR, because that is the file operators read.
+
+    Under launchd the two streams are two different files: `com.prospector.scheduler.plist`
+    sets StandardOutPath=store/scheduler/launchd.out.log and StandardErrorPath=
+    store/scheduler/launchd.err.log. Measured 2026-08-05, with the live daemon (pid 8308)
+    holding fd 1 open on it: launchd.out.log was 1 byte, mtime Jun 24, while launchd.err.log
+    held 10,472 lines including the entire progress stream (progress.py:43 prints to stderr).
+    This print exists because `logger.info` never reaches the daemon log; printing to stdout
+    instead relocates the invisibility rather than fixing it.
+    """
+    monkeypatch.setattr("prospector.run.resume_deferred",
+                        lambda cfg, *, limit=None, publish=False: {"backlog": 411, "resumed": 3})
+    monkeypatch.setattr("prospector.run.run_signal", lambda _t, **k: [])
+    monkeypatch.setattr("prospector.run._resolve_lanes", lambda *a, **k: None)
+
+    run_scheduled._default_generate(types.SimpleNamespace(schedule={"resume_per_tick": 3}), 5)
+    cap = capsys.readouterr()
+    assert "tick resume pass" in cap.err
+    assert "tick resume pass" not in cap.out, (
+        "stdout is launchd.out.log, a file no probe and no operator reads"
+    )
+
+    def boom(cfg, *, limit=None, publish=False):
+        raise RuntimeError("moat still down")
+
+    monkeypatch.setattr("prospector.run.resume_deferred", boom)
+    run_scheduled._default_generate(types.SimpleNamespace(schedule={"resume_per_tick": 3}), 5)
+    cap = capsys.readouterr()
+    assert "tick resume pass FAILED" in cap.err
+    assert "tick resume pass FAILED" not in cap.out
+
+
+def test_a_zero_limit_drains_nothing_rather_than_everything():
+    """`limit=0` must disable the pass, not run it unbounded.
+
+    `if limit is not None and limit > 0` let a 0 fall through unsliced, so a single call
+    would have re-vetted the whole backlog (411 items on 2026-08-05) inside one spend-guard
+    decision — the rail evaluates once per tick, before the tick.
+    """
+    from prospector import run as run_mod
+
+    rows = [{"candidate_id": f"c{i}", "decision": "defer",
+             "created_at": f"2026-07-{i + 1:02d}T00:00:00+00:00"} for i in range(5)]
+
+    summary = run_mod._cmd_resume(
+        argparse.Namespace(limit=0, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows),
+    )
+    assert summary == {"backlog": 5, "attempted": 0, "resumed": 0,
+                       "passes": 0, "kills": 0, "defers": 0}
+
+    # None still means unbounded — that is what `vet --resume` has always done on the CLI.
+    unbounded = run_mod._cmd_resume(
+        argparse.Namespace(limit=None, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows),
+    )
+    assert unbounded["attempted"] == 5
 
 
 def test_an_empty_backlog_is_reported_not_crashed():
@@ -154,3 +239,57 @@ def test_an_empty_backlog_is_reported_not_crashed():
     )
     assert summary == {"backlog": 0, "attempted": 0, "resumed": 0,
                        "passes": 0, "kills": 0, "defers": 0}
+
+
+def test_orphaned_rows_do_not_consume_the_bounded_pass(monkeypatch):
+    """Rows in the index with no dossier JSON must not eat the drain's budget every tick.
+
+    MEASURED on the live store 2026-08-06, on the first tick that ever ran the drain:
+
+        ticks.jsonl -> 'resumed': {'backlog': 406, 'attempted': 3, 'resumed': 0, ...}
+        backlog 406, orphaned 46, leading unbroken run of orphans 45 (2026-06-14..2026-06-21)
+
+    The pass always takes the OLDEST rows, so it re-selected the same three unreadable
+    2026-06-14 rows every tick: `attempted: 3, resumed: 0`, indefinitely. At 3 per tick and a
+    2h cadence the leading run alone is 15 ticks (~1.2 days) of no-op drains before the pass
+    reaches its first re-vettable candidate.
+    """
+    from prospector import run as run_mod
+
+    # 4 orphans (oldest), then 3 real rows — exactly the live shape, scaled down.
+    rows = [{"candidate_id": f"orphan{i}", "decision": "defer",
+             "created_at": f"2026-06-1{i}T00:00:00+00:00"} for i in range(4)]
+    rows += [{"candidate_id": f"real{i}", "decision": "defer",
+              "created_at": f"2026-07-0{i}T00:00:00+00:00"} for i in range(3)]
+    store = _FakeStore(rows, on_disk={"real0", "real1", "real2"})
+
+    seen: list[str] = []
+    _stub_vetting(monkeypatch, seen)
+    summary = run_mod._cmd_resume(
+        argparse.Namespace(limit=3, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None, store=store,
+    )
+
+    assert summary["attempted"] == 3, (
+        "the bound must be spent on rows that can actually be re-vetted; before this fix the "
+        "three oldest orphans consumed the entire pass and resumed nothing"
+    )
+    assert summary["backlog"] == 7
+    assert summary["orphaned"] == 4, (
+        "an index row with nothing on disk is a store inconsistency the operator must see, "
+        "not a slot the drain silently wastes"
+    )
+    assert seen == ["real0", "real1", "real2"], "and the pass must reach the real backlog"
+
+
+def test_orphans_are_still_reported_when_everything_is_orphaned():
+    from prospector import run as run_mod
+
+    rows = [{"candidate_id": f"o{i}", "decision": "defer",
+             "created_at": f"2026-06-1{i}T00:00:00+00:00"} for i in range(3)]
+    summary = run_mod._cmd_resume(
+        argparse.Namespace(limit=2, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows),
+    )
+    assert summary["attempted"] == 0
+    assert summary["orphaned"] == 3
