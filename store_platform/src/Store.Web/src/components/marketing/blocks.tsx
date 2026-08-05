@@ -37,7 +37,7 @@ export function SectionBand({
 }) {
   return (
     <section className={cx(BAND_BG[bg], "border-b border-border last:border-b-0")}>
-      <div className={`mx-auto ${BAND_WIDTH[width]} px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
+      <div className={`mx-auto ${BAND_WIDTH[width]} overflow-hidden px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
         {children}
       </div>
     </section>
