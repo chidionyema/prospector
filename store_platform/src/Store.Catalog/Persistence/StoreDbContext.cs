@@ -18,6 +18,7 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options)
     : IdentityDbContext<StoreUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<Pack> Packs => Set<Pack>();
+    public DbSet<PackPriceHistory> PackPriceHistory => Set<PackPriceHistory>();
     public DbSet<SalesAudit> SalesAudits => Set<SalesAudit>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Entitlement> Entitlements => Set<Entitlement>();
@@ -61,6 +62,8 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options)
             entity.HasIndex(e => e.Mechanism);
         });
 
+        ConfigurePriceHistory(modelBuilder);
+
         modelBuilder.Entity<WaitlistSignup>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -98,6 +101,23 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options)
         {
             entity.HasKey(e => e.IdempotencyKey);
             entity.HasIndex(e => e.ExpiresAt);
+        });
+    }
+
+    // Extracted rather than inlined into ConfigureCatalogTables for the same reason the identity
+    // block was: that method is already within a few lines of the 60-line analyzer limit.
+    private static void ConfigurePriceHistory(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PackPriceHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // The analysis query is always "what was pack P priced at over window W", so the
+            // index is (PackId, CreatedAt) rather than either column alone.
+            entity.HasIndex(e => new { e.PackId, e.CreatedAt });
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.Actor).HasMaxLength(100);
+            entity.Property(e => e.ProviderPriceId).HasMaxLength(255);
+            entity.Property(e => e.RationaleRef).HasMaxLength(500);
         });
     }
 

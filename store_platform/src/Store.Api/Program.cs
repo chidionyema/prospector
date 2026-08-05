@@ -446,13 +446,19 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     var pack = await db.Packs.FindAsync(request.Id).ConfigureAwait(false);
     if (pack == null)
     {
+        var initialPrice = request.PricePence ?? Money.DefaultPackPricePence;
         pack = new Pack
         {
             Id = request.Id,
             Title = request.Title,
             OneLine = request.OneLine,
             DossierRef = request.DossierRef,
-            PricePence = request.PricePence ?? Money.DefaultPackPricePence
+            PricePence = initialPrice,
+            // A brand new pack has no sessions in flight, so there is nothing to drain and the
+            // floor is the price. Set both explicitly rather than leaning on the CLR default:
+            // a stored floor of 0 reads as "any payment fulfils" to a direct reader.
+            MinBillablePence = initialPrice,
+            MinBillableEffectiveAt = DateTime.UtcNow,
         };
         db.Packs.Add(pack);
     }
@@ -750,6 +756,163 @@ app.MapPatch("/internal/catalog/{id}/content", async (
     return Results.Ok(new { pack.Id, pack.ContentKey, pack.ContentHash, pack.ContentVersion });
 })
 .WithName("PatchPackContent")
+.WithOpenApi();
+
+// How long the old fulfilment floor is held after a price RISE. Stripe Checkout Sessions expire
+// 24h after creation, so 24h is the real bound; the extra two hours cover clock skew between us
+// and the provider and a session created in the same second as the change. Erring long costs
+// nothing — during the drain the fence still refuses genuine underpayment, it is simply
+// calibrated to the old price — whereas erring short charges a real buyer and refuses delivery.
+var CheckoutSessionDrain = TimeSpan.FromHours(26);
+
+// Move a pack's price, and the fulfilment floor with it, in one transaction.
+//
+// This is the ONLY writer of price. Before it existed a published pack's price could not be
+// changed at all: /internal/catalog assigns PricePence on INSERT and silently omits it on the
+// update path, so a re-POST left the old price in place while appearing to succeed.
+//
+// The hard part is not the write, it is the drain. Fulfilment gates delivery on the pack row
+// while Stripe Checkout Sessions live up to 24h, so at any moment a price moves there are live
+// sessions minted at the old price. A single column breaks in both directions — a cut strands
+// buyers paying the new lower price against the old higher number, a rise strands buyers paying
+// the old lower price against the new higher one — and the two need opposite write orderings,
+// so no ordering fixes both. Pack.MinBillablePence + MinBillableEffectiveAt remove the race
+// instead: see Pack.EffectiveFloorPence.
+//
+//   cut  (new <= floor): the new price is already the minimum, so every live session clears it.
+//                        No drain. The floor becomes the new price immediately.
+//   rise (new >  floor): hold the OLD floor until the longest-lived session has expired, then
+//                        the floor rejoins PricePence on its own. Expressed as a timestamp, not
+//                        a scheduled job, so there is no tick to miss and a process that was
+//                        down for the whole window still computes the right answer.
+//
+// Taking min() against the CURRENT effective floor rather than against PricePence is what makes
+// repeated changes inside one drain window safe: a second rise extends the window rather than
+// lifting the floor over sessions still in flight.
+app.MapPatch("/internal/catalog/{id}/price", async (
+    string id,
+    PricePatchRequest request,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config,
+    IServiceProvider sp,
+    ILoggerFactory loggerFactory) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Reason))
+    {
+        return Results.BadRequest(new { error = "reason is required — an unexplained price move reads as a bug" });
+    }
+    if (string.IsNullOrWhiteSpace(request.Actor))
+    {
+        return Results.BadRequest(new { error = "actor is required — a price move must be attributable" });
+    }
+    if (request.PricePence <= 0)
+    {
+        return Results.BadRequest(new { error = "pricePence must be positive" });
+    }
+    // A stub id is what bridge.py mints when it cannot reach a real payment rail, and checkout
+    // builds a Stripe session from whatever is stored — so a stub here would render a buy button
+    // that 500s. bridge.py refuses to LIST one; refuse to STORE one, on both ends of the wire.
+    if (request.ProviderPriceId is not null && request.ProviderPriceId.StartsWith("price_stub_", StringComparison.Ordinal))
+    {
+        return Results.BadRequest(new { error = "refusing a stub price id — it cannot take money" });
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    var logger = loggerFactory.CreateLogger("PatchPackPrice");
+    var ct = http.HttpContext?.RequestAborted ?? CancellationToken.None;
+
+    // Verify billability BEFORE committing anything. The publish path already refuses to list a
+    // price the provider cannot bill; a re-price must clear the same bar, or this endpoint would
+    // be a way to walk a listed pack into an unbillable state that publish would have rejected.
+    // Only when the pack is actually sellable: an unlisted pack has no session to protect and
+    // may legitimately be re-priced while its rail is unconfigured.
+    if (pack.IsListed)
+    {
+        if (string.IsNullOrEmpty(request.ProviderPriceId))
+        {
+            return Results.BadRequest(new { error = "a listed pack needs a billable providerPriceId to re-price" });
+        }
+        var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "paddle");
+        if (provider is null)
+        {
+            logger.LogError("Refusing to re-price {PackId}: no payment provider registered for {Provider}.",
+                pack.Id, pack.PaymentProvider);
+            return Results.BadRequest(new { error = "no payment provider registered for this pack" });
+        }
+        if (!await provider.CanBillPriceAsync(request.ProviderPriceId, ct).ConfigureAwait(false))
+        {
+            logger.LogError("Refusing to re-price {PackId}: {Provider} cannot bill price {PriceId}.",
+                pack.Id, pack.PaymentProvider, request.ProviderPriceId);
+            return Results.BadRequest(new { error = "provider cannot bill that price id" });
+        }
+    }
+
+    var now = DateTime.UtcNow;
+    var previousPrice = pack.PricePence;
+    var currentFloor = pack.EffectiveFloorPence(now);
+
+    // Never lift the floor above a price a live session could carry.
+    pack.MinBillablePence = Math.Min(currentFloor, request.PricePence);
+    pack.MinBillableEffectiveAt = request.PricePence > currentFloor
+        ? now + CheckoutSessionDrain
+        : now;
+    pack.PricePence = request.PricePence;
+    if (!string.IsNullOrEmpty(request.ProviderPriceId))
+    {
+        pack.ProviderPriceId = request.ProviderPriceId;
+    }
+
+    // Same transaction as the change, deliberately: a history row written afterwards is a row
+    // that can be missing, and a sale whose price window cannot be reconstructed is unattributable
+    // forever after.
+    db.PackPriceHistory.Add(new PackPriceHistory
+    {
+        PackId = pack.Id,
+        FromPence = previousPrice,
+        ToPence = request.PricePence,
+        MinBillablePence = pack.MinBillablePence,
+        ProviderPriceId = pack.ProviderPriceId,
+        Reason = request.Reason,
+        Actor = request.Actor,
+        RationaleRef = request.RationaleRef,
+        CreatedAt = now,
+    });
+
+    await db.SaveChangesAsync().ConfigureAwait(false);
+
+    logger.LogInformation(
+        "Re-priced {PackId} {From}p -> {To}p (floor {Floor}p until {Until:o}) by {Actor}: {Reason}",
+        pack.Id, previousPrice, pack.PricePence, pack.MinBillablePence, pack.MinBillableEffectiveAt,
+        request.Actor, request.Reason);
+
+    return Results.Ok(new
+    {
+        pack.Id,
+        pack.PricePence,
+        pack.MinBillablePence,
+        pack.MinBillableEffectiveAt,
+        pack.ProviderPriceId,
+    });
+})
+.WithName("PatchPackPrice")
 .WithOpenApi();
 
 // Read a pack's current content pointer. The backfill needs to know WHICH stored object a
