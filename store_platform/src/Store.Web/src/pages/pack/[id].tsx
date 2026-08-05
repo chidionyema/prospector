@@ -135,7 +135,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
 
   // The denominator of the price→checkout rate. Keyed on (id, pricePence) rather than fired once
   // per mount, so a price that changes under a client-side navigation is counted as the separate
-  // view it is — the rate exists to compare prices, and folding two prices into one view would
+  // view it is -- the rate exists to compare prices, and folding two prices into one view would
   // erase the only thing being measured.
   React.useEffect(() => {
     trackPriceEvent('price_viewed', pack);
