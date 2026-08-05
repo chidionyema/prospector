@@ -1,7 +1,7 @@
 # AGENTS.md — How to work on Prospector
 
 > This file is the onboarding contract for **every agent** that touches this repo —
-> human, Claude, Gemini, DeepSeek, MiniMax, or whatever comes next. Most agent
+> human, Claude, MiniMax, or whatever comes next. Most agent
 > runners load it automatically. Read it before you read anything else, then follow
 > the orientation order in §1. It is written as a coach handing the next generation
 > the way of working — the *DNA*, not just the rules.
@@ -19,15 +19,25 @@ There are two kinds of agent on this project, and you must know which you are:
   depth, owns documentation, and makes the truth-critical calls. Expensive, so it
   does *not* do bulk execution. It runs, it doesn't read; it specifies, then it
   verifies.
-- **The executors (Gemini / DeepSeek / MiniMax / others).** Implement against a
-  written spec, generate candidates, run triage, draft content. Cheaper and faster.
-  You take a precise spec, build exactly that, and leave the truth-critical machinery
-  alone.
+- **The executor (MiniMax).** Implements against a written spec, generates candidates,
+  runs triage, drafts content. Cheaper and faster. You take a precise spec, build
+  exactly that, and leave the truth-critical machinery alone.
+
+  Corrected 2026-08-05 (founder): **the live model set is MiniMax and Claude only.**
+  Gemini and DeepSeek are gone, along with the `agy` CLI hand-off that older revisions
+  of `WORKFLOW.md` described. MiniMax is dispatched from inside a Claude session via
+  `prospector/operator.py` `MiniMaxOperator`; see `WORKFLOW.md` for the working pattern.
 
 **The founder fence (never crosses to an executor):** anything touching money,
 identity, contracts, migrations, or **the moat itself** (verdict ruling + the
-adversarial pass) stays with the manager/Claude-Gemini. If a task asks you to change
+adversarial pass) stays with the manager (Claude). If a task asks you to change
 how a verdict is *decided*, stop and escalate — that is not an execution task.
+
+The fence is drawn by *consequence*, not by difficulty. The test is "can a wrong answer
+take money and deliver nothing, or deliver without taking money?" — which is why the
+price ladder was delegatable (a wrong rung is a recoverable commercial error, and its
+output still passes through the fulfilment floor's checks) while re-pricing live packs
+was not (it mutates the production rail).
 
 ---
 
@@ -77,9 +87,11 @@ is never "a tradeoff"; it is a defect, even if every test still passes.
    first-class output — render its dossier with the firing gate and cited reason.
 7. **Two loops never merge.** Demand metrics tune *what to offer*; truth metrics
    *veto what may ship*. Demand never overrides truth.
-8. **The moat stays on Claude/Gemini.** Cheap models may *fetch* passages (they are
+8. **The moat stays on Claude.** Cheap models may *fetch* passages (they are
    search providers in the grounding chain) but must **never rule a verdict or an
-   adversarial pass**. Search ≠ ruling.
+   adversarial pass**. Search ≠ ruling. The one documented exception is a written
+   clearance record under `store/golden_runs/` — see `MiniMaxOperator`'s docstring
+   (`prospector/operator.py`) for the three conditions that earn one.
 9. **The golden set gates every change.** Any prompt/config change must pass the
    golden-set discrimination regression before it ships. Never weaken a gate to
    manufacture a PASS — if yield is zero, fix generation or calibration, not the bar.
