@@ -43,7 +43,7 @@ Status vocabulary: **LIVE** (in effect, proven) · **CONFIGURED** (set but not i
 | L5 | `pi_execute` dispatch (MiniMax executor) | dispatch is **unmetered**; wins when plan << code | LIVE, opt-in per task | `~/.claude/mcp/README-pi-bridge.md` |
 | L6 | Daemon cold-cache gap | **$0.2650/req vs $0.0937/req** interactive | **UNPINNED** — `WorkingDirectory` is stable, so fresh-cwd is REFUTED | see §4 |
 | L7 | Dead `ANTHROPIC_API_KEY` in inherited env | outranks the subscription; raw API returns *credit balance too low* | **NOT CLEARED** in live processes | probe `auth` line |
-| L8 | Graphify as a context substitute | injection capped at **700 tok**; refresh costs **0 tok** (both proven) — but the number of round trips it replaces is **UNMEASURED** | **ENFORCED LIVE 2026-08-06** (4 triggers); saving still MEASURE NEXT | `scripts/graphify_sweep.py` (exit 0 = enforced); A/B below |
+| L8 | Graphify as a context substitute | injection capped at **700 tok**; refresh costs **0 tok** (both proven) — but the number of round trips it replaces **MEASURED 2026-08-06 as ~1** (A/B, n=3: medians within 0.4%) | **ENFORCED LIVE 2026-08-06** (4 triggers); cost-NEUTRAL, saving REFUTED at this n — kept for freshness + a 3/3 vs 2/3 accuracy signal | `scripts/graphify_sweep.py` (exit 0 = enforced); A/B below |
 
 ### L1 is one action from shipped
 `settings.json` declares `"model": "sonnet"` (mtime 2026-08-06 14:19:22) but **settings.json is read
@@ -67,10 +67,11 @@ Proven 2026-08-06, by execution rather than by documentation:
 - **Injection cost is bounded and local.** `graphify query` is a BFS over `graph.json` with
   `--budget N` capping output at **2,000 tokens by default**. No inference in the query path.
 
-**Not proven — do not quote a saving yet.** How many exploratory round trips a query actually
-replaces (call it N) is unmeasured. Today's measured unit cost is **$927.00 / 7,774 = $0.1192 per
-request**, ~79% of it re-transporting resident context, so the saving is roughly `(N−1) × $0.1192`
-minus a one-off ≤2,000-token injection. That is arithmetic on an unmeasured N, i.e. a HYPOTHESIS.
+**MEASURED 2026-08-06 — the saving did NOT replicate. Do not quote one.** The `(N−1) × $0.1192`
+arithmetic below assumed injection collapses several exploratory round trips into one. Run on a
+real multi-hop question, it collapsed **one run in three**, and the mean saving is entirely that
+one run. See "the A/B result" below. The hypothesis text is kept because the arithmetic is still
+correct *given* an N > 1 — what is refuted is that this injection delivers one.
 
 **What enforcement itself costs (spec R12, measured 2026-08-06).** The point of this row is that
 turning enforcement on estate-wide did not quietly buy the saving with a new recurring cost:
@@ -88,11 +89,43 @@ returned 337 nodes as a flat list and spent the whole budget, with the useful ro
 ~25. Paying 2,000 tok per codebase prompt for that would be a cost regression wearing a feature's
 clothes.
 
-**The experiment that settles it** (reuses `scratchpad/ab_harness.sh` from the model A/B): one
-fixed codebase question, 3 reps each, `claude -p --output-format json`, counters from the API.
-Arm A explores with Read/Grep. Arm B gets the `graphify query` result pre-injected. Compare total
-tokens **and** whether arm B's answer is correct — a cheaper wrong answer is not a saving. Result
-goes in §2 as an L8 row.
+**The A/B result (2026-08-06).** Harness `tools/l8_ab.sh` + `tools/l8_grade.py` +
+`tools/l8_summary.py`, raw rows in `docs/measurements/l8_ab_2026-08-06.jsonl` — all committed,
+because a measurement whose harness lived in a session scratchpad cannot be re-run or checked
+(§3 still cites `scratchpad/ab_harness.sh`, which no longer exists anywhere; do not repeat that). One fixed multi-hop question ("name the function that
+makes the scheduler skip a tick when every trusted brain is dead, its file:line, and the field it
+reads"), 3 reps per arm, `env -u ANTHROPIC_API_KEY claude -p --output-format json`, counters from
+the API. Arm A = `GRAPHIFY_HOOK_OFF=1` (explores with Read/Grep); arm B = hook live. The control
+switch is real and was verified before spending: `graphify_session_hook.py:81` and
+`graphify_query_hook.py:124` both early-return on it — without that, arm A is not a control.
+
+| arm | n | mean | median | turns | correct |
+|---|---|---|---|---|---|
+| A control (no graph) | 3 | $0.2092 | $0.2081 | 4.0 | 2/3 |
+| B graph injected | 3 | $0.1966 | **$0.2090** | 3.3 | 3/3 |
+
+**Read the median, not the mean.** Mean ratio B/A = 0.940 looks like a 6% saving, but the medians
+are within 0.4% and the entire mean difference is ONE run — B rep2 finished in **2 turns for
+$0.1702** while the other five runs all took 4 turns regardless of arm. Injection short-circuited
+exploration once out of three attempts. That is an N of roughly 1, not the multi-round-trip N the
+saving arithmetic needs.
+
+**The one thing that did move: correctness.** Arm A rep3 answered without `_moat_blind_reason`
+(the function name — the actual question); arm B got all three anchors on every rep. Grading was
+mechanical against ground truth fixed before the runs, so this is not a post-hoc read. It is n=3
+and cannot carry a significance claim, but it points the other way from cost: the case for
+injection here is *accuracy*, not spend.
+
+**Honest status: graphify is cost-NEUTRAL and enforcement is free.** Those two together still
+justify it — a free freshness rail that does not cost tokens is worth having — but "graphify saves
+money" is refuted at this n and must not be quoted. To overturn this, run more reps and vary the
+question class; a single question measures a single retrieval shape.
+
+*Method note, paid for in cash:* v1 of this harness inlined the grader as `python3 -c '…'`
+containing an f-string with escaped double quotes. The shell passed the backslashes through and
+Python raised `SyntaxError: unexpected character after line continuation character` at compile
+time — i.e. *after* each `claude -p` call had already been billed. Six calls, zero rows written.
+The grader and summariser are now separate files, smoke-tested on fixtures before any paid run.
 
 ## 2. Cost ledger — append one row per measurement day
 
