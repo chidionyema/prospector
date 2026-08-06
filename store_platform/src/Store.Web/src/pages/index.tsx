@@ -1105,15 +1105,6 @@ export default function Home({ packs, stats, initialState, market, currency, per
             Those are the fronts common to every idea. Some face more, and each pack page names the
             checks that idea faced.
           </p>
-          {/* Its own line, not a trailing clause on the mono row: the row is set in the engine's
-              own identifiers and this sentence is the site talking, so running them together in
-              one paragraph would read as a seventh gate named "the fronts common to every idea".
-              A dash would have separated them visually; `dashFree.test.ts` forbids em/en-dashes in
-              source, and the rule is right here anyway, since the break is structural. */}
-          <p className="mt-2 max-w-[46ch] text-caption text-subtle">
-            Those are the fronts common to every idea. Some face more, and each pack page names the
-            checks that idea faced.
-          </p>
           {/* Two links, because this band makes two different promises. "How it works" describes
               the process; the kill log is the only thing on the site that proves it ran. A
               stranger who doubts the claim above needs evidence, not a longer description. */}
