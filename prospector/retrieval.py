@@ -1326,8 +1326,19 @@ class FallbackSearchProvider(SearchProvider):
                 exhausted = isinstance(e, ProviderExhaustedError)
                 br.record_failure(hard=exhausted)  # exhaustion trips now; transient needs threshold
                 if exhausted:
-                    dead_for = parse_reset_seconds(str(e)) or DEFAULT_EXHAUSTION_S
-                    self._health.mark_exhausted(name, dead_for)
+                    # Classify, exactly as the moat chain does (operator.py:~975). This matters
+                    # more here than there: this chain shares the MOAT's health store
+                    # (get_health() above, not the non-critical file), and `retrieval.provider`
+                    # includes claude_cli — the SAME key the verdict chain looks up. So a flat
+                    # 3600s mark on a grounding hiccup benched the verdict brain for an hour.
+                    # Backpressure gets the 60s floor; only a spent allowance gets the hour.
+                    from .errors import PERMANENT, classify_exhaustion
+                    from .health import TRANSIENT_EXHAUSTION_S
+                    kind = classify_exhaustion(str(e))
+                    dead_for = (parse_reset_seconds(str(e))
+                                or (DEFAULT_EXHAUSTION_S if kind == PERMANENT
+                                    else TRANSIENT_EXHAUSTION_S))
+                    self._health.mark_exhausted(name, dead_for, error=str(e))
                 tried.append(name)
                 last_status = "error"
                 logger.warning(

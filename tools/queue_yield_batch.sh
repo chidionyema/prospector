@@ -18,8 +18,9 @@ PY="${ROOT}/.venv/bin/python"
 LOG="${ROOT}/store/control_center/runs/queue_yield_batch.log"
 TARGET_JOB="${TARGET_JOB:-20260730T192006215}"
 POLL_S="${POLL_S:-15}"
-# Align Cursor CLI slots with config.yaml retrieval.vet_workers (default 2).
-export PROSPECTOR_CURSOR_CONCURRENCY="${PROSPECTOR_CURSOR_CONCURRENCY:-2}"
+# No CLI-slot pin here. `PROSPECTOR_CURSOR_CONCURRENCY` was removed 2026-08-06 with the
+# cursor_cli adapter; prospector/cli_governor.py caps claude CLI fan-out machine-wide via
+# flock, so config.yaml retrieval.claude_concurrency is the single source of truth.
 mkdir -p "$(dirname "$LOG")"
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] queue_yield_batch: waiting for job ${TARGET_JOB} (status!=running or PID dead); poll=${POLL_S}s"

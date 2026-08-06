@@ -22,6 +22,7 @@ The consequence was not a crash. It was 15/15 verdicts ruled by the emergency ta
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -189,6 +190,34 @@ def test_building_cursor_cli_fails_loudly_not_silently():
     from prospector.operator import _build_operator
     with pytest.raises(ValueError, match="removed"):
         _build_operator("cursor_cli", load_config(), fast=False)
+
+
+def test_no_live_tooling_still_sets_the_cursor_concurrency_knob():
+    """The adapter was deleted, but the ENV KNOB outlived it in three places.
+
+    Found 2026-08-06 while sweeping for the last cursor_cli traces: `PROSPECTOR_CURSOR_CONCURRENCY`
+    was still exported by `tools/queue_yield_batch.sh` and conditionally re-exported by
+    `tools/backfill_missing_listings.sh`, and was still in the control-center launchd plist's
+    EnvironmentVariables — which is why a process started on 31 Jul was STILL carrying it six
+    days later. Nothing reads it now, so it is inert; the reason to assert it gone is that a
+    dead knob in a live config surface reads as a working control to the next person, and this
+    one had already survived one removal pass by hiding in shell and plist rather than Python.
+
+    Comments naming it are fine and deliberately allowed — they carry the reason it went.
+    """
+    import re
+    root = Path(__file__).resolve().parents[2]
+    offenders = []
+    for path in list((root / "tools").rglob("*.sh")) + list((root / "deploy").rglob("*.plist")):
+        for n, line in enumerate(path.read_text().splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith("#") or stripped.startswith("<!--"):
+                continue
+            if re.search(r"\bPROSPECTOR_CURSOR_CONCURRENCY\b", line):
+                offenders.append(f"{path.relative_to(root)}:{n}: {stripped}")
+    assert not offenders, (
+        "the cursor_cli concurrency knob is still set on a live config surface:\n  "
+        + "\n  ".join(offenders))
 
 
 def test_configured_verdict_chain_is_trusted_only():
