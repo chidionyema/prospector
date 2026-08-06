@@ -1239,7 +1239,12 @@ def resume_deferred(cfg: Config, *, limit: int | None = None,
                               fixtures=None, search=None)
     search = _make_search(cfg, args)
     store = Store(cfg)
-    return _cmd_resume(args, cfg, op, fast_op, search, store)
+    # The same ledger `main()` passes for every CLI command (see the log_path it builds from
+    # cfg.store_dir). Omitting it made the daemon's drain the one caller with no log path, so
+    # its last line printed "No audit log at ." — the pass spends real money re-vetting and
+    # the operator got no cost line for it, on the only run nobody is watching.
+    return _cmd_resume(args, cfg, op, fast_op, search, store,
+                       log_path=cfg.store_dir / "prospector.jsonl")
 
 
 def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:

@@ -282,6 +282,35 @@ def test_orphaned_rows_do_not_consume_the_bounded_pass(monkeypatch):
     assert seen == ["real0", "real1", "real2"], "and the pass must reach the real backlog"
 
 
+def test_the_drain_reports_its_cost_against_the_real_ledger(tmp_path, monkeypatch):
+    """The one caller that spends money unwatched was the one with no audit log path.
+
+    `resume_deferred` called `_cmd_resume` without `log_path`, so its last line resolved to
+    `costs_report('')` and printed "No audit log at ." on every daemon tick. The pass re-vets
+    real candidates against real providers; the operator must get the cost line for it.
+    """
+    from prospector import run as run_mod
+
+    seen: dict = {}
+
+    def fake_cmd_resume(args, cfg, op, fast_op, search, store, log_path=None):
+        seen["log_path"] = log_path
+        return {"backlog": 0, "attempted": 0, "resumed": 0,
+                "passes": 0, "kills": 0, "defers": 0}
+
+    monkeypatch.setattr(run_mod, "_cmd_resume", fake_cmd_resume)
+    monkeypatch.setattr(run_mod, "_make_search", lambda *a, **k: None)
+    monkeypatch.setattr(run_mod, "Store", lambda cfg: None)
+    monkeypatch.setattr("prospector.operator.make_operator", lambda *a, **k: None)
+
+    cfg = types.SimpleNamespace(store_dir=tmp_path)
+    run_mod.resume_deferred(cfg, limit=3)
+
+    assert seen["log_path"] == tmp_path / "prospector.jsonl", (
+        "the drain must read the same ledger every other command reports from"
+    )
+
+
 def test_a_tombstoned_row_is_not_backlog(monkeypatch):
     """Reporting orphans made the waste visible; tombstoning takes it out of the count.
 
