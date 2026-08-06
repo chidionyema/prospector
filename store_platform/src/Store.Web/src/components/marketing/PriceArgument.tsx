@@ -85,7 +85,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
     // the same drift `PACK_CONTENTS` was made the single source of truth to end, surviving in a
     // table two hundred lines away from it.
     { label: 'What arrives', feed: 'A stream of raw leads and trend signals', pack: `One finished opportunity, ${PACK_CONTENTS.length} documents` },
-    { label: 'Who does the vetting', feed: 'You do, on every idea in the feed', pack: 'Already done: six checks, every claim sourced' },
+    { label: 'Who does the vetting', feed: 'You do, on every idea in the feed', pack: 'Already done: the full filter, every claim sourced' },
     { label: 'Launch assets', feed: 'None. The idea is the product', pack: 'Build spec, GTM plan, ops, unit economics and launch copy' },
     { label: 'If you cancel', feed: 'Access ends, you keep nothing', pack: 'Yours forever, plus 14 day money back' },
   ];

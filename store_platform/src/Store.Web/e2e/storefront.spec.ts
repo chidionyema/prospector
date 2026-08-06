@@ -44,3 +44,95 @@ test('unknown route returns the 404 page', async ({ page }) => {
   expect(res?.status()).toBe(404);
   await expect(page.getByText(/404|not found/i).first()).toBeVisible();
 });
+
+/*
+ * The basket drawer must paint over the page, not through it.
+ *
+ * REPRODUCED 2026-08-06 at 390x844 with three packs in the basket, before the fix: the drawer's
+ * panel measured 390x64 -- the height of the site header -- while its content was 285px tall. Only
+ * the title row painted `bg-surface`; the line items, the £147 total and the Pay button rendered
+ * outside the panel's painted box, over live page copy, illegible. Checkout was effectively
+ * blocked: the CTA was visible but the totals beside it could not be read or trusted.
+ *
+ * The cause was not a missing background. `<CartButton>` renders the Modal inside `<header class="
+ * sticky ... backdrop-blur-md">`, and an ancestor carrying a `backdrop-filter` becomes the
+ * containing block for `position: fixed` descendants, so `fixed inset-0` resolved against the 65px
+ * header instead of the viewport. Same ancestor is `z-30` and a stacking context, so the drawer's
+ * `z-50` was scoped inside it too. `Modal` now portals to <body>.
+ *
+ * This is deliberately a MEASUREMENT and not a source-text assertion: the defect is invisible in
+ * Modal.tsx (whose classes were correct throughout) and visible only in the layout it produces
+ * under a particular ancestor. A future header that adds `transform` or `filter` would reintroduce
+ * it in exactly the same way, and only a rendered check would catch that.
+ *
+ * 390x844 is the iPhone 13/14 logical viewport, which is where it was reported.
+ */
+test.describe('basket drawer', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('opens as a full-height opaque panel with no page content showing through', async ({
+    page,
+  }) => {
+    // Seeded rather than clicked through: `parseStoredCart` validates shape only, so the drawer
+    // needs no API call and no real pack. The bug is in the drawer's box, not its contents.
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'mumchimp.cart.v1',
+        JSON.stringify([
+          { id: 'e2e-basket-1', title: 'A pack with a fairly long title so it wraps', price: '£49' },
+          { id: 'e2e-basket-2', title: 'Second pack in the basket', price: '£49' },
+          { id: 'e2e-basket-3', title: 'Third pack in the basket', price: '£49' },
+        ]),
+      );
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: /^Basket,/ }).click();
+
+    const panel = page.locator('[role="dialog"]');
+    await expect(panel).toBeVisible();
+
+    // 1. The panel fills the viewport height. 64px (the header) is the exact failure. Compared
+    //    with a 1px tolerance because the measured height is 843.99998 -- a sub-pixel rounding,
+    //    not a layout fact, and pinning 844 exactly would make this fail on a device-pixel-ratio
+    //    change that nobody would consider a regression.
+    const box = (await panel.boundingBox())!;
+    expect(box.height, 'the drawer must be full-height, not the height of the header').toBeCloseTo(
+      844,
+      0,
+    );
+
+    // 2. Nothing from the page paints ABOVE the overlay in the middle of the drawer's body.
+    //    Measured with elementsFromPoint rather than by reading background-color, because the
+    //    panel's own background was already correct while the bug was live -- what was wrong is
+    //    what sat above it.
+    //
+    //    Note the shape of the assertion. `elementsFromPoint` hit-tests the whole depth of the
+    //    document, so <main> is in the list either way and "the page is not in the stack" would be
+    //    a test that can never pass. What distinguishes the two states is ORDER: with the drawer
+    //    trapped in the header, the page's <section>/<main> were returned ABOVE the overlay root
+    //    and therefore painted over the basket contents. Everything above the overlay root must
+    //    belong to the overlay.
+    const strangers = await page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"]')!;
+      const overlay = document.querySelector('[role="presentation"]')!;
+      const body = dialog.children[1].getBoundingClientRect();
+      const stack = document.elementsFromPoint(
+        body.x + body.width / 2,
+        body.y + body.height / 2,
+      );
+      return stack
+        .slice(0, stack.indexOf(overlay))
+        .filter((el) => !overlay.contains(el))
+        .map((el) => `${el.tagName}.${typeof el.className === 'string' ? el.className.slice(0, 40) : ''}`);
+    });
+    expect(strangers, 'nothing from the page may paint above the open drawer').toEqual([]);
+
+    // 3. The money is legible: totals and CTA inside the panel's box.
+    for (const target of [page.getByText('£147'), page.getByRole('button', { name: /Pay once/i })]) {
+      const t = (await target.first().boundingBox())!;
+      expect(t.y + t.height, 'the totals row must sit inside the drawer').toBeLessThanOrEqual(
+        box.y + box.height,
+      );
+    }
+  });
+});

@@ -53,7 +53,7 @@ export function renderReceiptText(order: ReceiptOrder, brand: string): string {
     '',
     `If the pack is not what the description said, email us within ${REFUND_WINDOW_DAYS} days and we refund in full. No forms, no friction. The full policy is on the refund page.`,
     '',
-    `Read about how the engine works, including the six checks every idea has to survive, on the about page.`,
+    `Read about how the engine works, including the checks every idea has to survive, on the about page.`,
     '',
     `Mumchimp`,
   ].join('\n');

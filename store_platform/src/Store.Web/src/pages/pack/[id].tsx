@@ -555,13 +555,13 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               <summary className="cursor-pointer list-none text-h2 font-semibold text-text transition-colors hover:text-muted">
                 <span className="inline-flex items-center gap-2">
                   <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
-                  Six ways we tried to kill it
+                  How we tried to kill it
                 </span>
               </summary>
               <div className="mt-4">
                 <p className="text-meta text-muted">
                   Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
-                  cited evidence against it, and a listing means none of the six produced that evidence.
+                  cited evidence against it, and a listing means no hard gate produced that evidence.
                   Finding nothing is not the same as finding a green light, so the scores below show where
                   this pack&rsquo;s case is strong and where it is thin.
                 </p>

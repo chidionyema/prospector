@@ -86,7 +86,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const body = `# Mumchimp
 
 > Mumchimp sells researched business opportunity packs${priceClause}. Every pack is one business
-> idea that passed an automated six-check filter, real pain, durable value, room past incumbents,
+> idea that passed an automated kill-first filter, real pain, durable value, room past incumbents,
 > a solvent payer, a distribution route, and legality, and then survived an adversarial review.
 > Each claim in a pack cites a retrievable source.
 
@@ -103,7 +103,7 @@ the kill log, and it is the evidence the filter is real rather than a marketing 
 
 ## Guide
 
-- [How it works](${origin}/how-it-works): the six checks, the adversarial review, and what lands in the zip.
+- [How it works](${origin}/how-it-works): the checks, the adversarial review, and what lands in the zip.
 - [Sample pack](${origin}/sample): a real pack's contents, readable without buying.
 - [Kill log](${origin}/kill-log): ideas rejected by the filter, each with its sourced reason.
 - [FAQ](${origin}/faq): what you are buying, delivery, refunds, and licensing.

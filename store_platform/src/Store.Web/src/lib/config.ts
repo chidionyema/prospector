@@ -17,6 +17,42 @@ export const BRAND = {
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || undefined;
 
+/**
+ * The person behind the shop. EMPTY ON PURPOSE, and the site is correct with it empty.
+ *
+ * The problem it exists to solve is measured, not speculative: on 2026-08-06 the storefront named
+ * no human anywhere, and `/about` -- whose own docblock claims to be "the moat rendered as a
+ * person" -- contained 453 words, no name, no face, and had zero inbound links from any page
+ * (`href="/about"` matched no file under `src/`). A shop selling £29-£199 research products from a
+ * fully anonymous operator has to overcome that anonymity with volume of proof, which is exactly
+ * the over-proving the site was criticised for. One real name does more than another paragraph of
+ * evidence.
+ *
+ * WHY IT IS NOT FILLED IN HERE: a founder bio is a claim about a real person, and this codebase's
+ * first rule is that claims are sourced, not invented. Inventing a plausible name, photo and
+ * history for the operator of a shop that sells "every claim has a clickable source" would be the
+ * single worst thing on the site. The founder supplies these; nothing else has to change.
+ *
+ * `name` is the switch. While it is empty every consumer renders nothing at all -- no placeholder,
+ * no "coming soon", no grey avatar silhouette -- so an unfilled field can never ship as a visible
+ * gap. `photo` is independently optional: a real name with no photo is honest and still works.
+ */
+export const FOUNDER = {
+  /** Full name, as the founder wants to be credited. Empty disables every founder surface. */
+  name: '',
+  /** Optional. What they were doing before this, in a few words. */
+  role: '',
+  /** Optional. Two or three sentences, first person. Why this shop exists. */
+  bio: '',
+  /** Optional. A path under /public, e.g. '/founder.jpg'. Omitted renders text only. */
+  photo: '',
+  /** Optional. A profile the reader can check: LinkedIn, GitHub, a personal site. */
+  profileUrl: '',
+} as const;
+
+/** True only when there is a real person to name. Every founder surface branches on this. */
+export const hasFounder = (): boolean => FOUNDER.name.trim().length > 0;
+
 export const LEGAL = {
   entity: 'Mumchimp',
   // The full registered legal name + business address shown in the legal docs' "registered

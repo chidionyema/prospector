@@ -35,7 +35,17 @@ describe('the shelf has editorial shape', () => {
   it('caps the tail with a browse-all control instead of an endless grid', () => {
     expect(page, 'a page size must be declared, not implied').toMatch(/SHELF_PAGE\s*=\s*\d+/);
     expect(page, 'the cap must be releasable by the buyer').toMatch(/setShowAll\(true\)/);
-    expect(page, 'the control must say how many it opens').toMatch(/Browse all \{/);
+    // The label was `Browse all {n}` -- the TOTAL, printed directly under twelve packs the reader
+    // had just scrolled past, so the one number on the control said "you have seen none of 63".
+    // The requirement is unchanged and is what is asserted: the control must state a count it
+    // computes, not a bare "Load more". It now states the REMAINDER, and the running position
+    // ("Showing 12 of 63") is a separate line under it.
+    expect(page, 'the control must say how many it opens').toMatch(
+      /Show the other \{tailPacks\.length - shown\}/,
+    );
+    expect(page, 'the reader must be told where they are in the shelf').toMatch(
+      /Showing \{shown \+ newestRow\.length\} of/,
+    );
   });
 
   it('hides the capped cards rather than dropping them from the DOM', () => {

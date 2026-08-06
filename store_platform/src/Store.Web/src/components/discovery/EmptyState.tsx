@@ -94,7 +94,7 @@ export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?:
         No vetted pack for “{query.trim()}”, yet.
       </h3>
       <p className="mt-2 max-w-2xl text-meta leading-relaxed text-muted">
-        We only list an idea once it survives six checks with a clickable source behind every claim. Most
+        We only list an idea once it survives the filter with a clickable source behind every claim. Most
         ideas in a hot space die on the incumbent test. Tell us where to point the engine and we&apos;ll
         email you if one survives.
       </p>

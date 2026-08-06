@@ -55,7 +55,7 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What makes a pack "grounded"?',
     answer: [
-      'Every pack passed the Mumchimp engine’s six checks (real pain, durable value, room past incumbents, a solvent payer, a distribution route, and legality) and survived an adversarial review. Every claim and number cites a retrievable source, or it isn’t in the pack.',
+      'Every pack cleared the Mumchimp engine’s hard gates and survived an adversarial review. Six fronts are common to every idea (real pain, durable value, room past incumbents, a solvent payer, a distribution route, and legality); some ideas face more, and each pack page names the checks that idea faced and how many it cleared. Every claim and number cites a retrievable source, or it isn’t in the pack.',
     ],
   },
   { category: 'payment',

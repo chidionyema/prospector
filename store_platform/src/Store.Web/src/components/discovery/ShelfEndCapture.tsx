@@ -33,7 +33,7 @@ export function ShelfEndCapture({ className }: { className?: string }) {
               Seen the whole shelf? The next survivor can come to you.
             </h2>
             <p className="mt-1 text-meta leading-relaxed text-muted">
-              Most ideas the engine vets die on the six checks. When one survives, we can send it,
+              Most ideas the engine vets die on the checks. When one survives, we can send it,
               one email per survivor, nothing else.
             </p>
           </div>

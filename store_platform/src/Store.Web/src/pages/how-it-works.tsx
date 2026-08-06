@@ -78,7 +78,7 @@ export default function HowItWorks() {
         lead={variant.howItWorksLead}
       />
 
-      {/* A. The six checks, as a stepped timeline */}
+      {/* A. The checks, as a stepped timeline */}
       <Section
         bg="white"
         width="6xl"
@@ -175,7 +175,7 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl space-y-4">
           <p className="text-body font-normal leading-relaxed text-muted">
-            After the six gates clear, a second agent attacks the surviving claim. It hunts for
+            After the gates clear, a second agent attacks the surviving claim. It hunts for
             contradictions, weak citations, and gaps the first pass missed. The dossier survives
             only if every objection can be answered with the evidence already on file, no new
             research, no hand‑waving.

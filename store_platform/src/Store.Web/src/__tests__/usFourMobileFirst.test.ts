@@ -38,7 +38,7 @@ describe('US-4 — Mobile-first pack detail', () => {
     // still in the right rail.
     const buyBlockAboveChecks =
       page.indexOf('mt-8 border border-border bg-surface p-6 lg:hidden') <
-      page.indexOf('Six ways we tried to kill it');
+      page.indexOf('How we tried to kill it');
     expect(
       buyBlockAboveChecks,
       'pack/[id].tsx must render the mobile purchase block above the six checks section',
@@ -50,7 +50,7 @@ describe('US-4 — Mobile-first pack detail', () => {
     // 'Show me how this was vetted' disclosure." The buyer who cares will tap
     // to expand; the buyer who doesn't see the buy button first.
     const hasDetailsForChecks =
-      /<details\b[^>]*>[\s\S]{0,2000}Six ways we tried to kill it/.test(page) ||
+      /<details\b[^>]*>[\s\S]{0,2000}How we tried to kill it/.test(page) ||
       /<details\b[^>]*>[\s\S]{0,2000}show the methodology/i.test(page);
     expect(
       hasDetailsForChecks,
@@ -112,7 +112,7 @@ describe('US-4 — Mobile-first pack detail', () => {
      * "first disclosure the buyer scrolls past", and only the second one is the audit's claim.
      */
     const methodologyIdx = Math.min(
-      ...['Six ways we tried to kill it', 'How it scores']
+      ...['How we tried to kill it', 'How it scores']
         .map((s) => page.indexOf(s))
         .filter((i) => i > 0),
     );

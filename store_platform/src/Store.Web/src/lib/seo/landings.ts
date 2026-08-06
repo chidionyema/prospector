@@ -92,7 +92,7 @@ export const LANDINGS: Landing[] = [
     kind: 'commitment',
     value: 'evenings',
     h1: 'Business ideas you can start in the evenings',
-    metaTitle: 'Evening side business ideas that survived a six-check filter',
+    metaTitle: 'Evening side business ideas that survived a kill-first filter',
     metaDescription:
       'Researched business ideas that fit around a full-time job, evenings and weekends. Each pack cites a source for every claim.',
     intro:

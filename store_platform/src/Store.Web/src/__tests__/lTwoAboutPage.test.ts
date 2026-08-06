@@ -29,14 +29,34 @@ describe('L2 - The about page', () => {
     expect(pageExists, 'pages/about.tsx must exist').toBe(true);
   });
 
-  it('explains the six checks', () => {
+  it('explains the checks', () => {
     if (!pageExists) return;
     const page = readSource('../pages/about.tsx');
-    const mentionsChecks = /six\s*checks|6\s*checks|six brutal|six rigorous/i.test(page);
+    const mentionsChecks = /\bchecks\b|\bfronts\b/i.test(page);
     expect(
       mentionsChecks,
-      'pages/about.tsx must explain the six checks (the filter)',
+      'pages/about.tsx must explain the checks (the filter)',
     ).toBe(true);
+  });
+
+  /**
+   * The page must NOT promise a fixed count. Measured 2026-08-06 against the live /catalog
+   * detail endpoint across all 63 published packs, `qaVerdictSummary` reports "6/6 checks
+   * cleared" 40x, "8/8" 15x, "7/8" 4x, "9/9" 3x and "6/8" 1x -- so "all six checks" was false
+   * for 23 of them, on a page the buyer reads before paying. The check set is lane-dependent
+   * (config.yaml `lanes.side_hustle` adds buyer_intent, currency and claims_verifiable), and
+   * pack/[id].tsx has always rendered the engine's real numerator and denominator. This test
+   * stops the fixed count coming back into the copy while the engine still varies it.
+   */
+  it('never promises a fixed number of checks', () => {
+    if (!pageExists) return;
+    const page = readSource('../pages/about.tsx');
+    const body = page.replace(/\/\*[\s\S]*?\*\/|\{\/\*[\s\S]*?\*\/\}/g, '');
+    const fixedCount = body.match(/\b(all six|the six|six brutal|six rigid|six rigorous)\b/i);
+    expect(
+      fixedCount?.[0] ?? null,
+      'pages/about.tsx must not claim a fixed check count: the engine\'s denominator varies by lane (6, 7, 8 or 9 on live packs)',
+    ).toBe(null);
   });
 
   it('links to the kill log', () => {

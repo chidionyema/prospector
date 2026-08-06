@@ -147,7 +147,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         <PackGrid packs={packs} />
 
         <p className="mt-10 text-meta leading-relaxed text-muted">
-          Every pack on this page cleared the same six checks, real pain, durable value, room past
+          Every pack on this page faced the same filter, real pain, durable value, room past
           incumbents, a solvent payer, a route to distribution, and legality, and then survived an
           adversarial review.{' '}
           <Link href="/how-it-works" className={textLinkClass('font-medium')}>

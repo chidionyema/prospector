@@ -13,6 +13,18 @@ import { test, expect } from '@playwright/test';
 
 const cards = 'a[href^="/pack/"]';
 
+/**
+ * The first pack card a READER CAN SEE, which is not always the first one in the DOM.
+ *
+ * The hero's featured pack is `hidden lg:block`: it is the first `a[href^="/pack/"]` in document
+ * order at every width, and on a phone it is `display: none`. `.first().boundingBox()` on the
+ * plain selector therefore returned `null` on all three mobile viewports -- not "the card is off
+ * screen" but "the card has no box at all", which fails the fold assertion for a reason that has
+ * nothing to do with the fold. `:visible` measures what the buyer actually meets: the hero card on
+ * desktop, the first shelf card on a phone.
+ */
+const visibleCards = 'a[href^="/pack/"]:visible';
+
 test('the shelf renders and every card is a link to a pack', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator(cards).first()).toBeVisible();
@@ -31,7 +43,7 @@ test('the first pack card is above the fold', async ({ page }) => {
   // puts above the grid pushes it back down, and no reviewer measures.
   const MIN_VISIBLE_PX = 40;
   await page.goto('/');
-  const box = await page.locator(cards).first().boundingBox();
+  const box = await page.locator(visibleCards).first().boundingBox();
   expect(box).not.toBeNull();
   const fold = page.viewportSize()!.height;
   expect(fold - box!.y).toBeGreaterThan(MIN_VISIBLE_PX);
@@ -59,7 +71,7 @@ for (const [w, h, device] of [
     const MIN_VISIBLE_PX = 40;
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/');
-    const box = await page.locator(cards).first().boundingBox();
+    const box = await page.locator(visibleCards).first().boundingBox();
     expect(box).not.toBeNull();
     expect(h - box!.y, `first card starts at y=${Math.round(box!.y)} on a ${h}px screen`).toBeGreaterThan(
       MIN_VISIBLE_PX,
@@ -68,26 +80,39 @@ for (const [w, h, device] of [
 }
 
 /**
- * The filter-log panel renders twice in the HTML -- `hidden lg:block` in the hero, `lg:hidden`
- * below the shelf -- because a single instance cannot be in two flow positions and the panel has
- * to be beside the claim on desktop and after the product on mobile. That pair was removed once
- * before as a bug (`index.tsx:692`), so this asserts the property that actually mattered: a
- * reader sees it ONCE. A CSS typo that showed both would be invisible to a source-text test and
- * obvious here.
+ * The filter-log panel: ONE copy, and it comes after the product.
+ *
+ * It used to render twice -- `hidden lg:block` in the hero, `lg:hidden` below the shelf -- because
+ * a single instance cannot be in two flow positions, and this asserted the property that mattered
+ * about the pair: a reader sees it once. Both positions turned out to be the same mistake at two
+ * widths. On desktop the panel WAS the hero's right column, so the largest and only coloured
+ * object on the first screen of a shop was a ledger of ideas we had thrown away; on a phone it
+ * pushed the first card 1.23 screens down, which is what the fold tests above were written for.
+ *
+ * With one copy below the shelf at every width, the assertion becomes the thing the pair was only
+ * ever a means to: the buyer meets a product before they meet the argument. Measured in the
+ * rendered DOM rather than in the source, because the source can only prove the order of two JSX
+ * blocks, and `order-`/`flex-col-reverse`/`absolute` all defeat that.
  */
 for (const [w, h, label] of [
   [1280, 720, 'desktop'],
   [390, 844, 'mobile'],
 ] as const) {
-  test(`the filter-log panel is visible exactly once on ${label}`, async ({ page }) => {
+  test(`the filter-log panel is visible exactly once, below the shelf, on ${label}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/');
     const panels = page.getByText('The filter log', { exact: true });
-    // Both copies are in the DOM by design; exactly one may be rendered.
-    expect(await panels.count(), 'both copies should exist in the HTML').toBe(2);
-    let visible = 0;
-    for (let i = 0; i < 2; i++) if (await panels.nth(i).isVisible()) visible++;
-    expect(visible, `${label} shows ${visible} filter-log panels`).toBe(1);
+    expect(await panels.count(), 'exactly one filter-log panel may be in the HTML').toBe(1);
+    await expect(panels.first()).toBeVisible();
+
+    const panelBox = await panels.first().boundingBox();
+    const cardBox = await page.locator(visibleCards).first().boundingBox();
+    expect(panelBox).not.toBeNull();
+    expect(cardBox).not.toBeNull();
+    expect(
+      panelBox!.y,
+      `${label}: the filter log starts at y=${Math.round(panelBox!.y)}, the first card at y=${Math.round(cardBox!.y)}`,
+    ).toBeGreaterThan(cardBox!.y);
   });
 }
 

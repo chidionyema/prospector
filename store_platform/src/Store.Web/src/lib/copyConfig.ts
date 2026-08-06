@@ -109,19 +109,24 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // distinct promise (research done / economics verified / every number sourced) rather than
     // three overlapping paragraphs, which is also the only shape an A/B result can be read from.
     globalHookLead: 'Business ideas with the research already done.',
+    // CUT from 175 characters to ~80 (2026-08-06). At 390px the long version wrapped to four
+    // lines and cost 200px of the first screen on its own, which was the single largest reason a
+    // phone's opening screen contained no product at all. What it listed -- buyer, price, unit
+    // economics, go-to-market -- is the pack's contents page, and the pack's contents page belongs
+    // in "What you get", not in the subhead. The subhead's job is one sentence of what this is.
     globalHookDescription:
-      'Each pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
+      'The buyer, the price, the margins and the plan. Every claim links to its source.',
 
     howItWorksEyebrow: 'The panel',
     howItWorksTitle: 'Every idea faces a panel built to kill it.',
     howItWorksLead:
       'Before anything reaches the store, it runs a gauntlet of AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every pack is a grounded business opportunity, vetted against six checks and sourced to retrievable evidence before it can be listed.',
+      'How Mumchimp works: every pack is a grounded business opportunity, vetted against a filter built to kill it and sourced to retrievable evidence before it can be listed.',
 
-    sixChecksTitle: 'The six checks, one kill, and it stops',
+    sixChecksTitle: 'The checks, one kill, and it stops',
     sixChecksDescription:
-      'Every candidate faces the same six gates, in this order. The panel kills fast at the first hard fail. Only ideas that clear every gate and survive an adversarial cross‑examination become a pack, and every kill is logged with its reason, so the filter is auditable, not a black box.',
+      'Every candidate faces the same filter, in this order. The panel kills fast at the first hard fail. Which checks run depends on the idea, and the pack page names the ones it faced. Only ideas that clear every hard gate and survive an adversarial cross‑examination become a pack, and every kill is logged with its reason, so the filter is auditable, not a black box.',
 
     automatedIdeasIntro:
       'Code does the heavy lifting. These ideas scale on software, not your time. The core delivery (gathering data, generating docs, running checks) is automated rather than billed by the hour. We will tell you exactly where you still need a human in the loop.',
@@ -133,7 +138,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   b: {
     globalHookLead: 'Business ideas with the economics already verified.',
     globalHookDescription:
-      'Each pack is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
+      'The buyer, the price, the unit economics and the plan. Every number links to its source.',
 
     howItWorksEyebrow: 'The panel',
     howItWorksTitle: 'Every idea is tested to destruction.',
@@ -142,9 +147,13 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksSeoDescription:
       'How Mumchimp works: every idea is tested to destruction by a panel of AI agents before it can be listed.',
 
-    sixChecksTitle: 'The checks every pack cleared',
+    // NOT "The checks every pack faced". It sat above a list of exactly six steps, which made
+    // the heading assert that the six ARE the set -- the same falsehood corrected in about.tsx
+    // and faqContent.ts on 2026-08-06, surviving here because the guard that caught those reads
+    // only about.tsx. 23 of the 63 live packs report a denominator other than 6.
+    sixChecksTitle: 'The checks an idea has to survive',
     sixChecksDescription:
-      'Every pack cleared the exact same checks: a real problem, proven value, room to compete, buyers who can pay, a clear way to reach them, and no legal red tape.',
+      'Every pack faced the same filter: a real problem, proven value, room to compete, buyers who can pay, a clear way to reach them, and no legal red tape. Which checks ran depends on the idea, and the pack page shows exactly which ones it cleared.',
 
     automatedIdeasIntro:
       'Businesses where systems do the heavy lifting. Delivery relies on tools, templates, and automated checks so you do not run out of hours as you grow. We are honest about the limits: automatable does not mean autonomous. We list the exact steps that still require your input.',
@@ -156,7 +165,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   c: {
     globalHookLead: 'Business ideas with a source behind every number.',
     globalHookDescription:
-      'Each dossier is a researched blueprint: who the buyer is, what they pay, the unit economics and a step-by-step go-to-market plan. Every claim is backed by a source you can open.',
+      'The buyer, the price, the margins and the plan. Every number links to the page it came from.',
 
     howItWorksEyebrow: 'The methodology',
     howItWorksTitle: 'An adversarial review process.',
@@ -165,9 +174,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksSeoDescription:
       'How Mumchimp works: every dossier is subjected to an adversarial review by AI agents before it can be listed.',
 
-    sixChecksTitle: 'The six rigid criteria',
+    sixChecksTitle: 'The rigid criteria',
     sixChecksDescription:
-      'Every dossier must satisfy six rigid criteria: verified market pain, quantifiable value, fragmented incumbents, a solvent payer base, viable acquisition channels, and regulatory compliance.',
+      'Every dossier is held to the same rigid criteria: verified market pain, quantifiable value, fragmented incumbents, a solvent payer base, viable acquisition channels, and regulatory compliance. The criteria applied depend on the model under review, and each dossier records which were run.',
 
     automatedIdeasIntro:
       'High-leverage operations. The core unit of delivery in these models is machine-executable: data parsing, document generation, and compliance checks. This decouples revenue from billable hours. Each dossier explicitly outlines the operational bottlenecks that still require human oversight.',

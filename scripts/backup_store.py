@@ -44,6 +44,7 @@ import os
 import random
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -96,6 +97,135 @@ def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+# ── Clock skew ────────────────────────────────────────────────────────────────
+# 2026-08-06 03:40 this job died on its FIRST call with
+#   ClientError (RequestTimeTooSkewed) calling ListObjectsV2
+# and every run since has failed the same way, because launchd's
+# StartCalendarInterval does not retry. SigV4 signs the request with the local
+# clock; R2 rejects a signature whose timestamp is too far from its own.
+#
+# botocore does not save us here, and that is measured, not assumed:
+#     grep -rl RequestTimeTooSkewed .venv/.../botocore/  ->  0 files
+#     'RequestTimeTooSkewed' in botocore/data/_retry.json ->  False
+# There is no retry rule and no clock-correction hook in botocore 1.43.30, in
+# either 'legacy' or 'standard' retry mode. The first skewed call is fatal.
+#
+# So the fix is to stop signing with the local clock at all: ask the endpoint
+# what time it thinks it is, and sign with THAT. This makes the backup
+# independent of the local clock, which matters because the failure window is
+# a laptop waking from sleep at 03:40 with a stale clock and ntpd not yet
+# caught up. Correcting on demand beats waiting for the clock to be right.
+_SKEW_TOLERANCE_S = 60.0
+
+
+def _server_time_offset(endpoint: str) -> float | None:
+    """Seconds to ADD to the local clock to match the signing authority's clock.
+
+    Uses the HTTP Date header, which is unauthenticated and present on error
+    responses too — so a 400/403 from an unsigned probe is still a usable answer
+    and we do not need working credentials to learn the time.
+    """
+    import email.utils
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(endpoint, method="HEAD")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            date_header = resp.headers.get("Date")
+    except urllib.error.HTTPError as exc:
+        date_header = exc.headers.get("Date") if exc.headers else None
+    except Exception:
+        return None
+    if not date_header:
+        return None
+    try:
+        server = email.utils.parsedate_to_datetime(date_header).timestamp()
+    except (TypeError, ValueError):
+        return None
+    return server - time.time()
+
+
+def _install_clock_offset(offset: float) -> None:
+    """Sign with system-clock + offset.
+
+    botocore/auth.py does `from botocore.compat import get_current_datetime` at
+    import time, so the name to rebind is the one in botocore.auth — patching
+    botocore.compat instead would be a no-op that tests can still be written to
+    pass against. SigV4Auth.add_auth (auth.py:430) calls it to build
+    request.context['timestamp'], which becomes both X-Amz-Date and the
+    credential scope, so one rebind moves the whole signature.
+
+    The corrected clock is built from time.time(), deliberately, so that the
+    clock used to SIGN and the clock used to MEASURE (_server_time_offset) are
+    the same source. An earlier version read datetime.now() here and time.time()
+    there; they agree on a real machine, so the bug was invisible in production
+    and only showed up under test, where patching one left the other stale.
+    """
+    import datetime as _dt
+
+    import botocore.auth
+
+    def _corrected(remove_tzinfo=True):
+        now = _dt.datetime.fromtimestamp(time.time() + offset, _dt.timezone.utc)
+        return now.replace(tzinfo=None) if remove_tzinfo else now
+
+    botocore.auth.get_current_datetime = _corrected
+
+
+def _correct_clock_if_skewed(endpoint: str) -> float | None:
+    """Measure skew and install a correction if it exceeds tolerance.
+
+    Returns the offset applied, or None if the clock was fine or unmeasurable.
+    Prints when it acts: a backup that silently compensates for a broken clock
+    hides a broken clock, and the clock breaks other things too.
+
+    Always installs an offset when it can measure one — including a small one.
+    Returning early without installing would leave any PREVIOUSLY installed
+    offset in force, so the function's effect would depend on what had run
+    before it rather than on the clock.
+    """
+    offset = _server_time_offset(endpoint)
+    if offset is None:
+        return None
+    _install_clock_offset(offset)
+    if abs(offset) < _SKEW_TOLERANCE_S:
+        return None
+    print(
+        f"STORE_BACKUP NOTE local clock is {offset:+.0f}s from the R2 endpoint — "
+        f"signing with the server clock for this run",
+        file=sys.stderr,
+    )
+    return offset
+
+
+def _retry_on_skew(fn, *args, **kwargs):
+    """Run fn, and if the signature is rejected as skewed, re-measure and retry once.
+
+    The up-front correction in _client() handles a clock that is already wrong.
+    This handles a clock that goes wrong DURING the run — a full sync of 1455
+    dossiers is long enough to cross a sleep/wake, which is exactly the event
+    that produced the original failure.
+    """
+    from botocore.exceptions import ClientError
+
+    try:
+        return fn(*args, **kwargs)
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") != "RequestTimeTooSkewed":
+            raise
+        endpoint = f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com"
+        offset = _server_time_offset(endpoint)
+        if offset is None:
+            raise
+        _install_clock_offset(offset)
+        print(
+            f"STORE_BACKUP NOTE clock skewed mid-run ({offset:+.0f}s) — re-signed and retried",
+            file=sys.stderr,
+        )
+        return fn(*args, **kwargs)
+
+
 def _client():
     """An R2 client, or a hard exit. Never a silent no-op — see the module docstring."""
     _load_dotenv(REPO_ROOT / ".env")
@@ -114,6 +244,7 @@ def _client():
         sys.exit("STORE_BACKUP FAIL boto3 not installed (it is in requirements.txt)")
 
     account = os.environ["R2_ACCOUNT_ID"]
+    _correct_clock_if_skewed(f"https://{account}.r2.cloudflarestorage.com")
     return boto3.client(
         "s3",
         endpoint_url=f"https://{account}.r2.cloudflarestorage.com",
@@ -303,16 +434,16 @@ def main() -> int:
     s3, bucket = _client()
 
     if args.restore:
-        count = restore(s3, bucket, Path(args.restore))
+        count = _retry_on_skew(restore, s3, bucket, Path(args.restore))
         print(f"STORE_BACKUP RESTORE PASS files={count} dest={args.restore}")
         return 0
 
     uploaded = skipped = 0
     ledger_key = ""
     if not args.verify_only:
-        uploaded, skipped, ledger_key = sync(s3, bucket)
+        uploaded, skipped, ledger_key = _retry_on_skew(sync, s3, bucket)
 
-    ok, total, problems = verify_sample(s3, bucket, args.sample)
+    ok, total, problems = _retry_on_skew(verify_sample, s3, bucket, args.sample)
     for problem in problems:
         print(f"  {problem}", file=sys.stderr)
 

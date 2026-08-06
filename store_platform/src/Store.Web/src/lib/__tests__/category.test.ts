@@ -32,6 +32,28 @@ describe('categoryFor', () => {
     }
   });
 
+  it('gives every sector its own icon, no two share a glyph', () => {
+    /*
+     * Added 2026-08-06, after the pack cover started drawing the sector icon at 96px.
+     *
+     * Three pairs shared one glyph until that day -- `home` for housing_rental AND pets_animals,
+     * `gavel` for licensing_admin AND property_probate, `briefcase` for professional_services AND
+     * other -- covering 26 of the 63 packs live at the time. It was invisible while the icon was a
+     * 12px mark inside a chip that spelled the sector out beside it. It stopped being invisible
+     * when the same glyph became the largest object on the card: two adjacent cards from a
+     * colliding pair were, at a glance, the same picture, and the hue meant to separate them is
+     * two degrees apart in the worst case (`category.ts` header: hue is decoration).
+     *
+     * Reported as the collision, not as a count, so a failure names the sectors to fix.
+     */
+    const byIcon = new Map<string, string[]>();
+    for (const cat of allCategories()) {
+      byIcon.set(cat.icon, [...(byIcon.get(cat.icon) ?? []), cat.key]);
+    }
+    const collisions = [...byIcon.entries()].filter(([, keys]) => keys.length > 1);
+    expect(collisions.map(([icon, keys]) => `${icon}: ${keys.join(' + ')}`)).toEqual([]);
+  });
+
   it.each([
     ['absent', undefined],
     ['null', null],
@@ -47,11 +69,17 @@ describe('the untagged treatment', () => {
     expect(UNLABELLED.tagged).toBe(false);
   });
 
-  // `cover` is gone (brand v3, 2026-08-06): the gradient card it painted no longer exists. The
-  // neutral treatment is now the grey dot, and it must stay non-empty for the same reason the
-  // gradient had to -- an untagged pack renders a card with a blank hole in its plate otherwise.
-  it('still carries a neutral dot and an icon, so an untagged card is neutral, not broken', () => {
-    expect(UNLABELLED.dot).not.toBe('');
+  // `dot` is gone (2026-08-06, second pass) along with the single neutral marker it named. The
+  // untagged treatment is now to render NOTHING -- no badge, no marker, no label -- because a dot
+  // with no word beside it was the only element on the card carrying no meaning at all.
+  //
+  // `ink`/`tint` still have to be non-empty even though the card is not supposed to render them:
+  // they are the graceful degradation for a caller that forgets to branch on `tagged`, so the
+  // failure mode is a neutral badge rather than an unstyled one. That a caller which forgets is
+  // a BUG is asserted separately, against the rendered card, in `__tests__/categoryScale.test.ts`.
+  it('carries neutral ink and tint, so a caller that ignores `tagged` degrades legibly', () => {
+    expect(UNLABELLED.ink).not.toBe('');
+    expect(UNLABELLED.tint).not.toBe('');
     expect(UNLABELLED.icon).not.toBe('');
   });
 

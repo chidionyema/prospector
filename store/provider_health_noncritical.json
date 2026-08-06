@@ -1,1 +1,12 @@
-{}
+{
+  "cursor_cli": {
+    "dead_until": 1786008348.383969,
+    "marked_at": 1786004748.384453,
+    "dead_for_s": 3600.0
+  },
+  "claude_cli": {
+    "dead_until": 1786010959.1658602,
+    "marked_at": 1786007359.1660202,
+    "dead_for_s": 3600.0
+  }
+}

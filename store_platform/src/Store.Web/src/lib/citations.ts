@@ -3,8 +3,8 @@
  *
  * WHY THIS EXISTS
  *
- * The storefront's entire proposition, stated verbatim on the pack page, is "all six checks,
- * each verdict, and a clickable source behind every claim". Measured against the served
+ * The storefront's entire proposition, stated verbatim on the pack page, is "every check it
+ * faced, each verdict, and a clickable source behind every claim". Measured against the served
  * production build on 2026-08-05, `GET /pack/8d5e24fbe6c1f5d3` rendered **zero** source
  * anchors. The URLs were all there -- they were just printed as text:
  *
