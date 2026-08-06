@@ -58,6 +58,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from prospector.scheduler import paths
+
 PAUSE_FILENAME = "PAUSE"
 
 
@@ -198,7 +200,10 @@ class SchedulerGuard:
 
 
 def _store_dir(cfg) -> Path:
-    return Path(getattr(cfg, "store_dir", "store"))
+    # Delegates so the "which store?" answer has ONE definition. It used to default to the
+    # relative literal "store", which resolves against the cwd — see prospector/scheduler/
+    # paths.py for the 110 fabricated rows that put in the live tick log.
+    return paths.store_dir(cfg)
 
 
 def _daily_cap(cfg) -> float:

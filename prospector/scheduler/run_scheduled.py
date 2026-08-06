@@ -32,6 +32,7 @@ from pathlib import Path
 
 from prospector.config import load_config
 from prospector.errors import GroundingInfrastructureError
+from prospector.scheduler import paths
 from prospector.scheduler.guard import guard_from_config
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,9 @@ def _load_env_file(repo_root: Path | None = None) -> int:
 
 
 def _store_dir(cfg) -> Path:
-    return Path(getattr(cfg, "store_dir", "store"))
+    # See prospector/scheduler/paths.py: the old cwd-relative default silently aimed every
+    # scheduler write at whatever `./store` the current directory had.
+    return paths.store_dir(cfg)
 
 
 # How many backlogged (DEFER / provisional) candidates one tick may re-vet before it
@@ -403,13 +406,50 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
     This is the missing nerve: the engine already KNOWS when a batch fails or stocks nothing; this
     pushes that to the founder (desktop + opt-in webhook) instead of leaving it in a log.
     """
-    from prospector.scheduler.alerts import alerts_for_tick, emit_alert
+    from prospector.scheduler.alerts import (TICK_ALERT_KEYS, alerts_for_tick, emit_alert,
+                                             reconcile_alert_txt, resolve_alert)
 
-    for spec in alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg)):
+    specs = alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg))
+    for spec in specs:
         try:
             emit_alert(cfg, **spec)
         except Exception:  # noqa: BLE001 — alerting must never break the daemon
             logger.exception("Failed to emit alert for tick")
+
+    # RECOVERY. A tick that actually ran generation and raised nothing is positive evidence that
+    # the conditions it checks are over — so clear them, instead of leaving ALERT.txt showing a
+    # CRITICAL from hours ago (measured 2026-08-06: it still showed `moat_provisional` from
+    # 2026-08-05T15:29 while the newest real batch had 0 provisional).
+    #
+    # The eligibility test is deliberately narrow, because "no alert" is NOT the same as
+    # "healthy":
+    #   * a guard-skipped tick (PAUSE / spend cap) never ran, so it proves nothing;
+    #   * a dry run never ran either;
+    #   * an errored tick is itself an alert.
+    # `alerts_for_tick` returns [] for all three, so keying recovery off "no specs" alone would
+    # let a PAUSE file silently clear a real moat outage.
+    if not tick.get("allowed") or tick.get("dry_run") or tick.get("error"):
+        return
+    if not isinstance(tick.get("result"), dict):
+        return
+    raised = {s["key"] for s in specs}
+    for key in TICK_ALERT_KEYS:
+        if key in raised:
+            continue
+        try:
+            resolve_alert(cfg, key=key,
+                          reason=f"clean tick at {tick.get('ts')}: {tick.get('result')}")
+        except Exception:  # noqa: BLE001 — recovery bookkeeping must never break the daemon
+            logger.exception("Failed to resolve alert '%s'", key)
+
+    # Then make the file match the active set outright. `resolve_alert` only rewrites when it
+    # removed something, so a store written by the old code — no `_active` key, a stale banner —
+    # would never converge: every resolve returns False and the CRITICAL from yesterday survives
+    # the fix meant to clear it. That is the exact shape of the live store on 2026-08-06.
+    try:
+        reconcile_alert_txt(cfg)
+    except Exception:  # noqa: BLE001 — see above
+        logger.exception("Failed to reconcile ALERT.txt")
 
 
 class _StopFlag:
@@ -692,11 +732,16 @@ def _run_watchdog(cfg) -> int:
     so a dead/hung daemon is caught even though it emits no ticks. On a stale heartbeat it alerts
     AND kills the wedged pid so launchd KeepAlive relaunches it. Returns 0 if alive, 1 if not.
     """
-    from prospector.scheduler.alerts import emit_alert, CRITICAL
+    from prospector.scheduler.alerts import emit_alert, resolve_alert, CRITICAL
 
     ok, reason = _liveness(cfg)
     if ok:
         logger.info("Watchdog: %s", reason)
+        # The watchdog owns `liveness` in both directions. A tick completing is also evidence the
+        # daemon is alive, but the tick path must not clear an alert it does not own: the watchdog
+        # runs every ~15 min and the tick cadence is 2h, so letting the tick clear it would leave
+        # the file green for up to two hours after the daemon actually died.
+        resolve_alert(cfg, key="liveness", reason=f"watchdog check passed: {reason}")
         return 0
     emit_alert(cfg, severity=CRITICAL, key="liveness",
                title="Generation daemon is DOWN", message=reason, throttle_s=3600)
