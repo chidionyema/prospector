@@ -42,11 +42,12 @@ export function Checkbox({ label, hint, error, id, className, disabled, ...rest 
           <span
             aria-hidden="true"
             className={cx(
-              'flex h-5 w-5 items-center justify-center rounded-md border bg-surface text-on-primary transition-colors',
-              'group-hover:border-muted/60',
+              'flex h-5 w-5 items-center justify-center rounded-sm border bg-surface text-on-primary',
+              'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
+              'group-hover:border-text',
               'peer-checked:border-primary peer-checked:bg-primary',
-              'peer-focus-visible:ring-2 peer-focus-visible:ring-focus peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg',
-              error ? 'border-danger' : 'border-border',
+              'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus',
+              error ? 'border-danger' : 'border-border-strong',
             )}
           >
             {/* The check inherits the box's on-primary (white): invisible on the white unchecked box,
@@ -55,9 +56,9 @@ export function Checkbox({ label, hint, error, id, className, disabled, ...rest 
           </span>
         </span>
         <span className="space-y-0.5">
-          <span className="block text-body text-text">{label}</span>
+          <span className="block text-meta text-text">{label}</span>
           {hint && (
-            <span id={`${inputId}-hint`} className="block text-caption text-muted">
+            <span id={`${inputId}-hint`} className="block text-caption text-subtle">
               {hint}
             </span>
           )}

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Button } from '@/components/ui';
+import { Button, chipClasses } from '@/components/ui';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import type { DiscoveryState } from '@/lib/discovery';
 import { KIND_NOUN, label, type FacetKind } from '@/lib/facets';
@@ -44,8 +44,8 @@ export function DiscoveryNearMiss({
   );
 
   return (
-    <div className="border border-border bg-surface p-6">
-      <h3 className="text-body font-black tracking-tight text-text">
+    <div className="rounded-md border border-border bg-surface p-6">
+      <h3 className="text-body font-semibold text-text">
         Nothing matches all of it. These come closest,
       </h3>
       <ul className="mt-3 flex flex-wrap gap-2">
@@ -54,7 +54,7 @@ export function DiscoveryNearMiss({
             <button
               type="button"
               onClick={() => onRelax(candidate.relaxedState)}
-              className="rounded-full bg-warning/10 px-3 py-1 text-caption font-semibold text-text/80 ring-1 ring-inset ring-warning/30 transition-colors hover:bg-warning/20"
+              className={chipClasses()}
             >
               {candidate.pack.title.split(/\s*,\s*/)[0].trim()}: {candidate.missLabel}
             </button>
@@ -89,8 +89,8 @@ export function DiscoveryNearMiss({
  */
 export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?: () => void }) {
   return (
-    <div className="border border-border bg-surface p-6">
-      <h3 className="text-body font-black tracking-tight text-text">
+    <div className="rounded-md border border-border bg-surface p-6">
+      <h3 className="text-body font-semibold text-text">
         No vetted pack for “{query.trim()}”, yet.
       </h3>
       <p className="mt-2 max-w-2xl text-meta leading-relaxed text-muted">
@@ -111,7 +111,7 @@ export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?:
         <WaitlistForm source="catalogue-empty-state" query={query} />
       </div>
 
-      <p className="mt-2 text-caption font-medium text-text/70">
+      <p className="mt-2 text-caption text-subtle">
         Meanwhile, the free sample report shows exactly what survives looks like →
       </p>
     </div>

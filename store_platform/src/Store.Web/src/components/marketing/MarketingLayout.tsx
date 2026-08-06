@@ -18,8 +18,14 @@ export const MARKETING_NAV = [
   // `/ideas` is here rather than only in the sitemap because it is the hub every `/ideas/<slug>`
   // landing hangs off: linked from the chrome, each landing is two clicks from the home page
   // instead of being reachable only from a sitemap and its siblings.
-  { href: '/ideas', label: 'Browse by category' },
+  // Label shortened from "Browse by category": at 14px the four-word item was wider than the
+  // other three combined, so the nav read as one long phrase rather than four destinations.
+  { href: '/ideas', label: 'Categories' },
   { href: '/how-it-works', label: 'How it works' },
+  // Promoted out of the footer (2026-08-06). This shop's entire claim is that most ideas are
+  // rejected; the log of what got rejected and why is the evidence for that claim, and it was
+  // reachable only from a footer column. It is the strongest trust asset on the site.
+  { href: '/kill-log', label: 'Kill log' },
   { href: '/faq', label: 'FAQ' },
 ] as const;
 
@@ -50,30 +56,36 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         Skip to content
       </a>
 
-      {/* Dark chrome header -- the brand's signature surface. Brand v2: the
-          band is pure black (#0A0A0A), not the old muddy teal. The accent
-          dot in the logo is the vermillion primary. */}
+      {/*
+        White chrome (brand v3, 2026-08-06). The near-black band is gone.
+        A dark header on an otherwise white store is a second colour system: everything placed in
+        it needed inverted text tokens (--on-band, --on-band-muted, --on-band-faint) and its own
+        button variants, and the wordmark needed an `onDark` mode. Removing it deletes all three.
+
+        `shadow-1` appears only once scrolled, so the shadow means "there is content underneath
+        this" rather than being decoration -- the elevation rule in §5.3.
+      */}
       <header
-        className={`sticky top-0 z-30 w-full transition-all duration-200 border-b border-text/10 pt-[env(safe-area-inset-top)] ${
-          scrolled ? 'bg-band/95 backdrop-blur-md' : 'bg-band'
+        className={`sticky top-0 z-30 w-full border-b border-border bg-bg/90 backdrop-blur-md pt-[env(safe-area-inset-top)] transition-shadow duration-200 ${
+          scrolled ? 'shadow-1' : ''
         }`}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 h-14">
+        <div className={`${SHELL} flex h-16 items-center justify-between gap-4`}>
           {/* Left: Brand & Main Nav */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
-              <Logo className="text-h2" onDark />
+              <Logo className="text-h2" />
             </Link>
 
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden items-center gap-7 md:flex">
               {MARKETING_NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="font-medium text-meta text-on-band-muted hover:text-on-band transition-colors">{item.label}</Link>
+                <Link key={item.href} href={item.href} className="text-meta font-medium text-muted transition-colors hover:text-text">{item.label}</Link>
               ))}
             </nav>
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2 h-full">
+          <div className="flex h-full items-center gap-1">
             {/* Renders nothing until there is something in it, see CartButton. */}
             <CartButton />
 
@@ -82,19 +94,22 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 every visitor, and stays cacheable. A "Sign in / Your account" toggle would have
                 to wait for the session before it could choose, so every returning customer would
                 watch it flip after hydration, and every page in the site would depend on the
-                session resolving. /account itself decides which of the two it is. */}
+                session resolving. /account itself decides which of the two it is.
+
+                A ghost link, not a bordered box: the header should offer exactly one thing that
+                looks clickable-as-a-control, and on a shop that is the cart. */}
             <Link
               href="/account"
-              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-on-band-faint/40 px-3 py-1.5 text-meta font-medium text-on-band-muted hover:border-on-band-faint hover:text-on-band transition-colors"
+              className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text md:inline-flex"
             >
               <Icon name="account" size={18} />
               Account
             </Link>
-            <div className="flex items-center md:hidden h-full">
+            <div className="flex h-full items-center md:hidden">
               <button
                 ref={menuButtonRef}
                 type="button"
-                className="inline-flex items-center justify-center p-2 text-on-band-muted hover:text-on-band focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="inline-flex items-center justify-center rounded-md p-2 text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 aria-label={menuOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={menuOpen}
                 aria-controls="marketing-menu"
@@ -107,15 +122,15 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         </div>
 
         {menuOpen && (
-          <div id="marketing-menu" className="border-t border-border bg-surface md:hidden shadow-2 animate-rise">
-            <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-6 py-4">
-              <div className="py-4 space-y-4">
+          <div id="marketing-menu" className="animate-rise border-t border-border bg-surface shadow-2 md:hidden">
+            <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-4 sm:px-6">
+              <div className="py-2">
                 {MARKETING_NAV.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMenuOpen(false)}
-          className="block px-2 py-2 text-caption font-semibold text-muted hover:text-text"
+                    className="block py-3 text-body font-medium text-text"
                   >
                     {item.label}
                   </Link>
@@ -124,16 +139,14 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 <Link
                   href="/account"
                   onClick={() => setMenuOpen(false)}
-         className="block px-2 py-2 text-caption font-semibold text-muted hover:text-text"
+                  className="block py-3 text-body font-medium text-text"
                 >
                   Account
                 </Link>
               </div>
-              <div className="py-6">
+              <div className="py-4">
                 <Link href="/" onClick={() => setMenuOpen(false)}>
-         <Button fullWidth className="uppercase tracking-[0.2em] text-caption h-12 rounded-none bg-text text-bg border-none font-semibold">
-                    Browse packs
-                  </Button>
+                  <Button fullWidth size="lg">Browse the packs</Button>
                 </Link>
               </div>
             </nav>
@@ -144,69 +157,68 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
       {/* Full-width main: children own their contrast bands. */}
       <main id="main" className="bg-bg">{children}</main>
 
-      {/* 5. WORLD-CLASS FOOTER (Institutional / Ledger Aesthetic) */}
-      <footer className="bg-surface2 border-t border-border pt-16 md:pt-24 pb-[calc(3rem+env(safe-area-inset-bottom))] overflow-hidden relative">
-        <div className={`${SHELL} relative z-10`}>
-          
-          {/* Top Section: Brand Statement */}
-          <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-16 md:mb-20">
-            <div className="max-w-md text-left">
-              <Logo className="text-h1 mb-6 text-text" />
-              <p className="text-h2 font-normal text-muted leading-relaxed">
-                {/* "£49 each" removed: the footer renders on every page including ones with no
-                    catalogue loaded, and the shelf has not been one price since the segment
-                    ladder shipped. The live figures live on /pricing, which reads them. */}
-                Business ideas that survived the filter. Fully sourced, ready to build.
-              </p>
-            </div>
-          </div>
+      {/*
+        Footer. Column headings are `text-caption font-medium text-subtle` in sentence case --
+        previously orange, uppercase, letterspaced and bold, i.e. four emphasis devices on a word
+        whose only job is to label a list of five links.
 
-          {/* Middle Section: Strict Ledger Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 border-t border-border md:divide-x md:divide-border text-left">
+        The disclaimer moved from `text-muted/50` to `text-subtle`. At 50% opacity over #FAFAFA
+        that paragraph computed to roughly 2.4:1, below the 4.5:1 AA floor -- and it is the
+        paragraph that says the packs are not financial advice, which is the one piece of copy on
+        the site that has to be readable.
+      */}
+      <footer className="border-t border-border bg-surface2 pt-16 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+        <div className={SHELL}>
 
-            {/* Column 1 */}
-            <div className="py-8 md:py-10 md:pr-8 border-b border-border md:border-b-0">
-       <h3 className="text-caption uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Store</h3>
-              <ul className="flex flex-col gap-4">
-                <li><Link href="/" className="text-caption text-muted hover:text-text transition-colors">Catalog</Link></li>
-                <li><Link href="/ideas" className="text-caption text-muted hover:text-text transition-colors">Browse by category</Link></li>
-                <li><Link href="/how-it-works" className="text-caption text-muted hover:text-text transition-colors">How it works</Link></li>
-                <li><Link href="/kill-log" className="text-caption text-muted hover:text-text transition-colors">Kill log</Link></li>
-                <li><Link href="/faq" className="text-caption text-muted hover:text-text transition-colors">FAQ</Link></li>
-              </ul>
-            </div>
-
-            {/* Column 2 */}
-            <div className="py-8 md:py-10 md:px-8 border-b border-border md:border-b-0">
-       <h3 className="text-caption uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Legal</h3>
-              <ul className="flex flex-col gap-4">
-                <li><Link href="/terms" className="text-caption text-muted hover:text-text transition-colors">Terms of Service</Link></li>
-                <li><Link href="/privacy" className="text-caption text-muted hover:text-text transition-colors">Privacy Policy</Link></li>
-                <li><Link href="/refund" className="text-caption text-muted hover:text-text transition-colors">Refund Policy</Link></li>
-              </ul>
-            </div>
-
-            {/* Column 3 */}
-            <div className="py-8 md:py-10 md:pl-8">
-       <h3 className="text-caption uppercase tracking-wide text-eyebrow mb-6 md:mb-8 font-bold">Contact</h3>
-              <ul className="flex flex-col gap-4">
-                <li><a href={`mailto:${LEGAL.supportEmail}`} className="text-caption text-muted hover:text-text transition-colors break-all">{LEGAL.supportEmail}</a></li>
-              </ul>
-            </div>
-
-          </div>
-
-          {/* Bottom Section: Metadata */}
-          <div className="border-t border-border pt-8 mt-4 flex flex-col md:flex-row justify-between items-center gap-8 text-left">
-      <p className="text-caption text-muted uppercase tracking-wide font-bold">
-              &copy; 2026 {BRAND.name}. All rights reserved.
+          <div className="mb-12 max-w-md">
+            <Logo className="mb-3 text-h2" />
+            <p className="text-meta text-muted">
+              {/* "£49 each" removed: the footer renders on every page including ones with no
+                  catalogue loaded, and the shelf has not been one price since the segment
+                  ladder shipped. The live figures live on /pricing, which reads them. */}
+              Business ideas that survived the filter. Fully sourced, ready to build.
             </p>
           </div>
 
-          {/* Digital-goods disclaimer */}
-          <p className="mt-12 md:mt-16 text-caption font-medium text-muted/50 leading-relaxed text-left max-w-5xl tracking-wide">
-            Mumchimp packs are digital research products sold for information only, not financial, legal, or investment advice. Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
-          </p>
+          <div className="grid grid-cols-2 gap-8 border-t border-border pt-10 md:grid-cols-3">
+
+            <div>
+              <h3 className="mb-4 text-caption font-medium text-subtle">Store</h3>
+              <ul className="flex flex-col gap-3">
+                <li><Link href="/" className="text-meta text-muted transition-colors hover:text-text">Catalog</Link></li>
+                <li><Link href="/ideas" className="text-meta text-muted transition-colors hover:text-text">Categories</Link></li>
+                <li><Link href="/how-it-works" className="text-meta text-muted transition-colors hover:text-text">How it works</Link></li>
+                <li><Link href="/kill-log" className="text-meta text-muted transition-colors hover:text-text">Kill log</Link></li>
+                <li><Link href="/faq" className="text-meta text-muted transition-colors hover:text-text">FAQ</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="mb-4 text-caption font-medium text-subtle">Legal</h3>
+              <ul className="flex flex-col gap-3">
+                <li><Link href="/terms" className="text-meta text-muted transition-colors hover:text-text">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="text-meta text-muted transition-colors hover:text-text">Privacy Policy</Link></li>
+                <li><Link href="/refund" className="text-meta text-muted transition-colors hover:text-text">Refund Policy</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="mb-4 text-caption font-medium text-subtle">Contact</h3>
+              <ul className="flex flex-col gap-3">
+                <li><a href={`mailto:${LEGAL.supportEmail}`} className="break-all text-meta text-muted transition-colors hover:text-text">{LEGAL.supportEmail}</a></li>
+              </ul>
+            </div>
+
+          </div>
+
+          <div className="mt-10 border-t border-border pt-8">
+            <p className="text-caption text-subtle">
+              &copy; 2026 {BRAND.name}. All rights reserved.
+            </p>
+            <p className="mt-4 max-w-[80ch] text-caption leading-relaxed text-subtle">
+              Mumchimp packs are digital research products sold for information only, not financial, legal, or investment advice. Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
+            </p>
+          </div>
 
         </div>
       </footer>

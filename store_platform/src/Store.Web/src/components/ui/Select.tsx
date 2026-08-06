@@ -43,7 +43,7 @@ export function Select({
           required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy(selectId, hint, error)}
-          className={cx(controlClass(!!error), 'appearance-none pr-10', className)}
+          className={cx(controlClass(!!error, 'pl-3 pr-10'), 'appearance-none', className)}
         >
           {children}
         </select>

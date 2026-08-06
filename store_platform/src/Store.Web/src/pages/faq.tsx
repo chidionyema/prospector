@@ -3,7 +3,7 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, SectionBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { Icon } from '@/components/ui';
+import { buttonClasses, chipClasses, Icon, SearchInput, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { LEGAL } from '@/lib/config';
 import { FAQS, isLink, plainAnswer, type FaqItem } from '@/lib/faqContent';
@@ -15,7 +15,7 @@ function Answer({ item }: { item: FaqItem }) {
     <>
       {item.answer.map((segment, i) => {
         if (!isLink(segment)) return <React.Fragment key={i}>{segment}</React.Fragment>;
-        const className = 'text-primary font-bold hover:underline';
+        const className = textLinkClass('font-medium');
         return segment.href.startsWith('/') ? (
           <Link key={i} href={segment.href} className={className}>
             {segment.text}
@@ -47,13 +47,18 @@ function AccordionItem({
   const [feedback, setFeedback] = React.useState<'up' | 'down' | null>(null);
 
   return (
-    <div className="border border-border bg-surface transition-colors">
+    /* The row draws only its own bottom rule; the LIST draws the box. Both used to: every item
+       carried `rounded-md border border-border` inside a parent with `divide-y divide-border`, so between two
+       rows sat item N's bottom hairline and item N+1's top hairline with no gap -- measured at
+       1px + 1px against 1px at the ends of the list (Playwright getComputedStyle, 2026-08-06). A
+       divider twice the weight of the one below it reads as a section break that isn't there. */
+    <div className="bg-surface transition-colors border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-4 p-5 text-left"
       >
-        <h2 className="text-body font-bold text-text leading-snug pr-8">{item.question}</h2>
+        <h2 className="text-body font-semibold text-text leading-snug pr-8">{item.question}</h2>
         <Icon
           name="arrowRight"
           size={16}
@@ -65,34 +70,32 @@ function AccordionItem({
       </button>
       {open && (
         <div className="px-5 pb-5 -mt-1">
-          <div className="text-meta leading-relaxed text-text/75">
+          <div className="text-meta leading-relaxed text-muted">
             <Answer item={item} />
           </div>
-          {/* Was this helpful? */}
-          <div className="mt-4 flex items-center gap-3 border-t border-border/60 pt-3">
+          {/*
+            Was this helpful? Two words, not two emoji.
+            `pricing.tsx` already stated the rule when it stopped rendering the pack-contents
+            emoji: each one is a different vendor's artwork per OS, and it is the loudest thing on
+            a page about a professional research product. A 👍 next to a paragraph explaining the
+            refund policy is exactly that, and it survived here because the rule was written in a
+            comment on one page instead of applied across the set (desktop-faq-fold.png,
+            2026-08-06). Words also give the control a visible label rather than an `aria-label`
+            that only a screen reader ever hears.
+          */}
+          <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
             <span className="text-caption text-muted">Was this helpful?</span>
-            <button
-              type="button"
-              onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
-              className={cx(
-                'text-meta transition-colors',
-                feedback === 'up' ? 'text-success' : 'text-muted hover:text-text',
-              )}
-              aria-label="Yes"
-            >
-              👍
-            </button>
-            <button
-              type="button"
-              onClick={() => setFeedback(feedback === 'down' ? null : 'down')}
-              className={cx(
-                'text-meta transition-colors',
-                feedback === 'down' ? 'text-warning' : 'text-muted hover:text-text',
-              )}
-              aria-label="No"
-            >
-              👎
-            </button>
+            {(['up', 'down'] as const).map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                onClick={() => setFeedback(feedback === choice ? null : choice)}
+                aria-pressed={feedback === choice}
+                className={chipClasses({ selected: feedback === choice })}
+              >
+                {choice === 'up' ? 'Yes' : 'No'}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -134,34 +137,36 @@ export default function Faq() {
 
       <PageHero
         eyebrow="FAQ"
-        title={<span className="leading-tight tracking-tighter">Common questions.</span>}
+        title="Common questions."
         lead="What you're buying, how it's delivered, and what we do and don't promise."
       />
 
-      {/* Search + sticky category pills */}
-      <SectionBand bg="white" width="6xl" className="!pt-0 !pb-4">
-        <div className="relative">
-          <Icon name="search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search FAQs…"
-            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-meta text-text outline-none transition-colors focus:border-primary/40"
-          />
-        </div>
+      {/* Search, filters and the answers they filter, in ONE band.
+          Two things were wrong here (desktop-faq-fold.png, 2026-08-06).
+          - Width: these bands were 6xl while `PageHero` is 4xl (blocks.tsx:83), so the page had two
+            left edges -- headline and lead at x=432, search box and every accordion at x=258 -- and
+            set the answers on a ~110-character measure.
+          - Split: the controls and the list were two `SectionBand`s, and a band always draws
+            `border-b` (blocks.tsx:47). That put a full-bleed rule between the filter chips and the
+            rows they filter, i.e. a page-wide divider announcing a new section directly between a
+            control and its own result. They are one section; the split existed only to get
+            different bottom padding. */}
+      <SectionBand bg="white" width="4xl" className="!pt-0 !pb-16">
+        <SearchInput
+          label="Search FAQs"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search FAQs…"
+        />
 
-        {/* Sticky category pills */}
+        {/* Category filters. `chipClasses` -- the same control the kill log and the shelf's facet
+            bar render, which this page used to draw square and tinted instead. */}
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setActiveCategory(null)}
-            className={cx(
-              'px-3 py-1.5 text-caption font-semibold transition-colors border',
-              !activeCategory
-                ? 'border-primary bg-primary/10 text-text'
-                : 'border-border bg-surface text-muted hover:border-text/20',
-            )}
+            aria-pressed={!activeCategory}
+            className={chipClasses({ selected: !activeCategory })}
           >
             All
           </button>
@@ -170,34 +175,28 @@ export default function Faq() {
               key={cat.key}
               type="button"
               onClick={() => setActiveCategory(cat.key)}
-              className={cx(
-                'px-3 py-1.5 text-caption font-semibold transition-colors border',
-                activeCategory === cat.key
-                  ? 'border-primary bg-primary/10 text-text'
-                  : 'border-border bg-surface text-muted hover:border-text/20',
-              )}
+              aria-pressed={activeCategory === cat.key}
+              className={chipClasses({ selected: activeCategory === cat.key })}
             >
               {cat.label}
             </button>
           ))}
         </div>
-      </SectionBand>
 
-      {/* FAQ accordions */}
-      <SectionBand bg="white" width="6xl" className="!pt-0 !pb-16">
         {filtered.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-meta text-muted">No questions match &ldquo;{search}&rdquo;.</p>
             <button
               type="button"
               onClick={() => { setSearch(''); setActiveCategory(null); }}
-              className="mt-2 text-meta font-semibold text-primary hover:underline"
+              className={buttonClasses({ variant: 'secondary', className: 'mt-3' })}
             >
               Clear search
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          // The list owns the box; each row owns only its bottom rule (see `AccordionItem`).
+          <div className="mt-6 overflow-hidden rounded-md border border-border">
             {filtered.map((item, i) => (
               <AccordionItem key={i} item={item} defaultOpen={i === 0} />
             ))}
@@ -206,27 +205,27 @@ export default function Faq() {
       </SectionBand>
 
       {/* Support block -- elevated, right after the accordions */}
-      <SectionBand bg="bg" width="6xl" className="!py-12">
-        <div className="mx-auto max-w-md border border-border bg-surface p-6">
+      <SectionBand bg="bg" width="4xl" className="!py-12">
+        <div className="mx-auto max-w-md rounded-md border border-border bg-surface p-6">
           <div className="flex items-center gap-3 mb-4">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
               <Icon name="mail" size={14} />
             </span>
-            <h4 className="font-bold text-meta text-text">A human reads every email</h4>
+            <h4 className="font-semibold text-meta text-text">A human reads every email</h4>
           </div>
      <div className="space-y-3 text-caption">
-            <div className="flex flex-col border-b border-border/60 pb-3">
-              <span className="text-muted uppercase font-bold tracking-tight mb-1">Email</span>
-              <a href={`mailto:${LEGAL.supportEmail}`} className="font-bold text-primary break-all hover:underline">{LEGAL.supportEmail}</a>
+            <div className="flex flex-col border-b border-border pb-3">
+              <span className="text-muted font-semibold tracking-tight mb-1">Email</span>
+              <a href={`mailto:${LEGAL.supportEmail}`} className="break-all font-medium text-accent transition-colors hover:text-accent-hover">{LEGAL.supportEmail}</a>
             </div>
             <div className="flex flex-col">
-              <span className="text-muted uppercase font-bold tracking-tight mb-1">Response Time</span>
-              <span className="font-bold text-text">&lt; 1 business day</span>
+              <span className="mb-1 text-caption font-medium text-subtle">Response time</span>
+              <span className="text-meta font-medium text-text">&lt; 1 business day</span>
             </div>
           </div>
           <Link
             href="/"
-            className="mt-5 inline-flex items-center gap-2 bg-primary px-4 py-2 text-meta font-semibold text-on-primary transition-colors hover:bg-primary-hover"
+            className={buttonClasses({ className: 'mt-5' })}
           >
             Browse the catalogue <Icon name="arrowRight" size={14} />
           </Link>

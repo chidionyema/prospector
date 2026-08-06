@@ -102,10 +102,25 @@ describe('US-4 — Mobile-first pack detail', () => {
       page.indexOf("What's inside your download"),
       page.indexOf("What\u2019s inside your download"),
     );
-    const detailsIdx = page.search(/<details\b/);
+    /*
+     * Scoped to the METHODOLOGY disclosures by name, not to `page.search(/<details\b/)`.
+     *
+     * The loose version broke on a change it should not have caught: the v3 pass collapsed the
+     * modelled-economics table into a `<details>` inside the purchase panel, which is composed
+     * higher in the file than the main column but renders in the right rail (and, on mobile, in
+     * the buy drawer). "First <details> in source order" is therefore not the same question as
+     * "first disclosure the buyer scrolls past", and only the second one is the audit's claim.
+     */
+    const methodologyIdx = Math.min(
+      ...['Six ways we tried to kill it', 'How it scores']
+        .map((s) => page.indexOf(s))
+        .filter((i) => i > 0),
+    );
+    expect(deliverablesIdx, 'the deliverables heading must exist').toBeGreaterThan(0);
+    expect(Number.isFinite(methodologyIdx), 'the methodology disclosures must exist').toBe(true);
     expect(
-      deliverablesIdx > 0 && detailsIdx > 0 && deliverablesIdx < detailsIdx,
-      'pack/[id].tsx must render "What\u2019s inside your download" before any <details> disclosure',
+      deliverablesIdx < methodologyIdx,
+      'pack/[id].tsx must render "What\u2019s inside your download" before the methodology disclosures',
     ).toBe(true);
   });
 

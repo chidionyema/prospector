@@ -89,8 +89,21 @@ ACCUSATORY = re.compile(
     r"\b(scam|fraud|fraudulent|illegal|criminal|incompeten\w*|dishonest)\b", re.I
 )
 
-# Passage references the engine embeds in prose, as (hash) or [hash].
-CITATION_REF = re.compile(r"[\(\[]([0-9a-f]{16})[\)\]]")
+# Passage references the engine embeds in prose, as (hash) or [hash], and frequently as a GROUP:
+# `(de2144c0a07e8f21, b72e61d1b7222bd7)`. This pattern matched a lone hash only, so every grouped
+# reference survived `_clean_reason` untouched and printed as a hex blob on the public page, in 16
+# of the 60 published entries (2026-08-06). The same omission cost those entries their citation
+# chips, because `findall` fed the resolver too: a grouped reference resolved to nothing, so the
+# kills with the MOST supporting passages were the ones rendered with none.
+CITATION_REF = re.compile(r"\s*[\(\[]\s*([0-9a-f]{16}(?:[,;]\s*[0-9a-f]{16})*)\s*[\)\]]")
+
+
+def citation_ids(text: str) -> list[str]:
+    """Every passage hash referenced in `text`, in order, flattened out of its groups."""
+    out: list[str] = []
+    for group in CITATION_REF.findall(text or ""):
+        out.extend(re.split(r"[,;]\s*", group))
+    return list(dict.fromkeys(out))
 
 
 def nodash(s: str | None) -> str:
@@ -104,9 +117,19 @@ def nodash(s: str | None) -> str:
     is consistent across the kill-log and the free sample report. The post-processor
     runs at publish time, here, so the underlying dossiers and the engine's verdicts
     are untouched — no moat change, only cosmetic normalisation.
+
+    A dash BETWEEN DIGITS is a range, and a comma changes what it means. Measured against the
+    live catalogue on 2026-08-06, 13 fields depend on that: "Mothers 25-45", "Gen Z gig workers
+    (18-27)", "for 2025-2026". Rewriting those as "Mothers 25, 45" states something the source
+    did not, which on a source-or-die storefront is the worse of the two defects. Those become a
+    hyphen, which drops the tell and keeps the range.
+
+    Kept in lock-step with the TypeScript `nodash()` in
+    `store_platform/src/Store.Web/src/lib/text.ts`.
     """
     if not s:
         return ""
+    s = re.sub(r"(\d)\s*[\u2014\u2013]\s*(\d)", r"\1-\2", s)
     s = s.replace("\u2014", ", ").replace("\u2013", ", ")
     s = re.sub(r"\s+-\s+", ", ", s)
     s = re.sub(r"\s+", " ", s).strip()
@@ -165,7 +188,7 @@ def build(limit: int) -> dict:
 
         index = _sources_by_id(dossier)
         citations = []
-        for ref in dict.fromkeys(CITATION_REF.findall(reason)):
+        for ref in citation_ids(reason):
             url = index.get(ref)
             if not url:
                 continue  # never render a reference we cannot resolve to a real page

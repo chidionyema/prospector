@@ -9,6 +9,7 @@ import React from 'react';
 import Link from 'next/link';
 import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/LegalDoc';
 import { LEGAL } from '@/lib/config';
+import { textLinkClass } from '@/components/ui';
 
 /**
  * Privacy Policy for the Mumchimp digital-download storefront.
@@ -31,7 +32,7 @@ export default function PrivacyPage() {
       <LegalText>
         Our registered details: {LEGAL.legalName}, {LEGAL.address}. Contact for privacy
         matters:{' '}
-        <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
         </a>
         .
@@ -161,7 +162,7 @@ export default function PrivacyPage() {
       <LegalText>
         You have the following rights regarding your personal data. To exercise any of them,
         contact us at{' '}
-        <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
         </a>
         :
@@ -185,7 +186,7 @@ export default function PrivacyPage() {
           href="https://ico.org.uk"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline"
+          className={textLinkClass()}
         >
           ico.org.uk
         </a>{' '}
@@ -211,15 +212,15 @@ export default function PrivacyPage() {
       <LegalHeading>9. Contact</LegalHeading>
       <LegalText>
         For any privacy question or to exercise your data-subject rights, email{' '}
-        <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
         </a>
         . Operator: {LEGAL.legalName}, {LEGAL.address}. See also our{' '}
-        <Link href="/terms" className="text-primary hover:underline">
+        <Link href="/terms" className={textLinkClass()}>
           Terms of Service
         </Link>{' '}
         and{' '}
-        <Link href="/refund" className="text-primary hover:underline">
+        <Link href="/refund" className={textLinkClass()}>
           Refund Policy
         </Link>
         .

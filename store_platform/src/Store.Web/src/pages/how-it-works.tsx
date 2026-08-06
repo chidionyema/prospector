@@ -3,9 +3,10 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { Icon } from '@/components/ui';
+import { buttonClasses, Icon } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import killLog from '@/data/kill-log.json';
+import killTotals from '@/data/kill-log-totals.json';
 
 /** One entry from the kill log picked to illustrate a specific gate. */
 interface KillExample {
@@ -24,10 +25,35 @@ const SIX_GATES: { gate: string; heading: string; exampleTitle: string }[] = [
   { gate: 'legality', heading: 'Legality', exampleTitle: 'GasSafe' },
 ];
 
-function findExample(titleFragment: string): KillExample | undefined {
-  return killLog.entries.find((e) => e.title.toLowerCase().includes(titleFragment.toLowerCase())) as
-    | KillExample
-    | undefined;
+/**
+ * The illustration for one gate: the curated kill if it is still in the log, otherwise any kill
+ * that died on that gate.
+ *
+ * The curated title was the ONLY lookup, and two of the six had already fallen out of the published
+ * log -- `NI-GapSweep` and `GasSafe` (2026-08-06). So the page that exists to prove the filter is
+ * real printed "No example found in the kill log for this gate." twice, under checks 1 and 6, on
+ * two gates the log has 2 and 3 real kills for:
+ *
+ *   python3 -c "import json,collections;d=json.load(open('src/data/kill-log.json'));\
+ *   print(collections.Counter(e['gate'] for e in d['entries']))"
+ *   -> Counter({'incumbency': 30, 'payer_solvency': 12, 'value_durability': 10, 'legality': 3,
+ *               'pain_reality': 2, 'distribution': 2, 'route_to_market': 1})
+ *
+ * A hand-picked title is a dangling reference to data the engine rewrites on every batch, and it
+ * fails silently and in public. The curated pick stays because a chosen example reads better than
+ * an arbitrary one; it is now a preference, not the only path.
+ *
+ * `route_to_market` also accepts `distribution`: the engine emits two keys for that one check and
+ * both carry the same buyer-facing label (see the note in `pages/kill-log.tsx`).
+ */
+const GATE_ALIASES: Record<string, string[]> = { route_to_market: ['route_to_market', 'distribution'] };
+
+function findExample(gate: string, titleFragment: string): KillExample | undefined {
+  const entries = killLog.entries as KillExample[];
+  const curated = entries.find((e) => e.title.toLowerCase().includes(titleFragment.toLowerCase()));
+  if (curated) return curated;
+  const keys = GATE_ALIASES[gate] ?? [gate];
+  return entries.find((e) => keys.includes(e.gate));
 }
 
 function truncateReason(reason: string, max: number): string {
@@ -37,6 +63,7 @@ function truncateReason(reason: string, max: number): string {
 
 export default function HowItWorks() {
   const { variant } = useCopyVariant();
+  const totals = killTotals as { killed: number; passed: number };
   return (
     <MarketingLayout>
       <Seo
@@ -45,8 +72,9 @@ export default function HowItWorks() {
       />
 
       <PageHero
+        width="6xl"
         eyebrow={variant.howItWorksEyebrow}
-        title={<span className="leading-tight tracking-tighter">{variant.howItWorksTitle}</span>}
+        title={variant.howItWorksTitle}
         lead={variant.howItWorksLead}
       />
 
@@ -54,64 +82,84 @@ export default function HowItWorks() {
       <Section
         bg="white"
         width="6xl"
-        title={<span className="font-black">{variant.sixChecksTitle}</span>}
+        title={variant.sixChecksTitle}
+        // `intro`, not a first child. `Section` puts the heading in a `mb-10` wrapper, which is the
+        // gap between a heading and its CONTENT; a lede passed as a child inherits it. Measured at
+        // 1440px: 40px between this heading and its own lede, against 12px on /pricing and 8px on
+        // /about (2026-08-06). At that distance the sentence reads as detached from the heading it
+        // belongs to. The `intro` slot exists for exactly this and sits at `mt-3`.
+        intro={variant.sixChecksDescription}
       >
-        <p className="mt-4 max-w-3xl text-body leading-relaxed text-text/75">
-          {variant.sixChecksDescription}
-        </p>
-
-        <div className="mt-12 space-y-8">
+        {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
+            content. Keeping both stacked 88px between the lede and step 1. */}
+        <div>
           {SIX_GATES.map((gate, i) => {
-            const example = findExample(gate.exampleTitle);
+            const example = findExample(gate.gate, gate.exampleTitle);
+            const last = i === SIX_GATES.length - 1;
             return (
               <div
                 key={gate.gate}
-                className="relative flex gap-6"
+                // `pb-8` on the row, not `space-y-8` on the list. The connector below is
+                // `flex-1` inside this row, so it can only grow to the row's own height: with the
+                // gap living OUTSIDE the row, the rail stopped at each card's bottom edge and
+                // restarted 32px lower at the next badge, rendering the timeline as six detached
+                // segments (desktop-how-it-works-fold.png, 2026-08-06). Moving the gap inside the
+                // row makes it rail height the connector can occupy.
+                className={`relative flex gap-6${last ? '' : ' pb-8'}`}
               >
                 {/* Step number + vertical line */}
                 <div className="flex flex-col items-center flex-none">
-                  <span className="flex h-10 w-10 items-center justify-center bg-text text-meta font-black text-bg">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-text text-meta font-semibold text-bg">
                     {i + 1}
                   </span>
-                  {i < SIX_GATES.length - 1 && (
-                    <div className="mt-2 w-0.5 flex-1 bg-border/60" />
+                  {!last && (
+                    // `-mb-8` cancels the row's `pb-8`. `flex-1` grows to the flex CONTENT box,
+                    // which excludes padding, so `pb-8` alone still left the rail 32px short of
+                    // the next badge (measured 32px on all five joins, 2026-08-06). The negative
+                    // margin lets the rail's box run through the padding to meet it.
+                    <div className="mt-2 -mb-8 w-0.5 flex-1 bg-border/60" />
                   )}
                 </div>
 
-                {/* Card body */}
-                <div className="flex-1 pb-6">
-                  <h2 className="text-h2 font-black text-text leading-tight">
+                {/* Card body. `max-w-3xl` is the measure the section intro directly above already
+                    uses: without it the example card filled the 6xl band and set its reason on a
+                    ~130-character line, so the page asked the reader to change measure between the
+                    paragraph explaining the gates and the evidence for each one
+                    (desktop-how-it-works-fold.png, 2026-08-06). */}
+                <div className="max-w-3xl flex-1 pb-6">
+                  <h2 className="text-h2 font-semibold text-text leading-tight">
                     {gate.heading}
                   </h2>
-         <p className="mt-1 text-caption font-bold uppercase tracking-widest text-muted">
+         <p className="mt-1 text-caption font-medium text-muted">
                     <code className="bg-bg px-1.5 py-0.5 rounded-md text-caption">{gate.gate}</code>
                   </p>
 
                   {example && (
-                    <div className="mt-5 border border-border bg-bg/40 p-5">
-           <p className="text-caption font-bold uppercase tracking-widest text-muted">
+                    <div className="mt-5 rounded-md border border-border bg-bg/40 p-5">
+           <p className="text-caption font-medium text-muted">
                         {example.gateLabel}
                       </p>
-                      <h3 className="mt-2 text-meta font-bold text-text leading-snug">
+                      <h3 className="mt-2 text-meta font-semibold text-text leading-snug">
                         {example.title}
                       </h3>
-                      <p className="mt-2 text-meta leading-relaxed text-text/75">
+                      <p className="mt-2 text-meta leading-relaxed text-muted">
                         {truncateReason(example.reason, 160)}
                       </p>
                       <Link
                         href="/kill-log"
-                        className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-primary hover:underline"
+                        className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-accent transition-colors hover:text-accent-hover"
                       >
                         See kill‑log <Icon name="arrowRight" size={12} />
                       </Link>
                     </div>
                   )}
 
-                  {!example && (
-                    <p className="mt-4 text-meta italic text-muted">
-                      No example found in the kill log for this gate.
-                    </p>
-                  )}
+                  {/* No `else`. If the log genuinely holds no kill for a gate, the gate's own
+                      description still stands on its own and the absence is not worth a sentence.
+                      The line that used to sit here, "No example found in the kill log for this
+                      gate.", told a buyer on the page that argues the filter is real that we had
+                      no evidence of it -- and said so because of a stale hardcoded title, not
+                      because the evidence was missing. */}
                 </div>
               </div>
             );
@@ -123,10 +171,10 @@ export default function HowItWorks() {
       <Section
         bg="bg"
         width="6xl"
-        title={<span className="font-black">The adversarial pass</span>}
+        title="The adversarial pass"
       >
         <div className="max-w-3xl space-y-4">
-          <p className="text-body font-normal leading-relaxed text-text/80">
+          <p className="text-body font-normal leading-relaxed text-muted">
             After the six gates clear, a second agent attacks the surviving claim. It hunts for
             contradictions, weak citations, and gaps the first pass missed. The dossier survives
             only if every objection can be answered with the evidence already on file, no new
@@ -145,21 +193,26 @@ export default function HowItWorks() {
       <Section
         bg="white"
         width="6xl"
-        title={<span className="font-black">Why most ideas die</span>}
+        title="Why most ideas die"
       >
         <div className="max-w-3xl space-y-6">
-          <p className="text-body font-bold leading-relaxed text-text">
-            Of 960 ideas researched, 103 survived.
+          {/* Read from the totals file, not typed in. These were hardcoded at "960 / 103" while
+              the engine's own count had moved to 1,080 / 129, so this page and the homepage --
+              which already read the file -- told a visitor two different survivorship stories
+              about the same catalogue. The number is the argument; a stale one is a refund. */}
+          <p className="text-body font-semibold leading-relaxed text-text">
+            Of {(totals.killed + totals.passed).toLocaleString()} ideas researched,{' '}
+            {totals.passed.toLocaleString()} survived.
           </p>
-          <p className="text-body leading-relaxed text-text/80">
+          <p className="text-body leading-relaxed text-muted">
             The rejects are published in full, each with the gate that fired and the sourced
             argument that killed it. The filter is auditable, not a black box.
           </p>
           <Link
             href="/kill-log"
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-meta font-medium text-on-primary transition-all hover:bg-primary-hover"
+            className={buttonClasses({ size: 'lg' })}
           >
-            See the 960 we rejected{' '}
+            See the {totals.killed.toLocaleString()} we rejected{' '}
             <Icon name="arrowRight" size={15} />
           </Link>
         </div>
@@ -169,16 +222,17 @@ export default function HowItWorks() {
       <Section
         bg="bg"
         width="6xl"
-        title={<span className="font-black">The honest limits</span>}
+        title="The honest limits"
       >
         <div className="max-w-3xl space-y-6">
-          <p className="text-body font-normal leading-relaxed text-text/80">
+          <p className="text-body font-normal leading-relaxed text-muted">
             A pack is grounded research, not a guarantee. It&apos;s a high quality, evidence backed starting point. The work of finding, vetting, and sourcing the opportunity is done for you. Execution is still yours, and no analysis can promise a business outcome.
           </p>
         </div>
       </Section>
 
       <CtaBand
+        width="6xl"
         title="See what made it through."
         lead=""
         primary={{ href: '/', label: 'Browse the packs' }}

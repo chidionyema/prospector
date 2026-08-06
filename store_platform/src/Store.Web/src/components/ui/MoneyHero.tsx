@@ -22,9 +22,15 @@ const HELD_STATES = ['EscrowLocked', 'BridgeActive', 'Disputed', 'PendingMatch']
 
 /**
  * The escrow figure as the hero of a surface, the largest, most confident thing on the dashboard and
- * the bounty detail. The one place the "earned flourish" lands: a faint band-tinted vault wash for held
- * money, a brass wash for settled money (gold = settled-money signal only). Everything else on the page
- * recedes beneath it (SITE-POLISH-SPEC §2.3). For a compact inline figure use MoneyBand instead.
+ * the bounty detail. Everything else on the page recedes beneath it (SITE-POLISH-SPEC §2.3). For a
+ * compact inline figure use MoneyBand instead.
+ *
+ * Brand v3 (2026-08-06). This carried `bg-vault-wash` / `bg-settled-wash` / `text-gold`: three
+ * tokens deleted with the v2 palette (`--gold` was an alias of `--success`; globals.css:104). In
+ * Tailwind v4 an unmapped utility emits NO rule, so the "earned flourish" this comment described
+ * had in fact been rendering as a plain white box with black status text for as long as the
+ * tokens have been gone. The state signal now runs through the semantic pair that survives:
+ * `--success` for released, neutral ink for everything else.
  */
 export function MoneyHero({ cents, currency, state, label, caption, action, className }: MoneyHeroProps) {
   const isReleased = state === 'AutoSettled';
@@ -44,28 +50,28 @@ export function MoneyHero({ cents, currency, state, label, caption, action, clas
   return (
     <div
       className={cx(
-        'relative overflow-hidden rounded-md border border-border p-6 shadow-2 sm:p-8',
-        isReleased ? 'bg-settled-wash' : 'bg-vault-wash',
+        'relative overflow-hidden rounded-md border border-border bg-surface p-6 shadow-1 sm:p-8',
+        isReleased && 'border-l-2 border-l-success',
         className,
       )}
     >
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div
             className={cx(
-              'flex items-center gap-2 text-caption font-semibold uppercase tracking-[0.14em]',
-              isReleased ? 'text-gold' : 'text-muted',
+              'flex items-center gap-2 text-caption font-medium',
+              isReleased ? 'text-success' : 'text-subtle',
             )}
           >
             <Icon
               name={isReleased ? 'released' : 'held'}
               size={16}
-              className={isReleased ? 'text-gold' : 'text-muted'}
+              className={isReleased ? 'text-success' : 'text-subtle'}
             />
             <span>{statusLabel}</span>
           </div>
           <Money cents={cents} currency={currency} className="block text-display text-text" />
-          {caption && <p className="max-w-md text-body text-muted">{caption}</p>}
+          {caption && <p className="max-w-[60ch] text-meta text-muted">{caption}</p>}
         </div>
         {action && <div className="shrink-0 sm:pb-1">{action}</div>}
       </div>

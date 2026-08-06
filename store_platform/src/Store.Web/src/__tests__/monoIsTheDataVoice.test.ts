@@ -54,10 +54,37 @@ describe('mono is the data voice', () => {
   });
 
   it('stays inside the data budget', () => {
-    // 70 before this pass, 21 after: amounts, refs, filenames, scores, hostnames, <kbd>, and the
-    // kill-gate tags. Raising this number means claiming a new kind of DATA exists.
+    /*
+     * BUDGET HISTORY -- each number is a measurement, not a preference.
+     *
+     *   70  before the 2026-08-05 pass (eyebrows, footer headings, nav links, a CTA)
+     *   21  after it; budget set to 26
+     *   53  after the brand v3 redesign (2026-08-06), which is why this line moved
+     *
+     * Reproduce either figure with:
+     *   grep -rc font-mono src --include='*.tsx' | grep -v __tests__ | grep -v _app.tsx \
+     *     | awk -F: '{s+=$2} END {print s}'
+     * (`git grep -c font-mono <ref> -- '...*.tsx'` gives 22 on both HEAD and origin/main, so the
+     * +31 is entirely this redesign's doing and was worth auditing rather than waving through.)
+     *
+     * WHY THE DATA SURFACE GREW. v3 put an evidence row on surfaces that previously had none --
+     * every shelf card, the pack fold, the cover, the dossier plate -- and put a price on every
+     * buy affordance instead of only the checkout. Those are quantities, so they are mono; the
+     * count rises because there are more places showing data, not because prose crept back in.
+     *
+     * WHAT THE 53 ARE. Audited line by line on 2026-08-06: amounts and prices; counts (sources,
+     * checks, packs live, rejection rate); dates and freshness; refs and the order access token;
+     * filenames; source hostnames; scores and the payback arithmetic; `<kbd>` keys; the gate and
+     * verdict tags; and two step ordinals. Four lines failed the audit and were changed rather
+     * than counted: `sample.tsx`'s "The strongest case against it" (a heading in English),
+     * `pricing.tsx`'s and `LiveKillCard.tsx`'s decorative x-glyph bullets (a glyph is not a
+     * value), and `PriceArgument.tsx`'s "<amount> one time, yours forever" (mono now wraps the
+     * amount only).
+     *
+     * Raising this number still means claiming a new kind of DATA exists. Say which kind.
+     */
     const total = TSX.reduce((n, f) => n + (f.src.match(/\bfont-mono\b/g)?.length ?? 0), 0);
-    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(26);
+    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(53);
   });
 
   it('the caption size utility is not secretly a typeface', () => {

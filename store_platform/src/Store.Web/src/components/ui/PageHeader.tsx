@@ -2,7 +2,7 @@ import React from 'react';
 import { cx } from './cx';
 
 export interface PageHeaderProps {
-  /** Small uppercase context label above the title (e.g. "Dashboard", "Board"). */
+  /** Small context label above the title (e.g. "Dashboard", "Board"). Sentence case, not caps. */
   eyebrow?: string;
   title: React.ReactNode;
   /** One-line context under the title, keep it short and human. */
@@ -17,6 +17,10 @@ export interface PageHeaderProps {
  * sitting on a hairline rule. This is the single element that gives the product a "designed" top instead
  * of a page that opens straight into a stack of cards (SITE-POLISH-SPEC §2.2). Restraint register: the
  * title carries the weight (display size, 600), the rule is a hairline, the action is the only colour.
+ *
+ * Brand v3 (2026-08-06): the eyebrow was `text-eyebrow`, a token deleted with the orange accent.
+ * In Tailwind v4 an unmapped colour utility emits NO rule at all, so that line had been rendering
+ * in inherited body ink -- visually a second, competing title -- rather than as a quiet label.
  */
 export function PageHeader({ eyebrow, title, description, action, className }: PageHeaderProps) {
   return (
@@ -26,15 +30,15 @@ export function PageHeader({ eyebrow, title, description, action, className }: P
         className,
       )}
     >
-      <div className="space-y-1.5">
-        {eyebrow && (
-          <p className="text-caption font-bold uppercase tracking-wide text-eyebrow">{eyebrow}</p>
-        )}
-        {/* `text-display` is 5.5rem / 88px with no responsive step built into the token, so this
-            shipped an 88px heading at every width, including a 390px phone where /account's title
-            overflowed its column. Scales up to the token only once there is room for it. */}
-        <h1 className="text-h1 font-bold leading-tight tracking-tight text-text sm:text-h1 lg:text-display">{title}</h1>
-        {description && <p className="max-w-2xl text-body font-normal leading-relaxed text-muted">{description}</p>}
+      <div>
+        {eyebrow && <p className="mb-2 text-caption font-medium text-subtle">{eyebrow}</p>}
+        {/* `text-display` had no responsive step built into the token, so this shipped the largest
+            size at every width, including a 390px phone where /account's title overflowed its
+            column. Scales up only once there is room for it.
+            No `leading-tight`/`tracking-tight`: both tokens already carry their own line-height and
+            letter-spacing, and stacking the utilities on top applied the correction twice. */}
+        <h1 className="text-h1 font-semibold text-text lg:text-display">{title}</h1>
+        {description && <p className="mt-2 max-w-[60ch] text-body text-muted">{description}</p>}
       </div>
       {action && <div className="shrink-0 sm:pb-0.5">{action}</div>}
     </header>

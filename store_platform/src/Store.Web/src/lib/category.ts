@@ -1,5 +1,5 @@
 /**
- * Presentation for the engine's `sector` facet: a colour, a gradient and an icon per sector.
+ * Presentation for the engine's `sector` facet: an icon and one dot colour per sector.
  *
  * This file used to infer the sector with six regexes over the pack's title and one-liner. That
  * is deleted (spec Part 10, AC-5) and must not come back. The regex table told buyers a metal
@@ -10,8 +10,13 @@
  * The rule now: `sector` comes from the API or the pack has no category. An untagged pack gets
  * the neutral `unlabelled` treatment, honest, and visibly different from a real sector.
  *
- * Class strings are FULL LITERALS (gradient + tint) so Tailwind keeps them at build time; never
- * interpolate them.
+ * Class strings are FULL LITERALS so Tailwind keeps them at build time; never interpolate them.
+ *
+ * `cover` (a 135deg two-stop gradient), `chip` (a tinted uppercase pill) and `accent` were deleted
+ * on 2026-08-06 with the gradient product card. Nothing rendered them once the card became a
+ * bordered white plate with an 8px dot, and a palette field kept "in case" is how a deleted visual
+ * language comes back. `lib/cover.ts` and `ui/CoverArt.tsx` went with them -- both were already
+ * unreferenced by any page.
  */
 import type { IconName } from '@/components/ui/Icon';
 import { SECTOR, label as facetLabel, type Sector } from '@/lib/facets';
@@ -29,63 +34,53 @@ export interface Category {
    */
   tagged: boolean;
   icon: IconName;
-  /** Full-height card cover gradient. */
-  cover: string;
-  /** Label-pill tint (bg + text + inset ring), reads on white. */
-  chip: string;
-  /** Small accent text colour. */
-  accent: string;
+  /**
+   * Background class for the 8px category dot on a product card (brand v3, 2026-08-06).
+   *
+   * This is the ONLY colour on a card. The dot is decorative in the a11y sense -- the sector
+   * label sits immediately beside it -- so a colour-blind buyer loses nothing, which is what
+   * makes an eight-value hue set legal here at all.
+   *
+   * Deliberately NOT derived from `cover`: those are 135deg two-stop gradients tuned to hold
+   * white text, so their stops are saturated enough that eight dots side by side on one grid
+   * read as a toy. These are the 500/600 steps of the same hue families.
+   */
+  dot: string;
 }
 
-type Palette = Pick<Category, 'icon' | 'cover' | 'chip' | 'accent'>;
+type Palette = Pick<Category, 'icon' | 'dot'>;
 
 const INDIGO: Palette = {
   icon: 'gavel',
-  cover: 'bg-[linear-gradient(135deg,#4f46e5_0%,#7c3aed_100%)]',
-  chip: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20',
-  accent: 'text-indigo-600',
+  dot: 'bg-[#6366F1]',
 };
 const EMERALD: Palette = {
   icon: 'home',
-  cover: 'bg-[linear-gradient(135deg,#0d9488_0%,#059669_100%)]',
-  chip: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
-  accent: 'text-emerald-700',
+  dot: 'bg-[#059669]',
 };
 const AMBER: Palette = {
   icon: 'building',
-  cover: 'bg-[linear-gradient(135deg,#d97706_0%,#ea580c_100%)]',
-  chip: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20',
-  accent: 'text-amber-700',
+  dot: 'bg-[#D97706]',
 };
 const SKY: Palette = {
   icon: 'wallet',
-  cover: 'bg-[linear-gradient(135deg,#2563eb_0%,#0284c7_100%)]',
-  chip: 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-600/20',
-  accent: 'text-sky-600',
+  dot: 'bg-[#3B82F6]',
 };
 const SLATE: Palette = {
   icon: 'briefcase',
-  cover: 'bg-[linear-gradient(135deg,#334155_0%,#4338ca_100%)]',
-  chip: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/20',
-  accent: 'text-slate-600',
+  dot: 'bg-[#64748B]',
 };
 const ROSE: Palette = {
   icon: 'handshake',
-  cover: 'bg-[linear-gradient(135deg,#be123c_0%,#db2777_100%)]',
-  chip: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
-  accent: 'text-rose-600',
+  dot: 'bg-[#E11D48]',
 };
 const VIOLET: Palette = {
   icon: 'code',
-  cover: 'bg-[linear-gradient(135deg,#6d28d9_0%,#9333ea_100%)]',
-  chip: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20',
-  accent: 'text-violet-600',
+  dot: 'bg-[#8B5CF6]',
 };
 const TEAL: Palette = {
   icon: 'landmark',
-  cover: 'bg-[linear-gradient(135deg,#0f766e_0%,#0891b2_100%)]',
-  chip: 'bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-600/20',
-  accent: 'text-teal-700',
+  dot: 'bg-[#0D9488]',
 };
 
 /** One palette per canonical sector. Icons are `IconName` values (`components/ui/Icon.tsx`). */
@@ -120,9 +115,7 @@ export const UNLABELLED: Category = {
   label: 'Not yet tagged',
   tagged: false,
   icon: 'briefcase',
-  cover: 'bg-[linear-gradient(135deg,#0f172a_0%,#334155_100%)]',
-  chip: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20',
-  accent: 'text-slate-500',
+  dot: 'bg-[#A1A1AA]',
 };
 
 const CATEGORIES: Record<string, Category> = Object.fromEntries(

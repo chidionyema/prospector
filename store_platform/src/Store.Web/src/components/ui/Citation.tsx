@@ -21,7 +21,11 @@
  *   them on some packs.
  * - The chip is ink-on-surface with a hairline, NOT vermillion. Vermillion means "you can act
  *   here" (buy); a citation is evidence, so it takes the evidence voice. See the colour rule in
- *   specs/design-critique-2026-08-05.md §5.
+ *   specs/design-critique-2026-08-05.md §5. (Vermillion is now deleted from the palette outright;
+ *   the rule survives it.)
+ * - Brand v3 (2026-08-06): rounded corners and `--muted` ink, per spec §6.11. The square chip was
+ *   the only square-cornered element left in a row that otherwise sits beside `rounded-md` cards,
+ *   and `text-text/75` is an opacity fake of a grey we have a real token for.
  */
 import { Icon } from './Icon';
 import { parseCitations, type Citation } from '@/lib/citations';
@@ -39,9 +43,9 @@ export function CitationChip({ citation, className = '' }: CitationChipProps) {
       rel="noopener noreferrer nofollow"
       title={citation.quote ? `“${citation.quote}”` : citation.url}
       data-citation="true"
-      className={`inline-flex max-w-full items-center gap-1.5 border border-border bg-bg px-2 py-1 font-mono text-caption leading-none text-text/75 transition-colors hover:border-text hover:text-text ${className}`}
+      className={`inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-caption leading-normal text-muted transition-colors duration-[120ms] hover:border-border-strong hover:text-text ${className}`}
     >
-      <Icon name="arrowRight" size={11} className="-rotate-45 shrink-0" aria-hidden="true" />
+      <Icon name="arrowRight" size={10} className="-rotate-45 shrink-0" aria-hidden="true" />
       <span className="truncate">{citation.host}</span>
     </a>
   );

@@ -76,13 +76,13 @@ export function SearchTrigger({
       type="button"
       onClick={onOpen}
       className={cx(
-        'flex w-full items-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-text/20',
+        'flex h-10 w-full items-center gap-2.5 rounded-md border border-border-strong bg-surface px-3 text-left transition-colors hover:border-text',
         className,
       )}
     >
-      <Icon name="search" size={16} />
-      <span className="flex-1 text-meta font-medium text-muted">Search the catalogue</span>
-      <kbd className="hidden rounded-md border border-border bg-bg px-1.5 py-0.5 font-mono text-caption font-bold text-muted sm:block">
+      <Icon name="search" size={16} className="flex-none text-subtle" />
+      <span className="flex-1 text-meta text-faint">Search the catalogue</span>
+      <kbd className="hidden rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-faint sm:block">
         ⌘K
       </kbd>
     </button>
@@ -110,7 +110,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, at)}
-      <mark className="rounded-md bg-text/10 px-0.5 text-text">{text.slice(at, at + needle.length)}</mark>
+      <mark className="rounded-sm bg-highlight px-0.5 text-text">{text.slice(at, at + needle.length)}</mark>
       {text.slice(at + needle.length)}
     </>
   );
@@ -242,7 +242,7 @@ function PaletteDialog({
         className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface shadow-2"
       >
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <Icon name="search" size={16} />
+          <Icon name="search" size={16} className="flex-none text-subtle" />
           <input
             ref={inputRef}
             value={query}
@@ -257,13 +257,13 @@ function PaletteDialog({
             aria-expanded
             aria-controls="command-palette-results"
             aria-activedescendant={rows[active] ? `command-palette-row-${rows[active].id}` : undefined}
-            className="w-full bg-transparent text-body font-medium text-text outline-none placeholder:text-muted/70"
+            className="w-full bg-transparent text-body text-text outline-none placeholder:text-faint"
           />
           <button
             type="button"
             onClick={onClose}
             aria-label="Close search"
-            className="rounded-md p-1 text-muted hover:bg-bg hover:text-text"
+            className="rounded-md p-1 text-subtle transition-colors hover:bg-surface2 hover:text-text"
           >
             <Icon name="close" size={16} />
           </button>
@@ -309,11 +309,11 @@ function PaletteDialog({
                   onClick={() => go(pack)}
                   className={cx(
                     'flex w-full items-center gap-3 px-4 py-3 text-left',
-                    index === active ? 'bg-bg' : 'bg-transparent hover:bg-bg/60',
+                    index === active ? 'bg-surface2' : 'bg-transparent hover:bg-surface2',
                   )}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-meta font-bold text-text">
+                    <span className="block truncate text-meta font-semibold text-text">
                       <Highlight text={name} query={query} />
                     </span>
                     {context ? (
@@ -330,11 +330,13 @@ function PaletteDialog({
                     <FacetChips pack={pack} compact max={3} className="mt-1.5" />
                   </span>
                   {index === active && (
-                    <kbd className="shrink-0 rounded-md border border-border bg-bg px-1.5 py-0.5 font-mono text-caption font-bold text-muted">
+                    <kbd className="shrink-0 rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-faint">
                       ↵
                     </kbd>
                   )}
-                  <span className="shrink-0 text-meta font-black text-text">{formatPriceForMarket(pack.price, currency)}</span>
+                  <span className="shrink-0 font-mono text-meta font-semibold text-text">
+                    {formatPriceForMarket(pack.price, currency)}
+                  </span>
                 </button>
               </li>
             );
@@ -356,7 +358,7 @@ function PaletteDialog({
                     onSeeAll(query);
                     onClose();
                   }}
-                  className="mt-3 inline-flex items-center gap-2 text-meta font-bold text-primary underline-offset-4 hover:underline"
+                  className="mt-3 inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
                 >
                   Tell us to point the engine at it <Icon name="arrowRight" size={14} />
                 </button>
@@ -372,7 +374,7 @@ function PaletteDialog({
               onSeeAll?.(query);
               onClose();
             }}
-            className="w-full border-t border-border px-4 py-3 text-left text-caption font-bold text-primary hover:bg-bg"
+            className="w-full border-t border-border px-4 py-3 text-left text-meta font-medium text-accent transition-colors hover:bg-surface2"
           >
             See all {matches.length} matches
           </button>

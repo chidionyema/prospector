@@ -33,48 +33,45 @@ function domainOf(url: string): string {
 export function DossierPreview() {
   return (
     <div className="mt-10 overflow-hidden rounded-md border border-border bg-surface">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-bg px-5 py-4 md:px-7">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface2 px-5 py-4 md:px-7">
         <div>
-     <p className="text-caption font-bold uppercase tracking-widest text-muted">
-            A real page from a real pack
-          </p>
-          <p className="mt-1 text-meta font-bold text-text">
+          <p className="text-caption font-medium text-subtle">A real page from a real pack</p>
+          <p className="mt-1 text-meta font-semibold text-text">
             {report.title}, the verification dossier
           </p>
         </div>
-        <span className="font-mono text-caption font-semibold text-muted">
+        <span className="font-mono text-caption text-subtle">
           {report.supported} of {report.total} survived · {report.sourceCount} sources
         </span>
       </div>
 
       {/* Not a table: at phone width a table either scrolls sideways or crushes the check name,
           and the check name is the part that explains what was actually tested. */}
-      <ul className="list-none divide-y divide-border/70 p-0">
+      <ul className="list-none divide-y divide-border p-0">
         {checks.map((check, i) => {
           const supported = check.verdict === 'supported';
           const domain = domainOf(check.sources[0]?.url ?? '');
           return (
             <li key={i} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-5 py-3 md:px-7">
-              <span
-                className={cx(
-                  'flex h-5 w-5 flex-none items-center justify-center rounded-full',
-                  supported ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning',
-                )}
-                aria-hidden
-              >
-                <Icon name={supported ? 'check' : 'shield'} size={11} />
-              </span>
+              {/* The glyph alone, not a glyph in a tinted disc. Eight coloured discs down the
+                  left of the list read as a status dashboard; the verdict word beside each row is
+                  what actually carries the meaning, and it is not encoded in hue alone. */}
+              <Icon
+                name={supported ? 'check' : 'warning'}
+                size={14}
+                className={cx('flex-none', supported ? 'text-success' : 'text-warning')}
+              />
               <span className="min-w-0 flex-1 text-meta font-medium text-text">{check.name}</span>
               <span
                 className={cx(
-                  'font-mono text-caption font-bold uppercase tracking-wide',
+                  'font-mono text-caption',
                   supported ? 'text-success' : 'text-warning',
                 )}
               >
                 {supported ? 'Survived' : 'Pushed back'}
               </span>
               {domain && (
-                <span className="w-full font-mono text-caption text-muted md:w-auto md:min-w-[13rem] md:text-right">
+                <span className="w-full font-mono text-caption text-subtle md:w-auto md:min-w-[13rem] md:text-right">
                   {domain}
                 </span>
               )}
@@ -83,13 +80,13 @@ export function DossierPreview() {
         })}
       </ul>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg px-5 py-4 md:px-7">
-        <p className="text-caption text-muted">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface2 px-5 py-4 md:px-7">
+        <p className="text-caption text-subtle">
           Every source is a live link in the pack. This one is free to read in full.
         </p>
         <Link
           href="/sample"
-          className="inline-flex items-center gap-2 text-meta font-bold text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
         >
           Read a full pack free
           <Icon name="arrowRight" size={14} />

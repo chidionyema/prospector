@@ -94,7 +94,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard reachability per UI polish spec
             tabIndex={0}
             className={cx(
-              'pointer-events-auto max-w-sm rounded-md border-l-4 bg-surface px-4 py-3 text-body shadow-2',
+              'pointer-events-auto max-w-sm rounded-md border border-border border-l-2 bg-surface px-4 py-3 text-meta shadow-2',
               TONES[t.tone],
             )}
           >
@@ -104,7 +104,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => dismiss(t.id)}
                 aria-label="Dismiss notification"
-                className="text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="text-subtle transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
                 ×
               </button>

@@ -41,7 +41,6 @@ describe('deliverable list agreement with prospector/bridge.py', () => {
     for (const item of PACK_CONTENTS) {
       expect(item.title.trim(), `title for ${item.filename}`).not.toBe('');
       expect(item.desc.trim().length, `description for ${item.filename}`).toBeGreaterThan(40);
-      expect(item.emoji.trim(), `emoji for ${item.filename}`).not.toBe('');
     }
   });
 

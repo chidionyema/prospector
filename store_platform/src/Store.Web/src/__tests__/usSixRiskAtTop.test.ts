@@ -52,14 +52,24 @@ describe('US-6 — Where this could break at the top', () => {
   });
 
   it('risk section uses the warning-tinted box', () => {
-    // The audit: "The section uses the existing text-warning and bg-warning/5."
-    // The risk is visually distinct from the rest of the page; a buyer who
-    // scans the page sees the warning before they read the body.
-    const hasWarningStyle = /border-warning\/30[\s\S]{0,200}bg-warning\/5/.test(page) ||
-      /bg-warning\/5[\s\S]{0,200}border-warning\/30/.test(page);
+    /*
+     * The claim is unchanged: the risk is visually distinct, so a buyer who scans sees the
+     * warning before reading the body. What changed is how the tint is produced.
+     *
+     * The old assertion pinned `border-warning/30` + `bg-warning/5` -- an opacity-derived tint of
+     * the foreground colour. v3 declares the pair as real tokens (`--warning: #B45309` with
+     * `--warning-bg: #FFFBEB` and `--warning-strong: #92400E`, globals.css:89-91) precisely
+     * because the derived version had no contrast guarantee: `bg-warning/5` was whatever 5% of
+     * the then-current warning hue happened to be, and v2's warning was #DC2626, i.e. identical
+     * to --danger. So this now asserts the token, plus the left rule that replaced the full
+     * border (a 4-sided tinted box reads as an alert banner; this is an aside).
+     */
+    const hasWarningStyle =
+      /border-l-warning[\s\S]{0,200}bg-warning-bg/.test(page) ||
+      /bg-warning-bg[\s\S]{0,200}border-l-warning/.test(page);
     expect(
       hasWarningStyle,
-      'pack/[id].tsx must render the risk section in a warning-tinted box',
+      'pack/[id].tsx must render the risk section against --warning-bg with a --warning left rule',
     ).toBe(true);
   });
 

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Icon, type IconName } from '@/components/ui';
+import { buttonClasses, chipClasses, Icon } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { cx } from '@/components/ui/cx';
 import type { Pack } from '@/lib/api/client';
@@ -57,15 +57,12 @@ const QUESTION_COPY: Record<FacetKind, { question: string; subtitle: string }> =
   sector: { question: '', subtitle: '' },
 };
 
-/** Pick an icon per facet value for the large cards. Falls back to 'check'. */
-function stepIcon(kind: FacetKind, _value: string): IconName {
-  const icons: Record<string, IconName> = {
-    code: 'code', sales: 'trending-up', ops: 'settings', audience: 'roster', nocode: 'plus',
-    evenings: 'pending', part_time: 'pending', full_time: 'scheduled',
-    b2b: 'briefcase', b2c: 'roster', b2g: 'building',
-  };
-  return icons[_value] ?? 'check';
-}
+/* `stepFlow` used to render each facet value as a large two-column icon card, with a per-value
+   icon picked by a `stepIcon()` lookup table. Brand v3 (2026-08-06) replaced those cards with the
+   same chip shape the desktop bar already uses, so the guided flow and the bar now filter the
+   catalogue through one visual control instead of two. The lookup table is deleted with them:
+   most of its entries were a shrug ("commit part time" -> a clock, "sell to consumers" -> the
+   same people icon as "bring an audience"), and it fell back to a tick for everything else. */
 
 function ValueButton({
   active,
@@ -88,16 +85,23 @@ function ValueButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cx(
-        'flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-caption font-semibold transition-colors',
-        active
-          ? 'border-primary bg-primary/10 text-text'
-          : 'border-border bg-surface text-text/70 hover:border-text/20 hover:bg-bg',
-        dead && 'opacity-45',
-      )}
+      // §6.6: one chip shape, and the SELECTED state is an ink fill rather than a tinted outline.
+      // A 10%-tint pill differed from an unselected pill by a wash the eye reads as "slightly
+      // warmer", which on a bar of fifteen made the current selection genuinely hard to find;
+      // filled-vs-outlined is a difference in kind. That reasoning now lives in `chipClasses`,
+      // which the kill log and the FAQ render too -- it was stated here and nowhere else, which is
+      // how the FAQ ended up shipping the square tinted version this comment argues against.
+      className={chipClasses({
+        selected: active,
+        className: cx('gap-1.5 whitespace-nowrap', dead && 'opacity-45'),
+      })}
     >
       {children}
-      {count !== undefined && <span className="text-caption font-bold text-muted">{count}</span>}
+      {count !== undefined && (
+        <span className={cx('font-mono text-caption', active ? 'text-white/70' : 'text-subtle')}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -161,10 +165,10 @@ export function AppliedFilterChips({
           type="button"
           onClick={chip.remove}
           aria-label={`Remove filter: ${chip.text}`}
-          className="group/chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 py-1 pl-3 pr-2 text-caption font-semibold text-text transition-colors hover:border-primary/50"
+          className={chipClasses({ selected: true, removable: true, className: 'group/chip' })}
         >
           {chip.text}
-          <span className="flex h-4 w-4 items-center justify-center rounded-full text-muted transition-colors group-hover/chip:bg-primary group-hover/chip:text-on-primary">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full text-white/70 transition-colors group-hover/chip:text-white">
             <Icon name="close" size={10} />
           </span>
         </button>
@@ -173,7 +177,7 @@ export function AppliedFilterChips({
         <button
           type="button"
           onClick={() => onChange({ ...state, q: '', advantage: [], sector: null, payer: null, effort: null, commitment: null, mechanism: null })}
-          className="ml-1 text-caption font-semibold text-muted underline underline-offset-4 hover:text-text"
+          className="ml-1 text-meta font-medium text-muted underline underline-offset-4 transition-colors hover:text-text"
         >
           Clear all
         </button>
@@ -261,21 +265,26 @@ export function StepFlow({
                 )}
               />
             ))}
-            <span className="ml-2 text-caption font-bold text-muted">
+            <span className="ml-2 font-mono text-caption text-subtle">
               {step + 1} of {primaryGroups.length}
             </span>
           </div>
 
           {/* Question */}
-          <h3 className="text-body font-bold tracking-tight text-text">
+          <h3 className="text-body font-semibold text-text">
             {QUESTION_COPY[currentGroup.kind].question}
           </h3>
           <p className="mt-1 text-meta text-muted">
             {QUESTION_COPY[currentGroup.kind].subtitle}
           </p>
 
-          {/* Large cards */}
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          {/* §6.6: one row of the same chips the rest of the shelf uses.
+              This was a two-column grid of bordered cards, each ~100px tall with a 24px icon
+              above the label -- four of them consumed most of a phone screen to ask one question,
+              and the icons were decorative (the same `briefcase` stood for three different
+              answers). Chips make the answers scannable in one line each and make this control
+              visibly the same control as the filter bar, which is what it is. */}
+          <div className="mt-4 flex flex-wrap gap-2">
             {currentGroup.values.map((value) => {
               const active = currentGroup.activeValues.includes(value);
               const isAdvantage = currentGroup.kind === 'advantage';
@@ -285,6 +294,7 @@ export function StepFlow({
                 <button
                   key={value}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => {
                     if (isAdvantage) {
                       const next = active
@@ -295,17 +305,13 @@ export function StepFlow({
                       onChange({ ...state, [currentGroup.kind]: active ? null : value });
                     }
                   }}
-                  className={cx(
-                    'flex flex-col items-center gap-2 rounded-md border-2 p-4 text-center transition-all',
-                    active
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border bg-surface hover:border-text/20 hover:bg-bg/50',
-                  )}
+                  className={chipClasses({ selected: active, className: 'gap-1.5 whitespace-nowrap' })}
                 >
-                  <Icon name={stepIcon(currentGroup.kind, value)} size={24} className="text-text/70" />
-                  <span className="text-meta font-bold text-text">{lbl}</span>
+                  {lbl}
                   {count !== undefined && (
-                    <span className="text-caption text-muted">{count} packs</span>
+                    <span className={cx('font-mono text-caption', active ? 'text-white/70' : 'text-subtle')}>
+                      {count}
+                    </span>
                   )}
                 </button>
               );
@@ -319,7 +325,7 @@ export function StepFlow({
                 <button
                   type="button"
                   onClick={() => setStep((s) => s - 1)}
-                  className="rounded-md border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
+                  className="inline-flex h-10 items-center rounded-md border border-border-strong bg-surface px-4 text-meta font-medium text-text transition-colors hover:border-text hover:bg-surface2"
                 >
                   ← Back
                 </button>
@@ -332,7 +338,7 @@ export function StepFlow({
                   if (step >= primaryGroups.length - 1) setStep(-1);
                   else setStep((s) => s + 1);
                 }}
-                className="rounded-md px-4 py-2 text-meta font-semibold text-muted transition-colors hover:text-text"
+                className="inline-flex h-10 items-center rounded-md px-4 text-meta font-medium text-muted transition-colors hover:bg-surface2 hover:text-text"
               >
                 Skip
               </button>
@@ -341,7 +347,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep((s) => s + 1)}
-                className="rounded-md bg-primary px-5 py-2 text-meta font-bold text-on-primary transition-colors hover:bg-primary-hover"
+                className={buttonClasses()}
               >
                 Next →
               </button>
@@ -349,7 +355,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep(-1)}
-                className="rounded-md bg-primary px-5 py-2 text-meta font-bold text-on-primary transition-colors hover:bg-primary-hover"
+                className={buttonClasses()}
               >
                 Show {matching} {matching === 1 ? 'pack' : 'packs'}
               </button>
@@ -360,7 +366,7 @@ export function StepFlow({
             <button
               type="button"
               onClick={clearAll}
-              className="mt-3 self-center text-caption font-semibold text-muted underline underline-offset-4 hover:text-text"
+              className="mt-3 self-center text-meta font-medium text-muted underline underline-offset-4 transition-colors hover:text-text"
             >
               Start over
             </button>
@@ -371,10 +377,8 @@ export function StepFlow({
         <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success/10 text-success">
-                <Icon name="check" size={14} />
-              </span>
-              <p className="text-meta font-bold text-text">
+              <Icon name="check" size={16} className="text-success" />
+              <p className="text-meta font-medium text-text">
                 {activeCount > 0
                   ? `${matching} ${matching === 1 ? 'pack' : 'packs'} match`
                   : `Showing all ${matching} packs`}
@@ -384,7 +388,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep(0)}
-                className="text-caption font-semibold text-primary hover:underline"
+                className="text-meta font-medium text-accent transition-colors hover:text-accent-hover"
               >
                 Edit
               </button>
@@ -392,7 +396,7 @@ export function StepFlow({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="text-caption font-semibold text-muted hover:text-text"
+                  className="text-meta font-medium text-muted transition-colors hover:text-text"
                 >
                   Clear
                 </button>
@@ -406,7 +410,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setShowAdvanced((prev) => !prev)}
-                className="flex w-full items-center justify-between text-caption font-bold uppercase tracking-widest text-muted hover:text-text"
+                className="flex w-full items-center justify-between text-caption font-medium text-muted hover:text-text"
               >
                 Advanced filters
                 <Icon
@@ -421,7 +425,7 @@ export function StepFlow({
                     const isAdvantage = kind === 'advantage';
                     return (
                       <div key={kind}>
-            <span className="text-caption font-bold uppercase tracking-widest text-muted">
+                        <span className="text-caption font-medium text-subtle">
                           {KIND_LABEL[kind]}
                         </span>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -498,11 +502,11 @@ export function FacetBar({
           onClick={() => setSheetOpen(true)}
           aria-expanded={sheetOpen}
           aria-haspopup="dialog"
-          className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-4 py-2.5 text-meta font-bold text-text transition-colors hover:border-text/30"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border-strong bg-surface px-4 text-meta font-medium text-text transition-colors hover:border-text hover:bg-surface2"
         >
           Filter
           {activeCount > 0 && (
-            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold text-on-primary">
+            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 font-mono text-caption text-on-primary">
               {activeCount}
             </span>
           )}
@@ -516,7 +520,7 @@ export function FacetBar({
             <button
               type="button"
               onClick={() => setSheetOpen(false)}
-              className="w-full rounded-md bg-primary px-4 py-2.5 text-meta font-bold text-on-primary"
+              className={buttonClasses({ size: 'lg', fullWidth: true })}
             >
               Show {matching} {matching === 1 ? 'pack' : 'packs'}
             </button>

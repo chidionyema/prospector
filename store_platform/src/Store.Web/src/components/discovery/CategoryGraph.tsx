@@ -107,7 +107,7 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
   return (
     <div
       className={cx(
-        'border border-border bg-surface p-4 md:p-6',
+        'rounded-md border border-border bg-surface p-4 md:p-6',
         className,
       )}
     >

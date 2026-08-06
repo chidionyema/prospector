@@ -2,12 +2,14 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon } from '@/components/ui';
+import { Button, Icon } from '@/components/ui';
 import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { BRAND, LEGAL } from '@/lib/config';
 import { GetServerSideProps } from 'next';
 import { fetchCatalog } from '@/lib/api/client';
 import { priceRange, priceSentence, formatGbp, type PriceRange } from '@/lib/priceRange';
+import { ComparisonBlock, MethodCostAnchor } from '@/components/marketing/PriceArgument';
+import killTotals from '@/data/kill-log-totals.json';
 
 /**
  * L4 - The pricing page.
@@ -44,20 +46,18 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
         }
       />
 
-      <section className="mx-auto max-w-3xl px-6 py-16 md:py-24">
-    <p className="mb-3 text-caption font-bold uppercase tracking-[0.2em] text-muted">
-          Pricing
-        </p>
-        <h1 className="text-h1 font-black leading-[1.05] tracking-tight text-text md:text-display">
+      <section className="mx-auto max-w-3xl px-6 pt-10 pb-16 md:pt-14 md:py-24">
+        <p className="mb-3 text-caption font-medium text-subtle">Pricing</p>
+        <h1 className="text-h1 font-semibold text-text md:text-display">
           {range ? range.headline : 'One payment per pack.'}
         </h1>
-        <p className="mt-4 max-w-[60ch] text-body leading-relaxed text-text/75 md:text-h2">
+        <p className="mt-4 max-w-[60ch] text-body text-muted">
           {/* Was "One price, every pack." The mode is stated alongside the spread on purpose:
               quoting only "from £29" when most packs are dearer is the airline-fare move. */}
           {range ? priceSentence(range) : 'One payment, yours forever. The price is on each pack\'s own page.'}{' '}
           No seat fees, no drip-feed. If a pack survives six checks
           it is listed. If it does not, it is in the{' '}
-          <Link href="/kill-log" className="font-semibold text-text underline underline-offset-2">
+          <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">
             kill log
           </Link>
           .
@@ -65,10 +65,8 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
 
         {/* What's included */}
         <div className="mt-12">
-          <h2 className="text-h2 font-bold tracking-tight text-text md:text-h1">
-            What you get, at every price
-          </h2>
-          <p className="mt-2 max-w-[60ch] text-body text-muted">
+          <h2 className="text-h2 font-semibold text-text">What you get, at every price</h2>
+          <p className="mt-3 max-w-[60ch] text-body text-muted">
             Every pack is the same shape: {PACK_CONTENTS.length} documents, sourced
             and cited. No tier, no upsell, no add-on. The list below is
             identical for every pack on the shelf
@@ -77,18 +75,25 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
               : ''}
             .
           </p>
-          <ul className="mt-6 space-y-3">
+          {/* Two columns from `sm` up, matching `PackContents` (the same eight items, rendered on
+              the pack page). Stacked full-width, eight rows of a title plus a filename ran the
+              length of a 1440px viewport with ~900px of empty card to the right of every line
+              (desktop-pricing-fold.png, 2026-08-06), and pushed the price argument below them a
+              full screen further down. */}
+          <ul className="mt-6 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
             {PACK_CONTENTS.map((item) => (
               <li
                 key={item.filename}
-                className="flex items-start gap-3 border border-border bg-surface p-4"
+                className="flex items-start gap-3 rounded-md border border-border bg-surface p-4"
               >
-                <span aria-hidden className="mt-0.5 text-h2">
-                  {item.emoji}
-                </span>
-                <div>
-                  <p className="text-meta font-bold text-text">{item.title}</p>
-                  <p className="mt-0.5 font-mono text-caption text-muted">
+                {/* The emoji is not rendered (brand v3): eight emoji stacked down a list is the
+                    single loudest thing on a page about a professional research product, and each
+                    one renders as a different vendor's artwork per OS. The filename is the honest
+                    icon -- it is what lands in the buyer's download folder. */}
+                <Icon name="check" size={16} className="mt-0.5 flex-none text-success" />
+                <div className="min-w-0">
+                  <p className="text-meta font-medium text-text">{item.title}</p>
+                  <p className="mt-0.5 break-all font-mono text-caption text-subtle">
                     {item.filename}
                   </p>
                 </div>
@@ -99,10 +104,8 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
 
         {/* What's not included */}
         <div className="mt-12">
-          <h2 className="text-h2 font-bold tracking-tight text-text md:text-h1">
-            What you do not get
-          </h2>
-          <p className="mt-2 max-w-[60ch] text-body text-muted">
+          <h2 className="text-h2 font-semibold text-text">What you do not get</h2>
+          <p className="mt-3 max-w-[60ch] text-body text-muted">
             Honesty about the limits is part of the brand.
           </p>
           <ul className="mt-6 space-y-3">
@@ -112,9 +115,9 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
               'Personal coaching. The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
               'A subscription, dashboard, or seat. The pack is a file you own.',
             ].map((line) => (
-              <li key={line} className="flex items-start gap-3 border border-border bg-surface p-4">
-                <span aria-hidden className="mt-0.5 text-body font-bold text-muted">×</span>
-                <span className="text-meta leading-relaxed text-text/80">{line}</span>
+              <li key={line} className="flex items-start gap-3 rounded-md border border-border bg-surface p-4">
+                <span aria-hidden className="mt-0.5 text-meta text-subtle">×</span>
+                <span className="text-meta leading-relaxed text-muted">{line}</span>
               </li>
             ))}
           </ul>
@@ -122,34 +125,37 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
 
         {/* Trust + refund */}
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
-          <div className="border border-border bg-surface p-5">
+          <div className="rounded-md border border-border bg-surface p-5">
             <div className="flex items-center gap-2">
               <Icon name="shield" size={16} className="text-success" />
-              <h3 className="text-meta font-bold text-text">14 day money back</h3>
+              <h3 className="text-meta font-semibold text-text">14 day money back</h3>
             </div>
-            <p className="mt-2 text-meta leading-relaxed text-text/75">
+            <p className="mt-2 text-meta leading-relaxed text-muted">
               If the pack is not what the description said, email{' '}
-              <a href={`mailto:${LEGAL.supportEmail}`} className="font-semibold text-text underline underline-offset-2">
+              <a href={`mailto:${LEGAL.supportEmail}`} className="text-accent underline underline-offset-2 hover:text-accent-hover">
                 {LEGAL.supportEmail}
               </a>
               {' '}within 14 days and we refund in full. No forms, no friction.
               The full policy is on the{' '}
-              <Link href="/refund" className="font-semibold text-text underline underline-offset-2">
+              <Link href="/refund" className="text-accent underline underline-offset-2 hover:text-accent-hover">
                 refund page
               </Link>
               .
             </p>
           </div>
-          <div className="border border-border bg-surface p-5">
+          <div className="rounded-md border border-border bg-surface p-5">
             <div className="flex items-center gap-2">
               <Icon name="verified" size={16} className="text-success" />
-              <h3 className="text-meta font-bold text-text">Every claim cited</h3>
+              <h3 className="text-meta font-semibold text-text">Every claim cited</h3>
             </div>
-            <p className="mt-2 text-meta leading-relaxed text-text/75">
+            <p className="mt-2 text-meta leading-relaxed text-muted">
               Every figure in every pack links to a retrievable source. Open
               the QA report inside the pack and trace any claim to its
-              origin. The 1,080 ideas we killed are in the{' '}
-              <Link href="/kill-log" className="font-semibold text-text underline underline-offset-2">
+              {/* Was the literal "1,080". Every other kill count on the site reads
+                  `kill-log-totals.json`, so this one number drifted the moment the engine ran
+                  again -- on the page whose whole subject is what the price buys. */}
+              origin. The {killTotals.killed.toLocaleString('en-GB')} ideas we killed are in the{' '}
+              <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">
                 kill log
               </Link>
               .
@@ -157,30 +163,36 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
           </div>
         </div>
 
+        {/* The two price arguments, moved off the home page on 2026-08-06. This is the page a
+            buyer opens when the question is "why does this cost what it costs", so this is where
+            the sourced answers belong. */}
+        <div className="mt-14">
+          <MethodCostAnchor range={range} />
+        </div>
+        <div className="mt-14">
+          <ComparisonBlock range={range} />
+        </div>
+
         {/* Buy CTA */}
-        <div className="mt-14 border border-text bg-surface p-8 text-center">
-     <p className="text-caption font-bold uppercase tracking-widest text-muted">
-            {BRAND.name}
-          </p>
-          <h2 className="mt-2 text-h1 font-black tracking-tight text-text md:text-h1">
+        <div className="mt-14 rounded-md border border-border bg-surface2 p-8">
+          <p className="text-caption font-medium text-subtle">{BRAND.name}</p>
+          <h2 className="mt-2 text-h2 font-semibold text-text">
             {range ? `${range.label}. Yours forever.` : 'Yours forever.'}
           </h2>
-          <p className="mt-2 text-meta text-muted">
+          <p className="mt-3 max-w-[60ch] text-body text-muted">
             Pick one pack. One payment, and the price is on the pack&apos;s own page.
           </p>
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/#catalog"
-              className="inline-flex items-center justify-center gap-2 bg-text px-8 py-4 text-meta font-bold uppercase tracking-wide text-bg transition-all hover:bg-text/90"
-            >
-              Browse the packs
-              <Icon name="arrowRight" size={14} />
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link href="/#catalog">
+              <Button size="lg" fullWidth className="sm:w-auto">
+                Browse the packs
+                <Icon name="arrowRight" size={16} />
+              </Button>
             </Link>
-            <Link
-              href="/sample"
-              className="inline-flex items-center justify-center gap-2 border border-text/20 px-8 py-4 text-meta font-bold uppercase tracking-wide text-text transition-colors hover:bg-bg"
-            >
-              Read a free sample first
+            <Link href="/sample">
+              <Button variant="secondary" size="lg" fullWidth className="sm:w-auto">
+                Read a free sample first
+              </Button>
             </Link>
           </div>
         </div>

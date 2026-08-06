@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '@/components/ui';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -42,13 +43,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               This screen hit an unexpected error. Your account and any funded request are unaffected.
               Reloading usually clears it.
             </p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-body font-semibold text-on-primary hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-            >
+            <Button size="lg" className="mt-6" onClick={() => window.location.reload()}>
               Reload the page
-            </button>
+            </Button>
           </div>
         </div>
       );

@@ -26,10 +26,10 @@ import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 export function ShelfEndCapture({ className }: { className?: string }) {
   return (
     <div className={className}>
-      <div className="border border-border bg-surface px-6 py-5">
+      <div className="rounded-md border border-border bg-surface px-6 py-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
           <div className="max-w-md">
-            <h2 className="text-body font-black tracking-tight text-text">
+            <h2 className="text-body font-semibold text-text">
               Seen the whole shelf? The next survivor can come to you.
             </h2>
             <p className="mt-1 text-meta leading-relaxed text-muted">

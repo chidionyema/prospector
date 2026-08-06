@@ -86,7 +86,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
   if (state === 'queued') {
     return (
       <p className="text-meta leading-relaxed text-muted">
-        <span className="font-bold text-text">You&apos;re in the queue.</span> We&apos;ll email you from
+        <span className="font-semibold text-text">You&apos;re in the queue.</span> We&apos;ll email you from
         support@mumchimp.com {query ? 'if a pack in this space survives the six checks' : 'if a new pack survives the six checks'}. Nothing else.
       </p>
     );
@@ -109,7 +109,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
           checked={consent}
           onChange={(event) => setConsent(event.target.checked)}
         />
-        <Button type="submit" variant="prominent" disabled={state === 'sending'}>
+        <Button type="submit" variant="primary" disabled={state === 'sending'}>
           {state === 'sending' ? 'Adding you…' : submitLabel}
         </Button>
       </form>

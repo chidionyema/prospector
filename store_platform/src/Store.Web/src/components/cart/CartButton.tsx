@@ -77,7 +77,7 @@ export function CartButton() {
       >
         <Icon name="cart" size={18} />
         <span className="hidden sm:inline">Basket</span>
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold text-on-primary">
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-medium text-on-primary">
           {justAdded ? <span className="animate-rise" data-just-added>{cart.count}</span> : cart.count}
         </span>
       </button>
@@ -93,7 +93,7 @@ export function CartButton() {
               <span className="text-meta font-semibold text-muted">
                 {cart.count} {cart.count === 1 ? 'pack' : 'packs'}
               </span>
-              {cart.total && <span className="text-h2 font-black tracking-tight text-text">{formatPrice(cart.total)}</span>}
+              {cart.total && <span className="text-h2 font-semibold text-text">{formatPrice(cart.total)}</span>}
             </div>
             <Button variant="primary" fullWidth loading={checkingOut} onClick={checkout}>
               Pay once for {cart.count === 1 ? 'this pack' : 'all of these'}
@@ -127,7 +127,7 @@ export function CartButton() {
                 <Link
                   href={`/pack/${line.id}`}
                   onClick={() => setOpen(false)}
-                  className="text-meta font-bold leading-snug text-text hover:text-primary"
+                  className="text-meta font-semibold leading-snug text-text hover:text-primary"
                 >
                   {line.title}
                 </Link>

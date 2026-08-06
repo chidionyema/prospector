@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { textLinkClass } from '@/components/ui';
 import type { GetServerSideProps } from 'next';
 
 import MarketingLayout from '@/components/marketing/MarketingLayout';
@@ -96,17 +97,18 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
       <MarketingLayout>
         <Seo title={landing.metaTitle} description={landing.metaDescription} noindex />
         <PageHero
+        width="7xl"
           eyebrow="Temporarily unavailable"
-          title={<span className="leading-tight tracking-tighter">{landing.h1}</span>}
+          title={landing.h1}
           lead="The catalogue is briefly unreachable, so this page cannot list its packs right now. Try again in a minute."
         />
         <Section bg="white" width="7xl">
           <p className="text-body text-muted">
-            <Link href="/" className="font-semibold text-text underline underline-offset-2">
+            <Link href="/" className={textLinkClass('font-medium')}>
               Browse every pack
             </Link>{' '}
             or{' '}
-            <Link href="/ideas" className="font-semibold text-text underline underline-offset-2">
+            <Link href="/ideas" className={textLinkClass('font-medium')}>
               see the other categories
             </Link>
             .
@@ -135,8 +137,9 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
       />
 
       <PageHero
+        width="7xl"
         eyebrow={`${packs.length} researched ${packs.length === 1 ? 'pack' : 'packs'}`}
-        title={<span className="leading-tight tracking-tighter">{landingH1(landing.slug, variant)}</span>}
+        title={landingH1(landing.slug, variant)}
         lead={landing.slug === 'automated-business-ideas' ? VARIANTS[variant].automatedIdeasIntro : landing.intro}
       />
 
@@ -147,11 +150,11 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
           Every pack on this page cleared the same six checks, real pain, durable value, room past
           incumbents, a solvent payer, a route to distribution, and legality, and then survived an
           adversarial review.{' '}
-          <Link href="/how-it-works" className="font-semibold text-text underline underline-offset-2">
+          <Link href="/how-it-works" className={textLinkClass('font-medium')}>
             How the filter works
           </Link>
           , and the{' '}
-          <Link href="/kill-log" className="font-semibold text-text underline underline-offset-2">
+          <Link href="/kill-log" className={textLinkClass('font-medium')}>
             kill log
           </Link>{' '}
           lists what it rejected.
@@ -159,7 +162,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
 
         {siblings.length > 0 && (
           <nav className="mt-12 border-t border-border pt-8" aria-label="Other categories">
-            <h2 className="text-meta font-black uppercase tracking-widest text-muted">
+            <h2 className="text-meta font-semibold text-muted">
               Browse another way
             </h2>
             <ul className="mt-4 flex flex-wrap gap-2">
@@ -180,6 +183,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
       </Section>
 
       <CtaBand
+        width="7xl"
         title="See the whole catalogue."
         lead=""
         primary={{ href: '/', label: 'Browse every pack' }}

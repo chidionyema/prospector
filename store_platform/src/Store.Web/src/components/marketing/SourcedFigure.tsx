@@ -24,14 +24,16 @@ export function SourcedFigure({ id, className }: { id: string; className?: strin
         href={source.url}
         target="_blank"
         rel="noopener noreferrer nofollow"
-        className="whitespace-nowrap underline decoration-dotted underline-offset-2 hover:text-text"
+        className="whitespace-nowrap text-accent underline decoration-dotted underline-offset-2 transition-colors hover:text-accent-hover"
       >
         {source.publisher}
         <span className="sr-only">, opens the source in a new tab</span>
       </a>
       {/* The date travels with the price because a price is perishable. A figure checked eight
           months ago and rendered as present tense is the next version of the same problem. */}
-      <span className="text-faint">, checked {formatChecked(source.checkedOn)}</span>
+      {/* `--subtle`, not `--faint`: the date is information a buyer is entitled to read, and
+          `--faint` is 2.56:1 and declared as never carrying information (globals.css:43). */}
+      <span className="text-subtle">, checked {formatChecked(source.checkedOn)}</span>
     </span>
   );
 }

@@ -252,8 +252,14 @@ describe('I. /orders/success shows a linear progress bar during polling', () => 
     expect(page).toMatch(/style=\{\{ width:/);
   });
 
-  it('uses bg-border for the track and bg-primary for the fill', () => {
-    expect(page).toMatch(/bg-border/);
-    expect(page).toMatch(/bg-primary/);
+  it('uses bg-border for the track and ink for the fill', () => {
+    /*
+     * The fill was `bg-primary` and is now `bg-text`. Both resolve to the same ink in v3
+     * (`--primary: #171717`), so this is not a visual change -- it is a semantic one. `--primary`
+     * means "the colour of the primary ACTION"; a progress bar is not an action, and pinning it
+     * to the action token would drag the fill along the day the primary stops being ink.
+     */
+    expect(page, 'the track must be the hairline grey').toMatch(/bg-border/);
+    expect(page, 'the fill must be ink, not the action colour').toMatch(/bg-text/);
   });
 });

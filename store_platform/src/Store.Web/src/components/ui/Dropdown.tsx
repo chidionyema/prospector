@@ -121,12 +121,12 @@ export function Dropdown<T extends string>({
             openList();
           }
         }}
-        className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-white px-3.5 py-2.5 text-meta font-semibold text-text shadow-none transition hover:border-text/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-text"
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface px-3 text-meta font-medium text-text transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)] hover:border-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <span className="truncate">{current?.label}</span>
         <span
           aria-hidden="true"
-          className={cx('h-2 w-2 flex-none rotate-45 border-b-2 border-r-2 border-muted transition-transform', open && '-rotate-[135deg]')}
+          className={cx('h-2 w-2 flex-none rotate-45 border-b border-r border-subtle transition-transform', open && '-rotate-[135deg]')}
         />
       </button>
 
@@ -138,7 +138,7 @@ export function Dropdown<T extends string>({
           aria-activedescendant={`${labelId}-opt-${active}`}
           tabIndex={-1}
           onKeyDown={onListKeyDown}
-          className="absolute z-30 mt-2 w-full overflow-hidden rounded-md border border-border bg-white p-1 shadow-2 focus:outline-none"
+          className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-surface p-1 shadow-2 focus:outline-none"
         >
           {options.map((opt, i) => {
             const selected = opt.value === value;
@@ -158,12 +158,12 @@ export function Dropdown<T extends string>({
                 onMouseEnter={() => setActive(i)}
                 onClick={() => choose(i)}
                 className={cx(
-                  'flex cursor-pointer items-center justify-between gap-2 rounded-md px-3 py-2 text-meta font-semibold',
-                  i === active ? 'bg-bg text-text' : 'text-text/80',
+                  'flex cursor-pointer items-center justify-between gap-2 rounded-sm px-3 py-2 text-meta',
+                  i === active ? 'bg-surface2 text-text' : 'text-muted',
                 )}
               >
                 {opt.label}
-                {selected && <Icon name="check" size={14} className="text-primary" />}
+                {selected && <Icon name="check" size={14} className="flex-none text-text" />}
               </li>
             );
           })}

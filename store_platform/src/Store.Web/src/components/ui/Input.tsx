@@ -9,15 +9,41 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   hideLabel?: boolean;
 }
 
-const controlClass = (invalid: boolean) =>
+/*
+ * Brand v3 (2026-08-06), spec §6.13. Three concrete changes:
+ *  - The resting border was `--border` (#E4E4E7), the same hairline that draws a card edge. On a
+ *    white page a control you can type into looked identical to a static panel, so the field only
+ *    read as a field once it was focused. Inputs get `--border-strong`.
+ *  - The focus treatment was a 4px `ring-primary/10` wash plus a `border-primary` edge. With
+ *    `--primary` now ink, that is a grey smudge around a grey box, i.e. no focus signal at all.
+ *    Focus is `--accent`, the one colour on this site that means "interactive".
+ *  - `transition-all duration-200` animated every property including layout ones; colour only,
+ *    at the 120ms hover speed the rest of the site uses.
+ */
+/*
+ * `padding` is an argument, not something a caller appends. `Select` needs a wider right gutter for
+ * its chevron and `SearchInput` a wider left one for its magnifier, and both used to express that
+ * by passing `pr-10` / `pl-9` in `className` on top of the `px-3` this function already emits.
+ * Those two utilities have EQUAL specificity, so which one applies is decided by where Tailwind
+ * emits them in the stylesheet, not by the order they appear in the class attribute. Measured in
+ * the built CSS (2026-08-06, `.next/static/chunks/01kw0v8q_98w3.css`): `.px-3` at byte 26831,
+ * `.pr-10` at 28604, `.pl-9` at 29559 -- the directional rules come later, so the override did
+ * work. It worked because of Tailwind's internal ordering, which is not a promise this repo holds
+ * and not something any test here would notice changing; the failure it protects against is a
+ * chevron sitting on top of the selected option. Passing the padding in leaves one rule to win.
+ */
+const controlClass = (invalid: boolean, padding = 'px-3') =>
   cx(
-    'w-full rounded-md border bg-surface px-3 py-2 text-body text-text transition-all duration-200',
-    'placeholder:text-muted/60 placeholder:font-normal', // Muted placeholders
-    'hover:border-muted/50',
-    // High-fidelity focus bounds: an ambient 4px ring paired with Trust Blue border.
-    'focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10',
-    'disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-bg',
-    invalid ? 'border-danger focus-visible:border-danger focus-visible:ring-danger/10' : 'border-border',
+    'h-10 w-full rounded-md border bg-surface text-meta text-text',
+    padding,
+    'transition-[border-color,outline-color] duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
+    'placeholder:font-normal placeholder:text-faint',
+    'hover:border-text',
+    'focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent/25',
+    'disabled:cursor-not-allowed disabled:bg-surface2 disabled:opacity-40',
+    invalid
+      ? 'border-danger focus-visible:border-danger focus-visible:outline-danger/25'
+      : 'border-border-strong',
   );
 
 /** Labelled text input, label always present, error/hint slots, aria wired (UI-STANDARDS §2). */

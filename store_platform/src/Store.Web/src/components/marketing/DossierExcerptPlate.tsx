@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon, SourcedLine, CitationList } from '@/components/ui';
+import { Icon, SourcedLine } from '@/components/ui';
 import { parseCitations } from '@/lib/citations';
 import type { PackDetails } from '@/lib/api/client';
 
@@ -30,42 +30,49 @@ import type { PackDetails } from '@/lib/api/client';
  * render through `parseCitations`, so a line's anchor is the same anchor in both places.
  */
 export default function DossierExcerptPlate({ pack }: { pack: PackDetails }) {
-  const first = React.useMemo(() => {
-    for (const line of pack.sampleExtract ?? []) {
-      const parsed = parseCitations(line);
-      if (parsed.citations.length > 0) return { line, citations: parsed.citations };
-    }
-    return null;
-  }, [pack.sampleExtract]);
+  // Plain, not `React.useMemo`. The compiler refused to preserve the memo here ("Existing
+  // memoization could not be preserved", eslint react-hooks/preserve-manual-memoization) because
+  // of the early return inside the loop, which meant the file failed lint AND lost every other
+  // optimisation the compiler would have applied to this component. The work is one pass over at
+  // most a handful of lines; the compiler memoizes it for us.
+  const first = firstCitedLine(pack.sampleExtract);
 
   if (!first) return null;
 
   return (
-    <figure className="mb-8 border border-border bg-surface">
-      <figcaption className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-bg/60 px-5 py-3">
-        <span className="inline-flex items-center gap-2 text-caption font-bold uppercase tracking-widest text-muted">
+    <figure className="mb-8 overflow-hidden rounded-md border border-border bg-surface">
+      <figcaption className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-surface2 px-5 py-3">
+        <span className="inline-flex items-center gap-2 text-caption font-medium text-muted">
           <Icon name="verified" size={13} className="text-success" />
           One page of the verification dossier
         </span>
-        {/* Mono, because these are the two values on the plate a reader would transcribe or
-            compare: the audit reference and a count. Prose stays in the sans (`monoIsTheDataVoice`). */}
-        <span className="font-mono text-caption text-muted">
-          {pack.dossierRef}
-          {typeof pack.sourceCount === 'number' && pack.sourceCount > 0
-            ? ` · ${pack.sourceCount} sources`
-            : ''}
-        </span>
+        {/* The reference only. Mono because it is the one value on this plate a reader would
+            transcribe or quote back to us; prose stays in the sans (`monoIsTheDataVoice`).
+            The source COUNT used to sit here too, and desktop-pack-fold.png (2026-08-06) showed
+            why that was wrong: `33 sources` printed here and again ~200px below in the evidence
+            row under the sub-copy, so the fold of the money page spent two lines saying one
+            number. The count is a fact about the PACK and belongs in the pack's evidence row;
+            this plate identifies the DOSSIER the excerpt was lifted from. */}
+        <span className="font-mono text-caption text-subtle">{pack.dossierRef}</span>
       </figcaption>
 
       <blockquote className="border-l-2 border-l-success px-5 py-5 md:px-7">
-        <SourcedLine className="block max-w-[68ch] text-body leading-relaxed text-text/85">
-          {first.line}
-        </SourcedLine>
-        {/* Rendered again as chips, not only inline: inline anchors prove the source exists,
-            chips make the domain legible without hovering, which is the thing a sceptical buyer
-            is actually checking at this point on the page. */}
-        <CitationList citations={first.citations} className="mt-3" />
+        {/* `SourcedLine` already strips the `(source: ...)` scaffolding into a chip row of its
+            own -- see ui/Citation.tsx:90. This used to render `<CitationList>` again underneath
+            it on the same `first.citations`, which put two identical `legalclarity.org` chips in
+            the fold of the money page (caught in desktop-pack-fold.png, 2026-08-06). One claim,
+            one source row. */}
+        <SourcedLine className="block max-w-[68ch] text-body text-text">{first.line}</SourcedLine>
       </blockquote>
     </figure>
   );
+}
+
+/** The first extract line that actually resolves a citation, or null when none does. */
+function firstCitedLine(lines: string[] | null | undefined) {
+  for (const line of lines ?? []) {
+    const parsed = parseCitations(line);
+    if (parsed.citations.length > 0) return { line, citations: parsed.citations };
+  }
+  return null;
 }
