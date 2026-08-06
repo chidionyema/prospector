@@ -125,7 +125,18 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
         _CLI_SEM.release()
         shutil.rmtree(call_cwd, ignore_errors=True)
     if proc.returncode != 0:
-        raise RuntimeError(f"claude cli exit {proc.returncode}: {proc.stderr[-300:]}")
+        # BOTH streams, because the CLI reports WHY on STDOUT, not stderr. Measured 2026-08-06:
+        # `claude -p` with an unfunded key exits 1 printing "Credit balance is too low" on stdout
+        # while stderr held only an unrelated connectors warning. A stderr-only message is
+        # therefore EMPTY exactly when it matters — the daemon logged `claude cli exit 1: ` for
+        # every failure at 04:37 — and `looks_exhausted("")` is False, so the head of the moat
+        # was never marked exhausted and got re-probed on every call. "credit balance is too
+        # low" and "usage limit" ARE in _EXHAUSTION_MARKERS (errors.py:66); they just never
+        # reached the classifier. Same shape as the 402 miss (CLAUDE.md: a dead brain must
+        # leave a trace).
+        detail = " | ".join(s for s in (proc.stderr.strip()[-300:],
+                                        proc.stdout.strip()[-300:]) if s)
+        raise RuntimeError(f"claude cli exit {proc.returncode}: {detail}")
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
