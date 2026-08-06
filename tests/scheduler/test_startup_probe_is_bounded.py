@@ -28,6 +28,18 @@ import pytest
 
 from prospector.scheduler import run_scheduled as rs
 
+#: The real probe, bound at import. `_startup_grounding_check` was refactored on 2026-08-06 to
+#: delegate to the shared `_probe_grounding_once` (so the startup refusal and the per-tick
+#: generation gate cannot drift on what "grounding is up" means), which put it behind
+#: tests/conftest.py's autouse `_no_live_grounding_probe` stub. This file is about the probe
+#: MECHANISM — the bound, the daemon thread, the pre-probe heartbeat — so it needs the genuine one.
+_REAL_PROBE = rs._probe_grounding_once
+
+
+@pytest.fixture(autouse=True)
+def _use_the_real_probe(monkeypatch):
+    monkeypatch.setattr(rs, "_probe_grounding_once", _REAL_PROBE)
+
 
 def _cfg(tmp_path):
     return types.SimpleNamespace(
