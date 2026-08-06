@@ -170,11 +170,14 @@ def _resume_per_tick(cfg) -> int:
 
 
 def _moat_brains(cfg) -> list[str]:
-    """The trusted brains on this config's verdict chain, in order."""
-    from prospector.operator import MOAT_PRIMARY
-    ops = getattr(cfg, "operator", None) or []
-    ops = [ops] if isinstance(ops, str) else list(ops)
-    return [str(o) for o in ops if str(o) in MOAT_PRIMARY]
+    """The trusted brains on this config's verdict chain, in order.
+
+    Delegates to `prospector.health.moat_brains` — moved there 2026-08-06 so the drain's
+    preflight and this one cannot drift apart. Kept as a name here because tests and callers
+    already bind to it.
+    """
+    from prospector.health import moat_brains
+    return moat_brains(cfg)
 
 
 def _moat_blind_reason(cfg) -> str:
@@ -194,19 +197,8 @@ def _moat_blind_reason(cfg) -> str:
     (health.py), and a bookkeeping check must never consume the one call whose job is to
     measure recovery. This reads the mark; it does not spend the probe.
     """
-    from prospector.health import get_health
-    brains = _moat_brains(cfg)
-    if not brains:
-        # No trusted brain is even configured. That is a config error, not an outage — let it
-        # surface downstream as a loud failure rather than a quiet skipped tick.
-        return ""
-    health = get_health()
-    now = datetime.now(timezone.utc).timestamp()
-    marks = {b: health.dead_until(b) for b in brains}
-    if any(v is None for v in marks.values()):
-        return ""
-    detail = ", ".join(f"{b} for {int(v - now)}s more" for b, v in sorted(marks.items()))
-    return f"moat blind: every trusted brain is marked dead ({detail})"
+    from prospector.health import moat_blind_reason
+    return moat_blind_reason(cfg)
 
 
 def _default_generate(cfg, batch_size: int) -> dict:

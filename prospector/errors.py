@@ -88,6 +88,20 @@ _PERMANENT_MARKERS = (
     "payment required",
     "usage limit",
 )
+# The allowance-limit shape, as a regex rather than more literals. Proven 2026-08-06 against the
+# tuple above, which held "usage limit" but NOT the words the Claude Code CLI actually emits:
+#     "...,"api_error_status":429,"result":"You've hit your monthly spend limit · raise it at
+#      claude.ai/settings/usage?from=cc_cli_limit_message"
+# It says SPEND limit, not USAGE limit. So the real message classified `transient` (60s) purely
+# on the incidental \b429\b, and the daemon re-probed a hard monthly cap every 60s — the live log
+# shows strikes 2, 3, 4 escalating inside three seconds. Worse, the same message WITHOUT a 429
+# scored NOT_EXHAUSTION at all, which is the dangerous half: a failure `looks_exhausted` misses
+# never becomes ProviderExhaustedError, so verify.py takes its generic-exception path and the
+# billing failure is recorded as an `unverifiable` check instead of deferring the candidate.
+# "rate limit" is deliberately NOT matched here — it stays transient, in _TRANSIENT_MARKERS.
+# A long window is cheap now: health.py's half-open probe re-tests at ~120s, so classifying an
+# allowance limit PERMANENT costs at most one extra probe if the allowance is actually restored.
+_ALLOWANCE_LIMIT_RE = re.compile(r"\b(spend|usage|monthly|weekly|daily)\s+limit\b")
 _TRANSIENT_MARKERS = (
     "rate_limit",
     "rate limit",
@@ -124,7 +138,8 @@ def classify_exhaustion(text: str) -> str:
     spent account being rate-limited on the way out, and the expensive mistake is to keep
     re-probing it. The caller turns this into a dead-window length (see health.py)."""
     t = (text or "").lower()
-    if any(m in t for m in _PERMANENT_MARKERS) or _HTTP_PERMANENT_RE.search(t) or _BILLING_RE.search(t):
+    if (any(m in t for m in _PERMANENT_MARKERS) or _HTTP_PERMANENT_RE.search(t)
+            or _BILLING_RE.search(t) or _ALLOWANCE_LIMIT_RE.search(t)):
         return PERMANENT
     if any(m in t for m in _TRANSIENT_MARKERS) or _HTTP_TRANSIENT_RE.search(t):
         return TRANSIENT

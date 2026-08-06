@@ -348,10 +348,21 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
         # of killing.
         raise
     except Exception as e:
+        # `retrieval_failed=True` is what makes this DEFER instead of counting as evidence.
+        # Without it (until 2026-08-06) a failed verdict CALL produced a plain `unverifiable`
+        # check that flowed into scoring and the kill gates like any other finding. Proof it
+        # bites: store/dossiers/2102bacc6dd75cf9.kill.json is a KILL on gate `min_composite`
+        # whose SEVEN checks all read `unverifiable, conf 0.0, "Verdict call failed; fail-safe."`
+        # — a candidate killed by our own outage, with a dossier that looks fully reasoned.
+        # An exception is not evidence. "A KILL is not the model's opinion; it is grounded in
+        # evidence the operator can see" — an error string is not something a buyer can see.
+        # This deliberately widens DEFER to non-quota failures (bad JSON, a crashed adapter):
+        # a check we never got an answer for is unevaluated, and the honest verdict on an
+        # unevaluated check is "come back to it", never "this idea is dead".
         logger.error(f"Verdict call failed for {check_name}: {e}")
         return CheckResult(check_name=check_name, verdict=Verdict.UNVERIFIABLE,
                            confidence=0.0, rationale="Verdict call failed; fail-safe.",
-                           sources=sources, degraded=True,
+                           sources=sources, degraded=True, retrieval_failed=True,
                            provider=_served_provider(op))
     # Cheap-tail models sometimes wrap the object in a one-element list or emit a bare
     # list of claims. Coerce before .get — otherwise vetting crashes mid-batch

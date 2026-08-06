@@ -1147,6 +1147,32 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         return {"backlog": 0, "attempted": 0, "resumed": 0,
                 "passes": 0, "kills": 0, "defers": 0}
 
+    # MOAT PREFLIGHT — never drain into a blind moat.
+    #
+    # `run_scheduled.py` gained this precondition for GENERATION on 2026-08-06 (392ce4c); the
+    # drain never had one, and the standalone `vet --resume` invocation does not go through the
+    # scheduler at all. Measured 2026-08-06 with `operator: [claude_cli]` — a ONE-brain moat —
+    # marked dead for 3033s: the drain kept running and every re-vet raised
+    # ProviderExhaustedError, which `verify.py` turns into retrieval_failed -> DEFER_GATE ->
+    # Decision.DEFER. Over one 30-minute window that moved provisional -14 / defer +13: a net
+    # backlog change of -1 for a full pass of CLI spend. The rows were relabelled, not resolved.
+    #
+    # Worse than useless: the drain competes for the same subscription CLI as the daemon, and
+    # 392ce4c's own commit message records that the drain's load was implicated in the moat
+    # flapping that minted the provisional rows in the first place. A drain that runs while the
+    # brain is benched is helping to keep it benched.
+    #
+    # Deliberately no --force override: when no trusted brain can rule, there is no verdict to
+    # be had, so "force" would only buy a more expensive way to write DEFER.
+    from .health import moat_blind_reason
+    blind = moat_blind_reason(cfg)
+    if blind:
+        print(f"Found {backlog} deferred + provisional candidate(s), but {blind}. "
+              f"Re-vetting none — a drain into a blind moat only relabels rows "
+              f"provisional->defer, and its own CLI load helps keep the brain benched.")
+        return {"backlog": backlog, "attempted": 0, "resumed": 0,
+                "passes": 0, "kills": 0, "defers": 0, "skipped": blind}
+
     # Restrict to one population BEFORE the oldest-first sort and the `--limit` slice, so the
     # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
     # drainable population: the printed line then reads "Found 351 ... re-vetting 72 of them",

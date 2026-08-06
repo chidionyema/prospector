@@ -233,3 +233,42 @@ def get_noncritical_health() -> ProviderHealth:
             if _NONCRITICAL is None:
                 _NONCRITICAL = ProviderHealth(path=NONCRITICAL_HEALTH_PATH)
     return _NONCRITICAL
+
+
+def moat_brains(cfg) -> list[str]:
+    """The trusted verdict brains on this config's chain, in order."""
+    from prospector.operator import MOAT_PRIMARY
+    ops = getattr(cfg, "operator", None) or []
+    ops = [ops] if isinstance(ops, str) else list(ops)
+    return [str(o) for o in ops if str(o) in MOAT_PRIMARY]
+
+
+def moat_blind_reason(cfg) -> str:
+    """Why no moat work can run right now, or "" if some trusted brain can still rule.
+
+    ONE implementation, two callers: the scheduler's generation preflight
+    (`scheduler/run_scheduled.py::_moat_blind_reason`) and the drain's preflight
+    (`run.py::_cmd_resume`). It lives here rather than in either caller because
+    `run_scheduled` imports `run` — so `run` can never import `run_scheduled` back — and
+    because a duplicated moat classifier is the same defect shape as the exhaustion
+    classifier that `errors.looks_exhausted` exists to prevent: two copies drift, and the
+    one that drifts is the one nobody is watching.
+
+    Uses `dead_until()`, NOT `is_dead()`: `is_dead` can CLAIM the half-open probe slot, and
+    a bookkeeping check must never consume the one call whose job is to measure recovery.
+    This reads the mark; it does not spend the probe.
+
+    Returns "" when no trusted brain is configured at all — that is a config error, and it
+    should surface downstream as a loud failure rather than a quiet skip.
+    """
+    import time as _time
+    brains = moat_brains(cfg)
+    if not brains:
+        return ""
+    health = get_health()
+    marks = {b: health.dead_until(b) for b in brains}
+    if any(v is None for v in marks.values()):
+        return ""
+    now = _time.time()
+    detail = ", ".join(f"{b} for {int(v - now)}s more" for b, v in sorted(marks.items()))
+    return f"moat blind: every trusted brain is marked dead ({detail})"
