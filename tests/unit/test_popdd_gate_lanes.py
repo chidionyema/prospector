@@ -1,0 +1,226 @@
+"""The POPDD pre-commit gate's own proof.
+
+The gate is the thing that decides whether anything else is proven, so it is the one
+file whose defects are invisible: it fails by printing "nothing to prove" and exiting 0.
+It did exactly that for months — `.git/hooks/pre-commit` matched `\\.(py|ts|js|cs)$`,
+which does not match `.tsx`, so all 183 tracked Store.Web `.ts`/`.tsx` files committed
+ungated. Adding `.tsx` to that list would not have fixed it either: the gate ran the
+python pytest suite as its only proof, and no python test reads a `.ts`/`.tsx` file.
+
+So these tests assert two things the gate cannot self-report:
+  1. the lane map covers each source kind with a proof that can actually see it, and
+  2. the shell hook still DELEGATES that map instead of keeping a second copy of it.
+
+(2) is the one that rots. The extension list lived in two places; one was updated and
+the other was not.
+"""
+from __future__ import annotations
+
+import importlib.util
+import os
+import re
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RUNNER = REPO_ROOT / "scripts" / "popdd_verify.py"
+HOOK = REPO_ROOT / ".lux" / "hooks" / "pre-commit"
+INSTALLED_HOOK = REPO_ROOT / ".git" / "hooks" / "pre-commit"
+
+
+def _load_runner():
+    """Import the runner by path — scripts/ is not an importable package.
+
+    The sys.modules registration is load-bearing: @dataclass resolves annotations via
+    sys.modules[cls.__module__], so exec_module on an unregistered module raises
+    AttributeError: 'NoneType' object has no attribute '__dict__' before any test runs.
+    """
+    spec = importlib.util.spec_from_file_location("popdd_verify", RUNNER)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["popdd_verify"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.fixture(scope="module")
+def runner():
+    return _load_runner()
+
+
+def _hook_code() -> str:
+    """The hook's executable lines only.
+
+    A regex over source text cannot tell code from a comment, and this hook's header
+    quotes the very pattern these tests forbid (`\\.(py|ts|js|cs)$`) while explaining
+    why it was removed. Two storefront tests shipped passing vacuously for exactly this
+    reason. Strip comments first, always.
+    """
+    lines = []
+    for line in HOOK.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            continue
+        lines.append(line)
+    return "\n".join(lines)
+
+
+class TestTheLaneMapCoversEachSourceKind:
+    def test_a_tsx_page_selects_the_web_lane(self, runner):
+        """The exact regression: this file was ungated because `.tsx` was not matched."""
+        lanes, unclassified = runner.lanes_for(
+            ["store_platform/src/Store.Web/src/pages/pack/[id].tsx"]
+        )
+        assert lanes == ["web"]
+        assert unclassified == []
+
+    def test_the_web_lane_proof_is_not_pytest(self, runner):
+        """A green pytest is not evidence about a .tsx diff, so the web lane must not use it."""
+        web = runner.LANES["web"]
+        commands = [" ".join(argv) for _, argv in web.steps]
+        assert not any("pytest" in c for c in commands), commands
+        assert any("typecheck" in c for c in commands), commands
+        assert any("test" in c for c in commands), commands
+        assert web.cwd.name == "Store.Web"
+
+    def test_a_stylesheet_selects_the_web_lane(self, runner):
+        """The gate's header used to state CSS was uncoverable "short of a full next build".
+
+        It is not: five vitest suites read src/styles/globals.css as source text
+        (brandV2.test.ts:44, storefrontDesignContract.test.ts:21, uiPolishContract.test.ts:21,
+        monoIsTheDataVoice.test.ts:48, twoRadiiTwoShadows.test.ts:42) and assert the design
+        contract over it. Before this, a globals.css edit printed "nothing to prove" and
+        exited 0 — the same silent-pass shape that lost `.tsx`.
+        """
+        lanes, unclassified = runner.lanes_for(
+            ["store_platform/src/Store.Web/src/styles/globals.css"]
+        )
+        assert lanes == ["web"]
+        assert unclassified == []
+
+    def test_a_stylesheet_outside_the_storefront_blocks_rather_than_passing_silently(self, runner):
+        """globals.css is the only tracked .css today. A second one landing elsewhere has no
+        suite reading it, so it must be named as unproven, not treated as a non-source file."""
+        lanes, unclassified = runner.lanes_for(["docs/site/theme.css"])
+        assert lanes == []
+        assert unclassified == ["docs/site/theme.css"]
+
+    def test_python_source_selects_the_python_lane(self, runner):
+        assert runner.lanes_for(["prospector/verify.py"])[0] == ["python"]
+
+    def test_csharp_selects_dotnet_AND_python(self, runner):
+        """tests/unit/test_facets.py:141 reads PackFacets.cs, so a .cs edit can break pytest."""
+        lanes, _ = runner.lanes_for(
+            ["store_platform/src/Store.Catalog/Domain/PackFacets.cs"]
+        )
+        assert lanes == ["dotnet", "python"]
+
+    def test_non_source_proves_nothing_and_selects_no_lane(self, runner):
+        lanes, unclassified = runner.lanes_for(["README.md", "store/provider_health.json"])
+        assert lanes == []
+        assert unclassified == []
+
+    def test_source_with_no_lane_is_reported_not_ignored(self, runner):
+        """Fail-closed. pi-governance/src/index.ts has no test runner; it must not sail through."""
+        lanes, unclassified = runner.lanes_for(["pi-governance/src/index.ts"])
+        assert lanes == []
+        assert unclassified == ["pi-governance/src/index.ts"]
+
+    def test_a_mixed_commit_runs_every_lane_cheapest_first(self, runner):
+        lanes, _ = runner.lanes_for([
+            "prospector/run.py",
+            "store_platform/src/Store.Web/src/lib/priceRange.ts",
+            "store_platform/src/Store.Api/Program.cs",
+        ])
+        assert lanes == ["web", "dotnet", "python"]
+
+    def test_every_source_extension_is_reachable_by_some_lane(self, runner):
+        """Nothing in SOURCE_EXTS may be unclassifiable everywhere it can legally live."""
+        samples = {
+            ".py": "prospector/x.py",
+            ".ts": "store_platform/src/Store.Web/src/x.ts",
+            ".tsx": "store_platform/src/Store.Web/src/x.tsx",
+            ".js": "store_platform/src/Store.Web/src/x.js",
+            ".jsx": "store_platform/src/Store.Web/src/x.jsx",
+            ".mjs": "store_platform/src/Store.Web/src/x.mjs",
+            ".cjs": "store_platform/src/Store.Web/src/x.cjs",
+            ".cs": "store_platform/src/Store.Api/X.cs",
+            ".csproj": "store_platform/src/Store.Api/Store.Api.csproj",
+            ".css": "store_platform/src/Store.Web/src/styles/globals.css",
+        }
+        assert set(samples) == runner.SOURCE_EXTS, "a new source extension needs a lane + a sample"
+        for ext, path in samples.items():
+            lanes, unclassified = runner.lanes_for([path])
+            assert lanes and not unclassified, f"{ext} ({path}) reaches no lane"
+
+
+class TestTheGateDecidesBeforeItSpendsAnything:
+    """main() must reach its verdict on these two paths without running a suite or
+    signing a receipt — a gate that has to spend 175s to say "nothing to prove" is a
+    gate people bypass."""
+
+    def test_an_unproven_source_file_blocks(self, runner, monkeypatch, capsys):
+        monkeypatch.setattr(runner, "staged_paths", lambda: ["pi-governance/src/index.ts"])
+        assert runner.main(["--staged"]) == 1
+        assert "unproven: pi-governance/src/index.ts" in capsys.readouterr().out
+
+    def test_a_docs_only_commit_is_allowed_without_running_anything(self, runner, monkeypatch, capsys):
+        monkeypatch.setattr(runner, "staged_paths", lambda: ["README.md", "specs/x.md"])
+        assert runner.main(["--staged"]) == 0
+        assert "nothing to prove" in capsys.readouterr().out
+
+
+class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
+    def test_the_installed_hook_is_the_tracked_one(self):
+        # `.git/hooks/` is not part of the repository, and actions/checkout populates it
+        # with `*.sample` only — so on CI this asserts an artifact that cannot exist, and
+        # it failed there for that reason and no other.
+        #
+        # The skip is deliberately narrow: absent file AND a CI runner. On a developer
+        # machine an absent hook still FAILS, because there the gate genuinely is not
+        # installed. A hook that exists but is a plain file — the stale second copy this
+        # class was written to catch — fails everywhere, which is the point.
+        if os.environ.get("CI") and not INSTALLED_HOOK.exists():
+            pytest.skip("no .git/hooks/pre-commit on a CI checkout — nothing installed to compare")
+        assert INSTALLED_HOOK.is_symlink(), (
+            ".git/hooks/pre-commit must be a symlink to the tracked .lux/hooks/pre-commit, "
+            "or the file under review is not the file that runs."
+        )
+        assert INSTALLED_HOOK.resolve() == HOOK.resolve()
+
+    def test_the_hook_calls_the_runner_in_staged_mode(self):
+        code = _hook_code()
+        assert "scripts/popdd_verify.py --staged" in code, code
+
+    def test_the_hook_pins_its_interpreter_by_path(self):
+        """A bare `python3` is whatever is first on PATH, and the system one cannot even
+        collect this suite (8 ModuleNotFoundErrors). The hook must name an interpreter by
+        path, not by command.
+
+        Asserted structurally rather than by matching the literal path: this file may not
+        contain a hardcoded interpreter path — tests/test_suite_is_machine_independent.py::
+        test_no_test_hardcodes_an_interpreter_path forbids it, and it caught this test
+        doing exactly that.
+        """
+        m = re.search(r'VERIFY_CMD="\$\{POPDD_VERIFY_CMD:-(.+?)\}"', _hook_code())
+        assert m, "the hook no longer declares a default VERIFY_CMD"
+        interpreter = m.group(1).split()[0]
+        assert "/" in interpreter, (
+            f"the gate runs `{interpreter}`, i.e. whatever is first on PATH — pin the "
+            "project interpreter by path"
+        )
+
+    def test_the_hook_holds_no_extension_list_of_its_own(self):
+        """The duplicated list is how `.tsx` went missing. Comments are stripped first."""
+        code = _hook_code()
+        assert not re.search(r"\\\.\((?:py|ts|tsx|js|cs)\|", code), (
+            "the hook is filtering extensions itself again — that list belongs only in "
+            "scripts/popdd_verify.py:lanes_for()"
+        )
+        assert ".tsx" not in code and ".py" not in code.replace("popdd_verify.py", "")
+
+    def test_the_hook_still_fails_closed(self):
+        code = _hook_code()
+        assert "exit 1" in code, "the BLOCK path must exit non-zero"
+        assert "--no-verify" in code, "the documented deliberate override must stay documented"

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { textLinkClass } from '@/components/ui';
 
 /**
  * Who this purchase will be filed under, said BEFORE the buyer pays.
@@ -40,7 +41,7 @@ export function BuyerIdentityNote({ className }: { className?: string }) {
               page is the guest's real route back, and an account is the second one. */}
           Checking out as a guest, no account needed. Your download appears straight after
           payment, on a permanent link. Use an address you can open:{' '}
-          <Link href="/account?mode=register" className="underline">
+          <Link href="/account?mode=register" className={textLinkClass()}>
             creating an account
           </Link>{' '}
           with the same one later brings this purchase with it.
@@ -69,7 +70,7 @@ export function PostPurchaseAccountNote({ className }: { className?: string }) {
         account.email_confirmed ? (
           <>
             This order is also in{' '}
-            <Link href="/account" className="underline">
+            <Link href="/account" className={textLinkClass()}>
               your account
             </Link>
             , as long as you paid with <strong className="font-semibold text-text">{account.email}</strong>.
@@ -77,7 +78,7 @@ export function PostPurchaseAccountNote({ className }: { className?: string }) {
         ) : (
           <>
             Confirm <strong className="font-semibold text-text">{account.email}</strong> in{' '}
-            <Link href="/account" className="underline">
+            <Link href="/account" className={textLinkClass()}>
               your account
             </Link>{' '}
             and this order appears there too. Until then the link above is your only route back.
@@ -86,7 +87,7 @@ export function PostPurchaseAccountNote({ className }: { className?: string }) {
       ) : (
         <>
           Bought as a guest.{' '}
-          <Link href="/account?mode=register" className="underline">
+          <Link href="/account?mode=register" className={textLinkClass()}>
             Create an account
           </Link>{' '}
           with the email address you just paid with and this order, and any other you have made

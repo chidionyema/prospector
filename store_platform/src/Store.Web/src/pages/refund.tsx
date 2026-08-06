@@ -11,6 +11,7 @@ import Link from 'next/link';
 import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/LegalDoc';
 import { LEGAL } from '@/lib/config';
 import Disclaimer from '@/components/Disclaimer';
+import { textLinkClass } from '@/components/ui';
 
 /**
  * Refund Policy for the Mumchimp digital-download storefront.
@@ -26,7 +27,7 @@ export default function RefundPage() {
       <LegalText>
         This policy explains your rights and our approach to refunds when you purchase a Pack
         (digital download) from {LEGAL.entity}. Please read it alongside our{' '}
-        <Link href="/terms" className="text-primary hover:underline">
+        <Link href="/terms" className={textLinkClass()}>
           Terms of Service
         </Link>
         .
@@ -101,7 +102,7 @@ export default function RefundPage() {
       <LegalHeading>4. How to request a refund</LegalHeading>
       <LegalText>
         To request a refund, email{' '}
-        <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
           {LEGAL.supportEmail}
         </a>{' '}
         with:
@@ -123,7 +124,7 @@ export default function RefundPage() {
       <LegalHeading>5. Chargebacks and payment disputes</LegalHeading>
       <LegalText>
         We ask that you contact us at{' '}
-        <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
           {LEGAL.supportEmail}
         </a>{' '}
         before raising a chargeback or payment dispute with your bank or card provider.
@@ -138,19 +139,19 @@ export default function RefundPage() {
       <LegalHeading>7. Contact</LegalHeading>
       <LegalText>
         Refund enquiries:{' '}
-        <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
           {LEGAL.supportEmail}
         </a>
         . General legal enquiries:{' '}
-        <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
         </a>
         . Operator: {LEGAL.legalName}, {LEGAL.address}. See also our{' '}
-        <Link href="/terms" className="text-primary hover:underline">
+        <Link href="/terms" className={textLinkClass()}>
           Terms of Service
         </Link>{' '}
         and{' '}
-        <Link href="/privacy" className="text-primary hover:underline">
+        <Link href="/privacy" className={textLinkClass()}>
           Privacy Policy
         </Link>
         .

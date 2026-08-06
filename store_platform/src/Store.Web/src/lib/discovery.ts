@@ -797,7 +797,10 @@ export function matchReasons(pack: FacetedPack, intent: DiscoveryState): string[
   // Effort match
   if (intent.effort && pack.effort && pack.effort === intent.effort) {
     const label = shortLabel('effort', intent.effort);
-    if (label) reasons.push(`${label} -- matches your preference`);
+    // No dash of any kind. This string is rendered, and nothing between here and the DOM turns
+    // `--` into anything, so it printed as two hyphens; `dashFree.test.ts` bans the en dash that
+    // would otherwise replace it. The sentence does not need the punctuation.
+    if (label) reasons.push(`${label} matches your preference`);
   }
 
   return reasons.slice(0, 2);

@@ -45,7 +45,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cx('inline-flex rounded-md border border-border bg-bg p-0.5', fullWidth && 'flex w-full', className)}
+      className={cx('inline-flex rounded-md border border-border bg-surface2 p-0.5', fullWidth && 'flex w-full', className)}
     >
       {options.map((opt, index) => {
         const active = value === opt.value;
@@ -62,7 +62,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             onKeyDown={(e) => onKeyDown(e, index)}
             className={cx(
-              'rounded-md px-3 py-1.5 text-caption font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+              'rounded-sm px-3 py-1.5 text-caption font-medium transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
               fullWidth && 'flex-1',
               active ? 'bg-primary text-on-primary' : 'text-muted hover:text-text',
             )}

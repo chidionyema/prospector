@@ -360,8 +360,9 @@ class MiniMaxOperator(Operator):
             raw = _urlopen_read_bounded(req, timeout=240, total_deadline=300)
             data = json.loads(raw.decode("utf-8"))
         except Exception as e:
-            from .errors import ProviderExhaustedError
-            if "quota" in str(e).lower() or "limit" in str(e).lower():
+            # Shared classifier — same reasoning as the DeepSeek adapter above.
+            from .errors import ProviderExhaustedError, looks_exhausted
+            if looks_exhausted(str(e)):
                 raise ProviderExhaustedError(f"MiniMax quota exhausted: {e}", provider=self.name)
             raise RuntimeError(f"MiniMax call failed: {e}") from e
 
@@ -450,8 +451,13 @@ class DeepSeekOperator(Operator):
             with urllib.request.urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except Exception as e:
-            from .errors import ProviderExhaustedError
-            if "quota" in str(e).lower() or "limit" in str(e).lower():
+            # looks_exhausted, not an ad-hoc substring test. The hand-rolled
+            # `"quota" in e or "limit" in e` that stood here missed "HTTP Error 402: Payment
+            # Required" — see the marker list in errors.py for what that cost — and matched a
+            # bare "limit" (e.g. a context-length error), hard-tripping a healthy brain for a
+            # per-call mistake. One tested classifier, used by every metered adapter.
+            from .errors import ProviderExhaustedError, looks_exhausted
+            if looks_exhausted(str(e)):
                 raise ProviderExhaustedError(f"DeepSeek quota exhausted: {e}",
                                               provider=self.name)
             raise RuntimeError(f"DeepSeek call failed: {e}") from e

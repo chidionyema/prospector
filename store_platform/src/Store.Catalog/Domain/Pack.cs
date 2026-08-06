@@ -116,6 +116,21 @@ public class Pack
     // pack published before the engine had a market dimension.
     public string? Market { get; set; }
 
+    // The audience persona the engine GENERATED this pack for ("smb_owner", "primary_carer",
+    // ...). A disclosure and an analytics dimension, never a gate: nothing about sellability,
+    // price or delivery reads it, and a buyer outside the persona is a perfectly good buyer.
+    //
+    // Not a member of PackFacets on purpose. PackFacets.Advantage already contains a value
+    // spelled "audience" that means the opposite end of the transaction — "this buyer already
+    // HAS an audience to sell to" — so folding the persona into the facet vocabulary would put
+    // two unrelated meanings behind one word in the browse filter.
+    //
+    // Null on every pack published before the engine carried the persona through publish
+    // (the value was stamped on the dossier from the start and dropped at the boundary), and
+    // on any pack whose generation did not stamp one. Null means unknown, never "general
+    // audience" — an inferred persona would be a claim the engine never made.
+    public string? Audience { get; set; }
+
     // Discovery facets — the closed vocabulary in PackFacets, emitted by the engine from a
     // verified dossier and validated at the publish boundary. All nullable on purpose: an
     // untagged pack lists under "All" and never under a specific value. Nothing here may be

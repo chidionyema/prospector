@@ -168,13 +168,38 @@ def _get_verify():
     return _verify
 
 
-# Non-critical chain order: DeepSeek (cheap structured JSON) → cursor_cli (subscription
-# reliability) → minimax emergency tail. DeepSeek restored 2026-07-30 after billing recovery.
-# cursor_cli replaced claude_cli here 2026-07-30 so generation can run without Claude Code.
-# Ollama REJECTED 2026-07-01 (markdown, not JSON). NEVER put DeepSeek/MiniMax on the moat
-# (verdict/adversarial) — non-critical only. Module-level so run_signal, `operators`, and the
-# proof tools all reference the SAME chain.
-_NONCRITICAL_ORDER = ("deepseek", "cursor_cli", "minimax")
+# Non-critical chain order: claude_cli (subscription) → minimax emergency tail.
+# Founder directive 2026-08-06: "we need to use claude code and minimax".
+#
+# This was `(deepseek, cursor_cli, minimax)`. Both leading tiers were measured DEAD on
+# 2026-08-06 — one JSON call to each configured brain:
+#
+#     deepseek    RuntimeError: DeepSeek call failed: HTTP Error 402: Payment Required
+#     cursor_cli  ProviderExhaustedError: cursor cli exit 1: ActionRequiredError:
+#                 You've hit your usage limit
+#     minimax     OK
+#     claude_cli  OK
+#
+# So EVERY generation, prescreen and score call was being served by minimax — the guardrailed
+# emergency tail — after paying two guaranteed failures first. Nothing raised and nothing was
+# logged above INFO, so from the outside the chain looked healthy: that is the failure mode of a
+# fallback that works. The tail is not a neutral place to land, either: minimax was measured
+# NON-DETERMINISTIC on the classify call at temperature 0.0 (4 of 6 candidates returned a
+# different tier across 3 repeat runs), while claude_cli returned the identical answer 18/18.
+#
+# claude_cli is in MOAT_PRIMARY (operator.py:875), so this does put a moat brain on the
+# non-critical chain. That is a deliberate, founder-directed change to the rule in CLAUDE.md,
+# and it is not unprecedented: `_build_artifact_op` below has always generated the customer-
+# facing pack prose on the CLI operators. The rule that still binds absolutely is the one about
+# VERDICTS: DeepSeek/MiniMax never rule as trusted-final — is_provisional_provider enforces it.
+# PROCESS RISK, stated as such: claude_cli work is slot-governed (cli_governor), so a large
+# non-critical burst can now queue behind — or ahead of — the daemon's verdict calls. It costs
+# throughput, not correctness. Restoring deepseek/cursor_cli is a one-line change when billing
+# and usage limits recover; their breakers already half-open on their own.
+#
+# Ollama REJECTED 2026-07-01 (markdown, not JSON). Module-level so run_signal, `operators`, and
+# the proof tools all reference the SAME chain.
+_NONCRITICAL_ORDER = ("claude_cli", "minimax")
 
 
 # ---------------------------------------------------------------------------
@@ -1060,7 +1085,7 @@ def _cmd_replicate(args: argparse.Namespace, log_path: Path) -> None:
 
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
-                log_path: Optional[Path] = None) -> None:
+                log_path: Optional[Path] = None) -> dict:
     """Re-vet all moat-deferred candidates.
 
     Called when `vet --resume` is used or when the moat comes back online after an outage.
@@ -1068,24 +1093,88 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     the moat is now available, so we run everything), and overwrites the DEFER decision
     with the fresh verdict.  Candidates that were deferred due to a real retrieval
     outage (not moat exhaustion) are also retried.
+
+    `args.limit` bounds one pass. The unattended daemon sets it (see
+    `scheduler/run_scheduled.py::_default_generate`) because the spend guard is evaluated
+    once per tick, BEFORE the tick runs — an unbounded drain of a large backlog would run
+    entirely inside a single guard decision and could clear the daily cap in one tick.
+    On the CLI it defaults to unbounded, which is the behaviour this command has always had.
+
+    Returns a summary dict so a caller (the daemon) can record what the pass did; the CLI
+    ignores the return and reads the printed report.
     """
     # Two populations need the moat to revisit them:
     #   1. DEFER  — the moat was unavailable, so no verdict was reached at all.
     #   2. provisional — a real verdict WAS reached, but by the cheap emergency fallback
     #      tail (moat exhausted). Re-vet so the trusted moat overwrites the cheap ruling.
     # De-dup by candidate_id (a dossier can't be both, but guard against overlap).
-    deferred = store.all(decision="defer")
-    provisional = store.provisional()
+    # Tombstoned rows are excluded from BOTH populations. A tombstone means the dossier is
+    # gone for good, so there is nothing to re-vet — and leaving them in inflated the backlog
+    # the operator reads (406 reported, 45 of them undrainable) and made the drain's ETA a
+    # fiction. They stay in the catalogue for history; they are just not work.
+    deferred = [r for r in store.all(decision="defer") if not r.get("tombstone")]
+    provisional = [r for r in store.provisional() if not r.get("tombstone")]
     seen_ids = {r.get("candidate_id", "") for r in deferred}
     pending = list(deferred) + [r for r in provisional
                                 if r.get("candidate_id", "") not in seen_ids]
+    backlog = len(pending)
     if not pending:
         print("No deferred or provisional candidates to resume. Moat is healthy.")
-        return
+        return {"backlog": 0, "attempted": 0, "resumed": 0,
+                "passes": 0, "kills": 0, "defers": 0}
 
-    n_prov = len(pending) - len(deferred)
-    print(f"Found {len(deferred)} deferred + {n_prov} provisional candidate(s). "
-          f"Re-vetting with moat...")
+    limit = getattr(args, "limit", None)
+    if limit is not None and limit <= 0:
+        # 0 means "drain nothing" — NOT "drain everything". The old test was
+        # `if limit is not None and limit > 0`, so a 0 fell through to the unsliced
+        # `pending` and re-vetted the entire backlog (411 items on 2026-08-05) inside a
+        # single guard decision. The daemon guards the call with `if n_resume:`, so it was
+        # unreachable from there, but `schedule.resume_per_tick: 0` is documented as
+        # "disables the drain entirely" (run_scheduled.py:83) and `_resume_per_tick` floors
+        # negatives to 0 — one config edit or one direct call away from the exact unbounded
+        # pass the spend rail exists to prevent. Only `None` (the CLI default) means
+        # unbounded, which is what `vet --resume` has always done.
+        print(f"Found {backlog} deferred + provisional candidate(s); limit={limit} "
+              f"disables the drain — re-vetting none.")
+        return {"backlog": backlog, "attempted": 0, "resumed": 0,
+                "passes": 0, "kills": 0, "defers": 0}
+    # Oldest first. `store.all` returns catalogue order; the oldest DEFERs are the ones that
+    # have been waiting longest (this backlog reaches back to 2026-06-14), and draining
+    # newest-first would starve them forever at 3 per tick.
+    pending = sorted(pending, key=lambda r: str(r.get("created_at", "")))
+
+    # ORPHANS MUST NOT CONSUME THE BOUNDED PASS.
+    #
+    # The index and the disk disagree: some rows have no dossier JSON behind them. The loop
+    # below prints "dossier JSON missing, skipping" and moves on — which is right per row, and
+    # wrong for a bounded pass that always re-takes the OLDEST rows. The same unreadable rows
+    # were re-selected every single tick, so the pass burned its whole budget on them and did
+    # nothing else, forever.
+    #
+    # PROVEN on the live store 2026-08-06, first tick that ever ran the drain:
+    #   ticks.jsonl result -> 'resumed': {'backlog': 406, 'attempted': 3, 'resumed': 0, ...}
+    #   backlog 406, orphaned 46, leading unbroken run of orphans 45 (2026-06-14..06-21)
+    # At 3 per tick that is 15 consecutive ticks — ~1.2 days — of no-op drains reporting
+    # `attempted: 3` before the pass reaches its first real candidate.
+    #
+    # So the bound is spent on rows that can actually be re-vetted, and the orphan count is
+    # REPORTED rather than silently absorbed: a row in the index with nothing on disk is a
+    # store inconsistency the operator should see, not a slot the drain quietly wastes.
+    orphaned = 0
+    if limit is not None:
+        selected: list = []
+        for row in pending:
+            if len(selected) >= limit:
+                break
+            if store.get(row.get("candidate_id", "")):
+                selected.append(row)
+            else:
+                orphaned += 1
+        pending = selected
+
+    print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
+          f"{len(pending)} of them with the moat..."
+          + (f" (skipped {orphaned} with no dossier JSON on disk)" if orphaned else ""))
     from .models import Candidate
     from .telemetry import get_usage_summary, reset_usage
     from . import progress
@@ -1142,6 +1231,60 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     usage = get_usage_summary()
     from .report import costs_report
     print(f"\n{costs_report(log_path or '')}")
+    summary = {"backlog": backlog, "attempted": len(pending), "resumed": len(resumed_dossiers),
+               "passes": n_pass, "kills": n_kill, "defers": n_defer,
+               # In the RETURN value, not just the print above. Under launchd this function's
+               # stdout is fd 1 → store/scheduler/launchd.out.log (measured on pid 48771 via
+               # lsof), which nothing reads and which Python block-buffers because it is a
+               # file — so at 00:58 the tick's cost report was still sitting unflushed in the
+               # process. The summary dict is the stream that survives: run_scheduled.py:190
+               # logs it to stderr and it lands in the tick row.
+               #
+               # `metered_usd`, NOT `cost_usd`. This is billed money only — the figure
+               # `daily_cap_usd` enforces. It is legitimately 0.00 for a drain that ran on the
+               # Claude Code subscription, which is the moat's primary brain, so a key called
+               # `cost_usd` reading 0.0 would say "the drain was free" when it in fact spent
+               # subscription allowance. The other leg is already in the same tick row as
+               # `today_subscription_usd` (scheduler/guard.py:161). Two legs, two names —
+               # guard.py:21-45 has the full measurement of why they must never be added up.
+               "metered_usd": round(usage.get("total_cost_usd", 0.0), 4)}
+    if orphaned:
+        # Surfaced into the tick row so a store inconsistency is visible in ticks.jsonl and the
+        # state probe instead of showing up as an inexplicable `attempted: 3, resumed: 0`.
+        summary["orphaned"] = orphaned
+    return summary
+
+
+def resume_deferred(cfg: Config, *, limit: int | None = None,
+                    publish: bool = False) -> dict:
+    """Run one bounded re-vet pass over the DEFER + provisional backlog, in-process.
+
+    THE GAP THIS CLOSES. `vet --resume` has always existed and always worked, but nothing
+    ever called it. Measured 2026-08-05: 113 `*.defer.json` dossiers on disk, oldest
+    2026-06-24, while `alerts.py:219` was telling the operator they "auto re-vet ... once
+    the moat recovers". `grep -- --resume` over the repo found only log strings, the
+    argparse flag, and docs — no scheduler path and none of the four launchd plists. So
+    candidates that had already cost generation + prescreen sat unvetted for six weeks
+    because a transient moat outage happened to catch them.
+
+    Operators are built here the same way `_cmd_signal` builds them, so the daemon does not
+    have to import the CLI's argparse plumbing.
+    """
+    from .operator import make_operator
+    from .telemetry import reset_usage
+    reset_usage()
+    op = make_operator(cfg)
+    fast_op = make_operator(cfg, fast=True)
+    args = argparse.Namespace(limit=limit, publish=publish, board=None,
+                              fixtures=None, search=None)
+    search = _make_search(cfg, args)
+    store = Store(cfg)
+    # The same ledger `main()` passes for every CLI command (see the log_path it builds from
+    # cfg.store_dir). Omitting it made the daemon's drain the one caller with no log path, so
+    # its last line printed "No audit log at ." — the pass spends real money re-vetting and
+    # the operator got no cost line for it, on the only run nobody is watching.
+    return _cmd_resume(args, cfg, op, fast_op, search, store,
+                       log_path=cfg.store_dir / "prospector.jsonl")
 
 
 def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:
@@ -1916,6 +2059,12 @@ def main() -> None:
                        help="Re-vet all moat-deferred candidates (decision=defer).  "
                             "Uses the same operator/lane as the original run.  "
                             "Safe to re-run when the moat (Claude) comes back online.")
+    vet_p.add_argument("--limit", type=int, metavar="N",
+                       help="With --resume: re-vet only the N oldest deferred/provisional "
+                            "candidates instead of the whole backlog. Default unbounded. "
+                            "The daemon always passes a limit — the spend guard is evaluated "
+                            "once per tick, so an unbounded drain would run inside a single "
+                            "guard decision.")
 
     # ---- signal subcommand ----
     sig_p = sub.add_parser("signal", help="Run the full signal pipeline")

@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Mumchimp">
-  <!-- Wordmark-derived favicon: white "M" on the primary teal field. -->
-  <rect width="32" height="32" rx="7" fill="#042F2E" />
+  <!-- Wordmark-derived favicon: white "M" on the ink field, mirroring Logo.tsx's monogram tile
+       (bg-text = #171717, rounded-md = 8px, white letter). It was #042F2E teal, a colour that no
+       longer appears anywhere in the palette, so the one mark that shows up in a tab strip beside
+       every other site was the last thing still wearing the old brand. -->
+  <rect width="32" height="32" rx="8" fill="#171717" />
   <text x="16" y="17" text-anchor="middle" dominant-baseline="central"
-        font-family="'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
-        font-weight="800" font-size="21" fill="#ffffff">M</text>
+        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-weight="600" font-size="20" fill="#ffffff">M</text>
 </svg>

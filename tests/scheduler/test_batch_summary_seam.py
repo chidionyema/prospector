@@ -9,8 +9,21 @@ caught the bug. These tests drive the REAL `_default_generate` with REAL `Dossie
 """
 from __future__ import annotations
 
+import types
+
 from prospector.models import Candidate, Decision, Dossier
 from prospector.scheduler import run_scheduled as rs
+
+
+def _cfg():
+    """A cfg with the backlog drain off, so these tests stay about the GENERATION seam.
+
+    `_default_generate` also re-vets a few backlogged candidates at the head of a tick (see
+    `tests/unit/test_scheduler_resume_drain.py`). That pass adds a `resumed` key, and the
+    whole-dict equality below is exactly what catches a miscount, so it must not be loosened
+    to a subset check. Turning the drain off keeps each assertion about one thing.
+    """
+    return types.SimpleNamespace(schedule={"resume_per_tick": 0})
 
 
 def _dossier(decision: Decision, *, provisional: bool = False) -> Dossier:
@@ -37,7 +50,7 @@ def test_default_generate_counts_real_decisions(monkeypatch):
     # _default_generate does `from prospector.run import run_signal` at call time.
     monkeypatch.setattr("prospector.run.run_signal", lambda *a, **k: batch)
 
-    summary = rs._default_generate(cfg=object(), batch_size=4)
+    summary = rs._default_generate(cfg=_cfg(), batch_size=4)
 
     assert summary == {"dossiers": 4, "passes": 1, "defers": 1, "provisional": 0}
 
@@ -47,7 +60,7 @@ def test_all_deferred_batch_summarises_as_outage(monkeypatch):
     batch = [_dossier(Decision.DEFER) for _ in range(3)]
     monkeypatch.setattr("prospector.run.run_signal", lambda *a, **k: batch)
 
-    summary = rs._default_generate(cfg=object(), batch_size=3)
+    summary = rs._default_generate(cfg=_cfg(), batch_size=3)
     assert summary == {"dossiers": 3, "passes": 0, "defers": 3, "provisional": 0}
 
     from prospector.scheduler.alerts import alerts_for_tick
@@ -67,7 +80,7 @@ def test_provisional_batch_summarises_and_alerts_moat_degraded(monkeypatch):
              _dossier(Decision.KILL, provisional=True)]
     monkeypatch.setattr("prospector.run.run_signal", lambda *a, **k: batch)
 
-    summary = rs._default_generate(cfg=object(), batch_size=3)
+    summary = rs._default_generate(cfg=_cfg(), batch_size=3)
     assert summary == {"dossiers": 3, "passes": 1, "defers": 0, "provisional": 3}
 
     from prospector.scheduler.alerts import alerts_for_tick
@@ -77,7 +90,7 @@ def test_provisional_batch_summarises_and_alerts_moat_degraded(monkeypatch):
     # Degradation must outrank the WARNING zero_yield even when no PASS survives.
     kills_only = [_dossier(Decision.KILL, provisional=True)]
     monkeypatch.setattr("prospector.run.run_signal", lambda *a, **k: kills_only)
-    s2 = rs._default_generate(cfg=object(), batch_size=1)
+    s2 = rs._default_generate(cfg=_cfg(), batch_size=1)
     specs2 = alerts_for_tick({"allowed": True, "dry_run": False, "error": None, "result": s2})
     assert specs2 and specs2[0]["key"] == "moat_provisional"
 

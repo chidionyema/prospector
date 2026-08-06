@@ -60,5 +60,13 @@ public record PublishRequest(
     // Keep the pack out of the browse catalogue while leaving it fully sellable. Appended last
     // for the same append-only reason as everything above it. Defaults false, so no existing
     // caller changes behaviour. This is NOT a sellability switch — see Pack.HiddenFromCatalogue.
-    bool HiddenFromCatalogue = false
+    bool HiddenFromCatalogue = false,
+    // The audience persona the engine generated the pack for (Candidate.tags["audience"]).
+    // Appended last for the same append-only reason as everything above it. Free text, not
+    // validated against a closed vocabulary: the list lives in the engine's config.yaml
+    // (generation.audience_forms) where an operator edits it, and a validator here would
+    // start 400-ing every publish the day that list gained a member — turning a disclosure
+    // field into an outage. Unknown facet values are rejected because a buyer FILTERS on a
+    // facet; nobody filters on this.
+    string? Audience = null
 );

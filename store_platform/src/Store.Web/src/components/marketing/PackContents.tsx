@@ -25,9 +25,13 @@ import { Icon } from '@/components/ui';
  * be true of the weakest pack, not the best one.
  *
  * Format is Markdown in a zip, not PDF. Said plainly, and framed as the advantage it actually is.
+ *
+ * The `emoji` field is deleted (brand v3, 2026-08-06). Eight emoji stacked down a list render as
+ * eight different pieces of third-party artwork -- a different set on macOS, Windows and Android --
+ * on the one screen whose job is to look like a document worth £49. The file icon is now a single
+ * consistent glyph from our own set, and the deliverable is identified by its real filename.
  */
 export const PACK_CONTENTS: {
-  emoji: string;
   title: string;
   /** The real entry in the bundle zip. Pinned to BUNDLE_FILES by the drift test. */
   filename: string;
@@ -36,61 +40,56 @@ export const PACK_CONTENTS: {
   showSourceCount?: boolean;
 }[] = [
   {
-    emoji: '🧭',
     title: 'Executive Summary',
     filename: '00_Executive_Summary.md',
     desc:
       'The opportunity in one page: what it is, the grounded signals that survived the checks, and an explicit list of what the pack does NOT claim. Read this first to decide if it is for you.',
   },
   {
-    emoji: '📄',
     title: 'The Blueprint (Build Spec)',
     filename: '01_Blueprint_BuildSpec.md',
     desc:
       'What is actually being built, and in what order. Phased build plan, the recommended stack, the explicit non-goals for v1, and a straight section on what would kill this.',
   },
   {
-    emoji: '🎯',
     title: 'The Go-To-Market Plan',
     filename: '02_Marketing_Plan_GTM.md',
     desc:
       'Where your first customers come from. The named channels and the communities behind them, the positioning you lead with, the beachhead to start in, and the kill criteria that tell you to stop.',
   },
   {
-    emoji: '🛠️',
     title: 'The Operations Plan',
     filename: '03_Operations_Plan.md',
     desc:
       'How the thing actually runs once someone pays. Delivery workflow, capacity limits, the compliance gates you cannot skip, and where the manual work really sits.',
   },
   {
-    emoji: '📊',
     title: 'The Financial Model',
     filename: '04_Financial_Model.md',
     desc:
       'Pricing mechanics and unit economics. Figures the engine could not ground are marked as absent rather than filled in, no invented revenue, cost or TAM.',
   },
   {
-    emoji: '✅',
     title: 'First-Week Checklist',
     filename: '05_First_Week_Checklist.md',
     desc:
       'Six concrete steps for days one to seven: confirm the buyer, sketch the smallest paid offer, pick one channel and ignore the rest, and log what you could not verify.',
   },
   {
-    emoji: '✍️',
     title: 'Marketing Assets',
     filename: 'Marketing_Assets.md',
     desc:
       'Launch copy you can send today, listing page, outreach and social drafts. Every asset passes the same claim-check as the research, so nothing here overstates the product.',
   },
   {
-    emoji: '🔗',
     title: 'The QA Report, with the receipts',
     filename: 'QA_Report.md',
     showSourceCount: true,
     desc:
-      'All six checks, each verdict, and a clickable source behind every claim. This is the file that proves the rest of the pack is not invented.',
+      // Not "all six checks": the check set is lane-dependent, so this file carries eight or
+      // nine verdicts on the packs vetted by the side-hustle lanes. The claim that is true of
+      // every pack is "every check that was run, with its verdict and its source".
+      'Every check the pack was put through, each verdict, and a clickable source behind every claim. This is the file that proves the rest of the pack is not invented.',
   },
 ];
 
@@ -114,20 +113,15 @@ export function PackContentsSection({
   const hasCount = typeof sourceCount === 'number' && sourceCount > 0;
   return (
     <div className={className}>
-      <h2 className="text-h2 font-bold tracking-tight text-text md:text-h2">{heading}</h2>
-      {lead && <p className="mt-2 max-w-[64ch] text-meta leading-relaxed text-muted md:text-body">{lead}</p>}
+      <h2 className="text-h2 font-semibold text-text">{heading}</h2>
+      {lead && <p className="mt-2 max-w-[60ch] text-body text-muted">{lead}</p>}
 
-      <ul className="mt-6 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
+      <ul className="mt-6 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
         {PACK_CONTENTS.map((item) => (
-          <li
-            key={item.title}
-            className="flex gap-4 border border-border bg-surface p-5"
-          >
-            <span aria-hidden className="select-none text-h2 leading-none">
-              {item.emoji}
-            </span>
-            <span className="flex flex-col">
-              <span className="text-body font-bold leading-snug text-text">
+          <li key={item.title} className="flex gap-3 rounded-md border border-border bg-surface p-5">
+            <Icon name="document" size={16} className="mt-0.5 flex-none text-subtle" />
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body font-semibold leading-snug text-text">
                 {item.title}
                 {hasCount && item.showSourceCount && (
                   <span className="ml-1.5 font-normal text-muted">({sourceCount} sources)</span>
@@ -136,24 +130,24 @@ export function PackContentsSection({
               {/* The real zip entry. A buyer's fear at £49 is a thin Google Doc, and a filename
                   they can check against the download they receive is a falsifiable answer to it
                   in a way another adjective is not. */}
-              <span className="mt-1 font-mono text-caption font-semibold text-muted">
+              <span className="mt-1 break-all font-mono text-caption text-subtle">
                 {item.filename}
               </span>
-              <span className="mt-1.5 text-meta leading-relaxed text-text/70">{item.desc}</span>
+              <span className="mt-2 text-meta text-muted">{item.desc}</span>
             </span>
           </li>
         ))}
       </ul>
 
       {/* Format ambiguity kills digital conversions. State the file format outright. */}
-      <div className="mt-5 flex flex-col gap-2 border border-border bg-bg/50 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-meta leading-relaxed text-text/75">
-          <span className="font-bold text-text">Format:</span> one zip of plain Markdown files, 5,000+ words
+      <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-[60ch] text-meta text-muted">
+          <span className="font-medium text-text">Format:</span> one zip of plain Markdown files, 5,000+ words
           per pack. Open it anywhere, edit it, or paste it straight into Notion, Obsidian or your AI tool of
           choice. No PDF viewer, no login, no subscription.
         </p>
-        <span className="inline-flex flex-none items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-caption font-bold text-success">
-          <Icon name="download" size={14} />
+        <span className="inline-flex flex-none items-center gap-2 text-meta font-medium text-text">
+          <Icon name="download" size={16} className="text-success" />
           Instant download
         </span>
       </div>

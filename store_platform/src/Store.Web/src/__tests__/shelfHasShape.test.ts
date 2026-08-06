@@ -56,11 +56,20 @@ describe('the shelf has editorial shape', () => {
   });
 
   it('no shelf row claims something the site does not measure', () => {
-    // "Trending" is a traffic claim, and nothing here counts traffic. The row was always ordered
-    // by `sourceCount`; the heading now says that, and every card under it prints the number, so
-    // the claim is checkable against the thing directly below it.
+    /*
+     * "Trending" is a traffic claim, and nothing here counts traffic.
+     *
+     * This test used to also REQUIRE a "Most sources" row, on the reasoning that renaming
+     * Trending to the thing it actually sorted by made the claim checkable. The v3 pass deleted
+     * that row instead, and the stronger reason is in `index.tsx`'s header comment: ranking by
+     * how many sources WE happened to gather is a claim about our research effort dressed up as
+     * a recommendation to the buyer. So the assertion is inverted -- neither heading may return.
+     * `sourceCount` is still printed per card, where it is a stated fact rather than a ranking.
+     */
     expect(page, 'an unmeasured popularity claim must not return').not.toMatch(/Trending picks/);
-    expect(page).toMatch(/>Most sources</);
+    expect(page, 'our own research effort is not a buyer recommendation').not.toMatch(
+      />Most sources</,
+    );
   });
 });
 

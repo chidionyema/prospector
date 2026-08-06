@@ -16,9 +16,27 @@
 const EM_DASH = "\u2014";
 const EN_DASH = "\u2013";
 
+/**
+ * A dash between two digits is a RANGE, and a comma changes what it means.
+ *
+ * The blanket rule was safe while this only ran over marketing prose written in-house. Pointing it
+ * at the live catalogue found 13 fields where it is not: `Mothers 25-45 who have a child with
+ * autism`, `Gen Z gig workers (18-27)`, `for 2025-2026`. Turning those into "Mothers 25, 45" and
+ * "2025, 2026" states something the source did not say, on a storefront whose rule is
+ * source-or-die. Measured 2026-08-06:
+ *
+ *   curl -s https://api.mumchimp.com/catalog | python3 -c "import sys,json,re;\
+ *   d=json.load(sys.stdin);p=re.compile(r'\\d[--]\\d');\
+ *   print(sum(1 for i in d for v in i.values() if isinstance(v,str) and p.search(v)))"
+ *
+ * A hyphen keeps the range and drops the tell, which is the whole point of the function.
+ */
+const NUMERIC_RANGE = new RegExp(`(\\d)\\s*[${EM_DASH}${EN_DASH}]\\s*(\\d)`, "g");
+
 export function nodash(s: string | null | undefined): string {
   if (!s) return "";
   let out = s
+    .replace(NUMERIC_RANGE, "$1-$2")
     .replaceAll(EM_DASH, ", ")
     .replaceAll(EN_DASH, ", ")
     .replace(/\s+-\s+/g, ", ");

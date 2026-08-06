@@ -1,96 +1,111 @@
 @import "tailwindcss";
 
 /*
-  Structural Overhaul — Premium Infrastructure Aesthetic (2026-06-08).
-  Massive Serif headlines, Monospace data markers, pure Gallery White canvas.
+  Brand v3 — "clean modern product" (2026-08-06).
+
+  Rebuilt from the ground up after the v2 look was rejected outright: "designed by a teenager on
+  drugs ... highly unprofessional ... the colour scheme is also questionable". v2's failure was
+  not any single value, it was that four separate loudness signals stacked on the same elements:
+  a saturated vermillion fill, a hard black offset shadow, a Didone serif, and wide-tracked
+  uppercase labels -- on a store whose entire proposition is sober, sourced evidence.
+
+  v3's thesis: this shop sells RIGOUR, so the design's one job is to make evidence look
+  load-bearing. One sans (Geist) in three weights on white, hairline borders, and Geist Mono
+  reserved strictly for checkable facts -- prices, IDs, source counts, gate tags -- so the eye
+  learns that monospace means "you can verify this". Actions are ink. One blue accent carries
+  links and focus and is never a fill. Red and green appear only where they mean killed and
+  survived. Reference points: Linear, Vercel, Mercury.
+
+  Every colour pair shipped here has a measured WCAG ratio recorded beside it. Where a pair
+  fails, the token carries a narrowed role rather than a comment excusing it.
 */
 
 :root {
-  /* What we fall back to when the webfont has not arrived (or was never wired). Two families
-     only: sans for body, serif for display. Mono falls back to ui-monospace (the system
-     mono is good enough for data markers, no third family is needed). */
+  /* What we fall back to when the webfont has not arrived (or was never wired). ONE family now:
+     the serif is gone (v3 is sans-only), so there is no --font-fallback-serif. Mono falls back to
+     ui-monospace -- the system mono is good enough for data markers. */
   --font-fallback-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-fallback-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-fallback-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 
-  /* Brand v2 palette: clean white canvas, high-contrast borders, bold vermillion
-     primary. The deep teal #042F2E was muddy and dated (rejected by stakeholder
-     on 2026-08-05). The v2 commits to a bold 2026 accent: vermillion #FF5A1F.
-     Figma, Stripe, Mercury all use this lane. It is the visual signal that
-     Mumchimp is not a blue SaaS brand. */
-  --bg: #FFFFFF;            /* Clean white canvas. The warm paper (#FEFDF9) read
-                                as "suburban wellness brand"; clean white reads as
-                                "research ledger" (Linear, Stripe, Mercury). */
-  --surface: #FFFFFF;       /* Cards on bg. No elevation needed at base. */
-  --surface2: #F7F7F5;      /* Elevated cards, modals, popovers. A subtle
-                                warm tint (#F7F7F5) keeps the "paper" feel
-                                without losing the clean white. */
-  --border: #E5E5E5;        /* High-contrast neutral. The warm tan (#D4C9B5)
-                                was 2020; 2026 UIs use high-contrast borders. */
-  --text: #0A0A0A;          /* Near-black, higher contrast than the old
-                                #1A1A1A. The 2026 standard. */
-  --muted: #6B6B6B;         /* Warm stone, more visible than the old #78716C. */
-  --faint: #B5B5B5;         /* Subtle dividers. */
-  /* The eyebrow is always SMALL uppercase text on white, so it cannot carry the raw brand
-     vermillion: #FF5A1F on #FFFFFF measures 3.12:1, below the 4.5:1 WCAG AA needs for normal
-     text. This is the same hue pushed dark enough to pass at 5.73:1. The brand accent itself is
-     unchanged below; this token exists precisely so text and surface can diverge. */
-  --eyebrow: #B93A00;
+  /* NEUTRALS. A true-neutral zinc ramp, not the warm greys of v2 (#F7F7F5 / #6B6B6B / #B5B5B5).
+     The warm cast was chosen to harmonise with a warm accent; with the accent gone to ink it had
+     nothing to sit against and read as "white gone slightly yellow". */
+  --bg: #FFFFFF;            /* Page canvas. */
+  --surface: #FFFFFF;       /* Cards and raised surfaces. The EDGE is drawn by a border, never by
+                                a tint -- that is what makes the shelf read as a document. */
+  --surface2: #FAFAFA;      /* Sunken/tinted panels: plate headers, table heads, footer, code. */
+  --border: #E4E4E7;        /* Hairline. The default border everywhere. */
+  --border-strong: #D4D4D8; /* Input borders, hover borders, dividers that must actually read. */
+  --text: #171717;          /* Primary text. 17.93:1 on --bg, 17.18:1 on --surface2. */
+  --muted: #52525B;         /* Secondary text: descriptions, nav. 7.73:1 on --bg. AA. */
+  --subtle: #71717A;        /* Tertiary text: meta rows, counts, timestamps. 4.83:1 on --bg. AA.
+                                This is the smallest text that is allowed to carry information. */
+  /* Placeholders, disabled labels, purely decorative rules. 2.56:1 -- it FAILS AA, and that is
+     why its role is written down here: --faint may never carry information. Anything a buyer
+     needs to read uses --subtle. v2 used #B5B5B5 for market codes and the FX disclaimer, which
+     is exactly the misuse this narrowed role now forbids. */
+  --faint: #A1A1AA;
 
-  /* Global Transition Standard: 0.3s with the Apple-like cubic-bezier. The
-     previous 0.2s with cubic-bezier(0.4, 0, 0.2, 1) was a 2020 Material
-     ripple. The v2 is slower, more confident, more cinematic. */
-  --transition-standard: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-  --transition-fast: all 0.15s cubic-bezier(0.32, 0.72, 0, 1);
-  --transition-slow: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  /* MOTION. The v2 "0.3s cinematic" standard is rejected. On a transactional store a 300ms
+     response to every hover reads as lag, not confidence -- the cursor arrives before the colour
+     does. These are tuned so hover feels instant and only real overlays take perceptible time. */
+  --transition-fast: all 0.12s cubic-bezier(0.2, 0, 0, 1);      /* colour, border, opacity */
+  --transition-standard: all 0.18s cubic-bezier(0.2, 0, 0, 1);  /* transform + shadow */
+  --transition-slow: all 0.2s cubic-bezier(0.2, 0, 0, 1);       /* overlay enter */
 
-  --primary: #FF5A1F;       /* Vermillion — the bold brand accent. Unchanged. */
-  /* Near-black, NOT white. White on #FF5A1F measures 3.12:1 and fails WCAG AA (4.5:1) — that was
-     every primary CTA and every buy button on the site. Near-black on the same vermillion measures
-     6.35:1 and passes, with zero change to the brand hue. It also matches the brutalist
-     offset-shadow the hero CTA already casts in --text. */
-  --on-primary: #0A0A0A;
-  --primary-hover: #E64500; /* Deeper vermillion for hover/active. 4.03:1 on white — surfaces and
-                                large text only, never small text; use --eyebrow for that. */
-  --verified-bg: #ECFDF5;   /* The verification green, kept (this is the
-                                "6/6 checks passed" semantic, distinct from
-                                the brand accent). */
-  --verified-text: #065F46;
-  --accent: #FF5A1F;        /* Same as primary; kept for backward compat. */
-  --on-accent: #0A0A0A;     /* Same reason as --on-primary. */
+  /* ACTION. The primary action is INK, not a brand colour.
+     Vermillion #FF5A1F is deleted outright rather than demoted, for three concrete reasons:
+       (a) it fails AA on white (3.12:1), which is why v2 was forced into BLACK text on orange --
+           and black-on-safety-orange is hazard livery. It reads as a warning, not an invitation.
+       (b) it was simultaneously the brand, the CTA fill, the category eyebrow, the card's left
+           border and the hover colour. A colour that means five things means nothing.
+       (c) 61 identical orange buy buttons tiled down the shelf was the single loudest thing on
+           the site, and the shelf is the site.
+     Nothing here needs a "brand colour": the brand is the ink/mono/evidence system itself. */
+  --primary: #171717;       /* Buy/primary action fill. */
+  --on-primary: #FFFFFF;    /* 17.93:1 on --primary. AAA. */
+  --primary-hover: #2E2E33; /* White on it is 13.51:1. AAA. */
 
-  /* Emerald #10B981 measured 2.54:1 on white and was being used as BODY TEXT (the
-     "£49 one time, yours forever" line). This is the same green at 5.48:1. */
-  --success: #047857;
-  --on-success: #ffffff;    /* 5.48:1 on the new --success. */
-  --warning: #DC2626;       /* Red 600. 4.83:1 on white, passes. */
-  --on-warning: #ffffff;
-  --danger: #DC2626;        /* Same as warning. */
-  --on-danger: #ffffff;
-  --info: #0369A1;          /* Sky 500 (#0EA5E9) measured 2.77:1 on white. This is 5.93:1. */
-  --on-info: #ffffff;
+  /* The ONE accent, and it is never a fill: links, selected state, active tab underline, focus.
+     Confining it to things you can click is what makes it informative -- if it is blue, it does
+     something. */
+  --accent: #2563EB;        /* 5.17:1 on --bg, 4.95:1 on --surface2. AA. */
+  --accent-hover: #1D4ED8;  /* 6.70:1. AA. */
+  --focus: #2563EB;         /* Focus ring. 5.17:1 vs white, over the 3:1 required for UI. */
 
-  --focus: #0A0A0A;         /* Focus ring colour (high contrast on white). */
-  --gold: #047857;          /* Re-mapped to --success so the two cannot drift apart. */
+  /* SEMANTICS. Red and green are reserved for exactly one meaning on this site: killed and
+     survived. They are never decoration and never a brand colour.
+     Each pair ships a `-bg` tint and a `-strong` text colour, because the base hue does not
+     survive being put on its own tint: --danger #DC2626 on --danger-bg #FEF2F2 measures 4.41:1
+     and FAILS AA. That single measurement is why the -strong variants exist at all. */
+  --success: #047857;         /* Verified/survived on white. 5.48:1. AA. */
+  --success-bg: #ECFDF5;
+  --success-strong: #065F46;  /* On --success-bg. 7.29:1. AA. */
+  --danger: #DC2626;          /* Killed/destructive on white. 4.83:1. AA. */
+  --danger-bg: #FEF2F2;
+  --danger-strong: #B91C1C;   /* On --danger-bg. 5.91:1. AA. */
+  /* v2 set --warning to #DC2626, i.e. identical to --danger, so "caution" and "destructive" were
+     the same colour and the distinction was unrenderable. */
+  --warning: #B45309;         /* 5.02:1 on white. AA. */
+  --warning-bg: #FFFBEB;
+  --warning-strong: #92400E;  /* On --warning-bg. 6.84:1. AA. */
+  --info: #0369A1;            /* 5.93:1 on white. AA. */
+  --info-bg: #F0F9FF;         /* --info on it: 5.57:1. AA. */
 
-  --band: #0A0A0A;          /* Dark chrome header — was the muddy deep teal,
-                                now pure black for the dark band. */
-  --on-band: #FFFFFF;       /* White text on the dark band. */
-  --on-band-muted: #A1A1AA; /* Zinc 400. 7.72:1 on the band, passes. */
-  /* Zinc 500 (#71717A) measured 4.10:1 on the band, under AA for the small uppercase eyebrows it
-     carries. Lifted to 6.69:1. */
-  --on-band-faint: #9296A1;
-  /* Semantic colours for the dark band and the dark terminal card. The white-canvas --success and
-     --danger are tuned against #FFFFFF and are far too dark here: --danger #DC2626 measured
-     4.10:1 on #0A0A0A (already failing before the palette pass) and the AA-corrected --success
-     #047857 would have been 3.61:1. These are the same two hues lifted for a dark surface,
-     10.30:1 and 7.16:1. Any red/green on a dark surface uses these, never --success/--danger. */
-  --on-band-success: #34D399;
-  --on-band-danger: #F87171;
+  /* Search-match highlight, the <mark> in the command palette. A tint of --accent rather than a
+     neutral grey, because a grey wash on a hovered row (which is itself --surface2) disappears.
+     --text on it measures 14.14:1. */
+  --highlight: #DBEAFE;
 
-  /* One soft elevation. It was four steps; three of them were used on things that also had a
-     border, so they added blur and no information. See the --shadow-* block below. */
-  --elev-2: 0 4px 6px -1px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.05);
+  /* The dark band tokens (--band, --on-band, --on-band-muted/-faint/-success/-danger) are DELETED.
+     v3 has no dark chrome: the header is white with a hairline, the footer is --surface2, and the
+     black "filter log" slab in the hero -- which read as a crypto terminal -- is now a light
+     ledger card. Six tokens existed solely to make text legible on a surface that no longer
+     exists. --gold was already an alias of --success and is deleted too. */
+
+  /* ELEVATION. Borders draw edges; shadows communicate POSITION and nothing else. */
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-2: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.10);
 }
 
 @theme inline {
@@ -100,27 +115,34 @@
   --color-surface: var(--surface);
   --color-surface2: var(--surface2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-text: var(--text);
   --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
   --color-faint: var(--faint);
-  --color-eyebrow: var(--eyebrow);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
   --color-accent: var(--accent);
-  --color-on-accent: var(--on-accent);
-  --color-verified-bg: var(--verified-bg);
-  --color-verified-text: var(--verified-text);
+  --color-accent-hover: var(--accent-hover);
+  /* NOT decorative, and it was missing. `--focus` has existed since brand v2 but was never mapped
+     into @theme, so the sixteen `ring-focus` / `border-focus` call sites across src/ compiled to
+     NOTHING -- in Tailwind v4 an unmapped colour utility emits no rule at all. Every one of those
+     focus rings was dead, which is a keyboard-accessibility failure that no visual review would
+     ever have caught. Found 2026-08-06 while rewiring this block. */
+  --color-focus: var(--focus);
   --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-success-strong: var(--success-strong);
   --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-strong: var(--warning-strong);
   --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-strong: var(--danger-strong);
   --color-info: var(--info);
-  --color-band: var(--band);
-  --color-on-band: var(--on-band);
-  --color-on-band-muted: var(--on-band-muted);
-  --color-on-band-faint: var(--on-band-faint);
-  --color-on-band-success: var(--on-band-success);
-  --color-on-band-danger: var(--on-band-danger);
+  --color-info-bg: var(--info-bg);
+  --color-highlight: var(--highlight);
 
   /* Typography Overhaul - Exclusively Sans. These name the family _app.tsx actually downloads.
      The list used to start with "Inter", which nothing ever loaded, so the real typeface was
@@ -137,12 +159,11 @@
      This is NOT sufficient on its own: the rules that read var(--font-serif) / var(--font-mono)
      directly (h1/h2/h3, .text-eyebrow) get the value already substituted at :root. `.fonts-wired`
      below is the other half. */
+  /* TWO families. The serif is gone: v3 is sans-only, so --font-serif, --font-serif-pref and
+     --font-fallback-serif are all deleted rather than aliased onto the sans (an alias leaves a
+     `font-serif` utility that silently does nothing, and the next person to reach for it gets
+     no feedback). Newsreader is no longer downloaded -- see _app.tsx. */
   --font-sans: var(--font-sans-pref, ui-sans-serif), var(--font-fallback-sans);
-  /* Serif reinstated 2026-08-01. It was mapped onto the sans stack when nothing loaded a serif
-     and Playfair Display was downloading unread; the answer then was to stop paying for a font
-     nobody rendered, which was right. What changed is that headings now have a face chosen for
-     them (Newsreader, `_app.tsx`), so the mapping would throw away the thing it was protecting. */
-  --font-serif: var(--font-serif-pref, ui-serif), var(--font-fallback-serif);
   --font-mono: var(--font-mono-pref, ui-monospace), var(--font-fallback-mono);
 
   /* Explicit Mathematical Leading & Tracking.
@@ -165,53 +186,63 @@
 
      --text-hero (7rem), --text-h3 and --text-small are deleted, not left unused, so nothing can
      reach for a seventh step without editing this block. The old --text-h1 was 4.5rem/72px and
-     --text-display 5.5rem/88px, sizes no page actually used at those values. */
-  --text-display: 3rem;     --text-display--line-height: 1.05; --text-display--letter-spacing: -0.03em;
-  --text-h1: 2.25rem;       --text-h1--line-height: 1.1;       --text-h1--letter-spacing: -0.025em;
-  --text-h2: 1.5rem;        --text-h2--line-height: 1.3;       --text-h2--letter-spacing: -0.02em;
+     --text-display 5.5rem/88px, sizes no page actually used at those values.
+
+     v3 retunes four of the six. --text-h1 drops 2.25rem -> 2rem with line-height 1.1 -> 1.2,
+     because 32px of Geist reads LARGER than 36px of Newsreader did (a grotesque has a much
+     bigger x-height than a Didone at the same nominal size) and the pack-detail h1 was wrapping
+     to four lines. The other three are small corrections. --text-body and --text-meta are
+     deliberately untouched so the 39 and 173 call sites wearing them do not restyle. */
+  --text-display: 3rem;     --text-display--line-height: 1.08; --text-display--letter-spacing: -0.025em;
+  --text-h1: 2rem;          --text-h1--line-height: 1.2;       --text-h1--letter-spacing: -0.02em;
+  --text-h2: 1.5rem;        --text-h2--line-height: 1.3;       --text-h2--letter-spacing: -0.015em;
   --text-body: 1rem;        --text-body--line-height: 1.6;
   --text-meta: 0.875rem;    --text-meta--line-height: 1.5;
-  --text-caption: 0.75rem;  --text-caption--line-height: 1.6;
+  --text-caption: 0.75rem;  --text-caption--line-height: 1.5;
 
-  /* TWO radii, and the second one is a circle. `rounded-md` is every rectangle on the site;
-     `rounded-full` is pills, avatars and dots. There were ten (`rounded-full` 49, `-lg` 32,
+  /* THREE radii, and the third one is a circle. There were ten (`rounded-full` 49, `-lg` 32,
      `-md` 17, bare `rounded` 11, `-xl` 7, `-sm` 4, `-2xl` 3, `-[5px]` 2, `-r` 1, `-[10px]` 1),
-     which is not a scale: 4px and 5px and 6px are the same corner to the eye, so the variation
-     read as inconsistency rather than as hierarchy. `--radius-sm`/`--radius-lg` are gone rather
-     than left unused, so the next component cannot quietly reach for a third. */
-  --radius-md: 6px;
+     which is not a scale: 4px and 5px and 6px are the same corner at card size, so the variation
+     read as inconsistency rather than as hierarchy.
 
-  /* TWO shadows.
-     `shadow-hard` is the brand device: a 3px offset block in ink, no blur, already on the hero
-     CTA. It is not elevation, it is a printing-press edge, and it is the one the storefront is
-     recognisable by.
-     `shadow-2` is the ONE soft shadow, and it is reserved for surfaces that genuinely float over
-     the page -- modal, drawer, command palette. Everything else lost its shadow: 17 elements
-     carried a 1-2px blur at 2-5% opacity, over a border that was already drawing the edge, which
-     is the soft-product-UI language this palette is not. --elev-1/-premium/-tactile and the
-     --shadow-1/-premium/-vault/-tactile bridges are deleted, not merely unused. */
-  --shadow-hard: 3px 3px 0 var(--text);
-  --shadow-2: var(--elev-2);
+     `--radius-sm` is back, deliberately, after v2 deleted it. The v2 rule ("one rectangle radius")
+     produced `rounded-md` on a 20px checkbox and a 26px segmented-control pill, where 8px on a
+     20px box is 40% of the height and reads as a lozenge, not a square with soft corners. Radius
+     has to scale with the box or it stops meaning the same thing. The rule is by SIZE, not by
+     taste: 8px for anything card-sized or larger, 4px for controls under ~28px, full for pills. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* TWO shadows, and NEITHER is decoration.
+     `--shadow-hard` (a 3px ink offset block, no blur) is DELETED. v2 called it "the brand device"
+     and canonised it as one of only two legal shadows; on screen it is a sticker drop-shadow, and
+     stacked under a saturated orange fill it is a large part of why the storefront read as
+     amateur. Deleted rather than left unused so nothing can reach for it again.
+     Borders draw edges here. A shadow only ever says "this element is physically above the page":
+       shadow-1 -- a card lifting under the cursor, or the sticky header once it has scrolled.
+       shadow-2 -- things that genuinely float: modal, drawer, command palette, mobile menu. */
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
 
   /* Global Transitions */
+  --transition-fast: var(--transition-fast);
   --transition-standard: var(--transition-standard);
+  --transition-slow: var(--transition-slow);
 
-  --animate-fade-in: fadeIn 0.4s ease-out forwards;
-  --animate-fade-in-up: fadeInUp 0.8s cubic-bezier(0.2, 0, 0, 1) forwards;
-  --animate-rise: rise 0.6s cubic-bezier(0.2, 0, 0, 1) forwards;
+  /* `fade-in-up` (20px of travel over 800ms) is deleted: at that distance and duration it is a
+     slide, and on a shelf of 61 cards it made the page feel like it was still loading after it
+     had loaded. `rise` keeps the idea at 6px/240ms, which registers as settling rather than
+     travelling. */
+  --animate-fade-in: fadeIn 0.24s ease-out forwards;
+  --animate-rise: rise 0.24s cubic-bezier(0.2, 0, 0, 1) forwards;
 
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
 
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
   @keyframes rise {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
@@ -260,7 +291,6 @@ html {
   --font-sans: var(--font-sans-pref), var(--font-fallback-sans);
   /* Repeated rather than var(--font-sans) for the same substitution reason: it must resolve
      against -pref here, not against whatever --font-sans already computed to. */
-  --font-serif: var(--font-serif-pref), var(--font-fallback-serif);
   --font-mono: var(--font-mono-pref), var(--font-fallback-mono);
 
   /* Redeclaring the variables is not enough on its own. Body copy has no font-family rule of its
@@ -316,8 +346,8 @@ body {
 a, button, input, select, textarea, .card-transition {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke,
     opacity, box-shadow, transform, filter;
-  transition-duration: 0.15s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /*
@@ -344,20 +374,28 @@ button:active, [role="button"]:active, .card-transition:active {
   color: var(--bg);
 }
 
-/* Replaces default browser outline with a sharp, premium ring */
+/* The focus ring is the ACCENT blue, not ink. On a site where ink is also the button fill, an
+   ink focus ring on an ink button is invisible -- the ring and the thing it is ringing are the
+   same colour. Blue at 5.17:1 on white clears the 3:1 that UI components require, and it reads
+   as "this is the thing your keyboard is on" rather than as part of the button. */
 *:focus-visible {
-  outline: 2px solid var(--text);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
-h1, h2, h3, .font-serif {
-  font-family: var(--font-serif);
+/* Headings are the SAME family as body copy. The Didone (Newsreader) that used to sit here was
+   the single most dated thing on the site: a high-contrast display serif over a grotesque body
+   over mono meant three type voices, and the wide-tracked uppercase eyebrows made a fourth, all
+   inside one hero. One family in three weights is what makes a page read as a product rather
+   than a brochure.
+   `.font-serif` is gone from this selector deliberately, not aliased to the sans -- an alias
+   leaves a class that silently does nothing. */
+h1, h2, h3 {
+  font-family: var(--font-sans);
   font-weight: 600;
-  /* Was -0.04em, set when these headings rendered in a grotesque. Serifs need the sidebearing
-     they come with; -0.04em was tight enough to close the gaps at `--text-h3` (1.25rem), where
-     most of the site's headings actually live. Judgement, not a measurement — the per-size
-     `--text-h1--letter-spacing` values in the theme block remain the finer control. */
-  letter-spacing: -0.015em;
+  /* The per-size --text-*--letter-spacing values in the theme block are the finer control; this
+     is the floor for headings that do not wear a scale token. */
+  letter-spacing: -0.01em;
 }
 
 /*
@@ -387,10 +425,19 @@ h1, h2, h3, .font-serif {
   font-family: var(--font-mono);
 }
 
-.text-eyebrow {
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
+/*
+  `.text-eyebrow` is DELETED, along with the --eyebrow token.
+
+  Small uppercase letterspaced labels were on almost every section of this site, in burnt orange.
+  Three separate shouts (caps + tracking + saturated colour) applied to the least important text
+  on the page -- a LABEL, whose whole job is to be subordinate to the thing it labels. Uppercase
+  also destroys word-shape, so it is the slowest text on the page to read, which is a poor trade
+  for a word like "MODELLED ECONOMICS".
+
+  Replacement everywhere: `text-caption font-medium text-subtle`, sentence case.
+  The one carve-out is inside `.font-mono`, where uppercase is the DATA's own casing (market
+  codes like `UK`/`US`, kill-gate tags) rather than a styling decision.
+*/
 
 /* Structural Spacing: Fluid whitespace */
 section {
@@ -432,43 +479,20 @@ section {
   }
 }
 
-/* ── Mobile Responsiveness Overrides ───────────────────────── */
-@media (max-width: 768px) {
-  /* Target main hero wrapper */
-  .hero-section-wrapper { 
-    padding-top: 24px !important; 
-    margin-top: 0 !important;
-    min-height: 100dvh; /* Safari clipping fix */
-    height: auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-  }
+/*
+  The `.hero-section-wrapper` / `.hero-headline` / `.beta-tag` / `.hero-subheading` override block
+  was DELETED here on 2026-08-06.
 
-  .hero-section-wrapper > div {
-    padding-top: 0 !important;
-    padding-bottom: 3rem !important;
-  }
-  
-  .hero-headline {
-    font-size: clamp(2.5rem, 10vw, 4rem) !important; 
-    line-height: 1.05 !important;
-    letter-spacing: -0.04em;
-    margin-top: 16px;
-    margin-bottom: 16px;
-  }
-  
-  .beta-tag {
-    font-size: 0.75rem !important;
-    letter-spacing: 0.1em !important;
-    margin-bottom: 8px !important;
-  }
+  It was six `!important` declarations fighting the component's own Tailwind classes from a
+  different file, and one of them was actively harmful: `min-height: 100dvh` on the hero forced a
+  full viewport of hero on every phone, which is the direct cause of the shelf sitting below the
+  fold on mobile -- on a storefront whose entire argument is "here is what survived", the phone
+  opened on an argument and no product.
 
-  .hero-subheading {
-    font-size: 1.25rem !important;
-    line-height: 1.4 !important;
-  }
-}
+  Responsive sizing now lives on the component, in `pages/index.tsx`, where it is visible to
+  whoever edits the hero. The one rule worth keeping is the mobile headline clamp, and it is
+  expressed as a utility there rather than as an `!important` override here.
+*/
 
 @media print {
   header, footer { display: none; }

@@ -47,6 +47,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
@@ -55,11 +56,25 @@ sys.path.insert(0, str(REPO))
 
 from prospector.config import load_config                    # noqa: E402
 from prospector.models import Candidate, ScoreResult          # noqa: E402
+from prospector.price_rationale import write_rationale        # noqa: E402
 from prospector.pricing import price_for                      # noqa: E402
 
 STORE_API = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
 ACTOR = "claude:C1-ladder-backfill"
-LADDER_VERSION = "L1-ladder-2026-08-05"
+SOURCE = "scripts/backfill_ladder_prices.py"
+
+
+@lru_cache(maxsize=1)
+def cfg() -> Any:
+    """One Config for the whole run: the ladder that plans the moves must be the same
+    object that is snapshotted onto each rationale record, or the record would describe a
+    ladder the run never used."""
+    return load_config()
+
+
+def ladder_version() -> str:
+    return str(((cfg().listing or {}).get("pricing") or {}).get("ladder_version")
+               or "unversioned-ladder")
 
 
 def _load_dotenv() -> None:
@@ -88,8 +103,7 @@ def _pence(price_str: str) -> int:
 
 def load_plan() -> tuple[list[dict], list[dict], list[str]]:
     """Return (moves, holds, unmatched_ids) computed from live state + the shipped ladder."""
-    cfg = load_config()
-    rungs = (cfg.listing or {}).get("pricing", {}).get("rungs")
+    rungs = (cfg().listing or {}).get("pricing", {}).get("rungs")
     assert rungs, "ladder must be loaded — an empty ladder would silently hold every pack"
 
     packs = _get_json(f"{STORE_API}/catalog")
@@ -117,12 +131,16 @@ def load_plan() -> tuple[list[dict], list[dict], list[str]]:
         # No `anchors=`: C3's rung adjustment is off by default and this backfill must move
         # packs onto the declared ladder and nowhere else. Evidence-driven moves are a
         # separate decision, taken later, with their own citations in the Reason.
-        dec = price_for(cand, ScoreResult(scores={}, justification={}), cfg)
+        dec = price_for(cand, ScoreResult(scores={}, justification={}), cfg())
         row = {
             "id": p["id"], "title": p["title"], "market": cand.market,
             "tier": cand.ambition_tier, "current_pence": _pence(p["price"]),
             "new_pence": dec.price_pence, "rung": dec.rung, "rationale": dec.rationale,
             "provider": p.get("paymentProvider"), "price_id": p.get("providerPriceId"),
+            # The decision object itself, carried through to the D3 rationale record so the
+            # record describes the same derivation this row was planned from — not a second
+            # `price_for` call that could see a different config a moment later.
+            "decision": dec,
         }
         (moves if row["new_pence"] != row["current_pence"] else holds).append(row)
     return moves, holds, unmatched
@@ -178,22 +196,43 @@ def preflight(moves: list[dict]) -> "Any":
     return stripe
 
 
+def patch_reason(m: dict) -> str:
+    """The one line a human reads on the price-history row."""
+    return (f"{ladder_version()}: segment {m['tier'] or 'unclassified'}/"
+            f"{m['market'] or 'unknown'} -> {m['rung']}. {m['rationale']}")
+
+
+def build_patch_payload(m: dict, provider_price_id: str, rationale_ref: str) -> dict:
+    """The PATCH body. Split out from `apply_one` so a test can assert that the
+    `rationaleRef` it carries is exactly the record D3 wrote — the two are one claim, and
+    a ref that points at nothing is indistinguishable from no ref at all."""
+    return {
+        "pricePence": m["new_pence"],
+        "providerPriceId": provider_price_id,
+        "actor": ACTOR,
+        "reason": patch_reason(m),
+        "rationaleRef": rationale_ref,
+    }
+
+
 def apply_one(stripe, m: dict, internal: str) -> None:
-    """Mint, PATCH, read back. Raises on any disagreement."""
+    """Mint, write the rationale record, PATCH, read back. Raises on any disagreement.
+
+    The record is written BEFORE the PATCH on purpose: a record with no price change is a
+    harmless orphan, whereas a price change whose `rationaleRef` points at a file that was
+    never written is a live price nobody can account for.
+    """
     new_price = stripe.Price.create(
         product=m["product_id"], unit_amount=m["new_pence"], currency="gbp",
         idempotency_key=f"c1-ladder-{m['id']}-{m['new_pence']}-gbp",
     )
     print(f"    minted {new_price.id} @ {m['new_pence']}p")
 
-    payload = {
-        "pricePence": m["new_pence"],
-        "providerPriceId": new_price.id,
-        "actor": ACTOR,
-        "reason": (f"{LADDER_VERSION}: segment {m['tier'] or 'unclassified'}/"
-                   f"{m['market'] or 'unknown'} -> {m['rung']}. {m['rationale']}"),
-        "rationaleRef": "specs/pricing-build-plan-2026-08-05.md#C1",
-    }
+    ref = write_rationale(m["id"], m["decision"], cfg(),
+                          actor=ACTOR, source=SOURCE, reason=patch_reason(m))
+    print(f"    rationale {ref}")
+
+    payload = build_patch_payload(m, new_price.id, ref)
     req = urllib.request.Request(
         f"{STORE_API}/internal/catalog/{m['id']}/price",
         data=json.dumps(payload).encode(), method="PATCH",

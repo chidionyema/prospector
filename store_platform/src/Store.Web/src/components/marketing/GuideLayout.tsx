@@ -38,8 +38,8 @@ export function GuideLayout({
               Guides
             </Link>
           </p>
-          <h1 className="text-balance text-display font-semibold tracking-tight text-text">{heading}</h1>
-          <p className="mt-5 text-pretty text-h2 font-normal leading-relaxed text-text/70">{lead}</p>
+          <h1 className="text-balance text-display font-semibold text-text">{heading}</h1>
+          <p className="mt-5 text-pretty text-h2 font-normal leading-relaxed text-muted">{lead}</p>
           <div className="mt-10 space-y-8">{children}</div>
         </article>
       </SectionBand>
@@ -64,7 +64,7 @@ export function GuideSection({
 }) {
   return (
     <section className="space-y-4">
-      <h2 className="text-h1 font-semibold tracking-tight text-text">{title}</h2>
+      <h2 className="text-h1 font-semibold text-text">{title}</h2>
       <div className="space-y-4 text-body leading-relaxed text-muted">{children}</div>
     </section>
   );

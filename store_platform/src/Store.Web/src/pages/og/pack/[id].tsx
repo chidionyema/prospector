@@ -30,13 +30,20 @@ import { ApiError, fetchPackDetails } from '@/lib/api/client';
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 
-/** Brand v2 (2026-08-05): vermillion is the new primary; the OG image must
- *  match the live site. Cream is gone (clean white is the canvas); the
- *  OG image still uses a subtle off-white because the social card
- *  renders against any background and a white-on-white card disappears. */
-const VERMILLION = '#FF5A1F';
-const CREAM = '#FAFAF8';
-const MUTED = '#6B6B6B';
+/*
+ * Brand v3 (2026-08-06). The card is ink on near-white with one hairline rule, matching the
+ * storefront: `--primary #171717`, `--surface2 #FAFAFA`, `--border #E4E4E7`, `--subtle #71717A`.
+ *
+ * The vermillion is gone with the rest of brand v2. The card keeps a near-white rather than pure
+ * white ground for a reason that is specific to this surface: a social card renders against an
+ * arbitrary background, and a pure-white card with no border disappears into a light timeline.
+ * `BORDER` is drawn as a full 2px frame for the same reason -- the storefront can rely on the
+ * viewport edge, a 1200x630 image cannot.
+ */
+const INK = '#171717';
+const CREAM = '#FAFAFA';
+const BORDER = '#E4E4E7';
+const MUTED = '#71717A';
 
 /** Long titles must not overflow the card. Cut on a word boundary and ellipsize, so the card
  *  degrades to a readable truncation rather than clipped glyphs at the frame edge. */
@@ -98,9 +105,10 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
           justifyContent: 'space-between',
           backgroundColor: CREAM,
           padding: '72px 80px',
-          // The brand's teal edge, so the card is recognisable as this site at thumbnail size
-          // before any of the text is legible.
-          borderLeft: `24px solid ${VERMILLION}`,
+          // A hairline frame plus an ink rule down the left edge, so the card is recognisable as
+          // this site at thumbnail size before any of the text is legible.
+          border: `2px solid ${BORDER}`,
+          borderLeft: `16px solid ${INK}`,
           fontFamily: 'sans-serif',
         }}
       >
@@ -109,13 +117,11 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
             style={{
               display: 'flex',
               fontSize: 26,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
               color: MUTED,
-              fontWeight: 700,
+              fontWeight: 500,
             }}
           >
-            Survived six brutal checks
+            Survived all six checks
           </div>
           <div
             style={{
@@ -123,8 +129,8 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
               marginTop: 28,
               fontSize: title.length > 60 ? 58 : 70,
               lineHeight: 1.12,
-              fontWeight: 800,
-              color: VERMILLION,
+              fontWeight: 600,
+              color: INK,
               letterSpacing: -1.5,
             }}
           >
@@ -134,7 +140,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
 
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', fontSize: 34, fontWeight: 800, color: VERMILLION }}>
+            <div style={{ display: 'flex', fontSize: 34, fontWeight: 600, color: INK, letterSpacing: -0.7 }}>
               Mumchimp
             </div>
             {proof ? (
@@ -144,12 +150,12 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
           <div
             style={{
               display: 'flex',
-              backgroundColor: VERMILLION,
-              color: CREAM,
-              borderRadius: 999,
+              backgroundColor: INK,
+              color: '#FFFFFF',
+              borderRadius: 8,
               padding: '16px 36px',
               fontSize: 32,
-              fontWeight: 800,
+              fontWeight: 600,
             }}
           >
             {/* No `|| '£49'`: a pack whose price did not load renders no price. The OG card is

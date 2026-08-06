@@ -115,7 +115,7 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="rounded-md p-1.5 text-muted hover:bg-surface2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="rounded-md p-1.5 text-subtle transition-colors hover:bg-surface2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Icon name="close" size={18} />
               <span className="sr-only">Close</span>

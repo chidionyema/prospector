@@ -52,7 +52,7 @@ export function SocialSignIn({ returnTo }: { returnTo: string }) {
 
       <div className="flex items-center gap-3 pt-1">
         <span className="h-px flex-1 bg-border" />
-        <span className="text-caption uppercase tracking-wide text-muted">or</span>
+        <span className="text-caption text-muted">or</span>
         <span className="h-px flex-1 bg-border" />
       </div>
     </div>

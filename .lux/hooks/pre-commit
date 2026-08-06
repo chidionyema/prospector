@@ -1,26 +1,60 @@
 #!/bin/sh
 # ─────────────────────────────────────────────────────────────────────────────
-# POPDD pre-commit gate — Prospector  (rewired 2026-06-26, estate Phase 1)
+# POPDD pre-commit gate — Prospector
+#   rewired 2026-06-26 (estate Phase 1) — staged-delta scope, real receipts
+#   rewired 2026-08-05 — lane-aware: the proof must cover the diff
 #
-# WHY THE REWRITE (proven failure modes of the old ci-gate.sh path):
+# WHY THE FIRST REWRITE (proven failure modes of the old ci-gate.sh path):
 #   1. Schema mismatch: ci-gate.sh only counted receipts with action=='verify'
 #      (per-function), but the only working producer (popdd_verify.py) emits
-#      action=='test-run:complete' for target 'prospector:test-suite'. The gate
-#      could never see a receipt the project actually produces -> green theater.
+#      action=='test-run:complete'. The gate could never see a receipt the
+#      project actually produces -> green theater.
 #   2. Branch-vs-main lockout: ci-gate.sh diffed merge-base(HEAD,main)..HEAD, i.e.
-#      the WHOLE branch. On a feature branch with no per-function receipts that
-#      blocks 100% of commits, trapping in-flight work.
+#      the WHOLE branch, blocking 100% of commits on a feature branch.
 #
-# WHAT THIS GATE ENFORCES (honest, coarse-but-real v1):
+# WHY THE SECOND REWRITE (2026-08-05), both holes proven before the fix:
+#   1. This file matched `\.(py|ts|js|cs)$` — no `.tsx`. Every Next.js page under
+#      store_platform/src/Store.Web committed with the gate printing
+#      "nothing to prove". 183 tracked .ts/.tsx files, ungated.
+#   2. Adding `.tsx` alone would have been green theatre, because the gate ran
+#      exactly one proof: the python pytest suite. No python test reads a
+#      .ts/.tsx file (`grep -rn "\.tsx\?[\"']" tests/ --include='*.py'` -> no
+#      output), so a green pytest is not evidence about storefront code.
+#
+# WHAT THIS GATE ENFORCES NOW:
 #   - Looks only at the STAGED delta of THIS commit (no branch lockout).
-#   - If no source (.py/.ts/.js/.cs) is staged -> nothing to prove, allow.
-#   - If source IS staged -> run the proof suite (popdd_verify.py). It runs the
-#     full pytest suite and signs a PASS/FAIL receipt into .lux/receipts/.
-#     Commit is BLOCKED unless the suite is green and the chain is valid.
+#   - popdd_verify.py --staged classifies that delta into lanes and runs each
+#     lane's OWN proof, signing a receipt per lane into .lux/receipts/:
+#         python  -> pytest                       (~175s)
+#         web     -> tsc --noEmit + vitest        (~16s, Store.Web)
+#         dotnet  -> dotnet test Store.Tests      (~47s)  [+ python: a .cs edit
+#                    can break tests/unit/test_facets.py:141, which reads PackFacets.cs]
+#   - A staged source file that no lane covers BLOCKS, naming the file. An
+#     unproven file is not a passing file.
+#   - Commit is BLOCKED unless every selected lane is green and the chain is valid.
 #
-# LIMITATION (stated, not hidden): this proves "the suite is green at commit
-# time", not per-function POPDD. Tighten later with `lux spec verify <fn>` +
-# action=='verify' receipts. Bypass is `--no-verify` (logged by git as a choice).
+# THE EXTENSION MAP LIVES IN ONE PLACE ONLY — scripts/popdd_verify.py:lanes_for().
+# It used to be duplicated here as a grep, which is how `.tsx` went missing for
+# months. tests/unit/test_popdd_gate_lanes.py binds this file to that function.
+#
+# LIMITATION (stated, not hidden): this proves "the lane's suite is green at
+# commit time", not per-function POPDD. Tighten later with `lux spec verify <fn>`
+# + action=='verify' receipts.
+#
+# CSS is now covered, but only to a stated depth. `.css` under Store.Web selects
+# the web lane, because five vitest suites read src/styles/globals.css as source
+# text and assert the design contract over it. That proves the declared tokens,
+# the one-colour rule and the radius/shadow set survive an edit. It does NOT
+# prove anything renders: the two CSS bugs this repo has shipped (a var()
+# resolved at its declaration site; an @theme token no consumer reached) were
+# green in every suite, and a `next build` would have been green on both.
+#
+# STILL UNCOVERED, deliberately: pi-governance/src/index.ts. It has no proof to
+# run — pi-governance/package.json declares no scripts, there is no tsconfig.json
+# and no node_modules, so there is nothing to typecheck it with. It therefore
+# BLOCKS as unproven rather than passing, which is the correct answer to "I
+# cannot prove this" and is asserted by tests/unit/test_popdd_gate_lanes.py.
+# Bypass is `--no-verify` (logged by git as a choice).
 #
 # Install:  ln -sf ../../.lux/hooks/pre-commit .git/hooks/pre-commit
 # ─────────────────────────────────────────────────────────────────────────────
@@ -30,27 +64,18 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 
 # Test override hook (used by the gate's own self-test to prove the BLOCK path
 # without breaking the real suite). Unset in normal operation.
-VERIFY_CMD="${POPDD_VERIFY_CMD:-.venv/bin/python scripts/popdd_verify.py}"
-
-staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(py|ts|js|cs)$' || true)
-
-if [ -z "$staged" ]; then
-  echo "✅ POPDD gate: no source changes staged — nothing to prove. Allowing commit."
-  exit 0
-fi
-
-echo "🔍 POPDD gate: source changes staged — running proof suite before allowing commit"
-echo "$staged" | sed 's/^/     staged: /'
-echo "─────────────────────────────────────────────────────────"
+VERIFY_CMD="${POPDD_VERIFY_CMD:-.venv/bin/python scripts/popdd_verify.py --staged}"
 
 if sh -c "$VERIFY_CMD"; then
   echo "─────────────────────────────────────────────────────────"
-  echo "✅ POPDD gate PASSED — suite green, receipt signed into .lux/receipts/. Commit allowed."
+  echo "✅ POPDD gate PASSED — every lane covering this diff is green, receipts"
+  echo "   signed into .lux/receipts/. Commit allowed."
   exit 0
 else
   echo "─────────────────────────────────────────────────────────"
-  echo "❌ POPDD gate BLOCKED this commit — proof suite did not pass (or chain invalid)."
-  echo "   Fix the failure, re-run the suite, and the receipt will prove green."
+  echo "❌ POPDD gate BLOCKED this commit — a lane covering this diff did not pass"
+  echo "   (or a staged source file has no lane, or the chain is invalid)."
+  echo "   Fix the failure and the receipt will prove green."
   echo "   (Emergency override, recorded as a deliberate choice: git commit --no-verify)"
   exit 1
 fi

@@ -75,8 +75,19 @@ def _record_claude_usage(data: dict, web: bool) -> None:
     cached = int(u.get("cache_read_input_tokens", 0) or 0)
     total = inp + out + cached + int(u.get("cache_creation_input_tokens", 0) or 0)
     cost = float(data.get("total_cost_usd", 0) or 0)
+    # `provider=` matters: without it record_usage defaults to "unknown" (telemetry.py:194), so
+    # every call through the moat's PRIMARY brain was filed under a bucket named after nothing
+    # and `get_usage_summary()["by_provider"]` could never name claude_cli. Same shape as the
+    # web_calls counter that was structurally zero.
+    #
+    # This deliberately does NOT add claude_cli to telemetry.PRICING. That would make
+    # record_usage emit an `event: "spend"` row (telemetry.py:227 gates on `cost > 0`), which is
+    # what scheduler/guard.py counts as METERED, billed money against `daily_cap_usd`. CLI usage
+    # is subscription-equivalent — guard.py:36-39 measured that folding it in "would halt the
+    # daemon within about two hours of every day for spend that is never invoiced". The
+    # subscription leg is already tracked separately, from the "Claude CLI usage" row below.
     record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
-                 cached_tokens=cached, web=web)
+                 cached_tokens=cached, web=web, provider="claude_cli")
     # cost_usd here is the CLI's own billed figure (more accurate than an estimate);
     # costs_report sums it into spend.
     logger.info("Claude CLI usage", extra={"web": web, "input": inp, "output": out,
@@ -114,7 +125,18 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
         _CLI_SEM.release()
         shutil.rmtree(call_cwd, ignore_errors=True)
     if proc.returncode != 0:
-        raise RuntimeError(f"claude cli exit {proc.returncode}: {proc.stderr[-300:]}")
+        # BOTH streams, because the CLI reports WHY on STDOUT, not stderr. Measured 2026-08-06:
+        # `claude -p` with an unfunded key exits 1 printing "Credit balance is too low" on stdout
+        # while stderr held only an unrelated connectors warning. A stderr-only message is
+        # therefore EMPTY exactly when it matters — the daemon logged `claude cli exit 1: ` for
+        # every failure at 04:37 — and `looks_exhausted("")` is False, so the head of the moat
+        # was never marked exhausted and got re-probed on every call. "credit balance is too
+        # low" and "usage limit" ARE in _EXHAUSTION_MARKERS (errors.py:66); they just never
+        # reached the classifier. Same shape as the 402 miss (CLAUDE.md: a dead brain must
+        # leave a trace).
+        detail = " | ".join(s for s in (proc.stderr.strip()[-300:],
+                                        proc.stdout.strip()[-300:]) if s)
+        raise RuntimeError(f"claude cli exit {proc.returncode}: {detail}")
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError as e:

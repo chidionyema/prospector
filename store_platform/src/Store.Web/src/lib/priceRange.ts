@@ -109,6 +109,11 @@ export function priceSentence(range: PriceRange): string {
   return (
     `${range.modeCount} of the ${range.total} packs on the shelf are ${formatGbp(range.mode)}. ` +
     `They run ${range.label}, priced per pack, and the price is on the pack's own page. ` +
-    `Whichever you pick, it is one payment -- no subscription, no upsell.`
+    // A colon, not `--` and not a dash. There is no markdown parser between here and the DOM,
+    // so `--` printed literally on /pricing as two hyphens (desktop-pricing-fold.png,
+    // 2026-08-06). The obvious repair, an en dash, is banned by `dashFree.test.ts`: em/en
+    // dashes are the most recognisable AI-writing signature and this is a storefront pitching
+    // source-or-die. Punctuation that is neither is the answer, so the clause takes a colon.
+    `Whichever you pick, it is one payment: no subscription, no upsell.`
   );
 }

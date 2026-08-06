@@ -56,10 +56,14 @@ export function RadioGroup<T extends string>({
           <label
             key={opt.value}
             className={cx(
-              'flex cursor-pointer items-start gap-3 rounded-md border bg-surface p-4 transition-colors',
-              'hover:border-muted/50',
-              'has-[:checked]:border-primary has-[:checked]:bg-primary/5',
-              'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-bg',
+              'flex cursor-pointer items-start gap-3 rounded-md border bg-surface p-4',
+              'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
+              'hover:border-border-strong',
+              // The selected row is marked by an ink border and the sunken surface, not by a 5%
+              // wash of --primary: ink at 5% on white is #F7F7F7, one step off --surface2 and
+              // indistinguishable from it, so "selected" was unrenderable.
+              'has-[:checked]:border-text has-[:checked]:bg-surface2',
+              'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
               error ? 'border-danger' : 'border-border',
             )}
           >
@@ -74,15 +78,15 @@ export function RadioGroup<T extends string>({
             <span
               aria-hidden="true"
               className={cx(
-                'relative mt-0.5 h-5 w-5 shrink-0 rounded-full border border-border bg-surface transition-colors',
+                'relative mt-0.5 h-5 w-5 shrink-0 rounded-full border border-border-strong bg-surface transition-colors',
                 'after:absolute after:inset-1.5 after:rounded-full after:bg-primary after:opacity-0 after:transition-opacity',
-                'peer-checked:border-primary peer-checked:after:opacity-100',
+                'peer-checked:border-text peer-checked:after:opacity-100',
               )}
             />
             <span className="space-y-0.5">
-              <span className="block text-body font-semibold text-text">{opt.label}</span>
+              <span className="block text-meta font-semibold text-text">{opt.label}</span>
               {opt.description && (
-                <span className="block text-caption text-muted">{opt.description}</span>
+                <span className="mt-0.5 block text-caption text-muted">{opt.description}</span>
               )}
             </span>
           </label>

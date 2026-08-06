@@ -30,8 +30,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from prospector.audit import run_id as audit_run_id
 from prospector.config import load_config
 from prospector.errors import GroundingInfrastructureError
+from prospector.scheduler import paths
 from prospector.scheduler.guard import guard_from_config
 
 logger = logging.getLogger(__name__)
@@ -72,7 +74,18 @@ def _load_env_file(repo_root: Path | None = None) -> int:
 
 
 def _store_dir(cfg) -> Path:
-    return Path(getattr(cfg, "store_dir", "store"))
+    # See prospector/scheduler/paths.py: the old cwd-relative default silently aimed every
+    # scheduler write at whatever `./store` the current directory had.
+    return paths.store_dir(cfg)
+
+
+# How many backlogged (DEFER / provisional) candidates one tick may re-vet before it
+# generates. Deliberately small: measured 2026-07-02 a fully-grounded candidate takes ~10 min
+# on the claude_cli chain, and the tick's hard deadline is 3h with generation already using
+# most of it. At 3 per tick and a 2h interval this drains the 113-item backlog found on
+# 2026-08-05 in roughly three days without displacing a single generation batch.
+# Override in config under `schedule.resume_per_tick`; 0 disables the drain entirely.
+_RESUME_PER_TICK_DEFAULT = 3
 
 
 def _batch_size(cfg, override: int | None) -> int:
@@ -91,10 +104,30 @@ def _ticks_path(cfg) -> Path:
 
 
 def _append_tick(cfg, tick: dict) -> None:
+    """Append one completed tick, stamped with the process that produced it.
+
+    ATTRIBUTION, added 2026-08-06 after measuring who actually writes this file. `ticks.jsonl`
+    is NOT written by the daemon alone. Caught live by watching the file and dumping `ps` on
+    every append::
+
+        32982  hermes_cli.main gateway run --replace
+         └ 37045  ~/.hermes/scripts/otto-dispatch.py
+           └ 37094  bash ~/.hermes/scripts/prospector-run.sh
+             └ 37096  timeout 110 uv run --directory <this repo> \
+                          python -m prospector.scheduler.run_scheduled --once --dry-run
+
+    A driver in the ADJACENT estate fires a one-shot dry run into this checkout's production log
+    at a measured 59.6 rows/hour, while the daemon's own real ticks are ~2.5 h apart. Nothing in
+    the row said so, which is why it went unnoticed — the same blindness `prospector/audit.py`
+    was just fixed for, in the log that actually drives the alerts. `run_id` is shared with the
+    audit log (one identity per process), so a tick and the searches it performed can be joined.
+    """
     path = _ticks_path(cfg)
+    # Identity last: a tick dict assembled upstream must not be able to misattribute itself.
+    row = {**tick, "pid": os.getpid(), "run_id": audit_run_id()}
     try:
         with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(tick, default=str) + "\n")
+            f.write(json.dumps(row, default=str) + "\n")
     except OSError as exc:
         logger.error("Failed to write tick log: %s", exc)
 
@@ -110,14 +143,30 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
 
     The completed-tick log (`ticks.jsonl`) only records ticks that FINISH, so a hung or killed
     batch — exactly what a 15–30 min grounded run can do — leaves no trace there. This heartbeat is
-    written at the START of work (and on sleep), so a monitor can flag "phase=generating, but
-    heartbeat is 40 min stale" as a stall. `next_check` (when set) lets a watchdog tell idle from dead.
+    written at the START of work (and repeatedly during sleep), so a monitor can flag
+    "phase=generating, but heartbeat is 40 min stale" as a stall. `next_check` (when set) lets a
+    watchdog tell idle from dead.
+
+    `mono` is `time.monotonic()` alongside the wall-clock `ts`, because the two disagree in exactly
+    the cases that matter and only their difference names the cause. A wall clock that is stepped
+    (NTP correction, a VM/laptop resuming, the 1970-dated ticks this machine has produced) inflates
+    the wall age while the loop is turning normally; a loop that has actually stopped inflates both.
+    Written, not yet acted on — see `_liveness`.
     """
-    beat = {"ts": datetime.now(timezone.utc).isoformat(), "pid": os.getpid(), "phase": phase, **extra}
+    beat = {"ts": datetime.now(timezone.utc).isoformat(), "mono": time.monotonic(),
+            "pid": os.getpid(), "phase": phase, **extra}
     try:
         _heartbeat_path(cfg).write_text(json.dumps(beat, default=str), encoding="utf-8")
     except OSError as exc:
         logger.error("Failed to write heartbeat: %s", exc)
+
+
+def _resume_per_tick(cfg) -> int:
+    """How many backlogged candidates one tick may re-vet. 0 disables the drain."""
+    schedule = getattr(cfg, "schedule", None) or {}
+    if isinstance(schedule, dict):
+        return max(0, int(schedule.get("resume_per_tick", _RESUME_PER_TICK_DEFAULT) or 0))
+    return max(0, int(getattr(schedule, "resume_per_tick", _RESUME_PER_TICK_DEFAULT) or 0))
 
 
 def _default_generate(cfg, batch_size: int) -> dict:
@@ -126,8 +175,51 @@ def _default_generate(cfg, batch_size: int) -> dict:
     Returns a small summary dict. Generation may DEFER (moat providers exhausted in a headless
     environment) — that surfaces as an exception which the caller records as a soft error; the
     daemon keeps looping and the signal is recoverable via `generate --resume` / `vet --resume`.
+
+    Before generating, this drains a few of the DEFER/provisional backlog. That drain is the
+    thing the phrase "auto re-vet via `vet --resume`" in `alerts.py` promised and nothing
+    delivered: measured 2026-08-05 there were 113 `*.defer.json` dossiers on disk, the oldest
+    from 2026-06-24, and no scheduler path or launchd plist ever invoked the command. Every one
+    of them had already been paid for through generation and prescreen and was then stranded by
+    a transient moat outage.
+
+    It runs BEFORE generation, not after, on purpose: a backlogged candidate is strictly cheaper
+    to finish than a new one is to create (generation and prescreen are already spent on it), and
+    the tick's hard deadline can force-exit mid-tick — whatever runs second is what gets dropped.
+    It is bounded per tick because the spend guard evaluates once, before the tick.
     """
-    from prospector.run import run_signal, _resolve_lanes
+    from prospector.run import run_signal, _resolve_lanes, resume_deferred
+
+    resumed = None
+    n_resume = _resume_per_tick(cfg)
+    if n_resume:
+        try:
+            resumed = resume_deferred(cfg, limit=n_resume, publish=True)
+            logger.info("Tick resume pass: %s", resumed)
+            # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
+            # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and
+            # every other daemon diagnostic — the whole progress stream, progress.py:43 —
+            # goes to stderr. Measured 2026-08-05 while the daemon held fd 1 open on it:
+            # launchd.out.log was 1 byte, mtime Jun 24. So a print to stdout is not "the
+            # daemon log"; it is a file no operator and no probe has ever read. Printing
+            # the drain's outcome into a second, empty file is the same invisibility this
+            # print exists to fix, just relocated.
+            print(f"↻ tick resume pass: {resumed}", file=sys.stderr, flush=True)
+        except Exception as exc:  # noqa: BLE001
+            # A drain failure must never cost the tick its generation batch — the backlog has
+            # waited weeks already and can wait one more tick. Recorded, not raised.
+            resumed = {"error": f"{type(exc).__name__}: {exc}"}
+            logger.warning("Tick resume pass failed (generation continues): %s", resumed["error"])
+            # PRINTED, not just logged. The daemon's launchd log captures stdout/stderr but
+            # NOT logging below CRITICAL — verified 2026-08-05: "TICK HARD DEADLINE"
+            # (logger.critical) appears 18 times in launchd.err.log while "Daemon starting"
+            # and "Unproductive tick" (both logger.info) appear zero times. So the first live
+            # tick after this shipped swallowed the drain's outcome entirely and the pass was
+            # indistinguishable from never having run. A failure that only logs at WARNING is
+            # invisible here; that is the whole reason this line is a print. It goes to
+            # STDERR for the reason spelled out on the success branch above.
+            print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
+                  file=sys.stderr, flush=True)
 
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
@@ -155,8 +247,11 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # the trusted moat is down but the cheap tail kept ruling — a silent failure mode that the
     # all-DEFER `moat_deferred` alert misses entirely (provisional batches defer nothing).
     provisional = sum(1 for d in dossiers if getattr(d, "provisional", False))
-    return {"dossiers": len(dossiers), "passes": passes, "defers": defers,
-            "provisional": provisional}
+    out = {"dossiers": len(dossiers), "passes": passes, "defers": defers,
+           "provisional": provisional}
+    if resumed is not None:
+        out["resumed"] = resumed
+    return out
 
 
 # A trickled LLM response body defeats per-recv socket timeouts (proven 2026-07-01: a MiniMax TLS
@@ -171,9 +266,38 @@ def _default_generate(cfg, batch_size: int) -> dict:
 # the in-process deadline always fires first and the process self-heals before the watchdog acts.
 _TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "10800"))  # 3h
 
+# How often the daemon re-stamps its heartbeat while asleep (see the refresh loop in
+# `run_daemon`). 60s against a 5s sleep slice, so it costs one small file write per twelve slices
+# — roughly 120 writes across a 2h cadence, against a watchdog that samples every ~15 min. The
+# point is the RATIO: any budget the watchdog sets is now compared against a write that should
+# never be more than a minute old, instead of one that is legitimately two hours old.
+_SLEEP_HEARTBEAT_REFRESH_S = 60
+
 # After an unproductive tick (error or 0 dossiers despite the guard allowing spend) retry soon
 # instead of burning the full 2h cadence idle — one provider blip cost days of ~$0 barren ticks.
 _RETRY_BACKOFF_S = 300  # 5 min
+
+
+def _retry_sleep_s(consecutive: int, interval: int) -> int:
+    """Seconds to sleep after `consecutive` unproductive ticks in a row.
+
+    The retry was flat: EVERY unproductive tick slept 300s, forever, with no escalation.
+    That is right for the blip it was written for and wrong for an outage. Measured on the
+    2026-08-01/02 moat outage: 144 real ticks, 131 of them failing
+    `moat_preflight: no trusted moat brain answered: cursor_cli: ProviderExhaustedError`,
+    retrying every 5 minutes for two days — 24x the normal 7200s cadence, each one paying
+    for a preflight CLI call to re-learn the same fact. The moat recovered on its own;
+    nothing the daemon did during those two days helped it.
+
+    So: keep the first retry fast (a blip is still the common case), then double, capped at
+    the normal cadence. An outage costs ~6 probes before it settles to the ordinary
+    heartbeat, instead of 288 a day. Never longer than `interval`, because a recovered moat
+    must not wait longer than a healthy daemon would to notice.
+    """
+    if consecutive <= 0:
+        return interval
+    backoff = _RETRY_BACKOFF_S * (2 ** (consecutive - 1))
+    return max(1, min(interval, backoff))
 
 
 def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -> None:
@@ -228,6 +352,12 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         "dry_run": dry_run,
         "today_spend_usd": decision.today_spend_usd,
         "daily_cap_usd": decision.daily_cap_usd,
+        # Recorded even though only the metered leg is enforced by default: for weeks the tick
+        # row carried one figure covering 2% of the day's model consumption and every reader
+        # (probe, control centre, me) took it for the whole. See scheduler/guard.py.
+        "today_subscription_usd": decision.today_subscription_usd,
+        "daily_subscription_cap_usd": decision.daily_subscription_cap_usd,
+        "spend_day": decision.day,  # LOCAL calendar day, not UTC — the rollover misled once
         "batch_size": batch_size if decision.can_run else None,
         "result": None,
         "error": None,
@@ -280,29 +410,52 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     return tick
 
 
+#: How many trailing LINES to scan to find `window` real ticks. Sized against the measured
+#: pollution rate: an external driver appends ~60 dry-run rows/hour (see `_append_tick`) and the
+#: daemon's real ticks are ~2.5 h apart, so ~150 junk rows can separate two real ones. 5000 lines
+#: covers ~33 real ticks at that ratio and costs one read of a file that is ~1300 lines today.
+_TICK_SCAN_LINES = 5000
+
+
 def _trailing_barren_count(cfg, window: int = 50) -> int:
     """Count the trailing streak of barren real ticks in ticks.jsonl, EXCLUDING the
     just-appended current tick (callers run after _append_tick). Guard-skipped and
     dry-run rows are ignored entirely (controlled idle is not evidence either way);
     the streak breaks on any real tick with dossiers > 0 or an error (errors alert
-    on their own key). Never raises."""
+    on their own key). Never raises.
+
+    `window` counts REAL TICKS, not lines. It used to count lines, and that made this alert
+    structurally dead rather than merely noisy. Measured 2026-08-06 on the live log: the last 50
+    rows held 1 real tick and 49 skipped ones, because a driver in the adjacent estate appends a
+    dry run every ~60 seconds (see `_append_tick`). With a 50-LINE window, two consecutive real
+    ticks — 2.5 h and ~150 junk rows apart — could never both be inside it, so the streak could
+    never reach 2 and `barren_streak` could never fire. An alert that cannot fire is worse than
+    no alert: it reads as an all-clear. Nothing here changes what counts as barren; it changes
+    only how far back we look to find the ticks that count.
+    """
     streak = 0
     try:
         with open(_ticks_path(cfg), encoding="utf-8") as f:
-            rows = f.readlines()[-window:]
-        for line in reversed(rows[:-1]):  # rows[-1] is the current tick
-            try:
-                t = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not t.get("allowed") or t.get("dry_run"):
-                continue
-            res = t.get("result") or {}
-            if t.get("error") or int(res.get("dossiers", 0) or 0) > 0:
-                break
-            streak += 1
+            lines = f.readlines()[-_TICK_SCAN_LINES:]
     except OSError:
-        pass
+        return 0
+    real = []
+    for line in lines:
+        try:
+            t = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not t.get("allowed") or t.get("dry_run"):
+            continue
+        real.append(t)
+    # real[-1] is the current tick when the caller's tick was itself real. When it was not, the
+    # value this function returns is discarded — `alerts_for_tick` yields nothing for a skipped,
+    # dry or errored tick — so dropping one extra row there costs nothing.
+    for t in reversed(real[-window:][:-1]):
+        res = t.get("result") or {}
+        if t.get("error") or int(res.get("dossiers", 0) or 0) > 0:
+            break
+        streak += 1
     return streak
 
 
@@ -312,13 +465,50 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
     This is the missing nerve: the engine already KNOWS when a batch fails or stocks nothing; this
     pushes that to the founder (desktop + opt-in webhook) instead of leaving it in a log.
     """
-    from prospector.scheduler.alerts import alerts_for_tick, emit_alert
+    from prospector.scheduler.alerts import (TICK_ALERT_KEYS, alerts_for_tick, emit_alert,
+                                             reconcile_alert_txt, resolve_alert)
 
-    for spec in alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg)):
+    specs = alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg))
+    for spec in specs:
         try:
             emit_alert(cfg, **spec)
         except Exception:  # noqa: BLE001 — alerting must never break the daemon
             logger.exception("Failed to emit alert for tick")
+
+    # RECOVERY. A tick that actually ran generation and raised nothing is positive evidence that
+    # the conditions it checks are over — so clear them, instead of leaving ALERT.txt showing a
+    # CRITICAL from hours ago (measured 2026-08-06: it still showed `moat_provisional` from
+    # 2026-08-05T15:29 while the newest real batch had 0 provisional).
+    #
+    # The eligibility test is deliberately narrow, because "no alert" is NOT the same as
+    # "healthy":
+    #   * a guard-skipped tick (PAUSE / spend cap) never ran, so it proves nothing;
+    #   * a dry run never ran either;
+    #   * an errored tick is itself an alert.
+    # `alerts_for_tick` returns [] for all three, so keying recovery off "no specs" alone would
+    # let a PAUSE file silently clear a real moat outage.
+    if not tick.get("allowed") or tick.get("dry_run") or tick.get("error"):
+        return
+    if not isinstance(tick.get("result"), dict):
+        return
+    raised = {s["key"] for s in specs}
+    for key in TICK_ALERT_KEYS:
+        if key in raised:
+            continue
+        try:
+            resolve_alert(cfg, key=key,
+                          reason=f"clean tick at {tick.get('ts')}: {tick.get('result')}")
+        except Exception:  # noqa: BLE001 — recovery bookkeeping must never break the daemon
+            logger.exception("Failed to resolve alert '%s'", key)
+
+    # Then make the file match the active set outright. `resolve_alert` only rewrites when it
+    # removed something, so a store written by the old code — no `_active` key, a stale banner —
+    # would never converge: every resolve returns False and the CRITICAL from yesterday survives
+    # the fix meant to clear it. That is the exact shape of the live store on 2026-08-06.
+    try:
+        reconcile_alert_txt(cfg)
+    except Exception:  # noqa: BLE001 — see above
+        logger.exception("Failed to reconcile ALERT.txt")
 
 
 class _StopFlag:
@@ -364,6 +554,7 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
 
     logger.info("Daemon starting: interval=%ds, store=%s", interval, _store_dir(cfg))
     cycles = 0
+    consecutive_unproductive = 0
     while not flag.stop:
         tick = None
         try:
@@ -380,15 +571,47 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
         # A guard-blocked tick (spend cap) is intentional, not a failure — full cadence.
         sleep_target = interval
         if tick is not None and _tick_unproductive(tick):
-            sleep_target = min(interval, _RETRY_BACKOFF_S)
-            logger.info("Unproductive tick — retrying in %ds instead of %ds", sleep_target, interval)
-        # Sleep in short slices so a stop request is honoured promptly mid-cadence.
-        _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles)
+            consecutive_unproductive += 1
+            sleep_target = _retry_sleep_s(consecutive_unproductive, interval)
+            logger.info("Unproductive tick #%d in a row — retrying in %ds instead of %ds",
+                        consecutive_unproductive, sleep_target, interval)
+        else:
+            # Reset on ANY productive tick, including a guard-blocked one: the spend cap
+            # firing is the system working, not a failure, and must not inherit an outage's
+            # backoff. `_tick_unproductive` already excludes it.
+            consecutive_unproductive = 0
+        # Sleep in short slices so a stop request is honoured promptly mid-cadence, and REFRESH
+        # the heartbeat from inside that sleep rather than stamping it once on the way in.
+        #
+        # Stamped once, a `sleeping` heartbeat is a full cadence old by the end of a normal sleep,
+        # so "is it stale?" was really asking "has the WALL CLOCK moved more than interval+35min
+        # since a single write?" — a question that a clock step, an NTP correction or a system
+        # suspend answers wrongly, and that says nothing about whether the loop is turning.
+        # Refreshed every ~60s, a stale `sleeping` heartbeat can only mean the loop STOPPED, which
+        # is the property the watchdog is there to watch. Damage this is meant to end: 47 SIGKILLs
+        # of daemons that `ps` proved were live, every one of them `phase=sleeping`, ages clustered
+        # 156–175 min against a 155 min budget.
+        #
+        # `beat_every_s` marks the new format. `_liveness` keeps the old, generous budget for a
+        # heartbeat without it: a daemon that went to sleep under the old code and wakes up after
+        # this deploy must not be judged dead by the watchdog's next 15-min pass and SIGKILLed for
+        # running exactly the code it was started with.
         slept = 0
+
+        def _beat() -> None:
+            _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles,
+                             beat_every_s=_SLEEP_HEARTBEAT_REFRESH_S, slept_s=slept)
+
+        _beat()
+        since_beat = 0
         while slept < sleep_target and not flag.stop:
             chunk = min(5, sleep_target - slept)
             sleep_fn(chunk)
             slept += chunk
+            since_beat += chunk
+            if since_beat >= _SLEEP_HEARTBEAT_REFRESH_S:
+                _beat()
+                since_beat = 0
     logger.info("Daemon stopped after %d cycle(s)", cycles)
     return cycles
 
@@ -427,7 +650,7 @@ def _aggregate_ticks(cfg) -> dict:
     Aggregating tells the founder whether the factory is actually producing, not just breathing.
     """
     path = _ticks_path(cfg)
-    agg = {"ticks": 0, "candidates": 0, "passes": 0, "errors": 0, "skipped": 0,
+    agg = {"ticks": 0, "dry_runs": 0, "candidates": 0, "passes": 0, "errors": 0, "skipped": 0,
            "last_pass_ts": None, "last_error": None}
     if not path.exists():
         return agg
@@ -438,6 +661,14 @@ def _aggregate_ticks(cfg) -> dict:
         try:
             t = json.loads(line)
         except json.JSONDecodeError:
+            continue
+        # A dry run generated nothing and cost nothing; counting it as a tick inflates the one
+        # number a founder reads as "is the factory running?". Measured 2026-08-06: 133 of the
+        # 315 August rows were dry runs, nearly all of them fired by a driver outside this repo
+        # (see `_append_tick`). Reported separately so the pollution stays VISIBLE rather than
+        # being silently dropped — a tick count that quietly shrank would be its own puzzle.
+        if t.get("dry_run"):
+            agg["dry_runs"] += 1
             continue
         agg["ticks"] += 1
         if t.get("error"):
@@ -483,7 +714,12 @@ def _status_lines(cfg) -> list[str]:
     d = guard_from_config(cfg).evaluate()
     pause = "PAUSED (store/scheduler/PAUSE present)" if not d.can_run and "pause" in d.reason.lower() else d.reason
     out.append(f"  guard       : {'OK' if d.can_run else 'BLOCKED'} — {pause}")
-    out.append(f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap")
+    out.append(f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap "
+               f"(metered/billed, local day {d.day})")
+    sub_cap = (f"of ${d.daily_subscription_cap_usd:.2f} cap"
+               if d.daily_subscription_cap_usd > 0 else "UNCAPPED")
+    out.append(f"  cli usage   : ${d.today_subscription_usd:.2f} {sub_cap} "
+               f"(Claude Code subscription-equivalent, not billed)")
 
     agg = _aggregate_ticks(cfg)
     if agg["ticks"]:
@@ -523,20 +759,45 @@ def _liveness(cfg) -> tuple[bool, str]:
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return False, f"unreadable heartbeat ({exc})"
     phase = beat.get("phase", "?")
+    # The monotonic age beside the wall-clock one, whenever the heartbeat carries a `mono`.
+    #
+    # Every budget below is written in wall-clock minutes and is UNCHANGED here, on purpose: a
+    # large wall age is what the watchdog has always acted on, and narrowing that on an unproven
+    # theory would trade 47 false criticals for a missed real stall (the 8.5h wedge of 2026-07-01
+    # is why the kill exists at all). What changes is that the reason string now carries both
+    # numbers, so the NEXT stale heartbeat identifies its own cause instead of being unexplainable:
+    # a loop that stopped shows both ages large, while a stepped clock or a suspended machine shows
+    # a large wall age beside a small monotonic one.
+    #
+    # HYPOTHESIS this instruments (unproven, do not act on it yet): the 47 SIGKILLs were wall-clock
+    # artefacts, not dead loops. Circumstantial support — ages clustered 156–175 min against a
+    # 155 min budget, drift measured at only +0.057% (needs 38.3% to reach 166 min), `pmset` showing
+    # no suspend around pid 91757's last beat, and 110 ticks dated 1970 found on this machine.
+    # Confirmed if a future failure prints a wall age far above its monotonic age; killed if the two
+    # track each other, which would mean the loop really did stop and the refresh above is the fix.
+    # NOTE the monotonic reading is only comparable within one boot: after a restart the daemon
+    # rewrites the heartbeat within seconds, so a cross-boot comparison is not a state this reaches
+    # in practice, and a negative age is reported rather than hidden.
+    mono = beat.get("mono")
+    age_mono_min = (time.monotonic() - mono) / 60 if isinstance(mono, (int, float)) else None
+    ages = (f"{age_min:.0f} min old"
+            if age_mono_min is None
+            else f"{age_min:.0f} min old by wall clock / {age_mono_min:.0f} min monotonic")
     # Derived from the tick hard deadline (+10 min grace) so the in-process deadline always
     # self-exits a hung tick FIRST; the watchdog kill is the backstop for when even the
     # in-process timer wedges. A fixed number here silently strands the coupling when the
     # deadline changes (proven: the old hardcoded 55 assumed the old 45-min deadline).
     stall_min = _TICK_HARD_DEADLINE_S / 60 + 10
     if phase == "generating" and age_min > stall_min:
-        return False, (f"stuck in 'generating' for {age_min:.0f} min "
+        return False, (f"stuck in 'generating', heartbeat {ages} "
                        f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
     if phase == "sleeping":
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
         if age_min > budget:
-            return False, f"'sleeping' heartbeat {age_min:.0f} min old (> interval+grace {budget:.0f}); loop likely dead"
+            return False, (f"'sleeping' heartbeat {ages} (> interval+grace {budget:.0f}); "
+                           f"loop likely dead")
     if phase in ("evaluating", "idle") and age_min > 45:
-        return False, f"stuck in '{phase}' for {age_min:.0f} min"
+        return False, f"stuck in '{phase}', heartbeat {ages}"
     return True, f"alive (phase={phase}, {age_min:.1f} min ago)"
 
 
@@ -588,11 +849,16 @@ def _run_watchdog(cfg) -> int:
     so a dead/hung daemon is caught even though it emits no ticks. On a stale heartbeat it alerts
     AND kills the wedged pid so launchd KeepAlive relaunches it. Returns 0 if alive, 1 if not.
     """
-    from prospector.scheduler.alerts import emit_alert, CRITICAL
+    from prospector.scheduler.alerts import emit_alert, resolve_alert, CRITICAL
 
     ok, reason = _liveness(cfg)
     if ok:
         logger.info("Watchdog: %s", reason)
+        # The watchdog owns `liveness` in both directions. A tick completing is also evidence the
+        # daemon is alive, but the tick path must not clear an alert it does not own: the watchdog
+        # runs every ~15 min and the tick cadence is 2h, so letting the tick clear it would leave
+        # the file green for up to two hours after the daemon actually died.
+        resolve_alert(cfg, key="liveness", reason=f"watchdog check passed: {reason}")
         return 0
     emit_alert(cfg, severity=CRITICAL, key="liveness",
                title="Generation daemon is DOWN", message=reason, throttle_s=3600)
@@ -623,7 +889,40 @@ def _watch_status(cfg, interval: int) -> None:
         print("\nstopped.")
 
 
+def _log_formatter() -> logging.Formatter:
+    """The one line format for everything this entry point logs: UTC timestamp, level, message.
+
+    Split out from `_configure_logging` so the shape is assertable without installing a handler.
+    """
+    fmt = logging.Formatter("%(asctime)sZ %(levelname)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
+    fmt.converter = time.gmtime  # UTC, matching the heartbeat's `ts` so the two can be diffed
+    return fmt
+
+
+def _configure_logging() -> None:
+    """Install that formatter on the root logger. Nothing else in this package configures logging.
+
+    Without it, `logger.critical` fell through to `logging.lastResort`, which writes the bare
+    message to stderr with no time and no level. The cost was concrete and current: 173 lines of
+    `watchdog.err.log` recording 47 SIGKILLs, not one of which can be placed in time, correlated
+    with a tick, or checked against `pmset` — so the alerts could be counted and never explained.
+    Every liveness theory in `_liveness` is only testable once the kills carry timestamps.
+
+    Level INFO, because `lastResort` also swallows the watchdog's PASS line (`logger.info`
+    "Watchdog: %s"), leaving a log that records only the kills — which reads as though the daemon
+    is killed every time it is checked. Guarded on `root.handlers` so a caller that has already
+    configured logging (a test harness, an embedding process) keeps its own setup.
+    """
+    root = logging.getLogger()
+    if not root.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(_log_formatter())
+        root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
+
 def main(argv: list[str] | None = None) -> None:
+    _configure_logging()
     p = argparse.ArgumentParser(description="Prospector always-on generation daemon")
     p.add_argument("--config", default="config.yaml", help="Path to config.yaml")
     mode = p.add_mutually_exclusive_group()

@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Icon, Skeleton } from '@/components/ui';
+import { Icon, Skeleton, buttonClasses, textLinkClass } from '@/components/ui';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { fetchOrderBySession, fetchPackDetails, fetchCatalog, type SessionOrderItem, type Pack, type PackDetails } from '@/lib/api/client';
 import { PostPurchaseAccountNote } from '@/components/checkout/BuyerIdentityNote';
@@ -167,10 +167,10 @@ export default function OrderSuccess() {
         {/* 1. Cover plate (16:9 hero). Use a colour-coded gradient as the placeholder until
             the canonical pack art (US-2) lands. The category colour is the same fallback
             the rest of the site uses for missing imagery. */}
-        <div className="relative mb-8 aspect-[16/9] overflow-hidden border border-border bg-surface2">
+        <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-md border border-border bg-surface2">
           <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_12%_-10%,rgba(255,255,255,0.25),transparent_55%)]" />
           <div className="absolute inset-0 flex items-end p-8">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-caption font-bold uppercase tracking-wide text-text shadow-none">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-caption font-medium text-text">
               <Icon name="check" size={14} className="text-success" />
               Order confirmed
             </span>
@@ -178,12 +178,12 @@ export default function OrderSuccess() {
         </div>
 
         {/* 2. Pack title */}
-        <h1 className="text-h1 font-black tracking-tight text-text md:text-h1">
+        <h1 className="text-h1 font-semibold text-text">
           {pack?.title ?? firstItem?.packTitle ?? 'Your pack is ready'}
         </h1>
 
         {/* 3. Pack one-liner */}
-        <p className="mt-3 max-w-[60ch] text-body leading-relaxed text-text/75">
+        <p className="mt-3 max-w-[60ch] text-body leading-relaxed text-muted">
           {pack?.oneLine ?? 'Your payment was received. The download is ready below.'}
         </p>
 
@@ -193,7 +193,7 @@ export default function OrderSuccess() {
           <div className="mt-8">
             <a
               href={`${API_BASE_URL}${firstItem.downloadPath}`}
-              className="inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-4 text-body font-bold text-on-primary transition-colors hover:bg-primary-hover"
+              className={buttonClasses({ size: 'lg', fullWidth: true })}
             >
               <Icon name="download" size={18} />
               Download your pack
@@ -201,7 +201,7 @@ export default function OrderSuccess() {
             {/* The full evidence is the second route back. Refunded orders (revoked) and
                 pending orders (unfulfilled) also live here, both end the welcome early. */}
             {firstItem.orderPath && (
-              <div className="mt-4 border border-border bg-surface p-4 text-left">
+              <div className="mt-4 rounded-md border border-border bg-surface p-4 text-left">
                 <p className="text-meta font-semibold text-text">Save this link now</p>
                 <p className="mt-1 text-caption text-muted">
                   It is your permanent access link, it does not expire. Bookmark it or copy it
@@ -217,7 +217,7 @@ export default function OrderSuccess() {
                     void navigator.clipboard?.writeText(`${origin}${firstItem.orderPath}`);
                     setCopied(true);
                   }}
-                  className="mt-2 text-caption font-semibold text-primary underline"
+                  className={textLinkClass('font-medium')}
                 >
                   {copied ? 'Copied ✓' : 'Copy link'}
                 </button>
@@ -232,7 +232,7 @@ export default function OrderSuccess() {
             shop normally surfaces" framing makes the cross-sell credible, not cringe. */}
         {crossSell.length > 0 && (
           <section className="mt-12 border-t border-border pt-10">
-            <h2 className="text-h2 font-bold tracking-tight text-text md:text-h2">
+            <h2 className="text-h2 font-semibold text-text">
               Other packs in this category
             </h2>
             <p className="mt-2 max-w-[60ch] text-meta text-muted">
@@ -243,9 +243,9 @@ export default function OrderSuccess() {
                 <Link
                   key={p.id}
                   href={`/pack/${p.id}`}
-                  className="group flex flex-col gap-2 border border-border bg-surface p-4 transition-colors hover:bg-bg"
+                  className="group flex flex-col gap-2 rounded-md border border-border bg-surface p-4 transition-colors hover:bg-bg"
                 >
-                  <p className="text-meta font-bold text-text group-hover:text-primary transition-colors line-clamp-2">
+                  <p className="text-meta font-semibold text-text group-hover:text-primary transition-colors line-clamp-2">
                     {p.cardLine || p.title}
                   </p>
                   <p className="mt-auto text-caption font-semibold text-muted">
@@ -261,7 +261,7 @@ export default function OrderSuccess() {
             to share the pack with a friend needs one tap. The link is the pack page URL. */}
         {shareUrl && (
           <section className="mt-10 border-t border-border pt-10">
-            <h2 className="text-body font-bold tracking-tight text-text">
+            <h2 className="text-body font-semibold text-text">
               Share with a friend
             </h2>
             <p className="mt-2 max-w-[60ch] text-meta text-muted">
@@ -274,7 +274,7 @@ export default function OrderSuccess() {
                   void navigator.clipboard?.writeText(shareUrl);
                   setCopied(true);
                 }}
-                className="inline-flex items-center gap-2 border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
               >
                 <Icon name="arrowRight" size={14} />
                 Copy link
@@ -283,7 +283,7 @@ export default function OrderSuccess() {
                 href={`https://x.com/intent/tweet?text=${encodeURIComponent(`Vetted business pack from Mumchimp: ${pack?.title ?? ''}`)}&url=${encodeURIComponent(shareUrl)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
               >
                 Share on X
               </a>
@@ -295,7 +295,7 @@ export default function OrderSuccess() {
             The receipt is the order's orderPath opened with a print stylesheet hint. */}
         {firstItem && (
           <section className="mt-10 border-t border-border pt-10">
-            <h2 className="text-body font-bold tracking-tight text-text">
+            <h2 className="text-body font-semibold text-text">
               Save your receipt
             </h2>
             <p className="mt-2 max-w-[60ch] text-meta text-muted">
@@ -308,7 +308,7 @@ export default function OrderSuccess() {
                 if (typeof window === 'undefined') return;
                 window.print();
               }}
-              className="mt-4 inline-flex items-center gap-2 border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
+              className="mt-4 inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg"
             >
               <Icon name="download" size={14} />
               Print / save as PDF
@@ -320,7 +320,7 @@ export default function OrderSuccess() {
             checklist is the buyer's reason to come back. Each step is a tap away from
             the relevant section of the pack. */}
         <section className="mt-10 border-t border-border pt-10">
-          <h2 className="text-body font-bold tracking-tight text-text">
+          <h2 className="text-body font-semibold text-text">
             {`What's next`}
           </h2>
           <p className="mt-2 max-w-[60ch] text-meta text-muted">
@@ -333,11 +333,11 @@ export default function OrderSuccess() {
               'Run the build spec for day one, the first deliverable in your first week',
               'Pick your first customer, the persona dossier inside the pack',
             ].map((step, i) => (
-              <li key={i} className="flex items-start gap-3 border border-border bg-surface p-4">
-                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-text text-caption font-bold text-bg">
+              <li key={i} className="flex items-start gap-3 rounded-md border border-border bg-surface p-4">
+                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-text text-caption font-medium text-bg">
                   {i + 1}
                 </span>
-                <span className="text-meta leading-relaxed text-text/80">{step}</span>
+                <span className="text-meta leading-relaxed text-muted">{step}</span>
               </li>
             ))}
           </ol>
@@ -364,7 +364,7 @@ export default function OrderSuccess() {
 
         <p className="mt-8 text-center text-caption text-muted">
           Need help with your order? Contact{' '}
-          <a href={`mailto:${LEGAL.supportEmail}`} className="underline">
+          <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
             {LEGAL.supportEmail}
           </a>
         </p>
@@ -398,10 +398,10 @@ function ResolutionFallback({
           </div>
 
           <div className="space-y-3">
-            <h1 className="text-h1 md:text-h1 font-black text-text tracking-tighter">
+            <h1 className="text-h1 font-semibold text-text">
               Order confirmed
             </h1>
-            <p className="text-body text-text/70 max-w-md">
+            <p className="text-body text-muted max-w-md">
               {phase === 'ready'
                 ? 'Your payment was received. Your download is ready below.'
                 : phase === 'resolving'
@@ -413,7 +413,7 @@ function ResolutionFallback({
           </div>
 
           {phase === 'resolving' && (
-            <div className="bg-surface border border-border p-6 max-w-sm w-full text-left space-y-5">
+            <div className="bg-surface rounded-md border border-border p-6 max-w-sm w-full text-left space-y-5">
               <div className="h-1 w-full bg-border overflow-hidden rounded-full">
                 <div
                   className="h-full bg-text transition-all rounded-full"
@@ -432,7 +432,7 @@ function ResolutionFallback({
             phase === 'timed-out' ||
             phase === 'unfulfilled' ||
             phase === 'revoked') && (
-            <div className="bg-surface border border-border p-6 max-w-sm w-full text-left space-y-4">
+            <div className="bg-surface rounded-md border border-border p-6 max-w-sm w-full text-left space-y-4">
               {phase === 'timed-out' && (
                 <div className="h-1 w-full bg-border overflow-hidden rounded-full">
                   <div
@@ -476,7 +476,7 @@ function ResolutionFallback({
                         `My payment went through but I have not received my download.\n\nOrder reference: ${sessionId}\n`,
                       )}`
                     }
-                    className="mt-3 inline-flex w-full items-center justify-center gap-2 bg-primary px-6 py-3 text-meta font-semibold text-on-primary transition-colors hover:bg-primary/90"
+                    className={buttonClasses({ fullWidth: true, className: 'mt-3' })}
                   >
                     <Icon name="mail" size={16} />
                     Email us about this order
@@ -489,14 +489,14 @@ function ResolutionFallback({
           <div className="flex flex-col sm:flex-row gap-4 mt-2">
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-border text-meta font-semibold text-text hover:bg-surface transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md border border-border text-meta font-semibold text-text hover:bg-surface transition-colors"
             >
               Browse more packs
             </Link>
             {packId && (
               <Link
                 href={`/pack/${packId}`}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-border text-meta font-semibold text-text hover:bg-surface transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md border border-border text-meta font-semibold text-text hover:bg-surface transition-colors"
               >
                 Back to pack
               </Link>
@@ -505,7 +505,7 @@ function ResolutionFallback({
 
           <p className="text-caption text-muted max-w-xs">
             Need help with your order? Contact{' '}
-            <a href={`mailto:${LEGAL.supportEmail}`} className="underline">
+            <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
               {LEGAL.supportEmail}
             </a>
           </p>

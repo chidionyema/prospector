@@ -32,19 +32,26 @@ describe('US-2 — Pack cards with pack art', () => {
     expect(coverExists, 'components/marketing/PackCover.tsx must exist').toBe(true);
   });
 
-  it('PackCover accepts a pack and a variant (square or hero)', () => {
+  it('PackCover takes a pack, and no longer takes a variant', () => {
+    /*
+     * The `variant` half of this assertion is INVERTED, not relaxed.
+     *
+     * `square | hero` existed because one component drew two coloured plates: a 1:1 tile on the
+     * shelf and a 16:9 hero on the detail page. Both are gone (see the component's header comment
+     * and the pack-page test below); what survives is a single 44px identity row, and the shelf
+     * card composes that row itself rather than importing a component to draw it. A `variant`
+     * prop with one variant is an invitation to add the second one back.
+     */
     if (!coverExists) return;
     const source = readSource('../components/marketing/PackCover.tsx');
-    const acceptsPack = /pack\s*:\s*Pack\b/.test(source);
     expect(
-      acceptsPack,
+      /pack\s*:\s*Pack\b/.test(source),
       'PackCover must accept a pack prop typed Pack',
     ).toBe(true);
-    const acceptsVariant = /variant\s*:/.test(source);
     expect(
-      acceptsVariant,
-      'PackCover must accept a variant prop (square | hero)',
-    ).toBe(true);
+      /variant\s*[:?]/.test(source),
+      'PackCover must not carry a variant prop: there is only one form now',
+    ).toBe(false);
   });
 
   it('PackCover renders a category-coloured cover with an icon', () => {
@@ -61,14 +68,27 @@ describe('US-2 — Pack cards with pack art', () => {
     ).toBe(true);
   });
 
-  it('home page renders a 1:1 (square) cover on the PackCard', () => {
-    // The PackCard is the primary surface. The 1:1 cover sits at the top of the card.
-    const hasSquareCover = /<PackCover\s+[^>]*variant=["']square["']/.test(page) ||
-      /<PackCover\s+[^>]*pack=\{pack\}/.test(page);
-    expect(
-      hasSquareCover,
-      'index.tsx must render <PackCover variant="square" pack={pack} /> somewhere in the PackCard',
-    ).toBe(true);
+  it('every PackCard still carries a per-pack identity, drawn from the category', () => {
+    /*
+     * US-2's actual problem was that 45 cards were indistinguishable without reading the title.
+     * The 1:1 coloured tile was one answer to it; it is not the only one, and it was not a good
+     * one -- sixty-one gradient tiles are as uniform as sixty-one white rectangles, they are just
+     * louder about it. So this asserts the PROBLEM stays solved rather than pinning the tile:
+     * the card opens on an identity row carrying the sector (a category-derived dot and label)
+     * and the listing's own market and short ID, all of which differ pack to pack.
+     */
+    expect(page, 'the card must derive its identity from the pack category').toMatch(
+      /const cat = categoryFor\(pack\)/,
+    );
+    expect(page, 'the sector dot must be category-derived, not a fixed hue').toMatch(
+      /'h-2 w-2 flex-none rounded-full', cat\.dot/,
+    );
+    expect(page, 'the identity row must carry the listing market').toMatch(
+      /marketLabel\(pack\.market\)/,
+    );
+    expect(page, 'the identity row must carry the short dossier id').toMatch(
+      /pack\.id\.slice\(0, 6\)\.toUpperCase\(\)/,
+    );
   });
 
   it('pack detail page opens on a sourced dossier excerpt, not a cover', () => {

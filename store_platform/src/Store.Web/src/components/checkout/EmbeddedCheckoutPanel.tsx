@@ -134,10 +134,10 @@ export function EmbeddedCheckoutPanel({
       <div className="w-full max-w-2xl rounded-md border border-border bg-surface shadow-2">
         <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-      <span className="text-caption font-bold uppercase tracking-widest text-muted">
+      <span className="text-caption font-medium text-muted">
               Secure checkout
             </span>
-            <p className="truncate text-meta font-bold text-text">{title}</p>
+            <p className="truncate text-meta font-semibold text-text">{title}</p>
           </div>
           <button
             ref={closeRef}

@@ -2,8 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon } from '@/components/ui';
-import { cx } from '@/components/ui/cx';
+import { buttonClasses, chipClasses, Icon, SearchInput } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
@@ -42,14 +41,26 @@ const entries = killLog.entries as Entry[];
 const { killed, passed } = killLog.totals;
 const rejectRate = Math.round((killed / (killed + passed)) * 100);
 
-// Every gate present in what we publish, ordered by how many kills it accounts for, so the
+// Every REASON present in what we publish, ordered by how many kills it accounts for, so the
 // filter reads as a map of how ideas actually die rather than an alphabetical list.
+//
+// Grouped by `gateLabel`, not by `gate`. The engine has emitted two keys for one check --
+// `distribution` (2 entries) and `route_to_market` (1) -- and both carry the identical label
+// "There is no route to reach buyers". Keyed by `gate`, the filter row rendered that sentence
+// twice, side by side, with counts 2 and 1 (desktop-kill-log-fold.png, 2026-08-06): a reader
+// clicking the first one is told there are two such kills when there are three, and the second
+// chip is indistinguishable from the first.
+//
+// The label is the right identity here because it is the claim being filtered on -- the buyer is
+// choosing a reason, not a database key. Reproduce the duplication with:
+//   python3 -c "import json,collections;d=json.load(open('src/data/kill-log.json'));\
+//   print(collections.Counter((e['gate'],e['gateLabel']) for e in d['entries']))"
+// Fixing the engine to emit one key is the real repair; this stops the storefront lying meanwhile.
 const gateCounts = entries.reduce<Record<string, number>>((acc, e) => {
-  acc[e.gate] = (acc[e.gate] ?? 0) + 1;
+  acc[e.gateLabel] = (acc[e.gateLabel] ?? 0) + 1;
   return acc;
 }, {});
 const gates = Object.keys(gateCounts).sort((a, b) => gateCounts[b] - gateCounts[a]);
-const gateLabel = (gate: string) => entries.find((e) => e.gate === gate)?.gateLabel ?? gate;
 
 function formatDate(iso: string) {
   if (!iso) return '';
@@ -63,7 +74,8 @@ export default function KillLogPage() {
   const [active, setActive] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
   const shown = React.useMemo(() => {
-    let items = active ? entries.filter((e) => e.gate === active) : entries;
+    // `active` holds a gateLabel, matching how the chips above are keyed.
+    let items = active ? entries.filter((e) => e.gateLabel === active) : entries;
     if (search.trim()) {
       const q = search.toLowerCase();
       items = items.filter(
@@ -83,68 +95,62 @@ export default function KillLogPage() {
         description={`We researched ${killed} business ideas and rejected ${rejectRate}% of them. Here are the rejects, with the evidence that killed each one.`}
       />
 
-      <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10 text-center">
-    <p className="mb-4 text-caption font-bold uppercase tracking-[0.2em] text-muted">
-          The kill log
-        </p>
-        <h1 className="mx-auto max-w-[22ch] text-balance text-h1 font-bold leading-[1.08] tracking-tight text-text md:text-display">
-          We killed {killed.toLocaleString('en-GB')} ideas to put {passed} on the shelf.
-        </h1>
-        <p className="mx-auto mt-6 max-w-[62ch] text-body leading-relaxed text-text/75 md:text-body">
-          Anyone can claim their research is rigorous. This is the receipt. Every idea below was
-          generated, researched against live sources, and then shot, with the argument that
-          killed it and, where a page was cited, a link so you can check it yourself.
-        </p>
-        <div className="mx-auto mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-meta font-semibold text-muted">
-          <span className="inline-flex items-center gap-2">
-            <Icon name="shield" size={14} className="text-warning" />
-            {rejectRate}% rejected
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <Icon name="check" size={14} className="text-success" />
-            {passed} survived and published
-          </span>
+      {/* Left-aligned, one column, no centred hero (spec §7.4). A centred 22ch headline over a
+          centred 62ch paragraph over a centred stat row gives the reader three different left
+          edges to find in the first screen of a page that is otherwise a list. */}
+      <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
+        <div className="max-w-3xl">
+          <p className="text-caption font-medium text-subtle">The kill log</p>
+          <h1 className="mt-3 text-h1 font-semibold text-text md:text-display">
+            We killed {killed.toLocaleString('en-GB')} ideas to put {passed} on the shelf.
+          </h1>
+          <p className="mt-5 max-w-[60ch] text-body text-muted">
+            Anyone can claim their research is rigorous. This is the receipt. Every idea below was
+            generated, researched against live sources, and then shot, with the argument that
+            killed it and, where a page was cited, a link so you can check it yourself.
+          </p>
+          {/* Mono: both are counts, and the pair is the one place on the site where the rejection
+              rate is stated as a measured quantity rather than a boast. */}
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-meta">
+            <span className="inline-flex items-center gap-2 text-danger">
+              <Icon name="warning" size={14} />
+              {rejectRate}% rejected
+            </span>
+            <span className="inline-flex items-center gap-2 text-success">
+              <Icon name="check" size={14} />
+              {passed} published
+            </span>
+          </div>
         </div>
       </SectionBand>
 
       <Section bg="bg" width="6xl" className="!pt-6 !pb-24">
         {/* Search + filter pills */}
-        <div className="relative mb-4">
-          <Icon name="search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search kills by title, description, or reason…"
-            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-meta text-text outline-none transition-colors focus:border-primary/40"
-          />
-        </div>
+        <SearchInput
+          label="Search kills by title, description, or reason"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search kills by title, description, or reason…"
+          className="mb-4"
+        />
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setActive(null)}
-            className={cx(
-              'px-3.5 py-1.5 text-caption font-bold transition border',
-              active === null
-                ? 'bg-text text-white border-text'
-                : 'border-border bg-surface text-text/70 hover:border-text/30',
-            )}
+            aria-pressed={active === null}
+            className={chipClasses({ selected: active === null })}
           >
             All {entries.length}
           </button>
-          {gates.map((gate) => (
+          {gates.map((label) => (
             <button
-              key={gate}
+              key={label}
               type="button"
-              onClick={() => setActive(gate === active ? null : gate)}
-              className={cx(
-                'px-3.5 py-1.5 text-caption font-bold transition border',
-                gate === active
-                  ? 'bg-text text-white'
-                  : 'border border-border bg-surface text-text/70 hover:border-text/30',
-              )}
+              onClick={() => setActive(label === active ? null : label)}
+              aria-pressed={label === active}
+              className={chipClasses({ selected: label === active })}
             >
-              {gateLabel(gate)} {gateCounts[gate]}
+              {label} {gateCounts[label]}
             </button>
           ))}
         </div>
@@ -153,29 +159,29 @@ export default function KillLogPage() {
           {shown.map((entry, i) => (
             <li
               key={`${entry.title}-${i}`}
-              className="border border-border bg-surface p-5 md:p-6"
+              className="rounded-md border border-border bg-surface p-5 md:p-6"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  {/* Struck through because that is exactly what happened to it. */}
-                  <h2 className="text-body font-bold leading-snug text-text/60 line-through decoration-warning/60 decoration-2">
+                  {/* Struck through because that is exactly what happened to it. Danger, not
+                      warning: --warning means "proceed with care", and these did not proceed. */}
+                  <h2 className="text-body font-semibold leading-snug text-muted line-through decoration-danger/60 decoration-2">
                     {entry.title}
                   </h2>
                   {entry.oneLiner && (
-                    <p className="mt-1.5 max-w-[70ch] text-meta leading-relaxed text-muted">{entry.oneLiner}</p>
+                    <p className="mt-2 max-w-[70ch] text-meta text-muted">{entry.oneLiner}</p>
                   )}
                 </div>
-                <span className="inline-flex flex-none items-center gap-1.5 rounded-full bg-warning/10 px-2.5 py-1 text-caption font-bold uppercase tracking-wide text-warning">
-                  <Icon name="shield" size={12} />
-                  Killed
+                <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-danger/25 bg-danger-bg px-2.5 py-0.5 font-mono text-caption text-danger-strong">
+                  KILLED
                 </span>
               </div>
 
-              <div className="mt-4 border-t border-border/70 pt-4">
-                <p className="font-mono text-caption font-bold uppercase tracking-widest text-warning">
-                  {entry.gateLabel}
-                </p>
-                <p className="mt-2 max-w-[72ch] text-meta leading-relaxed text-text/80">{entry.reason}</p>
+              <div className="mt-4 border-t border-border pt-4">
+                {/* The gate that fired, in the data voice: it is the machine-readable reason, and
+                    it is the field a reader would quote back at us. */}
+                <p className="font-mono text-caption text-danger-strong">{entry.gateLabel}</p>
+                <p className="mt-2 max-w-[72ch] text-meta text-muted">{entry.reason}</p>
               </div>
 
               {(entry.citations.length > 0 || entry.date) && (
@@ -186,14 +192,14 @@ export default function KillLogPage() {
                       href={c.url}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
-                      className="inline-flex max-w-full items-center gap-1.5  bg-bg px-2.5 py-1.5 text-caption font-semibold text-text/75 transition hover:bg-surface2"
+                      className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-caption text-muted transition-colors duration-[120ms] hover:border-border-strong hover:text-text"
                     >
-                      <Icon name="arrowRight" size={12} className="-rotate-45" />
+                      <Icon name="arrowRight" size={10} className="-rotate-45 shrink-0" />
                       <span className="truncate">{c.domain}</span>
                     </a>
                   ))}
                   {entry.date && (
-          <span className="ml-auto text-caption text-muted">{formatDate(entry.date)}</span>
+                    <span className="ml-auto font-mono text-caption text-subtle">{formatDate(entry.date)}</span>
                   )}
                 </div>
               )}
@@ -202,32 +208,25 @@ export default function KillLogPage() {
         </ul>
 
         {/* Said plainly, because a page of rejections invites exactly this question. */}
-        <p className="mx-auto mt-10 max-w-[68ch] text-center text-meta leading-relaxed text-muted">
+        <p className="mt-10 max-w-[68ch] text-meta text-muted">
           This is a sample of the log, not all {killed.toLocaleString('en-GB')} kills. Rejections whose
           only reason was a score below the bar are left out, they are true, and they tell you
           nothing. What you see here is every kill that came with an argument.
         </p>
 
-        <div className="mt-10 border border-border bg-surface p-8 text-center md:p-10">
-          <h2 className="mx-auto max-w-[26ch] text-balance text-h2 font-black tracking-tight text-text md:text-h1">
+        <div className="mt-10 rounded-md border border-border bg-surface2 p-8 md:p-10">
+          <h2 className="max-w-[26ch] text-h2 font-semibold text-text">
             Now read one that survived all of it.
           </h2>
-          <p className="mx-auto mt-3 max-w-[56ch] text-body leading-relaxed text-text/75">
+          <p className="mt-3 max-w-[60ch] text-body text-muted">
             Same checks, same sourcing, opposite outcome. One full pack is free to read, no card and
             no email.
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/sample"
-              className="inline-flex items-center gap-2  bg-primary px-6 py-3 text-meta font-bold text-on-primary shadow-none transition hover:opacity-90"
-            >
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
               Read a full pack free
-              <Icon name="arrowRight" size={15} />
             </Link>
-            <Link
-              href="/#catalog"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-6 py-3 text-meta font-bold text-text transition hover:border-text/30"
-            >
+            <Link href="/#catalog" className={buttonClasses({ variant: 'secondary', size: 'lg' })}>
               Browse the {passed} that survived
             </Link>
           </div>

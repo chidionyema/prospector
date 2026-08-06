@@ -96,64 +96,54 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
   return (
     <div
       className={cx(
-        // `text-left` is not decoration, it is insulation. The mobile hero wrapper in index.tsx
-        // carries `text-center` (dropped at `md:`), and text-align inherits, so at 390px every row
-        // in this card was centred: the three pack names landed at x=125/83/100 inside a list whose
-        // whole legibility depends on a shared left edge. A log that ragged-centres its own entries
-        // reads as decoration, which is the opposite of this card's job. It sets its own alignment
-        // so it renders identically wherever it is dropped.
-        'relative overflow-hidden border-2 border-text bg-text text-bg text-left',
-        // Was #1A1A1A, the pre-v2 ink this palette explicitly retired, so the card's offset shadow
-        // did not match the hero CTA's shadow sitting right beside it. Both are --text now.
-    'shadow-hard',
+        // A light ledger, not a black terminal (brand v3, 2026-08-06). The slab version wore
+        // `border-2 border-text bg-text` plus a 3px hard offset shadow -- a sticker sitting on
+        // top of the page rather than a card in it -- and it forced every colour inside to be an
+        // inverted `--on-band-*` token. Red and green are the only colour above the fold now,
+        // and this is the one card where they carry meaning: killed vs survived.
+        //
+        // `text-left` is not decoration, it is insulation: text-align inherits, and this card is
+        // dropped into hero wrappers that have carried `text-center` on mobile. A log that
+        // ragged-centres its own entries reads as decoration, which is the opposite of its job.
+        'overflow-hidden rounded-md border border-border bg-surface text-left',
         className,
       )}
     >
       {/* Header. Labelled as what it is, a snapshot of the audit trail, rather than "LIVE". */}
-      <div className="flex items-center justify-between gap-3 border-b border-bg/20 px-4 py-2.5 text-caption font-bold uppercase tracking-widest">
-        <span className="text-bg">The filter log</span>
-        <span className="truncate text-bg/60">Latest {KILL_LINES.length} kills</span>
+      <div className="flex h-11 items-center justify-between gap-3 border-b border-border px-5">
+        <span className="text-meta font-semibold text-text">The filter log</span>
+        <span className="truncate font-mono text-caption text-subtle">
+          <span className="text-danger">{killed.toLocaleString('en-GB')} killed</span>
+          {' · '}
+          <span className="text-success">{passed.toLocaleString('en-GB')} survived</span>
+        </span>
       </div>
 
-      {/* The body: the most recent real kills, then the running totals. */}
-      <div className="px-4 py-4 text-caption leading-relaxed">
-        <div>
-          {KILL_LINES.map((k, i) => (
-            /* `items-start`, not `items-baseline`, because the gate now wraps under the name on a
-               narrow card instead of being truncated. The old single-line `truncate` cut the text
-               mid-word at 390px ("killed by value dura…"), which hid the gate, and the gate is
-               the entire point of the row. The name stays on its own line and the reason follows,
-               so nothing is ever clipped. */
-            <div key={i} className="flex items-start gap-2 border-b border-bg/10 py-2 last:border-b-0 text-bg/85">
-              <span className="mt-px shrink-0 text-on-band-danger" aria-hidden>×</span>
-              <span className="min-w-0">
-                <span className="font-bold break-words">{k.name}</span>
-                <span className="block text-bg/60">killed by {k.gate}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-t border-bg/20 pt-3">
-          <div>
-            <div className="text-caption font-bold uppercase tracking-widest text-bg/50">
-              To date
-            </div>
-            <div className="mt-1 flex items-baseline gap-3">
-              <span className="text-body font-black text-on-band-danger">{killed.toLocaleString('en-GB')}</span>
-              <span className="text-caption uppercase text-bg/60">killed</span>
-              <span className="text-body font-black text-on-band-success">{passed.toLocaleString('en-GB')}</span>
-              <span className="text-caption uppercase text-bg/60">survived</span>
-            </div>
+      {/* The body: three real kills from the same JSON the /kill-log page renders. */}
+      <div className="px-5">
+        {KILL_LINES.map((k, i) => (
+          /* `items-start`, not `items-baseline`, because the gate wraps under the name on a
+             narrow card instead of being truncated. The old single-line `truncate` cut the text
+             mid-word at 390px ("killed by value dura…"), which hid the gate, and the gate is
+             the entire point of the row. */
+          <div key={i} className="flex items-start gap-2 border-b border-border py-2.5 last:border-b-0">
+            <span className="mt-0.5 shrink-0 text-caption text-danger" aria-hidden>✕</span>
+            <span className="min-w-0">
+              <span className="block break-words text-meta font-medium text-text">{k.name}</span>
+              <span className="block font-mono text-caption text-subtle">killed by {k.gate}</span>
+            </span>
           </div>
-          <Link
-            href="/kill-log"
-            className="inline-flex items-center gap-1 text-caption font-bold uppercase tracking-widest text-bg/70 hover:text-bg transition-colors"
-          >
-            See all
-            <Icon name="arrowRight" size={12} />
-          </Link>
-        </div>
+        ))}
+      </div>
+
+      <div className="border-t border-border px-5 py-3">
+        <Link
+          href="/kill-log"
+          className="inline-flex items-center gap-1 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+        >
+          Read the kill log
+          <Icon name="arrowRight" size={14} />
+        </Link>
       </div>
     </div>
   );

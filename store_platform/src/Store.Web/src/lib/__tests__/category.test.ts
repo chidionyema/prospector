@@ -47,8 +47,11 @@ describe('the untagged treatment', () => {
     expect(UNLABELLED.tagged).toBe(false);
   });
 
-  it('still carries a cover and an icon, so an untagged card is neutral, not broken', () => {
-    expect(UNLABELLED.cover).not.toBe('');
+  // `cover` is gone (brand v3, 2026-08-06): the gradient card it painted no longer exists. The
+  // neutral treatment is now the grey dot, and it must stay non-empty for the same reason the
+  // gradient had to -- an untagged pack renders a card with a blank hole in its plate otherwise.
+  it('still carries a neutral dot and an icon, so an untagged card is neutral, not broken', () => {
+    expect(UNLABELLED.dot).not.toBe('');
     expect(UNLABELLED.icon).not.toBe('');
   });
 

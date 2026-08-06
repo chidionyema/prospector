@@ -50,51 +50,46 @@ export default function TrustGuaranteesRow({
   // that has the real number elsewhere).
   const totals = killTotals as { killed: number; passed: number; live?: number; shown?: number };
   const killed = totals.killed;
-  const passed = totals.passed;
   const live = listed ?? totals.live ?? totals.shown ?? 0;
-  const researched = killed + passed;
 
-  const facts: { icon: 'money' | 'shield' | 'verified' | 'shield' | 'released'; label: string; value: string }[] = [
-    price
-      ? price.uniform
-        ? { icon: 'money' as const, value: `${price.label} once`, label: 'no subscription, no renewal' }
-        : { icon: 'money' as const, value: price.label, label: 'one payment, priced per pack' }
-      : { icon: 'money' as const, value: 'One payment', label: 'no subscription, no renewal' },
-    { icon: 'shield', value: '14 day money back', label: 'no questions, no forms' },
-    { icon: 'verified', value: `${researched.toLocaleString('en-GB')} researched`, label: 'every one cited' },
-    { icon: 'shield', value: `${killed.toLocaleString('en-GB')} killed`, label: 'the ones that did not survive' },
-    { icon: 'released', value: `${live} live now`, label: 'yours to read' },
+  /*
+   * THREE facts, down from five (brand v3, 2026-08-06).
+   *
+   * The five-up grid was doing two different jobs at once: three of the cells were guarantees
+   * (what you get if you buy) and two were volume statistics (how much was rejected). Mixed into
+   * one centred row of icon-in-a-circle pills, neither read as either. The statistics now live
+   * where they are evidence rather than reassurance -- the filter-log card above the fold and the
+   * method band -- and this row is only the purchase terms.
+   *
+   * `listed` and `killed` are still read below so the row's kill-log sentence stays true to the
+   * same source, and so callers that already pass `listed` do not have to change.
+   */
+  const facts: { icon: 'money' | 'shield' | 'verified'; label: string }[] = [
+    { icon: 'shield', label: '14-day money back' },
+    { icon: 'verified', label: 'Every claim sourced' },
+    {
+      icon: 'money',
+      label: price ? (price.uniform ? `One-time payment, ${price.label}` : 'One-time payment') : 'One-time payment',
+    },
   ];
 
   return (
-    <section
-      aria-label="Trust and guarantees"
-      className={cx(
-        'border-y border-border bg-bg/40',
-        className,
-      )}
-    >
-      <div className="mx-auto max-w-6xl px-6 py-6 md:px-8 md:py-8">
-    <p className="mb-4 text-center text-caption font-bold uppercase tracking-widest text-muted">
-          Trust and guarantees
-        </p>
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <section aria-label="Trust and guarantees" className={cx('border-t border-border', className)}>
+      <div className="mx-auto max-w-6xl px-6 py-6 md:px-8">
+        {/* No pills, no borders, no circles, left-aligned. These are three short factual lines;
+            dressing each one in its own container implied three separate offers. */}
+        <ul className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-8">
           {facts.map((fact) => (
-            <li
-              key={fact.value}
-              className="flex flex-col items-center gap-1 text-center"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface2 text-text/70">
-                <Icon name={fact.icon} size={14} />
-              </span>
-              <span className="text-meta font-bold text-text">{fact.value}</span>
-              <span className="text-caption text-muted">{fact.label}</span>
+            <li key={fact.label} className="flex items-center gap-2 text-meta text-muted">
+              <Icon name={fact.icon} size={16} />
+              {fact.label}
             </li>
           ))}
         </ul>
-        <p className="mt-5 text-center text-caption text-muted">
-          The <Link href="/kill-log" className="font-semibold text-text underline underline-offset-2">kill log</Link>
-          {' '}is the audit trail behind these numbers. Every killed idea is there, with the sourced reason why.
+        <p className="mt-4 text-caption text-subtle">
+          {killed.toLocaleString('en-GB')} ideas were killed to list these {live}. The{' '}
+          <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">kill log</Link>
+          {' '}has every one, with the sourced reason why.
         </p>
       </div>
     </section>

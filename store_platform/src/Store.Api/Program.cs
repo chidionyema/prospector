@@ -283,6 +283,9 @@ app.MapGet("/catalog", async (StoreDbContext db, string? market) =>
         p.VerifiedAt,
         // Jurisdiction of the opportunity — a browse facet. Price stays GBP.
         p.Market,
+        // Who the engine wrote the pack for. Projected on BOTH endpoints deliberately: a
+        // field on the product page but not the shelf is a card that changes on click.
+        p.Audience,
         // Discovery facets. An absent facet serialises as null and advantages as [] —
         // never as a default value, because a defaulted facet is a claim the engine never
         // made, and the buyer would filter on it believing it was real.
@@ -341,6 +344,7 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
         pack.TimeToFirstRevenue,
         pack.QaVerdictSummary,
         pack.Market,
+        pack.Audience,
         pack.SourceCount,
         pack.VerifiedAt,
         // Discovery facets — same null rule as the list endpoint.
@@ -510,6 +514,10 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     if (request.TimeToFirstRevenue is not null) pack.TimeToFirstRevenue = request.TimeToFirstRevenue;
     if (request.QaVerdictSummary is not null) pack.QaVerdictSummary = request.QaVerdictSummary;
     if (request.Market is not null) pack.Market = request.Market;
+    // Same only-overwrite-when-sent rule: the engine OMITS the persona rather than sending ""
+    // when generation did not stamp one, so a metadata-light republish leaves a stored value
+    // alone instead of blanking it.
+    if (request.Audience is not null) pack.Audience = request.Audience;
     if (request.SourceCount is { } sources) pack.SourceCount = sources;
     if (request.VerifiedAt is { } verifiedAt) pack.VerifiedAt = verifiedAt;
     if (request.WhatYouGet is not null) pack.WhatYouGetJson = JsonSerializer.Serialize(request.WhatYouGet);
@@ -642,6 +650,104 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
     });
 })
 .WithName("PatchPackFacets")
+.WithOpenApi();
+
+// Replace a live pack's storefront copy, touching nothing else about it.
+//
+// Same reasoning as the facets PATCH above, with a sharper edge. Routing a copy job through
+// POST /internal/catalog would let it rewrite the money-bearing fields of a live listing, and
+// on this endpoint that is not a hypothetical: the upsert assigns ProviderProductId and
+// ProviderPriceId unconditionally on update (`request.X ?? request.PaddleX`, so omitting them
+// NULLS them) while PricePence is only ever assigned on INSERT. So a copy job that re-published
+// would either null the provider ids — breaking FulfilmentService's `p.ProviderProductId ==
+// item.ProductId` lookup, i.e. the buyer pays and delivery never resolves — or carry freshly
+// minted ones, leaving the buy button on a price minted at today's ladder number while the
+// fulfilment floor still holds the old one. Both are silent in the catalogue row.
+//
+// ProviderProductId is returned by no GET projection, so such a job could not even read back
+// what it was about to overwrite. The fix is to make the fields unreachable, not to ask the
+// caller to echo them correctly.
+//
+// The response deliberately includes pricePence, providerPriceId and isListed alongside the
+// copy. A backfill's invariance assertion should be answerable from the write's own response
+// rather than a follow-up GET that could read a different pack's row after a concurrent write.
+app.MapPatch("/internal/catalog/{id}/copy", async (
+    string id,
+    CopyPatchRequest request,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    // null = leave alone, "" = clear. Same rule and same reason as the facets PATCH: "this copy
+    // was wrong, take it off" has to be expressible, or null-means-no-change is a trap.
+    static string? Applied(string? incoming, string? current)
+    {
+        if (incoming is null) return current;
+        return incoming.Length == 0 ? null : incoming;
+    }
+
+    pack.CardLine = Applied(request.CardLine, pack.CardLine);
+    pack.Headline = Applied(request.Headline, pack.Headline);
+    pack.Subhead = Applied(request.Subhead, pack.Subhead);
+    pack.ProofPoint = Applied(request.ProofPoint, pack.ProofPoint);
+    pack.WhoPays = Applied(request.WhoPays, pack.WhoPays);
+    pack.EffortTag = Applied(request.EffortTag, pack.EffortTag);
+    pack.TimeToFirstRevenue = Applied(request.TimeToFirstRevenue, pack.TimeToFirstRevenue);
+    if (request.WhatYouGet is not null)
+    {
+        pack.WhatYouGetJson = request.WhatYouGet.Length == 0
+            ? null
+            : JsonSerializer.Serialize(request.WhatYouGet);
+    }
+    if (request.SampleExtract is not null)
+    {
+        pack.SampleExtractJson = request.SampleExtract.Length == 0
+            ? null
+            : JsonSerializer.Serialize(request.SampleExtract);
+    }
+
+    await db.SaveChangesAsync().ConfigureAwait(false);
+
+    return Results.Ok(new
+    {
+        pack.Id,
+        pack.CardLine,
+        pack.Headline,
+        pack.Subhead,
+        pack.ProofPoint,
+        pack.WhoPays,
+        pack.EffortTag,
+        pack.TimeToFirstRevenue,
+        WhatYouGet = RehydrateStringArray(pack.WhatYouGetJson),
+        SampleExtract = RehydrateStringArray(pack.SampleExtractJson),
+        // Invariants, echoed so the caller can assert on them without a second read.
+        pack.PricePence,
+        pack.MinBillablePence,
+        pack.ProviderPriceId,
+        pack.ProviderProductId,
+        pack.IsListed,
+        pack.ContentKey,
+    });
+})
+.WithName("PatchPackCopy")
 .WithOpenApi();
 
 // Withdraw a pack from sale (or restore one), touching nothing else about it.
@@ -956,6 +1062,160 @@ app.MapGet("/internal/catalog/{id}/content", async (
     return Results.Ok(new { pack.Id, pack.ContentKey, pack.ContentHash, pack.ContentVersion });
 })
 .WithName("GetPackContent")
+.WithOpenApi();
+
+// Read a pack's price history — the rows PatchPackPrice writes, plus the two things a caller
+// cannot derive from those rows alone.
+//
+// The table has been written since the AddPackPriceFloorAndHistory migration and, until this
+// endpoint, was read by nothing: a derivation record nobody can retrieve is a record in name
+// only. PackPriceHistory exists so a sale can be attributed to the price the buyer was actually
+// shown (see the entity's own summary), and that is a point-in-time question. Answering it from
+// a raw row list means getting two boundary cases right, so this endpoint answers it once:
+//
+//   origin — publish assigns PricePence on INSERT (the /internal/catalog upsert above) and
+//            writes NO history row. The price before the first change therefore survives only as
+//            that first row's FromPence, and a pack never re-priced has an empty history whose
+//            correct answer for every timestamp is still a price. A caller reading rows alone
+//            sees nothing and concludes nothing was charged.
+//   gaps   — the record is worth reading only if it is CONTINUOUS. PricePence is assigned in
+//            exactly two places today, the publish INSERT and PatchPackPrice, which writes its
+//            row inside the same transaction as the change — so the chain cannot currently
+//            break. `continuous` is not a restatement of that fact: it is what still holds if a
+//            third writer is added later, and it fails loudly rather than serving a
+//            plausible-looking history that silently omits a change.
+//
+// Internal (key-gated) like the rest of /internal/catalog, and for a sharper reason than the
+// others: reason/actor are operational notes, and a public price-change log hands a competitor
+// every pricing experiment we have run, including the ones we abandoned.
+app.MapGet("/internal/catalog/{id}/price-history", async (
+    string id,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config,
+    DateTimeOffset? asOf,
+    int? limit) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    // Oldest-first: continuity and the as-of scan are both chronological. Id breaks ties so the
+    // order is total — two changes landing inside one clock tick would otherwise order
+    // arbitrarily, and "arbitrarily" includes differently on two reads of the same data.
+    var rows = await db.PackPriceHistory
+        .Where(h => h.PackId == id)
+        .OrderBy(h => h.CreatedAt).ThenBy(h => h.Id)
+        .ToListAsync().ConfigureAwait(false);
+
+    var originPence = rows.Count > 0 ? rows[0].FromPence : pack.PricePence;
+
+    var continuous = rows.Count == 0 || rows[^1].ToPence == pack.PricePence;
+    for (var i = 1; i < rows.Count && continuous; i++)
+    {
+        continuous = rows[i].FromPence == rows[i - 1].ToPence;
+    }
+
+    object? at = null;
+    if (asOf is not null)
+    {
+        var when = asOf.Value.UtcDateTime;
+        if (when < pack.CreatedAt)
+        {
+            // Distinct from "origin": the pack did not exist, so there was no price to be shown.
+            // Returning the origin price here would invent a listing that was never on sale.
+            at = new
+            {
+                asOf = when,
+                pricePence = (long?)null,
+                minBillablePence = (long?)null,
+                providerPriceId = (string?)null,
+                source = "before-publish",
+                changeId = (long?)null,
+            };
+        }
+        else
+        {
+            // The last change applied at or before `when`. A change is live from its own
+            // CreatedAt, so the boundary is inclusive: a sale stamped at the same instant as a
+            // re-price was billed the new price.
+            PackPriceHistory? applied = null;
+            foreach (var h in rows)
+            {
+                if (h.CreatedAt > when) break;
+                applied = h;
+            }
+            at = applied is null
+                // Before the first change. The floor and provider price of that era were never
+                // recorded — null says so rather than lending today's values a false history.
+                ? new
+                {
+                    asOf = when,
+                    pricePence = (long?)originPence,
+                    minBillablePence = (long?)null,
+                    providerPriceId = (string?)null,
+                    source = "origin",
+                    changeId = (long?)null,
+                }
+                : new
+                {
+                    asOf = when,
+                    pricePence = (long?)applied.ToPence,
+                    minBillablePence = (long?)applied.MinBillablePence,
+                    providerPriceId = applied.ProviderPriceId,
+                    source = "history",
+                    changeId = (long?)applied.Id,
+                };
+        }
+    }
+
+    // The limit bounds the RESPONSE, not the scan. Continuity and as-of are properties of the
+    // whole chain, so truncating before computing them would make a complete history read as a
+    // broken one — the exact false alarm this endpoint exists to prevent. Newest-first on the
+    // way out, which is the order a human reads a change log in.
+    var take = Math.Clamp(limit ?? 200, 1, 1000);
+    var page = rows.AsEnumerable().Reverse().Take(take).Select(h => new
+    {
+        id = h.Id,
+        fromPence = h.FromPence,
+        toPence = h.ToPence,
+        minBillablePence = h.MinBillablePence,
+        providerPriceId = h.ProviderPriceId,
+        reason = h.Reason,
+        actor = h.Actor,
+        rationaleRef = h.RationaleRef,
+        createdAt = h.CreatedAt,
+    }).ToList();
+
+    return Results.Ok(new
+    {
+        packId = pack.Id,
+        currentPricePence = pack.PricePence,
+        currentMinBillablePence = pack.MinBillablePence,
+        publishedAt = pack.CreatedAt,
+        originPricePence = originPence,
+        changeCount = rows.Count,
+        continuous,
+        truncated = rows.Count > page.Count,
+        asOf = at,
+        history = page,
+    });
+})
+.WithName("GetPackPriceHistory")
 .WithOpenApi();
 
 // Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a

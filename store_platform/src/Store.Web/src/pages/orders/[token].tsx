@@ -4,7 +4,7 @@ import type { OrderDetails } from '@/lib/api/client';
 import { fetchOrder } from '@/lib/api/client';
 import { API_BASE_URL } from '@/lib/config';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { Skeleton } from '@/components/ui';
+import { buttonClasses, Skeleton } from '@/components/ui';
 
 export default function OrderPage() {
   const router = useRouter();
@@ -46,7 +46,7 @@ export default function OrderPage() {
       <MarketingLayout>
         <div className="flex min-h-dvh items-center justify-center px-6">
           <div className="text-center">
-            <h1 className="text-h2 font-bold text-text mb-2">Order not found</h1>
+            <h1 className="text-h2 font-semibold text-text mb-2">Order not found</h1>
             <p className="text-muted">{error}</p>
           </div>
         </div>
@@ -71,15 +71,15 @@ export default function OrderPage() {
   return (
     <MarketingLayout>
       <div className="flex min-h-dvh items-center justify-center px-6 py-16">
-        <div className="bg-surface border border-border p-8 max-w-md w-full mx-4">
-          <h1 className="text-h2 font-bold text-text mb-2">Thank you for your purchase</h1>
+        <div className="bg-surface rounded-md border border-border p-8 max-w-md w-full mx-4">
+          <h1 className="text-h2 font-semibold text-text mb-2">Thank you for your purchase</h1>
           <p className="text-muted mb-6">
             Your order for <strong>{order?.packTitle}</strong> is ready.
           </p>
 
           <a
             href={downloadHref}
-            className="block w-full text-center bg-primary text-on-primary font-medium py-3 px-6 hover:bg-primary/90 transition-colors"
+            className={buttonClasses({ size: 'lg', fullWidth: true })}
             download
           >
             Download now

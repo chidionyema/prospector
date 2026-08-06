@@ -4,12 +4,18 @@ import { Icon, type IconName } from './Icon';
 
 type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
+/*
+ * Brand v3 (2026-08-06). Every tone was `bg-<hue>/10 text-<hue> border-<hue>/20`, i.e. the base
+ * hue set on a 10% wash of itself. That is the exact pairing the `-strong` tokens exist to fix:
+ * `--danger #DC2626` on `--danger-bg #FEF2F2` measures 4.41:1 and FAILS AA at this size
+ * (globals.css:76-86). Each tone now uses the declared `-bg` tint with the `-strong` ink.
+ */
 const TONES: Record<Tone, string> = {
-  neutral: 'bg-bg text-text/80 border border-border',
-  success: 'bg-success/10 text-success border border-success/20 shadow-none',
-  warning: 'bg-warning/10 text-warning border border-warning/20 shadow-none',
-  danger: 'bg-danger/10 text-danger border border-danger/20 shadow-none',
-  info: 'bg-info/10 text-info border border-info/20 shadow-none',
+  neutral: 'border-border bg-surface2 text-muted',
+  success: 'border-success/25 bg-success-bg text-success-strong',
+  warning: 'border-warning/25 bg-warning-bg text-warning-strong',
+  danger: 'border-danger/25 bg-danger-bg text-danger-strong',
+  info: 'border-info/25 bg-info-bg text-info',
 };
 
 export interface BadgeProps {
@@ -25,7 +31,7 @@ export function Badge({ tone = 'neutral', icon, children, className }: BadgeProp
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-caption font-mono font-bold uppercase tracking-wider',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-caption',
         TONES[tone],
         className,
       )}

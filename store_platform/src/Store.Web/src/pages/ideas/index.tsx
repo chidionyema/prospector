@@ -5,7 +5,7 @@ import type { GetServerSideProps } from 'next';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { Icon } from '@/components/ui';
+import { SearchInput, buttonClasses, textLinkClass } from '@/components/ui';
 import { fetchCatalog } from '@/lib/api/client';
 import { eligibleLandings } from '@/lib/seo/landings';
 import CategoryGraph, { type CategoryNode } from '@/components/discovery/CategoryGraph';
@@ -79,8 +79,9 @@ export default function IdeasHub({ categories, total, variant }: Props) {
       />
 
       <PageHero
+        width="7xl"
         eyebrow="Categories"
-        title={<span className="leading-tight tracking-tighter">Explore stress-tested ideas by industry.</span>}
+        title="Explore stress-tested ideas by industry."
         lead={
           total > 0
             ? `${total} researched packs across ${categories.length} categories. Choose your battleground.`
@@ -90,16 +91,13 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
       <Section bg="white" width="7xl">
         {/* Search */}
-        <div className="relative mb-8">
-          <Icon name="search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search industries, skills, or markets…"
-            className="w-full border border-border bg-surface py-3 pl-11 pr-4 text-meta text-text outline-none transition-colors focus:border-primary/40"
-          />
-        </div>
+        <SearchInput
+          label="Search industries, skills, or markets"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search industries, skills, or markets…"
+          className="mb-8"
+        />
 
         {/* US-7: the 2D category graph. Sized by pack count, placed by relatedness.
             Tapping a node navigates to that category's landing page. Below the
@@ -107,7 +105,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             scan text, some scan visuals - keep both). */}
         {!search && categories.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-meta font-bold text-text mb-4">Browse the shape of the catalogue</h2>
+            <h2 className="text-meta font-semibold text-text mb-4">Browse the shape of the catalogue</h2>
             <CategoryGraph
               categories={categories.map((c) => ({
                 kind: c.slug,
@@ -118,7 +116,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               filterPath={(kind) => `/ideas/${kind}`}
             />
             <div className="mt-6 border-t border-border pt-6">
-              <h2 className="text-meta font-bold text-text">All categories</h2>
+              <h2 className="text-meta font-semibold text-text">All categories</h2>
             </div>
           </div>
         )}
@@ -130,13 +128,13 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               <li key={cat.slug}>
                 <Link
                   href={`/ideas/${cat.slug}`}
-                  className="group flex h-full items-start gap-4 border border-border bg-surface p-5 transition-colors hover:bg-surface2 hover:border-text/20"
+                  className="group flex h-full items-start gap-4 rounded-md border border-border bg-surface p-5 transition-colors hover:bg-surface2 hover:border-text/20"
                 >
                   <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5 bg-surface2">
-                    <BespokeIcon kind={cat.slug} size={18} className="text-text/70" />
+                    <BespokeIcon kind={cat.slug} size={18} className="text-muted" />
                   </span>
                   <div className="min-w-0">
-                    <h2 className="text-body font-bold text-text group-hover:text-primary transition-colors leading-snug">
+                    <h2 className="text-body font-semibold text-text group-hover:text-primary transition-colors leading-snug">
                       {VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1}
                     </h2>
                     <p className="mt-1 text-meta leading-relaxed text-muted line-clamp-2">{cat.description}</p>
@@ -154,7 +152,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="mt-2 text-meta font-semibold text-primary hover:underline"
+              className={buttonClasses({ variant: 'secondary', className: 'mt-3' })}
             >
               Clear search
             </button>
@@ -163,7 +161,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
         <p className="mt-10 text-meta leading-relaxed text-muted">
           Categories appear once enough packs have cleared the filter to fill them. Ideas that failed are in the{' '}
-          <Link href="/kill-log" className="font-semibold text-text underline underline-offset-2">
+          <Link href="/kill-log" className={textLinkClass('font-medium')}>
             kill log
           </Link>{' '}
           with the sourced reason why.
@@ -171,6 +169,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
       </Section>
 
       <CtaBand
+        width="7xl"
         title="Or see everything at once."
         lead=""
         primary={{ href: '/', label: 'Browse every pack' }}

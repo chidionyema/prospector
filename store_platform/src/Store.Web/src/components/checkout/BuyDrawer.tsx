@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Icon, Modal } from '@/components/ui';
+import { buttonClasses, Icon, Modal } from '@/components/ui';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
@@ -8,6 +8,7 @@ import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { formatPrice, Pack } from '@/lib/api/client';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
+import { textLinkClass } from '@/components/ui';
 
 /**
  * Buy one pack without leaving the shelf.
@@ -95,7 +96,7 @@ function BuyDrawer({
               replaces was the two numbers sitting a line apart with neither one explained. */}
           <div className="flex items-baseline justify-between">
             <span className="text-meta font-semibold text-muted">One time price</span>
-            <span className="text-h2 font-black tracking-tight text-text">
+            <span className="text-h2 font-semibold text-text">
               {currency === 'GBP' ? priceLabel : formatPriceForMarket(pack.price, currency)}
             </span>
           </div>
@@ -134,7 +135,7 @@ function BuyDrawer({
                the buyer to the full page, which owns the "notify me" path. */
             <Link
               href={`/pack/${pack.id}`}
-              className="block w-full rounded-md bg-text py-4 text-center text-meta font-bold uppercase tracking-wide text-white"
+              className={buttonClasses({ size: 'lg', fullWidth: true })}
             >
               Checkout opens shortly, see the pack
             </Link>
@@ -146,27 +147,25 @@ function BuyDrawer({
         {pack.oneLine && <p className="text-meta leading-relaxed text-muted">{pack.oneLine}</p>}
 
         <div>
-     <span className="text-caption font-bold uppercase tracking-widest text-muted">
-            What you get
-          </span>
+          <span className="text-caption font-medium text-subtle">What you get</span>
           <ul className="mt-2 space-y-1.5">
             {PACK_CONTENTS.map((item) => (
               <li key={item.filename} className="flex items-start gap-2 text-meta text-text">
-                <span aria-hidden className="flex-none">{item.emoji}</span>
+                <Icon name="check" size={14} className="mt-1 flex-none text-success" />
                 <span>{item.title}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="space-y-2 border-t border-border/70 pt-4">
+        <div className="space-y-2 border-t border-border pt-4">
           {([
             { icon: 'shield', text: '14 day money back, no questions asked' },
             { icon: 'download', text: 'Instant download the moment you pay' },
             { icon: 'lock', text: `Secure checkout via ${providerLabel}` },
           ] as const).map((feat) => (
-            <div key={feat.text} className="flex items-center gap-3 text-caption font-medium text-muted">
-              <Icon name={feat.icon} size={14} className="text-text/60" />
+            <div key={feat.text} className="flex items-center gap-3 text-caption text-muted">
+              <Icon name={feat.icon} size={14} className="text-subtle" />
               {feat.text}
             </div>
           ))}
@@ -174,11 +173,11 @@ function BuyDrawer({
 
         <p className="text-caption leading-relaxed text-muted">
           A pack is grounded research, not a promise of business success. See our{' '}
-          <Link href="/refund" className="font-semibold text-primary hover:underline">
+          <Link href="/refund" className={textLinkClass()}>
             refund policy
           </Link>
           . The full evidence, every check, every cited source, is on the{' '}
-          <Link href={`/pack/${pack.id}`} className="font-semibold text-primary hover:underline">
+          <Link href={`/pack/${pack.id}`} className={textLinkClass()}>
             pack page
           </Link>
           .

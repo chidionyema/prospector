@@ -37,6 +37,7 @@ import {
   AlertTriangleIcon,
   ShoppingBagIcon,
   Trash2Icon,
+  FileTextIcon,
   PlusIcon as PlusSignIcon,
 } from "lucide-react";
 
@@ -89,6 +90,9 @@ const ICON_MAP = {
   // Basket: several packs, one payment.
   cart: ShoppingBagIcon,
   trash: Trash2Icon,
+  /* A deliverable in the bundle. Replaces the per-item emoji, which rendered as a different
+     piece of vendor artwork on every OS. */
+  document: FileTextIcon,
   plus: PlusSignIcon,
 } as const;
 

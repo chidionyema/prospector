@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { buttonClasses } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { formatPrice, Pack } from '@/lib/api/client';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
@@ -22,7 +23,7 @@ export interface PackBuyButtonProps {
    *  - `sticky`: the mobile sticky buy bar. Same checkout flow as the detail variant.
    */
   variant: 'card' | 'drawer' | 'detail' | 'sticky';
-  /** Override the label. Defaults to `Unlock this pack · {formatPrice(pack.price)}`. */
+  /** Override the label. Defaults to `Buy this pack` + the price as a second, mono span. */
   label?: string;
   /** Optional className passthrough for layout (width, margin, custom backgrounds). */
   className?: string;
@@ -121,24 +122,39 @@ export default function PackBuyButton({
   // the same number as the headline price directly above it.
   const priceLabel =
     currency === 'GBP' ? formatPrice(pack.price) : formatPriceForMarket(pack.price, currency);
-  const canonicalLabel = `Unlock this pack · ${priceLabel}`;
-  const visibleLabel = checkingOut ? 'Opening…' : label ?? canonicalLabel;
+  /*
+   * "Buy this pack", not "Unlock this pack" (brand v3, 2026-08-06).
+   *
+   * "Unlock" describes a mechanism (a paywall opening) rather than the transaction, and it is the
+   * verb of a subscription tier or a game currency. This shop sells one file, once. A buyer
+   * deciding whether to spend the money is served by the plainest possible word for what the
+   * button does, and the checkout that follows says "Pay".
+   *
+   * The price is a separate `font-mono` span rather than being welded into the label with a middot.
+   * Price is a quantity: it renders in the data voice everywhere else on the site (card footer,
+   * detail headline), and tabular figures are what make two prices comparable at a glance. It also
+   * makes the label translatable and the price replaceable without a template string.
+   *
+   * `aria-label` still carries both, so a screen reader hears one phrase rather than two
+   * unconnected fragments.
+   */
+  const actionLabel = label ?? 'Buy this pack';
+  const busy = Boolean(checkingOut);
 
-  // Canonical visual shape. Identical across every entry point; variant changes only the
-  // buy flow, never the markup. Brand v2: --primary is vermillion `#FF5A1F` /
-  // --primary-hover `#E64500` in globals.css; Tailwind v4 resolves `bg-primary` and
-  // `hover:bg-primary-hover` to those custom-property-backed color tokens.
-  const shapeClasses = cx(
-    'inline-flex items-center justify-center',
-    'rounded-md bg-primary text-on-primary',
-    'text-meta font-bold',
-    'px-6 py-3.5',
-    'transition-all duration-150',
-    'hover:bg-primary-hover',
-    'active:scale-[0.98]',
-    'disabled:cursor-not-allowed disabled:opacity-50',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
-  );
+  /*
+   * Canonical visual shape: `ui/Button.tsx` at size `lg`, CALLED rather than reproduced.
+   *
+   * This used to be a hand-written class string with a comment saying it "matches ui/Button.tsx
+   * size lg (h-12 / px-6 / text-body) rather than approximating it". Copying a shape and
+   * asserting in prose that the copy is faithful is how the site ended up with four different
+   * primary-CTA heights in the first place: the day `SIZES.lg` changes, every button on the site
+   * follows it except the one the buyer actually pays through, and nothing fails.
+   *
+   * `font-bold` is gone: no 700 weight is loaded (`_app.tsx` requests Geist 400/500/600), so it
+   * would have been synthesised by the browser -- a smeared 600 -- on the single most important
+   * control on the site. `weightAndCasePolicy.test.ts` now guards that tree-wide.
+   */
+  const shapeClasses = buttonClasses({ size: 'lg' });
 
   // Not buyable yet. The card / drawer flow cannot tell from here whether the drawer
   // WILL be buyable (the drawer's own `usePackCheckout` may differ), so it always
@@ -158,11 +174,18 @@ export default function PackBuyButton({
     <button
       type="button"
       onClick={handleClick}
-      disabled={disabled || checkingOut}
-      aria-label={visibleLabel}
+      disabled={disabled || busy}
+      aria-label={busy ? 'Opening…' : `${actionLabel} ${priceLabel}`}
       className={cx(shapeClasses, className)}
     >
-      {visibleLabel}
+      {busy ? (
+        'Opening…'
+      ) : (
+        <>
+          <span>{actionLabel}</span>
+          <span className="font-mono font-medium">{priceLabel}</span>
+        </>
+      )}
     </button>
   );
 }

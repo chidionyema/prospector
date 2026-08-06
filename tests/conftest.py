@@ -38,6 +38,17 @@ def _isolate_audit_log(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "_AUDIT_DIR", audit_dir)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_price_rationale(tmp_path, monkeypatch):
+    """Write D3 price-rationale records (price_rationale.py) under a per-test temp root.
+
+    The bridge writes one on every publish, and several tests drive that path. Without
+    this, a test run files fabricated derivation records into store/pricing/rationale/ —
+    the directory `PricePatchRequest.RationaleRef` points at for real, live prices. Same
+    class of leak as the audit log above, on the money rail instead of the run log."""
+    monkeypatch.setenv("PROSPECTOR_RATIONALE_ROOT", str(tmp_path / "rationale_root"))
+
+
 @pytest.fixture
 def cfg() -> Config:
     """Load real config from config.yaml (fixture mode wired by individual tests)."""

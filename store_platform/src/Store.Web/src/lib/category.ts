@@ -1,5 +1,5 @@
 /**
- * Presentation for the engine's `sector` facet: a colour, a gradient and an icon per sector.
+ * Presentation for the engine's `sector` facet: an icon and one dot colour per sector.
  *
  * This file used to infer the sector with six regexes over the pack's title and one-liner. That
  * is deleted (spec Part 10, AC-5) and must not come back. The regex table told buyers a metal
@@ -10,8 +10,13 @@
  * The rule now: `sector` comes from the API or the pack has no category. An untagged pack gets
  * the neutral `unlabelled` treatment, honest, and visibly different from a real sector.
  *
- * Class strings are FULL LITERALS (gradient + tint) so Tailwind keeps them at build time; never
- * interpolate them.
+ * Class strings are FULL LITERALS so Tailwind keeps them at build time; never interpolate them.
+ *
+ * `cover` (a 135deg two-stop gradient), `chip` (a tinted uppercase pill) and `accent` were deleted
+ * on 2026-08-06 with the gradient product card. Nothing rendered them once the card became a
+ * bordered white plate with an 8px dot, and a palette field kept "in case" is how a deleted visual
+ * language comes back. `lib/cover.ts` and `ui/CoverArt.tsx` went with them -- both were already
+ * unreferenced by any page.
  */
 import type { IconName } from '@/components/ui/Icon';
 import { SECTOR, label as facetLabel, type Sector } from '@/lib/facets';
@@ -29,63 +34,78 @@ export interface Category {
    */
   tagged: boolean;
   icon: IconName;
-  /** Full-height card cover gradient. */
-  cover: string;
-  /** Label-pill tint (bg + text + inset ring), reads on white. */
-  chip: string;
-  /** Small accent text colour. */
-  accent: string;
+  /**
+   * Background class for the 8px marker beside the sector label on a product card.
+   *
+   * NEUTRAL, and one value for every category. This replaced an eight-hue set (#6366F1 indigo,
+   * #059669 emerald, #D97706 amber, #3B82F6 sky, #64748B slate, #E11D48 rose, #8B5CF6 violet,
+   * #0D9488 teal) on 2026-08-06, for two measured reasons.
+   *
+   * 1. The hue could not identify a category, so it was never the discovery affordance it was
+   *    defended as. Twelve sectors were mapped onto eight palettes, and four pairs collided
+   *    outright: employment_pay and creative_rights were both VIOLET, housing_rental and
+   *    energy_planning both TEAL, trades_construction and retail_inventory both AMBER,
+   *    professional_services and other both SLATE. No buyer could tell those apart by colour,
+   *    which is the whole claim a category hue has to make.
+   * 2. They were the last hardcoded hex in `src/`, outside the token scale entirely, against a
+   *    direction of a neutral grey scale with hairline borders. On the money page the rose dot
+   *    measured as the ONLY red element on the whole page (rgb(225,29,72), 390x844) -- on a site
+   *    where red means KILLED in the filter log and the kill log, and nothing else.
+   *
+   * `--subtle` because this is the smallest ink allowed to read at all next to `--muted` text;
+   * `--faint` is documented as decoration that may never carry information, and at 8px it is
+   * invisible. The marker is still `aria-hidden`: the sector name sits immediately beside it and
+   * carries the meaning, which is what makes a purely decorative marker legal here.
+   *
+   * Held to one value by `__tests__/noArbitraryHex.test.ts`, which fails on any `bg-[#...]` in
+   * `src/` -- a palette drifts back one hex at a time, and a comment does not stop it.
+   */
+  dot: string;
 }
 
-type Palette = Pick<Category, 'icon' | 'cover' | 'chip' | 'accent'>;
+type Palette = Pick<Category, 'icon' | 'dot'>;
+
+/**
+ * One marker treatment for every tagged category. See the `dot` docblock above for why the hue
+ * set went: it collided four ways, so it identified nothing, and it was the last hardcoded hex.
+ *
+ * The palette constants below keep their old names. They now differ only by icon, which is the
+ * thing that actually distinguishes a category on the card, and renaming them to their icon
+ * would churn every row of PALETTE for no behaviour change.
+ */
+const DOT = 'bg-subtle';
 
 const INDIGO: Palette = {
   icon: 'gavel',
-  cover: 'bg-[linear-gradient(135deg,#4f46e5_0%,#7c3aed_100%)]',
-  chip: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20',
-  accent: 'text-indigo-600',
+  dot: DOT,
 };
 const EMERALD: Palette = {
   icon: 'home',
-  cover: 'bg-[linear-gradient(135deg,#0d9488_0%,#059669_100%)]',
-  chip: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
-  accent: 'text-emerald-700',
+  dot: DOT,
 };
 const AMBER: Palette = {
   icon: 'building',
-  cover: 'bg-[linear-gradient(135deg,#d97706_0%,#ea580c_100%)]',
-  chip: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/20',
-  accent: 'text-amber-700',
+  dot: DOT,
 };
 const SKY: Palette = {
   icon: 'wallet',
-  cover: 'bg-[linear-gradient(135deg,#2563eb_0%,#0284c7_100%)]',
-  chip: 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-600/20',
-  accent: 'text-sky-600',
+  dot: DOT,
 };
 const SLATE: Palette = {
   icon: 'briefcase',
-  cover: 'bg-[linear-gradient(135deg,#334155_0%,#4338ca_100%)]',
-  chip: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/20',
-  accent: 'text-slate-600',
+  dot: DOT,
 };
 const ROSE: Palette = {
   icon: 'handshake',
-  cover: 'bg-[linear-gradient(135deg,#be123c_0%,#db2777_100%)]',
-  chip: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
-  accent: 'text-rose-600',
+  dot: DOT,
 };
 const VIOLET: Palette = {
   icon: 'code',
-  cover: 'bg-[linear-gradient(135deg,#6d28d9_0%,#9333ea_100%)]',
-  chip: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20',
-  accent: 'text-violet-600',
+  dot: DOT,
 };
 const TEAL: Palette = {
   icon: 'landmark',
-  cover: 'bg-[linear-gradient(135deg,#0f766e_0%,#0891b2_100%)]',
-  chip: 'bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-600/20',
-  accent: 'text-teal-700',
+  dot: DOT,
 };
 
 /** One palette per canonical sector. Icons are `IconName` values (`components/ui/Icon.tsx`). */
@@ -120,9 +140,9 @@ export const UNLABELLED: Category = {
   label: 'Not yet tagged',
   tagged: false,
   icon: 'briefcase',
-  cover: 'bg-[linear-gradient(135deg,#0f172a_0%,#334155_100%)]',
-  chip: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20',
-  accent: 'text-slate-500',
+  // One step lighter than a tagged category's `--subtle` marker, so an untagged card reads as
+  // quieter rather than as a different kind of thing. Was #A1A1AA, off-token like the rest.
+  dot: 'bg-border-strong',
 };
 
 const CATEGORIES: Record<string, Category> = Object.fromEntries(

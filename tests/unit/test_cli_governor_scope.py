@@ -81,3 +81,26 @@ def test_env_override_isolates_a_run(tmp_path, monkeypatch):
     root = Path(cli_governor._slot_root("isolated"))
     assert str(tmp_path) in str(root)
     assert os.path.isdir(root)
+
+
+def test_relative_env_override_is_refused(tmp_path, monkeypatch):
+    """A relative override re-creates the per-checkout ceiling, so it must not be honoured.
+
+    The variable is named like a count, and on 2026-08-05 a session set it to "1" meaning
+    "one slot". `os.makedirs("1/cursor")` succeeds against whatever the cwd happens to be,
+    so the call returned a private, cwd-anchored slot directory and that process stopped
+    sharing the machine's ceiling — the exact multiplication the tests above exist to catch,
+    reached through the documented escape hatch instead of through `__file__`. The stray
+    `1/cursor/slot_0.lock` left in the repo root is what exposed it.
+    """
+    monkeypatch.setenv("PROSPECTOR_CLI_SLOTS", "1")
+    monkeypatch.chdir(tmp_path)
+
+    root = Path(cli_governor._slot_root("relative_override"))
+
+    assert not (tmp_path / "1").exists(), (
+        "a relative PROSPECTOR_CLI_SLOTS created a slot directory under the cwd, so this "
+        "run holds a private ceiling and the machine-wide cap no longer binds"
+    )
+    assert root.is_absolute()
+    assert root == Path(os.path.expanduser("~")) / ".prospector" / "cli_slots" / "relative_override"

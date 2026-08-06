@@ -92,10 +92,22 @@ describe('the free sample is not gated behind the capture', () => {
     expect(source).toMatch(/href="\/sample"/);
   });
 
-  it('asks for the address after the sample, tagged as its own placement', () => {
-    expect(source).toMatch(/<WaitlistForm\s+source="home-after-sample"/);
-    // The sample link must still appear before the form in source order; a capture that moved
-    // above the door would be a gate no matter how it was worded.
-    expect(source.indexOf('href="/sample"')).toBeLessThan(source.indexOf('home-after-sample'));
+  it('puts nothing between the reader and the sample link', () => {
+    // This replaces two assertions that pinned the WRONG artifact. They required a
+    // `<WaitlistForm source="home-after-sample">` to exist and to sit after the sample link in
+    // SOURCE ORDER, as a proxy for "the sample is not gated". Both broke when that band was
+    // deleted for being the home page's second email ask (brand v3, 2026-08-06) -- and the
+    // proxy had already stopped describing the page: the surviving captures render at
+    // index.tsx:543 and :557, above the sample link at :680, while the sample stayed exactly
+    // as reachable as before. Source order is not gating. A form earlier in the file gates
+    // nothing; a form is a gate only when the link stops working without it.
+    //
+    // So the source test now asserts only what source can honestly show -- the link is a plain
+    // href, not wrapped in a submit handler -- and the real property, that /sample opens cold
+    // with no address given, is proven against the running site in e2e/discovery.spec.ts.
+    expect(source).toMatch(/href="\/sample"/);
+    expect(source, 'the sample link must not be inside a form that could gate it').not.toMatch(
+      /<form[\s\S]{0,2000}href="\/sample"[\s\S]{0,2000}<\/form>/,
+    );
   });
 });

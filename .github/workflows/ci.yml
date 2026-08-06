@@ -129,6 +129,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The 523 vitest tests had NO enforcement point anywhere: this job ran typecheck +
+      # build only, and the pre-commit gate ran pytest, which cannot see a .tsx. A storefront
+      # unit test could go red and reach main with every check green.
+      - name: Unit tests (vitest)
+        run: npm test
+
       # NEXT_PUBLIC_* are inlined at build time. Set placeholder https values here so the
       # build exercises the same code path as production (CSP connect-src and the sitemap
       # both derive from them) instead of silently baking in localhost defaults.

@@ -64,6 +64,7 @@ behaviour. Never fail a run because the governor could not be set up.
 """
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 import threading
@@ -92,7 +93,22 @@ def _slot_root(name: str) -> str | None:
     # PROSPECTOR_CLI_SLOTS is the escape hatch: tests that need a private ceiling point it
     # at a tmpdir, and it is also the way to deliberately isolate a run from the machine's
     # shared budget. Unset — the normal case — every process lands in the same home dir.
+    #
+    # It is a DIRECTORY, and it must be absolute. The name reads like a count, and on
+    # 2026-08-05 a session set `PROSPECTOR_CLI_SLOTS=1` meaning "one slot": `_slot_root`
+    # then resolved `1/cursor` against the cwd, created it inside the checkout, and returned
+    # it — silently handing that process a private pool. That is the per-checkout ceiling
+    # this module exists to kill (see the module docstring), reached through the front door.
+    # A relative value is therefore refused, not honoured: the run falls back to the shared
+    # home directory, which is the safe direction to fail.
     override = os.environ.get("PROSPECTOR_CLI_SLOTS")
+    if override and not os.path.isabs(override):
+        logging.getLogger(__name__).warning(
+            "PROSPECTOR_CLI_SLOTS=%r is not an absolute path; it is a slot DIRECTORY, not a "
+            "slot count. Ignoring it and using the machine-wide ceiling.",
+            override,
+        )
+        override = None
     bases = [override] if override else []
     bases.append(os.path.join(os.path.expanduser("~"), ".prospector", "cli_slots"))
     # Last resort only. $TMPDIR is per-user on macOS but is also periodically swept, and a

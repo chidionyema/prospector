@@ -37,31 +37,124 @@ test('the first pack card is above the fold', async ({ page }) => {
   expect(fold - box!.y).toBeGreaterThan(MIN_VISIBLE_PX);
 });
 
-test('the three-question router refuses to route until the first two are answered', async ({ page }) => {
+/**
+ * The same bar, on a phone. This is a separate test because the project runs ONE Playwright
+ * project at 1280x720 (playwright.config.ts, `devices['Desktop Chrome']`), so the desktop fold
+ * test above physically cannot see a mobile regression -- and there was one, unnoticed while the
+ * desktop fold was fixed and guarded: the filter-log panel is the hero's right column on lg+,
+ * costing nothing vertically, and stacking it on a phone put the first pack card 1.23 screens
+ * down at 390x844, 1.37 at 360x780 and 1.08 at 430x932. An ecommerce home page with no product
+ * on the first screen, on every phone size measured.
+ *
+ * Three widths, not one, because the failure is a height budget and the panel's cost is fixed
+ * while the viewport is not: 360x780 was the worst case and the one a single 390x844 check would
+ * have missed by the widest margin.
+ */
+for (const [w, h, device] of [
+  [390, 844, 'iPhone 12/13/14'],
+  [360, 780, 'small Android'],
+  [430, 932, 'iPhone Pro Max'],
+] as const) {
+  test(`the first pack card is above the fold at ${w}x${h} (${device})`, async ({ page }) => {
+    const MIN_VISIBLE_PX = 40;
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/');
+    const box = await page.locator(cards).first().boundingBox();
+    expect(box).not.toBeNull();
+    expect(h - box!.y, `first card starts at y=${Math.round(box!.y)} on a ${h}px screen`).toBeGreaterThan(
+      MIN_VISIBLE_PX,
+    );
+  });
+}
+
+/**
+ * The filter-log panel renders twice in the HTML -- `hidden lg:block` in the hero, `lg:hidden`
+ * below the shelf -- because a single instance cannot be in two flow positions and the panel has
+ * to be beside the claim on desktop and after the product on mobile. That pair was removed once
+ * before as a bug (`index.tsx:692`), so this asserts the property that actually mattered: a
+ * reader sees it ONCE. A CSS typo that showed both would be invisible to a source-text test and
+ * obvious here.
+ */
+for (const [w, h, label] of [
+  [1280, 720, 'desktop'],
+  [390, 844, 'mobile'],
+] as const) {
+  test(`the filter-log panel is visible exactly once on ${label}`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/');
+    const panels = page.getByText('The filter log', { exact: true });
+    // Both copies are in the DOM by design; exactly one may be rendered.
+    expect(await panels.count(), 'both copies should exist in the HTML').toBe(2);
+    let visible = 0;
+    for (let i = 0; i < 2; i++) if (await panels.nth(i).isVisible()) visible++;
+    expect(visible, `${label} shows ${visible} filter-log panels`).toBe(1);
+  });
+}
+
+/**
+ * One email ask per screen, counted in the DOM.
+ *
+ * `index.tsx:537` already stated the rule in a comment -- "two email forms on one screen is a
+ * duplicate ask that also breaks selector uniqueness" -- and the shelf branch honoured it, but a
+ * second, unconditional waitlist band further down the page rendered under every branch, so both
+ * the shelf state and the empty state asked a stranger for the same address twice in the same
+ * words. No source-text test can see this: each form is correct where it is written, and the
+ * defect only exists once the page is composed. Counting rendered inputs is the only artifact
+ * that answers the question.
+ */
+for (const [label, url] of [
+  ['the shelf', '/'],
+  ['the empty state', '/?q=zzzzz-no-such-pack-anywhere'],
+] as const) {
+  test(`${label} asks for an email address at most once`, async ({ page }) => {
+    await page.goto(url);
+    await expect(page.locator('main').first()).toBeVisible();
+    const emails = page.locator('input[type="email"]');
+    // `toBeLessThanOrEqual`, not `toBe(1)`: a state that makes no ask at all is a product choice,
+    // whereas asking twice is always a defect.
+    expect(await emails.count(), `${url} renders more than one email ask`).toBeLessThanOrEqual(1);
+  });
+}
+
+/**
+ * The free sample opens cold, with no address given.
+ *
+ * The home page promises "No payment, no email." two lines above a waitlist form, and the two
+ * cannot both be true if the sample is gated. This was guarded in `src/lib/__tests__/sources.test.ts`
+ * by SOURCE ORDER -- the sample link had to appear before a particular `<WaitlistForm>` in the file
+ * -- which is not what gating means. A form earlier in the file gates nothing, and that assertion
+ * went red on 2026-08-06 for a band deletion that changed the reader's access not at all. The only
+ * thing that answers "is it gated" is walking in off the street and opening it.
+ */
+test('the free sample opens without giving an email', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('link', { name: /sample/i }).first().click();
+  await expect(page).toHaveURL(/\/sample/);
+  // The report itself, not just a 200: a gate that renders a capture panel at /sample would
+  // still be a page load. The evidence section is the thing being given away.
+  const evidence = page.getByRole('heading', { name: /Every check, every source/i });
+  await expect(evidence).toBeVisible();
+  await expect(page.locator('a[href^="http"]').first()).toBeVisible();
 
-  // The router is collapsed on load, so the form has to be asked for before any of it exists.
-  // Without this click Playwright fails on actionability against a button that is not rendered
-  // at all — which would read as "the disabled-until-answered rule broke", not "it is closed".
-  await page.getByRole('button', { name: 'Answer three questions' }).click();
-
-  const submit = page.getByRole('button', { name: 'Show me mine' });
-  await expect(submit).toBeDisabled();
-
-  // Q1 then Q2. Copy is verbatim from the spec, so these labels are part of the contract.
-  await page.getByRole('button', { name: 'I can build software' }).click();
-  await expect(submit).toBeDisabled(); // Q2 still unanswered
-  await page.getByRole('button', { name: 'Evenings and weekends' }).click();
-  await expect(submit).toBeEnabled();
-
-  await submit.click();
-  // Either outcome is a pass. On an untagged catalogue nothing scores, and saying so is the
-  // required behaviour (AC-8) — a winner appearing there would be the bug.
-  await expect(
-    page
-      .getByText('Build this one.')
-      .or(page.getByText("We haven't built yours yet", { exact: false })),
-  ).toBeVisible();
+  // NOT `count() === 0`. /sample does carry one ask -- `WaitlistCallout` at sample.tsx:259, the
+  // last element on the page, under the buy CTA. An ask below the thing you already read is not
+  // a gate; a gate is an ask you must clear FIRST. So the assertion is document ORDER against
+  // the evidence, which is what the word means, plus the one-ask-per-screen rule this page has
+  // to obey like every other.
+  const asks = page.locator('input[type="email"]');
+  expect(await asks.count(), '/sample must make at most one ask').toBeLessThanOrEqual(1);
+  if (await asks.count()) {
+    const askIsAfterEvidence = await page.evaluate(() => {
+      const heading = [...document.querySelectorAll('h2')].find((h) =>
+        /Every check, every source/i.test(h.textContent || ''),
+      );
+      const input = document.querySelector('input[type="email"]');
+      if (!heading || !input) return false;
+      // DOCUMENT_POSITION_FOLLOWING === 4: the input comes after the heading.
+      return Boolean(heading.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(askIsAfterEvidence, 'an email ask above the evidence is a gate on the free sample').toBe(true);
+  }
 });
 
 test('the command palette opens by click and by ⌘K, and searches as you type', async ({ page }) => {
@@ -154,10 +247,21 @@ test('the privacy notice states the waitlist basis and its retention', async ({ 
 // that has to be made with the re-verification, not by a test quietly agreeing.
 const QUARANTINED_2026_07_31 = ['42bf9861ecc08079', 'f7783abea10a4216', '54f775d91cbe09d8'];
 
+// THE SECOND HALF, found 2026-08-05: the API was fixed, the storefront was not. Measured against
+// production for all three ids below:
+//
+//     api.mumchimp.com/catalog/{id}  ->  404, and absent from /catalog   (the fix worked)
+//     mumchimp.com/pack/{id}         ->  200, robots "index, follow"     (the fix was undone here)
+//
+// `getServerSideProps` caught every fetch failure into `props: { pack: null }`, which Next serves
+// as a 200. So a quarantined pack still had a live, indexable URL -- a soft-404. This test was
+// red for months and read as a stale expectation rather than the open defect it was.
 for (const id of QUARANTINED_2026_07_31) {
   test(`a withdrawn pack is gone, not just unlisted: ${id}`, async ({ page }) => {
     const res = await page.goto(`/pack/${id}`);
-    expect(res?.status()).toBe(404);
+    // A HARD 404. A 200 carrying an error panel satisfies every visible expectation below while
+    // still telling a crawler the URL is a live page, which is the exact defect this caught.
+    expect(res?.status(), 'a withdrawn pack must 404, not soft-404').toBe(404);
     await expect(page.getByRole('button', { name: /instant access/i })).toHaveCount(0);
   });
 }

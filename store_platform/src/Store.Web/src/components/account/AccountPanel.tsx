@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Input, Money, SegmentedControl, Skeleton, useToast } from '@/components/ui';
+import { Button, Card, EmptyState, Input, Money, SegmentedControl, Skeleton, textLinkClass, useToast } from '@/components/ui';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { auth, social, AuthError, type Order, type ProfileEdit, type Session } from '@/lib/api/auth';
 import { API_BASE_URL } from '@/lib/config';
@@ -140,7 +140,7 @@ function OrdersTab() {
       {orders.map((order) => (
         <Card key={order.id} className="p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-caption uppercase tracking-wide text-muted">
+            <p className="text-caption text-muted">
               {new Date(order.created_at).toLocaleDateString()} · {order.status}
             </p>
             <Money cents={order.amount_pence} currency={order.currency} />
@@ -154,7 +154,7 @@ function OrdersTab() {
                   // short-lived presigned URL, and the browser must follow it as a navigation.
                   <a
                     href={downloadHref(item.download_path)}
-                    className="text-body font-semibold text-primary underline"
+                    className={textLinkClass('font-medium')}
                   >
                     Download
                   </a>

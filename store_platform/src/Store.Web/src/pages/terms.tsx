@@ -10,6 +10,7 @@ import Link from 'next/link';
 import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/LegalDoc';
 import { LEGAL } from '@/lib/config';
 import Disclaimer from '@/components/Disclaimer';
+import { textLinkClass } from '@/components/ui';
 
 /**
  * Terms of Service for the Mumchimp digital-download storefront.
@@ -68,7 +69,7 @@ export default function TermsPage() {
         link is made available. It is your responsibility to download the file promptly and to
         ensure that your email address is correct at the time of purchase. If you experience a
         technical problem preventing download, contact us at{' '}
-        <a href={`mailto:${LEGAL.supportEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
           {LEGAL.supportEmail}
         </a>{' '}
         within 14 days of purchase.
@@ -155,15 +156,15 @@ export default function TermsPage() {
       <LegalHeading>11. Contact</LegalHeading>
       <LegalText>
         Questions about these Terms or your purchase:{' '}
-        <a href={`mailto:${LEGAL.contactEmail}`} className="text-primary hover:underline">
+        <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
         </a>
         . Operator: {LEGAL.legalName}, {LEGAL.address}. For our refund policy, see{' '}
-        <Link href="/refund" className="text-primary hover:underline">
+        <Link href="/refund" className={textLinkClass()}>
           Refund Policy
         </Link>
         . For privacy, see our{' '}
-        <Link href="/privacy" className="text-primary hover:underline">
+        <Link href="/privacy" className={textLinkClass()}>
           Privacy Policy
         </Link>
         .

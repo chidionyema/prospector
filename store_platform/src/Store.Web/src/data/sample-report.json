@@ -18,10 +18,27 @@
   },
   "premortem": {
     "strongestAlternative": "The homeowner can hire a structural engineer (e.g., £500-1000 per inspection) or rely on the warranty provider's own surveyor (often free but superficial).",
-    "whyDurable": ""
+    "whyDurable": "",
+    "sources": [
+      {
+        "url": "https://snagged.co.uk/",
+        "domain": "snagged.co.uk",
+        "label": "Snagged, Independent Snagging Surveys for New-Build Homes"
+      },
+      {
+        "url": "https://www.nhqb.org.uk/wp-content/uploads/2026/02/NHQB-PCI-Checklist-house-V2-March-2026.pdf",
+        "domain": "nhqb.org.uk",
+        "label": ""
+      },
+      {
+        "url": "https://snagbusterz.co.uk/packages/",
+        "domain": "snagbusterz.co.uk",
+        "label": "Snagging Inspection Cost | UK | Snagbusterz"
+      }
+    ]
   },
   "adversarial": {
-    "killCase": "The market for new-build snagging inspections is already highly commoditized and served by established, accredited firms that provide the exact services proposed (thermal imaging, fixed-fee reports, drone inspections) (a95e5536bce78462). The core value proposition of a 'proprietary checklist' is invalidated, as competitors already align their inspections with industry-standard benchmarks like NHQB and NHBC guidelines (e646bf90d84a4530, a95e5536bce78462). Furthermore, potential customers prioritize RPSA accreditation and insurance, creating high barriers to entry for a new solo operator attempting to compete on price alone in an already fixed-price, transparently-marketed landscape (29ee41a1d1cf353d, a95e5536bce78462).",
+    "killCase": "The market for new-build snagging inspections is already highly commoditized and served by established, accredited firms that provide the exact services proposed (thermal imaging, fixed-fee reports, drone inspections). The core value proposition of a 'proprietary checklist' is invalidated, as competitors already align their inspections with industry-standard benchmarks like NHQB and NHBC guidelines. Furthermore, potential customers prioritize RPSA accreditation and insurance, creating high barriers to entry for a new solo operator attempting to compete on price alone in an already fixed-price, transparently-marketed landscape.",
     "decisive": false
   },
   "checks": [
@@ -34,7 +51,8 @@
       "sources": [
         {
           "url": "https://snagging-inspections.co.uk/",
-          "label": "Snagging Inspections for New Build Properties , Best Snagging Inspections UK"
+          "domain": "snagging-inspections.co.uk",
+          "label": "Snagging Inspections for New Build Properties, Best Snagging Inspections UK"
         }
       ]
     },
@@ -47,6 +65,7 @@
       "sources": [
         {
           "url": "https://snagbusterz.co.uk/packages/",
+          "domain": "snagbusterz.co.uk",
           "label": "Snagging Inspection Cost | UK | Snagbusterz"
         }
       ]
@@ -60,6 +79,7 @@
       "sources": [
         {
           "url": "https://nwsnagsurveys.com/new-build-snagging-surveys/",
+          "domain": "nwsnagsurveys.com",
           "label": "New Build Snagging Surveys, NW Snag Survey, NW Snag Surveys"
         }
       ]
@@ -73,7 +93,8 @@
       "sources": [
         {
           "url": "https://www.nhqb.org.uk/wp-content/uploads/2026/02/NHQB-PCI-Checklist-house-V2-March-2026.pdf",
-          "label": "INTRODUCTORY NOTES"
+          "domain": "nhqb.org.uk",
+          "label": ""
         }
       ]
     },
@@ -86,7 +107,8 @@
       "sources": [
         {
           "url": "https://snaglistpro.co.uk/pre-completion-inspection/",
-          "label": "- Sample Report"
+          "domain": "snaglistpro.co.uk",
+          "label": "Sample Report"
         }
       ]
     },
@@ -99,6 +121,7 @@
       "sources": [
         {
           "url": "https://nwsnagsurveys.com/new-build-snagging-surveys/",
+          "domain": "nwsnagsurveys.com",
           "label": "New Build Snagging Surveys, NW Snag Survey, NW Snag Surveys"
         }
       ]
@@ -112,7 +135,8 @@
       "sources": [
         {
           "url": "https://snagging-inspections.co.uk/",
-          "label": "Snagging Inspections for New Build Properties , Best Snagging Inspections UK"
+          "domain": "snagging-inspections.co.uk",
+          "label": "Snagging Inspections for New Build Properties, Best Snagging Inspections UK"
         }
       ]
     },
@@ -125,6 +149,7 @@
       "sources": [
         {
           "url": "https://snagged.co.uk/",
+          "domain": "snagged.co.uk",
           "label": "Snagged, Independent Snagging Surveys for New-Build Homes"
         }
       ]

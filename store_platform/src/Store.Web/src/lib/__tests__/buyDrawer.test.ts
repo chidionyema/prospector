@@ -87,8 +87,20 @@ describe('the buy path is shared, not copied', () => {
 describe('the shelf keeps opening the pack as its primary action', () => {
   const index = readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8');
 
-  it('still leads with View vetted blueprint on the spotlight card', () => {
-    expect(index).toContain('View vetted blueprint');
+  it('still leads with opening the pack, not with buying it', () => {
+    /*
+     * This pinned the literal copy "View vetted blueprint" on `SpotlightCard`. That component was
+     * deleted in brand v3 (it was a second product card with its own rules sitting above the grid
+     * of the first kind, showing the pack that was already the first card in it), so the literal
+     * cannot be asserted. The CLAIM it stood for is what matters and still holds: the shelf's
+     * primary action opens the pack page, and the drawer is reached from there -- a card that
+     * checks out in place sells before the evidence has been seen.
+     */
+    expect(index, 'the card must link to the pack page').toMatch(/href=\{`\/pack\/\$\{pack\.id\}`\}/);
+    expect(index, 'the card must label that action').toContain('View pack');
+    expect(index, 'the shelf card must not open checkout directly').not.toMatch(
+      /<PackBuyButton|openDrawer\(/,
+    );
   });
 
   it('mounts exactly one drawer for the whole page', () => {

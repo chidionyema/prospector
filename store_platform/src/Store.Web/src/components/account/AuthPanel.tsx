@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button, Card, Checkbox, Input } from '@/components/ui';
+import { Button, Card, Checkbox, Input, textLinkClass } from '@/components/ui';
 import { SocialSignIn } from '@/components/account/SocialSignIn';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { auth, AuthError } from '@/lib/api/auth';
@@ -269,8 +269,8 @@ export function AuthPanel({ initial, returnTo }: AuthPanelProps) {
             <Checkbox
               label={
                 <>
-                  I agree to the <Link href="/terms" className="underline">terms</Link> and{' '}
-                  <Link href="/privacy" className="underline">privacy policy</Link>.
+                  I agree to the <Link href="/terms" className={textLinkClass()}>terms</Link> and{' '}
+                  <Link href="/privacy" className={textLinkClass()}>privacy policy</Link>.
                 </>
               }
               checked={tos}

@@ -3,11 +3,16 @@
  * Screens compose these; they never reach for raw <button>/<input> or raw palette
  * (enforced by ESLint + scripts/check-conformance.mjs). See docs/ux/UI-STANDARDS.md §2.
  */
-export { Button } from './Button';
-export type { ButtonProps, ButtonVariant } from './Button';
+export { Button, buttonClasses, chipClasses } from './Button';
+export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
+
+export { textLinkClass } from './TextLink';
 
 export { Input } from './Input';
 export type { InputProps } from './Input';
+
+export { SearchInput } from './SearchInput';
+export type { SearchInputProps } from './SearchInput';
 
 export { Select } from './Select';
 export type { SelectProps } from './Select';
@@ -29,7 +34,6 @@ export { Logo } from './Logo';
 export { Field, describedBy } from './Field';
 export type { FieldProps } from './Field';
 
-export { CoverArt } from './CoverArt';
 
 export { Card } from './Card';
 export type { CardProps } from './Card';
