@@ -126,12 +126,13 @@ class TestDaemonCannotClobberProduction:
 
 
 class TestWatchedOperatorsDedupe:
-    def test_no_duplicate_cursor_cli(self):
+    def test_a_brain_on_both_chains_is_watched_once(self):
+        # claude_cli is on BOTH chains after the 2026-08-06 cursor_cli removal, so this
+        # dedupe is now load-bearing on the real config rather than a hypothetical.
         ops = watched_operators({
-            "operator": ["cursor_cli", "claude_cli", "minimax"],
-            "artifact_operator": ["cursor_cli", "claude_cli"],
+            "operator": ["claude_cli", "minimax"],
+            "artifact_operator": ["claude_cli"],
         })
-        assert ops.count("cursor_cli") == 1
         assert ops.count("claude_cli") == 1
         assert "minimax" in ops
         assert "deepseek" in ops

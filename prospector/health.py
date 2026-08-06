@@ -48,6 +48,27 @@ _MAX_DEAD_S = 24 * 3600.0
 # real recovery is picked up soon (is_dead self-expires, then the provider is retried).
 DEFAULT_EXHAUSTION_S = 3600.0
 
+# BACKPRESSURE (HTTP 429 / "overloaded") is not a spent allowance — the provider is alive and
+# asking for a shorter queue. It gets the floor, not the hour. Measured 2026-08-06: nine
+# 3600s marks on a `claude_cli` that answered a direct probe OK; see errors.py.
+TRANSIENT_EXHAUSTION_S = _MIN_DEAD_S  # 60s
+
+# HALF-OPEN PROBE. The docstring above has always promised self-healing ("then transparently
+# retries it"), but the only retry was at the FAR END of the window: `is_dead` returned True
+# for the whole hour and `FallbackOperator._raw` skips a dead brain without probing it. So a
+# provider that recovered after 90 seconds stayed benched for 3600, and every ruling in that
+# window fell to the emergency tail and came back `provisional` — owing a full re-vet for an
+# answer the moat could have given.
+#
+# Now: after _PROBE_AFTER_S, exactly ONE caller is let through to try the provider for real.
+# Success clears the mark (operator.py already calls `clear` on success); failure re-marks with
+# a doubled window (strike count), so a genuinely dead brain still backs off geometrically
+# instead of being hammered. The claim is written to the shared JSON file under the lock, so
+# two threads — or the daemon and a drain in separate processes — cannot both take the probe.
+_PROBE_AFTER_S = 120.0
+_PROBE_BACKOFF_MULT = 2.0
+_MAX_STRIKES = 6  # 120s -> 2h of probe spacing; the dead_until window still caps skipping
+
 
 class ProviderHealth:
     """Reads/writes per-provider 'dead until <epoch>' marks to a JSON file.
@@ -80,7 +101,11 @@ class ProviderHealth:
             logger.warning(f"provider_health unwritable, continuing: {e}", extra={"path": str(self._path)})
 
     def dead_until(self, name: str) -> Optional[float]:
-        """Epoch until which `name` is known-exhausted, or None if not / expired."""
+        """Epoch until which `name` is known-exhausted, or None if not / expired.
+
+        This is the RAW mark, deliberately unaffected by the half-open probe: readers that
+        REPORT state (the state probe, the control centre, alerts) want the truth, not the
+        one call that is being let through to measure it."""
         entry = self._load().get(name)
         if not entry:
             return None
@@ -88,28 +113,97 @@ class ProviderHealth:
         return until if until > self._clock() else None
 
     def is_dead(self, name: str) -> bool:
-        return self.dead_until(name) is not None
+        """True if `name` should be SKIPPED on this call.
 
-    def mark_exhausted(self, name: str, dead_for_s: float) -> None:
-        """Record that `name` is out of quota for `dead_for_s` seconds from now."""
-        dead_for_s = max(_MIN_DEAD_S, min(_MAX_DEAD_S, float(dead_for_s)))
-        until = self._clock() + dead_for_s
+        False either because the window expired, OR because this caller just claimed the
+        half-open probe slot — the circuit is half-open and this one call finds out for real.
+        A False therefore means "try it", not "known healthy"; the caller learns the truth by
+        making the call, and `clear()` on success is what actually ends the outage."""
+        if self.dead_until(name) is None:
+            return False
+        return not self._claim_probe(name)
+
+    def _probe_spacing(self, strikes: int) -> float:
+        """Seconds between half-open probes after `strikes` consecutive failures."""
+        return _PROBE_AFTER_S * (_PROBE_BACKOFF_MULT ** (min(max(strikes, 1), _MAX_STRIKES) - 1))
+
+    def _claim_probe(self, name: str) -> bool:
+        """Atomically take the single probe slot for `name`, or return False.
+
+        The claim is written to the shared file under the lock, so concurrent vet workers —
+        and a daemon and a `vet --resume` drain running as SEPARATE PROCESSES against the same
+        store/ — cannot each decide they are the prober and stampede a struggling brain. That
+        stampede is not hypothetical: the 2026-08-06 flap happened with exactly those two
+        processes competing for the same subscription CLI."""
+        now = self._clock()
         with self._lock:
             data = self._load()
-            data[name] = {"dead_until": until, "marked_at": self._clock(),
-                          "dead_for_s": round(dead_for_s, 1)}
+            entry = data.get(name)
+            if not entry:
+                return False
+            if float(entry.get("probe_at", 0) or 0) > now:
+                return False
+            entry["probe_at"] = now + self._probe_spacing(int(entry.get("strikes", 1) or 1))
+            entry["probes"] = int(entry.get("probes", 0) or 0) + 1
+            data[name] = entry
+            self._save(data)
+        logger.info(
+            f"Provider {name!r} half-open: letting one call through to re-probe",
+            extra={"provider": name})
+        return True
+
+    def mark_exhausted(self, name: str, dead_for_s: float, *, error: str = "") -> None:
+        """Record that `name` is out of quota (or backpressured) for `dead_for_s` seconds.
+
+        Consecutive marks — a half-open probe that failed again — escalate `strikes`, which
+        widens the spacing between probes. Any successful call calls `clear()` and resets it,
+        so an isolated blip never accumulates into a long back-off.
+
+        `error` is persisted and logged in the MESSAGE, not only in `extra`. It used to live
+        in `extra` alone, which this project's formatter drops: on 2026-08-06 the log showed
+        nine `marked exhausted for ~3600s` lines and not one of them said why, so the shape of
+        the failure had to be inferred from timing. A mark that cannot be diagnosed from the
+        log is a mark that gets mis-tuned."""
+        dead_for_s = max(_MIN_DEAD_S, min(_MAX_DEAD_S, float(dead_for_s)))
+        now = self._clock()
+        with self._lock:
+            data = self._load()
+            prev = data.get(name) or {}
+            # A mark that is still live means this is a REPEAT failure (the probe went out and
+            # came back dead), not a fresh incident.
+            repeat = float(prev.get("dead_until", 0) or 0) > now
+            strikes = (int(prev.get("strikes", 0) or 0) + 1) if repeat else 1
+            # The first re-probe is deliberately much sooner than the window: the window is a
+            # guess parsed from (or defaulted for) an error string; the probe is a measurement.
+            probe_in = min(self._probe_spacing(strikes), dead_for_s)
+            data[name] = {"dead_until": now + dead_for_s, "marked_at": now,
+                          "dead_for_s": round(dead_for_s, 1), "strikes": strikes,
+                          "probe_at": now + probe_in,
+                          "last_error": (error or "")[:200]}
             self._save(data)
         logger.warning(
-            f"Provider {name!r} marked exhausted for ~{int(dead_for_s)}s (persisted)",
-            extra={"provider": name, "dead_for_s": round(dead_for_s, 1)})
+            f"Provider {name!r} marked exhausted for ~{int(dead_for_s)}s "
+            f"(strike {strikes}, re-probe in ~{int(probe_in)}s): {(error or 'no error text')[:160]}",
+            extra={"provider": name, "dead_for_s": round(dead_for_s, 1),
+                   "strikes": strikes, "error": (error or "")[:200]})
 
     def clear(self, name: str) -> None:
-        """A successful call proves `name` is alive — drop any stale dead mark."""
+        """A successful call proves `name` is alive — drop any stale dead mark.
+
+        Logged at WARNING when it ends a live outage, so recovery is as visible in the log as
+        the failure was. A self-healing system that heals silently is indistinguishable from
+        one that never broke, and that is how nine marks in 70 minutes went unnoticed."""
         with self._lock:
             data = self._load()
-            if name in data:
-                del data[name]
-                self._save(data)
+            entry = data.pop(name, None)
+            if entry is None:
+                return
+            self._save(data)
+        if float(entry.get("dead_until", 0) or 0) > self._clock():
+            logger.warning(
+                f"Provider {name!r} RECOVERED on a live call after "
+                f"{int(entry.get('strikes', 1) or 1)} strike(s); dead mark cleared",
+                extra={"provider": name, "strikes": entry.get("strikes")})
 
 
 _DEFAULT: Optional[ProviderHealth] = None

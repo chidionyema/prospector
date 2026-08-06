@@ -20,12 +20,11 @@ from pathlib import Path
 from typing import Optional
 
 # Max candidates vetted in parallel. Each vet drives slow CLI subprocesses, so the
-# real throughput ceiling is the grounding / Cursor concurrency; this caps how many
-# candidate vets are in flight at once. Sourced from config (retrieval.vet_workers).
-# Align with retrieval.cursor_concurrency + retrieval.claude_concurrency (and export
-# PROSPECTOR_CURSOR_CONCURRENCY= that same value in ops shells / queue_yield_batch.sh)
-# so workers do not self-induce queue_timeout. PROSPECTOR_VET_WORKERS overrides for ops.
-# Not a verdict knob.
+# real throughput ceiling is retrieval.claude_concurrency; this caps how many candidate
+# vets are in flight at once. Sourced from config (retrieval.vet_workers).
+# Keep it <= retrieval.claude_concurrency so workers do not self-induce queue_timeout —
+# oversubscribing the CLI is what produced the ~3s HTTP-429 failures that flapped the moat
+# on 2026-08-06. PROSPECTOR_VET_WORKERS overrides for ops. Not a verdict knob.
 def _vet_workers(cfg) -> int:
     env = os.environ.get("PROSPECTOR_VET_WORKERS")
     if env:
@@ -41,13 +40,6 @@ def _sync_cli_concurrency(cfg) -> None:
     try:
         from .claude_cli import configure_concurrency as _claude_conc
         _claude_conc(int(getattr(r, "claude_concurrency", 2) or 2))
-    except Exception:
-        pass
-    try:
-        from .cursor_cli import configure_concurrency as _cursor_conc
-        _cursor_conc(int(getattr(r, "cursor_concurrency", None)
-                         or getattr(r, "claude_concurrency", 2)
-                         or 2))
     except Exception:
         pass
 
@@ -1563,8 +1555,7 @@ def _cmd_operators(args) -> None:
     available_ops = []  # list of (kind, op, elapsed_or_None)
     cfg = load_config(args.config if args.config else None)
 
-    for kind in ("deepseek", "minimax",
-                 "cursor_cli", "claude_cli"):
+    for kind in ("deepseek", "minimax", "claude_cli"):
         print(f"\n  {kind:15s}", end="", flush=True)
         try:
             op = _build_operator(kind, cfg, fast=True)
@@ -2097,7 +2088,7 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    vet_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     vet_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane to judge against (e.g. side_hustle, venture). "
@@ -2137,7 +2128,7 @@ def main() -> None:
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    sig_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")
@@ -2170,7 +2161,7 @@ def main() -> None:
                        help="Number of candidates to generate (default: config candidates_per_signal)")
     gen_p.add_argument("--exploration", type=float, default=None, metavar="X",
                        help="Override exploration level 0-1 (default: adaptive)")
-    gen_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    gen_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     gen_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -2209,7 +2200,7 @@ def main() -> None:
                        metavar="X", help="Only replicate PASSes scoring at or above X")
     rep_p.add_argument("--dry-run", dest="dry_run", action="store_true",
                        help="List what would be replicated; run no checks")
-    rep_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    rep_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     rep_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -2232,7 +2223,7 @@ def main() -> None:
                         help="Only surface + save signals; do not generate or vet")
     disc_p.add_argument("--no-save", dest="no_save", action="store_true",
                         help="Do not write discovered signals to signals/")
-    disc_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    disc_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                         help="Override operator from config")
     disc_p.add_argument("--lane", metavar="NAME",
                         help="Pin the sweep to a single ambition lane (default: multi-lane "
@@ -2313,7 +2304,7 @@ def main() -> None:
     probe_p.add_argument("--set", metavar="PATH", required=True,
                          help="JSONL calibration set: one "
                               '{"title","one_liner","expected":"pass|kill"} per line')
-    probe_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"])
+    probe_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"])
     probe_p.add_argument("--fixtures", metavar="PATH",
                          help="Path to fixtures JSON (offline probe)")
     probe_p.add_argument("--lane", metavar="NAME")

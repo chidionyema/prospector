@@ -169,6 +169,46 @@ def _resume_per_tick(cfg) -> int:
     return max(0, int(getattr(schedule, "resume_per_tick", _RESUME_PER_TICK_DEFAULT) or 0))
 
 
+def _moat_brains(cfg) -> list[str]:
+    """The trusted brains on this config's verdict chain, in order."""
+    from prospector.operator import MOAT_PRIMARY
+    ops = getattr(cfg, "operator", None) or []
+    ops = [ops] if isinstance(ops, str) else list(ops)
+    return [str(o) for o in ops if str(o) in MOAT_PRIMARY]
+
+
+def _moat_blind_reason(cfg) -> str:
+    """Why this tick must not run, or "" if the moat can rule.
+
+    Generation had NO provider-health precondition until 2026-08-06: `run_tick` called
+    `gen(cfg, batch_size)` unconditionally, so the daemon happily generated a full batch while
+    every trusted brain carried a live dead mark. What came out was 15 candidates the moat
+    could not rule, each one owing a full re-vet later. Meanwhile a `vet --resume` drain was
+    running to clear exactly that backlog, and the two competed for the same subscription CLI.
+    The system was manufacturing its own backlog faster than it could pay it down.
+
+    A tick that cannot verify has nothing worth doing: generation is only useful if the moat
+    can then rule on it, and the drain needs the same brains. So skip the whole tick.
+
+    Uses `dead_until()`, NOT `is_dead()`: `is_dead` can CLAIM the half-open probe slot
+    (health.py), and a bookkeeping check must never consume the one call whose job is to
+    measure recovery. This reads the mark; it does not spend the probe.
+    """
+    from prospector.health import get_health
+    brains = _moat_brains(cfg)
+    if not brains:
+        # No trusted brain is even configured. That is a config error, not an outage — let it
+        # surface downstream as a loud failure rather than a quiet skipped tick.
+        return ""
+    health = get_health()
+    now = datetime.now(timezone.utc).timestamp()
+    marks = {b: health.dead_until(b) for b in brains}
+    if any(v is None for v in marks.values()):
+        return ""
+    detail = ", ".join(f"{b} for {int(v - now)}s more" for b, v in sorted(marks.items()))
+    return f"moat blind: every trusted brain is marked dead ({detail})"
+
+
 def _default_generate(cfg, batch_size: int) -> dict:
     """Run one bounded blue-sky generation batch in-process and publish PASSes.
 
@@ -323,6 +363,11 @@ def _tick_unproductive(tick: dict) -> bool:
     """True if a real (non-dry, guard-allowed) tick failed or stocked nothing — retry soon."""
     if tick.get("error"):
         return True
+    # A moat-blind skip is unproductive by definition — nothing was stocked. It must use the
+    # escalating retry (5m, 10m, 20m…) rather than the full 2h cadence, so a moat that heals in
+    # ninety seconds is picked up in minutes instead of hours.
+    if tick.get("moat_blind"):
+        return True
     if tick.get("allowed") and not tick.get("dry_run"):
         res = tick.get("result") or {}
         if res.get("dossiers", 0) == 0:
@@ -371,6 +416,29 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     if dry_run:
         logger.info("Dry run: guard passed (%s); would generate %d candidates", decision.reason, batch_size)
         _append_tick(cfg, tick)
+        return tick
+
+    # MOAT PREFLIGHT. Checked after the guard (spend/PAUSE still own the money rails) and
+    # before any work, because both halves of a tick — the resume drain and generation — need a
+    # trusted brain. Generating into a blind moat produces `provisional` rows that cannot
+    # publish and must be re-vetted, i.e. it pays twice for one answer while the moat is the
+    # scarce resource. Skipped only when EVERY trusted brain is marked dead; one live brain is
+    # enough to run.
+    #
+    # It deliberately applies to an injected `generate_fn` too. Exempting the test seam would
+    # make the preflight unprovable by the suite — the same shape as the 2026-08-06 defect
+    # where a copy fix was "verified" by a test that read only the one file that was edited.
+    blind = _moat_blind_reason(cfg)
+    if blind:
+        tick["moat_blind"] = True
+        tick["reason"] = blind
+        tick["batch_size"] = None
+        logger.critical("Tick skipped: %s", blind)  # CRITICAL: below it never reaches the
+        # daemon's launchd log at all (verified 2026-08-05), and a tick that silently does
+        # nothing is exactly the invisible degradation this whole change is about.
+        print(f"⏸ tick skipped — {blind}", file=sys.stderr, flush=True)
+        _append_tick(cfg, tick)
+        _emit_tick_alerts(cfg, tick)
         return tick
 
     gen = generate_fn or _default_generate

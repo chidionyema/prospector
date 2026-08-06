@@ -87,13 +87,13 @@ class Retrieval:
     queue_timeout: int = 45             # seconds to wait for a concurrency slot before failover
     # Physical load governors (decouple logical candidate concurrency from heavy CLI
     # subprocess load). Config is the single source of truth; env overrides for ops:
-    #   PROSPECTOR_CLAUDE_CONCURRENCY, PROSPECTOR_CURSOR_CONCURRENCY, PROSPECTOR_VET_WORKERS.
-    # Keep vet_workers ≈ cursor_concurrency ≈ claude_concurrency so parallel vets do not
-    # self-induce queue_timeout / CLI hangs.
+    #   PROSPECTOR_CLAUDE_CONCURRENCY, PROSPECTOR_VET_WORKERS.
+    # Keep vet_workers <= claude_concurrency so parallel vets do not self-induce
+    # queue_timeout / CLI hangs. `cursor_concurrency` was removed 2026-08-06 with the
+    # cursor_cli adapter; claude_concurrency is now the only CLI ceiling.
     claude_concurrency: int = 2         # max concurrent claude CLI subprocesses
-    cursor_concurrency: int = 2         # max concurrent Cursor agent CLI subprocesses
     vet_workers: int = 3                # candidates vetted in parallel; align to grounding slots
-    # Completion-brain CLI budgets (CursorCliOperator / non-web Claude CLI). Distinct from
+    # Completion-brain CLI budgets (the non-web Claude CLI). Distinct from
     # search_timeout (web-grounding). query_gen_* is the tight cap for non-critical
     # query-gen so one hung agent call cannot burn 6+ minutes per check.
     cli_timeout: int = 120              # verdict / adversarial completion (attempt 0)

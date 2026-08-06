@@ -35,15 +35,28 @@ class _Clock:
 
 
 def test_mark_then_dead_until_expiry(tmp_path):
+    """Updated 2026-08-06: `is_dead` no longer means "benched for the whole window".
+
+    It used to. That is what made a mis-classified 429 cost a full hour of moat blindness —
+    `FallbackOperator._raw` skips a dead brain without probing it, so a provider that recovered
+    in ninety seconds could not be noticed until the mark expired. The window is still the
+    outer bound; inside it, ONE caller is let through periodically to re-probe."""
     clk = _Clock()
     h = ProviderHealth(tmp_path / "h.json", clock=clk)
     assert not h.is_dead("gemini_cli")
     h.mark_exhausted("gemini_cli", 600.0)
     assert h.is_dead("gemini_cli")
-    clk.t += 599.0
-    assert h.is_dead("gemini_cli")     # still within window
-    clk.t += 2.0
-    assert not h.is_dead("gemini_cli")  # window elapsed -> retried
+
+    clk.t += 30.0
+    assert h.is_dead("gemini_cli")          # before the first probe opens: still skipped free
+
+    clk.t += 560.0                          # t+590: inside the 600s window, past the probe point
+    assert not h.is_dead("gemini_cli")      # exactly one caller re-probes...
+    assert h.is_dead("gemini_cli")          # ...and the rest still skip for free
+
+    clk.t += 12.0                           # t+602: past the window
+    assert not h.is_dead("gemini_cli")      # window elapsed -> mark gone, always retried
+    assert h.dead_until("gemini_cli") is None
 
 
 def test_persists_across_instances(tmp_path):
