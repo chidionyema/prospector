@@ -1287,6 +1287,24 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
             return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
                                      "passes": 0, "kills": 0, "defers": 0}, survey)
 
+    # Restrict to one population BEFORE the oldest-first sort and the `--limit` slice, so the
+    # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
+    # drainable population: the printed line then reads "Found 351 ... re-vetting 72 of them",
+    # which is the truth. `getattr` default keeps `resume_deferred`'s Namespace (the daemon's
+    # entry point, which has no `only` attribute) on the historical "all" behaviour.
+    only = str(getattr(args, "only", "all") or "all")
+    if only not in RESUME_SELECTORS:
+        print(f"Unknown --only {only!r}; expected one of {', '.join(RESUME_SELECTORS)}.",
+              file=sys.stderr)
+        sys.exit(2)
+    if only != "all":
+        pending = [r for r in pending if _resume_selects(r, only)]
+        if not pending:
+            print(f"Found {backlog} deferred + provisional candidate(s), but none match "
+                  f"--only {only}. Nothing to re-vet.")
+            return {"backlog": backlog, "attempted": 0, "resumed": 0,
+                    "passes": 0, "kills": 0, "defers": 0}
+
     limit = getattr(args, "limit", None)
     if limit is not None and limit <= 0:
         # 0 means "drain nothing" — NOT "drain everything". The old test was
