@@ -19,6 +19,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -27,7 +28,33 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNER = REPO_ROOT / "scripts" / "popdd_verify.py"
 HOOK = REPO_ROOT / ".lux" / "hooks" / "pre-commit"
-INSTALLED_HOOK = REPO_ROOT / ".git" / "hooks" / "pre-commit"
+
+
+def _hooks_dir() -> Path:
+    """Where git will actually look for hooks, which is NOT always `<root>/.git/hooks`.
+
+    In a git worktree `.git` is a FILE containing `gitdir: ...`, not a directory, so the
+    hardcoded path this used to use cannot exist and the assert below failed on location
+    rather than on fact — reporting "the gate is not installed" in a checkout where it was
+    installed and working. That cost a shipping session real time, because the failure
+    names the gate, which is the one thing an agent will not wave through.
+
+    `git rev-parse --git-path hooks` answers the question git itself answers: it resolves
+    to the common dir, so a worktree gets the main checkout's shared hooks. It also honours
+    `core.hooksPath`, which the naive path silently ignored.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--git-path", "hooks"],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):  # no git binary, or not a checkout
+        return REPO_ROOT / ".git" / "hooks"
+    path = Path(out)
+    return path if path.is_absolute() else (REPO_ROOT / path)
+
+
+INSTALLED_HOOK = _hooks_dir() / "pre-commit"
 
 
 def _load_runner():
@@ -184,10 +211,23 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
         if os.environ.get("CI") and not INSTALLED_HOOK.exists():
             pytest.skip("no .git/hooks/pre-commit on a CI checkout — nothing installed to compare")
         assert INSTALLED_HOOK.is_symlink(), (
-            ".git/hooks/pre-commit must be a symlink to the tracked .lux/hooks/pre-commit, "
+            f"{INSTALLED_HOOK} must be a symlink to the tracked .lux/hooks/pre-commit, "
             "or the file under review is not the file that runs."
         )
-        assert INSTALLED_HOOK.resolve() == HOOK.resolve()
+        # Compare WHAT IT IS, not WHERE IT IS. Hooks are shared through the common dir, so
+        # in a worktree this symlink resolves into the MAIN checkout's .lux/ while `HOOK`
+        # is this worktree's own copy of the same tracked file. Path equality therefore
+        # fails in every worktree, on a repo where the gate is installed and working — and
+        # a failure naming the POPDD gate is the last one an agent will wave through.
+        # Identical bytes is the property this class actually cares about: the stale second
+        # copy it was written to catch is one whose content has DIVERGED.
+        resolved = INSTALLED_HOOK.resolve()
+        assert resolved.parts[-3:] == (".lux", "hooks", "pre-commit"), (
+            f"installed hook resolves to {resolved}, which is not a .lux/hooks/pre-commit"
+        )
+        assert resolved.read_bytes() == HOOK.read_bytes(), (
+            f"the hook that runs ({resolved}) has diverged from the tracked one ({HOOK})"
+        )
 
     def test_the_hook_calls_the_runner_in_staged_mode(self):
         code = _hook_code()
