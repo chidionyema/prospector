@@ -1066,11 +1066,28 @@ export default function Home({ packs, stats, initialState, market, currency, per
             claim with a real source dies before it reaches this store. What you see is everything
             that survived.
           </p>
-          {/* The six gates, named. Mono because these are the engine's own gate identifiers --
+          {/* The common gates, named. Mono because these are the engine's own gate identifiers --
               the same strings the kill log prints beside each rejection, so a reader can match
-              a claim here to a receipt there. */}
+              a claim here to a receipt there.
+
+              The trailing clause is not padding, it is the correction. Six names in a row with
+              nothing after them assert that six IS the set, which is false for 23 of the 63 live
+              packs: `qaVerdictSummary` across /catalog reports 6/6 forty times but also 8/8 (15),
+              7/8 (4), 9/9 (3) and 6/8 (1), because `config.yaml lanes.side_hustle` adds
+              buyer_intent, currency and claims_verifiable. about.tsx and faqContent.ts were fixed
+              on 2026-08-06; this line was missed because the regression test read about.tsx only.
+              `fixedCheckCount.test.ts` now reads every rendered copy surface. */}
           <p className="mt-6 font-mono text-caption text-subtle">
             pain reality · value durability · incumbency · payer solvency · distribution · legality
+          </p>
+          {/* Its own line, not a trailing clause on the mono row: the row is set in the engine's
+              own identifiers and this sentence is the site talking, so running them together in
+              one paragraph would read as a seventh gate named "the fronts common to every idea".
+              A dash would have separated them visually; `dashFree.test.ts` forbids em/en-dashes in
+              source, and the rule is right here anyway, since the break is structural. */}
+          <p className="mt-2 max-w-[46ch] text-caption text-subtle">
+            Those are the fronts common to every idea. Some face more, and each pack page names the
+            checks that idea faced.
           </p>
           {/* Two links, because this band makes two different promises. "How it works" describes
               the process; the kill log is the only thing on the site that proves it ran. A

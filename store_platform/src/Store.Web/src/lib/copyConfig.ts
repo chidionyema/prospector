@@ -147,7 +147,11 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksSeoDescription:
       'How Mumchimp works: every idea is tested to destruction by a panel of AI agents before it can be listed.',
 
-    sixChecksTitle: 'The checks every pack faced',
+    // NOT "The checks every pack faced". It sat above a list of exactly six steps, which made
+    // the heading assert that the six ARE the set -- the same falsehood corrected in about.tsx
+    // and faqContent.ts on 2026-08-06, surviving here because the guard that caught those reads
+    // only about.tsx. 23 of the 63 live packs report a denominator other than 6.
+    sixChecksTitle: 'The checks an idea has to survive',
     sixChecksDescription:
       'Every pack faced the same filter: a real problem, proven value, room to compete, buyers who can pay, a clear way to reach them, and no legal red tape. Which checks ran depends on the idea, and the pack page shows exactly which ones it cleared.',
 
