@@ -54,6 +54,7 @@ import json
 import os
 import sys
 import time
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -63,6 +64,7 @@ import requests
 from prospector import artifacts
 from prospector.config import load_config
 from prospector.operator import make_operator
+from prospector.pack_floors import claim_safe_marketing
 from prospector.plain_text import plain_lines, to_plain_text
 
 DEFAULT_API_URL = "https://api.mumchimp.com"
@@ -126,6 +128,66 @@ def catalog_payload(listing: Dict[str, Any]) -> Dict[str, Any]:
         "effortTag": (listing.get("effort_tag") or "").strip(),
         "timeToFirstRevenue": to_plain_text(listing.get("time_to_first_revenue"), collapse=True),
     }
+
+
+def floor_listing(dossier: Dict[str, Any]) -> Dict[str, Any]:
+    """The deterministic listing pack_floors would supply for this dossier.
+
+    Rebuilt from the raw JSON via namespaces because claim_safe_marketing reads its inputs with
+    getattr — the same values, reached the same way, so this is the floor the publish path
+    would compute, not an approximation of it.
+    """
+    cand = dossier.get("candidate") or {}
+    candidate = SimpleNamespace(
+        title=cand.get("title"), one_liner=cand.get("one_liner"),
+        why_now=cand.get("why_now"), who_pays=cand.get("who_pays"))
+    checks = [SimpleNamespace(verdict=c.get("verdict"), rationale=c.get("rationale"),
+                              check_name=c.get("check_name"))
+              for c in (dossier.get("checks") or [])]
+    for piece in claim_safe_marketing(candidate, checks):
+        if piece.get("type") == "listing_page":
+            return piece
+    return {}
+
+
+def fill_from_floor(listing: Dict[str, Any], dossier: Dict[str, Any]) -> Dict[str, Any]:
+    """Backfill anything claim-check dropped with the floor's value for that field.
+
+    Persisting a PARTIAL listing onto the dossier plants a regression that only fires the next
+    time the pack is published, and it fires two different ways:
+
+      * `ensure_marketing_floor` (pack_floors.py:184-191) only counts a listing as present when
+        its `copy` is non-empty. Salvage can drop `copy` — it did on the first live pack — and
+        the whole improved listing is then thrown away and replaced by the floor again.
+      * If `copy` survives but `headline` did not, the publish path sends headline="", and the
+        upsert's `if (request.Headline is not null)` treats "" as a value: the headline is
+        blanked rather than left alone.
+
+    Filling the gaps makes the stored listing complete, so a later republish reproduces exactly
+    what this backfill patched instead of quietly undoing part of it.
+    """
+    floor = floor_listing(dossier)
+    merged = dict(listing)
+    for key, value in floor.items():
+        if not merged.get(key):
+            merged[key] = value
+    return merged
+
+
+def prune_empty(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop fields the operator could not produce, so they are omitted rather than sent as "".
+
+    This is the difference between "leave it alone" and "delete it". On PATCH .../copy, null
+    (omitted) means no change and "" is the explicit escape hatch for withdrawing wrong copy.
+    A backfill only ever holds the first intent: salvage keeps the fields that pass claim-check
+    and drops the ones that do not, so a dropped field means "could not rewrite this", never
+    "this should not exist".
+
+    Caught on the first live pack (6171136b72015134, 2026-08-06): claim-check dropped its
+    headline, the tool sent headline="", and a pack that had shown its title lost its headline
+    entirely. The floor copy this job replaces is worse copy, but it is not nothing.
+    """
+    return {k: v for k, v in payload.items() if v not in ("", [], None)}
 
 
 def persist_listing(path: str, listing: Dict[str, Any]) -> None:
@@ -230,6 +292,7 @@ def main() -> int:
     index = load_dossier_index()
     targets: List[Tuple[str, str, Dict[str, Any]]] = []
     no_dossier: List[str] = []
+    too_few: List[str] = []
     for pack_id in live:
         if args.only and pack_id not in args.only:
             continue
@@ -241,15 +304,24 @@ def main() -> int:
             dossier = json.load(handle)
         if listing_of(dossier) is not None:
             continue
+        # Decided here rather than inside the run loop so that --limit N means "N packs the
+        # operator will actually be asked about". Counting a skip against the limit is how a
+        # one-pack canary spends its only slot on a pack it then declines to attempt.
+        if len(supported_claims(dossier)) < MIN_SUPPORTED_CLAIMS:
+            too_few.append(pack_id)
+            continue
         targets.append((pack_id, path, dossier))
 
     if no_dossier:
         print(f"WARNING: {len(no_dossier)} live pack(s) have no dossier on disk: "
               f"{', '.join(no_dossier[:5])}")
+    if too_few:
+        print(f"left on the deterministic floor — fewer than {MIN_SUPPORTED_CLAIMS} supported "
+              f"claims to write from: {len(too_few)} ({', '.join(too_few)})")
     if args.limit:
         targets = targets[: args.limit]
 
-    print(f"packs lacking a listing_page: {len(targets)}")
+    print(f"packs to attempt: {len(targets)}")
     print(f"mode: {'APPLY (writes dossiers and the live catalogue)' if apply else 'DRY RUN'}\n")
     if not targets:
         return 0
@@ -258,20 +330,11 @@ def main() -> int:
     quality = make_operator(cfg, fast=False)
     checker = make_operator(cfg, fast=False)
 
-    generated = patched = skipped = too_few = 0
+    generated = patched = skipped = 0
     for n, (pack_id, path, dossier) in enumerate(targets, 1):
         started = time.time()
         title = str((dossier.get("candidate") or {}).get("title") or "")[:70]
         print(f"[{n}/{len(targets)}] {pack_id}  {title}")
-
-        # Below this the operator has nothing to write truthful copy FROM, and asking it to
-        # try is how ungrounded marketing gets written. Not attempted, and reported as such.
-        claims = supported_claims(dossier)
-        if len(claims) < MIN_SUPPORTED_CLAIMS:
-            print(f"    not attempted — only {len(claims)} supported claim(s), "
-                  f"need {MIN_SUPPORTED_CLAIMS}")
-            too_few += 1
-            continue
 
         try:
             listing = generate_listing(quality, checker, dossier)
@@ -286,11 +349,14 @@ def main() -> int:
             continue
 
         generated += 1
-        payload = catalog_payload(listing)
-        kept = [field for field in COPY_FIELDS if payload.get(field)]
-        print(f"    generated in {time.time() - started:.0f}s; fields: {kept}")
-        print(f"    cardLine: {payload['cardLine'] or '(empty)'}")
-        print(f"    headline: {payload['headline'] or '(empty)'}")
+        listing = fill_from_floor(listing, dossier)
+        payload = prune_empty(catalog_payload(listing))
+        dropped = [field for field in COPY_FIELDS if field not in payload]
+        print(f"    generated in {time.time() - started:.0f}s; sending {sorted(payload)}")
+        if dropped:
+            print(f"    left as-is (claim-check dropped them): {dropped}")
+        print(f"    cardLine: {payload.get('cardLine') or '(not sent)'}")
+        print(f"    headline: {payload.get('headline') or '(not sent)'}")
 
         if not apply:
             continue
@@ -307,11 +373,11 @@ def main() -> int:
         print("    patched; price and provider ids unchanged")
 
     print(f"\n{'=' * 62}")
-    print(f"targets               {len(targets)}")
-    print(f"not attempted (<{MIN_SUPPORTED_CLAIMS} claims) {too_few}")
+    print(f"attempted             {len(targets)}")
     print(f"generated             {generated}")
     print(f"unsalvageable/errored {skipped}")
     print(f"patched               {patched}" if apply else "patched               0 (dry run)")
+    print(f"not attempted (<{MIN_SUPPORTED_CLAIMS} claims) {len(too_few)}")
     return 0
 
 

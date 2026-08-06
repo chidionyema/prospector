@@ -478,3 +478,157 @@ def test_orphans_are_still_reported_when_everything_is_orphaned():
     )
     assert summary["attempted"] == 0
     assert summary["orphaned"] == 3
+
+
+# ---------------------------------------------------------------------------
+# `--only`: targeting a backlog population
+#
+# THE MEASUREMENT THAT FORCED THIS. On the live index 2026-08-06 the drainable backlog was
+# 351 rows: 166 provisional KILL, 108 DEFER, 72 provisional PASS, 5 provisional DEFER. Of the
+# OLDEST 100 — the rows a bounded `--limit` pass actually takes — 51 were provisional KILLs,
+# 47 DEFERs, 1 provisional DEFER, and exactly ONE was a provisional PASS. Only a provisional
+# PASS can become sellable inventory, because publishing is gated on `not dossier.provisional`
+# (run.py:422). So the population worth draining first was structurally unreachable through
+# `--limit` alone.
+# ---------------------------------------------------------------------------
+
+def _live_shaped_rows():
+    """A miniature of the measured backlog: old provisional KILLs and DEFERs, recent passes."""
+    return [
+        {"candidate_id": "k1", "decision": "kill", "provisional": 1,
+         "created_at": "2026-06-16T09:00:00+00:00"},
+        {"candidate_id": "d1", "decision": "defer", "provisional": 0,
+         "created_at": "2026-06-24T20:10:00+00:00"},
+        {"candidate_id": "k2", "decision": "kill", "provisional": 1,
+         "created_at": "2026-06-25T09:00:00+00:00"},
+        {"candidate_id": "p1", "decision": "pass", "provisional": 1,
+         "created_at": "2026-07-10T12:00:00+00:00"},
+        {"candidate_id": "p2", "decision": "pass", "provisional": 1,
+         "created_at": "2026-08-06T03:31:00+00:00"},
+    ]
+
+
+def _resume(monkeypatch, seen, **ns):
+    from prospector import run as run_mod
+    rows = _live_shaped_rows()
+    _stub_vetting(monkeypatch, seen)
+    kwargs = {"limit": None, "publish": False, "board": None}
+    kwargs.update(ns)
+    return run_mod._cmd_resume(
+        argparse.Namespace(**kwargs), cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={r["candidate_id"] for r in rows}),
+    )
+
+
+def test_a_bounded_pass_without_only_never_reaches_a_provisional_pass(monkeypatch):
+    """The bug, stated as a test: oldest-first spends the whole bound on kills and defers."""
+    seen: list[str] = []
+    _resume(monkeypatch, seen, limit=3)
+    assert seen == ["k1", "d1", "k2"]
+    assert not any(t.startswith("p") for t in seen), (
+        "a bounded drain must be shown NOT to reach the only sellable population — this is "
+        "the measured 1-in-100 problem in miniature"
+    )
+
+
+def test_only_provisional_pass_drains_exactly_that_population_oldest_first(monkeypatch):
+    seen: list[str] = []
+    summary = _resume(monkeypatch, seen, only="provisional-pass")
+    assert seen == ["p1", "p2"], "must take both provisional PASSes, oldest first"
+    assert summary["backlog"] == 5, (
+        "backlog keeps reporting the WHOLE drainable population, so the operator still sees "
+        "the true size next to the filtered count"
+    )
+    assert summary["attempted"] == 2
+
+
+def test_only_composes_with_limit(monkeypatch):
+    seen: list[str] = []
+    _resume(monkeypatch, seen, only="provisional-pass", limit=1)
+    assert seen == ["p1"]
+
+
+def test_the_other_selectors_pick_their_own_population(monkeypatch):
+    for only, expected in (
+        ("defer", ["d1"]),
+        ("provisional", ["k1", "k2", "p1", "p2"]),
+        ("all", ["k1", "d1", "k2", "p1", "p2"]),
+    ):
+        seen: list[str] = []
+        _resume(monkeypatch, seen, only=only)
+        assert seen == expected, f"--only {only}"
+
+
+def test_the_daemon_namespace_has_no_only_attribute_and_keeps_draining_everything(monkeypatch):
+    """`resume_deferred` builds its Namespace by hand (run.py) — it must not need updating.
+
+    A `getattr(args, "only")` without a default would raise AttributeError on every tick;
+    a wrong default would silently narrow the daemon's drain.
+    """
+    from prospector import run as run_mod
+    rows = _live_shaped_rows()
+    seen: list[str] = []
+    _stub_vetting(monkeypatch, seen)
+    run_mod._cmd_resume(
+        argparse.Namespace(limit=None, publish=False, board=None, fixtures=None, search=None),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={r["candidate_id"] for r in rows}),
+    )
+    assert seen == ["k1", "d1", "k2", "p1", "p2"]
+
+
+def test_an_unknown_selector_exits_rather_than_draining_everything(monkeypatch):
+    """Failing open here would re-vet the whole backlog under a typo."""
+    seen: list[str] = []
+    with pytest.raises(SystemExit) as exc:
+        _resume(monkeypatch, seen, only="provisional_pass")   # underscore, not hyphen
+    assert exc.value.code == 2
+    assert seen == []
+
+
+def test_a_selector_matching_nothing_reports_instead_of_draining_everything(monkeypatch):
+    from prospector import run as run_mod
+    rows = [{"candidate_id": "d1", "decision": "defer", "provisional": 0,
+             "created_at": "2026-06-24T20:10:00+00:00"}]
+    seen: list[str] = []
+    _stub_vetting(monkeypatch, seen)
+    summary = run_mod._cmd_resume(
+        argparse.Namespace(limit=None, publish=False, board=None, only="provisional-pass"),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={"d1"}),
+    )
+    assert seen == []
+    assert summary["attempted"] == 0
+    assert summary["backlog"] == 1
+
+
+def test_the_documented_resume_command_can_actually_be_invoked(monkeypatch, capsys):
+    """RUN.md:97 documents `vet --resume`, and `--title required=True` made it exit 2.
+
+    The daemon calls `resume_deferred()` in-process, so the parser was never on its path and
+    the documented operator command was dead without anything noticing. Asserted at the
+    argparse layer, because that is where it died.
+    """
+    from prospector import run as run_mod
+    parser = run_mod._build_parser() if hasattr(run_mod, "_build_parser") else None
+    if parser is None:                       # parser is built inline in main()
+        import sys as _sys
+        monkeypatch.setattr(_sys, "argv", ["prospector", "vet", "--resume"])
+        called = {}
+        monkeypatch.setattr(run_mod, "_cmd_vet", lambda *a, **k: called.setdefault("ok", True))
+        run_mod.main()
+        assert called.get("ok"), "`vet --resume` must reach _cmd_vet, not die in argparse"
+        return
+    args = parser.parse_args(["vet", "--resume"])
+    assert args.resume is True and args.title is None
+
+
+def test_a_single_candidate_vet_without_a_title_is_still_a_usage_error(monkeypatch):
+    """Relaxing argparse must not let a real vet run with no title."""
+    import sys as _sys
+    from prospector import run as run_mod
+    monkeypatch.setattr(_sys, "argv", ["prospector", "vet"])
+    monkeypatch.setattr(run_mod, "_cmd_vet", lambda *a, **k: pytest.fail("must not dispatch"))
+    with pytest.raises(SystemExit) as exc:
+        run_mod.main()
+    assert exc.value.code == 2

@@ -1083,6 +1083,38 @@ def _cmd_replicate(args: argparse.Namespace, log_path: Path) -> None:
     print(f"\n{costs_report(log_path or '')}")
 
 
+#: Populations `vet --resume --only` can restrict the drain to. "all" is the default and the
+#: historical behaviour; the daemon never passes this flag, so its per-tick drain is unchanged.
+RESUME_SELECTORS = ("all", "defer", "provisional", "provisional-pass")
+
+
+def _resume_selects(row: dict, only: str) -> bool:
+    """Does this backlog row belong to the `--only` population?
+
+    WHY THIS EXISTS. The drain sorts DEFER and provisional rows together, oldest first
+    (see the comment at the `sorted(...)` call below), which is right for fairness and wrong
+    for targeting. Measured on the live index 2026-08-06: of the OLDEST 100 drainable rows,
+    51 were provisional KILLs, 47 were DEFERs, 1 was a provisional DEFER — and exactly
+    **1** was a provisional PASS. The 72 provisional PASSes (the only population that can
+    become sellable inventory, because a re-vet that confirms them clears
+    `run.py:422`'s `not dossier.provisional` publish gate) are spread from 2026-06-21 to
+    2026-08-06, so oldest-first buries them. Draining them via `--limit` alone would need
+    the whole ~351-row backlog, which at the live batch's ~5.5 min/candidate is ~32 hours.
+
+    A row's `decision` and `provisional` both come from `SELECT *` (`store.provisional()`
+    and `store.all()`), so both keys are present on every row.
+    """
+    decision = str(row.get("decision", "") or "").lower()
+    provisional = bool(row.get("provisional", 0))
+    if only == "defer":
+        return decision == "defer"
+    if only == "provisional":
+        return provisional
+    if only == "provisional-pass":
+        return provisional and decision == "pass"
+    return True
+
+
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
                 log_path: Optional[Path] = None) -> dict:
@@ -1122,6 +1154,24 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         print("No deferred or provisional candidates to resume. Moat is healthy.")
         return {"backlog": 0, "attempted": 0, "resumed": 0,
                 "passes": 0, "kills": 0, "defers": 0}
+
+    # Restrict to one population BEFORE the oldest-first sort and the `--limit` slice, so the
+    # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
+    # drainable population: the printed line then reads "Found 351 ... re-vetting 72 of them",
+    # which is the truth. `getattr` default keeps `resume_deferred`'s Namespace (the daemon's
+    # entry point, which has no `only` attribute) on the historical "all" behaviour.
+    only = str(getattr(args, "only", "all") or "all")
+    if only not in RESUME_SELECTORS:
+        print(f"Unknown --only {only!r}; expected one of {', '.join(RESUME_SELECTORS)}.",
+              file=sys.stderr)
+        sys.exit(2)
+    if only != "all":
+        pending = [r for r in pending if _resume_selects(r, only)]
+        if not pending:
+            print(f"Found {backlog} deferred + provisional candidate(s), but none match "
+                  f"--only {only}. Nothing to re-vet.")
+            return {"backlog": backlog, "attempted": 0, "resumed": 0,
+                    "passes": 0, "kills": 0, "defers": 0}
 
     limit = getattr(args, "limit", None)
     if limit is not None and limit <= 0:
@@ -2033,7 +2083,16 @@ def main() -> None:
 
     # ---- vet subcommand ----
     vet_p = sub.add_parser("vet", help="Vet a single candidate")
-    vet_p.add_argument("--title", required=True, help="Opportunity title")
+    # NOT `required=True`. `--resume` re-vets a backlog read from the store, so there is no
+    # title to give — and argparse rejected the command before `_cmd_vet` (run.py:972) could
+    # ever look at `args.resume`. RUN.md:97 has documented `python -m prospector.run vet
+    # --resume` since the flag was added, and that exact command has never once run:
+    #     python -m prospector.run vet --resume
+    #     error: the following arguments are required: --title
+    # It stayed invisible because the daemon's drain calls `resume_deferred()` in-process and
+    # never touches this parser. Requiredness is enforced below instead, where it can be
+    # conditional on the mode.
+    vet_p.add_argument("--title", help="Opportunity title (required unless --resume)")
     vet_p.add_argument("--one-liner", dest="one_liner", default="",
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
@@ -2065,6 +2124,13 @@ def main() -> None:
                             "The daemon always passes a limit — the spend guard is evaluated "
                             "once per tick, so an unbounded drain would run inside a single "
                             "guard decision.")
+    vet_p.add_argument("--only", choices=list(RESUME_SELECTORS), default="all",
+                       help="With --resume: restrict the drain to one backlog population. "
+                            "'provisional-pass' targets the only rows that can become "
+                            "sellable inventory (a confirmed re-vet clears the "
+                            "not-provisional publish gate); oldest-first ordering otherwise "
+                            "buries them behind provisional KILLs and DEFERs. "
+                            "Default 'all' = historical behaviour.")
 
     # ---- signal subcommand ----
     sig_p = sub.add_parser("signal", help="Run the full signal pipeline")
@@ -2271,6 +2337,13 @@ def main() -> None:
     progress.note(f"audit log → {log_path}")
 
     if args.command == "vet":
+        # Conditional requiredness — see the `--title` declaration for why argparse cannot
+        # carry it. A single-candidate vet with no title is still a usage error, and it must
+        # still exit 2 so scripts that check the code keep working.
+        if not getattr(args, "resume", False) and not getattr(args, "title", None):
+            print("Error: vet requires --title (or --resume to drain the backlog).",
+                  file=sys.stderr)
+            sys.exit(2)
         _cmd_vet(args, log_path)
     elif args.command == "signal":
         _cmd_signal(args, log_path)
