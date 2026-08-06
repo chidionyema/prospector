@@ -110,20 +110,50 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
     # (matches CLAUDE.md: "the entire engine runs within your Claude Code subscription").
     child_env = {k: v for k, v in os.environ.items()
                  if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
-    # UNIQUE cwd per invocation. Claude Code derives its per-project session slug from the cwd
-    # PATH, so concurrent `claude -p` processes in a SHARED dir clobber each other's session
-    # state and degrade to non-JSON meta output. PROVEN 2026-07-02: parallel generation
-    # (concurrency=2) → 0/3 candidates, but serialized (concurrency=1) → 2/3. A private temp dir
-    # per call gives each process a distinct slug, so parallel generation no longer collides.
-    # Dir lives under _NEUTRAL_CWD (outside the repo) so no project CLAUDE.md is picked up.
-    call_cwd = tempfile.mkdtemp(prefix="c_", dir=_NEUTRAL_CWD)
+    # STABLE cwd per SLOT — not a fresh dir per call. Two constraints meet here, and the first
+    # cut satisfied one by paying the other on every single call:
+    #
+    #  (a) COLLISION SAFETY. Claude Code derives its per-project session slug from the cwd PATH,
+    #      so concurrent `claude -p` in a SHARED dir clobber each other's session state and
+    #      degrade to non-JSON meta output. PROVEN 2026-07-02: parallel generation
+    #      (concurrency=2) → 0/3 candidates, serialized (concurrency=1) → 2/3.
+    #  (b) CACHE WARMTH. A cwd never used before is a COLD PROMPT CACHE. Measured 2026-08-06:
+    #      mkdtemp-per-call re-wrote the ~10.4k-token prefix at the 1h-TTL 2.0x rate on every
+    #      call and then deleted the directory — daemon $0.2650/req vs $0.0937 interactive,
+    #      cache reuse ratio 0.72x vs 42.89x, $412.19 of pure cache_write in a single day.
+    #      Controlled A/B (~/.claude/scripts/cli-cache-experiment.py), identical prompt: fresh
+    #      cwd $0.1121/$0.1172/$0.1172/$0.1122 vs stable cwd $0.1121/$0.0899/$0.0134/$0.0132 —
+    #      8.6x cheaper at steady state, identical output.
+    #
+    # mkdtemp buys (a) by making collision impossible; it forfeits (b) unconditionally. The
+    # governor already enforces (a), and more cheaply: holding `slot_i.lock` is a machine-wide
+    # LOCK_EX flock, so at most one process ANYWHERE holds slot i. Binding the cwd to the slot
+    # index inherits that exclusivity proof verbatim — no second lock, no stale-slot reaper —
+    # while the path stays constant across calls, which is all of (b). The directory is NOT
+    # deleted afterwards: it is empty by design, and deleting it is precisely what threw the
+    # cache away. Parent stays _NEUTRAL_CWD (outside the repo) so Claude Code's upward CLAUDE.md
+    # walk still finds nothing project-specific — that property is deliberately unchanged.
+    # getattr, not a direct call: cli_governor.py:58-59 promises the governor's public surface
+    # stays drop-in for `threading.Semaphore` (acquire/release only), and callers rely on that —
+    # tests/unit/test_claude_cli_failure_reason.py substitutes a bare acquire/release stub. A
+    # governor that cannot name a slot is not an error, it just does not get the cache saving.
+    slot = getattr(_CLI_SEM, "current_slot", lambda: None)()
+    ephemeral = slot is None
+    if ephemeral:
+        # The governor could not name a slot (degraded in-process fallback). Reproduce the old
+        # behaviour exactly rather than risk a shared cwd: correctness outranks the saving.
+        call_cwd = tempfile.mkdtemp(prefix="c_", dir=_NEUTRAL_CWD)
+    else:
+        call_cwd = os.path.join(_NEUTRAL_CWD, f"slot_{slot}")
+        os.makedirs(call_cwd, exist_ok=True)
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True,
                               cwd=call_cwd, timeout=timeout, stdin=subprocess.DEVNULL,
                               env=child_env)
     finally:
         _CLI_SEM.release()
-        shutil.rmtree(call_cwd, ignore_errors=True)
+        if ephemeral:
+            shutil.rmtree(call_cwd, ignore_errors=True)
     if proc.returncode != 0:
         # BOTH streams, because the CLI reports WHY on STDOUT, not stderr. Measured 2026-08-06:
         # `claude -p` with an unfunded key exits 1 printing "Credit balance is too low" on stdout
