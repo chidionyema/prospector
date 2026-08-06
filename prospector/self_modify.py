@@ -10,9 +10,10 @@ Part of the production-grade self-improvement infrastructure (Priority 2).
 import json
 import shutil
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 # Status values for modifications
 STATUS_PENDING = "pending"
@@ -33,12 +34,21 @@ class SelfModificationLog:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Open, commit-or-rollback, then CLOSE. See `store.Store._connect`: the bare
+        `return conn` form leaked two descriptors per call because `with conn` is a
+        transaction manager, not a resource manager. Same defect, same file shape, fixed
+        in the same pass."""
         conn = sqlite3.connect(str(self.db_path))
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _init_db(self):
         with self._connect() as conn:
