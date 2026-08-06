@@ -1,6 +1,7 @@
 import type { GetServerSideProps } from 'next';
 
 import { fetchCatalog, type Pack } from '@/lib/api/client';
+import { checksSentence } from '@/lib/checks';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 
 /**
@@ -86,9 +87,8 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const body = `# Mumchimp
 
 > Mumchimp sells researched business opportunity packs${priceClause}. Every pack is one business
-> idea that passed an automated kill-first filter, real pain, durable value, room past incumbents,
-> a solvent payer, a distribution route, and legality, and then survived an adversarial review.
-> Each claim in a pack cites a retrievable source.
+> idea that passed an automated kill-first filter: ${checksSentence()}. It then survived an
+> adversarial review. Each claim in a pack cites a retrievable source.
 
 A pack is a zip of plain Markdown (5,000+ words) in four parts: a build spec, a go-to-market plan,
 an operations and unit-economics model, and a QA report with a source behind every claim. It is

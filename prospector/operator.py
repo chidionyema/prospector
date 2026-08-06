@@ -876,9 +876,17 @@ class MockOperator(Operator):
 # for "is this ruling trustworthy as final" — used by verify.py.
 # deepseek REMOVED 2026-07-02 (founder no-deepseek directive + operating rule: DeepSeek/
 # MiniMax never touch verification verdicts as trusted-final — non-critical chains only).
-# cursor_cli is subscription-backed (Cursor Agent), the same class of brain as claude_cli:
-# not a metered DeepSeek/MiniMax API. Founder 2026-07-30: run independent of Claude Code.
-MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli", "claude", "cursor_cli"})
+# cursor_cli REMOVED 2026-08-06 (founder directive: "we need to get rid of cursor_cli"). It
+# had been in the moat since 2026-07-30; measured DEAD on 2026-08-06 with
+#   ProviderExhaustedError: cursor cli exit 1: ActionRequiredError: You've hit your usage limit
+# so every call paid its failure before reaching a brain that answers. The adapter is deleted,
+# not merely demoted, so it cannot be reintroduced by a config typo.
+#
+# NOTE for historical dossiers: 172 of them record `"provider": "cursor_cli"`. Their verdicts
+# are NOT re-derived from this set — `is_provisional_provider` is only ever called on the name
+# of the brain that just served a LIVE call (see `served_is_provisional` below), never on a
+# stored dossier field. Removing cursor_cli therefore cannot retroactively flip a past PASS.
+MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli", "claude"})
 
 
 def is_provisional_provider(name: str) -> bool:
@@ -935,8 +943,9 @@ class FallbackOperator(Operator):
         return bool(s) and is_provisional_provider(s)
 
     def _raw(self, system: str, user: str, temperature: float) -> str:
-        from .errors import ProviderExhaustedError, parse_reset_seconds
-        from .health import DEFAULT_EXHAUSTION_S
+        from .errors import (PERMANENT, ProviderExhaustedError, classify_exhaustion,
+                             parse_reset_seconds)
+        from .health import DEFAULT_EXHAUSTION_S, TRANSIENT_EXHAUSTION_S
         from .telemetry import logger
         last_err: Optional[Exception] = None
         skipped = 0
@@ -958,11 +967,19 @@ class FallbackOperator(Operator):
                 hard = isinstance(e, ProviderExhaustedError)
                 br.record_failure(hard=hard)
                 if hard:
-                    dead_for = parse_reset_seconds(str(e)) or DEFAULT_EXHAUSTION_S
-                    self._health.mark_exhausted(name, dead_for)
+                    # How long to stay away is decided by WHAT failed, not by the fact that
+                    # something did. A parsed reset time from the provider always wins; failing
+                    # that, backpressure gets the 60s floor and a spent allowance gets the hour.
+                    # Before 2026-08-06 both got the hour, so an HTTP 429 under our own drain
+                    # load benched a live brain for 3600s and the emergency tail ruled instead.
+                    kind = classify_exhaustion(str(e))
+                    dead_for = (parse_reset_seconds(str(e))
+                                or (DEFAULT_EXHAUSTION_S if kind == PERMANENT
+                                    else TRANSIENT_EXHAUSTION_S))
+                    self._health.mark_exhausted(name, dead_for, error=str(e))
                 logger.warning(
                     f"Brain {name!r} {'exhausted' if hard else 'failed'} "
-                    f"(breaker={br.state}); failing over to next",
+                    f"(breaker={br.state}); failing over to next: {str(e)[:160]}",
                     extra={"provider": name, "error": str(e)[:200]})
         raise ProviderExhaustedError(
             f"all brains exhausted/failed ({skipped} skipped, known-dead): {last_err}",
@@ -989,7 +1006,6 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     _PROVIDER_MODEL_PREFIX = {
         "claude": ("claude-",),
         "claude_cli": ("claude-",),
-        "cursor_cli": ("gpt-", "claude-", "sonnet", "opus", "composer"),
         "deepseek": ("deepseek-",),
         "minimax": ("minimax-", "MiniMax-"),
         "ollama": (),
@@ -998,36 +1014,6 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
     model = cfg_model if model_matches else None
     has_cfg_model = model_matches
-    if kind == "cursor_cli":
-        from .cursor_cli import CursorCliOperator, configure_concurrency
-        r = getattr(cfg, "retrieval", None)
-        if r is not None:
-            # Align Cursor slots with config unless PROSPECTOR_CURSOR_CONCURRENCY is set.
-            configure_concurrency(
-                int(getattr(r, "cursor_concurrency", None)
-                    or getattr(r, "claude_concurrency", 2)
-                    or 2))
-        md_model = getattr(md, "cursor_cli", None) if md else None
-        if r is not None and fast:
-            # Query-gen / non-critical: tight cap so a hung agent call cannot wedge a vet.
-            return CursorCliOperator(
-                model=model or md_model or None,
-                timeout=int(getattr(r, "query_gen_timeout", 90) or 90),
-                timeout_max=int(getattr(r, "query_gen_timeout_max", 90) or 90),
-                escalation=1.0,
-                retries=int(getattr(r, "query_gen_retries", 0) or 0),
-                queue_timeout=float(getattr(r, "queue_timeout", 45) or 45),
-            )
-        if r is not None:
-            return CursorCliOperator(
-                model=model or md_model or None,
-                timeout=int(getattr(r, "cli_timeout", 120) or 120),
-                timeout_max=int(getattr(r, "cli_timeout_max", 180) or 180),
-                escalation=float(getattr(r, "search_timeout_escalation", 1.0) or 1.0),
-                retries=int(getattr(r, "cli_retries", 1) or 1),
-                queue_timeout=float(getattr(r, "queue_timeout", 45) or 45),
-            )
-        return CursorCliOperator(model=model or md_model or None)
     if kind == "claude_cli":
         # cfg.model is an API pin; don't leak it to the claude CLI.
         from .claude_cli import ClaudeCliOperator
@@ -1068,8 +1054,16 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             model=model,
             default_model=md.ollama if md else None,
         )
+    # cursor_cli was removed here on 2026-08-06 (founder directive). It stays an EXPLICIT
+    # error rather than an unknown one, so a stale config or plist fails loudly at startup
+    # instead of silently building a chain one brain shorter than it reads.
+    if kind == "cursor_cli":
+        raise ValueError(
+            "operator 'cursor_cli' was removed on 2026-08-06 (founder directive; it was "
+            "measured at its usage limit and every call paid a guaranteed failure first). "
+            "Use claude_cli. Update config.yaml `operator:`/`artifact_operator:`.")
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected cursor_cli|claude_cli|claude|minimax|deepseek|ollama|mock)")
+                     "(expected claude_cli|claude|minimax|deepseek|ollama|mock)")
 
 
 def make_operator(cfg, fast: bool = False) -> Operator:
@@ -1077,12 +1071,6 @@ def make_operator(cfg, fast: bool = False) -> Operator:
     # Sync CLI concurrency governors from config (env overrides still win).
     r0 = getattr(cfg, "retrieval", None)
     if r0 is not None:
-        try:
-            from .cursor_cli import configure_concurrency as _cursor_conc
-            _cursor_conc(int(getattr(r0, "cursor_concurrency", None)
-                             or getattr(r0, "claude_concurrency", 2) or 2))
-        except Exception:
-            pass
         try:
             from .claude_cli import configure_concurrency as _claude_conc
             _claude_conc(int(getattr(r0, "claude_concurrency", 2) or 2))

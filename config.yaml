@@ -1,17 +1,24 @@
-# MOAT CHAIN (Part 9 failover): PRIMARY brains first, then a GUARDRAILED cheap tail.
-#   cursor_cli, claude_cli = TRUSTED moat (subscription CLIs; rule kills/passes normally).
-#   minimax                = EMERGENCY FALLBACK — engaged ONLY when trusted brains are
-#                             exhausted. A verdict ruled by the fallback marks the dossier
-#                             `provisional`: it does NOT publish on PASS and is auto
-#                             re-vetted by the moat on the next `vet --resume`.
-# Founder 2026-07-30: cursor_cli PRIMARY so the engine runs independent of Claude Code.
-# Auth: `agent login` (or CURSOR_API_KEY). DeepSeek/MiniMax stay non-critical only.
-# PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
-# specs/offline-moat-validation.md and run, recording a clearance:
-#   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-# claude_cli FIRST (founder directive 2026-08-06: "we need to use claude code and minimax").
-# cursor_cli held its lead here since 2026-07-30 and was measured DEAD on 2026-08-06 — a live
-# probe of every configured brain, one JSON call each:
+# MOAT CHAIN (Part 9 failover): TRUSTED brains only. There is no cheap tail here any more.
+#   claude_cli = TRUSTED moat (subscription CLI; rules kills/passes normally).
+# When it cannot answer, verification raises ProviderExhaustedError and the candidate DEFERS,
+# to be finished by `vet --resume` when the moat is back.
+#
+# minimax REMOVED from this chain 2026-08-06 (founder decision). It was the "guardrailed
+# emergency tail": a ruling it served was stamped `provisional`, never published on PASS, and
+# was auto re-vetted later. That is safe but strictly more expensive than deferring, and the
+# arithmetic is the whole argument:
+#     provisional = one full verdict run now (minimax) + one full re-vet later (moat) = 2x
+#     defer       = nothing now                        + one vet later (moat)         = 1x
+# Both reach the SAME final answer, because a provisional ruling can never publish. Measured
+# 2026-08-06: 38 provisional passes were queued behind a `vet --resume` drain, and the drain's
+# own CLI load was implicated in the moat flapping that minted them. Paying twice to arrive at
+# the same verdict, while the paying is what breaks the moat, is the loop this closes.
+# `is_provisional_provider` (operator.py) and the `provisional` field stay — historical rows
+# still carry it, and it remains the fence if a cheap brain is ever re-added here.
+#
+# cursor_cli REMOVED 2026-08-06 (founder directive: "we need to get rid of cursor_cli"). It led
+# this chain from 2026-07-30 and was measured DEAD on 2026-08-06 — a live probe of every
+# configured brain, one JSON call each:
 #     deepseek    RuntimeError: DeepSeek call failed: HTTP Error 402: Payment Required
 #     cursor_cli  ProviderExhaustedError: cursor cli exit 1: ActionRequiredError:
 #                 You've hit your usage limit
@@ -20,11 +27,13 @@
 # The fallbacks did their job — nothing crashed — which is exactly why this went unnoticed: a
 # chain whose first tier is dead looks identical to a healthy one from the outside, it just pays
 # a guaranteed failure (and, until its breaker trips, a full timeout) before every single call.
-# Order the chain by what ANSWERS. cursor_cli is kept as failover, not dropped: its breaker
-# skips it while it is down and half-opens it when the limit resets.
-operator: [claude_cli, cursor_cli, minimax]  # minimax is the guardrailed emergency tail, and a
-                                             # ruling it serves is stamped provisional
-                                             # (operator.py:878) and never publishes on PASS.
+# The adapter is deleted, not demoted; `_build_operator` raises an explicit error on the name so
+# a stale config fails loudly instead of quietly building a shorter chain.
+#
+# PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
+# specs/offline-moat-validation.md and run, recording a clearance:
+#   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
+operator: [claude_cli]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -33,10 +42,11 @@ model_version_tag: ""            # filled at runtime for audit
 # Quality chain for the customer-facing £49 deliverable (build_spec / gtm_plan / ops_plan
 # and the storefront listing_page). Subscription CLIs first; cheap non-critical tail is
 # not used for pack prose. Falls back to the moat operator if none are available.
-artifact_operator: [claude_cli, cursor_cli]   # reordered 2026-08-06: cursor_cli is usage-limited
-                                              # (see the probe above), so it was answering none of
-                                              # the pack prose and every artifact call paid its
-                                              # failure first.
+artifact_operator: [claude_cli]   # cursor_cli removed 2026-08-06 (founder directive; it was at
+                                  # its usage limit per the probe above, so it answered none of
+                                  # the pack prose and every artifact call paid its failure
+                                  # first). This chain runs against the NON-CRITICAL health
+                                  # file, so a hiccup here can never blind the moat.
 
 # --- Model defaults (Part: HARDCODED_MODEL_AUDIT_TICKET) ---
 # Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:
@@ -129,11 +139,17 @@ retrieval:
                                  # Bounds total latency at queue_timeout + search_timeout.
   claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
                                  # now that grounding resolves on ddg/exa — see chain above)
-  cursor_concurrency: 8          # max concurrent Cursor agent CLI subprocesses = the knee above
-                                 # (PROSPECTOR_CURSOR_CONCURRENCY env overrides when set)
-  vet_workers: 5                 # parallel candidates. Must stay <= cursor_concurrency: each vet
-                                 # holds at most one CLI slot at a time (checks run sequentially
-                                 # for kill-fast), so 5 workers draw 5 of the 8 slots.
+  # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter. claude_concurrency above
+  # is now the only CLI ceiling, and it is what vet_workers must respect.
+  vet_workers: 3                 # parallel candidates. Must stay <= claude_concurrency (4): each
+                                 # vet holds at most one CLI slot at a time (checks run
+                                 # sequentially for kill-fast), so 3 workers draw 3 of the 4
+                                 # slots and leave headroom for a concurrent `vet --resume`
+                                 # drain. It was 5 against a cursor_concurrency of 8; with
+                                 # cursor_cli gone, 5 workers would oversubscribe the 4 claude
+                                 # slots and queue against the daemon — the contention that
+                                 # produced the ~3s HTTP-429 failures and the moat flap on
+                                 # 2026-08-06 (nine dead-marks in 70 minutes).
   # Sized from the observed SUCCESS distribution, not a guess (317 logged run_cursor_cli
   # successes as of 2026-07-31: mean 46.9s, p50 41.7s, max 279.3s; run_claude_cli n=63,
   # p50 76.8s, max 283.0s). The old 120/180 pair sat *inside* that distribution, so long-but-
@@ -947,7 +963,25 @@ dedup_token_threshold: 0.34
 # (faster than the claude_cli chain that the old 5-batch was sized for), and with exa in the
 # grounding chain at position 2 (see retrieval chain above) the per-candidate wall time has
 # dropped. Tick hard deadline in run_scheduled.py bumped to 10800s (3h) to match.
-schedule: { cadence: daily, batch_size: 15 }
+# backlog_cap 100 — added 2026-08-06 after measuring that this block SPECIFIED a treadmill.
+# `batch_size: 15` mints up to 15 rows per tick; `resume_per_tick` was unset and fell to its
+# default of 3 (run_scheduled.py::_RESUME_PER_TICK_DEFAULT), so every tick added a net +12
+# backlog rows BY DESIGN. Not moat flakiness — arithmetic. Nothing read the backlog it was
+# filling: guard.evaluate() gates on PAUSE, clock-backward and the two spend caps and then
+# returns can_run=True. Measured that day: 343 drainable rows (157 defer + 191 provisional − 5
+# overlap, tombstones excluded), flat for six weeks, oldest 2026-06-14.
+#
+# Above this cap the daemon skips GENERATION and drains only, at `drain_only_resume_per_tick`
+# (defaults to batch_size = 15, not 3) on a `drain_only_interval_s` cadence (default 900s). It
+# releases automatically the moment the count falls back under the cap — no human, no PAUSE
+# file. 100 is roughly a week of buffer at the measured drain rate; it is a ceiling on debt,
+# not a target.
+# `max_resume_attempts`: completed re-vets one backlogged row may absorb before it stops being
+# counted as backlog (prospector/drain_state.py). It exists to keep `backlog_cap` self-releasing:
+# the brake waits for the drainable count to fall, so a row nothing can resolve would hold
+# generation frozen forever. 0 disables it. Outages never spend a row's budget — only a completed
+# re-vet whose verdict left the row drainable counts.
+schedule: { cadence: daily, batch_size: 15, backlog_cap: 100, max_resume_attempts: 5 }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

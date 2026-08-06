@@ -43,6 +43,7 @@ from .operator import Operator
 from .prompts import render
 from .retrieval import SearchProvider
 from .telemetry import logger, track_latency
+from .trimming import RATIONALE_MAX, clip_to_sentence
 from .audit import audit
 
 
@@ -237,7 +238,7 @@ def extract_anchors(op: Operator, cand: Candidate, sources: list[Source],
 
     return ComparablesResult(
         anchors=anchors, rejected=rejected, sources=live,
-        rationale=str(data.get("rationale", ""))[:600],
+        rationale=clip_to_sentence(str(data.get("rationale", "")), RATIONALE_MAX),
         provider=_served_provider(op), provisional=_served_is_provisional(op))
 
 

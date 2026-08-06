@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import types
+from pathlib import Path
 
 import pytest
 
@@ -110,11 +111,19 @@ def test_disabling_the_drain_skips_it_entirely(monkeypatch):
 class _FakeStore:
     """Minimal stand-in for Store — only the two readers `_cmd_resume` uses."""
 
-    def __init__(self, rows, on_disk=None):
+    def __init__(self, rows, on_disk=None, root=None):
         self._rows = rows
         # None => nothing is on disk (every row orphaned), which is the historical default
         # here and the path that prints "dossier JSON missing, skipping".
         self._on_disk = on_disk
+        # Where a real Store would keep the drain's attempt ledger. Unused while the attempt cap
+        # is off (these call sites pass cfg=None, so `drain_state.max_attempts` returns 0), but
+        # `drain_survey` binds to it, so the double has to carry it.
+        self._root = Path(root) if root is not None else Path("/nonexistent-fake-store")
+
+    @property
+    def root(self):
+        return self._root
 
     def all(self, decision=None):
         return [r for r in self._rows if r["decision"] == decision]
@@ -127,6 +136,10 @@ class _FakeStore:
             return None
         return ({"candidate": {"title": cid}, "decision": "defer"}
                 if cid in self._on_disk else None)
+
+    def has_dossier(self, cid):
+        """Same criterion as `get()` without the read — see `Store.has_dossier`."""
+        return self.get(cid) is not None
 
 
 def _stub_vetting(monkeypatch, seen):
@@ -203,7 +216,7 @@ def test_the_drain_outcome_lands_on_the_stream_that_is_the_daemon_log(monkeypatc
     assert "tick resume pass FAILED" not in cap.out
 
 
-def test_a_zero_limit_drains_nothing_rather_than_everything():
+def test_a_zero_limit_drains_nothing_rather_than_everything(monkeypatch):
     """`limit=0` must disable the pass, not run it unbounded.
 
     `if limit is not None and limit > 0` let a 0 fall through unsliced, so a single call
@@ -214,10 +227,19 @@ def test_a_zero_limit_drains_nothing_rather_than_everything():
 
     rows = [{"candidate_id": f"c{i}", "decision": "defer",
              "created_at": f"2026-07-{i + 1:02d}T00:00:00+00:00"} for i in range(5)]
+    # ON DISK, all five. Orphaned rows are excluded from the backlog before the `limit` branch is
+    # reached (`run.drain_survey`), so a store where nothing is on disk would take the "nothing
+    # workable" early return and pass this test without ever evaluating limit=0 — the vacuous form
+    # of exactly the assertion being made here.
+    ids = {r["candidate_id"] for r in rows}
+    # And with the rows now readable, the unbounded leg below would put all five through the real
+    # moat. It used to be the orphaning that stopped it, which is a test passing for the wrong
+    # reason twice over.
+    _stub_vetting(monkeypatch, [])
 
     summary = run_mod._cmd_resume(
         argparse.Namespace(limit=0, publish=False, board=None),
-        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows),
+        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows, on_disk=ids),
     )
     assert summary == {"backlog": 5, "attempted": 0, "resumed": 0,
                        "passes": 0, "kills": 0, "defers": 0}
@@ -225,7 +247,7 @@ def test_a_zero_limit_drains_nothing_rather_than_everything():
     # None still means unbounded — that is what `vet --resume` has always done on the CLI.
     unbounded = run_mod._cmd_resume(
         argparse.Namespace(limit=None, publish=False, board=None),
-        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows),
+        cfg=None, op=None, fast_op=None, search=None, store=_FakeStore(rows, on_disk=ids),
     )
     assert unbounded["attempted"] == 5
 
@@ -274,7 +296,12 @@ def test_orphaned_rows_do_not_consume_the_bounded_pass(monkeypatch):
         "the bound must be spent on rows that can actually be re-vetted; before this fix the "
         "three oldest orphans consumed the entire pass and resumed nothing"
     )
-    assert summary["backlog"] == 7
+    assert summary["backlog"] == 3, (
+        "`backlog` is the count the scheduler's brake compares against `schedule.backlog_cap` and "
+        "then waits to see fall, so it must be the WORKABLE population (3), not the raw index "
+        "population (7). Reporting 7 here is what let the brake engage on a number that included "
+        "4 rows no drain pass could ever subtract — a generation freeze with no exit."
+    )
     assert summary["orphaned"] == 4, (
         "an index row with nothing on disk is a store inconsistency the operator must see, "
         "not a slot the drain silently wastes"

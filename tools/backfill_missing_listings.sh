@@ -16,15 +16,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 PY="${ROOT}/.venv/bin/python"
-# Do NOT pin concurrency here. This used to default to 2, and the env var WINS over config
-# (cursor_cli.configure_concurrency returns early when it is set), so this line silently
-# overrode retrieval.cursor_concurrency and kept the backfill at 2 slots forever. Oversubscription
-# was the real reason a low number looked necessary, and prospector/cli_governor.py now enforces
-# the cap machine-wide via flock — every pipeline draws from ONE shared pool of slot files, so
-# config can be the single source of truth again. An explicit env var still overrides for debugging.
-if [ -n "${PROSPECTOR_CURSOR_CONCURRENCY:-}" ]; then
-  export PROSPECTOR_CURSOR_CONCURRENCY
-fi
+# Do NOT pin concurrency here. This used to export PROSPECTOR_CURSOR_CONCURRENCY, and the env
+# var WON over config (the adapter's configure_concurrency returned early when it was set), so
+# the line silently kept the backfill at 2 slots forever. Oversubscription was the real reason a
+# low number looked necessary, and prospector/cli_governor.py now enforces the cap machine-wide
+# via flock — every pipeline draws from ONE shared pool of slot files, so config.yaml
+# retrieval.claude_concurrency is the single source of truth. The knob went with the cursor_cli
+# adapter on 2026-08-06 (founder directive); nothing reads it now.
 LOG="${ROOT}/store/control_center/runs/backfill_all_listings.log"
 mkdir -p "$(dirname "$LOG")"
 

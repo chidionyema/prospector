@@ -1,4 +1,5 @@
 import { LEGAL } from '@/lib/config';
+import { checksSentence } from '@/lib/checks';
 
 /**
  * The FAQ copy, the ONE source both the visible page and the FAQPage structured data read.
@@ -55,7 +56,7 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What makes a pack "grounded"?',
     answer: [
-      'Every pack cleared the Mumchimp engine’s hard gates and survived an adversarial review. Six fronts are common to every idea (real pain, durable value, room past incumbents, a solvent payer, a distribution route, and legality); some ideas face more, and each pack page names the checks that idea faced and how many it cleared. Every claim and number cites a retrievable source, or it isn’t in the pack.',
+      `Every pack cleared the Mumchimp engine’s hard gates and survived an adversarial review. The fronts common to every idea are ${checksSentence()}; some ideas face more, and each pack page names the checks that idea faced and how many it cleared. Every claim and number cites a retrievable source, or it isn’t in the pack.`,
     ],
   },
   { category: 'payment',

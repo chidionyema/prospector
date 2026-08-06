@@ -152,8 +152,11 @@ class TestLaunchOperatorChoices:
     def test_config_first(self):
         choices = launch_operator_choices()
         assert choices[0] == "(config)"
-        assert "cursor_cli" in choices
+        assert "claude_cli" in choices
         assert "mock" in choices
+        # Offering a deleted adapter in the launcher would build a job that dies at startup
+        # on `_build_operator`'s explicit ValueError. Removed 2026-08-06.
+        assert "cursor_cli" not in choices
 
 
 class TestLaunchScopeChoices:

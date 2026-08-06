@@ -14,7 +14,7 @@ from prospector.config import load_config
 from prospector.models import Candidate, Source, Verdict
 from prospector.operator import MockOperator
 from prospector.retrieval import FixtureProvider
-from prospector.verify import run_check, verdict_for, verify
+from prospector.verify import DEFER_GATE, run_check, verdict_for, verify
 
 
 # ---------------------------------------------------------------------------
@@ -184,3 +184,43 @@ def test_verify_with_crashing_operator_does_not_raise(cfg, cand):
     for check in checks:
         assert check.degraded is True
         assert check.verdict == Verdict.UNVERIFIABLE
+
+
+def test_crashed_verdict_call_defers_never_kills(cfg, cand):
+    """A verdict call that CRASHED must defer the candidate, never kill it.
+
+    Regression for 2026-08-06. `verdict_for`'s generic-exception path returned a plain
+    `unverifiable` CheckResult with no `retrieval_failed` flag, so an outage flowed into
+    scoring and the kill gates as though it were a finding about the idea. Proof it bit:
+    store/dossiers/2102bacc6dd75cf9.kill.json is a KILL on gate `min_composite` whose
+    SEVEN checks all read `unverifiable, conf 0.0, "Verdict call failed; fail-safe."` — a
+    candidate killed by our own infrastructure, in a dossier that reads as fully reasoned.
+
+    An exception is not evidence. The gate that fires must be the DEFER gate.
+
+    Mutation test: drop `retrieval_failed=True` from that CheckResult in verify.py and
+    this fails — the gate comes back as a kill gate instead of DEFER_GATE.
+    """
+    class _BoomOperator(MockOperator):
+        def _raw(self, system: str, user: str, temperature: float) -> str:
+            if "Passages:" in user:
+                raise RuntimeError("verdict call exploded")
+            return '["query"]'
+
+    # Catch-all key: EVERY query retrieves a passage, so every check reaches verdict_for and
+    # crashes there. Keyed fixtures would let an unmatched query short-circuit on "no passages"
+    # instead — a different code path (retrieval_failed stays False by design, because silence
+    # from the web is a fact about the web) which would not exercise the bug under test.
+    search = FixtureProvider(fixtures={
+        "": [{"url": "https://evidence.example.com", "text": "some retrieved evidence"}],
+    })
+
+    checks, _adv, gate = verify(_BoomOperator(), search, cfg, cand)
+
+    assert checks, "expected at least one check to have run"
+    for check in checks:
+        assert check.retrieval_failed is True, (
+            f"{check.check_name} recorded a crashed verdict call as evidence")
+    assert gate == DEFER_GATE, (
+        f"a crashed verdict call fired {gate!r} instead of deferring — this is the shape "
+        "that killed candidate 2102bacc6dd75cf9")

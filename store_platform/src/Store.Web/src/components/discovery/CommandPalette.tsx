@@ -60,6 +60,44 @@ export function useCommandPalette() {
   return { open, setOpen, close, triggerRef };
 }
 
+/**
+ * The shortcut hint, named for the keyboard the visitor is actually holding.
+ *
+ * The trigger printed a hard-coded `⌘K` to everyone. On Windows and Linux that is not a key the
+ * reader has, and it is not the binding either -- the handler above accepts `metaKey || ctrlKey`
+ * (line 39), so Ctrl+K has always worked and the badge simply never said so. The shop's whole
+ * argument is that it does not print things it cannot support; a shortcut hint that names the
+ * wrong key is a small instance of exactly that.
+ *
+ * `null` on the server, deliberately. The server has no idea what platform will render this, so
+ * committing to either symbol in the SSR markup guarantees a hydration mismatch on half of all
+ * visits. Rendering nothing on the server and filling it in on the client is the only version
+ * that is correct for both, and the badge is `hidden sm:block` decoration -- nothing depends on
+ * it being in the first paint.
+ *
+ * `useSyncExternalStore` rather than the obvious useState-in-useEffect, which is what this was
+ * first written as: React's `react-hooks/set-state-in-effect` rule rejects that shape, because a
+ * setState in a mount effect renders the tree a second time to change one decorative glyph. This
+ * hook is the sanctioned way to read a value that legitimately differs between server and client
+ * -- React calls the server snapshot while rendering the HTML and the client one after, with no
+ * extra commit. `subscribe` is a no-op: the keyboard cannot change under a mounted component.
+ */
+const NEVER_CHANGES = () => () => {};
+
+function clientShortcut(): string {
+  const platform =
+    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+    navigator.platform ??
+    '';
+  return /mac|iphone|ipad|ipod/i.test(platform) ? '⌘K' : 'Ctrl K';
+}
+
+function useShortcutHint(): string | null {
+  // Both snapshots must be referentially stable across calls or React re-renders forever. These
+  // return interned string literals (or null), so they are.
+  return React.useSyncExternalStore(NEVER_CHANGES, clientShortcut, () => null);
+}
+
 /** The always-visible field that opens the palette. Not an input: it is a button that looks like one. */
 export function SearchTrigger({
   onOpen,
@@ -70,6 +108,7 @@ export function SearchTrigger({
   triggerRef: React.RefObject<HTMLButtonElement | null>;
   className?: string;
 }) {
+  const shortcut = useShortcutHint();
   return (
     <button
       ref={triggerRef}
@@ -82,9 +121,11 @@ export function SearchTrigger({
     >
       <Icon name="search" size={16} className="flex-none text-subtle" />
       <span className="flex-1 text-meta text-faint">Search the catalogue</span>
-      <kbd className="hidden rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-faint sm:block">
-        ⌘K
-      </kbd>
+      {shortcut && (
+        <kbd className="hidden rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-faint sm:block">
+          {shortcut}
+        </kbd>
+      )}
     </button>
   );
 }

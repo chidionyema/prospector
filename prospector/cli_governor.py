@@ -137,6 +137,10 @@ class CrossProcessSemaphore:
         self._local = threading.local()
         # Fallback path: behaves exactly as the old in-process governor did.
         self._fallback = threading.Semaphore(self._n) if self._root is None else None
+        # Index bookkeeping for the fallback only. The flock path gets its index for free —
+        # the slot FILE the holder won IS the index, enforced by the kernel.
+        self._fb_lock = threading.Lock()
+        self._fb_free = list(range(self._n))
 
     @property
     def limit(self) -> int:
@@ -149,8 +153,22 @@ class CrossProcessSemaphore:
             self._local.stack = stack
         return stack
 
-    def _try_slot(self) -> object | None:
-        """Attempt to claim any free slot file. Returns an open fd, or None."""
+    def current_slot(self) -> int | None:
+        """Index of the slot this thread is currently holding, or None if it holds none.
+
+        Callers use this to derive per-slot resources that must not be shared between
+        concurrent holders — see `claude_cli._attempt_claude_cli`, which binds the CLI's
+        working directory to it. The guarantee is exactly the one `acquire` already makes and
+        no weaker: while this returns `i`, no other thread OR process on the machine can be
+        inside `acquire` holding `i`, because `slot_i.lock` is held `LOCK_EX`. That is why
+        this needs no lock of its own and cannot go stale — the kernel drops the flock when
+        the fd closes or the process dies.
+        """
+        stack = self._held()
+        return stack[-1][1] if stack else None
+
+    def _try_slot(self) -> tuple[object, int] | None:
+        """Attempt to claim any free slot file. Returns (open fd, slot index), or None."""
         for i in range(self._n):
             path = os.path.join(self._root or "", f"slot_{i}.lock")
             try:
@@ -162,17 +180,24 @@ class CrossProcessSemaphore:
             except OSError:
                 os.close(fd)  # someone else holds this slot
                 continue
-            return fd
+            return fd, i
         return None
 
     def acquire(self, timeout: float | None = None) -> bool:
         if self._fallback is not None:
-            return self._fallback.acquire(timeout=timeout)
+            if not self._fallback.acquire(timeout=timeout):
+                return False
+            with self._fb_lock:
+                # Empty only if release() was called without acquire (see below); fall back to
+                # 0 rather than raise, mirroring Semaphore's forgiveness.
+                idx = self._fb_free.pop() if self._fb_free else 0
+            self._held().append((None, idx))
+            return True
         deadline = None if timeout is None else time.monotonic() + float(timeout)
         while True:
-            fd = self._try_slot()
-            if fd is not None:
-                self._held().append(fd)
+            claimed = self._try_slot()
+            if claimed is not None:
+                self._held().append(claimed)
                 return True
             if deadline is not None and time.monotonic() >= deadline:
                 return False
@@ -180,12 +205,17 @@ class CrossProcessSemaphore:
 
     def release(self) -> None:
         if self._fallback is not None:
+            stack = self._held()
+            if stack:
+                _, idx = stack.pop()
+                with self._fb_lock:
+                    self._fb_free.append(idx)
             self._fallback.release()
             return
         stack = self._held()
         if not stack:
             return  # release without acquire — mirror Semaphore's forgiveness, don't crash
-        fd = stack.pop()
+        fd, _idx = stack.pop()
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
         except OSError:

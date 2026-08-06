@@ -17,15 +17,14 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import NamedTuple, Optional
 
 # Max candidates vetted in parallel. Each vet drives slow CLI subprocesses, so the
-# real throughput ceiling is the grounding / Cursor concurrency; this caps how many
-# candidate vets are in flight at once. Sourced from config (retrieval.vet_workers).
-# Align with retrieval.cursor_concurrency + retrieval.claude_concurrency (and export
-# PROSPECTOR_CURSOR_CONCURRENCY= that same value in ops shells / queue_yield_batch.sh)
-# so workers do not self-induce queue_timeout. PROSPECTOR_VET_WORKERS overrides for ops.
-# Not a verdict knob.
+# real throughput ceiling is retrieval.claude_concurrency; this caps how many candidate
+# vets are in flight at once. Sourced from config (retrieval.vet_workers).
+# Keep it <= retrieval.claude_concurrency so workers do not self-induce queue_timeout —
+# oversubscribing the CLI is what produced the ~3s HTTP-429 failures that flapped the moat
+# on 2026-08-06. PROSPECTOR_VET_WORKERS overrides for ops. Not a verdict knob.
 def _vet_workers(cfg) -> int:
     env = os.environ.get("PROSPECTOR_VET_WORKERS")
     if env:
@@ -41,13 +40,6 @@ def _sync_cli_concurrency(cfg) -> None:
     try:
         from .claude_cli import configure_concurrency as _claude_conc
         _claude_conc(int(getattr(r, "claude_concurrency", 2) or 2))
-    except Exception:
-        pass
-    try:
-        from .cursor_cli import configure_concurrency as _cursor_conc
-        _cursor_conc(int(getattr(r, "cursor_concurrency", None)
-                         or getattr(r, "claude_concurrency", 2)
-                         or 2))
     except Exception:
         pass
 
@@ -147,6 +139,7 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
     return results
 
 from .config import Config, load_config
+from . import drain_state
 from .dedup import dedup, drops_by_market
 from .dossier import build_dossier, render_markdown
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
@@ -1115,6 +1108,97 @@ def _resume_selects(row: dict, only: str) -> bool:
     return True
 
 
+class DrainSurvey(NamedTuple):
+    """The backlog split into what a drain pass can move and what it provably cannot.
+
+    `workable` is THE definition of "backlog" for every caller — the drain's bound is spent on
+    it, and the scheduler's brake counts it. `orphaned` and `stalled` are the excluded rows,
+    carried out by candidate_id so every caller can report them instead of absorbing them.
+    """
+
+    workable: list[dict]
+    orphaned: list[str]
+    stalled: list[str]
+
+
+def drain_survey(store: Store, *, max_attempts: int = 0) -> DrainSurvey:
+    """Split the DEFER + provisional population into workable rows and unmovable ones.
+
+    Two populations need the moat to revisit them:
+      1. DEFER — the moat was unavailable, so no verdict was reached at all.
+      2. provisional — a real verdict WAS reached, but by the cheap emergency fallback tail
+         (moat exhausted). Re-vet so the trusted moat overwrites the cheap ruling.
+    De-duped by candidate_id (a dossier can't be both, but guard against overlap).
+
+    Tombstoned rows are excluded from BOTH populations. A tombstone means the dossier is gone
+    for good, so there is nothing to re-vet — and leaving them in inflated the backlog the
+    operator reads (406 reported, 45 of them undrainable) and made the drain's ETA a fiction.
+    They stay in the catalogue for history; they are just not work.
+
+    THEN TWO EXCLUSIONS, both closing the same hole: a counted row the drain cannot move.
+
+      * ORPHANED — an index row whose dossier JSON is not on disk. `store.get()` returns None
+        and the drain can only print "dossier JSON missing, skipping". Measured 2026-08-06 on the
+        live store: 46 of 406, with a leading unbroken run of 45 dated 2026-06-14..06-21, i.e.
+        15 consecutive 3-row ticks (~1.2 days) of no-op drains reporting `attempted: 3`.
+      * STALLED — a row that has absorbed `max_attempts` completed re-vets and is still
+        drainable (`prospector/drain_state.py`). 0 disables this exclusion entirely.
+
+    Why they belong HERE and not in `_cmd_resume`'s loop: the scheduler's backlog brake
+    (`run_scheduled._backlog_size`) counts this same population to decide whether generation may
+    run, and it releases itself when the count falls back under `schedule.backlog_cap`. Excluding
+    unmovable rows only in the drain would leave the brake counting rows nothing can ever
+    subtract — a generation freeze waiting on a number that cannot fall, with no human able to
+    see why. One definition, or the rail deadlocks.
+
+    A row that is both stalled and orphaned is reported as stalled; the two lists are disjoint by
+    construction, and either way the row is excluded.
+    """
+    deferred = [r for r in store.all(decision="defer") if not r.get("tombstone")]
+    provisional = [r for r in store.provisional() if not r.get("tombstone")]
+    seen_ids = {r.get("candidate_id", "") for r in deferred}
+    rows = list(deferred) + [r for r in provisional
+                             if r.get("candidate_id", "") not in seen_ids]
+
+    attempts = drain_state.load(store.root) if max_attempts > 0 else {}
+    workable: list[dict] = []
+    orphaned: list[str] = []
+    stalled: list[str] = []
+    for row in rows:
+        cid = str(row.get("candidate_id", "") or "")
+        if max_attempts and attempts.get(cid, 0) >= max_attempts:
+            stalled.append(cid)
+        elif not store.has_dossier(cid):
+            orphaned.append(cid)
+        else:
+            workable.append(row)
+    return DrainSurvey(workable, orphaned, stalled)
+
+
+def drainable(store: Store, *, max_attempts: int = 0) -> list[dict]:
+    """The rows a re-vet pass can actually work on — `drain_survey(...).workable`.
+
+    Kept as a name because callers and tests bind to it; see `drain_survey` for the definition
+    and for why the exclusions live there rather than in the drain loop.
+    """
+    return drain_survey(store, max_attempts=max_attempts).workable
+
+
+def _with_exclusions(summary: dict, survey: DrainSurvey) -> dict:
+    """Ride the excluded counts into the drain summary on EVERY return path.
+
+    `orphaned` used to be attached on one path only — the one that actually ran a pass — so the
+    tick that excluded every row returned a clean-looking `attempted: 0` and named no reason for
+    it. The summary is what reaches `ticks.jsonl` and the state probe, so a count that is not in
+    here is a count no operator will ever see.
+    """
+    if survey.orphaned:
+        summary["orphaned"] = len(survey.orphaned)
+    if survey.stalled:
+        summary["stalled"] = len(survey.stalled)
+    return summary
+
+
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
                 log_path: Optional[Path] = None) -> dict:
@@ -1135,25 +1219,73 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     Returns a summary dict so a caller (the daemon) can record what the pass did; the CLI
     ignores the return and reads the printed report.
     """
-    # Two populations need the moat to revisit them:
-    #   1. DEFER  — the moat was unavailable, so no verdict was reached at all.
-    #   2. provisional — a real verdict WAS reached, but by the cheap emergency fallback
-    #      tail (moat exhausted). Re-vet so the trusted moat overwrites the cheap ruling.
-    # De-dup by candidate_id (a dossier can't be both, but guard against overlap).
-    # Tombstoned rows are excluded from BOTH populations. A tombstone means the dossier is
-    # gone for good, so there is nothing to re-vet — and leaving them in inflated the backlog
-    # the operator reads (406 reported, 45 of them undrainable) and made the drain's ETA a
-    # fiction. They stay in the catalogue for history; they are just not work.
-    deferred = [r for r in store.all(decision="defer") if not r.get("tombstone")]
-    provisional = [r for r in store.provisional() if not r.get("tombstone")]
-    seen_ids = {r.get("candidate_id", "") for r in deferred}
-    pending = list(deferred) + [r for r in provisional
-                                if r.get("candidate_id", "") not in seen_ids]
+    max_att = drain_state.max_attempts(cfg)
+    survey = drain_survey(store, max_attempts=max_att)
+    pending = survey.workable
     backlog = len(pending)
+    excluded = ""
+    if survey.orphaned or survey.stalled:
+        # NAMED, not absorbed. These rows are the reason a backlog count can stop falling, so the
+        # one place an operator is looking (the drain's own output, and the summary that reaches
+        # ticks.jsonl) has to say how many were set aside and where the reversal switch is.
+        parts = []
+        if survey.orphaned:
+            parts.append(f"{len(survey.orphaned)} orphaned (index row, no dossier JSON on disk)")
+        if survey.stalled:
+            parts.append(f"{len(survey.stalled)} stalled (>= {max_att} unresolved re-vets; "
+                         f"rm {drain_state.ledger_path(store.root)} to retry them)")
+        excluded = " Excluded: " + "; ".join(parts) + "."
     if not pending:
-        print("No deferred or provisional candidates to resume. Moat is healthy.")
-        return {"backlog": 0, "attempted": 0, "resumed": 0,
-                "passes": 0, "kills": 0, "defers": 0}
+        if excluded:
+            print(f"No backlogged candidate the drain can work on.{excluded}")
+        else:
+            print("No deferred or provisional candidates to resume. Moat is healthy.")
+        return _with_exclusions({"backlog": 0, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0}, survey)
+
+    # MOAT PREFLIGHT — never drain into a blind moat.
+    #
+    # `run_scheduled.py` gained this precondition for GENERATION on 2026-08-06 (392ce4c); the
+    # drain never had one, and the standalone `vet --resume` invocation does not go through the
+    # scheduler at all. Measured 2026-08-06 with `operator: [claude_cli]` — a ONE-brain moat —
+    # marked dead for 3033s: the drain kept running and every re-vet raised
+    # ProviderExhaustedError, which `verify.py` turns into retrieval_failed -> DEFER_GATE ->
+    # Decision.DEFER. Over one 30-minute window that moved provisional -14 / defer +13: a net
+    # backlog change of -1 for a full pass of CLI spend. The rows were relabelled, not resolved.
+    #
+    # Worse than useless: the drain competes for the same subscription CLI as the daemon, and
+    # 392ce4c's own commit message records that the drain's load was implicated in the moat
+    # flapping that minted the provisional rows in the first place. A drain that runs while the
+    # brain is benched is helping to keep it benched.
+    #
+    # Deliberately no --force override: when no trusted brain can rule, there is no verdict to
+    # be had, so "force" would only buy a more expensive way to write DEFER.
+    from .health import moat_blind_reason
+    blind = moat_blind_reason(cfg)
+    if blind:
+        print(f"Found {backlog} deferred + provisional candidate(s), but {blind}. "
+              f"Re-vetting none — a drain into a blind moat only relabels rows "
+              f"provisional->defer, and its own CLI load helps keep the brain benched.")
+        return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0, "skipped": blind}, survey)
+
+    # Restrict to one population BEFORE the oldest-first sort and the `--limit` slice, so the
+    # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
+    # drainable population: the printed line then reads "Found 351 ... re-vetting 72 of them",
+    # which is the truth. `getattr` default keeps `resume_deferred`'s Namespace (the daemon's
+    # entry point, which has no `only` attribute) on the historical "all" behaviour.
+    only = str(getattr(args, "only", "all") or "all")
+    if only not in RESUME_SELECTORS:
+        print(f"Unknown --only {only!r}; expected one of {', '.join(RESUME_SELECTORS)}.",
+              file=sys.stderr)
+        sys.exit(2)
+    if only != "all":
+        pending = [r for r in pending if _resume_selects(r, only)]
+        if not pending:
+            print(f"Found {backlog} deferred + provisional candidate(s), but none match "
+                  f"--only {only}. Nothing to re-vet.{excluded}")
+            return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                     "passes": 0, "kills": 0, "defers": 0}, survey)
 
     # Restrict to one population BEFORE the oldest-first sort and the `--limit` slice, so the
     # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
@@ -1185,46 +1317,34 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         # pass the spend rail exists to prevent. Only `None` (the CLI default) means
         # unbounded, which is what `vet --resume` has always done.
         print(f"Found {backlog} deferred + provisional candidate(s); limit={limit} "
-              f"disables the drain — re-vetting none.")
-        return {"backlog": backlog, "attempted": 0, "resumed": 0,
-                "passes": 0, "kills": 0, "defers": 0}
+              f"disables the drain — re-vetting none.{excluded}")
+        return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0}, survey)
     # Oldest first. `store.all` returns catalogue order; the oldest DEFERs are the ones that
     # have been waiting longest (this backlog reaches back to 2026-06-14), and draining
     # newest-first would starve them forever at 3 per tick.
     pending = sorted(pending, key=lambda r: str(r.get("created_at", "")))
 
-    # ORPHANS MUST NOT CONSUME THE BOUNDED PASS.
+    # UNMOVABLE ROWS MUST NOT CONSUME THE BOUNDED PASS — and `drain_survey` has already taken
+    # them out, so this slice is a plain one.
     #
-    # The index and the disk disagree: some rows have no dossier JSON behind them. The loop
-    # below prints "dossier JSON missing, skipping" and moves on — which is right per row, and
-    # wrong for a bounded pass that always re-takes the OLDEST rows. The same unreadable rows
-    # were re-selected every single tick, so the pass burned its whole budget on them and did
-    # nothing else, forever.
+    # The exclusion used to happen HERE, inside the `limit` slice, and only for orphans. That was
+    # right for the drain and wrong for the system: `run_scheduled._backlog_size` counts the same
+    # population to decide whether generation may run, and it kept counting the rows this loop was
+    # skipping — so the brake could sit engaged on a number no drain could ever reduce. Moving
+    # both exclusions into `drain_survey` is what makes the brake self-releasing rather than a
+    # freeze that outlives the reason for it.
     #
     # PROVEN on the live store 2026-08-06, first tick that ever ran the drain:
     #   ticks.jsonl result -> 'resumed': {'backlog': 406, 'attempted': 3, 'resumed': 0, ...}
     #   backlog 406, orphaned 46, leading unbroken run of orphans 45 (2026-06-14..06-21)
     # At 3 per tick that is 15 consecutive ticks — ~1.2 days — of no-op drains reporting
     # `attempted: 3` before the pass reaches its first real candidate.
-    #
-    # So the bound is spent on rows that can actually be re-vetted, and the orphan count is
-    # REPORTED rather than silently absorbed: a row in the index with nothing on disk is a
-    # store inconsistency the operator should see, not a slot the drain quietly wastes.
-    orphaned = 0
     if limit is not None:
-        selected: list = []
-        for row in pending:
-            if len(selected) >= limit:
-                break
-            if store.get(row.get("candidate_id", "")):
-                selected.append(row)
-            else:
-                orphaned += 1
-        pending = selected
+        pending = pending[:limit]
 
     print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
-          f"{len(pending)} of them with the moat..."
-          + (f" (skipped {orphaned} with no dossier JSON on disk)" if orphaned else ""))
+          f"{len(pending)} of them with the moat...{excluded}")
     from .models import Candidate
     from .telemetry import get_usage_summary, reset_usage
     from . import progress
@@ -1268,6 +1388,25 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
             n_kill += 1
         else:
             n_defer += 1
+
+        # PER-ROW ATTEMPT ACCOUNTING. Only a COMPLETED re-vet with a verdict counts, and only if
+        # that verdict left the row in the backlog — a DEFER, or a ruling that is provisional
+        # again. The two outage paths never reach here (a blind moat returns before the loop; a
+        # ProviderExhaustedError breaks out of it above), which is the point: the backlog exists
+        # because of outages, so an outage must not be able to spend a row's budget.
+        #
+        # A resolved row is FORGOTTEN rather than left at its count, so if a later re-save puts it
+        # back in the backlog it starts from a full budget instead of inheriting a spent one.
+        if max_att:
+            if d.decision == Decision.DEFER or bool(getattr(d, "provisional", False)):
+                n = drain_state.record_unresolved(store.root, cid)
+                if n >= max_att:
+                    progress.note(
+                        f"{cid}: {n} completed re-vets, still unresolved — no longer counted as "
+                        f"backlog, so the generation brake can release. "
+                        f"rm {drain_state.ledger_path(store.root)} to retry it.")
+            else:
+                drain_state.forget(store.root, cid)
         resumed_dossiers.append(d)
 
     # Summary.
@@ -1298,11 +1437,11 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                # `today_subscription_usd` (scheduler/guard.py:161). Two legs, two names —
                # guard.py:21-45 has the full measurement of why they must never be added up.
                "metered_usd": round(usage.get("total_cost_usd", 0.0), 4)}
-    if orphaned:
-        # Surfaced into the tick row so a store inconsistency is visible in ticks.jsonl and the
-        # state probe instead of showing up as an inexplicable `attempted: 3, resumed: 0`.
-        summary["orphaned"] = orphaned
-    return summary
+    # Excluded counts surfaced into the tick row, so a store inconsistency or an exhausted attempt
+    # budget is visible in ticks.jsonl and the state probe instead of showing up as an
+    # inexplicable `attempted: 3, resumed: 0` — or, once the brake is engaged, as a generation
+    # freeze with nothing anywhere naming the rows that are holding it.
+    return _with_exclusions(summary, survey)
 
 
 def resume_deferred(cfg: Config, *, limit: int | None = None,
@@ -1563,8 +1702,7 @@ def _cmd_operators(args) -> None:
     available_ops = []  # list of (kind, op, elapsed_or_None)
     cfg = load_config(args.config if args.config else None)
 
-    for kind in ("deepseek", "minimax",
-                 "cursor_cli", "claude_cli"):
+    for kind in ("deepseek", "minimax", "claude_cli"):
         print(f"\n  {kind:15s}", end="", flush=True)
         try:
             op = _build_operator(kind, cfg, fast=True)
@@ -2097,7 +2235,7 @@ def main() -> None:
                        help="One-liner description")
     vet_p.add_argument("--why-now", dest="why_now", default="",
                        help="Why this opportunity exists now")
-    vet_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    vet_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     vet_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane to judge against (e.g. side_hustle, venture). "
@@ -2137,7 +2275,7 @@ def main() -> None:
     sig_src = sig_p.add_mutually_exclusive_group(required=True)
     sig_src.add_argument("--text", metavar="TEXT", help="Signal text inline")
     sig_src.add_argument("--file", metavar="PATH", help="Path to signal text file")
-    sig_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    sig_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     sig_p.add_argument("--count", type=int, default=None, metavar="N",
                        help="Number of candidates to generate (default: config candidates_per_signal)")
@@ -2170,7 +2308,7 @@ def main() -> None:
                        help="Number of candidates to generate (default: config candidates_per_signal)")
     gen_p.add_argument("--exploration", type=float, default=None, metavar="X",
                        help="Override exploration level 0-1 (default: adaptive)")
-    gen_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    gen_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     gen_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -2209,7 +2347,7 @@ def main() -> None:
                        metavar="X", help="Only replicate PASSes scoring at or above X")
     rep_p.add_argument("--dry-run", dest="dry_run", action="store_true",
                        help="List what would be replicated; run no checks")
-    rep_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    rep_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                        help="Override operator from config")
     rep_p.add_argument("--fixtures", metavar="PATH",
                        help="Path to fixtures JSON (uses FixtureProvider)")
@@ -2232,7 +2370,7 @@ def main() -> None:
                         help="Only surface + save signals; do not generate or vet")
     disc_p.add_argument("--no-save", dest="no_save", action="store_true",
                         help="Do not write discovered signals to signals/")
-    disc_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"],
+    disc_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"],
                         help="Override operator from config")
     disc_p.add_argument("--lane", metavar="NAME",
                         help="Pin the sweep to a single ambition lane (default: multi-lane "
@@ -2313,7 +2451,7 @@ def main() -> None:
     probe_p.add_argument("--set", metavar="PATH", required=True,
                          help="JSONL calibration set: one "
                               '{"title","one_liner","expected":"pass|kill"} per line')
-    probe_p.add_argument("--operator", choices=["claude", "claude_cli", "cursor_cli", "minimax", "deepseek", "mock"])
+    probe_p.add_argument("--operator", choices=["claude", "claude_cli", "minimax", "deepseek", "mock"])
     probe_p.add_argument("--fixtures", metavar="PATH",
                          help="Path to fixtures JSON (offline probe)")
     probe_p.add_argument("--lane", metavar="NAME")

@@ -6,7 +6,7 @@ import { cx } from '@/components/ui/cx';
 import { freshnessLabel, type Pack } from '@/lib/api/client';
 import { useCurrency } from '@/lib/currency';
 import { formatPriceForMarket } from '@/lib/fx';
-import { splitTitle } from '@/lib/discovery';
+import { cardHeading } from '@/lib/discovery';
 
 import { FacetChips } from './FacetChips';
 
@@ -34,7 +34,11 @@ export function DossierCard({ pack }: { pack: Pack }) {
   // about money, and a card quoting GBP beside a converted headline is the exact defect
   // measured on the pack page's related rail. See lib/currency.tsx.
   const currency = useCurrency();
-  const { name, descriptor } = splitTitle(pack.title, pack.headline);
+  // `cardHeading`, the same helper the homepage grid uses, NOT `splitTitle`. This card used to
+  // head every pack with its brand name while the homepage headed the same pack with its short
+  // descriptive line, so the two shelves named one product two ways.
+  const { heading, sub } = cardHeading(pack);
+  const line = pack.oneLine || sub;
   const sources =
     typeof pack.sourceCount === 'number' && pack.sourceCount > 0 ? pack.sourceCount : null;
   const fresh = freshnessLabel(pack.verifiedAt);
@@ -49,8 +53,8 @@ export function DossierCard({ pack }: { pack: Pack }) {
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
       )}
     >
-      <span className="line-clamp-2 text-meta font-semibold leading-snug text-text">{name}</span>
-      {descriptor && <span className="mt-1 line-clamp-2 text-caption text-muted">{descriptor}</span>}
+      <span className="line-clamp-2 text-meta font-semibold leading-snug text-text">{heading}</span>
+      {line && <span className="mt-1 line-clamp-2 text-caption text-muted">{line}</span>}
 
       <FacetChips pack={pack} compact className="mt-3" />
 

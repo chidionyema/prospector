@@ -60,45 +60,99 @@ class ProviderUnavailable(RuntimeError):
     """
 
 
-# Substrings that mean "this account/model is out of allowance for now" across the
-# claude CLI and the Anthropic APIs. Matched case-insensitively
-# against an adapter's error text to classify a failure as exhaustion (-> failover).
-_EXHAUSTION_MARKERS = (
+# Exhaustion is not one thing, and the two shapes must NOT share a blackout window.
+#
+# PERMANENT — the account has no allowance left. Waiting a few seconds cannot help; only a
+# quota reset or a billing action does. A long dead-window is correct here and saves real
+# money: re-probing a broke account every 60s forever is the bug this list was written for.
+#
+# TRANSIENT — the provider is alive and applying backpressure (HTTP 429, "overloaded",
+# "too many requests"). It wants a shorter queue, not a different brain.
+#
+# Treating the second as the first is what turned a slow-down into an outage. Measured
+# 2026-08-06 on the live daemon: `claude_cli` was marked dead-for-3600s NINE times inside 70
+# minutes (08:25, 09:06, 09:07:07 x2, 09:07:11 x2, 09:08, 09:09, 09:36) while a direct
+# `env -u ANTHROPIC_API_KEY claude -p` probe answered OK on demand. Each failure took ~3s
+# (09:06:21 -> 09:06:24) — the shape of backpressure, not of a spent quota. Every mark blinded
+# the moat for an hour because `FallbackOperator._raw` skips a dead brain WITHOUT probing it,
+# so the emergency tail ruled instead and all 15 verdicts in the 09:23 batch came back
+# `provisional` — each one owing a full re-vet later for an answer the moat could have given.
+_PERMANENT_MARKERS = (
     "quota_exhausted",
     "exhausted your capacity",
     "terminalquotaerror",
     "resource_exhausted",
-    "rate_limit",
-    "rate limit",
-    "429",
     "insufficient_quota",
     "insufficient balance",
     "credit balance is too low",
-    "billing",
-    "usage limit",
-    # 402 = "you are out of money", the most PERMANENT failure a metered brain has, and it was
-    # the one shape this list missed. Measured 2026-08-06: deepseek answered every call with
-    #   RuntimeError: DeepSeek call failed: HTTP Error 402: Payment Required
-    # None of the markers above appear in that string, so the failure classified as transient:
-    # `FallbackOperator._raw` sets `hard = isinstance(e, ProviderExhaustedError)`, so
-    # `mark_exhausted` never ran and deepseek never appeared in
-    # store/provider_health_noncritical.json — while cursor_cli, which does raise
-    # ProviderExhaustedError, was correctly marked dead_until in the same file at the same time.
-    # The breaker alone then re-probed a permanently-broke account every cooldown_s (60s),
-    # forever, at the head of the chain. `errors.py:36` already documents 402 as exhaustion for
-    # the retrieval side; the brain side simply never learned it.
-    "402",
     "payment required",
+    "usage limit",
 )
+# The allowance-limit shape, as a regex rather than more literals. Proven 2026-08-06 against the
+# tuple above, which held "usage limit" but NOT the words the Claude Code CLI actually emits:
+#     "...,"api_error_status":429,"result":"You've hit your monthly spend limit · raise it at
+#      claude.ai/settings/usage?from=cc_cli_limit_message"
+# It says SPEND limit, not USAGE limit. So the real message classified `transient` (60s) purely
+# on the incidental \b429\b, and the daemon re-probed a hard monthly cap every 60s — the live log
+# shows strikes 2, 3, 4 escalating inside three seconds. Worse, the same message WITHOUT a 429
+# scored NOT_EXHAUSTION at all, which is the dangerous half: a failure `looks_exhausted` misses
+# never becomes ProviderExhaustedError, so verify.py takes its generic-exception path and the
+# billing failure is recorded as an `unverifiable` check instead of deferring the candidate.
+# "rate limit" is deliberately NOT matched here — it stays transient, in _TRANSIENT_MARKERS.
+# A long window is cheap now: health.py's half-open probe re-tests at ~120s, so classifying an
+# allowance limit PERMANENT costs at most one extra probe if the allowance is actually restored.
+_ALLOWANCE_LIMIT_RE = re.compile(r"\b(spend|usage|monthly|weekly|daily)\s+limit\b")
+_TRANSIENT_MARKERS = (
+    "rate_limit",
+    "rate limit",
+    "too many requests",
+    "overloaded_error",
+    "overloaded",
+    "server_busy",
+)
+# HTTP status codes must be matched on a WORD BOUNDARY, never as bare substrings. Proven
+# 2026-08-06 against the previous list, which held "429" and "402" as plain `in` tests:
+#     looks_exhausted("connection reset after 4291 bytes") -> True
+#     looks_exhausted("req_id=a429f0 timeout")             -> True
+#     looks_exhausted("Error: 4290 tokens")                -> True
+# Any request id, byte count or token count containing those three digits bought an hour-long
+# moat blackout. `\b429\b` matches "HTTP 429 Too Many Requests" and none of the three above.
+_HTTP_TRANSIENT_RE = re.compile(r"\b(429|503|529)\b")
+_HTTP_PERMANENT_RE = re.compile(r"\b402\b")
+# "billing" was also a bare substring, so "billing address invalid" classified as exhaustion.
+# It only means "out of allowance" next to a word that says so.
+_BILLING_RE = re.compile(r"\bbilling\b[^.\n]{0,60}\b(limit|quota|credits?|plan|upgrade)\b")
 # DELIBERATELY NOT HERE: 401 / "unauthorized". That is a bad or expired credential, not a spent
 # allowance, and marking it exhausted would bury a config error under a silent hour-long
 # failover — the opposite of what this list is for. It should fail loudly on every call.
 
+PERMANENT = "permanent"
+TRANSIENT = "transient"
+NOT_EXHAUSTION = ""
+
+
+def classify_exhaustion(text: str) -> str:
+    """Classify an adapter's error text as PERMANENT, TRANSIENT or NOT_EXHAUSTION.
+
+    PERMANENT wins ties: a message carrying both a 429 and "credit balance is too low" is a
+    spent account being rate-limited on the way out, and the expensive mistake is to keep
+    re-probing it. The caller turns this into a dead-window length (see health.py)."""
+    t = (text or "").lower()
+    if (any(m in t for m in _PERMANENT_MARKERS) or _HTTP_PERMANENT_RE.search(t)
+            or _BILLING_RE.search(t) or _ALLOWANCE_LIMIT_RE.search(t)):
+        return PERMANENT
+    if any(m in t for m in _TRANSIENT_MARKERS) or _HTTP_TRANSIENT_RE.search(t):
+        return TRANSIENT
+    return NOT_EXHAUSTION
+
 
 def looks_exhausted(text: str) -> bool:
-    """True if an error string indicates quota/credit exhaustion (-> failover)."""
-    t = (text or "").lower()
-    return any(m in t for m in _EXHAUSTION_MARKERS)
+    """True if an error string indicates quota/credit exhaustion OR backpressure (-> failover).
+
+    Unchanged contract for every existing caller: both shapes still fail over to the next
+    brain and still raise ProviderExhaustedError. What changed is that the CALLER can now ask
+    `classify_exhaustion` how long to stay away, instead of every failure costing an hour."""
+    return classify_exhaustion(text) != NOT_EXHAUSTION
 
 
 # Providers tell us WHEN the quota resets; we parse it to persist a precise dead-window

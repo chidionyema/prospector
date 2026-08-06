@@ -5,12 +5,13 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { productJsonLd } from '@/lib/productJsonLd';
-import { breadcrumbNode, graph } from '@/lib/seo/schema';
+import { absolute, breadcrumbNode, graph } from '@/lib/seo/schema';
 import { packOgImagePath } from '@/lib/seo/ogImage';
 import { buttonClasses, Icon, ErrorState, Breadcrumbs, SourcedLine, CitationList } from '@/components/ui';
 import { parseCitations } from '@/lib/citations';
 import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
+import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
@@ -72,15 +73,12 @@ interface PackPageProps {
  * claims (Allen 1991, O'Keefe 1999, Eisend 2006). The change is scope, not tone: this pack's own
  * answers are real and directly below, in the scored axes with their weak ones left visible, and
  * in the QA report inside the pack, which marks each individual claim SUPPORTED or not.
+ *
+ * That refutational wording is a REGISTER of the shared vocabulary, not a private one. It used to
+ * be a hand-typed array here, which is how `payer_solvency` came to be called three different
+ * things on three pages. See lib/checks.ts.
  */
-const CHECKS = [
-  'Whether the pain is imagined',
-  'Whether the value decays',
-  'Whether incumbents already own the space',
-  'Whether anyone will actually pay',
-  'Whether it can reach a market at all',
-  'Whether there is a legal landmine',
-];
+const CHECKS = COMMON_CHECKS.map((check) => check.refutation);
 
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
@@ -181,16 +179,22 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
 
   // Map internal axis keys to buyer-facing labels so the scored section
   // reads as consumer content, not internal tooling.
+  //
+  // These are the SCORE axes (`score.py`), a different set from the kill gates rendered above --
+  // a survivor is ranked on them, it is not killed by them. Where an id belongs to both sets it
+  // must not pick up a second name: `distribution` was "Can reach buyers" here and "A route to
+  // the buyer" in the checks block, one engine id under two labels on one page, which is the
+  // fragmentation `lib/checks.ts` exists to end. So the overlap defers to the shared vocabulary
+  // and only the axis-only keys are named locally.
   const axisLabel = (key: string): string => {
     const labels: Record<string, string> = {
       pain_acuity: 'Real demand',
       money_provability: 'People will pay',
       defensibility: 'Hard to copy',
-      distribution: 'Can reach buyers',
       build_feasibility: 'You can build this',
       automatability: 'Runs without you',
     };
-    return labels[key] ?? key.replace(/_/g, ' ');
+    return labels[key] ?? checkForGate(key)?.name ?? key.replace(/_/g, ' ');
   };
 
   // Back-to-top visibility, revealed after scrolling past the hero (~600px).
@@ -562,8 +566,24 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 <p className="text-meta text-muted">
                   Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
                   cited evidence against it, and a listing means no hard gate produced that evidence.
-                  Finding nothing is not the same as finding a green light, so the scores below show where
-                  this pack&rsquo;s case is strong and where it is thin.
+                  Finding nothing is not the same as finding a green light.
+                </p>
+                {/* WAS "...so the scores below show where this pack's case is strong and where it is
+                    thin", directly above the six UNSCORED bullets that follow. The scored axes are
+                    real and this page does render them, but in a different, collapsed <details>
+                    further down, so the sentence pointed the reader at the one list on the page that
+                    carries no scores at all and read as a promise the page then broke.
+
+                    The scores are deliberately opt-in (US-4, see the disclosure below): the buyer
+                    who wants the result meets the buy button first. That decision stands; what
+                    changes is that the pointer now names where the scores actually are. */}
+                <p className="mt-3 text-meta text-muted">
+                  {/* NOT "the six fronts". The check count is lane-dependent (6/6, 8/8, 7/8, 9/9
+                      and 6/8 all occur live), which is why `fixedCheckCount.test.ts` exists and
+                      why it failed on this sentence the moment it was written. */}
+                  The fronts every idea is attacked on are below. For where this pack&rsquo;s case
+                  is strong and where it is thin, open <span className="font-medium text-text">How it
+                  scores</span> further down, weak bars included.
                 </p>
                 <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {CHECKS.map((check, i) => (
@@ -823,7 +843,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             {/* Share sat at y~247, above the product, before the visitor knew what it was.
                 Nobody shares a thing they have not read, so it moves to the foot of the article,
                 where someone who has just read it might. */}
-            <ShareRow title={pack.title} />
+            <ShareRow title={pack.title} path={`/pack/${pack.id}`} />
           </div>
 
           {/* Right: Checkout (desktop sticky) */}
@@ -955,14 +975,28 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
   );
 }
 
-/** Share buttons: copy link, X, LinkedIn. URL via useSyncExternalStore to keep SSR clean. */
-function ShareRow({ title }: { title: string }) {
+/** Share buttons: copy link, X, LinkedIn. URL via useSyncExternalStore to keep SSR clean.
+ *
+ * THE SERVER SNAPSHOT IS `absolute(path)`, NOT `''`.
+ *
+ * It returned an empty string, so the served HTML carried
+ * `x.com/intent/tweet?text=...&url=` and `linkedin.com/sharing/share-offsite/?url=` with an empty
+ * `url` param. Client hydration then filled it in, which is why this survived manual clicking --
+ * but anything that reads the markup rather than running it shares nothing: LinkedIn's and X's
+ * own crawlers, every "share" pulled from a scraped page, and any visitor whose JS has not
+ * hydrated when they click. The pack's canonical path is known on the server, so there is no
+ * reason to serve a broken link and repair it afterwards.
+ *
+ * `absolute()` returns undefined on a build with no SITE_URL (dev), which falls back to the old
+ * empty-string behaviour and is then corrected at hydration exactly as before.
+ */
+function ShareRow({ title, path }: { title: string; path: string }) {
   const [copied, setCopied] = React.useState(false);
 
   const url = React.useSyncExternalStore(
     subscribeToNothing,
     () => window.location.origin + window.location.pathname,
-    () => '',
+    () => absolute(path) ?? '',
   );
 
   const handleCopy = React.useCallback(() => {

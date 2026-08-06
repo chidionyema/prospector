@@ -93,7 +93,15 @@ export default function SamplePage() {
 
   return (
     <MarketingLayout>
-      <Seo title="Report #00, free. A complete stress-tested business report, nothing held back." />
+      {/* Its own description, not the site default. /sample served the homepage's generic
+          "Mumchimp sells grounded business opportunity packs..." blurb, so the one page offering
+          a free full report had a search snippet that never mentioned it was free, was a sample,
+          or needed no card. That is the page most worth clicking and it was described as the
+          shop in general. */}
+      <Seo
+        title="Report #00, free. A complete stress-tested business report, nothing held back."
+        description="Read a complete Mumchimp report free, unredacted: every check, every verdict, and a clickable source behind every claim. No card, no email, no signup. If the rigour here is real, the packs are the same."
+      />
 
       {/* Hero. Left-aligned, like every other marketing hero on the site.
           This one was hand-rolled with `text-center` and a stack of `mx-auto`s, so /sample -- the

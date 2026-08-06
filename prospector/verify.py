@@ -22,6 +22,7 @@ from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
 from .telemetry import logger, track_latency
+from .trimming import RATIONALE_MAX, clip_to_sentence
 from .audit import audit
 
 
@@ -348,10 +349,21 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
         # of killing.
         raise
     except Exception as e:
+        # `retrieval_failed=True` is what makes this DEFER instead of counting as evidence.
+        # Without it (until 2026-08-06) a failed verdict CALL produced a plain `unverifiable`
+        # check that flowed into scoring and the kill gates like any other finding. Proof it
+        # bites: store/dossiers/2102bacc6dd75cf9.kill.json is a KILL on gate `min_composite`
+        # whose SEVEN checks all read `unverifiable, conf 0.0, "Verdict call failed; fail-safe."`
+        # — a candidate killed by our own outage, with a dossier that looks fully reasoned.
+        # An exception is not evidence. "A KILL is not the model's opinion; it is grounded in
+        # evidence the operator can see" — an error string is not something a buyer can see.
+        # This deliberately widens DEFER to non-quota failures (bad JSON, a crashed adapter):
+        # a check we never got an answer for is unevaluated, and the honest verdict on an
+        # unevaluated check is "come back to it", never "this idea is dead".
         logger.error(f"Verdict call failed for {check_name}: {e}")
         return CheckResult(check_name=check_name, verdict=Verdict.UNVERIFIABLE,
                            confidence=0.0, rationale="Verdict call failed; fail-safe.",
-                           sources=sources, degraded=True,
+                           sources=sources, degraded=True, retrieval_failed=True,
                            provider=_served_provider(op))
     # Cheap-tail models sometimes wrap the object in a one-element list or emit a bare
     # list of claims. Coerce before .get — otherwise vetting crashes mid-batch
@@ -384,7 +396,10 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     return CheckResult(
         check_name=check_name, verdict=verdict,
         confidence=confidence,
-        rationale=str(data.get("rationale", ""))[:600],
+        # Sentence-aware, not `[:600]`. The bare slice put 726 of 7,265 stored rationales on disk
+        # ending mid-word (measured 2026-08-06), and this is the field a kill dossier renders as
+        # its whole argument. See prospector/trimming.py.
+        rationale=clip_to_sentence(str(data.get("rationale", "")), RATIONALE_MAX),
         citations=citations,
         sources=[s for s in sources if s.source_id in citations] or sources,
         provider=_provider_used, provisional=_provisional)

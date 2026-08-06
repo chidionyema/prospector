@@ -433,7 +433,7 @@ def watched_operators(cfg: dict[str, Any] | None = None) -> list[str]:
             watched.extend(str(x) for x in val)
         elif isinstance(val, str) and val:
             watched.append(val)
-    for extra in ("cursor_cli", "claude_cli", "claude", "deepseek", "minimax"):
+    for extra in ("claude_cli", "claude", "deepseek", "minimax"):
         watched.append(extra)
     seen: set[str] = set()
     out: list[str] = []
@@ -536,7 +536,7 @@ def scheduler_paused() -> bool:
 
 def launch_operator_choices() -> list[str]:
     """Operator choices for Launch forms — config default first, then known brains."""
-    known = ["cursor_cli", "claude_cli", "claude", "deepseek", "minimax", "mock"]
+    known = ["claude_cli", "claude", "deepseek", "minimax", "mock"]
     cfg = load_config_dict()
     op = cfg.get("operator")
     preferred: list[str] = []

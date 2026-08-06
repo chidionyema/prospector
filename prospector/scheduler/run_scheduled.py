@@ -169,6 +169,223 @@ def _resume_per_tick(cfg) -> int:
     return max(0, int(getattr(schedule, "resume_per_tick", _RESUME_PER_TICK_DEFAULT) or 0))
 
 
+#: Kill switch for GENERATION ONLY. `PAUSE` (guard.py) halts the entire tick — generation and
+#: the drain together — because it is the liability rail CLAUDE.md requires, and a rail with
+#: exceptions is not a rail. But that made the founder's actual 2026-08-06 decision
+#: ("pause generation, let drain run") impossible to express: setting PAUSE to stop the treadmill
+#: also stopped the only thing that pays it down, so the 343-row backlog could not recover on its
+#: own even after the moat healed. This file expresses the other half.
+_GENERATION_PAUSE_FILENAME = "PAUSE_GENERATION"
+
+
+def _sched(cfg, key: str, default):
+    """One accessor for `schedule.*`, which is a dict in config.yaml and a namespace in tests."""
+    schedule = getattr(cfg, "schedule", None) or {}
+    if isinstance(schedule, dict):
+        return schedule.get(key, default)
+    return getattr(schedule, key, default)
+
+
+def _backlog_size(cfg) -> int | None:
+    """How many rows a drain could work on right now, or None if it cannot be counted.
+
+    Counts the SAME population `run.py::_cmd_resume` will later drain, via the shared
+    `run.drain_survey` — see its docstring for why one definition matters. None (not 0) on any
+    failure: 0 would read as "backlog clear" and silently release the generation brake, which
+    is the exact direction a counting bug must never fail in.
+
+    The survey's EXCLUDED rows (orphaned, attempt-capped) are printed, not just logged. This
+    brake is the one rail that can deadlock — it engages on a count and waits for that count to
+    fall — so the rows it is waiting on have to be nameable. `logger.warning` does not reach
+    `launchd.err.log` (measured 2026-08-05: `logger.critical` lines appear 18 times there while
+    `logger.info` lines appear zero times), so a print to stderr is the only form an operator
+    reading the daemon log will ever see.
+    """
+    try:
+        from prospector.drain_state import ledger_path, max_attempts
+        from prospector.run import drain_survey
+        from prospector.store import Store
+        cap_attempts = max_attempts(cfg)
+        survey = drain_survey(Store(cfg), max_attempts=cap_attempts)
+        if survey.orphaned or survey.stalled:
+            note = (f"↻ backlog brake counts {len(survey.workable)} workable row(s); excluded "
+                    f"{len(survey.orphaned)} orphaned (index row, no dossier JSON) + "
+                    f"{len(survey.stalled)} stalled (>= {cap_attempts} unresolved re-vets, "
+                    f"rm {ledger_path(cfg.store_dir)} to retry)")
+            logger.warning("%s", note)
+            print(note, file=sys.stderr, flush=True)
+        return len(survey.workable)
+    except Exception as exc:  # noqa: BLE001 — a brake that crashes the daemon is worse than no brake
+        logger.warning("Backlog count failed, brake cannot engage this tick: %s", exc)
+        return None
+
+
+def _generation_suppressed(cfg) -> str:
+    """Why this tick must skip GENERATION but still DRAIN, or "" to generate normally.
+
+    Two triggers, one manual and one automatic:
+
+      * `store/scheduler/PAUSE_GENERATION` — the operator's half-stop.
+      * `schedule.backlog_cap` — the automatic brake. Default OFF (None), so behaviour never
+        changes silently on an existing deployment; set it and the daemon stops digging.
+
+    THE DEFECT THIS CLOSES. Measured 2026-08-06: `config.yaml:966` sets `batch_size: 15` while
+    `resume_per_tick` is unset and falls to 3 (`_RESUME_PER_TICK_DEFAULT`). That is +12 backlog
+    rows per tick BY DESIGN — not moat flakiness, arithmetic. `guard.evaluate()`
+    (guard.py:184-241) gates on PAUSE, clock-backward and the two spend caps and then returns
+    can_run=True; nothing anywhere read the backlog it was filling, and no backlog knob existed
+    in config.yaml at all. The observed result was a backlog flat at ~340 for six weeks with
+    the oldest row dated 2026-06-14.
+
+    Deliberately NO hysteresis band. A single threshold can alternate tick-to-tick at the
+    boundary, and that is harmless here because BOTH sides of the alternation do useful work:
+    above the cap the tick drains, below it the tick generates. A second `resume_at` knob would
+    buy stability the system does not need and add a state file that can disagree with the
+    count — and a brake that engages on a number the drain cannot move is a freeze that never
+    lifts.
+    """
+    pause_file = Path(str(cfg.store_dir)) / "scheduler" / _GENERATION_PAUSE_FILENAME
+    if pause_file.exists():
+        return f"generation paused: {pause_file} present (the drain still runs)"
+
+    cap = _sched(cfg, "backlog_cap", None)
+    if cap is None:
+        return ""
+    try:
+        cap = int(cap)
+    except (TypeError, ValueError):
+        logger.warning("schedule.backlog_cap=%r is not an integer — brake disabled", cap)
+        return ""
+    if cap <= 0:
+        return ""
+    backlog = _backlog_size(cfg)
+    if backlog is None:
+        # THE RAIL CANNOT FUNCTION, SO IT STOPS — it does not wave the tick through. Same call
+        # guard.py makes when the clock goes backwards and the daily cap can no longer be summed:
+        # "the honest answer when the rail cannot function is to stop, not to spend." The
+        # operator opted into this brake explicitly (it is default-off); an unreadable store is
+        # not consent to generate. The drain still runs, so this is a pause, not a deadlock —
+        # and the very next tick re-counts.
+        return ("backlog brake: the drainable backlog could not be counted, so the brake cannot "
+                "prove it is safe to generate — draining only until the count works")
+    if backlog < cap:
+        return ""
+    return (f"backlog brake: {backlog} drainable rows >= schedule.backlog_cap {cap} "
+            f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains")
+
+
+def _moat_brains(cfg) -> list[str]:
+    """The trusted brains on this config's verdict chain, in order.
+
+    Delegates to `prospector.health.moat_brains` — moved there 2026-08-06 so the drain's
+    preflight and this one cannot drift apart. Kept as a name here because tests and callers
+    already bind to it.
+    """
+    from prospector.health import moat_brains
+    return moat_brains(cfg)
+
+
+def _moat_blind_reason(cfg) -> str:
+    """Why this tick must not run, or "" if the moat can rule.
+
+    Generation had NO provider-health precondition until 2026-08-06: `run_tick` called
+    `gen(cfg, batch_size)` unconditionally, so the daemon happily generated a full batch while
+    every trusted brain carried a live dead mark. What came out was 15 candidates the moat
+    could not rule, each one owing a full re-vet later. Meanwhile a `vet --resume` drain was
+    running to clear exactly that backlog, and the two competed for the same subscription CLI.
+    The system was manufacturing its own backlog faster than it could pay it down.
+
+    A tick that cannot verify has nothing worth doing: generation is only useful if the moat
+    can then rule on it, and the drain needs the same brains. So skip the whole tick.
+
+    Uses `dead_until()`, NOT `is_dead()`: `is_dead` can CLAIM the half-open probe slot
+    (health.py), and a bookkeeping check must never consume the one call whose job is to
+    measure recovery. This reads the mark; it does not spend the probe.
+    """
+    from prospector.health import moat_blind_reason
+    return moat_blind_reason(cfg)
+
+
+def _drain_pass(cfg, n_resume: int) -> dict | None:
+    """Re-vet up to `n_resume` backlogged candidates. Never raises. None if the drain is off.
+
+    Extracted from `_default_generate` on 2026-08-06 so a tick that is NOT generating can still
+    drain. Before that the drain lived inside generation, so every reason to skip generation —
+    `PAUSE`, and now the backlog brake — also silently switched off the only mechanism that pays
+    the backlog down. Stopping the treadmill and stopping the recovery were the same act, which
+    is why setting `PAUSE` at 10:30Z could not have cleared the 343 rows no matter how long it
+    ran.
+    """
+    if not n_resume:
+        return None
+    from prospector.run import resume_deferred
+    try:
+        resumed = resume_deferred(cfg, limit=n_resume, publish=True)
+        logger.info("Tick resume pass: %s", resumed)
+        # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
+        # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and
+        # every other daemon diagnostic — the whole progress stream, progress.py:43 —
+        # goes to stderr. Measured 2026-08-05 while the daemon held fd 1 open on it:
+        # launchd.out.log was 1 byte, mtime Jun 24. So a print to stdout is not "the
+        # daemon log"; it is a file no operator and no probe has ever read. Printing
+        # the drain's outcome into a second, empty file is the same invisibility this
+        # print exists to fix, just relocated.
+        print(f"↻ tick resume pass: {resumed}", file=sys.stderr, flush=True)
+        return resumed
+    except Exception as exc:  # noqa: BLE001
+        # A drain failure must never cost the tick its generation batch — the backlog has
+        # waited weeks already and can wait one more tick. Recorded, not raised.
+        resumed = {"error": f"{type(exc).__name__}: {exc}"}
+        logger.warning("Tick resume pass failed (generation continues): %s", resumed["error"])
+        # PRINTED, not just logged. The daemon's launchd log captures stdout/stderr but
+        # NOT logging below CRITICAL — verified 2026-08-05: "TICK HARD DEADLINE"
+        # (logger.critical) appears 18 times in launchd.err.log while "Daemon starting"
+        # and "Unproductive tick" (both logger.info) appear zero times. So the first live
+        # tick after this shipped swallowed the drain's outcome entirely and the pass was
+        # indistinguishable from never having run. A failure that only logs at WARNING is
+        # invisible here; that is the whole reason this line is a print. It goes to
+        # STDERR for the reason spelled out on the success branch above.
+        print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
+              file=sys.stderr, flush=True)
+        return resumed
+
+
+#: Cadence while the generation brake is engaged. 15 min: fast enough that the live 343-row
+#: backlog clears in ~6 h at 15 rows/tick instead of ~46 h on the 2 h generation cadence, and
+#: slow enough that each pass finishes first — the measured drain rate is ~5.5 min/candidate,
+#: so 15 rows is well over one window and the loop is paced by the work, not the timer.
+_DRAIN_ONLY_INTERVAL_S = 900
+
+
+def _drain_only_interval_s(cfg, interval: int) -> int:
+    """Sleep between drain-only ticks. Never longer than the normal interval — the brake must
+    not be able to make the daemon *slower* than it would be with generation running."""
+    raw = _sched(cfg, "drain_only_interval_s", _DRAIN_ONLY_INTERVAL_S)
+    try:
+        val = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("schedule.drain_only_interval_s=%r is not an integer", raw)
+        val = _DRAIN_ONLY_INTERVAL_S
+    return max(1, min(int(interval), val))
+
+
+def _drain_only_resume_per_tick(cfg) -> int:
+    """How many rows a DRAIN-ONLY tick may re-vet. Defaults to `batch_size`, not 3.
+
+    `resume_per_tick` is 3 because a normal tick spends most of its budget generating. A tick
+    that is not generating has that whole budget free, and the bound exists only because the
+    spend guard evaluates once per tick — so the honest default is the batch it is not running.
+    At the live config that is 15 rather than 3: 343 rows clear in ~23 ticks instead of ~114.
+    """
+    explicit = _sched(cfg, "drain_only_resume_per_tick", None)
+    if explicit is not None:
+        try:
+            return max(0, int(explicit))
+        except (TypeError, ValueError):
+            logger.warning("schedule.drain_only_resume_per_tick=%r is not an integer", explicit)
+    return max(_resume_per_tick(cfg), _batch_size(cfg, None))
+
+
 def _default_generate(cfg, batch_size: int) -> dict:
     """Run one bounded blue-sky generation batch in-process and publish PASSes.
 
@@ -188,39 +405,9 @@ def _default_generate(cfg, batch_size: int) -> dict:
     the tick's hard deadline can force-exit mid-tick — whatever runs second is what gets dropped.
     It is bounded per tick because the spend guard evaluates once, before the tick.
     """
-    from prospector.run import run_signal, _resolve_lanes, resume_deferred
+    from prospector.run import run_signal, _resolve_lanes
 
-    resumed = None
-    n_resume = _resume_per_tick(cfg)
-    if n_resume:
-        try:
-            resumed = resume_deferred(cfg, limit=n_resume, publish=True)
-            logger.info("Tick resume pass: %s", resumed)
-            # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
-            # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and
-            # every other daemon diagnostic — the whole progress stream, progress.py:43 —
-            # goes to stderr. Measured 2026-08-05 while the daemon held fd 1 open on it:
-            # launchd.out.log was 1 byte, mtime Jun 24. So a print to stdout is not "the
-            # daemon log"; it is a file no operator and no probe has ever read. Printing
-            # the drain's outcome into a second, empty file is the same invisibility this
-            # print exists to fix, just relocated.
-            print(f"↻ tick resume pass: {resumed}", file=sys.stderr, flush=True)
-        except Exception as exc:  # noqa: BLE001
-            # A drain failure must never cost the tick its generation batch — the backlog has
-            # waited weeks already and can wait one more tick. Recorded, not raised.
-            resumed = {"error": f"{type(exc).__name__}: {exc}"}
-            logger.warning("Tick resume pass failed (generation continues): %s", resumed["error"])
-            # PRINTED, not just logged. The daemon's launchd log captures stdout/stderr but
-            # NOT logging below CRITICAL — verified 2026-08-05: "TICK HARD DEADLINE"
-            # (logger.critical) appears 18 times in launchd.err.log while "Daemon starting"
-            # and "Unproductive tick" (both logger.info) appear zero times. So the first live
-            # tick after this shipped swallowed the drain's outcome entirely and the pass was
-            # indistinguishable from never having run. A failure that only logs at WARNING is
-            # invisible here; that is the whole reason this line is a print. It goes to
-            # STDERR for the reason spelled out on the success branch above.
-            print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
-                  file=sys.stderr, flush=True)
-
+    resumed = _drain_pass(cfg, _resume_per_tick(cfg))
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
     # the single implicit default — `generation.operator_archetype: solo_agent`. The four
@@ -300,10 +487,14 @@ def _retry_sleep_s(consecutive: int, interval: int) -> int:
     return max(1, min(interval, backoff))
 
 
-def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -> None:
+def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None,
+                          *, phase: str = "generation") -> None:
+    # `phase` because the drain-only branch now arms this timer too, and a breach that says
+    # "during generation" on a tick whose batch_size was 0 sends the next reader looking at the
+    # wrong half of the daemon.
     logger.critical(
-        "TICK HARD DEADLINE (%ds) exceeded during generation (batch=%s) — force-exiting so "
-        "launchd KeepAlive relaunches a clean daemon.", _TICK_HARD_DEADLINE_S, batch_size)
+        "TICK HARD DEADLINE (%ds) exceeded during %s (batch=%s) — force-exiting so "
+        "launchd KeepAlive relaunches a clean daemon.", _TICK_HARD_DEADLINE_S, phase, batch_size)
     # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent os._exit leaves no
     # tick row and no alert, so a repeating deadline breach looks like the daemon never ran
     # (proven live 2026-07-02: 4h of relaunch loops with zero tick rows). The main thread is
@@ -311,7 +502,7 @@ def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -
     if cfg is not None and tick is not None:
         try:
             tick["error"] = (f"tick_hard_deadline: exceeded {_TICK_HARD_DEADLINE_S}s during "
-                             f"generation (batch={batch_size}); force-exited for relaunch")
+                             f"{phase} (batch={batch_size}); force-exited for relaunch")
             _append_tick(cfg, tick)
             _emit_tick_alerts(cfg, tick)
         except Exception:  # noqa: BLE001 — bookkeeping must never block the force-exit
@@ -322,6 +513,11 @@ def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -
 def _tick_unproductive(tick: dict) -> bool:
     """True if a real (non-dry, guard-allowed) tick failed or stocked nothing — retry soon."""
     if tick.get("error"):
+        return True
+    # A moat-blind skip is unproductive by definition — nothing was stocked. It must use the
+    # escalating retry (5m, 10m, 20m…) rather than the full 2h cadence, so a moat that heals in
+    # ninety seconds is picked up in minutes instead of hours.
+    if tick.get("moat_blind"):
         return True
     if tick.get("allowed") and not tick.get("dry_run"):
         res = tick.get("result") or {}
@@ -371,6 +567,75 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     if dry_run:
         logger.info("Dry run: guard passed (%s); would generate %d candidates", decision.reason, batch_size)
         _append_tick(cfg, tick)
+        return tick
+
+    # MOAT PREFLIGHT. Checked after the guard (spend/PAUSE still own the money rails) and
+    # before any work, because both halves of a tick — the resume drain and generation — need a
+    # trusted brain. Generating into a blind moat produces `provisional` rows that cannot
+    # publish and must be re-vetted, i.e. it pays twice for one answer while the moat is the
+    # scarce resource. Skipped only when EVERY trusted brain is marked dead; one live brain is
+    # enough to run.
+    #
+    # It deliberately applies to an injected `generate_fn` too. Exempting the test seam would
+    # make the preflight unprovable by the suite — the same shape as the 2026-08-06 defect
+    # where a copy fix was "verified" by a test that read only the one file that was edited.
+    blind = _moat_blind_reason(cfg)
+    if blind:
+        tick["moat_blind"] = True
+        tick["reason"] = blind
+        tick["batch_size"] = None
+        logger.critical("Tick skipped: %s", blind)  # CRITICAL: below it never reaches the
+        # daemon's launchd log at all (verified 2026-08-05), and a tick that silently does
+        # nothing is exactly the invisible degradation this whole change is about.
+        print(f"⏸ tick skipped — {blind}", file=sys.stderr, flush=True)
+        _append_tick(cfg, tick)
+        _emit_tick_alerts(cfg, tick)
+        return tick
+
+    # GENERATION BRAKE — skip generation, but keep draining.
+    #
+    # Checked after the moat preflight, because a drain-only tick needs a trusted brain just as
+    # much as a generating one does; running it into a blind moat is the exact waste the
+    # preflight above (and `run.py::_cmd_resume`) exists to stop.
+    #
+    # This is the one skip in the tick that still does work. Every other early return — guard,
+    # dry-run, moat-blind — is a genuine no-op, and the drain living inside `_default_generate`
+    # meant they all silently disabled recovery too. The whole point of the brake is that the
+    # backlog goes DOWN while it is engaged; a brake that also stopped the drain would freeze
+    # the number it is waiting on and never release.
+    suppressed = _generation_suppressed(cfg)
+    if suppressed:
+        tick["generation_suppressed"] = suppressed
+        tick["batch_size"] = 0
+        tick["reason"] = f"{decision.reason}; {suppressed}"
+        _write_heartbeat(cfg, phase="draining")
+        # CRITICAL for the same reason as the moat-blind skip: logging below CRITICAL never
+        # reaches launchd.err.log (verified 2026-08-05), and a daemon that has quietly stopped
+        # generating is precisely the invisible degradation this change is about.
+        logger.critical("Generation suppressed: %s", suppressed)
+        print(f"⏸ generation suppressed — {suppressed}", file=sys.stderr, flush=True)
+        # The SAME hard wall-clock guard the generation branch gets below. Without it this was
+        # the one path in the tick with neither backstop, and it is now the daemon's entire
+        # workload while the brake is engaged:
+        #   * `_drain_pass` swallows every exception by design (a drain failure must not cost
+        #     the tick), so a wedged re-vet never raises and the branch never returns;
+        #   * the deadline Timer was started AFTER this branch returns, so it never covered it;
+        #   * `phase="draining"` matched no branch in `_liveness`, which fell through to
+        #     "alive" — so the watchdog reported a hung drain healthy, indefinitely.
+        # That is the 2026-07-01 failure mode exactly (a trickled LLM response body defeating
+        # per-recv socket timeouts, 34+ min hung, watched dead for 8.5h), re-opened on a new path.
+        deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
+                                   args=(0, cfg, tick), kwargs={"phase": "the drain"})
+        deadline.daemon = True
+        deadline.start()
+        try:
+            resumed = _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
+        finally:
+            deadline.cancel()
+        tick["result"] = {"dossiers": 0, "resumed": resumed}
+        _append_tick(cfg, tick)
+        _emit_tick_alerts(cfg, tick)
+        _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=None)
         return tick
 
     gen = generate_fn or _default_generate
@@ -521,24 +786,75 @@ class _StopFlag:
         self.stop = True
 
 
+#: Wall-clock bound on the startup grounding probe. One search against a live HTTP provider; 120s
+#: is far past any healthy answer and far short of the watchdog's own cadence, so a wedge here
+#: self-heals long before anything else has to notice it.
+_STARTUP_PROBE_TIMEOUT_S = 120
+
+
 def _startup_grounding_check(cfg) -> None:
-    """Refuse to start if the grounding layer is dead — one dummy search first."""
-    from prospector.retrieval import DiskCache, make_provider
-    try:
-        provider = make_provider(cfg)
-        # Probe the LIVE stack, not the cache: the fixed probe query is cached after
-        # the first-ever run, so a DiskCache hit "passes" a dead retrieval stack
-        # (observed 2026-07-28: audit row provider=cache, cache_hit=true).
-        if isinstance(provider, DiskCache):
-            provider = provider.inner
-        provider.search("startup sanity check", k=1)
-        logger.info("Grounding layer healthy — daemon starting")
-    except Exception as e:
+    """Refuse to start if the grounding layer is dead — one dummy search first, time-bounded.
+
+    THE HOLE THIS CLOSES: this ran before the first tick, so before any heartbeat existed, and it
+    made a blocking network call with NO timeout of its own. A provider that accepts the TCP
+    connection and never answers wedges the daemon here permanently, and every recovery mechanism
+    reads past it:
+
+      * launchd `KeepAlive` restarts on process EXIT; a wedged-but-alive process never exits.
+      * `_liveness` reads the heartbeat, which at this point still holds the PREVIOUS run's
+        `sleeping`/`idle` beat, so the watchdog's kill lands on the OLD pid.
+      * `_kill_stale_daemon` then finds that pid gone (launchd already replaced it), logs
+        "already exited; launchd will relaunch" and returns satisfied — while the process it
+        should have killed goes on hanging. launchd HAS relaunched; the relaunch is the wedge.
+
+    Two independent fixes, deliberately both:
+
+      1. The probe runs on a daemon thread with a hard `join` bound, so a hang becomes an EXIT
+         and launchd's KeepAlive heals it. The thread is a daemon thread precisely so a socket
+         read stuck in the kernel cannot hold the interpreter open on the way out.
+      2. A `starting` heartbeat is written BEFORE the probe, so the file names the pid that is
+         actually at risk and `_liveness` has a phase to judge (see its `starting` branch). This
+         is the backstop for a wedge the bound cannot cover, and it is what turns "invisible" into
+         "one stale-heartbeat line naming the wedged pid".
+
+    Coverage boundary, stated rather than implied: the heartbeat starts here, so a hang in
+    `_load_env_file`, `load_config` or `_route_ledger` — all local filesystem work, none of it a
+    network call — is still outside it.
+    """
+    _write_heartbeat(cfg, phase="starting", probe_timeout_s=_STARTUP_PROBE_TIMEOUT_S)
+    outcome: dict = {}
+
+    def _probe() -> None:
+        try:
+            from prospector.retrieval import DiskCache, make_provider
+            provider = make_provider(cfg)
+            # Probe the LIVE stack, not the cache: the fixed probe query is cached after
+            # the first-ever run, so a DiskCache hit "passes" a dead retrieval stack
+            # (observed 2026-07-28: audit row provider=cache, cache_hit=true).
+            if isinstance(provider, DiskCache):
+                provider = provider.inner
+            provider.search("startup sanity check", k=1)
+            outcome["ok"] = True
+        except BaseException as exc:  # noqa: BLE001 — carried to the caller, which re-raises it
+            outcome["error"] = exc
+
+    probe = threading.Thread(target=_probe, name="startup-grounding-probe", daemon=True)
+    probe.start()
+    probe.join(_STARTUP_PROBE_TIMEOUT_S)
+    if probe.is_alive():
+        raise RuntimeError(
+            f"REFUSING TO START: the grounding probe did not answer within "
+            f"{_STARTUP_PROBE_TIMEOUT_S}s — the provider took the connection and never replied. "
+            f"Exiting so launchd KeepAlive relaunches: a relaunch costs one probe, while hanging "
+            f"here costs every tick until a human notices."
+        )
+    if "error" in outcome:
         raise RuntimeError(
             f"REFUSING TO START: grounding provider is dead on arrival. "
             f"Fix search API keys/credits before starting Prospector. "
-            f"Error: {e}"
-        ) from e
+            f"Error: {outcome['error']}"
+        ) from outcome["error"]
+    logger.info("Grounding layer healthy — daemon starting")
 
 
 def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn=None,
@@ -570,7 +886,21 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
         # single provider blip can't waste a whole 2h window (root cause of days of $0 ticks).
         # A guard-blocked tick (spend cap) is intentional, not a failure — full cadence.
         sleep_target = interval
-        if tick is not None and _tick_unproductive(tick):
+        if tick is not None and tick.get("generation_suppressed"):
+            # A drain-only tick gets its OWN cadence, not the 2h generation interval and not the
+            # outage backoff. Both of the existing paths are wrong for it:
+            #   * the full interval would clear 343 rows at 15/tick in ~46 hours of wall clock;
+            #   * `_tick_unproductive` sees `dossiers == 0` and would escalate 5m/10m/20m/40m/80m
+            #     to the 2h cap, i.e. treat a working drain as a deepening outage and slow it
+            #     down exactly as it made progress.
+            # The brake is a temporary state the system is trying to leave, so the cadence while
+            # it is engaged should be the one that leaves it soonest. Reset the outage counter
+            # too: nothing failed here.
+            consecutive_unproductive = 0
+            sleep_target = _drain_only_interval_s(cfg, interval)
+            logger.info("Drain-only tick — next in %ds (not the %ds generation cadence)",
+                        sleep_target, interval)
+        elif tick is not None and _tick_unproductive(tick):
             consecutive_unproductive += 1
             sleep_target = _retry_sleep_s(consecutive_unproductive, interval)
             logger.info("Unproductive tick #%d in a row — retrying in %ds instead of %ds",
@@ -700,7 +1030,7 @@ def _status_lines(cfg) -> list[str]:
         beat = json.loads(hb_path.read_text(encoding="utf-8"))
         age_min = (now - datetime.fromisoformat(beat["ts"])).total_seconds() / 60
         phase = beat.get("phase", "?")
-        stale = (phase == "generating" and age_min > 45) or \
+        stale = (phase in ("generating", "draining") and age_min > _TICK_HARD_DEADLINE_S / 60 + 10) or \
                 (phase == "sleeping" and age_min > beat.get("interval_s", 7200) / 60 + 35)
         flag = "  ⚠ STALE / likely dead" if stale else ""
         extra = ""
@@ -791,11 +1121,36 @@ def _liveness(cfg) -> tuple[bool, str]:
     if phase == "generating" and age_min > stall_min:
         return False, (f"stuck in 'generating', heartbeat {ages} "
                        f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
+    # `draining` shares `generating`'s deadline-derived budget, and deliberately NOT the 45-min
+    # one used for evaluating/idle below: a drain-only pass is long BY DESIGN — 15 rows at the
+    # measured ~5.5 min/candidate is ~82 min — so a 45-min budget would SIGKILL a perfectly
+    # healthy drain on every brake tick, which is the failure this file already carries 47
+    # instances of. Until now the phase matched no branch at all and fell through to the
+    # "alive" return, so a wedged drain was reported healthy forever; the drain-only branch is
+    # the daemon's whole workload while the backlog brake is engaged.
+    if phase == "draining" and age_min > stall_min:
+        return False, (f"stuck in 'draining', heartbeat {ages} "
+                       f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
     if phase == "sleeping":
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
         if age_min > budget:
             return False, (f"'sleeping' heartbeat {ages} (> interval+grace {budget:.0f}); "
                            f"loop likely dead")
+    # `starting` — the pre-first-tick window, and the ONLY phase whose work has no in-process
+    # deadline Timer behind it (the Timers live inside `run_tick`). Its budget is the startup
+    # probe's own bound plus grace, read from the heartbeat so a config or constant change cannot
+    # strand it: `_startup_grounding_check` stamps `probe_timeout_s` in the beat it writes.
+    #
+    # Without this branch `starting` matched nothing and fell through to the "alive" return below
+    # — the same fall-through that reported a wedged `draining` tick healthy forever. Here it
+    # mattered more, because a wedge at startup is the one case where the heartbeat's pid is the
+    # only way `_kill_stale_daemon` can find the process that is actually stuck.
+    if phase == "starting":
+        budget = beat.get("probe_timeout_s", _STARTUP_PROBE_TIMEOUT_S) / 60 + 5
+        if age_min > budget:
+            return False, (f"stuck in 'starting', heartbeat {ages} (> probe bound + grace "
+                           f"{budget:.0f} min) — startup wedged before the first tick, so no "
+                           f"in-process deadline covers it")
     if phase in ("evaluating", "idle") and age_min > 45:
         return False, f"stuck in '{phase}', heartbeat {ages}"
     return True, f"alive (phase={phase}, {age_min:.1f} min ago)"

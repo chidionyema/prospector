@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Sequence
 
 from .plain_text import to_plain_text
+from .trimming import clip_to_sentence
 
 
 def _supported_bullets(checks: Sequence[Any], *, limit: int = 5) -> List[str]:
@@ -21,7 +22,7 @@ def _supported_bullets(checks: Sequence[Any], *, limit: int = 5) -> List[str]:
         rationale = (getattr(c, "rationale", None) or "").strip()
         name = (getattr(c, "check_name", None) or "check").replace("_", " ")
         if rationale:
-            out.append(f"- **{name}:** {rationale[:280]}")
+            out.append(f"- **{name}:** {clip_to_sentence(rationale, 280)}")
         if len(out) >= limit:
             break
     return out

@@ -38,11 +38,30 @@ class _Health:
     """Stand-in for the persisted health file; records what the chain marked dead."""
     def __init__(self):
         self.dead: dict[str, float] = {}
+        self.errors: dict[str, str] = {}
         self.cleared: list[str] = []
 
     def is_dead(self, name): return name in self.dead
-    def mark_exhausted(self, name, dead_for): self.dead[name] = dead_for
+
+    def mark_exhausted(self, name, dead_for_s, *, error=""):
+        self.dead[name] = dead_for_s
+        self.errors[name] = error
+
     def clear(self, name): self.cleared.append(name); self.dead.pop(name, None)
+
+
+def test_the_health_stub_still_matches_the_real_signature():
+    """This file's whole point is that a hand-copied double proves the copy, not the code — the
+    docstring below says mutation testing already caught one. A double whose signature has
+    drifted from ProviderHealth would fail LOUDLY here rather than silently testing a shape the
+    production chain no longer calls. (`error=` was added to mark_exhausted on 2026-08-06.)"""
+    import inspect
+    from prospector.health import ProviderHealth
+    for method in ("is_dead", "mark_exhausted", "clear"):
+        real = inspect.signature(getattr(ProviderHealth, method))
+        fake = inspect.signature(getattr(_Health, method))
+        assert list(real.parameters) == list(fake.parameters), (
+            f"_Health.{method}{fake} has drifted from ProviderHealth.{method}{real}")
 
 
 class _Raises:
