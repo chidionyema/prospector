@@ -265,6 +265,12 @@ def patch_copy(api_url: str, key: str, pack_id: str,
 
 
 def main() -> int:
+    # This run takes hours and is always launched detached with stdout redirected to a
+    # file. Redirected stdout is block-buffered, so without this the per-pack progress
+    # lines below only appear when the process exits — a two-hour job reads as "produced
+    # nothing" for its entire life, and an operator cannot tell it apart from a hang.
+    sys.stdout.reconfigure(line_buffering=True)
+
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--api-url", default=DEFAULT_API_URL)
