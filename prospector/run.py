@@ -168,13 +168,38 @@ def _get_verify():
     return _verify
 
 
-# Non-critical chain order: DeepSeek (cheap structured JSON) → cursor_cli (subscription
-# reliability) → minimax emergency tail. DeepSeek restored 2026-07-30 after billing recovery.
-# cursor_cli replaced claude_cli here 2026-07-30 so generation can run without Claude Code.
-# Ollama REJECTED 2026-07-01 (markdown, not JSON). NEVER put DeepSeek/MiniMax on the moat
-# (verdict/adversarial) — non-critical only. Module-level so run_signal, `operators`, and the
-# proof tools all reference the SAME chain.
-_NONCRITICAL_ORDER = ("deepseek", "cursor_cli", "minimax")
+# Non-critical chain order: claude_cli (subscription) → minimax emergency tail.
+# Founder directive 2026-08-06: "we need to use claude code and minimax".
+#
+# This was `(deepseek, cursor_cli, minimax)`. Both leading tiers were measured DEAD on
+# 2026-08-06 — one JSON call to each configured brain:
+#
+#     deepseek    RuntimeError: DeepSeek call failed: HTTP Error 402: Payment Required
+#     cursor_cli  ProviderExhaustedError: cursor cli exit 1: ActionRequiredError:
+#                 You've hit your usage limit
+#     minimax     OK
+#     claude_cli  OK
+#
+# So EVERY generation, prescreen and score call was being served by minimax — the guardrailed
+# emergency tail — after paying two guaranteed failures first. Nothing raised and nothing was
+# logged above INFO, so from the outside the chain looked healthy: that is the failure mode of a
+# fallback that works. The tail is not a neutral place to land, either: minimax was measured
+# NON-DETERMINISTIC on the classify call at temperature 0.0 (4 of 6 candidates returned a
+# different tier across 3 repeat runs), while claude_cli returned the identical answer 18/18.
+#
+# claude_cli is in MOAT_PRIMARY (operator.py:875), so this does put a moat brain on the
+# non-critical chain. That is a deliberate, founder-directed change to the rule in CLAUDE.md,
+# and it is not unprecedented: `_build_artifact_op` below has always generated the customer-
+# facing pack prose on the CLI operators. The rule that still binds absolutely is the one about
+# VERDICTS: DeepSeek/MiniMax never rule as trusted-final — is_provisional_provider enforces it.
+# PROCESS RISK, stated as such: claude_cli work is slot-governed (cli_governor), so a large
+# non-critical burst can now queue behind — or ahead of — the daemon's verdict calls. It costs
+# throughput, not correctness. Restoring deepseek/cursor_cli is a one-line change when billing
+# and usage limits recover; their breakers already half-open on their own.
+#
+# Ollama REJECTED 2026-07-01 (markdown, not JSON). Module-level so run_signal, `operators`, and
+# the proof tools all reference the SAME chain.
+_NONCRITICAL_ORDER = ("claude_cli", "minimax")
 
 
 # ---------------------------------------------------------------------------

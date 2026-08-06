@@ -72,10 +72,27 @@ _EXHAUSTION_MARKERS = (
     "rate limit",
     "429",
     "insufficient_quota",
+    "insufficient balance",
     "credit balance is too low",
     "billing",
     "usage limit",
+    # 402 = "you are out of money", the most PERMANENT failure a metered brain has, and it was
+    # the one shape this list missed. Measured 2026-08-06: deepseek answered every call with
+    #   RuntimeError: DeepSeek call failed: HTTP Error 402: Payment Required
+    # None of the markers above appear in that string, so the failure classified as transient:
+    # `FallbackOperator._raw` sets `hard = isinstance(e, ProviderExhaustedError)`, so
+    # `mark_exhausted` never ran and deepseek never appeared in
+    # store/provider_health_noncritical.json — while cursor_cli, which does raise
+    # ProviderExhaustedError, was correctly marked dead_until in the same file at the same time.
+    # The breaker alone then re-probed a permanently-broke account every cooldown_s (60s),
+    # forever, at the head of the chain. `errors.py:36` already documents 402 as exhaustion for
+    # the retrieval side; the brain side simply never learned it.
+    "402",
+    "payment required",
 )
+# DELIBERATELY NOT HERE: 401 / "unauthorized". That is a bad or expired credential, not a spent
+# allowance, and marking it exhausted would bury a config error under a silent hour-long
+# failover — the opposite of what this list is for. It should fail loudly on every call.
 
 
 def looks_exhausted(text: str) -> bool:

@@ -9,9 +9,22 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [cursor_cli, claude_cli, minimax]  # cursor_cli FIRST — Cursor Agent subscription.
-                                             # claude_cli is optional failover; minimax is the
-                                             # guardrailed emergency tail (provisional).
+# claude_cli FIRST (founder directive 2026-08-06: "we need to use claude code and minimax").
+# cursor_cli held its lead here since 2026-07-30 and was measured DEAD on 2026-08-06 — a live
+# probe of every configured brain, one JSON call each:
+#     deepseek    RuntimeError: DeepSeek call failed: HTTP Error 402: Payment Required
+#     cursor_cli  ProviderExhaustedError: cursor cli exit 1: ActionRequiredError:
+#                 You've hit your usage limit
+#     minimax     OK
+#     claude_cli  OK
+# The fallbacks did their job — nothing crashed — which is exactly why this went unnoticed: a
+# chain whose first tier is dead looks identical to a healthy one from the outside, it just pays
+# a guaranteed failure (and, until its breaker trips, a full timeout) before every single call.
+# Order the chain by what ANSWERS. cursor_cli is kept as failover, not dropped: its breaker
+# skips it while it is down and half-opens it when the limit resets.
+operator: [claude_cli, cursor_cli, minimax]  # minimax is the guardrailed emergency tail, and a
+                                             # ruling it serves is stamped provisional
+                                             # (operator.py:878) and never publishes on PASS.
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -20,7 +33,10 @@ model_version_tag: ""            # filled at runtime for audit
 # Quality chain for the customer-facing £49 deliverable (build_spec / gtm_plan / ops_plan
 # and the storefront listing_page). Subscription CLIs first; cheap non-critical tail is
 # not used for pack prose. Falls back to the moat operator if none are available.
-artifact_operator: [cursor_cli, claude_cli]
+artifact_operator: [claude_cli, cursor_cli]   # reordered 2026-08-06: cursor_cli is usage-limited
+                                              # (see the probe above), so it was answering none of
+                                              # the pack prose and every artifact call paid its
+                                              # failure first.
 
 # --- Model defaults (Part: HARDCODED_MODEL_AUDIT_TICKET) ---
 # Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:

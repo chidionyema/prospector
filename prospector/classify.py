@@ -37,9 +37,30 @@ def classify_tier(op: Operator, cand: Candidate, cfg: Config) -> str:
     """Return the ambition tier this candidate naturally belongs to (one of the allowed
     tiers). Deterministic fallback to the generated tier (cand.ambition_tier) on any failure
     or an unknown/out-of-set result. Never raises.
+
+    A candidate with NO generated tier gets `""` back on failure, not a tier. Keep-biased means
+    keep what the candidate had; one that had nothing has nothing to keep, and the caller — not
+    this function — decides what an unresolved classification means.
     """
     allowed = _allowed_tiers(cfg)
-    fallback = cand.ambition_tier or (allowed[0] if allowed else "")
+    # NOT `cand.ambition_tier or allowed[0]`. That spelling stood here until 2026-08-06 and
+    # turned every failure on a tier-less candidate into a confident "side_hustle":
+    #
+    #   cand = Candidate.from_dict({"title": "legacy pack", "ambition_tier": ""})
+    #   classify_tier(BrainThatRaises(), cand, cfg)   -> 'side_hustle'
+    #   classify_tier(BrainReturningJunk(), cand, cfg) -> 'side_hustle'
+    #   classify_tier(BrainReturningEmpty(), cand, cfg) -> 'side_hustle'
+    #
+    # ...logging "keeping generated tier 'side_hustle'", which was never true: nothing generated
+    # it. `allowed[0]` is not a keep, it is a guess whose value is decided by config ORDER
+    # (`active_lanes[0]`). The existing tests never saw it because they all classify a candidate
+    # that already has a tier. It matters because 97 of 154 PASS dossiers carry an empty tier,
+    # and `config.yaml listing.pricing` maps side_hustle -> rung 1 -> 2900 against the empty
+    # tier's default rung 2 -> 4900: a brain being down for the length of a backfill would have
+    # re-priced the untiered back catalogue DOWN by a third, on no evidence at all. That is the
+    # failure `pricing.py:146` already refuses by hand ("guessing silently re-prices the back
+    # catalogue"); the guess must not sneak in one layer up.
+    fallback = cand.ambition_tier
     if not allowed:
         return fallback
 
@@ -47,7 +68,15 @@ def classify_tier(op: Operator, cand: Candidate, cfg: Config) -> str:
         system, user = render("classify",
                               allowed_tiers=", ".join(allowed),
                               candidate_json=json.dumps(cand.to_dict()))
-        data = op.complete_json(system, user)
+        # temperature=0.0 explicitly. `complete_json` defaults to 0.7 (operator.py:115) — a
+        # creative-sampling setting, correct for generation and wrong for a routing decision
+        # that is supposed to be a property of the candidate. It is not sufficient for
+        # reproducibility (minimax still returned different tiers across repeat runs at 0.0 for
+        # 4 of 6 candidates, 2026-08-06) but it removes the one source of variance we control,
+        # and it stops the same dossier classifying differently on two consecutive runs of the
+        # same brain. Matters because this field feeds the L1 price ladder via
+        # `listing.pricing.tier_rung_index`: at 0.7 the rung was partly a dice roll.
+        data = op.complete_json(system, user, temperature=0.0)
     except Exception as e:  # noqa: BLE001 — keep-biased: any failure keeps the generated tier
         logger.warning(f"classify_tier failed for {cand.title!r}: {e}; keeping {fallback!r}",
                        extra={"candidate_id": cand.candidate_id, "error": str(e)})

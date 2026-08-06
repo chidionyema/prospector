@@ -118,6 +118,64 @@ def test_classify_falls_back_to_generated_tier_on_unknown_or_parse_failure():
     assert classify_tier(_Boom(), cand, cfg) == "growth"
 
 
+def test_a_candidate_with_no_tier_gets_no_tier_back_when_classification_fails():
+    """The fallback must keep what the candidate HAD — and a legacy candidate had nothing.
+
+    Until 2026-08-06 the fallback was `cand.ambition_tier or allowed[0]`, so all three failure
+    paths returned `active_lanes[0]` = "side_hustle" for a tier-less candidate, while logging
+    "keeping generated tier 'side_hustle'" about a tier nothing had generated. 97 of 154 PASS
+    dossiers carry an empty tier, and `listing.pricing` puts side_hustle on rung 1 (2900) against
+    the empty tier's default rung 2 (4900) — so a brain outage during the backfill would have cut
+    the untiered back catalogue by a third on zero evidence. An empty return is the caller's
+    problem to handle; a fabricated tier is nobody's, until it reaches the money rail.
+    """
+    cfg = load_config()
+
+    class _Empty:
+        model_version = "stub"
+        def complete_json(self, system, user, temperature=0.0):
+            return {}
+
+    class _Boom:
+        model_version = "stub"
+        def complete_json(self, system, user, temperature=0.0):
+            raise RuntimeError("backend down")
+
+    for op in (_TierOp("not_a_real_tier"), _Empty(), _Boom()):
+        cand = Candidate(title="a legacy pack with no tier", ambition_tier="")
+        assert classify_tier(op, cand, cfg) == "", (
+            f"{type(op).__name__} invented a tier for a candidate that never had one"
+        )
+
+    # ...and a SUCCESSFUL classification of a tier-less candidate still returns the answer,
+    # otherwise the fix would have made the backfill useless rather than safe.
+    cand = Candidate(title="a legacy pack with no tier", ambition_tier="")
+    assert classify_tier(_TierOp("growth"), cand, cfg) == "growth"
+
+
+def test_classification_is_not_sampled_creatively():
+    """A routing decision that also sets a price rung must not be drawn at temperature 0.7.
+
+    `complete_json` defaults to 0.7 (operator.py:115) and classify.py called it with no
+    temperature at all, so the tier — and therefore the rung in `listing.pricing.tier_rung_index`
+    — was partly a dice roll across otherwise identical runs.
+    """
+    seen = {}
+
+    class _Recording:
+        model_version = "stub"
+        def complete_json(self, system, user, temperature=0.7, **kw):
+            seen["temperature"] = temperature
+            return {"tier": "smb"}
+
+    cand = Candidate(title="x", ambition_tier="growth")
+    assert classify_tier(_Recording(), cand, load_config()) == "smb"
+    assert seen["temperature"] == 0.0, (
+        f"classify sampled at temperature {seen['temperature']} — the same candidate can come "
+        f"back on a different rung run to run"
+    )
+
+
 # --------------------------------------------------------------------------- 4. bar fits idea
 def test_candidate_reclassified_is_vetted_against_its_classified_lane():
     """A venture-generated idea classified as side_hustle must be vetted on the side_hustle
