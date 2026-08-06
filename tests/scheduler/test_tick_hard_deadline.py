@@ -35,8 +35,9 @@ from prospector.scheduler import run_scheduled as rs
 def _cfg(store_dir) -> types.SimpleNamespace:
     # `store_dir` — NOT `store.dir`. `run_scheduled._store_dir` reads the flat attribute and
     # falls back to the RELATIVE literal "store", so a cfg missing it writes into whatever
-    # `store/` sits under the cwd. That fallback wrote two fabricated rows into the live store
-    # on 2026-08-06 (removed by content match). The real Config carries an absolute path
+    # `store/` sits under the cwd — the live store, under pytest. (An earlier version of this
+    # comment blamed 110 epoch-stamped rows on that fallback; re-measured, they are daemon ticks
+    # under a bad clock — see prospector/scheduler/paths.py.) The real Config carries an absolute path
     # (`load_config('config.yaml').store_dir` -> /Users/.../prospector/store), so production is
     # cwd-independent; a test that gets this wrong silently tests production instead of tmp_path.
     return types.SimpleNamespace(store_dir=str(store_dir))

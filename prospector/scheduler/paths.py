@@ -12,17 +12,35 @@ The default is a RELATIVE literal. A `cfg` without a `store_dir` attribute there
 fail — it silently resolves to `./store` under whatever the current working directory happens
 to be, which for a pytest run is the repo root, which is the LIVE store.
 
-That is not hypothetical. `store/scheduler/ticks.jsonl` carries 110 rows stamped 1970-01-01
-through 1970-01-03 (8.8% of all 1258 rows), sitting at line indexes 687..796 between a
-2026-07-30T18:43 neighbour and a 2026-07-28T00:50 one. Every one is
-`{"batch_size": 5, "result": {"dossiers": 0, ...}, "reason": "ok: $0.0000 of $20.00 spent today"}`
-— a fabricated shape no real tick has ever had ($0.0000 spend on a machine that spends, and an
-epoch clock). Two more were written and removed on 2026-08-06 while pinning
-`test_the_receipt_goes_to_the_configured_store_not_the_cwd`.
+CORRECTION (2026-08-06, same day): this module originally cited 110 epoch-stamped rows in
+`store/scheduler/ticks.jsonl` as proof that a test had written into the live store, calling
+them "a fabricated shape no real tick has ever had". **That was wrong, and every tell it
+rested on is the file's own norm.** Re-measured over all 1312 rows:
 
-This is the same class of bug as `_AUDIT_DIR` binding at import time, which let pytest write
-into the production audit log. The fix there and here is the same: make the unconfigured case
-impossible rather than quiet.
+    claimed tell                          actual
+    ------------------------------------  ------------------------------------------------
+    unique shape                          that key set is 1069/1312 rows, incl. BOTH of the
+                                          block's immediate neighbours
+    "result": {"dossiers": 0, ...}        58% of non-1970 rows
+    "$0.0000 of $20.00 spent today"       53% of non-1970 rows
+    out-of-order seam around it           28 such seams exist file-wide; this one is ordinary
+
+Positively, they look like daemon ticks under a clock reading epoch: gaps run min 320s /
+median 2279s (~38 min) with **zero** under 10 seconds — interval spacing, not a loop — and
+they carry `batch_size: 5`, the config value from *before* the founder's 2026-07-31 change to
+15 (`config.yaml:946,950`). A test double written today would carry 15. The two rows this
+module also claimed were "written and removed on 2026-08-06" cannot be re-checked either:
+`ticks.jsonl` is untracked, so there is no history to audit. Treat it as a first-hand note.
+
+None of that weakens the fence, because the fence never needed those rows. What justifies it
+is the mechanism plus a demonstrated sibling: `_AUDIT_DIR` is bound at import
+(`prospector/audit.py:133-136`), which is how pytest reached the production audit log. A
+cwd-relative default is the same bug with a worse blast radius, and the answer is the same —
+make the unconfigured case impossible rather than quiet.
+
+The lesson is also the reason this paragraph is long: "no real X has ever looked like that" is
+a claim about a whole population, and it is cheap to check against the population before
+writing it down. Not checking is what put a confident falsehood in a fence's own docstring.
 
 The real `Config` exposes `store_dir` as a property (`prospector/config.py:302`) honouring
 `PROSPECTOR_STORE_DIR`, so it is ALWAYS present in production and raising costs nothing there.
@@ -46,8 +64,9 @@ def store_dir(cfg) -> Path:
     if d is None:
         raise ValueError(
             f"{type(cfg).__name__} has no store_dir; refusing to guess. A cwd-relative default "
-            "wrote 110 fabricated tick rows into the live store — see prospector/scheduler/"
-            "paths.py. Tests must pass store_dir=tmp_path."
+            "resolves to the LIVE store under pytest, whose cwd is the repo root — the same bug "
+            "that let tests reach the production audit log (prospector/audit.py:133). "
+            "Tests must pass store_dir=tmp_path."
         )
     return Path(d)
 

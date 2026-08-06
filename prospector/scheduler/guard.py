@@ -55,12 +55,17 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from prospector.scheduler import paths
 
 PAUSE_FILENAME = "PAUSE"
+
+#: A ledger timestamp whose leading 10 chars are a zero-padded ISO date. Anchored, so a row with
+#: a free-text timestamp contributes nothing to the clock bound rather than a garbage maximum.
+_DAY_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 @dataclass(frozen=True)
@@ -108,7 +113,12 @@ class SchedulerGuard:
         return self.pause_file.exists()
 
     def scan_today(self) -> tuple[float, float]:
-        """Return (metered_usd, subscription_usd) for today from the persistent audit ledger.
+        """Today's (metered_usd, subscription_usd). See `_scan` — this drops the clock signal."""
+        metered, subscription, _ = self._scan()
+        return metered, subscription
+
+    def _scan(self) -> tuple[float, float, str]:
+        """Return (metered_usd, subscription_usd, newest_day_in_ledger) from the persistent ledger.
 
         One pass, two accumulators, because the ledger is ~350k lines and both figures are read
         on every tick:
@@ -123,13 +133,19 @@ class SchedulerGuard:
 
         Robust to a missing/partly-written ledger: unparseable lines are skipped. Timestamps are
         matched by their `YYYY-MM-DD` date prefix, which holds for both ISO and asctime formats.
+
+        The third value is the newest day any ledger row claims, folded into this same pass
+        because the file is ~350k lines and is already read on every tick. It is NOT read from
+        the last line: the ledger is appended in wall-clock order, so under the very clock fault
+        it exists to detect, the last row is the OLDEST. Only a full max is correct.
         """
         p = self.ledger_path
         if not p.exists():
-            return 0.0, 0.0
+            return 0.0, 0.0, ""
         day = self._today_str()
         metered = 0.0
         subscription = 0.0
+        newest = ""
         with p.open() as f:
             for line in f:
                 line = line.strip()
@@ -140,6 +156,9 @@ class SchedulerGuard:
                 except Exception:
                     continue
                 ts = str(d.get("timestamp") or d.get("asctime") or "")
+                if _DAY_RE.match(ts):
+                    # String max is a date max only because the prefix is zero-padded ISO.
+                    newest = max(newest, ts[:10])
                 if not ts.startswith(day):
                     continue
                 if d.get("event") == "spend":
@@ -152,7 +171,7 @@ class SchedulerGuard:
                         subscription += float(d.get("cost_usd") or 0)
                     except (TypeError, ValueError):
                         continue
-        return round(metered, 6), round(subscription, 6)
+        return round(metered, 6), round(subscription, 6), newest
 
     def today_spend_usd(self) -> float:
         """Today's metered (billed) spend — the figure `daily_cap_usd` enforces."""
@@ -164,8 +183,9 @@ class SchedulerGuard:
 
     def evaluate(self) -> GuardDecision:
         paused = self.is_paused()
-        spend, subscription = self.scan_today()
+        spend, subscription, newest = self._scan()
         sub_cap = self.daily_subscription_cap_usd
+        today = self._today_str()
 
         def _decide(can_run: bool, reason: str, paused: bool = False) -> GuardDecision:
             return GuardDecision(
@@ -181,6 +201,28 @@ class SchedulerGuard:
 
         if paused:
             return _decide(False, f"paused: {self.pause_file} present", paused=True)
+        if newest and today < newest:
+            # The clock has gone BACKWARDS past an event this machine already recorded, so the
+            # cap is summing a day the ledger cannot have rows for and reads $0.00 no matter
+            # what was really spent. That is not a degraded cap, it is no cap: measured on the
+            # live ledger, today=2026-08-06 gives $1.1680 and today=1970-01-01 gives $0.0000
+            # with can_run=True. CLAUDE.md makes the daily cap one of the two automated rails
+            # that stand in for a human, and forbids unattended generation without them — so
+            # the honest answer when the rail cannot function is to stop, not to spend.
+            #
+            # This has happened: store/scheduler/ticks.jsonl carries 110 ticks spanning
+            # 1970-01-01..03, all reporting "$0.0000 of $20.00 spent today".
+            #
+            # Only backwards skew is detectable from local state. A clock set FORWARD zeroes the
+            # window just as effectively, and nothing on this machine can refute it — the ledger
+            # bounds "now" from below only. Fixing that needs a trusted time source; this gate
+            # deliberately does not pretend to cover it.
+            return _decide(
+                False,
+                f"clock is behind the ledger: today reads {today} but this store already has "
+                f"rows dated {newest}. The daily cap sums by calendar day, so it would report "
+                f"$0.00 spent and enforce nothing. Fix the system clock (or pass today=) before "
+                f"generating.")
         if spend >= self.daily_cap_usd:
             return _decide(
                 False, f"daily cap reached: ${spend:.4f} >= ${self.daily_cap_usd:.2f}")

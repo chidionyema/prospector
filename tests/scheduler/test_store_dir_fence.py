@@ -1,31 +1,28 @@
 """A scheduler cfg that does not say where the store is must fail, not guess.
 
-MEASURED 2026-08-06 on the live store.
-
-`store/scheduler/ticks.jsonl` holds 1258 rows. 110 of them (8.8%) are stamped 1970-01-01 through
-1970-01-03, sitting at line indexes 687..796 between a 2026-07-30T18:43 neighbour and a
-2026-07-28T00:50 one, every single one identical in shape::
-
-    {"ts": "1970-01-01T00:02:30.273681+00:00", "allowed": true,
-     "reason": "ok: $0.0000 of $20.00 spent today", "dry_run": false,
-     "today_spend_usd": 0.0, "daily_cap_usd": 20.0, "batch_size": 5,
-     "result": {"dossiers": 0, "passes": 0, "defers": 0, "provisional": 0}, "error": null}
-
-An epoch clock and $0.0000 of spend on a machine that spends: no real tick has ever looked like
-that. They were written by a test whose cfg had no `store_dir`, because all three scheduler path
-helpers resolved that case to the RELATIVE literal ``"store"``::
+All three scheduler path helpers resolved a cfg with no `store_dir` to the RELATIVE literal
+``"store"``::
 
     prospector/scheduler/guard.py:201        Path(getattr(cfg, "store_dir", "store"))
     prospector/scheduler/run_scheduled.py:75 Path(getattr(cfg, "store_dir", "store"))
     prospector/scheduler/alerts.py:51        Path(getattr(cfg, "store_dir", "store")) / "scheduler"
 
-Under pytest the cwd is the repo root, so `./store` IS the production store. Two more rows landed
-the same way on 2026-08-06 while writing `test_tick_hard_deadline.py`.
+Under pytest the cwd is the repo root, so `./store` IS the production store — a test double that
+forgets one attribute silently exercises production instead of `tmp_path`. That is not a
+hypothetical class of bug here: `_AUDIT_DIR` is bound at import (`prospector/audit.py:133-136`),
+which is exactly how pytest reached the live audit log.
 
-This is the `_AUDIT_DIR`-binds-at-import bug in another costume, and it gets the same answer: the
-unconfigured case must be impossible rather than quiet. These tests pin that the raise happens at
-every seam a test double can enter through — and that the message says what to do about it, since
-the failure will land on someone who has never read this file.
+CORRECTION (2026-08-06): this docstring previously offered 110 epoch-stamped rows in
+`store/scheduler/ticks.jsonl` as the proof, asserting "no real tick has ever looked like that".
+Re-measured against all 1312 rows, that was false — the shape is 1069 of them, `dossiers: 0` is
+58%, `$0.0000` is 53%, and their spacing (median ~38 min, none under 10s) plus `batch_size: 5`
+(the pre-2026-07-31 config) says daemon under a bad clock, not test double. See
+`prospector/scheduler/paths.py` for the full table. The fence stands on the mechanism above; it
+never needed those rows, and citing them as if it did is the failure this note exists to record.
+
+These tests pin that the raise happens at every seam a test double can enter through — and that
+the message says what to do about it, since the failure will land on someone who has never read
+this file.
 """
 from __future__ import annotations
 
