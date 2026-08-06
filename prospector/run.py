@@ -32,6 +32,47 @@ def _vet_workers(cfg) -> int:
     return max(1, int(getattr(cfg.retrieval, "vet_workers", 3)))
 
 
+# Kill-fast is a rule about IDEAS: stop paying for a candidate the moment one gate is decisive.
+# This is that rule applied to INFRASTRUCTURE, and it had no implementation until 2026-08-06.
+# That day's 10:00 UTC batch vetted 14 candidates end-to-end and deferred all 14. The
+# non-critical chain that generates each check's search queries had been benched by a monthly
+# spend limit, so 52 of 98 checks never produced a query — and a check with no query has no
+# passages, which verify.py reports as retrieval_failed -> DEFER_GATE. Retrieval was healthy
+# throughout (200/200 ddg searches `ok`, every completed search 5-42 passages), which is why a
+# preflight probe would NOT have caught this: the subsystem that died is not the one we probe.
+# Nothing counted defers ACROSS candidates, so candidates 3..14 each re-learned the same
+# outage at full price, and all 14 landed in a backlog the drain must pay for a SECOND time.
+#
+# Deliberately cause-agnostic. Three different subsystems (query-gen, retrieval, the moat)
+# produce an identical batch-level signature, and on 2026-08-06 two confident diagnoses of
+# which one it was were both wrong. Counting the signature is reliable; inferring the cause
+# from inside the batch is not.
+#
+# A STREAK, not a total: a healthy batch may legitimately defer one or two candidates, so only
+# CONSECUTIVE infra-gated defers mean the subsystem is down rather than the ideas being
+# awkward. 0 disables. Not a verdict knob — it can only stop work, never change a ruling.
+def _infra_abort_streak(cfg) -> int:
+    env = os.environ.get("PROSPECTOR_INFRA_ABORT_STREAK")
+    if env:
+        return max(0, int(env))
+    return max(0, int(getattr(cfg.retrieval, "infra_defer_abort_streak", 3)))
+
+
+def _infra_abort_check(dossier, streak: int, threshold: int, pending) -> tuple:
+    """Advance the consecutive-infra-defer streak; cancel un-started vets if it trips.
+
+    Returns ``(new_streak, cancelled_or_None)``. ``cancelled_or_None`` is ``None`` while the
+    batch should keep going, otherwise the number of vets cancelled before they started.
+
+    Only ``Future.cancel()`` is used, which by contract refuses a vet that is already running.
+    So an abort can never discard a verdict we have paid for — it declines to buy more.
+    """
+    streak = streak + 1 if dossier.gate_fired in _INFRA_GATES else 0
+    if not threshold or streak < threshold:
+        return streak, None
+    return streak, sum(1 for f in pending if f.cancel())
+
+
 def _sync_cli_concurrency(cfg) -> None:
     """Apply retrieval.*_concurrency to CLI governors (env vars still win when set)."""
     r = getattr(cfg, "retrieval", None)
@@ -144,7 +185,13 @@ from .dedup import dedup, drops_by_market
 from .dossier import build_dossier, render_markdown
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .generate import generate
-from .models import Candidate, Decision, Dossier
+from .models import DEFER_GATE, Candidate, Decision, Dossier
+
+#: Gates meaning "the pipeline could not rule", as opposed to "this idea failed". Both are set
+#: by verify.py when a check never got an answer — never by a grounded verdict. Defined here
+#: rather than beside `_infra_abort_check` above, because this module's early helper block
+#: precedes its import block: a module-level tuple there evaluates DEFER_GATE too soon.
+_INFRA_GATES = (DEFER_GATE, "moat_exhausted")
 from .operator import Operator
 from .prescreen import prescreen
 from .retrieval import SearchProvider
@@ -714,7 +761,7 @@ def run_signal(
     progress.step(f"vetting {len(kept)} candidate(s) diverse subset live (max {workers} in parallel)…")
 
     # --- Vet each candidate (Bounded Concurrency Task E) ---
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
     dossiers: list[Dossier] = []
 
     def _label(idx: int, total: int, title: str) -> str:
@@ -754,6 +801,10 @@ def run_signal(
         total_submitted = len(fut_meta)
         # Stream each verdict the MOMENT its vet finishes (completion order), not in
         # submission order — a fast KILL no longer waits behind a slow candidate.
+        infra_abort = _infra_abort_streak(cfg)
+        infra_streak = 0
+        infra_aborted = False
+        n_cancelled = 0
         for future in as_completed(fut_meta):
             idx = fut_meta[future]
             try:
@@ -765,6 +816,32 @@ def run_signal(
                                 gate=d.gate_fired,
                                 composite=(d.score.composite if d.score else None))
                 dossiers.append(d)
+
+                # Kill-fast on INFRASTRUCTURE (see _infra_abort_streak). Counted AFTER the
+                # dossier is kept: work already paid for is banked, never discarded. Only
+                # UN-STARTED vets are cancelled, so this can lose no evidence — it can only
+                # decline to buy more of it while the pipeline is unable to rule.
+                infra_streak, cancelled = _infra_abort_check(
+                    d, infra_streak, 0 if infra_aborted else infra_abort, fut_meta)
+                if cancelled is not None:
+                    infra_aborted = True
+                    n_cancelled = cancelled
+                    msg = (f"INFRA ABORT: {infra_streak} consecutive candidates deferred on "
+                           f"gate={d.gate_fired!r} — the pipeline cannot rule, so this is an "
+                           f"outage, not a verdict. Cancelled {n_cancelled} un-started vet(s) "
+                           f"of {total_submitted}; {len(dossiers)} kept.")
+                    # CRITICAL: the daemon's launchd log drops info/warning, so a quieter
+                    # level here would make the abort invisible exactly where it matters.
+                    logger.critical(msg, extra={"infra_gate": d.gate_fired,
+                                                "cancelled": n_cancelled,
+                                                "submitted": total_submitted})
+                    print(f"⏸ {msg}", file=sys.stderr, flush=True)
+                    progress.note(f"⏸ {msg}")
+            except CancelledError:
+                # A vet this loop cancelled above — expected, not an error. It must be caught
+                # HERE: since 3.8 CancelledError derives from BaseException, so the generic
+                # `except Exception` below cannot see it and it would escape and kill the batch.
+                continue
             except GroundingInfrastructureError:
                 raise  # circuit breaker — halt daemon, don't burn credits
             except Exception as e:

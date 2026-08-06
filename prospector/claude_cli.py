@@ -94,6 +94,35 @@ def _record_claude_usage(data: dict, web: bool) -> None:
                                            "total": total, "cached": cached, "cost_usd": cost})
 
 
+def _safe_record(data: dict, web: bool) -> None:
+    """Bank usage without ever being able to break the call being measured.
+
+    A meter that can raise replaces the caller's real exception with its own — and the real
+    exception is precisely what `errors.looks_exhausted` reads to retire a spent brain
+    (392ce4c: a live brain benched nine times because the reason never reached the
+    classifier). Now that recording happens on the FAILURE paths too, an accounting bug would
+    be able to swallow a dead-brain trace. It must not.
+    """
+    try:
+        _record_claude_usage(data, web)
+    except Exception:  # noqa: BLE001 - accounting must never mask the real failure
+        logger.warning("failed to record claude cli usage", exc_info=True)
+
+
+def _record_failed_call(stdout: str, web: bool) -> None:
+    """Bank the usage of a call that BILLED and is about to raise.
+
+    Silent no-op when stdout is not a JSON object carrying a usage block, which is the normal
+    case for a process that exited non-zero.
+    """
+    try:
+        data = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return
+    if isinstance(data, dict) and (data.get("usage") or data.get("total_cost_usd")):
+        _safe_record(data, web)
+
+
 def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
                         queue_timeout: Optional[float] = None) -> str:
     """One CLI invocation under the concurrency cap. Raises on transient failure.
@@ -166,18 +195,34 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
         # leave a trace).
         detail = " | ".join(s for s in (proc.stderr.strip()[-300:],
                                         proc.stdout.strip()[-300:]) if s)
+        # Best-effort: a non-zero exit usually prints prose, not JSON, so there is normally
+        # nothing to bank here. But an exit code is not a promise about the payload, and a
+        # billed call that happens to still emit its usage block must not be dropped just
+        # because the process died afterwards.
+        _record_failed_call(proc.stdout, web)
         raise RuntimeError(f"claude cli exit {proc.returncode}: {detail}")
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
         raise RuntimeError(f"claude cli non-JSON output: {proc.stdout[:200]!r}") from e
+    # RECORD BEFORE BRANCHING. The API request is already paid for by the time this payload
+    # exists; whether we then like its CONTENTS is our problem, not the meter's. Recording only
+    # on the success path (which is what this did until 2026-08-06) made every `is_error`,
+    # every empty `result`, and every unexpected shape a free call in our own books. Measured
+    # 2026-08-06: 1,926 daemon calls left a costed transcript, 1,568 reached
+    # `store/prospector.jsonl` — 358 calls (18.6%) and $104.89 invisible in ONE day, at
+    # $0.293/call, indistinguishable from the $0.265 measured mean of calls that DID record.
+    # This is not a cost saving; it is the difference between a ledger and a guess, and
+    # `spend.daily_subscription_cap_usd` (config.yaml:997) is now a real ceiling that reads
+    # this leg — a ceiling fed by a meter that under-counts by 18.6% halts 18.6% too late.
+    if isinstance(data, dict):
+        _safe_record(data, web)
     # Headless JSON shape: {"type":"result","subtype":"success","result":"...","is_error":..}
     if isinstance(data, dict):
         if data.get("is_error") or data.get("subtype") == "error_during_execution":
             raise RuntimeError(f"claude cli error result: {str(data)[:200]}")
         resp = data.get("result")
         if resp:
-            _record_claude_usage(data, web)
             return str(resp)
     raise RuntimeError(f"claude cli empty/unexpected response: {str(data)[:200]}")
 
