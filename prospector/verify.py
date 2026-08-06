@@ -22,6 +22,7 @@ from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
 from .telemetry import logger, track_latency
+from .trimming import RATIONALE_MAX, clip_to_sentence
 from .audit import audit
 
 
@@ -395,7 +396,10 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     return CheckResult(
         check_name=check_name, verdict=verdict,
         confidence=confidence,
-        rationale=str(data.get("rationale", ""))[:600],
+        # Sentence-aware, not `[:600]`. The bare slice put 726 of 7,265 stored rationales on disk
+        # ending mid-word (measured 2026-08-06), and this is the field a kill dossier renders as
+        # its whole argument. See prospector/trimming.py.
+        rationale=clip_to_sentence(str(data.get("rationale", "")), RATIONALE_MAX),
         citations=citations,
         sources=[s for s in sources if s.source_id in citations] or sources,
         provider=_provider_used, provisional=_provisional)
