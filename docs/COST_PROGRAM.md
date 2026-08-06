@@ -43,6 +43,7 @@ Status vocabulary: **LIVE** (in effect, proven) · **CONFIGURED** (set but not i
 | L5 | `pi_execute` dispatch (MiniMax executor) | dispatch is **unmetered**; wins when plan << code | LIVE, opt-in per task | `~/.claude/mcp/README-pi-bridge.md` |
 | L6 | Daemon cold-cache gap | **$0.2650/req vs $0.0937/req** interactive | **UNPINNED** — `WorkingDirectory` is stable, so fresh-cwd is REFUTED | see §4 |
 | L7 | Dead `ANTHROPIC_API_KEY` in inherited env | outranks the subscription; raw API returns *credit balance too low* | **NOT CLEARED** in live processes | probe `auth` line |
+| L8 | Graphify as a context substitute | injection capped at **2,000 tok**; refresh costs **0 tok** (both proven) — but the number of round trips it replaces is **UNMEASURED** | MEASURE NEXT | `scripts/graphify_sweep.py`; A/B below |
 
 ### L1 is one action from shipped
 `settings.json` declares `"model": "sonnet"` (mtime 2026-08-06 14:19:22) but **settings.json is read
@@ -54,6 +55,28 @@ a new terminal is also what drops the dead `ANTHROPIC_API_KEY` (L7); it survives
 inherited env of long-lived processes, no rc file sets it (`env -i` proof).
 
 ---
+
+### L8 — what is proven about graphify's economics, and what is not
+
+Proven 2026-08-06, by execution rather than by documentation:
+
+- **Keeping the estate fresh is free of tokens.** `graphify update` completed a full refresh of a
+  stale repo in **46.5s with `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` both unset**. Only the
+  community-*labelling* path (`label`, `cluster-only`) touches an LLM; 3 of 49 package modules
+  reference one at all. So estate-wide auto-refresh is a CPU cost, not a token cost.
+- **Injection cost is bounded and local.** `graphify query` is a BFS over `graph.json` with
+  `--budget N` capping output at **2,000 tokens by default**. No inference in the query path.
+
+**Not proven — do not quote a saving yet.** How many exploratory round trips a query actually
+replaces (call it N) is unmeasured. Today's measured unit cost is **$927.00 / 7,774 = $0.1192 per
+request**, ~79% of it re-transporting resident context, so the saving is roughly `(N−1) × $0.1192`
+minus a one-off ≤2,000-token injection. That is arithmetic on an unmeasured N, i.e. a HYPOTHESIS.
+
+**The experiment that settles it** (reuses `scratchpad/ab_harness.sh` from the model A/B): one
+fixed codebase question, 3 reps each, `claude -p --output-format json`, counters from the API.
+Arm A explores with Read/Grep. Arm B gets the `graphify query` result pre-injected. Compare total
+tokens **and** whether arm B's answer is correct — a cheaper wrong answer is not a saving. Result
+goes in §2 as an L8 row.
 
 ## 2. Cost ledger — append one row per measurement day
 

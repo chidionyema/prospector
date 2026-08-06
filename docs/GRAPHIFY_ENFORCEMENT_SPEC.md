@@ -114,6 +114,22 @@ Tolerance is **zero**, because "N days old" is how a graph silently rots. Meetin
 | R11 | Concurrent sessions cannot corrupt a graph | two simultaneous refreshes on one repo → one runs, one no-ops |
 | R12 | Enforcement cost is known and capped | a row in COST_PROGRAM §2 attributing daily tokens/seconds to refresh |
 
+### 4.2b Proven so far (receipts, 2026-08-06)
+
+| req | evidence | result |
+|---|---|---|
+| **R1** | CLI warned `skill is from graphify 0.8.38, package is 0.8.49`; ran `graphify install --platform claude` | ✅ closed — `.graphify_version` now `0.8.49`, SKILL.md 32,550 → 37,070 B, warning gone. Old skill backed up before overwrite |
+| **R3/R4 mechanism** | `graphify_sweep.py --root <one repo> --fix` on `sentinel-loop`: STALE(41.6d) → **FRESH in 46.5s** | ✅ refresh works and re-assessment confirms it |
+| **G-COST** | that run executed under `env -u ANTHROPIC_API_KEY -u OPENAI_API_KEY` and still succeeded | ✅ **the refresh path spends zero tokens** — proven by execution, not by the help text |
+| **R11** | held the repo's lock externally → `SKIPPED — another sweep holds the lock`, repo stayed STALE; released it → same command refreshed → FRESH | ✅ red-then-green, no race |
+
+**R10 (never blocks a session) is NOT yet proven.** Refresh took 46.5s on a small repo, so the
+SessionStart hook must spawn it detached; that is PH2 work and is not claimed until measured.
+
+**Refreshing prospector itself is BLOCKED on R8.** Its `graphify-out` is tracked (318 files), so a
+rebuild would drop a 318-file diff into a branch shared with other live sessions. Untrack first,
+then refresh — in that order, or the refresh becomes an accidental mass commit.
+
 ### 4.3 Refresh triggers (R4 — three, so no single failure causes staleness)
 
 1. **git `post-commit` hook** (per repo, installed by the sweep) — refresh immediately on the change
@@ -132,7 +148,7 @@ Tolerance is **zero**, because "N days old" is how a graph silently rots. Meetin
 | phase | deliverable | satisfies | status |
 |---|---|---|---|
 | **PH0** | `scripts/graphify_sweep.py` — read-only status of every repo (`FRESH/STALE/ABSENT`, tracked-file count). Ships first so the spec has a scoreboard from day one. | R2, R3, R8 evidence | ✅ **DONE 2026-08-06**, exit 1 |
-| **PH1** | `--fix` mode: incremental `--update`, bootstrap, lock file, detached execution | R4, R10, R11 | not started |
+| **PH1** | `--fix` mode: incremental `--update`, bootstrap, lock file | R4, R10, R11 | ✅ **DONE 2026-08-06** |
 | **PH2** | Hook wiring: SessionStart line, `UserPromptSubmit` injection, `post-commit` install | R5, R6, R4 | not started |
 | **PH3** | Self-check in the state probe; `.gitignore` migration; `~/.claude` versioning | R7, R8, R9 | not started |
 | **PH4** | Cost attribution row in COST_PROGRAM §2 | R12 | not started |

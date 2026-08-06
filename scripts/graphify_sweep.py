@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Graphify estate scoreboard — READ-ONLY.
+"""Graphify estate scoreboard and refresher.
+
+READ-ONLY by default. It writes ONLY when explicitly asked with --fix/--bootstrap, and
+then only by invoking `graphify`, never by editing a repo itself.
 
 Implements the freshness contract in docs/GRAPHIFY_ENFORCEMENT_SPEC.md §4.1 and reports
 R2 (universal), R3 (never stale) and R8 (not tracked in git) for every git repo under the
@@ -11,22 +14,31 @@ estate root.
     ABSENT := no graph at all
 
 RULES THIS SCRIPT OBEYS (each is a rule the estate learned the hard way):
-  * It never writes. Not a mkdir, not a lock. A probe that mutates is worse than none.
+  * Without --fix it never writes. A probe that mutates is worse than none.
   * It reports the number it measured, never a judgement about it.
   * Exit 0 only when ABSENT, STALE and TRACKED are all zero. Anything else exits 1, so it
     can gate a hook without a human reading the table.
+  * Refresh uses `graphify update`, which the CLI documents as "no LLM needed" — so keeping
+    the estate fresh costs CPU, not tokens. Bootstrapping an ABSENT graph is a SEPARATE flag
+    because a first build runs clustering and may invoke the LLM community-labeller.
 
 Usage:
-    graphify_sweep.py                 # full table
+    graphify_sweep.py                 # full table (read-only)
     graphify_sweep.py --brief         # one line, for injection into a session
+    graphify_sweep.py --fix           # refresh every STALE graph, then re-assess
+    graphify_sweep.py --fix --bootstrap   # also build graphs for ABSENT repos (may use LLM)
     graphify_sweep.py --root DIR      # override the estate root
 """
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 ESTATE_ROOT = os.path.expanduser("~/Documents/code")
@@ -140,15 +152,90 @@ def assess(repo: str) -> dict:
     return row
 
 
+def repo_lock(repo: str):
+    """Exclusive non-blocking lock for one repo (spec R11). Returns the open handle, or
+    None if another sweep already holds it — in which case this caller no-ops rather than
+    racing a second `graphify update` into the same graph.json.
+
+    macOS has no flock(1), so this uses fcntl.flock. The lock file lives in the temp dir,
+    not in the repo, so a lock never shows up as a repo change and can never be committed.
+    """
+    key = hashlib.sha1(repo.encode()).hexdigest()[:16]
+    path = os.path.join(tempfile.gettempdir(), f"graphify-sweep-{key}.lock")
+    fh = open(path, "w")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    return fh
+
+
+def refresh(repo: str, timeout: int, force: bool) -> tuple[bool, str, float]:
+    """Run `graphify update` on one repo. Returns (ok, detail, seconds)."""
+    exe = shutil.which("graphify")
+    if not exe:
+        return False, "graphify not on PATH", 0.0
+    cmd = [exe, "update", repo] + (["--force"] if force else [])
+    t0 = time.time()
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return False, f"timed out after {timeout}s", time.time() - t0
+    except OSError as e:
+        return False, f"exec failed: {e}", time.time() - t0
+    dt = time.time() - t0
+    if p.returncode == 0:
+        return True, "updated", dt
+    tail = (p.stderr or p.stdout or "").strip().splitlines()
+    return False, (tail[-1][:100] if tail else f"exit {p.returncode}"), dt
+
+
+def do_fix(rows: list[dict], bootstrap: bool, timeout: int, force: bool) -> list[dict]:
+    """Refresh STALE repos (and ABSENT ones when bootstrap is set). Re-assesses after."""
+    targets = [r for r in rows if r["state"] == "STALE"]
+    if bootstrap:
+        targets += [r for r in rows if r["state"] == "ABSENT"]
+    if not targets:
+        print("nothing to fix — no STALE repos"
+              + ("" if bootstrap else " (ABSENT repos need --bootstrap)"))
+        return rows
+
+    print(f"── REFRESHING {len(targets)} repo(s) with `graphify update` (LLM-free path) ──")
+    for r in targets:
+        lock = repo_lock(r["repo"])
+        if lock is None:
+            print(f"  {r['name']:<24} SKIPPED — another sweep holds the lock")
+            continue
+        try:
+            ok, detail, dt = refresh(r["repo"], timeout, force)
+        finally:
+            lock.close()
+        mark = "✅" if ok else "❌"
+        print(f"  {mark} {r['name']:<24} {dt:6.1f}s  {detail}")
+    print("── re-assessing ──")
+    return [assess(r["repo"]) for r in rows]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=ESTATE_ROOT)
     ap.add_argument("--brief", action="store_true",
                     help="one line, for injection into a session")
+    ap.add_argument("--fix", action="store_true",
+                    help="refresh every STALE graph via `graphify update`, then re-assess")
+    ap.add_argument("--bootstrap", action="store_true",
+                    help="with --fix, also build graphs for ABSENT repos (may invoke the LLM labeller)")
+    ap.add_argument("--timeout", type=int, default=900,
+                    help="per-repo seconds before giving up (default 900)")
+    ap.add_argument("--force", action="store_true",
+                    help="pass --force to graphify update (accepts a rebuild with fewer nodes)")
     args = ap.parse_args()
 
     rows = [assess(r) for r in discover(args.root)]
+    if args.fix:
+        rows = do_fix(rows, args.bootstrap, args.timeout, args.force)
     absent = sum(1 for r in rows if r["state"] == "ABSENT")
     stale = sum(1 for r in rows if r["state"] == "STALE")
     fresh = sum(1 for r in rows if r["state"] == "FRESH")
