@@ -991,7 +991,25 @@ dedup_token_threshold: 0.34
 # the brake waits for the drainable count to fall, so a row nothing can resolve would hold
 # generation frozen forever. 0 disables it. Outages never spend a row's budget — only a completed
 # re-vet whose verdict left the row drainable counts.
-schedule: { cadence: daily, batch_size: 15, backlog_cap: 100, max_resume_attempts: 5 }
+# `revet_provisional_kills: false` — do NOT spend the drain's bound re-vetting rows that are
+# already KILL. A provisional row is one an untrusted brain ruled; the re-vet exists so a trusted
+# brain can overwrite that ruling. For a PASS that is the difference between unsellable and
+# sellable (the publish gate is `decision == PASS and not provisional`). For a KILL it changes
+# `provisional=1 -> 0` on a row that can never publish under any verdict.
+# Measured 2026-08-06 before this line existed: 318 drainable rows = 161 provisional KILL + 152
+# DEFER + 5 provisional DEFER, and ZERO provisional PASSes — so 51% of the backlog, and (because
+# the sort was oldest-first and the KILLs are the old ones) most of what each tick actually paid
+# for, was rows in that class. Yield of every drain in ticks.jsonl: 39 attempted -> 1 pass. The
+# drain-only tick at 12:23:06Z: 15 attempted -> 15 kills, 0 passes, ~$28.65 of subscription CLI
+# (meter flat at $438.6810 before, $467.3271 after), none of it visible to spend.daily_cap_usd.
+# And it ran INSTEAD of generation, not alongside it: backlog_cap 100 vs 334 forced batch_size 0.
+# This excludes them from the drain AND from the brake's count via the one shared definition
+# (run.drain_survey) — narrowing only one of the two is how the brake deadlocks. Nothing is
+# deleted or tombstoned: the rows keep their cited kill reason, `vet --resume --only
+# provisional-kill` still works them on demand, and flipping this to true restores the old
+# behaviour in one line. See prospector/drain_state.revet_provisional_kills for the receipts.
+schedule: { cadence: daily, batch_size: 15, backlog_cap: 100, max_resume_attempts: 5,
+            revet_provisional_kills: false }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

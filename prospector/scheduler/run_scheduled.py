@@ -202,16 +202,23 @@ def _backlog_size(cfg) -> int | None:
     reading the daemon log will ever see.
     """
     try:
-        from prospector.drain_state import ledger_path, max_attempts
+        from prospector.drain_state import ledger_path, max_attempts, revet_provisional_kills
         from prospector.run import drain_survey
         from prospector.store import Store
         cap_attempts = max_attempts(cfg)
-        survey = drain_survey(Store(cfg), max_attempts=cap_attempts)
-        if survey.orphaned or survey.stalled:
+        # The SAME exclusion the drain will apply (`run._cmd_resume` reads the same knob), or the
+        # brake would sit engaged on 161 rows the automatic drain is no longer working — the
+        # deadlock this whole shared-definition arrangement exists to prevent.
+        revet_dead = revet_provisional_kills(cfg)
+        survey = drain_survey(Store(cfg), max_attempts=cap_attempts,
+                              revet_provisional_kills=revet_dead)
+        if survey.orphaned or survey.stalled or survey.unpublishable:
             note = (f"↻ backlog brake counts {len(survey.workable)} workable row(s); excluded "
                     f"{len(survey.orphaned)} orphaned (index row, no dossier JSON) + "
                     f"{len(survey.stalled)} stalled (>= {cap_attempts} unresolved re-vets, "
-                    f"rm {ledger_path(cfg.store_dir)} to retry)")
+                    f"rm {ledger_path(cfg.store_dir)} to retry) + "
+                    f"{len(survey.unpublishable)} provisional KILLs (already dead; "
+                    f"schedule.revet_provisional_kills: true to work them)")
             logger.warning("%s", note)
             print(note, file=sys.stderr, flush=True)
         return len(survey.workable)

@@ -517,6 +517,13 @@ def test_orphans_are_still_reported_when_everything_is_orphaned():
 # PASS can become sellable inventory, because publishing is gated on `not dossier.provisional`
 # (run.py:422). So the population worth draining first was structurally unreachable through
 # `--limit` alone.
+#
+# `--only` was the first fix: an OPERATOR could reach it, by knowing to ask. The daemon still
+# could not — it passes no selector — so the automatic drain kept spending its 3-per-tick bound
+# oldest-first on rows that cannot publish. The second fix (2026-08-06, `run._drain_rank`) makes
+# the DEFAULT order rank-then-age, so the bound goes to provisional PASSes, then DEFERs, then
+# already-dead rows. The tests below now pin the rank order; each one states the age order it
+# replaced, because that ordering is the measured bug and must not come back by accident.
 # ---------------------------------------------------------------------------
 
 def _live_shaped_rows():
@@ -547,14 +554,20 @@ def _resume(monkeypatch, seen, **ns):
     )
 
 
-def test_a_bounded_pass_without_only_never_reaches_a_provisional_pass(monkeypatch):
-    """The bug, stated as a test: oldest-first spends the whole bound on kills and defers."""
+def test_a_bounded_pass_reaches_the_sellable_population_first(monkeypatch):
+    """The bug, inverted: the bound now buys the rows that can publish.
+
+    THE ORDER THIS REPLACED. With age as the only sort key this same call produced
+    `["k1", "d1", "k2"]` — two provisional KILLs that cannot publish under any verdict, and one
+    DEFER — while both provisional PASSes, the only population a re-vet can turn into sellable
+    inventory, sat outside the bound. That is the measured 1-in-100 problem in miniature, and
+    the daemon hit it on every tick because it passes no `--only`.
+    """
     seen: list[str] = []
     _resume(monkeypatch, seen, limit=3)
-    assert seen == ["k1", "d1", "k2"]
-    assert not any(t.startswith("p") for t in seen), (
-        "a bounded drain must be shown NOT to reach the only sellable population — this is "
-        "the measured 1-in-100 problem in miniature"
+    assert seen == ["p1", "p2", "d1"]
+    assert not any(t.startswith("k") for t in seen), (
+        "already-dead rows must not consume a bounded pass while sellable rows are waiting"
     )
 
 
@@ -576,10 +589,16 @@ def test_only_composes_with_limit(monkeypatch):
 
 
 def test_the_other_selectors_pick_their_own_population(monkeypatch):
+    """Each selector takes its whole population, in rank-then-age order.
+
+    Age order gave `provisional -> [k1, k2, p1, p2]` and `all -> [k1, d1, k2, p1, p2]`; the
+    sellable rows came last in both. Unbounded, every selector drains the same SET either way —
+    it is the bounded pass (above) where the order decides what the money buys.
+    """
     for only, expected in (
         ("defer", ["d1"]),
-        ("provisional", ["k1", "k2", "p1", "p2"]),
-        ("all", ["k1", "d1", "k2", "p1", "p2"]),
+        ("provisional", ["p1", "p2", "k1", "k2"]),
+        ("all", ["p1", "p2", "d1", "k1", "k2"]),
     ):
         seen: list[str] = []
         _resume(monkeypatch, seen, only=only)
@@ -601,7 +620,10 @@ def test_the_daemon_namespace_has_no_only_attribute_and_keeps_draining_everythin
         cfg=None, op=None, fast_op=None, search=None,
         store=_FakeStore(rows, on_disk={r["candidate_id"] for r in rows}),
     )
-    assert seen == ["k1", "d1", "k2", "p1", "p2"]
+    # EVERYTHING is the invariant here, not the order — asserted as a set so this test keeps
+    # failing for its own reason (a narrowed daemon drain) rather than for a sort change.
+    assert sorted(seen) == ["d1", "k1", "k2", "p1", "p2"]
+    assert seen == ["p1", "p2", "d1", "k1", "k2"], "and in rank-then-age order"
 
 
 def test_an_unknown_selector_exits_rather_than_draining_everything(monkeypatch):

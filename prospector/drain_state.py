@@ -77,6 +77,46 @@ def max_attempts(cfg) -> int:
         return 0
 
 
+def revet_provisional_kills(cfg) -> bool:
+    """`schedule.revet_provisional_kills` — may a provisional KILL consume drain budget?
+
+    THE THIRD UNMOVABLE POPULATION, and the only one that is unmovable by ECONOMICS rather than
+    by mechanics. An orphan cannot be loaded and a stalled row will not resolve; a provisional
+    KILL re-vets perfectly well. It just cannot produce anything, because the publish gate
+    (`run.py`'s `decision == PASS and not provisional`) is never reached by a row whose decision
+    is KILL. Confirming a kill with a trusted brain flips `provisional=1 -> 0` on a dead row and
+    changes nothing that can ever be sold.
+
+    Measured on the live store 2026-08-06, which is why the shipped config sets this False:
+      * drainable population 318 = 161 provisional KILL + 152 DEFER + 5 provisional DEFER;
+        provisional PASSes remaining: 0. So 51% of the backlog was rows in this class.
+      * yield of every drain recorded in ticks.jsonl: 39 attempted -> 1 pass, 33 kills, 2 defers.
+        The drain-only tick at 12:23:06Z: 15 attempted -> 15 kills, 0 passes.
+      * cost of that tick: the subscription meter sat flat at $438.6810 across the three guard
+        samples before it (12:11/12:16/12:21) and flat at $467.3271 across the six after it
+        (13:00..13:11), so ~$28.65 for 15 rows, ~$1.91/row, for zero publishable output. None of
+        it visible to `spend.daily_cap_usd`, which counts metered API dollars only
+        (`metered_usd: 0.0` on that same tick).
+      * and it was not running ALONGSIDE generation but INSTEAD of it: `backlog_cap: 100` against
+        334 drainable meant `batch_size: 0`. Generation was stopped to re-confirm dead rows.
+
+    The default here is True — the historical behaviour — so every existing caller and test keeps
+    it, and turning the exclusion on is one line of config the founder can revert. Excluding the
+    rows does NOT delete or tombstone them: they stay in the catalogue with their cited kill
+    reason, and `vet --resume --only provisional-kill` still reaches every one of them on demand.
+    """
+    if cfg is None:
+        return True
+    schedule = getattr(cfg, "schedule", None) or {}
+    if isinstance(schedule, dict):
+        raw = schedule.get("revet_provisional_kills", True)
+    else:
+        raw = getattr(schedule, "revet_provisional_kills", True)
+    if raw is None:
+        return True
+    return bool(raw)
+
+
 def load(store_dir) -> dict[str, int]:
     """The attempt ledger as `{candidate_id: completed_unresolved_revets}`.
 
