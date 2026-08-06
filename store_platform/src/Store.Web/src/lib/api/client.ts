@@ -130,6 +130,14 @@ export interface Pack {
    *  every pack is priced and sold in GBP regardless of this value. Absent on packs
    *  published before the engine tracked markets. */
   market?: string;
+  /** The audience persona the engine GENERATED this pack for ("smb_owner", "primary_carer",
+   *  ...). An analytics dimension and a disclosure, not a facet: `advantages` already has a
+   *  member spelled "audience" meaning the buyer already HAS one, and this is the opposite
+   *  end of the transaction. Deliberately typed `string`, not a union: the vocabulary lives
+   *  in the engine's `config.yaml generation.audience_forms`, and a union here would be a
+   *  fourth copy of a list that the API itself does not validate. Absent on packs published
+   *  before the persona survived the publish boundary. */
+  audience?: string;
 }
 
 export interface PackDetails extends Pack {

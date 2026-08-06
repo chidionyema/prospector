@@ -402,6 +402,9 @@ class EngineBridge:
         # at the single boundary where the payload is built — covers operator-generated
         # listings too, not just the deterministic floors in pack_floors.
         subhead = to_plain_text(listing.get("subhead"), collapse=True)
+        # `Candidate.audience` (models.py) is the single normaliser, shared with the SQLite
+        # index in Store.save — see the note on the catalog_meta entry below.
+        audience = getattr(candidate, "audience", "") or ""
         catalog_meta: Dict[str, Any] = {
             # The shelf heading. Already length-enforced by artifacts._card_line (drop, never
             # truncate), so no [:n] slice here — a slice would reintroduce exactly the
@@ -423,6 +426,23 @@ class EngineBridge:
             # The jurisdiction the OPPORTUNITY is in — a browse facet and a disclosure,
             # never a pricing input. The pack still sells for £49 through the same rail.
             "market": getattr(candidate, "market", "") or "",
+            # Who generation wrote this pack FOR (`candidate.tags["audience"]`,
+            # generate.py:552 — one of config.yaml `generation.audience_forms`). Every dossier
+            # carried it and the publish boundary dropped it, so the catalogue could say what a
+            # pack is but never who it was aimed at, and no per-persona conversion question was
+            # answerable on the sold side.
+            #
+            # Deliberately NOT a discovery facet. `facets.ADVANTAGE` already contains a member
+            # spelled "audience", and it means the opposite end of the transaction — "the buyer
+            # already HAS an audience". Routing this through facets_mod would collide two
+            # unrelated meanings in one word, and it would also put an 8-value list under the
+            # closed-vocabulary contract that has to be kept in sync across three deploy units.
+            # This is a metadata disclosure like `market` above, on the same terms.
+            #
+            # Omitted rather than sent empty when absent: the Store's publish apply block only
+            # overwrites what it was sent, so "" would be a value that erases a stored one on a
+            # metadata-light republish, while absent leaves it alone.
+            **({"audience": audience} if audience else {}),
         }
         # Discovery facets — the closed vocabulary the storefront routes buyers on. Already
         # validated by artifacts._normalize_listing, so anything the operator invented is

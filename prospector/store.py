@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS dossiers (
     adversarial_confidence REAL,
     persona         TEXT,
     retrieval_degraded INTEGER DEFAULT 0,
-    market          TEXT
+    market          TEXT,
+    audience         TEXT
 );
 """
 
@@ -47,6 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_structural_form ON dossiers(structural_form);
 CREATE INDEX IF NOT EXISTS idx_dense_reward ON dossiers(dense_reward);
 CREATE INDEX IF NOT EXISTS idx_persona ON dossiers(persona);
 CREATE INDEX IF NOT EXISTS idx_market ON dossiers(market);
+CREATE INDEX IF NOT EXISTS idx_audience ON dossiers(audience);
 """
 
 _UPSERT = """
@@ -54,8 +56,8 @@ INSERT OR REPLACE INTO dossiers
     (candidate_id, title, one_liner, decision, gate_fired, composite,
      created_at, reverify_due_at, path, ambition_tier, structural_form,
      provisional, dense_reward, adversarial_confidence, persona, retrieval_degraded,
-     market)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     market, audience)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 
@@ -94,6 +96,14 @@ class Store:
                                ("persona", "TEXT"),
                                ("retrieval_degraded", "INTEGER DEFAULT 0"),
                                ("market", "TEXT"),
+                               # The audience persona generation wrote the candidate FOR
+                               # (`candidate.tags["audience"]`, generate.py:552). NOT the same
+                               # thing as `persona` above, which is the Part-16 analysis tint
+                               # that colours a verdict; this one is who the idea is aimed at.
+                               # Indexed because per-persona yield is the question it exists to
+                               # answer, and a scan over 1.4k dossier JSONs to ask it is why the
+                               # field went unread for so long.
+                               ("audience", "TEXT"),
                                # Why a row must no longer be acted on, or NULL for a live row.
                                # The index and the disk can disagree: 189 rows on the live store
                                # (all created 2026-06-13..06-21) have no dossier JSON behind them,
@@ -165,6 +175,12 @@ class Store:
                 int(any(getattr(c, "degraded", False) or getattr(c, "retrieval_failed", False)
                         for c in getattr(dossier, "checks", []) or [])),
                 getattr(dossier.candidate, "market", "") or "",
+                # Generation stamps this on 1410 of 1436 dossiers on disk and every reader
+                # downstream of `save` then had to re-open the JSON to see it. Lifted into the
+                # index so persona can be grouped in SQL. Empty string, never NULL, matching
+                # `market` and `persona` — a mix of '' and NULL in one column silently splits
+                # every GROUP BY into two buckets that mean the same thing.
+                getattr(dossier.candidate, "audience", "") or "",
             ))
         return path
 

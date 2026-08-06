@@ -283,6 +283,9 @@ app.MapGet("/catalog", async (StoreDbContext db, string? market) =>
         p.VerifiedAt,
         // Jurisdiction of the opportunity — a browse facet. Price stays GBP.
         p.Market,
+        // Who the engine wrote the pack for. Projected on BOTH endpoints deliberately: a
+        // field on the product page but not the shelf is a card that changes on click.
+        p.Audience,
         // Discovery facets. An absent facet serialises as null and advantages as [] —
         // never as a default value, because a defaulted facet is a claim the engine never
         // made, and the buyer would filter on it believing it was real.
@@ -341,6 +344,7 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
         pack.TimeToFirstRevenue,
         pack.QaVerdictSummary,
         pack.Market,
+        pack.Audience,
         pack.SourceCount,
         pack.VerifiedAt,
         // Discovery facets — same null rule as the list endpoint.
@@ -510,6 +514,10 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     if (request.TimeToFirstRevenue is not null) pack.TimeToFirstRevenue = request.TimeToFirstRevenue;
     if (request.QaVerdictSummary is not null) pack.QaVerdictSummary = request.QaVerdictSummary;
     if (request.Market is not null) pack.Market = request.Market;
+    // Same only-overwrite-when-sent rule: the engine OMITS the persona rather than sending ""
+    // when generation did not stamp one, so a metadata-light republish leaves a stored value
+    // alone instead of blanking it.
+    if (request.Audience is not null) pack.Audience = request.Audience;
     if (request.SourceCount is { } sources) pack.SourceCount = sources;
     if (request.VerifiedAt is { } verifiedAt) pack.VerifiedAt = verifiedAt;
     if (request.WhatYouGet is not null) pack.WhatYouGetJson = JsonSerializer.Serialize(request.WhatYouGet);

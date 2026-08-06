@@ -141,6 +141,27 @@ class Candidate:
             self.candidate_id = (_id(self.title, self.one_liner) if not self.market
                                  else _id(self.title, self.one_liner, self.market))
 
+    @property
+    def audience(self) -> str:
+        """The audience persona generation wrote this candidate for, or "" if absent.
+
+        Lives in `tags["audience"]` (written at generate.py:552) rather than as a field,
+        because generation stamps it as free-form audit metadata. This property is the ONE
+        reader: `Store.save` indexes it and `EngineBridge` puts it on the catalogue row, and
+        two private normalisers would let the SQLite answer to "which persona sells?" drift
+        from the storefront's.
+
+        Case- and whitespace-normalised only. Deliberately NOT validated against
+        `config.yaml generation.audience_forms` — that list is operator-editable, and
+        rejecting unknown members would silently blank the field on every publish after a
+        rename there. An unrecognised persona is a fact about generation worth recording.
+
+        A property, so `asdict`/`to_dict` are unchanged and no dossier JSON on disk gains a
+        duplicate copy of a value it already carries under `tags`.
+        """
+        tags = self.tags if isinstance(self.tags, dict) else {}
+        return str(tags.get("audience") or "").strip().lower()
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
