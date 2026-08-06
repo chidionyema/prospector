@@ -43,7 +43,7 @@ Status vocabulary: **LIVE** (in effect, proven) · **CONFIGURED** (set but not i
 | L5 | `pi_execute` dispatch (MiniMax executor) | dispatch is **unmetered**; wins when plan << code | LIVE, opt-in per task | `~/.claude/mcp/README-pi-bridge.md` |
 | L6 | Daemon cold-cache gap | **$0.2650/req vs $0.0937/req** interactive | **UNPINNED** — `WorkingDirectory` is stable, so fresh-cwd is REFUTED | see §4 |
 | L7 | Dead `ANTHROPIC_API_KEY` in inherited env | outranks the subscription; raw API returns *credit balance too low* | **NOT CLEARED** in live processes | probe `auth` line |
-| L8 | Graphify as a context substitute | injection capped at **2,000 tok**; refresh costs **0 tok** (both proven) — but the number of round trips it replaces is **UNMEASURED** | MEASURE NEXT | `scripts/graphify_sweep.py`; A/B below |
+| L8 | Graphify as a context substitute | injection capped at **700 tok**; refresh costs **0 tok** (both proven) — but the number of round trips it replaces is **UNMEASURED** | **ENFORCED LIVE 2026-08-06** (4 triggers); saving still MEASURE NEXT | `scripts/graphify_sweep.py` (exit 0 = enforced); A/B below |
 
 ### L1 is one action from shipped
 `settings.json` declares `"model": "sonnet"` (mtime 2026-08-06 14:19:22) but **settings.json is read
@@ -71,6 +71,22 @@ Proven 2026-08-06, by execution rather than by documentation:
 replaces (call it N) is unmeasured. Today's measured unit cost is **$927.00 / 7,774 = $0.1192 per
 request**, ~79% of it re-transporting resident context, so the saving is roughly `(N−1) × $0.1192`
 minus a one-off ≤2,000-token injection. That is arithmetic on an unmeasured N, i.e. a HYPOTHESIS.
+
+**What enforcement itself costs (spec R12, measured 2026-08-06).** The point of this row is that
+turning enforcement on estate-wide did not quietly buy the saving with a new recurring cost:
+
+| component | token cost | wall/CPU cost | how it stays known |
+|---|---|---|---|
+| `graphify update` refresh (post-commit, SessionStart, launchd) | **0** — 8 repos refreshed with `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` unset, all exit 0 | 5.6s (vault-201) → 260.2s (haworks-platform, 2,278 files); always **detached**, so no commit and no session ever waits on it | it is CPU, and CPU here is free |
+| SessionStart `[graphify]` line | ~100 tok, **once per session** | 1.21s | one line, fixed shape |
+| `UserPromptSubmit` injection | **≤700 tok**, only on codebase-shaped prompts (chatty prompts inject nothing — negative control run) | 4.6s query | every injection appends `{ts, repo, chars, est_tokens, query_seconds}` to `~/.claude/graphify-inject.log`, so the real daily cost is a `jq` away rather than an estimate |
+| launchd backstop | 0 | ~6s assessment per 30 min, `Nice 5` + `LowPriorityIO` | `launchctl list \| grep graphify` |
+
+The injection is the only component that can grow, which is why it is capped and logged rather
+than trusted. The cap started at 1,200 and was cut to **700** the same evening: a real prompt
+returned 337 nodes as a flat list and spent the whole budget, with the useful rows in the first
+~25. Paying 2,000 tok per codebase prompt for that would be a cost regression wearing a feature's
+clothes.
 
 **The experiment that settles it** (reuses `scratchpad/ab_harness.sh` from the model A/B): one
 fixed codebase question, 3 reps each, `claude -p --output-format json`, counters from the API.
