@@ -470,10 +470,14 @@ def _retry_sleep_s(consecutive: int, interval: int) -> int:
     return max(1, min(interval, backoff))
 
 
-def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -> None:
+def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None,
+                          *, phase: str = "generation") -> None:
+    # `phase` because the drain-only branch now arms this timer too, and a breach that says
+    # "during generation" on a tick whose batch_size was 0 sends the next reader looking at the
+    # wrong half of the daemon.
     logger.critical(
-        "TICK HARD DEADLINE (%ds) exceeded during generation (batch=%s) — force-exiting so "
-        "launchd KeepAlive relaunches a clean daemon.", _TICK_HARD_DEADLINE_S, batch_size)
+        "TICK HARD DEADLINE (%ds) exceeded during %s (batch=%s) — force-exiting so "
+        "launchd KeepAlive relaunches a clean daemon.", _TICK_HARD_DEADLINE_S, phase, batch_size)
     # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent os._exit leaves no
     # tick row and no alert, so a repeating deadline breach looks like the daemon never ran
     # (proven live 2026-07-02: 4h of relaunch loops with zero tick rows). The main thread is
@@ -481,7 +485,7 @@ def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None) -
     if cfg is not None and tick is not None:
         try:
             tick["error"] = (f"tick_hard_deadline: exceeded {_TICK_HARD_DEADLINE_S}s during "
-                             f"generation (batch={batch_size}); force-exited for relaunch")
+                             f"{phase} (batch={batch_size}); force-exited for relaunch")
             _append_tick(cfg, tick)
             _emit_tick_alerts(cfg, tick)
         except Exception:  # noqa: BLE001 — bookkeeping must never block the force-exit
@@ -593,8 +597,25 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         # generating is precisely the invisible degradation this change is about.
         logger.critical("Generation suppressed: %s", suppressed)
         print(f"⏸ generation suppressed — {suppressed}", file=sys.stderr, flush=True)
-        tick["result"] = {"dossiers": 0,
-                          "resumed": _drain_pass(cfg, _drain_only_resume_per_tick(cfg))}
+        # The SAME hard wall-clock guard the generation branch gets below. Without it this was
+        # the one path in the tick with neither backstop, and it is now the daemon's entire
+        # workload while the brake is engaged:
+        #   * `_drain_pass` swallows every exception by design (a drain failure must not cost
+        #     the tick), so a wedged re-vet never raises and the branch never returns;
+        #   * the deadline Timer was started AFTER this branch returns, so it never covered it;
+        #   * `phase="draining"` matched no branch in `_liveness`, which fell through to
+        #     "alive" — so the watchdog reported a hung drain healthy, indefinitely.
+        # That is the 2026-07-01 failure mode exactly (a trickled LLM response body defeating
+        # per-recv socket timeouts, 34+ min hung, watched dead for 8.5h), re-opened on a new path.
+        deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
+                                   args=(0, cfg, tick), kwargs={"phase": "the drain"})
+        deadline.daemon = True
+        deadline.start()
+        try:
+            resumed = _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
+        finally:
+            deadline.cancel()
+        tick["result"] = {"dossiers": 0, "resumed": resumed}
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
         _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=None)
@@ -941,7 +962,7 @@ def _status_lines(cfg) -> list[str]:
         beat = json.loads(hb_path.read_text(encoding="utf-8"))
         age_min = (now - datetime.fromisoformat(beat["ts"])).total_seconds() / 60
         phase = beat.get("phase", "?")
-        stale = (phase == "generating" and age_min > 45) or \
+        stale = (phase in ("generating", "draining") and age_min > _TICK_HARD_DEADLINE_S / 60 + 10) or \
                 (phase == "sleeping" and age_min > beat.get("interval_s", 7200) / 60 + 35)
         flag = "  ⚠ STALE / likely dead" if stale else ""
         extra = ""
@@ -1031,6 +1052,16 @@ def _liveness(cfg) -> tuple[bool, str]:
     stall_min = _TICK_HARD_DEADLINE_S / 60 + 10
     if phase == "generating" and age_min > stall_min:
         return False, (f"stuck in 'generating', heartbeat {ages} "
+                       f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
+    # `draining` shares `generating`'s deadline-derived budget, and deliberately NOT the 45-min
+    # one used for evaluating/idle below: a drain-only pass is long BY DESIGN — 15 rows at the
+    # measured ~5.5 min/candidate is ~82 min — so a 45-min budget would SIGKILL a perfectly
+    # healthy drain on every brake tick, which is the failure this file already carries 47
+    # instances of. Until now the phase matched no branch at all and fell through to the
+    # "alive" return, so a wedged drain was reported healthy forever; the drain-only branch is
+    # the daemon's whole workload while the backlog brake is engaged.
+    if phase == "draining" and age_min > stall_min:
+        return False, (f"stuck in 'draining', heartbeat {ages} "
                        f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
     if phase == "sleeping":
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
