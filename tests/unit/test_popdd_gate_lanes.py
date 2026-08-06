@@ -17,6 +17,7 @@ the other was not.
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import sys
 from pathlib import Path
@@ -172,6 +173,16 @@ class TestTheGateDecidesBeforeItSpendsAnything:
 
 class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
     def test_the_installed_hook_is_the_tracked_one(self):
+        # `.git/hooks/` is not part of the repository, and actions/checkout populates it
+        # with `*.sample` only — so on CI this asserts an artifact that cannot exist, and
+        # it failed there for that reason and no other.
+        #
+        # The skip is deliberately narrow: absent file AND a CI runner. On a developer
+        # machine an absent hook still FAILS, because there the gate genuinely is not
+        # installed. A hook that exists but is a plain file — the stale second copy this
+        # class was written to catch — fails everywhere, which is the point.
+        if os.environ.get("CI") and not INSTALLED_HOOK.exists():
+            pytest.skip("no .git/hooks/pre-commit on a CI checkout — nothing installed to compare")
         assert INSTALLED_HOOK.is_symlink(), (
             ".git/hooks/pre-commit must be a symlink to the tracked .lux/hooks/pre-commit, "
             "or the file under review is not the file that runs."

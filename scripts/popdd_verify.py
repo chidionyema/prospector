@@ -48,8 +48,17 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from popdd_agent import PopddAgent
+# Imported lazily inside main(), NOT at module scope. requirements.txt states the rule
+# this obeys: the LUX packages are absent from CI and from every deploy host ("Nothing in
+# prospector/ or tests/ imports them; only run_v2.py and scripts/popdd_verify.py do").
+# tests/unit/test_popdd_gate_lanes.py imports THIS module to read the lane map, so a
+# module-scope import made `import popdd_verify` unsatisfiable wherever LUX is not
+# installed — 12 collection errors in CI, none of which touch the agent. The lane map is
+# pure data and must stay readable without it; only the chain-signing path needs the agent.
+if TYPE_CHECKING:
+    from popdd_agent import PopddAgent
 
 ROOT = Path(__file__).parent.parent
 WEB_DIR = ROOT / "store_platform" / "src" / "Store.Web"
@@ -328,6 +337,11 @@ def main(argv: list[str] | None = None) -> int:
     if not selected:
         print("✅ POPDD gate: no source changes staged — nothing to prove. Allowing commit.")
         return 0
+
+    # Deferred to here on purpose: both early returns above (unproven paths, nothing to
+    # prove) are decisions the lane map makes on its own, and they are what the tests
+    # exercise. Only signing the chain needs the agent, so only that path requires LUX.
+    from popdd_agent import PopddAgent
 
     agent = PopddAgent.at_path(ROOT)
     ok = True
