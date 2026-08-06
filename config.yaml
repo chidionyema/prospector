@@ -1008,8 +1008,28 @@ dedup_token_threshold: 0.34
 # deleted or tombstoned: the rows keep their cited kill reason, `vet --resume --only
 # provisional-kill` still works them on demand, and flipping this to true restores the old
 # behaviour in one line. See prospector/drain_state.revet_provisional_kills for the receipts.
-schedule: { cadence: daily, batch_size: 15, backlog_cap: 100, max_resume_attempts: 5,
-            revet_provisional_kills: false }
+# `backlog_cap: 0` — the stock-based brake is OFF, replaced by `gate_generation_on_grounding`.
+# It was set to 100 and it controlled on the wrong variable. Measured 2026-08-06 against the live
+# store: 154 of 154 drainable rows carry `retrieval_degraded=1`, while only 180 of all 1,483
+# non-tombstoned rows (12%) do — so the flag discriminates, and 1,220 KILLs plus 83 PASSes were
+# generated and ruled on the spot with `degraded=0`. Generation VOLUME does not create backlog
+# rows; failed RETRIEVAL does, and 88% of everything ever generated never entered the backlog.
+# The queue is therefore burst-shaped, not treadmill-shaped: 95 rows created on 2026-06-24, 44 on
+# 2026-08-06, 0-4 on every other day in six weeks. Controlling on the stock gives the brake
+# unbounded memory — the 2026-06-24 cohort alone is 95 of 154, so removing that one day puts the
+# count at 59, under the cap. A six-week-old outage was why the daemon generated nothing on the
+# afternoon of 2026-08-06, and draining old rows cannot make new retrieval succeed. Left in the
+# config at 0 rather than deleted: it is still the floor-of-last-resort if the queue ever grows
+# without an outage behind it.
+#
+# `gate_generation_on_grounding: true` — the replacement, and a RATE not a stock. One bounded live
+# search per tick (free on the ddg head of the chain, 45s bound) answers "is retrieval working
+# now" — the only condition under which generating adds to the backlog at all. A tick suppressed
+# by a real outage un-suppresses itself the moment the outage ends: no state file, no hysteresis,
+# nothing to reset by hand. Fail-closed on generation, because a probe that did not complete is
+# not evidence that retrieval works. The drain runs either way.
+schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
+            revet_provisional_kills: false, gate_generation_on_grounding: true }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

@@ -286,30 +286,123 @@ def _subscription_soft_cap_reason(cfg, decision) -> str:
             f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains")
 
 
+#: Wall-clock bound on the PER-TICK grounding probe. Deliberately far shorter than the startup
+#: probe's 120s: a tick that cannot get an answer this quickly is a tick that should not generate,
+#: and the next tick simply re-asks. Bounded at all because an unbounded probe on the tick path
+#: would wedge the daemon loop exactly the way it once wedged startup (`_startup_grounding_check`).
+_TICK_PROBE_TIMEOUT_S = 45
+
+
+def _probe_grounding_once(cfg, timeout_s: int) -> tuple[str, BaseException | None]:
+    """One live search against the LIVE grounding stack, hard-bounded by `timeout_s`.
+
+    Returns ("", None) when healthy, ("timeout", None) when the probe did not answer in time, or
+    ("error", exc) when it raised. Shared by the startup refusal and the per-tick generation gate
+    so the two can never drift into disagreeing about what "grounding is up" means.
+
+    The DiskCache unwrap is load-bearing and is not an optimisation: the probe query is fixed, so
+    it is cached after the first-ever run and a cache hit "passes" a completely dead retrieval
+    stack (observed 2026-07-28: audit row provider=cache, cache_hit=true).
+    """
+    outcome: dict = {}
+
+    def _probe() -> None:
+        try:
+            from prospector.retrieval import DiskCache, make_provider
+            provider = make_provider(cfg)
+            if isinstance(provider, DiskCache):
+                provider = provider.inner
+            provider.search("startup sanity check", k=1)
+            outcome["ok"] = True
+        except BaseException as exc:  # noqa: BLE001 — carried to the caller, which decides
+            outcome["error"] = exc
+
+    probe = threading.Thread(target=_probe, name="grounding-probe", daemon=True)
+    probe.start()
+    probe.join(timeout_s)
+    if probe.is_alive():
+        return "timeout", None
+    if "error" in outcome:
+        return "error", outcome["error"]
+    return "", None
+
+
+def _grounding_degraded_reason(cfg) -> str:
+    """Why this tick must skip GENERATION because retrieval is degraded RIGHT NOW, or "".
+
+    THE CONTROL VARIABLE, AND WHY IT IS THIS ONE. `schedule.backlog_cap` gated generation on a
+    STOCK — how many unresolved rows exist. Measured 2026-08-06 against the live store, that is
+    the wrong variable, and the whole catalogue says so:
+
+      * 154 of 154 drainable rows carry `retrieval_degraded=1`. Every single one.
+      * The flag discriminates rather than tautologically marking everything: across all 1,483
+        non-tombstoned rows only 180 (12%) are degraded. 1,220 KILLs and 83 PASSes were
+        generated and fully ruled with `degraded=0` — they never touched the backlog.
+      * So generation VOLUME does not mint backlog rows; failed RETRIEVAL does. 88% of
+        everything ever generated was ruled on the spot.
+
+    That makes the backlog burst-shaped, not treadmill-shaped. By `created_at`: 95 rows on
+    2026-06-24, 44 on 2026-08-06, and 0-4 on every other day across six weeks. The
+    "+12 backlog rows per tick BY DESIGN" arithmetic this module used to assert predicts ~144
+    new rows EVERY day at a 2h cadence; the histogram refutes it. The +12 holds only while
+    retrieval is broken, which is the condition this function tests directly.
+
+    The failure mode of stock-based control is unbounded memory: on 2026-08-06 the 2026-06-24
+    outage alone was 95 of the 154 rows, so removing that one day puts the backlog at 59, under
+    the cap of 100. A six-week-old retrieval outage was the reason the daemon generated nothing
+    that afternoon — and draining old rows does nothing whatsoever to make new retrieval succeed.
+
+    A rate has no such memory. This probe answers "is retrieval working, now", so a tick
+    suppressed by a genuine outage un-suppresses itself the moment the outage ends, with no
+    state file, no hysteresis and nothing to reset by hand.
+
+    FAIL-CLOSED ON GENERATION, deliberately: a probe we could not complete is not evidence that
+    retrieval works, and generating into a broken stack is precisely what mints the DEFER rows.
+    The drain keeps running either way — this returns a reason, and every caller of
+    `_generation_suppressed` drains on it. Costs one search call per tick (free on the ddg head
+    of the chain), against a 2h cadence.
+    """
+    if not _sched(cfg, "gate_generation_on_grounding", True):
+        return ""
+    kind, exc = _probe_grounding_once(cfg, _TICK_PROBE_TIMEOUT_S)
+    if not kind:
+        return ""
+    if kind == "timeout":
+        return (f"grounding degraded: the retrieval probe did not answer within "
+                f"{_TICK_PROBE_TIMEOUT_S}s — generating now would mint DEFER rows rather than "
+                f"verdicts, so this tick only drains")
+    return (f"grounding degraded: the retrieval stack failed its probe ({exc}) — generating now "
+            f"would mint DEFER rows rather than verdicts, so this tick only drains")
+
+
 def _generation_suppressed(cfg, decision=None) -> str:
     """Why this tick must skip GENERATION but still DRAIN, or "" to generate normally.
 
-    Three triggers, one manual and two automatic:
+    Four triggers, one manual and three automatic, in the order they are tested:
 
       * `store/scheduler/PAUSE_GENERATION` — the operator's half-stop.
       * `spend.daily_subscription_soft_cap_usd` — the money brake. Default OFF (0.0).
-      * `schedule.backlog_cap` — the automatic brake. Default OFF (None), so behaviour never
-        changes silently on an existing deployment; set it and the daemon stops digging.
+      * `schedule.gate_generation_on_grounding` — the CAUSAL gate. Default ON. Suppresses
+        generation exactly when retrieval is degraded, which is the only condition under which
+        generating adds to the backlog at all. See `_grounding_degraded_reason` for the
+        measurement that picked this variable over the backlog count.
+      * `schedule.backlog_cap` — the legacy stock-based brake. Default OFF (None), and set to 0
+        in this repo's config.yaml as of 2026-08-06 because it controlled on the wrong variable:
+        it suppressed generation for six weeks over an outage that had already ended. Retained,
+        not deleted, as a floor-of-last-resort against unbounded queue growth.
 
-    THE DEFECT THIS CLOSES. Measured 2026-08-06: `config.yaml:966` sets `batch_size: 15` while
-    `resume_per_tick` is unset and falls to 3 (`_RESUME_PER_TICK_DEFAULT`). That is +12 backlog
-    rows per tick BY DESIGN — not moat flakiness, arithmetic. `guard.evaluate()`
-    (guard.py:184-241) gates on PAUSE, clock-backward and the two spend caps and then returns
-    can_run=True; nothing anywhere read the backlog it was filling, and no backlog knob existed
-    in config.yaml at all. The observed result was a backlog flat at ~340 for six weeks with
-    the oldest row dated 2026-06-14.
+    THE DEFECT THE BACKLOG CAP ORIGINALLY CLOSED, and the correction. It was introduced against
+    `batch_size: 15` versus a `resume_per_tick` of 3, described as "+12 backlog rows per tick BY
+    DESIGN — not moat flakiness, arithmetic". The arithmetic is right only when every generated
+    candidate DEFERS, i.e. only during a retrieval outage. Measured across the live store on
+    2026-08-06, 88% of generated rows were ruled immediately and never entered the backlog, so
+    in normal operation the true rate is near zero and steady-state creation (0-4 rows/day) sits
+    far below drain capacity (3/tick x 12 ticks = 36/day). The queue was never a treadmill; it
+    was two outages.
 
-    Deliberately NO hysteresis band. A single threshold can alternate tick-to-tick at the
-    boundary, and that is harmless here because BOTH sides of the alternation do useful work:
-    above the cap the tick drains, below it the tick generates. A second `resume_at` knob would
-    buy stability the system does not need and add a state file that can disagree with the
-    count — and a brake that engages on a number the drain cannot move is a freeze that never
-    lifts.
+    Deliberately NO hysteresis band on the backlog cap. A single threshold can alternate
+    tick-to-tick at the boundary, and that is harmless here because BOTH sides of the
+    alternation do useful work: above the cap the tick drains, below it the tick generates.
     """
     pause_file = Path(str(cfg.store_dir)) / "scheduler" / _GENERATION_PAUSE_FILENAME
     if pause_file.exists():
@@ -320,6 +413,13 @@ def _generation_suppressed(cfg, decision=None) -> str:
     soft = _subscription_soft_cap_reason(cfg, decision)
     if soft:
         return soft
+
+    # Cause before symptom: when both would fire, the operator needs to be told retrieval is
+    # broken, not that a queue is deep — the queue is downstream of exactly this. Tested before
+    # the backlog cap for that reason, and because it is the gate that self-clears.
+    grounding = _grounding_degraded_reason(cfg)
+    if grounding:
+        return grounding
 
     cap = _sched(cfg, "backlog_cap", None)
     if cap is None:
@@ -895,38 +995,23 @@ def _startup_grounding_check(cfg) -> None:
     network call — is still outside it.
     """
     _write_heartbeat(cfg, phase="starting", probe_timeout_s=_STARTUP_PROBE_TIMEOUT_S)
-    outcome: dict = {}
-
-    def _probe() -> None:
-        try:
-            from prospector.retrieval import DiskCache, make_provider
-            provider = make_provider(cfg)
-            # Probe the LIVE stack, not the cache: the fixed probe query is cached after
-            # the first-ever run, so a DiskCache hit "passes" a dead retrieval stack
-            # (observed 2026-07-28: audit row provider=cache, cache_hit=true).
-            if isinstance(provider, DiskCache):
-                provider = provider.inner
-            provider.search("startup sanity check", k=1)
-            outcome["ok"] = True
-        except BaseException as exc:  # noqa: BLE001 — carried to the caller, which re-raises it
-            outcome["error"] = exc
-
-    probe = threading.Thread(target=_probe, name="startup-grounding-probe", daemon=True)
-    probe.start()
-    probe.join(_STARTUP_PROBE_TIMEOUT_S)
-    if probe.is_alive():
+    # Shares `_probe_grounding_once` with the per-tick generation gate. The two ask the identical
+    # question of the identical stack and differ only in their bound and in what they do with a
+    # "no": startup EXITS (so launchd relaunches), a tick DRAINS (so the backlog still falls).
+    kind, exc = _probe_grounding_once(cfg, _STARTUP_PROBE_TIMEOUT_S)
+    if kind == "timeout":
         raise RuntimeError(
             f"REFUSING TO START: the grounding probe did not answer within "
             f"{_STARTUP_PROBE_TIMEOUT_S}s — the provider took the connection and never replied. "
             f"Exiting so launchd KeepAlive relaunches: a relaunch costs one probe, while hanging "
             f"here costs every tick until a human notices."
         )
-    if "error" in outcome:
+    if kind == "error":
         raise RuntimeError(
             f"REFUSING TO START: grounding provider is dead on arrival. "
             f"Fix search API keys/credits before starting Prospector. "
-            f"Error: {outcome['error']}"
-        ) from outcome["error"]
+            f"Error: {exc}"
+        ) from exc
     logger.info("Grounding layer healthy — daemon starting")
 
 
