@@ -206,14 +206,50 @@ def _templated_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
     base = _keywords(cand, k=6)
     disconfirm = _DISCONFIRM_TEMPLATES.get(check_name, [])
     confirm = _CONFIRM_TEMPLATES.get(check_name, [])
-    
+
     out = []
     if disconfirm:
         out.append(disconfirm[0].format(q=base))
     if confirm:
         out.append(confirm[0].format(q=base))
-        
+
     return out[:max(1, n)] or [f"{base} {check_name}"]
+
+
+# E1: templates that NAME the concrete entity the check turns on, slot-filled from candidate
+# fields. Generic keyword queries starve payer_solvency/distribution (programme doc §8:
+# 771 vs 145 unverifiable:supported on kills); "who actually pays / how do you reach them"
+# pages exist for NAMED entities, not for product restatements.
+_ENTITY_TEMPLATES: dict[str, list[str]] = {
+    "payer_solvency": [
+        "{payer} budget spending on {base}",
+        "how much do {payer} pay for {base}",
+    ],
+    "distribution": [
+        "how to reach {aud} marketing channels {base}",
+        "{aud} customer acquisition cost by channel",
+    ],
+}
+
+
+def _entity_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
+    """E1 hybrid arm: queries naming the concrete payer/audience entity, or [] to fall through.
+
+    A template whose entity slot is blank is SKIPPED (it would degenerate to the product-shaped
+    query this arm exists to replace); all-blank returns [] and the caller uses the LLM chain.
+    """
+    tpls = _ENTITY_TEMPLATES.get(check_name, [])
+    if not tpls:
+        return []
+    payer = (cand.who_pays or "").strip()
+    aud = (cand.audience or "").strip().replace("_", " ")
+    base = _keywords(cand, k=4)
+    out: list[str] = []
+    for t in tpls:
+        if ("{payer}" in t and not payer) or ("{aud}" in t and not aud):
+            continue
+        out.append(t.format(payer=payer, aud=aud, base=base))
+    return out[:max(1, n)]
 
 
 def _market_vars(cfg: Config | None, *, for_moat: bool = False) -> dict[str, str]:
@@ -426,6 +462,7 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     r = cfg.retrieval
     # Kill-fast: cheapest decisive gates first.
     # Query source priority:
+    #  0. Entity templates (E1 hybrid arm, config-gated) — see _entity_queries.
     #  1. Batched LLM query-gen (precomputed by verify() on the fast tier) — real-world
     #     domain queries that ground the check instead of restating the product pitch.
     #  2. Deterministic template (for template_checks, or as the fallback when the batched
@@ -435,17 +472,22 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     # FIX #1 defensive guard: if queries_per_check is 0 we MUST NOT call gen_queries
     # (blank call, all tokens wasted).  Use the template path instead.
     precomputed = (precomputed_queries or {}).get(check_name)
-    if precomputed:
-        queries = precomputed
+    entity = (_entity_queries(cand, check_name, r.queries_per_check or r.fast_queries)
+              if check_name in (r.hybrid_entity_checks or []) else [])
+    if entity:
+        queries, query_source = entity, "entity_template"
+    elif precomputed:
+        queries, query_source = precomputed, "llm_batched"
     elif check_name in (r.template_checks or []):
-        queries = _templated_queries(cand, check_name, r.fast_queries)
+        queries, query_source = _templated_queries(cand, check_name, r.fast_queries), "template"
     elif r.queries_per_check > 0:
         queries = gen_queries(query_op or op, cand, check_name, r.queries_per_check,
                               cfg=cfg)
+        query_source = "llm_percheck"
     else:
         # FIX #1: queries_per_check=0 means skip LLM query-gen entirely;
         # fall back to the deterministic template (no token cost, no latency).
-        queries = _templated_queries(cand, check_name, r.fast_queries)
+        queries, query_source = _templated_queries(cand, check_name, r.fast_queries), "template_fallback"
 
     from concurrent.futures import ThreadPoolExecutor
     passages: list[Source] = []
@@ -479,13 +521,15 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
                        extra={"check": check_name, "failed": n_failed})
         audit("verify_search", check=check_name,
               candidate_id=getattr(cand, "candidate_id", None),
-              queries=queries, queries_n=len(queries), n_failed=n_failed,
+              queries=queries, query_source=query_source,
+              queries_n=len(queries), n_failed=n_failed,
               passages_n=0, retrieval_failed=True, short_circuit_empty=False)
         return CheckResult(
             check_name=check_name, verdict=Verdict.UNVERIFIABLE, confidence=0.0,
             rationale=("Retrieval unavailable — all searches failed (infra/outage). "
                        "Cannot rule; candidate deferred for re-vet."),
-            queries=queries, degraded=True, retrieval_failed=True)
+            queries=queries, query_source=query_source,
+            degraded=True, retrieval_failed=True)
 
     # dedup by source_id, keep order
     seen, uniq = set(), []
@@ -503,14 +547,15 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
                      "(no verdict LLM call fired)", extra={"check": check_name})
         audit("verify_search", check=check_name,
               candidate_id=getattr(cand, "candidate_id", None),
-              queries=queries, queries_n=len(queries), n_failed=n_failed,
+              queries=queries, query_source=query_source,
+              queries_n=len(queries), n_failed=n_failed,
               passages_n=0, retrieval_failed=False, short_circuit_empty=True)
         return CheckResult(
             check_name=check_name, verdict=Verdict.UNVERIFIABLE,
             confidence=0.0,
             rationale=("No passages retrieved from any search query. "
                        "Downgraded to unverifiable without firing the verdict LLM call."),
-            queries=queries, degraded=True)
+            queries=queries, query_source=query_source, degraded=True)
 
     # MOAT DISCIPLINE: the verdict is ruled by the moat `op` (trusted Claude/Gemini chain
     # + guardrailed cheap tail), NOT by query_op (the non-critical query/gen chain).
@@ -524,13 +569,16 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
             check_name=check_name, verdict=Verdict.UNVERIFIABLE, confidence=0.0,
             rationale=("Verdict brain unavailable — all LLMs out of quota/credit. "
                        "Cannot rule; candidate deferred for re-vet."),
-            queries=queries, degraded=True, retrieval_failed=True)
+            queries=queries, query_source=query_source,
+            degraded=True, retrieval_failed=True)
     result.queries = queries
+    result.query_source = query_source
     logger.info(f"Check {check_name} result: {result.verdict.value}",
                 extra={"check": check_name, "verdict": result.verdict.value, "confidence": result.confidence})
     audit("verify_search", check=check_name,
           candidate_id=getattr(cand, "candidate_id", None),
-          queries=queries, queries_n=len(queries), n_failed=n_failed,
+          queries=queries, query_source=query_source,
+          queries_n=len(queries), n_failed=n_failed,
           passages_n=len(uniq), retrieval_failed=False, short_circuit_empty=False)
     return result
 

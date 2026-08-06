@@ -107,6 +107,10 @@ retrieval:
   # the primary path.
   template_checks: [pain_reality, value_durability, incumbency, payer_solvency, distribution, legality]
   fast_queries: 2                # 1 disconfirm + 1 confirm per check (template fallback)
+  # E1 A/B arm (default OFF = control): entity-templated queries for the grounding-starved
+  # checks. The experiment arm is [payer_solvency, distribution]; kill criterion in
+  # docs/COMMERCIAL_READINESS_PROGRAM.md §3 E1.
+  hybrid_entity_checks: []
   search_model: ""                   # SEARCH/grounding model (empty = use default).
 
   # --- Resilience layer (Part 9). All knobs live here — no hardcoded values in code. ---
@@ -708,7 +712,7 @@ generation:
     - picks_and_shovels     # sell the inputs/tooling to everyone chasing the same gold rush, not the gold
     - data_intelligence     # proprietary COMPOUNDING data rivals structurally cannot obtain (the one form that may be a data play)
   # Audience persona axis — varies the BUYER independently of the business form.
-  # Together with structural_forms this creates an 8×8 = 64-cell diversity matrix,
+  # Together with structural_forms this creates an 8×13 = 104-cell diversity matrix,
   # breaking the B2B-institutional monoculture that drives the value_durability wall.
   audience_forms:
     - retiree_cohort          # 60+ with capital, time, health anxiety; asset-rich, income-poor
@@ -719,6 +723,16 @@ generation:
     - public_sector_worker    # nurses, teachers, civil servants; fixed pay, predictable needs
     - freelancer_creative     # designers, writers, consultants; income volatile, client-dependent
     - squeezed_middle         # 35-55, dual-income, asset-rich on paper, cash-poor month-to-month
+    # V1 (2026-08-06): operator/buyer personas. The E2 baseline (COMMERCIAL_READINESS_PROGRAM.md
+    # §8) measured a 9:1 PASS-rate spread in favour of the sole business-buyer persona
+    # (smb_owner 21/242 vs public_sector_worker 2/148) — payer_solvency grounds when the payer
+    # is a business. These five widen that lane; the consumer spectrum above stays (founder
+    # rule: spectrum, not one lane).
+    - startup_operator        # founder/operator of a pre-Series-A company; wears every hat, pays for speed
+    - software_developer      # professional dev buying tools/components with own or team budget
+    - agency_owner            # marketing/dev/design agency, 2-15 staff; bills clients, buys leverage
+    - ops_manager             # operations/finance manager in a 50-500 person firm; owns tooling spend
+    - ecommerce_seller        # sells on Amazon/Shopify/Etsy; margins squeezed by fees and returns
   # Founder-capacity bindings injected into generate.md as {operator_constraints}.
   # Names chosen 2026-07-30: solo_agent (existing), small_team (2–10, some capital OK),
   # startup (ambitious venture-scale founding team). Generation-only — never a gate.

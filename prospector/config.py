@@ -65,6 +65,13 @@ class Retrieval:
     # untouched. Graceful: if the batch call fails or omits a check, that check falls
     # back to the deterministic template (no hard-fail when the fast chain is down).
     llm_query_gen: bool = False
+    # E1 hybrid arm (default OFF = control). Checks listed here use deterministic ENTITY
+    # templates slot-filled from candidate fields (who_pays, tags.audience) as the PRIMARY
+    # query source; the existing LLM/template chain fills in only when the entity fields are
+    # blank. The bet (docs/COMMERCIAL_READINESS_PROGRAM.md §3 E1): queries that NAME the
+    # concrete payer/channel entity ground payer_solvency/distribution, where product-shaped
+    # queries starve. Never touches the verdict brain.
+    hybrid_entity_checks: list[str] = field(default_factory=list)
     # Model for the web-SEARCH/grounding step (distinct from the verdict `model`).
     # flash-lite returns 0 sources for many queries (poor grounding recall); the
     # mid-tier model recalls far better and is still fast. Empty =>

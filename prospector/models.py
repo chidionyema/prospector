@@ -207,6 +207,10 @@ class CheckResult:
     citations: list[str] = field(default_factory=list)   # source_ids
     sources: list[Source] = field(default_factory=list)  # the passages used
     queries: list[str] = field(default_factory=list)
+    # Which arm produced `queries` (E1 instrumentation): "entity_template" | "llm_batched" |
+    # "template" | "llm_percheck" | "template_fallback" | "" (pre-E1 rows). Flows into the
+    # dossier JSON via to_dict, so the A/B computes unverifiable-rate per arm offline.
+    query_source: str = ""
     degraded: bool = False   # search/fetch failed -> forced unverifiable (Part 9)
     retrieval_failed: bool = False  # ALL searches for this check errored (infra/outage),
                                     # distinct from "searched and found nothing" — must
