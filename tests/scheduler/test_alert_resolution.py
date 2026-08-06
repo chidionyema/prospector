@@ -254,6 +254,9 @@ def test_every_key_alerts_for_tick_can_emit_is_declared_resolvable():
     """Drive the real function over real tick shapes — a new condition must not be unclearable."""
     shapes = [
         (_tick(error="boom"), 0),
+        # The moat-preflight skip: no `result` dict ever gets written on this path.
+        (_tick(moat_blind=True, reason="all trusted brains carry live dead marks",
+               batch_size=None, result=None), 0),
         (_tick(result={"dossiers": 0, "passes": 0, "defers": 0, "provisional": 0}), 0),
         (_tick(result={"dossiers": 0, "passes": 0, "defers": 0, "provisional": 0}), 5),
         (_tick(result={"dossiers": 4, "passes": 0, "defers": 4, "provisional": 0}), 0),
