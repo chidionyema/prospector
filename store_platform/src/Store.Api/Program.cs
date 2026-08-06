@@ -958,6 +958,160 @@ app.MapGet("/internal/catalog/{id}/content", async (
 .WithName("GetPackContent")
 .WithOpenApi();
 
+// Read a pack's price history — the rows PatchPackPrice writes, plus the two things a caller
+// cannot derive from those rows alone.
+//
+// The table has been written since the AddPackPriceFloorAndHistory migration and, until this
+// endpoint, was read by nothing: a derivation record nobody can retrieve is a record in name
+// only. PackPriceHistory exists so a sale can be attributed to the price the buyer was actually
+// shown (see the entity's own summary), and that is a point-in-time question. Answering it from
+// a raw row list means getting two boundary cases right, so this endpoint answers it once:
+//
+//   origin — publish assigns PricePence on INSERT (the /internal/catalog upsert above) and
+//            writes NO history row. The price before the first change therefore survives only as
+//            that first row's FromPence, and a pack never re-priced has an empty history whose
+//            correct answer for every timestamp is still a price. A caller reading rows alone
+//            sees nothing and concludes nothing was charged.
+//   gaps   — the record is worth reading only if it is CONTINUOUS. PricePence is assigned in
+//            exactly two places today, the publish INSERT and PatchPackPrice, which writes its
+//            row inside the same transaction as the change — so the chain cannot currently
+//            break. `continuous` is not a restatement of that fact: it is what still holds if a
+//            third writer is added later, and it fails loudly rather than serving a
+//            plausible-looking history that silently omits a change.
+//
+// Internal (key-gated) like the rest of /internal/catalog, and for a sharper reason than the
+// others: reason/actor are operational notes, and a public price-change log hands a competitor
+// every pricing experiment we have run, including the ones we abandoned.
+app.MapGet("/internal/catalog/{id}/price-history", async (
+    string id,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config,
+    DateTimeOffset? asOf,
+    int? limit) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    // Oldest-first: continuity and the as-of scan are both chronological. Id breaks ties so the
+    // order is total — two changes landing inside one clock tick would otherwise order
+    // arbitrarily, and "arbitrarily" includes differently on two reads of the same data.
+    var rows = await db.PackPriceHistory
+        .Where(h => h.PackId == id)
+        .OrderBy(h => h.CreatedAt).ThenBy(h => h.Id)
+        .ToListAsync().ConfigureAwait(false);
+
+    var originPence = rows.Count > 0 ? rows[0].FromPence : pack.PricePence;
+
+    var continuous = rows.Count == 0 || rows[^1].ToPence == pack.PricePence;
+    for (var i = 1; i < rows.Count && continuous; i++)
+    {
+        continuous = rows[i].FromPence == rows[i - 1].ToPence;
+    }
+
+    object? at = null;
+    if (asOf is not null)
+    {
+        var when = asOf.Value.UtcDateTime;
+        if (when < pack.CreatedAt)
+        {
+            // Distinct from "origin": the pack did not exist, so there was no price to be shown.
+            // Returning the origin price here would invent a listing that was never on sale.
+            at = new
+            {
+                asOf = when,
+                pricePence = (long?)null,
+                minBillablePence = (long?)null,
+                providerPriceId = (string?)null,
+                source = "before-publish",
+                changeId = (long?)null,
+            };
+        }
+        else
+        {
+            // The last change applied at or before `when`. A change is live from its own
+            // CreatedAt, so the boundary is inclusive: a sale stamped at the same instant as a
+            // re-price was billed the new price.
+            PackPriceHistory? applied = null;
+            foreach (var h in rows)
+            {
+                if (h.CreatedAt > when) break;
+                applied = h;
+            }
+            at = applied is null
+                // Before the first change. The floor and provider price of that era were never
+                // recorded — null says so rather than lending today's values a false history.
+                ? new
+                {
+                    asOf = when,
+                    pricePence = (long?)originPence,
+                    minBillablePence = (long?)null,
+                    providerPriceId = (string?)null,
+                    source = "origin",
+                    changeId = (long?)null,
+                }
+                : new
+                {
+                    asOf = when,
+                    pricePence = (long?)applied.ToPence,
+                    minBillablePence = (long?)applied.MinBillablePence,
+                    providerPriceId = applied.ProviderPriceId,
+                    source = "history",
+                    changeId = (long?)applied.Id,
+                };
+        }
+    }
+
+    // The limit bounds the RESPONSE, not the scan. Continuity and as-of are properties of the
+    // whole chain, so truncating before computing them would make a complete history read as a
+    // broken one — the exact false alarm this endpoint exists to prevent. Newest-first on the
+    // way out, which is the order a human reads a change log in.
+    var take = Math.Clamp(limit ?? 200, 1, 1000);
+    var page = rows.AsEnumerable().Reverse().Take(take).Select(h => new
+    {
+        id = h.Id,
+        fromPence = h.FromPence,
+        toPence = h.ToPence,
+        minBillablePence = h.MinBillablePence,
+        providerPriceId = h.ProviderPriceId,
+        reason = h.Reason,
+        actor = h.Actor,
+        rationaleRef = h.RationaleRef,
+        createdAt = h.CreatedAt,
+    }).ToList();
+
+    return Results.Ok(new
+    {
+        packId = pack.Id,
+        currentPricePence = pack.PricePence,
+        currentMinBillablePence = pack.MinBillablePence,
+        publishedAt = pack.CreatedAt,
+        originPricePence = originPence,
+        changeCount = rows.Count,
+        continuous,
+        truncated = rows.Count > page.Count,
+        asOf = at,
+        history = page,
+    });
+})
+.WithName("GetPackPriceHistory")
+.WithOpenApi();
+
 // Engine publish-authorization gate. The engine calls this BEFORE bundling/provisioning a
 // pack to confirm it is entitled to publish. A separate key from the internal-catalog key so
 // the two authorities can be rotated independently. Fail closed: 503 when no key is
