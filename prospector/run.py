@@ -1107,6 +1107,33 @@ def _resume_selects(row: dict, only: str) -> bool:
     return True
 
 
+def drainable(store: Store) -> list[dict]:
+    """The rows a re-vet pass can actually work on, oldest-agnostic and tombstone-free.
+
+    Two populations need the moat to revisit them:
+      1. DEFER — the moat was unavailable, so no verdict was reached at all.
+      2. provisional — a real verdict WAS reached, but by the cheap emergency fallback tail
+         (moat exhausted). Re-vet so the trusted moat overwrites the cheap ruling.
+    De-duped by candidate_id (a dossier can't be both, but guard against overlap).
+
+    Tombstoned rows are excluded from BOTH populations. A tombstone means the dossier is gone
+    for good, so there is nothing to re-vet — and leaving them in inflated the backlog the
+    operator reads (406 reported, 45 of them undrainable) and made the drain's ETA a fiction.
+    They stay in the catalogue for history; they are just not work.
+
+    This is a module-level function, not an inline block inside `_cmd_resume`, because the
+    scheduler's backlog brake (`run_scheduled._backlog_size`) has to count the SAME population
+    the drain will later work on. Two definitions of "backlog" would let the brake engage on a
+    number the drain cannot act on — a generation freeze that never lifts, because the count it
+    is waiting on is not the count that falls.
+    """
+    deferred = [r for r in store.all(decision="defer") if not r.get("tombstone")]
+    provisional = [r for r in store.provisional() if not r.get("tombstone")]
+    seen_ids = {r.get("candidate_id", "") for r in deferred}
+    return list(deferred) + [r for r in provisional
+                             if r.get("candidate_id", "") not in seen_ids]
+
+
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
                 log_path: Optional[Path] = None) -> dict:
@@ -1127,20 +1154,7 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     Returns a summary dict so a caller (the daemon) can record what the pass did; the CLI
     ignores the return and reads the printed report.
     """
-    # Two populations need the moat to revisit them:
-    #   1. DEFER  — the moat was unavailable, so no verdict was reached at all.
-    #   2. provisional — a real verdict WAS reached, but by the cheap emergency fallback
-    #      tail (moat exhausted). Re-vet so the trusted moat overwrites the cheap ruling.
-    # De-dup by candidate_id (a dossier can't be both, but guard against overlap).
-    # Tombstoned rows are excluded from BOTH populations. A tombstone means the dossier is
-    # gone for good, so there is nothing to re-vet — and leaving them in inflated the backlog
-    # the operator reads (406 reported, 45 of them undrainable) and made the drain's ETA a
-    # fiction. They stay in the catalogue for history; they are just not work.
-    deferred = [r for r in store.all(decision="defer") if not r.get("tombstone")]
-    provisional = [r for r in store.provisional() if not r.get("tombstone")]
-    seen_ids = {r.get("candidate_id", "") for r in deferred}
-    pending = list(deferred) + [r for r in provisional
-                                if r.get("candidate_id", "") not in seen_ids]
+    pending = drainable(store)
     backlog = len(pending)
     if not pending:
         print("No deferred or provisional candidates to resume. Moat is healthy.")

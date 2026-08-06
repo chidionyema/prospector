@@ -169,6 +169,94 @@ def _resume_per_tick(cfg) -> int:
     return max(0, int(getattr(schedule, "resume_per_tick", _RESUME_PER_TICK_DEFAULT) or 0))
 
 
+#: Kill switch for GENERATION ONLY. `PAUSE` (guard.py) halts the entire tick — generation and
+#: the drain together — because it is the liability rail CLAUDE.md requires, and a rail with
+#: exceptions is not a rail. But that made the founder's actual 2026-08-06 decision
+#: ("pause generation, let drain run") impossible to express: setting PAUSE to stop the treadmill
+#: also stopped the only thing that pays it down, so the 343-row backlog could not recover on its
+#: own even after the moat healed. This file expresses the other half.
+_GENERATION_PAUSE_FILENAME = "PAUSE_GENERATION"
+
+
+def _sched(cfg, key: str, default):
+    """One accessor for `schedule.*`, which is a dict in config.yaml and a namespace in tests."""
+    schedule = getattr(cfg, "schedule", None) or {}
+    if isinstance(schedule, dict):
+        return schedule.get(key, default)
+    return getattr(schedule, key, default)
+
+
+def _backlog_size(cfg) -> int | None:
+    """How many rows a drain could work on right now, or None if it cannot be counted.
+
+    Counts the SAME population `run.py::_cmd_resume` will later drain, via the shared
+    `run.drainable` — see its docstring for why one definition matters. None (not 0) on any
+    failure: 0 would read as "backlog clear" and silently release the generation brake, which
+    is the exact direction a counting bug must never fail in.
+    """
+    try:
+        from prospector.run import drainable
+        from prospector.store import Store
+        return len(drainable(Store(cfg)))
+    except Exception as exc:  # noqa: BLE001 — a brake that crashes the daemon is worse than no brake
+        logger.warning("Backlog count failed, brake cannot engage this tick: %s", exc)
+        return None
+
+
+def _generation_suppressed(cfg) -> str:
+    """Why this tick must skip GENERATION but still DRAIN, or "" to generate normally.
+
+    Two triggers, one manual and one automatic:
+
+      * `store/scheduler/PAUSE_GENERATION` — the operator's half-stop.
+      * `schedule.backlog_cap` — the automatic brake. Default OFF (None), so behaviour never
+        changes silently on an existing deployment; set it and the daemon stops digging.
+
+    THE DEFECT THIS CLOSES. Measured 2026-08-06: `config.yaml:966` sets `batch_size: 15` while
+    `resume_per_tick` is unset and falls to 3 (`_RESUME_PER_TICK_DEFAULT`). That is +12 backlog
+    rows per tick BY DESIGN — not moat flakiness, arithmetic. `guard.evaluate()`
+    (guard.py:184-241) gates on PAUSE, clock-backward and the two spend caps and then returns
+    can_run=True; nothing anywhere read the backlog it was filling, and no backlog knob existed
+    in config.yaml at all. The observed result was a backlog flat at ~340 for six weeks with
+    the oldest row dated 2026-06-14.
+
+    Deliberately NO hysteresis band. A single threshold can alternate tick-to-tick at the
+    boundary, and that is harmless here because BOTH sides of the alternation do useful work:
+    above the cap the tick drains, below it the tick generates. A second `resume_at` knob would
+    buy stability the system does not need and add a state file that can disagree with the
+    count — and a brake that engages on a number the drain cannot move is a freeze that never
+    lifts.
+    """
+    pause_file = Path(str(cfg.store_dir)) / "scheduler" / _GENERATION_PAUSE_FILENAME
+    if pause_file.exists():
+        return f"generation paused: {pause_file} present (the drain still runs)"
+
+    cap = _sched(cfg, "backlog_cap", None)
+    if cap is None:
+        return ""
+    try:
+        cap = int(cap)
+    except (TypeError, ValueError):
+        logger.warning("schedule.backlog_cap=%r is not an integer — brake disabled", cap)
+        return ""
+    if cap <= 0:
+        return ""
+    backlog = _backlog_size(cfg)
+    if backlog is None:
+        # THE RAIL CANNOT FUNCTION, SO IT STOPS — it does not wave the tick through. Same call
+        # guard.py makes when the clock goes backwards and the daily cap can no longer be summed:
+        # "the honest answer when the rail cannot function is to stop, not to spend." The
+        # operator opted into this brake explicitly (it is default-off); an unreadable store is
+        # not consent to generate. The drain still runs, so this is a pause, not a deadlock —
+        # and the very next tick re-counts.
+        return ("backlog brake: the drainable backlog could not be counted, so the brake cannot "
+                "prove it is safe to generate — draining only until the count works")
+    if backlog < cap:
+        return ""
+    return (f"backlog brake: {backlog} drainable rows >= schedule.backlog_cap {cap} "
+            f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains")
+
+
 def _moat_brains(cfg) -> list[str]:
     """The trusted brains on this config's verdict chain, in order.
 
@@ -201,6 +289,86 @@ def _moat_blind_reason(cfg) -> str:
     return moat_blind_reason(cfg)
 
 
+def _drain_pass(cfg, n_resume: int) -> dict | None:
+    """Re-vet up to `n_resume` backlogged candidates. Never raises. None if the drain is off.
+
+    Extracted from `_default_generate` on 2026-08-06 so a tick that is NOT generating can still
+    drain. Before that the drain lived inside generation, so every reason to skip generation —
+    `PAUSE`, and now the backlog brake — also silently switched off the only mechanism that pays
+    the backlog down. Stopping the treadmill and stopping the recovery were the same act, which
+    is why setting `PAUSE` at 10:30Z could not have cleared the 343 rows no matter how long it
+    ran.
+    """
+    if not n_resume:
+        return None
+    from prospector.run import resume_deferred
+    try:
+        resumed = resume_deferred(cfg, limit=n_resume, publish=True)
+        logger.info("Tick resume pass: %s", resumed)
+        # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
+        # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and
+        # every other daemon diagnostic — the whole progress stream, progress.py:43 —
+        # goes to stderr. Measured 2026-08-05 while the daemon held fd 1 open on it:
+        # launchd.out.log was 1 byte, mtime Jun 24. So a print to stdout is not "the
+        # daemon log"; it is a file no operator and no probe has ever read. Printing
+        # the drain's outcome into a second, empty file is the same invisibility this
+        # print exists to fix, just relocated.
+        print(f"↻ tick resume pass: {resumed}", file=sys.stderr, flush=True)
+        return resumed
+    except Exception as exc:  # noqa: BLE001
+        # A drain failure must never cost the tick its generation batch — the backlog has
+        # waited weeks already and can wait one more tick. Recorded, not raised.
+        resumed = {"error": f"{type(exc).__name__}: {exc}"}
+        logger.warning("Tick resume pass failed (generation continues): %s", resumed["error"])
+        # PRINTED, not just logged. The daemon's launchd log captures stdout/stderr but
+        # NOT logging below CRITICAL — verified 2026-08-05: "TICK HARD DEADLINE"
+        # (logger.critical) appears 18 times in launchd.err.log while "Daemon starting"
+        # and "Unproductive tick" (both logger.info) appear zero times. So the first live
+        # tick after this shipped swallowed the drain's outcome entirely and the pass was
+        # indistinguishable from never having run. A failure that only logs at WARNING is
+        # invisible here; that is the whole reason this line is a print. It goes to
+        # STDERR for the reason spelled out on the success branch above.
+        print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
+              file=sys.stderr, flush=True)
+        return resumed
+
+
+#: Cadence while the generation brake is engaged. 15 min: fast enough that the live 343-row
+#: backlog clears in ~6 h at 15 rows/tick instead of ~46 h on the 2 h generation cadence, and
+#: slow enough that each pass finishes first — the measured drain rate is ~5.5 min/candidate,
+#: so 15 rows is well over one window and the loop is paced by the work, not the timer.
+_DRAIN_ONLY_INTERVAL_S = 900
+
+
+def _drain_only_interval_s(cfg, interval: int) -> int:
+    """Sleep between drain-only ticks. Never longer than the normal interval — the brake must
+    not be able to make the daemon *slower* than it would be with generation running."""
+    raw = _sched(cfg, "drain_only_interval_s", _DRAIN_ONLY_INTERVAL_S)
+    try:
+        val = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("schedule.drain_only_interval_s=%r is not an integer", raw)
+        val = _DRAIN_ONLY_INTERVAL_S
+    return max(1, min(int(interval), val))
+
+
+def _drain_only_resume_per_tick(cfg) -> int:
+    """How many rows a DRAIN-ONLY tick may re-vet. Defaults to `batch_size`, not 3.
+
+    `resume_per_tick` is 3 because a normal tick spends most of its budget generating. A tick
+    that is not generating has that whole budget free, and the bound exists only because the
+    spend guard evaluates once per tick — so the honest default is the batch it is not running.
+    At the live config that is 15 rather than 3: 343 rows clear in ~23 ticks instead of ~114.
+    """
+    explicit = _sched(cfg, "drain_only_resume_per_tick", None)
+    if explicit is not None:
+        try:
+            return max(0, int(explicit))
+        except (TypeError, ValueError):
+            logger.warning("schedule.drain_only_resume_per_tick=%r is not an integer", explicit)
+    return max(_resume_per_tick(cfg), _batch_size(cfg, None))
+
+
 def _default_generate(cfg, batch_size: int) -> dict:
     """Run one bounded blue-sky generation batch in-process and publish PASSes.
 
@@ -220,39 +388,9 @@ def _default_generate(cfg, batch_size: int) -> dict:
     the tick's hard deadline can force-exit mid-tick — whatever runs second is what gets dropped.
     It is bounded per tick because the spend guard evaluates once, before the tick.
     """
-    from prospector.run import run_signal, _resolve_lanes, resume_deferred
+    from prospector.run import run_signal, _resolve_lanes
 
-    resumed = None
-    n_resume = _resume_per_tick(cfg)
-    if n_resume:
-        try:
-            resumed = resume_deferred(cfg, limit=n_resume, publish=True)
-            logger.info("Tick resume pass: %s", resumed)
-            # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
-            # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and
-            # every other daemon diagnostic — the whole progress stream, progress.py:43 —
-            # goes to stderr. Measured 2026-08-05 while the daemon held fd 1 open on it:
-            # launchd.out.log was 1 byte, mtime Jun 24. So a print to stdout is not "the
-            # daemon log"; it is a file no operator and no probe has ever read. Printing
-            # the drain's outcome into a second, empty file is the same invisibility this
-            # print exists to fix, just relocated.
-            print(f"↻ tick resume pass: {resumed}", file=sys.stderr, flush=True)
-        except Exception as exc:  # noqa: BLE001
-            # A drain failure must never cost the tick its generation batch — the backlog has
-            # waited weeks already and can wait one more tick. Recorded, not raised.
-            resumed = {"error": f"{type(exc).__name__}: {exc}"}
-            logger.warning("Tick resume pass failed (generation continues): %s", resumed["error"])
-            # PRINTED, not just logged. The daemon's launchd log captures stdout/stderr but
-            # NOT logging below CRITICAL — verified 2026-08-05: "TICK HARD DEADLINE"
-            # (logger.critical) appears 18 times in launchd.err.log while "Daemon starting"
-            # and "Unproductive tick" (both logger.info) appear zero times. So the first live
-            # tick after this shipped swallowed the drain's outcome entirely and the pass was
-            # indistinguishable from never having run. A failure that only logs at WARNING is
-            # invisible here; that is the whole reason this line is a print. It goes to
-            # STDERR for the reason spelled out on the success branch above.
-            print(f"↻ tick resume pass FAILED (generation continues): {resumed['error']}",
-                  file=sys.stderr, flush=True)
-
+    resumed = _drain_pass(cfg, _resume_per_tick(cfg))
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
     # the single implicit default — `generation.operator_archetype: solo_agent`. The four
@@ -431,6 +569,35 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         print(f"⏸ tick skipped — {blind}", file=sys.stderr, flush=True)
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
+        return tick
+
+    # GENERATION BRAKE — skip generation, but keep draining.
+    #
+    # Checked after the moat preflight, because a drain-only tick needs a trusted brain just as
+    # much as a generating one does; running it into a blind moat is the exact waste the
+    # preflight above (and `run.py::_cmd_resume`) exists to stop.
+    #
+    # This is the one skip in the tick that still does work. Every other early return — guard,
+    # dry-run, moat-blind — is a genuine no-op, and the drain living inside `_default_generate`
+    # meant they all silently disabled recovery too. The whole point of the brake is that the
+    # backlog goes DOWN while it is engaged; a brake that also stopped the drain would freeze
+    # the number it is waiting on and never release.
+    suppressed = _generation_suppressed(cfg)
+    if suppressed:
+        tick["generation_suppressed"] = suppressed
+        tick["batch_size"] = 0
+        tick["reason"] = f"{decision.reason}; {suppressed}"
+        _write_heartbeat(cfg, phase="draining")
+        # CRITICAL for the same reason as the moat-blind skip: logging below CRITICAL never
+        # reaches launchd.err.log (verified 2026-08-05), and a daemon that has quietly stopped
+        # generating is precisely the invisible degradation this change is about.
+        logger.critical("Generation suppressed: %s", suppressed)
+        print(f"⏸ generation suppressed — {suppressed}", file=sys.stderr, flush=True)
+        tick["result"] = {"dossiers": 0,
+                          "resumed": _drain_pass(cfg, _drain_only_resume_per_tick(cfg))}
+        _append_tick(cfg, tick)
+        _emit_tick_alerts(cfg, tick)
+        _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=None)
         return tick
 
     gen = generate_fn or _default_generate
@@ -630,7 +797,21 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
         # single provider blip can't waste a whole 2h window (root cause of days of $0 ticks).
         # A guard-blocked tick (spend cap) is intentional, not a failure — full cadence.
         sleep_target = interval
-        if tick is not None and _tick_unproductive(tick):
+        if tick is not None and tick.get("generation_suppressed"):
+            # A drain-only tick gets its OWN cadence, not the 2h generation interval and not the
+            # outage backoff. Both of the existing paths are wrong for it:
+            #   * the full interval would clear 343 rows at 15/tick in ~46 hours of wall clock;
+            #   * `_tick_unproductive` sees `dossiers == 0` and would escalate 5m/10m/20m/40m/80m
+            #     to the 2h cap, i.e. treat a working drain as a deepening outage and slow it
+            #     down exactly as it made progress.
+            # The brake is a temporary state the system is trying to leave, so the cadence while
+            # it is engaged should be the one that leaves it soonest. Reset the outage counter
+            # too: nothing failed here.
+            consecutive_unproductive = 0
+            sleep_target = _drain_only_interval_s(cfg, interval)
+            logger.info("Drain-only tick — next in %ds (not the %ds generation cadence)",
+                        sleep_target, interval)
+        elif tick is not None and _tick_unproductive(tick):
             consecutive_unproductive += 1
             sleep_target = _retry_sleep_s(consecutive_unproductive, interval)
             logger.info("Unproductive tick #%d in a row — retrying in %ds instead of %ds",

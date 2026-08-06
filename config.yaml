@@ -963,7 +963,20 @@ dedup_token_threshold: 0.34
 # (faster than the claude_cli chain that the old 5-batch was sized for), and with exa in the
 # grounding chain at position 2 (see retrieval chain above) the per-candidate wall time has
 # dropped. Tick hard deadline in run_scheduled.py bumped to 10800s (3h) to match.
-schedule: { cadence: daily, batch_size: 15 }
+# backlog_cap 100 — added 2026-08-06 after measuring that this block SPECIFIED a treadmill.
+# `batch_size: 15` mints up to 15 rows per tick; `resume_per_tick` was unset and fell to its
+# default of 3 (run_scheduled.py::_RESUME_PER_TICK_DEFAULT), so every tick added a net +12
+# backlog rows BY DESIGN. Not moat flakiness — arithmetic. Nothing read the backlog it was
+# filling: guard.evaluate() gates on PAUSE, clock-backward and the two spend caps and then
+# returns can_run=True. Measured that day: 343 drainable rows (157 defer + 191 provisional − 5
+# overlap, tombstones excluded), flat for six weeks, oldest 2026-06-14.
+#
+# Above this cap the daemon skips GENERATION and drains only, at `drain_only_resume_per_tick`
+# (defaults to batch_size = 15, not 3) on a `drain_only_interval_s` cadence (default 900s). It
+# releases automatically the moment the count falls back under the cap — no human, no PAUSE
+# file. 100 is roughly a week of buffer at the measured drain rate; it is a ceiling on debt,
+# not a target.
+schedule: { cadence: daily, batch_size: 15, backlog_cap: 100 }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
