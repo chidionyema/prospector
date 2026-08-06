@@ -35,52 +35,77 @@ export interface Category {
   tagged: boolean;
   icon: IconName;
   /**
-   * Background class for the 8px category dot on a product card (brand v3, 2026-08-06).
+   * Background class for the 8px marker beside the sector label on a product card.
    *
-   * This is the ONLY colour on a card. The dot is decorative in the a11y sense -- the sector
-   * label sits immediately beside it -- so a colour-blind buyer loses nothing, which is what
-   * makes an eight-value hue set legal here at all.
+   * NEUTRAL, and one value for every category. This replaced an eight-hue set (#6366F1 indigo,
+   * #059669 emerald, #D97706 amber, #3B82F6 sky, #64748B slate, #E11D48 rose, #8B5CF6 violet,
+   * #0D9488 teal) on 2026-08-06, for two measured reasons.
    *
-   * Deliberately NOT derived from `cover`: those are 135deg two-stop gradients tuned to hold
-   * white text, so their stops are saturated enough that eight dots side by side on one grid
-   * read as a toy. These are the 500/600 steps of the same hue families.
+   * 1. The hue could not identify a category, so it was never the discovery affordance it was
+   *    defended as. Twelve sectors were mapped onto eight palettes, and four pairs collided
+   *    outright: employment_pay and creative_rights were both VIOLET, housing_rental and
+   *    energy_planning both TEAL, trades_construction and retail_inventory both AMBER,
+   *    professional_services and other both SLATE. No buyer could tell those apart by colour,
+   *    which is the whole claim a category hue has to make.
+   * 2. They were the last hardcoded hex in `src/`, outside the token scale entirely, against a
+   *    direction of a neutral grey scale with hairline borders. On the money page the rose dot
+   *    measured as the ONLY red element on the whole page (rgb(225,29,72), 390x844) -- on a site
+   *    where red means KILLED in the filter log and the kill log, and nothing else.
+   *
+   * `--subtle` because this is the smallest ink allowed to read at all next to `--muted` text;
+   * `--faint` is documented as decoration that may never carry information, and at 8px it is
+   * invisible. The marker is still `aria-hidden`: the sector name sits immediately beside it and
+   * carries the meaning, which is what makes a purely decorative marker legal here.
+   *
+   * Held to one value by `__tests__/noArbitraryHex.test.ts`, which fails on any `bg-[#...]` in
+   * `src/` -- a palette drifts back one hex at a time, and a comment does not stop it.
    */
   dot: string;
 }
 
 type Palette = Pick<Category, 'icon' | 'dot'>;
 
+/**
+ * One marker treatment for every tagged category. See the `dot` docblock above for why the hue
+ * set went: it collided four ways, so it identified nothing, and it was the last hardcoded hex.
+ *
+ * The palette constants below keep their old names. They now differ only by icon, which is the
+ * thing that actually distinguishes a category on the card, and renaming them to their icon
+ * would churn every row of PALETTE for no behaviour change.
+ */
+const DOT = 'bg-subtle';
+
 const INDIGO: Palette = {
   icon: 'gavel',
-  dot: 'bg-[#6366F1]',
+  dot: DOT,
 };
 const EMERALD: Palette = {
   icon: 'home',
-  dot: 'bg-[#059669]',
+  dot: DOT,
 };
 const AMBER: Palette = {
   icon: 'building',
-  dot: 'bg-[#D97706]',
+  dot: DOT,
 };
 const SKY: Palette = {
   icon: 'wallet',
-  dot: 'bg-[#3B82F6]',
+  dot: DOT,
 };
 const SLATE: Palette = {
   icon: 'briefcase',
-  dot: 'bg-[#64748B]',
+  dot: DOT,
 };
 const ROSE: Palette = {
   icon: 'handshake',
-  dot: 'bg-[#E11D48]',
+  dot: DOT,
 };
 const VIOLET: Palette = {
   icon: 'code',
-  dot: 'bg-[#8B5CF6]',
+  dot: DOT,
 };
 const TEAL: Palette = {
   icon: 'landmark',
-  dot: 'bg-[#0D9488]',
+  dot: DOT,
 };
 
 /** One palette per canonical sector. Icons are `IconName` values (`components/ui/Icon.tsx`). */
@@ -115,7 +140,9 @@ export const UNLABELLED: Category = {
   label: 'Not yet tagged',
   tagged: false,
   icon: 'briefcase',
-  dot: 'bg-[#A1A1AA]',
+  // One step lighter than a tagged category's `--subtle` marker, so an untagged card reads as
+  // quieter rather than as a different kind of thing. Was #A1A1AA, off-token like the rest.
+  dot: 'bg-border-strong',
 };
 
 const CATEGORIES: Record<string, Category> = Object.fromEntries(

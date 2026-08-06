@@ -38,6 +38,60 @@ test('the first pack card is above the fold', async ({ page }) => {
 });
 
 /**
+ * The same bar, on a phone. This is a separate test because the project runs ONE Playwright
+ * project at 1280x720 (playwright.config.ts, `devices['Desktop Chrome']`), so the desktop fold
+ * test above physically cannot see a mobile regression -- and there was one, unnoticed while the
+ * desktop fold was fixed and guarded: the filter-log panel is the hero's right column on lg+,
+ * costing nothing vertically, and stacking it on a phone put the first pack card 1.23 screens
+ * down at 390x844, 1.37 at 360x780 and 1.08 at 430x932. An ecommerce home page with no product
+ * on the first screen, on every phone size measured.
+ *
+ * Three widths, not one, because the failure is a height budget and the panel's cost is fixed
+ * while the viewport is not: 360x780 was the worst case and the one a single 390x844 check would
+ * have missed by the widest margin.
+ */
+for (const [w, h, device] of [
+  [390, 844, 'iPhone 12/13/14'],
+  [360, 780, 'small Android'],
+  [430, 932, 'iPhone Pro Max'],
+] as const) {
+  test(`the first pack card is above the fold at ${w}x${h} (${device})`, async ({ page }) => {
+    const MIN_VISIBLE_PX = 40;
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/');
+    const box = await page.locator(cards).first().boundingBox();
+    expect(box).not.toBeNull();
+    expect(h - box!.y, `first card starts at y=${Math.round(box!.y)} on a ${h}px screen`).toBeGreaterThan(
+      MIN_VISIBLE_PX,
+    );
+  });
+}
+
+/**
+ * The filter-log panel renders twice in the HTML -- `hidden lg:block` in the hero, `lg:hidden`
+ * below the shelf -- because a single instance cannot be in two flow positions and the panel has
+ * to be beside the claim on desktop and after the product on mobile. That pair was removed once
+ * before as a bug (`index.tsx:692`), so this asserts the property that actually mattered: a
+ * reader sees it ONCE. A CSS typo that showed both would be invisible to a source-text test and
+ * obvious here.
+ */
+for (const [w, h, label] of [
+  [1280, 720, 'desktop'],
+  [390, 844, 'mobile'],
+] as const) {
+  test(`the filter-log panel is visible exactly once on ${label}`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/');
+    const panels = page.getByText('The filter log', { exact: true });
+    // Both copies are in the DOM by design; exactly one may be rendered.
+    expect(await panels.count(), 'both copies should exist in the HTML').toBe(2);
+    let visible = 0;
+    for (let i = 0; i < 2; i++) if (await panels.nth(i).isVisible()) visible++;
+    expect(visible, `${label} shows ${visible} filter-log panels`).toBe(1);
+  });
+}
+
+/**
  * One email ask per screen, counted in the DOM.
  *
  * `index.tsx:537` already stated the rule in a comment -- "two email forms on one screen is a

@@ -636,7 +636,13 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <SectionBand
         bg="white"
         width="7xl"
-        className="animate-rise pt-10 pb-12 md:pt-14 md:pb-16 [@media(max-height:820px)]:md:pt-8 [@media(max-height:820px)]:md:pb-8"
+        // The mobile padding is `pt-8 pb-8`, not `pt-10 pb-12`. Moving the filter-log panel below
+        // the shelf (see the note there) put the first card at y=728/753/689 on the three phone
+        // sizes measured, which clears the 40px-visible bar at 390x844 and 430x932 but left only
+        // 27px at 360x780 -- the h1 takes one more line at that width. 24px of band padding is
+        // the difference between a card you can see and a sliver. `md:` is untouched, so nothing
+        // above a phone gets tighter.
+        className="animate-rise pt-8 pb-8 md:pt-14 md:pb-16 [@media(max-height:820px)]:md:pt-8 [@media(max-height:820px)]:md:pb-8"
       >
         {/* Two columns on lg+: the claim on the left, the evidence for it on the right. The
             filter-log card is the argument -- it is the only thing above the fold that a
@@ -689,10 +695,19 @@ export default function Home({ packs, stats, initialState, market, currency, per
               A whole dossier, unredacted, every source clickable. No payment, no email.
             </p>
           </div>
-          {/* ONE instance. This was rendered twice, `hidden md:block` and `md:hidden`, which put
-              two copies in the DOM on every viewport: `display:none` hides an element, it does not
-              stop React mounting it or running its effects. The card is responsive on its own. */}
-          <LiveKillCard className="w-full" />
+          {/* DESKTOP ONLY, and the mobile copy is below the shelf. See the note there for the
+              measurement; the short version is that this column is free on lg+ and costs the
+              entire first screen once it stacks.
+
+              This deliberately reinstates a `hidden lg:block` / `lg:hidden` pair that was removed
+              once before, so the reason it was removed has to be dealt with rather than ignored:
+              the objection was that `display:none` hides an element but does not stop React
+              mounting it or running its effects, so two copies ran two sets of effects. That is
+              no longer true of this component -- `LiveKillCard.tsx` is 150 lines with no
+              `useEffect`, no `useState`, no fetch and no `track()` call; it renders from a static
+              import. What is left is a duplicated subtree in the HTML, which is why exactly one
+              is asserted VISIBLE at each viewport in e2e/discovery.spec.ts rather than trusted. */}
+          <LiveKillCard className="hidden w-full lg:block" />
         </div>
       </SectionBand>
 
@@ -707,6 +722,28 @@ export default function Home({ packs, stats, initialState, market, currency, per
         </div>
 
         <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} />
+      </Section>
+
+      {/* THE MOBILE POSITION of the filter-log card. On lg+ it is the hero's right column, where
+          it costs nothing vertically and sits beside the claim it evidences. Stacked on a phone it
+          cost the entire first screen, measured on the built page:
+
+            hero text   y=105  h=425   ends 530
+            gap-10              40
+            filter log  y=570  h=274   ends 844   <- the whole 844px viewport, before any product
+            first card  y=1042                    -> 1.23 screens down (390x844)
+                                                     1.37 (360x780), 1.08 (430x932)
+
+          So an ecommerce home page opened on an argument, with nothing for sale in view, on every
+          phone size measured. The panel plus its gap is 314px and 1042 - 314 = 728, which puts a
+          card on the first screen everywhere with room to spare.
+
+          Below the shelf, not deleted: `index.tsx:641` records why the panel earns its place --
+          it is the only thing a sceptical stranger can check without leaving the page -- and that
+          argument is undamaged by meeting it after the product rather than instead of it. A buyer
+          who scrolls past one screen of packs is exactly the reader with a question to answer. */}
+      <Section bg="bg" width="7xl" className="!pt-0 !pb-10 lg:hidden">
+        <LiveKillCard className="w-full" />
       </Section>
 
       {/* 3. WHAT YOU GET, the deliverable breakdown. Format ambiguity is the biggest killer on a

@@ -89,11 +89,35 @@ describe('US-3 - Hero with a demonstration of the moat', () => {
     );
   });
 
-  it('home page mounts LiveKillCard exactly once', () => {
+  it('home page mounts LiveKillCard as a deliberate breakpoint pair, not by accident', () => {
     if (!liveCardExists) return;
-    // Both breakpoint copies mounted and both ran their interval. One instance, responsive.
-    const mounts = page.match(/<LiveKillCard\b/g) ?? [];
-    expect(mounts.length, 'index.tsx must render exactly one <LiveKillCard>').toBe(1);
+    // This asserted exactly ONE mount until 2026-08-06. The reason recorded here was "both
+    // breakpoint copies mounted and both ran their interval" -- a real defect, but the interval
+    // is what made it one, and the interval is independently forbidden by `no polling timer
+    // behind a static snapshot` above, which reads LiveKillCard's own source. The component is
+    // now 150 lines with no useEffect, no useState, no fetch and no timer.
+    //
+    // A second copy was then required by a measurement no source test can take: the panel is the
+    // hero's right column on lg+, free vertically, and stacking it on a phone put the first pack
+    // card 1.23 screens down at 390x844 (1.37 at 360x780, 1.08 at 430x932) -- an ecommerce home
+    // page with no product on the first screen. It moved below the shelf on mobile only.
+    //
+    // So the assertion changes from "never two" to "exactly the two we meant": the pair must be
+    // breakpoint-complementary, which is what stops a third copy or an unguarded duplicate. That
+    // a reader sees only ONE of them is a rendered-DOM property and is asserted at both viewports
+    // in e2e/discovery.spec.ts -- a class typo showing both is invisible from here.
+    const mounts = page.match(/<LiveKillCard\b[^>]*>/g) ?? [];
+    expect(mounts.length, 'index.tsx must render exactly two <LiveKillCard>, one per breakpoint').toBe(2);
+    expect(
+      mounts.filter((m) => /\bhidden\b[^"]*\blg:block\b/.test(m)),
+      'one copy must be desktop-only (hidden lg:block)',
+    ).toHaveLength(1);
+    // The mobile copy carries no breakpoint class of its own -- `lg:hidden` sits on the Section
+    // wrapping it -- so asserting on the tag would prove nothing about it. Match the wrapper.
+    expect(
+      page,
+      'the other copy must sit inside a lg:hidden Section, below the shelf',
+    ).toMatch(/lg:hidden"[\s>][\s\S]{0,160}<LiveKillCard\b/);
   });
 
   it('home page renders LiveKillCard inside the hero', () => {
