@@ -107,6 +107,12 @@ class Retrieval:
     # half-open probe after the cooldown — never permanently dead-listed for the run.
     breaker_failure_threshold: int = 3  # consecutive transient fails before opening
     breaker_cooldown_s: float = 60.0    # seconds open before a half-open recovery probe
+    # Batch-level kill-fast on INFRASTRUCTURE. The breaker above retires a single provider;
+    # this one stops a whole vetting batch once the pipeline is demonstrably unable to rule.
+    # Streak, not total — a healthy batch may legitimately defer one or two candidates, so
+    # only CONSECUTIVE infra-gated defers mean "the subsystem is down, not the ideas".
+    # 0 disables. Never a verdict knob: it can stop work, never change a ruling.
+    infra_defer_abort_streak: int = 3
 
 
 @dataclass
@@ -152,6 +158,13 @@ class Spend:
     # money, so capping it is a decision about the Max plan's usage allowance, not about
     # liability, and arming it silently would halt a daemon that is currently legal.
     daily_subscription_cap_usd: float = 0.0
+    # The ARMABLE half of the ceiling above. `daily_subscription_cap_usd` refuses the whole
+    # tick via `guard.evaluate()`, and `run_scheduled.run_tick` returns on `not can_run` BEFORE
+    # the drain — so arming it freezes the backlog, which is the 0efe40e defect arriving
+    # through the money rail instead of through PAUSE. This one only suppresses GENERATION and
+    # leaves the drain running, so the backlog falls while it is engaged and it releases itself
+    # at the day roll-over. 0 = disabled (default, for the same reason as the hard cap).
+    daily_subscription_soft_cap_usd: float = 0.0
 
 
 @dataclass

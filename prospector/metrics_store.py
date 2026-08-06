@@ -9,9 +9,10 @@ Part of the production-grade self-improvement infrastructure (Priority 3).
 import json
 import sqlite3
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Iterator, Optional
 
 
 class MetricsStore:
@@ -26,12 +27,22 @@ class MetricsStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Open, commit-or-rollback, then CLOSE. See `store.Store._connect` for the full
+        story: `with sqlite3.Connection` ends the transaction and leaves the socket open,
+        so this shape leaked two fds per call at every site in this file too. Fixed here
+        at the same time because a fix applied only where the symptom appeared is how the
+        same defect survives in its siblings."""
         conn = sqlite3.connect(str(self.db_path))
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _init_db(self):
         with self._connect() as conn:

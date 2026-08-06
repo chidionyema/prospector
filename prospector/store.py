@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 from .config import Config
 from .models import Decision, Dossier
@@ -87,11 +88,36 @@ class Store:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Open a connection, commit-or-rollback the block, then CLOSE it.
+
+        This used to `return` a bare `sqlite3.Connection`. Every one of the call sites
+        below already wrote `with self._connect() as conn:` — which reads like a resource
+        manager but is not one: `sqlite3.Connection.__exit__` commits or rolls back the
+        transaction and deliberately leaves the connection OPEN. So each call leaked two
+        descriptors (the db and its WAL) for the process's lifetime.
+
+        Measured 2026-08-06: 200 `has_dossier()` calls leaked 201 fds, monotonic. It went
+        unnoticed for as long as it did because every caller was O(1) per run; the backlog
+        brake's per-row survey (`run.drain_survey`) is the first O(rows) caller, and it
+        took the daemon past launchd's 256-fd default inside four seconds of starting —
+        `[Errno 24] Too many open files` writing `heartbeat.json`, which then made the
+        drainable count unavailable, which correctly-but-uselessly suppressed generation.
+        The leak was the bug; the brake just found it.
+
+        The inner `with conn:` preserves the exact transaction semantics every call site
+        was already relying on, so this is a drop-in: commit on success, rollback on
+        exception, and now close either way.
+        """
         conn = sqlite3.connect(str(self.db), timeout=10.0)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _init_db(self) -> None:
         with self._connect() as conn:

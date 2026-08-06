@@ -137,6 +137,16 @@ retrieval:
                                  # from 45: failing over now means falling to claude_cli at 97.7s
                                  # mean, so waiting up to 90s for a fast slot strictly beats it.
                                  # Bounds total latency at queue_timeout + search_timeout.
+  # infra_defer_abort_streak: batch-level kill-fast on INFRASTRUCTURE (added 2026-08-06).
+  # The 10:00 UTC batch that day vetted 14 candidates end-to-end and deferred ALL 14. The
+  # non-critical chain that generates each check's search queries had been benched by a
+  # monthly spend limit, so 52 of 98 checks never produced a query — and a check with no
+  # query has no passages, which verify.py reports as retrieval_failed -> DEFER. Retrieval
+  # itself was perfectly healthy (200/200 ddg searches `ok`, every completed search 5-42
+  # passages). Nothing counted defers ACROSS candidates, so candidates 3..14 each re-learned
+  # the same outage at full price, and all 14 landed in a backlog the drain pays for AGAIN.
+  # 3 = stop after three consecutive infra-gated defers. 0 disables.
+  infra_defer_abort_streak: 3
   claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
                                  # now that grounding resolves on ddg/exa — see chain above)
   # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter. claude_concurrency above
@@ -981,7 +991,25 @@ dedup_token_threshold: 0.34
 # the brake waits for the drainable count to fall, so a row nothing can resolve would hold
 # generation frozen forever. 0 disables it. Outages never spend a row's budget — only a completed
 # re-vet whose verdict left the row drainable counts.
-schedule: { cadence: daily, batch_size: 15, backlog_cap: 100, max_resume_attempts: 5 }
+# `revet_provisional_kills: false` — do NOT spend the drain's bound re-vetting rows that are
+# already KILL. A provisional row is one an untrusted brain ruled; the re-vet exists so a trusted
+# brain can overwrite that ruling. For a PASS that is the difference between unsellable and
+# sellable (the publish gate is `decision == PASS and not provisional`). For a KILL it changes
+# `provisional=1 -> 0` on a row that can never publish under any verdict.
+# Measured 2026-08-06 before this line existed: 318 drainable rows = 161 provisional KILL + 152
+# DEFER + 5 provisional DEFER, and ZERO provisional PASSes — so 51% of the backlog, and (because
+# the sort was oldest-first and the KILLs are the old ones) most of what each tick actually paid
+# for, was rows in that class. Yield of every drain in ticks.jsonl: 39 attempted -> 1 pass. The
+# drain-only tick at 12:23:06Z: 15 attempted -> 15 kills, 0 passes, ~$28.65 of subscription CLI
+# (meter flat at $438.6810 before, $467.3271 after), none of it visible to spend.daily_cap_usd.
+# And it ran INSTEAD of generation, not alongside it: backlog_cap 100 vs 334 forced batch_size 0.
+# This excludes them from the drain AND from the brake's count via the one shared definition
+# (run.drain_survey) — narrowing only one of the two is how the brake deadlocks. Nothing is
+# deleted or tombstoned: the rows keep their cited kill reason, `vet --resume --only
+# provisional-kill` still works them on demand, and flipping this to true restores the old
+# behaviour in one line. See prospector/drain_state.revet_provisional_kills for the receipts.
+schedule: { cadence: daily, batch_size: 15, backlog_cap: 100, max_resume_attempts: 5,
+            revet_provisional_kills: false }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
@@ -995,6 +1023,19 @@ spend:
   # usage allowance is the constraint you actually care about — CLAUDE.md's "run bounded
   # batches inside the usage allowance".
   daily_subscription_cap_usd: 0.0
+  # The ARMABLE subscription ceiling. `daily_subscription_cap_usd` above is a HARD wall: it
+  # refuses the whole tick, and `run_tick` returns on `not can_run` BEFORE the drain — so
+  # arming it freezes the backlog, which is the 0efe40e defect ("stopping the treadmill also
+  # stopped the only thing paying it down") arriving through the money rail instead of PAUSE.
+  # A frozen backlog does not save that spend, it defers it: every unresolved row still owes a
+  # full re-vet. That is why the hard cap has never been armed, and why 2026-08-06 recorded
+  # $438.68 of subscription burn against no ceiling at all.
+  #
+  # This one stops DIGGING and keeps RESOLVING: above it, a tick skips generation and drains
+  # only, exactly like `schedule.backlog_cap`. Backlog goes DOWN while it is engaged, so it
+  # releases itself when the day rolls over. 0 = off (current). Set it BELOW
+  # daily_subscription_cap_usd or the hard wall fires first and the drain stops with it.
+  daily_subscription_soft_cap_usd: 0.0
 
 store:
   dir: store

@@ -202,16 +202,23 @@ def _backlog_size(cfg) -> int | None:
     reading the daemon log will ever see.
     """
     try:
-        from prospector.drain_state import ledger_path, max_attempts
+        from prospector.drain_state import ledger_path, max_attempts, revet_provisional_kills
         from prospector.run import drain_survey
         from prospector.store import Store
         cap_attempts = max_attempts(cfg)
-        survey = drain_survey(Store(cfg), max_attempts=cap_attempts)
-        if survey.orphaned or survey.stalled:
+        # The SAME exclusion the drain will apply (`run._cmd_resume` reads the same knob), or the
+        # brake would sit engaged on 161 rows the automatic drain is no longer working — the
+        # deadlock this whole shared-definition arrangement exists to prevent.
+        revet_dead = revet_provisional_kills(cfg)
+        survey = drain_survey(Store(cfg), max_attempts=cap_attempts,
+                              revet_provisional_kills=revet_dead)
+        if survey.orphaned or survey.stalled or survey.unpublishable:
             note = (f"↻ backlog brake counts {len(survey.workable)} workable row(s); excluded "
                     f"{len(survey.orphaned)} orphaned (index row, no dossier JSON) + "
                     f"{len(survey.stalled)} stalled (>= {cap_attempts} unresolved re-vets, "
-                    f"rm {ledger_path(cfg.store_dir)} to retry)")
+                    f"rm {ledger_path(cfg.store_dir)} to retry) + "
+                    f"{len(survey.unpublishable)} provisional KILLs (already dead; "
+                    f"schedule.revet_provisional_kills: true to work them)")
             logger.warning("%s", note)
             print(note, file=sys.stderr, flush=True)
         return len(survey.workable)
@@ -220,12 +227,72 @@ def _backlog_size(cfg) -> int | None:
         return None
 
 
-def _generation_suppressed(cfg) -> str:
+def _spend_cfg(cfg, key: str, default):
+    """Read one key from the `spend:` block, dict-or-attr, mirroring `_sched`."""
+    spend = getattr(cfg, "spend", None)
+    if spend is None:
+        return default
+    if isinstance(spend, dict):
+        return spend.get(key, default)
+    return getattr(spend, key, default)
+
+
+def _subscription_soft_cap_reason(cfg, decision) -> str:
+    """Why the SUBSCRIPTION burn should stop generation this tick, or "".
+
+    WHY THIS EXISTS AS A SEPARATE, SOFTER CAP. `spend.daily_subscription_cap_usd` already
+    existed and was unarmable in practice: `guard.evaluate()` returns `can_run=False` for it,
+    and `run_tick` (:562-565) returns on `not can_run` BEFORE the drain — so arming it freezes
+    the backlog at whatever it happens to be when the cap trips. That is exactly the defect
+    0efe40e was written to close ("stopping the treadmill also stopped the only thing paying
+    it down"), reintroduced through the money rail instead of through PAUSE. The cost of
+    freezing the backlog is not hypothetical: every unresolved row owes a full re-vet later,
+    so a hard stop does not save that money, it defers it AND holds the rows hostage.
+
+    Consequence, measured 2026-08-06: because arming it broke the drain, it stayed at 0.0 —
+    and the estate meter recorded $438.68 of subscription burn that day against no ceiling of
+    any kind, while the metered `daily_cap_usd: 20.0` governed 4.4% of consumption.
+
+    So the ceiling that can actually be armed is this one: stop DIGGING, keep RESOLVING. It
+    reuses the brake path below, which already carries the wall-clock backstop (5cc325a) and
+    the CRITICAL-level logging a silent stop needs. The hard cap is deliberately left in place
+    above it as the true floor-of-last-resort; soft is a brake, hard is a wall.
+
+    Reads `decision.today_subscription_usd` rather than rescanning: the guard already paid for
+    that scan this tick, and a second scan could disagree with the number the tick logged.
+    """
+    if decision is None:
+        return ""
+    cap = _spend_cfg(cfg, "daily_subscription_soft_cap_usd", 0.0)
+    try:
+        cap = float(cap or 0.0)
+    except (TypeError, ValueError):
+        logger.warning("spend.daily_subscription_soft_cap_usd=%r is not a number — soft cap "
+                       "disabled", cap)
+        return ""
+    if cap <= 0:
+        return ""
+    spent = float(getattr(decision, "today_subscription_usd", 0.0) or 0.0)
+    if spent < cap:
+        return ""
+    hard = float(getattr(decision, "daily_subscription_cap_usd", 0.0) or 0.0)
+    if 0 < hard <= cap:
+        # Not fatal, but the operator has expressed a contradiction: the hard wall sits at or
+        # below the brake, so guard.evaluate() halts the whole tick first and this never fires.
+        logger.warning("spend.daily_subscription_soft_cap_usd=%.2f >= daily_subscription_cap_usd"
+                       "=%.2f — the hard cap fires first and the drain will NOT keep running",
+                       cap, hard)
+    return (f"subscription soft cap: ${spent:.2f} >= ${cap:.2f} subscription-equivalent today "
+            f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains")
+
+
+def _generation_suppressed(cfg, decision=None) -> str:
     """Why this tick must skip GENERATION but still DRAIN, or "" to generate normally.
 
-    Two triggers, one manual and one automatic:
+    Three triggers, one manual and two automatic:
 
       * `store/scheduler/PAUSE_GENERATION` — the operator's half-stop.
+      * `spend.daily_subscription_soft_cap_usd` — the money brake. Default OFF (0.0).
       * `schedule.backlog_cap` — the automatic brake. Default OFF (None), so behaviour never
         changes silently on an existing deployment; set it and the daemon stops digging.
 
@@ -247,6 +314,12 @@ def _generation_suppressed(cfg) -> str:
     pause_file = Path(str(cfg.store_dir)) / "scheduler" / _GENERATION_PAUSE_FILENAME
     if pause_file.exists():
         return f"generation paused: {pause_file} present (the drain still runs)"
+
+    # Money before backlog: when both would fire, the operator needs to be told it is the SPEND
+    # that stopped the tick, not the queue depth. Both outcomes are identical (drain only).
+    soft = _subscription_soft_cap_reason(cfg, decision)
+    if soft:
+        return soft
 
     cap = _sched(cfg, "backlog_cap", None)
     if cap is None:
@@ -603,7 +676,7 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     # meant they all silently disabled recovery too. The whole point of the brake is that the
     # backlog goes DOWN while it is engaged; a brake that also stopped the drain would freeze
     # the number it is waiting on and never release.
-    suppressed = _generation_suppressed(cfg)
+    suppressed = _generation_suppressed(cfg, decision)
     if suppressed:
         tick["generation_suppressed"] = suppressed
         tick["batch_size"] = 0

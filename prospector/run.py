@@ -32,6 +32,47 @@ def _vet_workers(cfg) -> int:
     return max(1, int(getattr(cfg.retrieval, "vet_workers", 3)))
 
 
+# Kill-fast is a rule about IDEAS: stop paying for a candidate the moment one gate is decisive.
+# This is that rule applied to INFRASTRUCTURE, and it had no implementation until 2026-08-06.
+# That day's 10:00 UTC batch vetted 14 candidates end-to-end and deferred all 14. The
+# non-critical chain that generates each check's search queries had been benched by a monthly
+# spend limit, so 52 of 98 checks never produced a query — and a check with no query has no
+# passages, which verify.py reports as retrieval_failed -> DEFER_GATE. Retrieval was healthy
+# throughout (200/200 ddg searches `ok`, every completed search 5-42 passages), which is why a
+# preflight probe would NOT have caught this: the subsystem that died is not the one we probe.
+# Nothing counted defers ACROSS candidates, so candidates 3..14 each re-learned the same
+# outage at full price, and all 14 landed in a backlog the drain must pay for a SECOND time.
+#
+# Deliberately cause-agnostic. Three different subsystems (query-gen, retrieval, the moat)
+# produce an identical batch-level signature, and on 2026-08-06 two confident diagnoses of
+# which one it was were both wrong. Counting the signature is reliable; inferring the cause
+# from inside the batch is not.
+#
+# A STREAK, not a total: a healthy batch may legitimately defer one or two candidates, so only
+# CONSECUTIVE infra-gated defers mean the subsystem is down rather than the ideas being
+# awkward. 0 disables. Not a verdict knob — it can only stop work, never change a ruling.
+def _infra_abort_streak(cfg) -> int:
+    env = os.environ.get("PROSPECTOR_INFRA_ABORT_STREAK")
+    if env:
+        return max(0, int(env))
+    return max(0, int(getattr(cfg.retrieval, "infra_defer_abort_streak", 3)))
+
+
+def _infra_abort_check(dossier, streak: int, threshold: int, pending) -> tuple:
+    """Advance the consecutive-infra-defer streak; cancel un-started vets if it trips.
+
+    Returns ``(new_streak, cancelled_or_None)``. ``cancelled_or_None`` is ``None`` while the
+    batch should keep going, otherwise the number of vets cancelled before they started.
+
+    Only ``Future.cancel()`` is used, which by contract refuses a vet that is already running.
+    So an abort can never discard a verdict we have paid for — it declines to buy more.
+    """
+    streak = streak + 1 if dossier.gate_fired in _INFRA_GATES else 0
+    if not threshold or streak < threshold:
+        return streak, None
+    return streak, sum(1 for f in pending if f.cancel())
+
+
 def _sync_cli_concurrency(cfg) -> None:
     """Apply retrieval.*_concurrency to CLI governors (env vars still win when set)."""
     r = getattr(cfg, "retrieval", None)
@@ -144,7 +185,13 @@ from .dedup import dedup, drops_by_market
 from .dossier import build_dossier, render_markdown
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .generate import generate
-from .models import Candidate, Decision, Dossier
+from .models import DEFER_GATE, Candidate, Decision, Dossier
+
+#: Gates meaning "the pipeline could not rule", as opposed to "this idea failed". Both are set
+#: by verify.py when a check never got an answer — never by a grounded verdict. Defined here
+#: rather than beside `_infra_abort_check` above, because this module's early helper block
+#: precedes its import block: a module-level tuple there evaluates DEFER_GATE too soon.
+_INFRA_GATES = (DEFER_GATE, "moat_exhausted")
 from .operator import Operator
 from .prescreen import prescreen
 from .retrieval import SearchProvider
@@ -714,7 +761,7 @@ def run_signal(
     progress.step(f"vetting {len(kept)} candidate(s) diverse subset live (max {workers} in parallel)…")
 
     # --- Vet each candidate (Bounded Concurrency Task E) ---
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
     dossiers: list[Dossier] = []
 
     def _label(idx: int, total: int, title: str) -> str:
@@ -754,6 +801,10 @@ def run_signal(
         total_submitted = len(fut_meta)
         # Stream each verdict the MOMENT its vet finishes (completion order), not in
         # submission order — a fast KILL no longer waits behind a slow candidate.
+        infra_abort = _infra_abort_streak(cfg)
+        infra_streak = 0
+        infra_aborted = False
+        n_cancelled = 0
         for future in as_completed(fut_meta):
             idx = fut_meta[future]
             try:
@@ -765,6 +816,32 @@ def run_signal(
                                 gate=d.gate_fired,
                                 composite=(d.score.composite if d.score else None))
                 dossiers.append(d)
+
+                # Kill-fast on INFRASTRUCTURE (see _infra_abort_streak). Counted AFTER the
+                # dossier is kept: work already paid for is banked, never discarded. Only
+                # UN-STARTED vets are cancelled, so this can lose no evidence — it can only
+                # decline to buy more of it while the pipeline is unable to rule.
+                infra_streak, cancelled = _infra_abort_check(
+                    d, infra_streak, 0 if infra_aborted else infra_abort, fut_meta)
+                if cancelled is not None:
+                    infra_aborted = True
+                    n_cancelled = cancelled
+                    msg = (f"INFRA ABORT: {infra_streak} consecutive candidates deferred on "
+                           f"gate={d.gate_fired!r} — the pipeline cannot rule, so this is an "
+                           f"outage, not a verdict. Cancelled {n_cancelled} un-started vet(s) "
+                           f"of {total_submitted}; {len(dossiers)} kept.")
+                    # CRITICAL: the daemon's launchd log drops info/warning, so a quieter
+                    # level here would make the abort invisible exactly where it matters.
+                    logger.critical(msg, extra={"infra_gate": d.gate_fired,
+                                                "cancelled": n_cancelled,
+                                                "submitted": total_submitted})
+                    print(f"⏸ {msg}", file=sys.stderr, flush=True)
+                    progress.note(f"⏸ {msg}")
+            except CancelledError:
+                # A vet this loop cancelled above — expected, not an error. It must be caught
+                # HERE: since 3.8 CancelledError derives from BaseException, so the generic
+                # `except Exception` below cannot see it and it would escape and kill the batch.
+                continue
             except GroundingInfrastructureError:
                 raise  # circuit breaker — halt daemon, don't burn credits
             except Exception as e:
@@ -1078,7 +1155,7 @@ def _cmd_replicate(args: argparse.Namespace, log_path: Path) -> None:
 
 #: Populations `vet --resume --only` can restrict the drain to. "all" is the default and the
 #: historical behaviour; the daemon never passes this flag, so its per-tick drain is unchanged.
-RESUME_SELECTORS = ("all", "defer", "provisional", "provisional-pass")
+RESUME_SELECTORS = ("all", "defer", "provisional", "provisional-pass", "provisional-kill")
 
 
 def _resume_selects(row: dict, only: str) -> bool:
@@ -1105,23 +1182,69 @@ def _resume_selects(row: dict, only: str) -> bool:
         return provisional
     if only == "provisional-pass":
         return provisional and decision == "pass"
+    if only == "provisional-kill":
+        return provisional and decision == "kill"
     return True
+
+
+#: Drain priority. The bound is spent from rank 0 down, so this is the ONLY thing that decides
+#: what a tick's money buys.
+_RANK_PROVISIONAL_PASS = 0
+_RANK_DEFER = 1
+_RANK_PROVISIONAL_KILL = 2
+_RANK_NAMES = {_RANK_PROVISIONAL_PASS: "provisional-pass",
+               _RANK_DEFER: "defer",
+               _RANK_PROVISIONAL_KILL: "provisional-kill"}
+
+
+def _drain_rank(row: dict) -> int:
+    """Which population this backlog row belongs to, ordered by what a re-vet can produce.
+
+    WHY RANK AND NOT JUST AGE. Oldest-first is fair and, on this backlog, expensive: the three
+    populations have completely different expected values and the sort could not see it.
+
+      0  provisional PASS — a real PASS that the publish gate refuses solely because an untrusted
+         brain ruled it (`decision == PASS and not provisional`). One confirming re-vet turns it
+         into sellable inventory. This is the population the drain was BUILT for.
+      1  DEFER — no verdict was ever reached, so the idea is unjudged. A re-vet produces the
+         first real answer, whatever it is.
+      2  provisional KILL — already dead. A re-vet can only confirm the kill (changing nothing
+         that can ever be sold) or, rarely, resurrect a wrongly-killed idea.
+
+    Measured on the live index 2026-08-06, oldest-first put rank 2 FIRST: of the oldest 100
+    drainable rows, 51 were provisional KILLs and exactly 1 was a provisional PASS, while the 72
+    provisional PASSes were spread from 2026-06-21 to 2026-08-06. At the daemon's 3-per-tick
+    bound, age order spends the budget almost entirely on rank 2. Rank order spends it on rank 0
+    until there are none left, which is the whole point of running a drain at all.
+
+    Age still breaks ties WITHIN a rank (`_cmd_resume`'s sort key), so nothing starves.
+    """
+    decision = str(row.get("decision", "") or "").lower()
+    provisional = bool(row.get("provisional", 0))
+    if provisional and decision == "pass":
+        return _RANK_PROVISIONAL_PASS
+    if decision == "defer":
+        return _RANK_DEFER
+    return _RANK_PROVISIONAL_KILL
 
 
 class DrainSurvey(NamedTuple):
     """The backlog split into what a drain pass can move and what it provably cannot.
 
     `workable` is THE definition of "backlog" for every caller — the drain's bound is spent on
-    it, and the scheduler's brake counts it. `orphaned` and `stalled` are the excluded rows,
-    carried out by candidate_id so every caller can report them instead of absorbing them.
+    it, and the scheduler's brake counts it. `orphaned`, `stalled` and `unpublishable` are the
+    excluded rows, carried out by candidate_id so every caller can report them instead of
+    absorbing them.
     """
 
     workable: list[dict]
     orphaned: list[str]
     stalled: list[str]
+    unpublishable: list[str]
 
 
-def drain_survey(store: Store, *, max_attempts: int = 0) -> DrainSurvey:
+def drain_survey(store: Store, *, max_attempts: int = 0,
+                 revet_provisional_kills: bool = True) -> DrainSurvey:
     """Split the DEFER + provisional population into workable rows and unmovable ones.
 
     Two populations need the moat to revisit them:
@@ -1135,7 +1258,7 @@ def drain_survey(store: Store, *, max_attempts: int = 0) -> DrainSurvey:
     operator reads (406 reported, 45 of them undrainable) and made the drain's ETA a fiction.
     They stay in the catalogue for history; they are just not work.
 
-    THEN TWO EXCLUSIONS, both closing the same hole: a counted row the drain cannot move.
+    THEN THREE EXCLUSIONS, all closing the same hole: a counted row the drain cannot move.
 
       * ORPHANED — an index row whose dossier JSON is not on disk. `store.get()` returns None
         and the drain can only print "dossier JSON missing, skipping". Measured 2026-08-06 on the
@@ -1143,6 +1266,13 @@ def drain_survey(store: Store, *, max_attempts: int = 0) -> DrainSurvey:
         15 consecutive 3-row ticks (~1.2 days) of no-op drains reporting `attempted: 3`.
       * STALLED — a row that has absorbed `max_attempts` completed re-vets and is still
         drainable (`prospector/drain_state.py`). 0 disables this exclusion entirely.
+      * UNPUBLISHABLE — a provisional row whose decision is already KILL, when
+        `schedule.revet_provisional_kills` is False. The first two populations cannot be MOVED;
+        this one moves fine and cannot PRODUCE, because a KILL never reaches the publish gate no
+        matter which brain ruled it. Measured 2026-08-06: 161 of 318 drainable rows, ~$1.91 each,
+        0 passes in the 15 drained that day — see `drain_state.revet_provisional_kills` for the
+        full receipts. Excluding them is reversible config, not a tombstone: the rows keep their
+        cited kill reason and `vet --resume --only provisional-kill` still reaches them.
 
     Why they belong HERE and not in `_cmd_resume`'s loop: the scheduler's backlog brake
     (`run_scheduled._backlog_size`) counts this same population to decide whether generation may
@@ -1151,8 +1281,8 @@ def drain_survey(store: Store, *, max_attempts: int = 0) -> DrainSurvey:
     subtract — a generation freeze waiting on a number that cannot fall, with no human able to
     see why. One definition, or the rail deadlocks.
 
-    A row that is both stalled and orphaned is reported as stalled; the two lists are disjoint by
-    construction, and either way the row is excluded.
+    A row that falls into more than one excluded class is reported once, in the order tested
+    below; the lists are disjoint by construction, and either way the row is excluded.
     """
     deferred = [r for r in store.all(decision="defer") if not r.get("tombstone")]
     provisional = [r for r in store.provisional() if not r.get("tombstone")]
@@ -1164,24 +1294,31 @@ def drain_survey(store: Store, *, max_attempts: int = 0) -> DrainSurvey:
     workable: list[dict] = []
     orphaned: list[str] = []
     stalled: list[str] = []
+    unpublishable: list[str] = []
     for row in rows:
         cid = str(row.get("candidate_id", "") or "")
         if max_attempts and attempts.get(cid, 0) >= max_attempts:
             stalled.append(cid)
         elif not store.has_dossier(cid):
             orphaned.append(cid)
+        elif not revet_provisional_kills and _drain_rank(row) == _RANK_PROVISIONAL_KILL:
+            # Tested AFTER the mechanical exclusions so a row that is both orphaned and
+            # unpublishable is reported as orphaned — the older, load-bearing diagnosis.
+            unpublishable.append(cid)
         else:
             workable.append(row)
-    return DrainSurvey(workable, orphaned, stalled)
+    return DrainSurvey(workable, orphaned, stalled, unpublishable)
 
 
-def drainable(store: Store, *, max_attempts: int = 0) -> list[dict]:
+def drainable(store: Store, *, max_attempts: int = 0,
+              revet_provisional_kills: bool = True) -> list[dict]:
     """The rows a re-vet pass can actually work on — `drain_survey(...).workable`.
 
     Kept as a name because callers and tests bind to it; see `drain_survey` for the definition
     and for why the exclusions live there rather than in the drain loop.
     """
-    return drain_survey(store, max_attempts=max_attempts).workable
+    return drain_survey(store, max_attempts=max_attempts,
+                        revet_provisional_kills=revet_provisional_kills).workable
 
 
 def _with_exclusions(summary: dict, survey: DrainSurvey) -> dict:
@@ -1196,6 +1333,8 @@ def _with_exclusions(summary: dict, survey: DrainSurvey) -> dict:
         summary["orphaned"] = len(survey.orphaned)
     if survey.stalled:
         summary["stalled"] = len(survey.stalled)
+    if survey.unpublishable:
+        summary["unpublishable"] = len(survey.unpublishable)
     return summary
 
 
@@ -1219,12 +1358,26 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     Returns a summary dict so a caller (the daemon) can record what the pass did; the CLI
     ignores the return and reads the printed report.
     """
+    # PARSE `--only` BEFORE the survey, because it decides what the survey may exclude.
+    # `getattr` default keeps `resume_deferred`'s Namespace (the daemon's entry point, which has
+    # no `only` attribute) on the historical "all" behaviour.
+    only = str(getattr(args, "only", "all") or "all")
+    if only not in RESUME_SELECTORS:
+        print(f"Unknown --only {only!r}; expected one of {', '.join(RESUME_SELECTORS)}.",
+              file=sys.stderr)
+        sys.exit(2)
+
     max_att = drain_state.max_attempts(cfg)
-    survey = drain_survey(store, max_attempts=max_att)
+    # An operator who NAMES the dead population gets it, whatever the config default says. The
+    # exclusion exists to stop provisional KILLs silently eating the daemon's automatic bound;
+    # it is not a lock on the rows, and `--only provisional-kill` is the documented way back in.
+    revet_dead = (drain_state.revet_provisional_kills(cfg)
+                  or only in ("provisional", "provisional-kill"))
+    survey = drain_survey(store, max_attempts=max_att, revet_provisional_kills=revet_dead)
     pending = survey.workable
     backlog = len(pending)
     excluded = ""
-    if survey.orphaned or survey.stalled:
+    if survey.orphaned or survey.stalled or survey.unpublishable:
         # NAMED, not absorbed. These rows are the reason a backlog count can stop falling, so the
         # one place an operator is looking (the drain's own output, and the summary that reaches
         # ticks.jsonl) has to say how many were set aside and where the reversal switch is.
@@ -1234,6 +1387,10 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         if survey.stalled:
             parts.append(f"{len(survey.stalled)} stalled (>= {max_att} unresolved re-vets; "
                          f"rm {drain_state.ledger_path(store.root)} to retry them)")
+        if survey.unpublishable:
+            parts.append(f"{len(survey.unpublishable)} provisional KILLs (already dead — a KILL "
+                         f"never reaches the publish gate; set schedule.revet_provisional_kills: "
+                         f"true, or run `vet --resume --only provisional-kill`, to work them)")
         excluded = " Excluded: " + "; ".join(parts) + "."
     if not pending:
         if excluded:
@@ -1269,16 +1426,11 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
                                  "passes": 0, "kills": 0, "defers": 0, "skipped": blind}, survey)
 
-    # Restrict to one population BEFORE the oldest-first sort and the `--limit` slice, so the
+    # Restrict to one population BEFORE the priority sort and the `--limit` slice, so the
     # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
     # drainable population: the printed line then reads "Found 351 ... re-vetting 72 of them",
-    # which is the truth. `getattr` default keeps `resume_deferred`'s Namespace (the daemon's
-    # entry point, which has no `only` attribute) on the historical "all" behaviour.
-    only = str(getattr(args, "only", "all") or "all")
-    if only not in RESUME_SELECTORS:
-        print(f"Unknown --only {only!r}; expected one of {', '.join(RESUME_SELECTORS)}.",
-              file=sys.stderr)
-        sys.exit(2)
+    # which is the truth. (`only` is parsed and validated at the top of this function, because
+    # it also decides whether the survey may exclude the provisional-KILL population.)
     if only != "all":
         pending = [r for r in pending if _resume_selects(r, only)]
         if not pending:
@@ -1286,24 +1438,6 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                   f"--only {only}. Nothing to re-vet.{excluded}")
             return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
                                      "passes": 0, "kills": 0, "defers": 0}, survey)
-
-    # Restrict to one population BEFORE the oldest-first sort and the `--limit` slice, so the
-    # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
-    # drainable population: the printed line then reads "Found 351 ... re-vetting 72 of them",
-    # which is the truth. `getattr` default keeps `resume_deferred`'s Namespace (the daemon's
-    # entry point, which has no `only` attribute) on the historical "all" behaviour.
-    only = str(getattr(args, "only", "all") or "all")
-    if only not in RESUME_SELECTORS:
-        print(f"Unknown --only {only!r}; expected one of {', '.join(RESUME_SELECTORS)}.",
-              file=sys.stderr)
-        sys.exit(2)
-    if only != "all":
-        pending = [r for r in pending if _resume_selects(r, only)]
-        if not pending:
-            print(f"Found {backlog} deferred + provisional candidate(s), but none match "
-                  f"--only {only}. Nothing to re-vet.")
-            return {"backlog": backlog, "attempted": 0, "resumed": 0,
-                    "passes": 0, "kills": 0, "defers": 0}
 
     limit = getattr(args, "limit", None)
     if limit is not None and limit <= 0:
@@ -1320,10 +1454,19 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
               f"disables the drain — re-vetting none.{excluded}")
         return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
                                  "passes": 0, "kills": 0, "defers": 0}, survey)
-    # Oldest first. `store.all` returns catalogue order; the oldest DEFERs are the ones that
-    # have been waiting longest (this backlog reaches back to 2026-06-14), and draining
-    # newest-first would starve them forever at 3 per tick.
-    pending = sorted(pending, key=lambda r: str(r.get("created_at", "")))
+    # HIGHEST-VALUE POPULATION FIRST, then oldest first within it (`_drain_rank`).
+    #
+    # Age alone was the whole sort key until 2026-08-06, and on this backlog it inverted the
+    # priority: of the oldest 100 drainable rows, 51 were provisional KILLs — rows that cannot
+    # publish under any verdict — and exactly 1 was a provisional PASS, the population a single
+    # confirming re-vet turns into sellable inventory. At the daemon's 3-per-tick bound the
+    # budget went almost entirely to the rows with nothing to produce.
+    #
+    # Age still decides WITHIN a rank, which is what the old comment was protecting: `store.all`
+    # returns catalogue order, this backlog reaches back to 2026-06-14, and newest-first would
+    # starve the oldest rows forever at 3 per tick. Nothing starves; the ranks just get served
+    # in the order of what they can produce.
+    pending = sorted(pending, key=lambda r: (_drain_rank(r), str(r.get("created_at", ""))))
 
     # UNMOVABLE ROWS MUST NOT CONSUME THE BOUNDED PASS — and `drain_survey` has already taken
     # them out, so this slice is a plain one.
@@ -1343,8 +1486,15 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     if limit is not None:
         pending = pending[:limit]
 
+    # NAME THE MIX, not just the count. A bounded pass that reports only "re-vetting 3 of them"
+    # cannot be told apart from one spending its whole budget on rows that can never publish —
+    # which is exactly what was happening before the rank sort, unnoticed, for six weeks.
+    _ranks = [_drain_rank(r) for r in pending]
+    mix = ", ".join(f"{_ranks.count(i)} {_RANK_NAMES[i]}"
+                    for i in sorted(set(_ranks)))
     print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
-          f"{len(pending)} of them with the moat...{excluded}")
+          f"{len(pending)} of them with the moat ({mix}; highest-value population "
+          f"first)...{excluded}")
     from .models import Candidate
     from .telemetry import get_usage_summary, reset_usage
     from . import progress
