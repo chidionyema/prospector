@@ -976,7 +976,12 @@ dedup_token_threshold: 0.34
 # releases automatically the moment the count falls back under the cap — no human, no PAUSE
 # file. 100 is roughly a week of buffer at the measured drain rate; it is a ceiling on debt,
 # not a target.
-schedule: { cadence: daily, batch_size: 15, backlog_cap: 100 }
+# `max_resume_attempts`: completed re-vets one backlogged row may absorb before it stops being
+# counted as backlog (prospector/drain_state.py). It exists to keep `backlog_cap` self-releasing:
+# the brake waits for the drainable count to fall, so a row nothing can resolve would hold
+# generation frozen forever. 0 disables it. Outages never spend a row's budget — only a completed
+# re-vet whose verdict left the row drainable counts.
+schedule: { cadence: daily, batch_size: 15, backlog_cap: 100, max_resume_attempts: 5 }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

@@ -18,6 +18,7 @@ minted those provisional rows. A drain that runs while the brain is benched help
 from __future__ import annotations
 
 import types
+from pathlib import Path
 
 import prospector.health as H
 from prospector import run as R
@@ -33,6 +34,18 @@ class _Store:
     def provisional(self):
         return [{"candidate_id": "c2", "decision": "pass", "provisional": True,
                  "created_at": "2026-06-15"}]
+
+    @property
+    def root(self):
+        # Where the drain's attempt ledger would live. Deliberately a path that does not exist:
+        # `drain_state.load` returns {} for a missing ledger, so no row here is ever attempt-capped
+        # and the backlog stays non-empty — which is what makes the preflight the thing under test.
+        return Path("/nonexistent-preflight-store")
+
+    def has_dossier(self, cid):
+        # Both rows have a file behind them, so neither is excluded as an orphan. Same reason:
+        # an empty backlog would pass these tests via the wrong early return.
+        return cid in {"c1", "c2"}
 
 
 def _cfg(operator=("claude_cli",)):

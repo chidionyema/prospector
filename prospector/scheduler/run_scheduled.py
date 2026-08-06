@@ -190,14 +190,31 @@ def _backlog_size(cfg) -> int | None:
     """How many rows a drain could work on right now, or None if it cannot be counted.
 
     Counts the SAME population `run.py::_cmd_resume` will later drain, via the shared
-    `run.drainable` — see its docstring for why one definition matters. None (not 0) on any
+    `run.drain_survey` — see its docstring for why one definition matters. None (not 0) on any
     failure: 0 would read as "backlog clear" and silently release the generation brake, which
     is the exact direction a counting bug must never fail in.
+
+    The survey's EXCLUDED rows (orphaned, attempt-capped) are printed, not just logged. This
+    brake is the one rail that can deadlock — it engages on a count and waits for that count to
+    fall — so the rows it is waiting on have to be nameable. `logger.warning` does not reach
+    `launchd.err.log` (measured 2026-08-05: `logger.critical` lines appear 18 times there while
+    `logger.info` lines appear zero times), so a print to stderr is the only form an operator
+    reading the daemon log will ever see.
     """
     try:
-        from prospector.run import drainable
+        from prospector.drain_state import ledger_path, max_attempts
+        from prospector.run import drain_survey
         from prospector.store import Store
-        return len(drainable(Store(cfg)))
+        cap_attempts = max_attempts(cfg)
+        survey = drain_survey(Store(cfg), max_attempts=cap_attempts)
+        if survey.orphaned or survey.stalled:
+            note = (f"↻ backlog brake counts {len(survey.workable)} workable row(s); excluded "
+                    f"{len(survey.orphaned)} orphaned (index row, no dossier JSON) + "
+                    f"{len(survey.stalled)} stalled (>= {cap_attempts} unresolved re-vets, "
+                    f"rm {ledger_path(cfg.store_dir)} to retry)")
+            logger.warning("%s", note)
+            print(note, file=sys.stderr, flush=True)
+        return len(survey.workable)
     except Exception as exc:  # noqa: BLE001 — a brake that crashes the daemon is worse than no brake
         logger.warning("Backlog count failed, brake cannot engage this tick: %s", exc)
         return None
@@ -769,24 +786,75 @@ class _StopFlag:
         self.stop = True
 
 
+#: Wall-clock bound on the startup grounding probe. One search against a live HTTP provider; 120s
+#: is far past any healthy answer and far short of the watchdog's own cadence, so a wedge here
+#: self-heals long before anything else has to notice it.
+_STARTUP_PROBE_TIMEOUT_S = 120
+
+
 def _startup_grounding_check(cfg) -> None:
-    """Refuse to start if the grounding layer is dead — one dummy search first."""
-    from prospector.retrieval import DiskCache, make_provider
-    try:
-        provider = make_provider(cfg)
-        # Probe the LIVE stack, not the cache: the fixed probe query is cached after
-        # the first-ever run, so a DiskCache hit "passes" a dead retrieval stack
-        # (observed 2026-07-28: audit row provider=cache, cache_hit=true).
-        if isinstance(provider, DiskCache):
-            provider = provider.inner
-        provider.search("startup sanity check", k=1)
-        logger.info("Grounding layer healthy — daemon starting")
-    except Exception as e:
+    """Refuse to start if the grounding layer is dead — one dummy search first, time-bounded.
+
+    THE HOLE THIS CLOSES: this ran before the first tick, so before any heartbeat existed, and it
+    made a blocking network call with NO timeout of its own. A provider that accepts the TCP
+    connection and never answers wedges the daemon here permanently, and every recovery mechanism
+    reads past it:
+
+      * launchd `KeepAlive` restarts on process EXIT; a wedged-but-alive process never exits.
+      * `_liveness` reads the heartbeat, which at this point still holds the PREVIOUS run's
+        `sleeping`/`idle` beat, so the watchdog's kill lands on the OLD pid.
+      * `_kill_stale_daemon` then finds that pid gone (launchd already replaced it), logs
+        "already exited; launchd will relaunch" and returns satisfied — while the process it
+        should have killed goes on hanging. launchd HAS relaunched; the relaunch is the wedge.
+
+    Two independent fixes, deliberately both:
+
+      1. The probe runs on a daemon thread with a hard `join` bound, so a hang becomes an EXIT
+         and launchd's KeepAlive heals it. The thread is a daemon thread precisely so a socket
+         read stuck in the kernel cannot hold the interpreter open on the way out.
+      2. A `starting` heartbeat is written BEFORE the probe, so the file names the pid that is
+         actually at risk and `_liveness` has a phase to judge (see its `starting` branch). This
+         is the backstop for a wedge the bound cannot cover, and it is what turns "invisible" into
+         "one stale-heartbeat line naming the wedged pid".
+
+    Coverage boundary, stated rather than implied: the heartbeat starts here, so a hang in
+    `_load_env_file`, `load_config` or `_route_ledger` — all local filesystem work, none of it a
+    network call — is still outside it.
+    """
+    _write_heartbeat(cfg, phase="starting", probe_timeout_s=_STARTUP_PROBE_TIMEOUT_S)
+    outcome: dict = {}
+
+    def _probe() -> None:
+        try:
+            from prospector.retrieval import DiskCache, make_provider
+            provider = make_provider(cfg)
+            # Probe the LIVE stack, not the cache: the fixed probe query is cached after
+            # the first-ever run, so a DiskCache hit "passes" a dead retrieval stack
+            # (observed 2026-07-28: audit row provider=cache, cache_hit=true).
+            if isinstance(provider, DiskCache):
+                provider = provider.inner
+            provider.search("startup sanity check", k=1)
+            outcome["ok"] = True
+        except BaseException as exc:  # noqa: BLE001 — carried to the caller, which re-raises it
+            outcome["error"] = exc
+
+    probe = threading.Thread(target=_probe, name="startup-grounding-probe", daemon=True)
+    probe.start()
+    probe.join(_STARTUP_PROBE_TIMEOUT_S)
+    if probe.is_alive():
+        raise RuntimeError(
+            f"REFUSING TO START: the grounding probe did not answer within "
+            f"{_STARTUP_PROBE_TIMEOUT_S}s — the provider took the connection and never replied. "
+            f"Exiting so launchd KeepAlive relaunches: a relaunch costs one probe, while hanging "
+            f"here costs every tick until a human notices."
+        )
+    if "error" in outcome:
         raise RuntimeError(
             f"REFUSING TO START: grounding provider is dead on arrival. "
             f"Fix search API keys/credits before starting Prospector. "
-            f"Error: {e}"
-        ) from e
+            f"Error: {outcome['error']}"
+        ) from outcome["error"]
+    logger.info("Grounding layer healthy — daemon starting")
 
 
 def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn=None,
@@ -1068,6 +1136,21 @@ def _liveness(cfg) -> tuple[bool, str]:
         if age_min > budget:
             return False, (f"'sleeping' heartbeat {ages} (> interval+grace {budget:.0f}); "
                            f"loop likely dead")
+    # `starting` — the pre-first-tick window, and the ONLY phase whose work has no in-process
+    # deadline Timer behind it (the Timers live inside `run_tick`). Its budget is the startup
+    # probe's own bound plus grace, read from the heartbeat so a config or constant change cannot
+    # strand it: `_startup_grounding_check` stamps `probe_timeout_s` in the beat it writes.
+    #
+    # Without this branch `starting` matched nothing and fell through to the "alive" return below
+    # — the same fall-through that reported a wedged `draining` tick healthy forever. Here it
+    # mattered more, because a wedge at startup is the one case where the heartbeat's pid is the
+    # only way `_kill_stale_daemon` can find the process that is actually stuck.
+    if phase == "starting":
+        budget = beat.get("probe_timeout_s", _STARTUP_PROBE_TIMEOUT_S) / 60 + 5
+        if age_min > budget:
+            return False, (f"stuck in 'starting', heartbeat {ages} (> probe bound + grace "
+                           f"{budget:.0f} min) — startup wedged before the first tick, so no "
+                           f"in-process deadline covers it")
     if phase in ("evaluating", "idle") and age_min > 45:
         return False, f"stuck in '{phase}', heartbeat {ages}"
     return True, f"alive (phase={phase}, {age_min:.1f} min ago)"

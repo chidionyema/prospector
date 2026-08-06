@@ -72,6 +72,17 @@ class Store:
         self.db: Path = self._root / "prospector.db"
         self._init_db()
 
+    @property
+    def root(self) -> Path:
+        """The store directory this catalogue lives in (`cfg.store_dir`).
+
+        Public because the drain's attempt ledger (`prospector/drain_state.py`) is a sidecar
+        under the same directory, and the two callers that must agree on the backlog — the
+        drain and the scheduler's brake — reach it through the Store they already hold rather
+        than each deriving a path from a Config.
+        """
+        return self._root
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -239,6 +250,27 @@ class Store:
         if not p.exists():
             return None
         return json.loads(p.read_text(encoding="utf-8"))
+
+    def has_dossier(self, candidate_id: str) -> bool:
+        """True if this index row has a file behind it — the cheap half of `get()`.
+
+        Same criterion `get()` uses (row present AND its path exists on disk), without reading
+        or parsing the JSON. It exists because the scheduler's backlog brake surveys the WHOLE
+        drainable population once per tick to decide whether generation may run: at the live
+        backlog that is ~340 dossiers, and `get()` would read and json-parse every one of them
+        to answer a question that is one stat call.
+        """
+        if not candidate_id:
+            return False
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT path FROM dossiers WHERE candidate_id = ?",
+                (candidate_id,),
+            ).fetchone()
+        if row is None:
+            return False
+        p = str(row["path"] or "")
+        return bool(p) and Path(p).exists()
 
     def all(self, decision: Optional[str] = None,
              ambition_tier: Optional[str] = None) -> list[dict]:
