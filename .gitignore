@@ -113,3 +113,6 @@ store/scheduler/ALERT.txt
 store/scheduler/alert_state.json
 store/scheduler/watchdog.*.log
 store/scheduler/launchd.*.log
+
+# local pytest CLI-slot locks (per-agent, machine-local)
+.pytest-slots/
