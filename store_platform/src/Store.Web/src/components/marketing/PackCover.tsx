@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
 import type { Pack } from '@/lib/api/client';
@@ -42,10 +43,21 @@ export default function PackCover({ pack, className }: PackCoverProps) {
       )}
     >
       <span className="flex min-w-0 items-center gap-2">
-        {/* The dot is the only colour here, and it is decorative in the a11y sense: the sector
-            name sits immediately beside it, so nothing is encoded in hue alone. */}
-        <span className={cx('h-2 w-2 flex-none rounded-full', cat.dot)} aria-hidden="true" />
-        {cat.tagged && <span className="truncate text-caption font-medium text-muted">{cat.label}</span>}
+        {/* The sector badge, matching the shelf card. Hue is decoration and the label identifies
+            (see `lib/category.ts`), so an untagged pack renders nothing at all here rather than a
+            mute marker with no word beside it. */}
+        {cat.tagged && (
+          <span
+            className={cx(
+              'inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-medium',
+              cat.tint,
+              cat.ink,
+            )}
+          >
+            <Icon name={cat.icon} size={12} className="flex-none" />
+            <span className="truncate">{cat.label}</span>
+          </span>
+        )}
       </span>
       {/* Mono, because these are identifiers rather than prose: the dossier reference a buyer
           quotes in a support email, and the market the listing is priced for. */}

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * The pack page's "Six ways we tried to kill it" block is STATIC, it is the same six lines on
+ * The pack page's "How we tried to kill it" block is STATIC, it is the same six lines on
  * every pack, because `PackDetails` (lib/api/client.ts) carries no per-check verdicts. A static
  * list may therefore only state what is true of every listed pack.
  *
@@ -82,7 +82,7 @@ describe('the six-checks block claims no per-pack finding', () => {
 
   it('says out loud that finding nothing is not a green light', () => {
     // The block's own prose is what carries the honest reading now that the lines are neutral.
-    const heading = PAGE.slice(PAGE.indexOf('Six ways we tried to kill it'));
+    const heading = PAGE.slice(PAGE.indexOf('How we tried to kill it'));
     expect(heading.slice(0, 900)).toContain('not the same as finding a green light');
   });
 });

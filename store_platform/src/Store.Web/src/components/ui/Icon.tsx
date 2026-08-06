@@ -39,6 +39,10 @@ import {
   Trash2Icon,
   FileTextIcon,
   PlusIcon as PlusSignIcon,
+  PawPrintIcon,
+  KeyIcon,
+  PackageIcon,
+  PaletteIcon,
 } from "lucide-react";
 
 /**
@@ -94,6 +98,15 @@ const ICON_MAP = {
      piece of vendor artwork on every OS. */
   document: FileTextIcon,
   plus: PlusSignIcon,
+  /* Four sector marks added 2026-08-06. The pack cover draws the sector icon at 40px and again at
+     96px, so it is now the largest element on a card -- and three pairs of sectors were sharing
+     one glyph (`home` for housing AND pets, `gavel` for licensing AND probate, `briefcase` for
+     professional services AND "specialist niches", 26 of the 63 live packs between them). Two
+     cards side by side with the same large mark read as the same product. */
+  paw: PawPrintIcon,
+  key: KeyIcon,
+  package: PackageIcon,
+  palette: PaletteIcon,
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

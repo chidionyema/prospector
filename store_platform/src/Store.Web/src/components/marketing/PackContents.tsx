@@ -139,12 +139,22 @@ export function PackContentsSection({
         ))}
       </ul>
 
-      {/* Format ambiguity kills digital conversions. State the file format outright. */}
+      {/* Format ambiguity kills digital conversions, so the format still gets stated outright --
+          but it no longer LEADS. This box opened "Format: one zip of plain Markdown files", which
+          answers "what is the container?" before the reader has been told what is in it. Markdown
+          and zip are engineer words for a shopper, and putting them in the first three words made
+          the £49 purchase sound like a developer artefact rather than eight finished documents.
+
+          The order is now substance, then portability, then container. Every fact in the old
+          sentence survives; the zip is at the end, where it reads as "and it opens anywhere"
+          rather than as the description of what you are buying. */}
       <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-[60ch] text-meta text-muted">
-          <span className="font-medium text-text">Format:</span> one zip of plain Markdown files, 5,000+ words
-          per pack. Open it anywhere, edit it, or paste it straight into Notion, Obsidian or your AI tool of
-          choice. No PDF viewer, no login, no subscription.
+        <p className="max-w-[62ch] text-meta text-muted">
+          <span className="font-medium text-text">{PACK_CONTENTS.length} documents, 5,000+ words,
+          yours to keep.</span>{' '}
+          Read them, edit them, or paste them straight into Notion, Obsidian or your AI tool of
+          choice. They are plain text files in a zip, so there is no PDF viewer, no login and no
+          subscription between you and them.
         </p>
         <span className="inline-flex flex-none items-center gap-2 text-meta font-medium text-text">
           <Icon name="download" size={16} className="text-success" />

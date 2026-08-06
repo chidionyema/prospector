@@ -182,7 +182,13 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
       /border-l-primary|border-l-\[3px\]/,
     );
     expect(cardLinkClasses, 'card must not have rounded-xl').not.toMatch(/rounded-xl/);
-    assertContains('card padding', packCard, 'px-4');
+    // Was pinned to the literal `px-4`. The guard that matters is "the card body is not edge to
+    // edge text"; which step of the spacing scale draws that gutter is a look decision, and
+    // pinning one of them made a 16px-to-20px gutter change register as a contract breach. The
+    // body now runs `p-5`, so the assertion asks for a padding utility on the 4 or 5 step.
+    expect(packCard, 'card body must carry a padding utility (p-4/p-5/px-4/px-5)').toMatch(
+      /\b(p|px)-[45]\b/,
+    );
   });
 
   it('answers hover with a lift and a stronger edge, not a background wash', () => {
@@ -199,23 +205,38 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
    * Added 2026-08-01 with the card's three tiers. This is the assertion the old contract had no
    * equivalent of, and its absence is why the regression went unseen for as long as it did:
    * sources and freshness were entries 7 and 8 of a list sliced to 5, so proof lost every tie
-   * against a descriptive tag — and lost more often as facet coverage improved. Measured on the
+   * against a descriptive tag -- and lost more often as facet coverage improved. Measured on the
    * live catalogue that day (n=51): `verifiedAt` present on 51, freshness rendered on 2.
+   *
+   * MOVED, NOT DROPPED (2026-08-06). It used to require `sources` and `fresh` inside PackCard.
+   * The v3 card renders neither, deliberately: `29 sources - Verified 4 days ago` on every tile is
+   * a claim about our research effort, not a fact the buyer can act on ("is 29 good?" has no
+   * answer on a card), and a freshness stamp on a research product reads as a shelf life on a
+   * shelf where the oldest item is the one you are about to buy. The rationale is written out in
+   * full above `PackCard` in `pages/index.tsx`.
+   *
+   * So the assertion follows the numbers to where they now live -- the shelf toolbar, stated once
+   * -- and keeps the part that was load-bearing: the freshness figure is still DERIVED FROM THE
+   * DATA and still cannot be truncated away by a cap. Asserting it in the toolbar is what stops
+   * the real regression, which was never "the card lost a line" but "`verifiedAt` is present on
+   * every pack and rendered on almost none".
    */
-  it('renders the proof tier outside any capped chip row', () => {
-    // The defect this guards is unchanged; only the carrier is. `<ProofLine>` was deleted with
-    // the gradient card on 2026-08-06 and the evidence row is now rendered inline in PackCard,
-    // so the assertion follows it: the source count and the freshness date must appear in the
-    // card body and must not be fed through anything that truncates.
-    assertContains('source count', packCard, 'sources');
-    assertContains('freshness', packCard, 'fresh');
-    expect(packCard, 'the evidence row must not be capped by CARD_META_MAX').not.toMatch(
-      /CARD_META_MAX[\s\S]{0,200}sources/,
+  it('states the proof tier once on the shelf, outside any capped chip row', () => {
+    assertContains('freshness is derived from the data', page, 'freshnessLabel(');
+    assertContains('freshness reads verifiedAt', page, 'verifiedAt');
+
+    // The toolbar caption: the visible count and the catalogue's freshness in one mono line.
+    const toolbar = /font-mono[^`'"]*text-caption[\s\S]{0,300}?lastVerified/.exec(page);
+    expect(
+      toolbar,
+      'the count + freshness must render as their own mono caption on the shelf toolbar',
+    ).not.toBeNull();
+
+    // Nothing that truncates may stand between the data and that caption. `CARD_META_MAX` is
+    // gone from the tree entirely; this keeps failing if any cap is reintroduced upstream of it.
+    expect(page, 'the proof figures must not be fed through a cap').not.toMatch(
+      /CARD_META_MAX[\s\S]{0,200}(sources|lastVerified)/,
     );
-    // The chip row above it may still be capped -- that is what the cap is for. What must never
-    // happen again is proof competing for those slots and losing.
-    const evidenceRow = /font-mono[^`'"]*text-caption[\s\S]{0,400}?sources/.exec(packCard);
-    expect(evidenceRow, 'the evidence row must be its own mono row, not a chip').not.toBeNull();
   });
 });
 

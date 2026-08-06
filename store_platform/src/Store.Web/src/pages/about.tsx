@@ -4,6 +4,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon, buttonClasses, textLinkClass } from '@/components/ui';
 import { BRAND } from '@/lib/config';
+import FounderNote from '@/components/marketing/FounderNote';
 import killTotals from '@/data/kill-log-totals.json';
 
 /**
@@ -11,7 +12,7 @@ import killTotals from '@/data/kill-log-totals.json';
  *
  * The audit (§6) said the store was "a single voice" with no face. The
  * about page is the human face of the brand. It explains the engine, the
- * six checks, the kill log, and the "source-or-die" voice. The story is
+ * checks, the kill log, and the "source-or-die" voice. The story is
  * the moat; the page is the moat rendered as a person.
  */
 export default function AboutPage() {
@@ -20,7 +21,7 @@ export default function AboutPage() {
     <MarketingLayout>
       <Seo
         title={`About ${BRAND.name} - the engine behind the packs`}
-        description={`How ${BRAND.name} works: an engine that tries to kill every business idea on six checks. ${totals.killed} killed, ${totals.passed} survived.`}
+        description={`How ${BRAND.name} works: an engine that tries to kill every business idea on cited evidence. ${totals.killed} killed, ${totals.passed} survived.`}
       />
 
       <section className="mx-auto max-w-3xl px-6 py-16 md:py-24">
@@ -31,24 +32,45 @@ export default function AboutPage() {
           We try to kill every idea.
         </h1>
         <p className="mt-4 max-w-[60ch] text-body leading-relaxed text-muted md:text-h2">
-          {BRAND.name} is an engine that runs business ideas through six
-          brutal checks. The ones that die on the first front where cited
-          evidence is found against them are not listed. The ones that
-          survive all six are the {BRAND.name} packs. Right now the kill
+          {BRAND.name} is an engine that runs business ideas through a
+          gauntlet of brutal checks. The ones that die on the first front
+          where cited evidence is found against them are not listed. The
+          ones that survive are the {BRAND.name} packs. Right now the kill
           count is{' '}
           <span className="font-semibold text-text">{totals.killed.toLocaleString('en-GB')}</span>
           {' '}and the survivors are{' '}
           <span className="font-semibold text-text">{totals.passed}</span>.
         </p>
 
+        {/* The person, directly under the claim, and before the machinery.
+            This page's own docblock has said since it was written that it is "the human face of
+            the brand" and "the moat rendered as a person", and it named nobody -- 453 words about
+            an engine. Renders nothing until `FOUNDER.name` is set in `lib/config.ts`, so the page
+            is never worse than it was, and is materially better the moment a real name exists. */}
+        <FounderNote variant="full" className="mt-10" />
+
         <div className="mt-12">
           <h2 className="text-h2 font-semibold text-text md:text-h1">
-            The six checks
+            The checks
           </h2>
           <p className="mt-2 max-w-[60ch] text-body text-muted">
-            Every idea is attacked on the same six fronts. An idea dies on
+            Every idea is attacked on the same fronts. An idea dies on
             the first front where cited evidence is found against it. A
-            listed pack is one where none of the six produced that evidence.
+            listed pack is one where no hard gate produced that evidence.
+          </p>
+          {/* Honest about the denominator. Measured 2026-08-06 against the live /catalog detail
+              endpoint across all 63 published packs: 40 report "6/6 checks cleared", 15 "8/8",
+              4 "7/8", 3 "9/9", 1 "6/8". Copy that promised "all six" was false for 23 of them,
+              so this page names the six core fronts and then says plainly that some lanes run
+              more (config.yaml `lanes.side_hustle` adds buyer_intent, currency and
+              claims_verifiable). The per-pack truth is on the pack page, which has always
+              rendered the engine's real numerator and denominator. */}
+          <p className="mt-2 max-w-[60ch] text-body text-muted">
+            Six fronts are common to every idea. Some face more: a small
+            side-business idea is also tested on whether buyers are actively
+            searching, whether the trend is still current, and whether its
+            claims can be checked. Each pack page names the checks that idea
+            faced and how many it cleared.
           </p>
           {/* Two columns from `sm` up. Six numbered cards holding three words and a short question
               each, stacked full width, ran the length of the viewport with most of every card
@@ -103,11 +125,13 @@ export default function AboutPage() {
           <h2 className="text-h2 font-semibold text-text md:text-h1">
             What a pack actually is
           </h2>
+          {/* Was "Each pack is a file you own. ZIP of Markdown. Opens anywhere." -- three sentences
+              about the container before a single word about what is in it. The documents lead now;
+              the format is the last clause, where it belongs. */}
           <p className="mt-2 max-w-[60ch] text-body text-muted">
-            Each pack is a file you own. ZIP of Markdown. Opens anywhere.
-            No login, no dashboard, no subscription. The deliverable is a
-            real artefact, dated at publish. The build spec, the GTM plan,
-            the operations playbook, the QA report, every claim cited.
+            A build spec, a go-to-market plan, an operations playbook and a QA report, with a
+            citation behind every claim and a date stamped at publish. Yours outright: no login, no
+            dashboard, no subscription, and plain text files you can open anywhere.
           </p>
           <p className="mt-4 max-w-[60ch] text-body text-muted">
             See one for free, no card, no email, on the{' '}

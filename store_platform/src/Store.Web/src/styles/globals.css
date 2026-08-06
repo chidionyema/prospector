@@ -103,6 +103,50 @@
      ledger card. Six tokens existed solely to make text legible on a surface that no longer
      exists. --gold was already an alias of --success and is deleted too. */
 
+  /* CATEGORY SCALE. One hue per sector, restored 2026-08-06 after the shelf was measured as
+     visually inert -- zero images and no colour on a page selling 63 products, so it read as
+     documentation rather than a shop.
+
+     This is NOT the eight-hue set that was deleted earlier the same day. That set collided four
+     ways across twelve sectors and was defended as a "discovery affordance" it could not deliver.
+     The rule that replaces the defence, and the reason all twelve values may exist at once:
+
+       HUE IS DECORATION. THE LABEL IDENTIFIES.
+
+     That is a measured conclusion, not a preference. Twelve values excluding the reserved red
+     (killed) and green (survived) families cannot be held apart by eye: after tuning, the
+     tightest pair is trades #7A4A0B / retail #854D0E at TWO degrees of hue separation. Nobody
+     can name a sector from that. So the sector name renders beside the marker always, and an
+     UNTAGGED pack renders no marker at all rather than a mute dot that says nothing.
+
+     Every value below is measured at >= 4.5:1 against the surface it is actually PRINTED on,
+     which is neither --bg nor --surface2: the sector name and the cover mark both sit on
+     `bg-cat-X/10`, i.e. 10% of the hue itself composited over --surface (#FFFFFF). The ratio
+     annotated beside each token is that composite. An earlier revision annotated them against a
+     flat #F4F4F5, which is not a token this stylesheet declares and not a surface any element on
+     the page paints -- and four of the twelve did not even hold on that basis (licensing was
+     annotated 6.44 where #F4F4F5 gives 7.17, trades 5.53 where it gives 6.79, retail 5.24 where it
+     gives 6.23, energy 6.79 where it gives 6.88). On the real composite the tightest is
+     care_benefits at 4.75:1, which still clears AA. None is byte-equal to
+     --danger/--danger-strong/--success/--success-strong/--accent/--warning/--warning-strong/
+     --info. Both properties are asserted by lib/__tests__/categoryScale.test.ts, which recomputes
+     the composite from these tokens rather than trusting the annotations.
+
+     Names are the engine's `sector` keys verbatim (`lib/facets.ts`), not colour names, so a
+     renamed sector fails the build instead of silently keeping a stale hue. */
+  --cat-licensing-admin: #9D174D;        /* 6.63:1 on its own badge tint */
+  --cat-employment-pay: #6D28D9;         /* 6.04:1 on its own badge tint */
+  --cat-housing-rental: #1D4ED8;         /* 5.72:1 on its own badge tint */
+  --cat-care-benefits: #0F766E;          /* 4.75:1 on its own badge tint */
+  --cat-trades-construction: #7A4A0B;    /* 6.42:1 on its own badge tint */
+  --cat-pets-animals: #155E75;           /* 6.25:1 on its own badge tint */
+  --cat-creative-rights: #A21CAF;        /* 5.36:1 on its own badge tint */
+  --cat-property-probate: #4338CA;       /* 6.71:1 on its own badge tint */
+  --cat-energy-planning: #075985;        /* 6.44:1 on its own badge tint */
+  --cat-retail-inventory: #854D0E;       /* 5.90:1 on its own badge tint */
+  --cat-professional-services: #374151;  /* 8.72:1 on its own badge tint */
+  --cat-other: #4B5563;                  /* 6.51:1 on its own badge tint */
+
   /* ELEVATION. Borders draw edges; shadows communicate POSITION and nothing else. */
   --shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
   --shadow-2: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.10);
@@ -143,6 +187,25 @@
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
   --color-highlight: var(--highlight);
+
+  /* The category scale, exposed so the `text-cat-` and `bg-cat-` utilities compile. The badge
+     tint is an alpha of the same token (a trailing slash-10 on the class) rather than twelve more
+     `-bg` values: one source per hue means a tint can never drift from the ink sitting on it.
+
+     Do not write that alpha class literally in a CSS comment -- the slash-star it contains closes
+     the comment early, which is exactly how this block first shipped a 500. */
+  --color-cat-licensing-admin: var(--cat-licensing-admin);
+  --color-cat-employment-pay: var(--cat-employment-pay);
+  --color-cat-housing-rental: var(--cat-housing-rental);
+  --color-cat-care-benefits: var(--cat-care-benefits);
+  --color-cat-trades-construction: var(--cat-trades-construction);
+  --color-cat-pets-animals: var(--cat-pets-animals);
+  --color-cat-creative-rights: var(--cat-creative-rights);
+  --color-cat-property-probate: var(--cat-property-probate);
+  --color-cat-energy-planning: var(--cat-energy-planning);
+  --color-cat-retail-inventory: var(--cat-retail-inventory);
+  --color-cat-professional-services: var(--cat-professional-services);
+  --color-cat-other: var(--cat-other);
 
   /* Typography Overhaul - Exclusively Sans. These name the family _app.tsx actually downloads.
      The list used to start with "Inter", which nothing ever loaded, so the real typeface was

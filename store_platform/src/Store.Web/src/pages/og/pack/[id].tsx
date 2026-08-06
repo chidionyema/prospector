@@ -121,7 +121,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
               fontWeight: 500,
             }}
           >
-            Survived all six checks
+            Survived every check it faced
           </div>
           <div
             style={{

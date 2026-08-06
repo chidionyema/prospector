@@ -55,13 +55,38 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
           {/* Was "One price, every pack." The mode is stated alongside the spread on purpose:
               quoting only "from £29" when most packs are dearer is the airline-fare move. */}
           {range ? priceSentence(range) : 'One payment, yours forever. The price is on each pack\'s own page.'}{' '}
-          No seat fees, no drip-feed. If a pack survives six checks
+          No seat fees, no drip-feed. If a pack survives the filter
           it is listed. If it does not, it is in the{' '}
           <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">
             kill log
           </Link>
           .
         </p>
+
+        {/* WHY ONE PACK COSTS MORE THAN ANOTHER, stated as its own block.
+            This was a trailing subclause on the paragraph below ("...whether it is £29 or £199. The
+            price reflects the size of the opportunity, never the size of the download"), which is
+            the correct answer given in the one position where nobody looking for it would find it:
+            appended to a sentence about the contents list. The pricing page's single job is this
+            question. It gets a heading. */}
+        {range && !range.uniform && (
+          <div className="mt-12 rounded-md border border-border bg-surface2 p-6 md:p-8">
+            <h2 className="text-h2 font-semibold text-text">
+              Why one pack is {formatGbp(range.min)} and another is {formatGbp(range.max)}
+            </h2>
+            <p className="mt-3 max-w-[60ch] text-body text-muted">
+              The price follows the size of the opportunity the research found, never the size of
+              the download. A weekend side business and a venture-scale market get the same{' '}
+              {PACK_CONTENTS.length} documents, researched to the same standard and held to the same
+              bar. What differs is how much is on the table if it works.
+            </p>
+            <p className="mt-3 max-w-[60ch] text-meta text-subtle">
+              The ladder is fixed and published in advance, so a pack&apos;s price is decided by
+              which rung its opportunity lands on, not by what we think you will pay for it. A
+              cheaper pack is not a thinner one.
+            </p>
+          </div>
+        )}
 
         {/* What's included */}
         <div className="mt-12">
@@ -70,9 +95,7 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
             Every pack is the same shape: {PACK_CONTENTS.length} documents, sourced
             and cited. No tier, no upsell, no add-on. The list below is
             identical for every pack on the shelf
-            {range && !range.uniform
-              ? `, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}. The price reflects the size of the opportunity, never the size of the download`
-              : ''}
+            {range && !range.uniform ? `, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}` : ''}
             .
           </p>
           {/* Two columns from `sm` up, matching `PackContents` (the same eight items, rendered on

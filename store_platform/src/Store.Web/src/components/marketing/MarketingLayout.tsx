@@ -189,6 +189,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 <li><Link href="/ideas" className="text-meta text-muted transition-colors hover:text-text">Categories</Link></li>
                 <li><Link href="/how-it-works" className="text-meta text-muted transition-colors hover:text-text">How it works</Link></li>
                 <li><Link href="/kill-log" className="text-meta text-muted transition-colors hover:text-text">Kill log</Link></li>
+                {/* `/about` had ZERO inbound links from anywhere on the site (verified 2026-08-06:
+                    `href="/about"` matched no file under src/). The page has existed and been
+                    maintained the whole time -- it was simply unreachable except by typing the URL,
+                    which means a visitor asking the single most common question about an anonymous
+                    shop ("who is running this?") had no way to find the page that answers it. */}
+                <li><Link href="/about" className="text-meta text-muted transition-colors hover:text-text">Who makes this</Link></li>
                 <li><Link href="/faq" className="text-meta text-muted transition-colors hover:text-text">FAQ</Link></li>
               </ul>
             </div>

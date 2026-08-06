@@ -86,10 +86,14 @@ export default function SamplePage() {
   const checks = report.checks as Check[];
   const scores = report.scores as Record<string, number>;
   const axes = Object.entries(AXIS_LABELS).filter(([k]) => k in scores);
+  /* Counted from the checks themselves, never from `report.total - report.supported`. The JSON's
+     `total` is what produced the "7 of 8" fraction this page no longer states, and a derived count
+     that disagrees with the rendered rows is exactly the kind of drift the fraction caused. */
+  const pushedBack = checks.filter((c) => c.verdict !== 'supported').length;
 
   return (
     <MarketingLayout>
-      <Seo title="Report #00, free. Read a whole stress-tested business report for zero pence." />
+      <Seo title="Report #00, free. A complete stress-tested business report, nothing held back." />
 
       {/* Hero. Left-aligned, like every other marketing hero on the site.
           This one was hand-rolled with `text-center` and a stack of `mx-auto`s, so /sample -- the
@@ -102,19 +106,49 @@ export default function SamplePage() {
         <p className="mb-4 text-caption font-medium text-muted">
           Report #00 · The free sample
         </p>
+        {/* WAS "Don't trust us? Read a whole report for zero pence."
+            It opens by putting the accusation in the reader's mouth. Most people arriving here have
+            no opinion of us yet; the sentence hands them one, and the one it hands them is
+            suspicion. "Zero pence" is the same reflex in the price: a shop that will not simply say
+            "free" sounds like it is bracing for an argument.
+            The headline states what the thing IS. The reader can decide what it proves. */}
         <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text md:text-display">
-          Don&apos;t trust us? Read a whole report for zero pence.
+          A whole report. Free, and nothing held back.
         </h1>
         <p className="mt-6 max-w-[60ch] text-body leading-relaxed text-muted">
-          This is one full verification dossier, unredacted. Every check, every verdict, and every clickable
-          source behind it. The same rigour sits behind every pack in the catalogue. Read this one first,
-          on the house.
+          One complete pack, exactly as a buyer receives it: the opportunity, who pays, the numbers,
+          every check, and the sources behind each one. Including the objection this idea did not
+          fully answer.
         </p>
+        {/* WAS "7 of 8 checks survived", and it read as a fail.
+            A score with a denominator is an exam mark, and a shop that says "listed only once it
+            clears every check" on its home page then opened its flagship free sample with a mark of
+            7/8. The reader's only available conclusion is that we published something that failed
+            one -- so the page built to answer "can I trust these people" was the page that raised
+            the doubt.
+
+            Both numbers were always true; the framing was the bug. The seven are the gates, and all
+            seven cleared. The eighth is the adversarial claim-check, and it pushed back: the engine
+            found an existing snagging-survey service that contradicts part of the pitch, cited it
+            (snagged.co.uk), and the pack shipped WITH that objection attached. Publishing the
+            objection is the entire product; scoring it as a lost mark out of eight buried it.
+
+            Stated as two facts rather than one fraction, and the second one is a link, because the
+            objection is the most persuasive thing on this page. */}
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-meta font-semibold text-muted">
           <span className="inline-flex items-center gap-2">
             <Icon name="check" size={14} className="text-success" />
-            {report.supported} of {report.total} checks survived
+            {report.supported} checks cleared
           </span>
+          {pushedBack > 0 && (
+            <a
+              href="#pushback"
+              className="inline-flex items-center gap-2 text-warning underline-offset-2 hover:underline"
+            >
+              <Icon name="shield" size={14} />
+              {pushedBack === 1 ? '1 objection we could not dismiss' : `${pushedBack} objections we could not dismiss`}
+            </a>
+          )}
           <span className="inline-flex items-center gap-2">
             <Icon name="verified" size={14} className="text-success" />
             {report.sourceCount} cited sources
@@ -185,15 +219,34 @@ export default function SamplePage() {
         {/* The checks */}
         <div className="mt-10">
           <h2 className="text-h2 font-semibold text-text">Every check, every source</h2>
-          <p className="mt-2 max-w-[60ch] text-meta text-muted">
-            Each gate is an attack the idea had to survive. Open any source and read it yourself. Nothing here
-            is our opinion. It is what the pages actually said.
+          {/* The second sentence exists to answer the question the amber row below provokes and
+              previously left hanging: "one of these failed, so why are you selling it?" The answer
+              is that a hard gate failing stops a pack from ever being listed, and this one is not a
+              hard gate -- it is the adversarial pass, whose job is to find the best argument
+              against an idea that already cleared the gates. Left unanswered, the reader supplies
+              the worse explanation. */}
+          <p className="mt-2 max-w-[64ch] text-meta text-muted">
+            Each gate is an attack the idea had to survive. Fail a gate and a pack is never listed
+            at all. The amber one below is not a gate: it is the adversarial pass, and what it found
+            ships with the report instead of being quietly dropped. Open any source and read it
+            yourself. None of this is our opinion; it is what the pages actually said.
           </p>
           <ul className="mt-6 list-none space-y-4 p-0">
             {checks.map((ch, i) => (
               <li
                 key={i}
-                className="rounded-md border border-border bg-surface p-5 md:p-6"
+                /* The FIRST pushed-back check carries the `#pushback` anchor the hero links to,
+                   and the whole card is tinted rather than only its badge. A reader who clicks
+                   "1 objection we could not dismiss" has to land on something that looks like the
+                   thing they clicked; scrolling them to a row identical to the seven above it
+                   makes the link feel broken. `scroll-mt-24` clears the sticky header. */
+                id={ch.verdict !== 'supported' && checks.findIndex((c) => c.verdict !== 'supported') === i ? 'pushback' : undefined}
+                className={cx(
+                  'rounded-md border p-5 md:p-6 scroll-mt-24',
+                  ch.verdict === 'supported'
+                    ? 'border-border bg-surface'
+                    : 'border-warning/30 bg-warning/5',
+                )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-body font-semibold text-text">{ch.name}</h3>

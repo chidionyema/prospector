@@ -11,6 +11,7 @@ import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackC
 import { DossierPreview } from '@/components/marketing/DossierPreview';
 import LiveKillCard from '@/components/marketing/LiveKillCard';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
+import FounderNote from '@/components/marketing/FounderNote';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
@@ -22,7 +23,7 @@ import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, Cat
 import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/fx';
 import { track } from '@/lib/analytics';
 import { priceRange, formatGbp } from '@/lib/priceRange';
-import { categoryFor } from '@/lib/category';
+import { categoryFor, type Category } from '@/lib/category';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
   cardHeading,
@@ -66,20 +67,12 @@ interface HomeProps {
   personalised: Pack[];
 }
 
-type PillIcon = 'check' | 'shield' | 'download' | 'lock' | 'money';
-
-/* One factual line, an icon and a label. The green circle behind the icon is gone (brand v3):
-   it made three terms of sale look like three achievements, and it was the only place on the page
-   where `--success` carried no meaning -- success on this site means "a check passed", and
-   "14-day money back" is not a check that passed. */
-function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
-  return (
-    <div className="flex items-center gap-2 text-meta text-muted">
-      <Icon name={icon} size={16} />
-      {label}
-    </div>
-  );
-}
+/*
+ * `TrustPill` was DELETED with its only call site (2026-08-06, second pass). It rendered an icon
+ * and a factual line, and the row it built restated `TrustGuaranteesRow` exactly. Kept as a note
+ * rather than a component: the next person who wants a reassurance row on this page should add it
+ * to that row, which is the one place the purchase terms are allowed to be stated.
+ */
 
 /*
  * `CategoryPill`, `Cover` and `ProofLine` were deleted on 2026-08-06 with the gradient card.
@@ -118,13 +111,53 @@ function TrustPill({ icon, label }: { icon: PillIcon; label: string }) {
  *
  * The category dot is the only colour on the card.
  */
-function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
+/**
+ * A product card.
+ *
+ * Rewritten 2026-08-06 (second pass) against a rendered-page critique the founder accepted in
+ * full. What it used to be: a hairline plate whose top row carried the sector on the left and
+ * `UK № FCF4A5` on the right, then title, then a mono evidence line reading `29 sources ·
+ * Verified 4 days ago`, then price and a text "View pack".
+ *
+ * Four things were wrong with that, and each maps to a change below.
+ *
+ * 1. THE CARD HAD NO PICTURE, AND NEITHER DID ANYTHING ELSE. The rendered page carried zero
+ *    images across 63 products. There is no photography for a business blueprint, so the cover is
+ *    generated: the sector's hue at 10%, its icon at 40px, and a deterministic offset so two
+ *    adjacent cards in the same sector do not look like a repeat. This is not decoration for its
+ *    own sake -- it is the only thing on the shelf that lets you scan by shape instead of by
+ *    reading, and reading 63 titles is what made the page feel like documentation.
+ *    (`lib/cover.ts` + `ui/CoverArt.tsx` did something like this and were deleted earlier the
+ *    same day as unreferenced. They were unreferenced because the card had stopped using them,
+ *    not because a shelf does not need covers.)
+ * 2. `№ FCF4A5` IS DEBUG OUTPUT. A truncated uppercase hash of the pack id, printed on a product,
+ *    in mono, at the same size as the sector. It identifies nothing a buyer can act on.
+ * 3. `29 sources · Verified 4 days ago` IS A CLAIM ABOUT US, NOT A BENEFIT TO THEM. "Is 29 good?"
+ *    has no answer on a card, and a freshness stamp on a research product reads as a shelf life --
+ *    it makes the thing look like it expires. Both move to the pack page, where there is room to
+ *    say what they mean.
+ * 4. "View pack" WAS TEXT. On a shelf where the entire card is already a link, the affordance
+ *    that converts is a button with a filled background; a grey caption next to a price is the
+ *    weakest possible terminal element on the most important row.
+ *
+ * The sector name renders whenever `cat.tagged`, and NOTHING renders when it is false -- see the
+ * rule in `lib/category.ts`: hue is decoration, the label identifies.
+ */
+function PackCard({
+  pack,
+  currency,
+  viewerMarket,
+}: {
+  pack: Pack;
+  currency: Currency;
+  /* The market this reader is browsing. Used ONLY to suppress the cover's market chip when it
+     would be true of every card on screen -- see `PackCoverArt`. Optional so a caller with no
+     market context (the hero's featured slot renders before any grouping) simply gets the chip. */
+  viewerMarket?: string;
+}) {
   const cat = categoryFor(pack);
   const { heading, sub } = cardHeading(pack);
   const line = pack.oneLine || sub;
-  const sources =
-    typeof pack.sourceCount === 'number' && pack.sourceCount > 0 ? pack.sourceCount : null;
-  const fresh = freshnessLabel(pack.verifiedAt);
 
   return (
     <Link
@@ -136,62 +169,167 @@ function PackCard({ pack, currency }: { pack: Pack; currency: Currency }) {
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
       )}
     >
-      {/* The plate: sector on the left, market + short ID on the right. Everything on this row is
-          a fact about the listing rather than a claim about it, which is why the right half is
-          mono. */}
-      <div className="flex h-11 items-center justify-between gap-3 border-b border-border bg-surface2 px-4">
-        <span className="flex min-w-0 items-center gap-2">
-          <span className={cx('h-2 w-2 flex-none rounded-full', cat.dot)} aria-hidden="true" />
-          {cat.tagged && (
-            <span className="truncate text-caption font-medium text-muted">{cat.label}</span>
-          )}
-        </span>
-        <span className="flex flex-none items-center gap-2 font-mono text-caption text-subtle">
-          {pack.market && <span>{marketLabel(pack.market)}</span>}
-          <span aria-hidden="true">№ {pack.id.slice(0, 6).toUpperCase()}</span>
-        </span>
-      </div>
+      <PackCoverArt pack={pack} category={cat} viewerMarket={viewerMarket} />
 
-      <div className="flex flex-1 flex-col">
-        <div className="px-5 py-4">
-          {/* No `group-hover:text-primary`. A title that changes colour on hover implies the title
-              alone is the link; the whole card is. Border + lift already say "interactive". */}
-          <h3 className="line-clamp-2 text-body font-semibold leading-snug text-text">
-            {heading}
-          </h3>
-          {line && (
-            <p className="mt-1.5 line-clamp-2 text-meta text-muted">{line}</p>
-          )}
+      <div className="flex flex-1 flex-col p-5">
+        {cat.tagged && (
+          <span
+            className={cx(
+              'mb-2.5 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1',
+              'text-caption font-medium',
+              cat.tint,
+              cat.ink,
+            )}
+          >
+            <Icon name={cat.icon} size={12} />
+            {cat.label}
+          </span>
+        )}
 
-          {/* The evidence row. Mono because every token in it is a checkable quantity, which is
-              the whole rule for mono on this site. */}
-          {(sources !== null || fresh) && (
-            <p className="mt-4 flex flex-wrap items-center gap-x-1.5 font-mono text-caption text-subtle">
-              <Icon name="verified" size={12} className="text-success" />
-              {sources !== null && (
-                <>
-                  <span>{sources} sources</span>
-                  {fresh && <span aria-hidden="true">·</span>}
-                </>
-              )}
-              {fresh && <span>{fresh}</span>}
-            </p>
-          )}
-        </div>
+        {/* No `group-hover:text-primary`. A title that changes colour on hover implies the title
+            alone is the link; the whole card is. Border + lift already say "interactive". */}
+        <h3 className="line-clamp-2 text-body font-semibold leading-snug text-text">{heading}</h3>
+        {line && <p className="mt-1.5 line-clamp-2 text-meta text-muted">{line}</p>}
 
-        {/* `mt-auto` is what equalises card heights in the grid: the rule sits at the same y on
-            every card in a row regardless of how long the title ran. */}
-        <div className="mt-auto flex h-12 items-center justify-between border-t border-border px-5">
-          <span className="font-mono text-body font-semibold text-text">
+        {/* `mt-auto` is what equalises card heights in the grid: the price row sits at the same y
+            on every card in a row regardless of how long the title ran. */}
+        <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+          <span className="text-h4 font-semibold tracking-tight text-text">
             {formatPriceForMarket(pack.price, currency)}
           </span>
-          <span className="inline-flex items-center gap-1 text-meta font-medium text-muted transition-colors group-hover:text-text">
+          <span
+            className={cx(
+              'inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2',
+              'text-meta font-medium text-on-primary',
+              'transition-colors group-hover:bg-primary-hover',
+            )}
+          >
             View pack
             <Icon name="arrowRight" size={14} />
           </span>
         </div>
       </div>
     </Link>
+  );
+}
+
+/**
+ * The generated cover.
+ *
+ * Deterministic in `pack.id` so a given pack always looks the same across renders, sessions and
+ * machines -- a cover that changes on reload is worse than no cover, because a buyer who returns
+ * to the shelf cannot find the card they were looking at. `Math.random()` is therefore banned
+ * here, and `__tests__/usTwoPackArt.test.ts` asserts the component's source contains no call to
+ * it.
+ *
+ * The market chip lives here rather than on the meta row because "which country's rules is this
+ * written for" is the one fact on the card that can make a pack useless to a reader, and it was
+ * previously a bare `US` in mono beside a hash. It now says which market in words.
+ *
+ * It renders ONLY when the pack's market differs from the one the reader is browsing. A UK reader
+ * on the UK shelf got "For UK rules" on all 63 cards: a label true of every item on a shelf tells
+ * you nothing about any item on it, and it was competing for the eye with the sector badge, which
+ * is the fact that actually distinguishes one card from the next. On the "Also available, US"
+ * group -- and only there -- the same chip is the single most important thing on the card, because
+ * that is where a reader can buy the wrong country's rules by accident.
+ */
+/**
+ * Five offsets for the foreground mark. FULL LITERALS, indexed by seed: Tailwind scans source
+ * text, so a computed `left-[${n}%]` compiles to nothing and the mark silently stacks at 0.
+ */
+const COVER_OFFSETS = [
+  'left-[18%]',
+  'left-[26%]',
+  'left-[34%]',
+  'left-[42%]',
+  'left-[50%]',
+] as const;
+
+function PackCoverArt({
+  pack,
+  category,
+  viewerMarket,
+}: {
+  pack: Pack;
+  category: Category;
+  viewerMarket?: string;
+}) {
+  // A stable small integer from the id. Sum of char codes is enough: the only requirement is that
+  // it is deterministic and reasonably spread, not that it is uniform or unguessable.
+  const seed = React.useMemo(
+    () => Array.from(pack.id).reduce((acc, ch) => acc + ch.charCodeAt(0), 0),
+    [pack.id],
+  );
+  const offset = COVER_OFFSETS[seed % COVER_OFFSETS.length];
+  /* The untagged cover. Measured 2026-08-06 on the live API: 9 of 63 packs carry no `sector`, and
+     every one of them was drawing `UNLABELLED.icon` -- a grey briefcase, twice, at 40 and 96px.
+     That is the exact thing `lib/category.ts` forbids in its own header ("an untagged pack renders
+     NO marker at all ... a mute dot with no label beside it is decoration pretending to be
+     information"): a sector glyph on a pack whose sector we do not know is a claim with nothing
+     behind it, and nine identical grey briefcases on one shelf is also the worst case for telling
+     cards apart. The replacement carries no claim -- it is the initials of the words already
+     printed on this card, so it says nothing the reader cannot check by looking down.
+
+     Taken from `cardHeading(pack).heading`, NOT from `pack.title`. The first version used the raw
+     title and shot wrong at once: pack 0cc434887c47cb9a is titled "FridgePass Kit -- the fridge
+     logger that ..." but its card is headed by its `cardLine`, "Sell a fridge sensor that prints
+     daily hygiene logs". The cover read `FK`, two letters that appear nowhere on the card, which
+     is worse than no mark -- it looks like a code the buyer is supposed to recognise. The card
+     never renders `cardHeading`'s `eyebrow`, so the brand name is not on screen at all.
+
+     Stop-words are skipped for the same reason: "Sell a fridge sensor ..." would otherwise give
+     `SA`, where the `A` is the article. */
+  const monogram = React.useMemo(() => {
+    const stopWords = new Set([
+      'a', 'an', 'the', 'and', 'or', 'of', 'for', 'to', 'in', 'on', 'at', 'by', 'with', 'that',
+      'your', 'you', 'from', 'into', 'when', 'how',
+    ]);
+    const words = cardHeading(pack)
+      .heading.split(/\s+/)
+      .map((word) => word.replace(/[^a-z0-9]/gi, ''))
+      .filter((word) => word.length > 0 && /[a-z]/i.test(word));
+    const meaningful = words.filter((word) => !stopWords.has(word.toLowerCase()));
+    return (meaningful.length > 0 ? meaningful : words)
+      .slice(0, 2)
+      .map((word) => word[0].toUpperCase())
+      .join('');
+  }, [pack]);
+
+  return (
+    <div className={cx('relative h-28 overflow-hidden border-b border-border', category.tint)}>
+      {category.tagged ? (
+        <>
+          <Icon
+            name={category.icon}
+            size={40}
+            className={cx('absolute top-1/2 -translate-y-1/2 opacity-[0.28]', offset, category.ink)}
+          />
+          {/* A second, larger, fainter mark bleeding off the right edge. Two marks at different
+              scales is what stops a flat tint from reading as an empty box. */}
+          <Icon
+            name={category.icon}
+            size={96}
+            className={cx('absolute -bottom-8 -right-6 opacity-[0.10]', category.ink)}
+          />
+        </>
+      ) : (
+        <span
+          aria-hidden="true"
+          className={cx(
+            'absolute -bottom-6 -right-3 select-none font-semibold leading-none tracking-tight',
+            'text-[5.5rem] opacity-[0.12]',
+            category.ink,
+          )}
+        >
+          {monogram}
+        </span>
+      )}
+      {pack.market && pack.market !== viewerMarket && (
+        <span className="absolute right-3 top-3 rounded-full bg-surface/90 px-2.5 py-1 text-caption font-medium text-muted">
+          For {marketLabel(pack.market)} rules
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -282,12 +420,17 @@ function CatalogBrowser({
   market,
   currency,
   personalised,
+  featuredId,
 }: {
   packs: Pack[];
   initialState: DiscoveryState;
   market: string;
   currency: Currency;
   personalised: Pack[];
+  /* The pack the hero is already showing in its desktop-only featured slot, so the shelf can
+     avoid printing the same product twice on the same screen. Undefined on any render where the
+     hero has no featured card, in which case the shelf behaves exactly as it did before. */
+  featuredId?: string;
 }) {
   const router = useRouter();
   const [state, setState] = React.useState<DiscoveryState>(initialState);
@@ -345,20 +488,51 @@ function CatalogBrowser({
    * Two rows carry meaning, and only on the default view -- once the visitor has filtered or
    * re-sorted, THEY have stated the ordering and an editorial row talking over it is noise.
    *
-   * The spec also proposed a "Cleared all six checks" row. It is deliberately not built: a pack
-   * only reaches the catalogue by clearing all six (CLAUDE.md, "Publish only on PASS"), so that
-   * row is every pack on the shelf. A label that selects nothing is decoration wearing the
-   * costume of a filter, which is the failure this whole pass is removing.
+   * The spec also proposed a "Cleared all six checks" row. It is deliberately not built, though
+   * NOT for the reason first written here. The original note claimed "a pack only reaches the
+   * catalogue by clearing all six (CLAUDE.md, 'Publish only on PASS')" -- that is false. The
+   * publish rule is that no HARD GATE is refuted; score_checks run and score but never kill
+   * (config.yaml `lanes.side_hustle.score_checks`). Measured 2026-08-06 on the live /catalog
+   * detail endpoint: 5 of 63 published packs report fewer cleared than total ("7/8" x4, "6/8" x1),
+   * e.g. CureSafe Strip, whose dossier carries claims_verifiable=refuted and
+   * payer_solvency=refuted yet legitimately passed on its lane's four hard gates. The row stays
+   * unbuilt because it would select 58 of 63 -- near-useless as a filter -- not because it
+   * selects everything.
    */
   const editorial = !filtered && sort === 'newest';
 
   /* The tail is capped, not dropped: every card stays in the server HTML and is only display-
    * hidden, so a crawler and the "a filtered URL comes back filtered" e2e still see all of them
-   * while the buyer gets a page with an end. 24 = 8 rows of 3 (xl), 12 of 2 (sm). */
-  const SHELF_PAGE = 24;
+   * while the buyer gets a page with an end.
+   *
+   * 9, not 24 (2026-08-06). 24 + the 3-card newest row is 27 products before the reader reaches
+   * any reason to stop, and each card is now ~112px taller than it was because it has a cover --
+   * that combination is what made `/` read as an endless scroll rather than a shelf. 9 = 3 rows of
+   * 3 (lg), and with the newest row above it the first screenful of catalogue is 12 packs, which
+   * is a set a person can actually hold in their head before choosing to see more. The remaining
+   * 51 are one click away and, per the note above, are in the HTML the whole time. */
+  const SHELF_PAGE = 9;
   const [showAll, setShowAll] = React.useState(false);
-  const newestRow = editorial ? gridPacks.slice(0, 3) : [];
-  const tailPacks = editorial ? gridPacks.slice(3) : gridPacks;
+  /* THE SAME PRODUCT TWICE ON ONE SCREEN (measured 2026-08-06 on the built page at 1440x900:
+     "Council specific recycling boards for flat bin stores" rendered in the hero's featured slot
+     AND as the first card of "Newest survivors", both fully visible above the fold).
+     `featured` is `packs[0]` and the row starts at `gridPacks[0]`, which is the same pack whenever
+     the newest pack is in the reader's market -- i.e. almost always. The comment above `featured`
+     claimed the slot "is NOT a second copy of the card" because it is `hidden lg:block`; that is
+     true on a phone and false on the width where both were on screen together.
+
+     So on lg the row takes the NEXT three and the duplicate is hidden; below lg, where the hero
+     slot is not rendered, the row takes four and the reader meets the newest pack once, in the
+     grid. Four either way, so the row is full at every breakpoint and the "Showing n of N" count
+     below is exact at both: 4 in the row on mobile, 3 in the row plus 1 in the hero on desktop.
+
+     Guarded by an id comparison rather than an index: `gridPacks` is the reader's market only and
+     `featured` is the newest pack overall, so for a reader whose market does not contain the
+     newest pack the two differ -- and hiding `gridPacks[0]` there would hide a card they had
+     never been shown. */
+  const rowHasFeatured = editorial && !!featuredId && gridPacks[0]?.id === featuredId;
+  const newestRow = editorial ? gridPacks.slice(0, rowHasFeatured ? 4 : 3) : [];
+  const tailPacks = editorial ? gridPacks.slice(newestRow.length) : gridPacks;
   const shown = showAll ? tailPacks.length : Math.min(SHELF_PAGE, tailPacks.length);
 
   // The most recent verification across the live shelf, rendered once, in the toolbar. It used to
@@ -471,23 +645,19 @@ function CatalogBrowser({
                   <h3 className="mb-3 text-meta font-semibold text-text">Newest survivors</h3>
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {newestRow.map((pack) => (
-                      <PackCard key={pack.id} pack={pack} currency={currency} />
+                      /* `lg:hidden`, not unmounted, and only on the one card the hero is already
+                         showing: dropping it from the DOM would take an internal link out of the
+                         server HTML to win a duplicate the reader never sees at that width. */
+                      <div
+                        key={pack.id}
+                        className={cx('flex', pack.id === featuredId && 'lg:hidden')}
+                      >
+                        <PackCard pack={pack} currency={currency} viewerMarket={market} />
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* The three-question router, AFTER the first row of real packs.
-                  It was already meant to be: it was moved down from above the toolbar with a
-                  comment saying "it sits after the first row of real packs, so the first thing on
-                  the page is product". It did not. It sat between `RecentlyViewed` and
-                  `newestRow`, and `RecentlyViewed` renders nothing for a visitor with no cookie --
-                  which is every first-time visitor, the exact person the placement was for. The
-                  desktop screenshot on 2026-08-06 showed a quiz as the first thing under "What
-                  survived". Ordered by the DOM now rather than by a comment. */}
-              <div className="mb-6">
-                <StepFlow packs={packs} state={state} onChange={apply} />
-              </div>
 
               {editorial && tailPacks.length > 0 && (
                 <h3 className="mb-3 text-meta font-semibold text-text">
@@ -503,25 +673,43 @@ function CatalogBrowser({
                     className={cx('flex animate-rise', i >= shown && 'hidden')}
                     style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
                   >
-                    <PackCard pack={pack} currency={currency} />
+                    <PackCard pack={pack} currency={currency} viewerMarket={market} />
                   </div>
                 ))}
               </div>
               {shown < tailPacks.length && (
-                <div className="mt-8 flex justify-center">
+                <div className="mt-8 flex flex-col items-center gap-2">
                   <Button variant="secondary" size="lg" onClick={() => setShowAll(true)}>
-                    Browse all {tailPacks.length + newestRow.length} packs
+                    Show the other {tailPacks.length - shown} packs
                     <Icon name="arrowRight" size={15} />
                   </Button>
+                  {/* The count the button used to give was the total, which read as "you have seen
+                      none of 63" directly under twelve packs the reader had just scrolled. */}
+                  <p className="text-caption text-subtle">
+                    Showing {shown + newestRow.length} of {tailPacks.length + newestRow.length}.
+                  </p>
                 </div>
               )}
+
               {/* Boost, don't block: every other market's packs are still fully on the shelf,
-                  clearly separated rather than mixed in or hidden. */}
+                  clearly separated rather than mixed in or hidden.
+
+                  The heading was an `<h2>` reading "Also available, US" -- larger than the `<h3>`s
+                  above it, so a reader scanning by heading weight met the off-market group as if it
+                  outranked the catalogue it was appended to, and "also available" does not say what
+                  is different about it. It is an `<h3>` matching its siblings now, it names the
+                  difference in the heading, and one line underneath says what buying one of these
+                  actually means. Each card in the group also carries the "For US rules" chip that
+                  the on-market cards no longer waste space on. */}
               {grouped.others.map((group) => (
                 <div key={group.market} className="mt-10 border-t border-border pt-8">
-                  <h2 className="text-meta font-semibold text-text">
-                    Also available, {group.label}
-                  </h2>
+                  <h3 className="text-meta font-semibold text-text">
+                    Written for {group.label} rules
+                  </h3>
+                  <p className="mt-1 max-w-[60ch] text-caption text-subtle">
+                    The research, the buyers and the regulations in these are {group.label}. Worth
+                    reading anywhere, but the numbers and the legal steps will not transfer.
+                  </p>
                   <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {group.packs.map((pack) => (
                       <PackCard key={pack.id} pack={pack} currency={currency} />
@@ -529,10 +717,20 @@ function CatalogBrowser({
                   </div>
                 </div>
               ))}
-              <p className="mt-8 flex items-center gap-2 text-meta text-muted">
-                <Icon name="shield" size={16} />
-                Every pack carries a 14-day money back guarantee.
-              </p>
+
+              {/* The three-question router, AFTER the whole shelf.
+                  It sat between the newest row and the tail grid: a quiz wedged between row 1 and
+                  row 2 of a product grid, which a reader mid-scan has to step over. Twice now the
+                  fix has been to move it one block down and twice the DOM has put it back in the
+                  middle of the shelf, so the rule is stated as a position, not an intention: it
+                  renders after the LAST card, where the only reader who reaches it is one who
+                  scanned the shelf and did not pick anything -- the only reader a router helps. */}
+              <div className="mt-10 border-t border-border pt-8">
+                <StepFlow packs={packs} state={state} onChange={apply} />
+              </div>
+              {/* The "Every pack carries a 14-day money back guarantee" line that closed the shelf
+                  is gone: appearance 2 of 4 of the same promise on one page. `TrustGuaranteesRow`
+                  states it once, below. */}
               {/* The waitlist ask sits AFTER the shelf on purpose: the deployed variant put it
                   between the hero and the first card, spending above-the-fold pixels on buyers
                   who had not yet seen a product. Down here it reaches the only buyer it converts
@@ -548,7 +746,9 @@ function CatalogBrowser({
               <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                 {candidates.map((candidate) => {
                   const pack = packs.find((p) => p.id === candidate.pack.id);
-                  return pack ? <PackCard key={pack.id} pack={pack} currency={currency} /> : null;
+                  return pack ? (
+                    <PackCard key={pack.id} pack={pack} currency={currency} viewerMarket={market} />
+                  ) : null;
                 })}
               </div>
             </DiscoveryNearMiss>
@@ -586,13 +786,23 @@ export default function Home({ packs, stats, initialState, market, currency, per
      shelf stopped being one price when the segment ladder shipped (`feat(pricing)` #105/#107);
      see lib/priceRange.ts for the measurement that made each of the four claims below false. */
   const range = priceRange(packs);
+  /* The hero's featured product. `packs` arrives newest-first from the server and `sort=Newest` is
+     the shelf's default, so this is the same pack the grid shows first -- deliberately, so the
+     hero and the shelf cannot disagree about what is newest. It is NOT a second copy of the card:
+     the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
+     card in the grid. */
+  const featured = packs[0];
+  /* Read from the same JSON the filter-log panel reads, so the demoted one-liner in the hero and
+     the panel below the shelf can never state different totals -- which is the specific way a
+     "1,168 killed" figure repeated in two components goes stale in one of them. */
+  const killedTotal = (killTotals as { killed: number; passed: number }).killed;
   return (
     // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
     // above the header, and so a card anywhere on the page can reach it without prop threading.
     <BuyDrawerProvider currency={currency}>
     <MarketingLayout>
       <Seo
-        title={`Business ideas that survived six brutal checks. Researched and ready to build${
+        title={`Business ideas that survived a filter built to kill them. Researched and ready to build${
           range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
         }`}
         /* The catalogue as structured data. The shelf below is filtered and sorted in the browser,
@@ -653,9 +863,16 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 `tracking-[0.2em]` eyebrow -- letterspaced small caps is the single most dated
                 device on the page, and it was applied to the price, which is the one thing a
                 buyer wants to read at a glance. */}
-            <p className="mb-3 font-mono text-caption text-subtle">
+            {/* NOT mono, and no longer says "live".
+                Mono is this site's evidence voice -- it means "this is a checkable quantity".
+                Applied to the price it made the single most commercial line on the page read as
+                terminal output, which is precisely the "built by an engineer, for engineers"
+                signal the shelf could not afford.
+                "63 packs live" was insider jargon: `live` is a word about our deployment state,
+                not about the buyer's choice. A shop says how many things are on the shelf. */}
+            <p className="mb-3 text-meta font-medium text-muted">
               {range ? (range.uniform ? `${range.label} each` : `From ${formatGbp(range.min)}`) : 'One payment'}
-              {` · ${packs.length} packs live`}
+              {` · ${packs.length} packs to choose from`}
             </p>
             {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
                 "0", so it means a different number of pixels in every font: the old max-w-[24ch]
@@ -675,7 +892,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             {/* The hierarchy INVERTS here. The shelf was previously the thing you had to scroll
                 past an orange "Read a free report" slab to reach: the primary action on a shop is
                 the shop. The sample is the risk-reducer, so it is the quiet link beside it. */}
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center md:mt-8">
               <Link href="#catalog" className="w-full sm:w-auto">
                 <Button size="lg" fullWidth className="sm:w-auto">
                   Browse the packs
@@ -691,23 +908,70 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 <Icon name="arrowRight" size={14} />
               </Link>
             </div>
+            {/* One line, was two. "A whole dossier, unredacted, every source clickable. No payment,
+                no email." wrapped at 390px, and "unredacted" only means anything to someone who
+                already suspected we were redacting -- the defensive register the critique named. */}
             <p className="mt-3 text-caption text-subtle">
-              A whole dossier, unredacted, every source clickable. No payment, no email.
+              A whole pack, free. No payment, no email.
+            </p>
+            {/* The kill log, DEMOTED to one line.
+                It used to be a 420px panel in the right column, listing three named dead ideas
+                behind red crosses -- so the first colour a stranger met on the page was failure,
+                and the largest object beside the headline was a list of things we do not sell.
+                The number is the credible part and it survives here intact; the three corpses do
+                not need to be above the fold to make it true. */}
+            {/* `packs.length`, NOT `passedTotal`. The eyebrow directly above says "63 packs to
+                choose from" and this line said "...before these 145 made the shelf": two counts of
+                the same shelf, 82 apart, 300px apart, with no explanation. Both were true --
+                145 have ever passed, 63 are listed today -- but a stranger reads the pair as an
+                arithmetic error on a page whose entire pitch is "we check our numbers", which is
+                the same self-inflicted wound as the "7 of 8 checks" line. One shelf, one count. */}
+            {/* `hidden md:flex`. This exact sentence, with the same two numbers, is the panel
+                directly below the shelf at every width -- so on a phone it was 110px of the first
+                screen spent restating something the reader meets again 800px later, and it was the
+                last thing standing between the fold and a product. Kept on desktop, where the hero
+                is two columns and the line costs nothing that a card wanted. */}
+            <p className="mt-5 hidden flex-wrap items-center gap-x-2 gap-y-1 text-caption text-subtle md:mt-6 md:flex">
+              <Icon name="verified" size={13} className="text-success" />
+              <span>
+                {killedTotal.toLocaleString('en-GB')} ideas tested and rejected before these
+                {` ${packs.length.toLocaleString('en-GB')}`} made the shelf.
+              </span>
+              <Link
+                href="/kill-log"
+                className="font-medium text-accent underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
+              >
+                See what we rejected
+              </Link>
             </p>
           </div>
-          {/* DESKTOP ONLY, and the mobile copy is below the shelf. See the note there for the
-              measurement; the short version is that this column is free on lg+ and costs the
-              entire first screen once it stacks.
+          {/* THE PRODUCT, not the filter log.
+              What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline
+              promising researched business ideas, the largest and only coloured object on the
+              first screen was three ideas we had thrown away. A shop's first screen shows the
+              thing you can buy.
 
-              This deliberately reinstates a `hidden lg:block` / `lg:hidden` pair that was removed
-              once before, so the reason it was removed has to be dealt with rather than ignored:
-              the objection was that `display:none` hides an element but does not stop React
-              mounting it or running its effects, so two copies ran two sets of effects. That is
-              no longer true of this component -- `LiveKillCard.tsx` is 150 lines with no
-              `useEffect`, no `useState`, no fetch and no `track()` call; it renders from a static
-              import. What is left is a duplicated subtree in the HTML, which is why exactly one
-              is asserted VISIBLE at each viewport in e2e/discovery.spec.ts rather than trusted. */}
-          <LiveKillCard className="hidden w-full lg:block" />
+              Desktop only, and there is no mobile duplicate any more: the whole `hidden lg:block`
+              / `lg:hidden` pair is gone, because the reason it existed was to place a panel that
+              is no longer in the hero.
+
+              `featured.id` is handed to the shelf so this card and the shelf's "Newest survivors"
+              row cannot show the same pack at the same time -- they did, on the first screen at
+              1440x900, until the row was made breakpoint-aware (see `rowHasFeatured`). On mobile
+              this slot is not rendered and the pack is simply the first card in the grid. */}
+          {featured && (
+            <div className="hidden w-full lg:block">
+              {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
+                  on the shelf below. It was `uppercase tracking-wide text-caption`, which the
+                  house policy forbids (`__tests__/weightAndCasePolicy.test.ts`): CSS caps leave
+                  the accessible name in sentence case while a screen reader may spell out the
+                  rendered form, and this label sits directly above the one product on screen. */}
+              <h2 className="mb-3 text-meta font-semibold text-text">
+                Newest on the shelf
+              </h2>
+              <PackCard pack={featured} currency={currency} viewerMarket={market} />
+            </div>
+          )}
         </div>
       </SectionBand>
 
@@ -721,12 +985,13 @@ export default function Home({ packs, stats, initialState, market, currency, per
           </p>
         </div>
 
-        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} />
+        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} featuredId={featured?.id} />
       </Section>
 
-      {/* THE MOBILE POSITION of the filter-log card. On lg+ it is the hero's right column, where
-          it costs nothing vertically and sits beside the claim it evidences. Stacked on a phone it
-          cost the entire first screen, measured on the built page:
+      {/* THE FILTER LOG, at every width now, and always AFTER the shelf.
+          It used to be `lg:hidden` here and the hero's right column on desktop. Both positions
+          were the same mistake at different breakpoints: the first thing a stranger met was an
+          argument, with nothing for sale in view. Measured on the built page before this change:
 
             hero text   y=105  h=425   ends 530
             gap-10              40
@@ -734,36 +999,44 @@ export default function Home({ packs, stats, initialState, market, currency, per
             first card  y=1042                    -> 1.23 screens down (390x844)
                                                      1.37 (360x780), 1.08 (430x932)
 
-          So an ecommerce home page opened on an argument, with nothing for sale in view, on every
-          phone size measured. The panel plus its gap is 314px and 1042 - 314 = 728, which puts a
-          card on the first screen everywhere with room to spare.
-
-          Below the shelf, not deleted: `index.tsx:641` records why the panel earns its place --
-          it is the only thing a sceptical stranger can check without leaving the page -- and that
-          argument is undamaged by meeting it after the product rather than instead of it. A buyer
-          who scrolls past one screen of packs is exactly the reader with a question to answer. */}
-      <Section bg="bg" width="7xl" className="!pt-0 !pb-10 lg:hidden">
-        <LiveKillCard className="w-full" />
+          The panel is NOT deleted, because the reason it earns its place is undamaged: it is the
+          only claim on the page a sceptic can check without leaving it. What changed is who meets
+          it. A reader who has scrolled past a screen of products is exactly the one with a
+          question; a reader who has seen nothing yet just wanted to know what you sell. */}
+      <Section bg="bg" width="7xl" className="!pt-0 !pb-10">
+        <LiveKillCard className="w-full lg:mx-auto lg:max-w-2xl" />
       </Section>
 
       {/* 3. WHAT YOU GET, the deliverable breakdown. Format ambiguity is the biggest killer on a
              digital download page: the buyer's real fear is paying £49 for a two-page Google Doc. */}
+      {/* The heading has said "at every price" since the ladder shipped, and the page never once
+          said what the prices MEAN. A shelf running £29 to £199 with no stated rule reads as
+          arbitrary -- worse, it reads as "the dear ones must be the good ones", which invites the
+          buyer to distrust the cheap ones and hesitate over the dear ones. The rule is real and
+          simple (config.yaml `listing.pricing`: the rung is chosen by the opportunity's ambition
+          tier, side_hustle through venture, plus a market offset, and every pack gets the identical
+          eight documents), so it is stated in the intro where the spread is first named rather than
+          left on /pricing for the reader who thought to go looking. */}
       <Section
         bg="white"
         width="7xl"
         title={`What you get${range ? ', at every price' : ''}`}
-        intro={`One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`}
+        intro={
+          range && !range.uniform
+            ? `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. Every pack contains the same ${PACK_CONTENTS.length}, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}: the price follows the size of the opportunity the research found, never the length of the download. No subscription, no drip feed, no upsell.`
+            : `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`
+        }
         className="!py-14 md:!py-20"
       >
-        {/* Three terms of the sale, left-aligned, no pills. "Instant download" was cut from this
-            row: it is a delivery detail the buy box states at the moment it matters, and four
-            reassurances in a centred row of pills is the shape that made this page read as a
-            landing page rather than a shop. */}
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-8">
-          <TrustPill icon="money" label={range ? `${range.label}, one payment` : 'One payment'} />
-          <TrustPill icon="shield" label="14-day money back" />
-          <TrustPill icon="check" label="Every claim sourced" />
-        </div>
+        {/* The three-pill row that stood here is GONE, not restyled. It rendered
+            "one payment / 14-day money back / every claim sourced" -- the same three facts, in the
+            same order, that `TrustGuaranteesRow` renders 600px further down, and that row's own
+            docblock claims to be the page's single canonical statement of the purchase terms
+            ("the buyer who scans the page from top to bottom sees the trust once, definitively").
+            It was not once: the money-back promise appeared four times on one scroll and the
+            sourcing promise six, which is what makes a page read as though it is trying to
+            convince you rather than sell you something. One statement, in the row that says it
+            is the statement. */}
         <PackContentsSection heading="What’s inside your download" />
         {/* The list above names the documents; this shows one. The fear on a digital download
             page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
@@ -817,7 +1090,25 @@ export default function Home({ packs, stats, initialState, market, currency, per
               See exactly how it works
               <Icon name="arrowRight" size={14} />
             </Link>
+            {/* THE THIRD LINK IS THE POINT. This band spends four sentences and six gate names on
+                "an engine did the work", and until now the page never once suggested a person was
+                attached to any of it -- while `/about`, the page that answers exactly that, had no
+                inbound link from anywhere on the site. "We" appears throughout the copy with
+                nothing behind it. This link is the minimum honest fix and works whether or not
+                `FOUNDER` is filled in; the block below is the better one, and needs a real name. */}
+            <Link
+              href="/about"
+              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+            >
+              Who is behind this
+              <Icon name="arrowRight" size={14} />
+            </Link>
           </div>
+          {/* Renders nothing at all until a real person is named in `lib/config.ts`. Deliberately
+              in this band rather than the hero: the reader who wants to know who we are is the one
+              who has just read the argument, and a bio above the shelf is the founder's-syndrome
+              move this whole pass is undoing. */}
+          <FounderNote className="mt-10 max-w-[46rem]" />
         </div>
       </SectionBand>
 
@@ -839,10 +1130,14 @@ export default function Home({ packs, stats, initialState, market, currency, per
           stopped being one price when the segment ladder shipped (lib/priceRange.ts). */}
       <TrustGuaranteesRow listed={stats?.listed} price={range ?? undefined} />
 
+      {/* `lead` was "One payment. Every claim sourced. 14 day money back guarantee." -- the same
+          three terms a third time, and directly under `TrustGuaranteesRow`, which had just said
+          them. A closing band should give the reader a reason to scroll back up, not re-read the
+          row immediately above it. */}
       <CtaBand
         width="7xl"
         title={range ? `Find your next business from ${formatGbp(range.min)}.` : 'Find your next business.'}
-        lead="One payment. Every claim sourced. 14 day money back guarantee."
+        lead={`${packs.length} of them, each with the research and the sources already done.`}
         primary={{ href: '#catalog', label: 'Browse the packs' }}
         secondary={{ href: '/how-it-works', label: 'How it works' }}
       />

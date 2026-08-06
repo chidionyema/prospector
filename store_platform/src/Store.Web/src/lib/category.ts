@@ -1,5 +1,5 @@
 /**
- * Presentation for the engine's `sector` facet: an icon and one dot colour per sector.
+ * Presentation for the engine's `sector` facet: an icon, and one hue per sector.
  *
  * This file used to infer the sector with six regexes over the pack's title and one-liner. That
  * is deleted (spec Part 10, AC-5) and must not come back. The regex table told buyers a metal
@@ -7,16 +7,32 @@
  * is "every claim has a clickable source", a category the browser invented is a claim with no
  * source behind it.
  *
- * The rule now: `sector` comes from the API or the pack has no category. An untagged pack gets
- * the neutral `unlabelled` treatment, honest, and visibly different from a real sector.
+ * The rule: `sector` comes from the API or the pack has no category.
  *
- * Class strings are FULL LITERALS so Tailwind keeps them at build time; never interpolate them.
+ * ## Why there are twelve hues here again (2026-08-06, second pass)
  *
- * `cover` (a 135deg two-stop gradient), `chip` (a tinted uppercase pill) and `accent` were deleted
- * on 2026-08-06 with the gradient product card. Nothing rendered them once the card became a
- * bordered white plate with an 8px dot, and a palette field kept "in case" is how a deleted visual
- * language comes back. `lib/cover.ts` and `ui/CoverArt.tsx` went with them -- both were already
- * unreferenced by any page.
+ * Earlier the same day an eight-hue set was deleted from this file, correctly: twelve sectors
+ * were mapped onto eight palettes, four pairs collided outright, and the hue was defended as a
+ * "discovery affordance" it could not deliver. What replaced it was a single neutral dot -- and
+ * the shelf that produced was measured as visually inert: 63 products, zero images, no colour
+ * anywhere except the red crosses in the filter log. It read as documentation, not a shop.
+ *
+ * Both facts are true at once, and the resolution is a rule, not a compromise:
+ *
+ *   HUE IS DECORATION. THE LABEL IDENTIFIES.
+ *
+ * That is measured. Excluding the reserved red (killed) and green (survived) families, twelve
+ * values cannot be held apart by eye -- after tuning, the closest pair is `trades_construction`
+ * #7A4A0B and `retail_inventory` #854D0E, TWO degrees of hue apart. So no code path may depend on
+ * a buyer naming a sector from its colour:
+ *
+ *   - the sector name renders beside the marker ALWAYS, never colour alone;
+ *   - an untagged pack renders NO marker at all (see `UNLABELLED`), because a mute dot with no
+ *     label beside it is decoration pretending to be information.
+ *
+ * Contrast and collision are held by `__tests__/categoryScale.test.ts`, which reads the tokens out
+ * of `globals.css` and fails on any value under 4.5:1 on --surface2 or byte-equal to a semantic
+ * token. Class strings are FULL LITERALS so Tailwind keeps them at build time; never interpolate.
  */
 import type { IconName } from '@/components/ui/Icon';
 import { SECTOR, label as facetLabel, type Sector } from '@/lib/facets';
@@ -26,123 +42,118 @@ export interface Category {
   key: string;
   label: string;
   /**
-   * False only for `UNLABELLED`. Callers must not render `label` when this is false: the
-   * absence of a sector is shown by showing nothing, exactly as `FacetChips` already does for
-   * an untagged facet. A pill reading "Not yet tagged" is a status message about our own
-   * pipeline printed on a £49 product, and buyers read it as an unfinished listing rather than
-   * as the honesty it was meant to be.
+   * False only for `UNLABELLED`. Callers must render NOTHING -- no label and no marker -- when
+   * this is false. The absence of a sector is shown by showing nothing.
+   *
+   * A pill reading "Not yet tagged" was tried and removed: it is a status message about our own
+   * pipeline printed on a £49 product, and buyers read it as an unfinished listing. A bare dot
+   * with no label was tried next and is also wrong, for the opposite reason -- it is the only
+   * element on the card carrying no meaning at all.
    */
   tagged: boolean;
   icon: IconName;
-  /**
-   * Background class for the 8px marker beside the sector label on a product card.
-   *
-   * NEUTRAL, and one value for every category. This replaced an eight-hue set (#6366F1 indigo,
-   * #059669 emerald, #D97706 amber, #3B82F6 sky, #64748B slate, #E11D48 rose, #8B5CF6 violet,
-   * #0D9488 teal) on 2026-08-06, for two measured reasons.
-   *
-   * 1. The hue could not identify a category, so it was never the discovery affordance it was
-   *    defended as. Twelve sectors were mapped onto eight palettes, and four pairs collided
-   *    outright: employment_pay and creative_rights were both VIOLET, housing_rental and
-   *    energy_planning both TEAL, trades_construction and retail_inventory both AMBER,
-   *    professional_services and other both SLATE. No buyer could tell those apart by colour,
-   *    which is the whole claim a category hue has to make.
-   * 2. They were the last hardcoded hex in `src/`, outside the token scale entirely, against a
-   *    direction of a neutral grey scale with hairline borders. On the money page the rose dot
-   *    measured as the ONLY red element on the whole page (rgb(225,29,72), 390x844) -- on a site
-   *    where red means KILLED in the filter log and the kill log, and nothing else.
-   *
-   * `--subtle` because this is the smallest ink allowed to read at all next to `--muted` text;
-   * `--faint` is documented as decoration that may never carry information, and at 8px it is
-   * invisible. The marker is still `aria-hidden`: the sector name sits immediately beside it and
-   * carries the meaning, which is what makes a purely decorative marker legal here.
-   *
-   * Held to one value by `__tests__/noArbitraryHex.test.ts`, which fails on any `bg-[#...]` in
-   * `src/` -- a palette drifts back one hex at a time, and a comment does not stop it.
-   */
-  dot: string;
+  /** Text colour for the sector name and the marker. Full literal. */
+  ink: string;
+  /** Badge fill: an alpha of the same token, so the tint can never drift from the ink on it. */
+  tint: string;
 }
 
-type Palette = Pick<Category, 'icon' | 'dot'>;
+type Palette = Pick<Category, 'icon' | 'ink' | 'tint'>;
 
 /**
- * One marker treatment for every tagged category. See the `dot` docblock above for why the hue
- * set went: it collided four ways, so it identified nothing, and it was the last hardcoded hex.
+ * One palette per canonical sector. Icons are `IconName` values (`components/ui/Icon.tsx`).
  *
- * The palette constants below keep their old names. They now differ only by icon, which is the
- * thing that actually distinguishes a category on the card, and renaming them to their icon
- * would churn every row of PALETTE for no behaviour change.
+ * Written out per sector rather than built from shared constants: the previous version aliased
+ * eight `Palette` consts across twelve sectors, and that indirection is exactly what hid the four
+ * collisions. Twelve explicit rows make a duplicate visible by reading.
+ *
+ * The ICONS are one-per-sector too, since 2026-08-06. They used to collide in three pairs --
+ * `home` for housing AND pets, `gavel` for licensing AND probate, `briefcase` for professional
+ * services AND "specialist niches" -- covering 26 of the 63 live packs. That was survivable while
+ * the icon was a 12px mark inside a labelled chip; it stopped being survivable when the pack cover
+ * started drawing the same glyph at 96px, because the largest object on two adjacent cards was
+ * then identical and the hue that was meant to separate them is two degrees apart in the worst
+ * case (see above: hue is decoration). `__tests__/category.test.ts` holds the twelve apart.
  */
-const DOT = 'bg-subtle';
-
-const INDIGO: Palette = {
-  icon: 'gavel',
-  dot: DOT,
-};
-const EMERALD: Palette = {
-  icon: 'home',
-  dot: DOT,
-};
-const AMBER: Palette = {
-  icon: 'building',
-  dot: DOT,
-};
-const SKY: Palette = {
-  icon: 'wallet',
-  dot: DOT,
-};
-const SLATE: Palette = {
-  icon: 'briefcase',
-  dot: DOT,
-};
-const ROSE: Palette = {
-  icon: 'handshake',
-  dot: DOT,
-};
-const VIOLET: Palette = {
-  icon: 'code',
-  dot: DOT,
-};
-const TEAL: Palette = {
-  icon: 'landmark',
-  dot: DOT,
-};
-
-/** One palette per canonical sector. Icons are `IconName` values (`components/ui/Icon.tsx`). */
 const PALETTE: Record<Sector, Palette> = {
-  licensing_admin: { ...SKY, icon: 'gavel' },
-  employment_pay: { ...VIOLET, icon: 'money' },
-  housing_rental: { ...TEAL, icon: 'home' },
-  care_benefits: { ...ROSE, icon: 'handshake' },
-  trades_construction: { ...AMBER, icon: 'building' },
-  pets_animals: { ...EMERALD, icon: 'home' },
-  creative_rights: { ...VIOLET, icon: 'shield' },
-  property_probate: { ...INDIGO, icon: 'gavel' },
-  energy_planning: { ...TEAL, icon: 'landmark' },
-  retail_inventory: { ...AMBER, icon: 'wallet' },
-  professional_services: { ...SLATE, icon: 'briefcase' },
-  other: { ...SLATE, icon: 'briefcase' },
+  licensing_admin: {
+    icon: 'gavel',
+    ink: 'text-cat-licensing-admin',
+    tint: 'bg-cat-licensing-admin/10',
+  },
+  employment_pay: {
+    icon: 'money',
+    ink: 'text-cat-employment-pay',
+    tint: 'bg-cat-employment-pay/10',
+  },
+  housing_rental: {
+    icon: 'home',
+    ink: 'text-cat-housing-rental',
+    tint: 'bg-cat-housing-rental/10',
+  },
+  care_benefits: {
+    icon: 'handshake',
+    ink: 'text-cat-care-benefits',
+    tint: 'bg-cat-care-benefits/10',
+  },
+  trades_construction: {
+    icon: 'building',
+    ink: 'text-cat-trades-construction',
+    tint: 'bg-cat-trades-construction/10',
+  },
+  pets_animals: {
+    icon: 'paw',
+    ink: 'text-cat-pets-animals',
+    tint: 'bg-cat-pets-animals/10',
+  },
+  creative_rights: {
+    icon: 'palette',
+    ink: 'text-cat-creative-rights',
+    tint: 'bg-cat-creative-rights/10',
+  },
+  property_probate: {
+    icon: 'key',
+    ink: 'text-cat-property-probate',
+    tint: 'bg-cat-property-probate/10',
+  },
+  energy_planning: {
+    icon: 'landmark',
+    ink: 'text-cat-energy-planning',
+    tint: 'bg-cat-energy-planning/10',
+  },
+  retail_inventory: {
+    icon: 'package',
+    ink: 'text-cat-retail-inventory',
+    tint: 'bg-cat-retail-inventory/10',
+  },
+  professional_services: {
+    icon: 'briefcase',
+    ink: 'text-cat-professional-services',
+    tint: 'bg-cat-professional-services/10',
+  },
+  other: {
+    icon: 'board',
+    ink: 'text-cat-other',
+    tint: 'bg-cat-other/10',
+  },
 };
 
 /**
- * The untagged treatment: a neutral cover, and NO label.
- *
- * This used to render a pill reading "Not yet tagged", chosen over inventing a plausible
- * category, which was the right call, but the wrong end of the choice. The pack is on the shelf
- * at £49; a badge announcing that our own tagging is incomplete is a defect notice, not candour,
- * and it appeared on four of the twenty-six packs live on 2026-07-31.
+ * The untagged treatment: no badge, no marker, no label.
  *
  * `label` is retained only so the key is self-describing in a debugger; `tagged: false` is what
- * callers branch on, and `__tests__/category.test.ts` holds the two apart.
+ * callers branch on, and `__tests__/category.test.ts` holds the two apart. `ink`/`tint` are
+ * neutral rather than absent so that a caller which ignores `tagged` degrades to something
+ * legible instead of an unstyled element -- but a caller which ignores `tagged` is a bug, and
+ * `__tests__/categoryScale.test.ts` asserts the card does not render a marker for it.
  */
 export const UNLABELLED: Category = {
   key: 'unlabelled',
   label: 'Not yet tagged',
   tagged: false,
   icon: 'briefcase',
-  // One step lighter than a tagged category's `--subtle` marker, so an untagged card reads as
-  // quieter rather than as a different kind of thing. Was #A1A1AA, off-token like the rest.
-  dot: 'bg-border-strong',
+  ink: 'text-subtle',
+  tint: 'bg-surface2',
 };
 
 const CATEGORIES: Record<string, Category> = Object.fromEntries(

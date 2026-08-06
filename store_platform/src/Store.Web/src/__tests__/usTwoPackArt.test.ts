@@ -73,21 +73,55 @@ describe('US-2 — Pack cards with pack art', () => {
      * US-2's actual problem was that 45 cards were indistinguishable without reading the title.
      * The 1:1 coloured tile was one answer to it; it is not the only one, and it was not a good
      * one -- sixty-one gradient tiles are as uniform as sixty-one white rectangles, they are just
-     * louder about it. So this asserts the PROBLEM stays solved rather than pinning the tile:
-     * the card opens on an identity row carrying the sector (a category-derived dot and label)
-     * and the listing's own market and short ID, all of which differ pack to pack.
+     * louder about it. So this asserts the PROBLEM stays solved rather than pinning any one
+     * drawing of it.
+     *
+     * REVISED 2026-08-06 (brand v3). The carrier it used to pin -- a 44px identity row of
+     * `cat.dot` + sector label + market + `pack.id.slice(0, 6).toUpperCase()` -- is gone, and two
+     * of its four elements went for reasons this suite should not be re-litigating:
+     *
+     *   - the short id (`№ FCF4A5`) is debug output. A truncated hash of a database key, printed
+     *     on a product, is a fact about our storage that no buyer can use;
+     *   - the market read as a bare `US` beside it, and rendered on all 63 cards including the
+     *     63 that matched the reader's own market, where it distinguishes nothing.
+     *
+     * What replaces it is a drawn cover (`PackCoverArt`) rather than a text row, so the
+     * assertions follow the identity to it: the sector's colour and icon, a per-pack variation
+     * that is deterministic in the pack id, and the market stated in words but only when it is
+     * not the reader's own.
      */
     expect(page, 'the card must derive its identity from the pack category').toMatch(
       /const cat = categoryFor\(pack\)/,
     );
-    expect(page, 'the sector dot must be category-derived, not a fixed hue').toMatch(
-      /'h-2 w-2 flex-none rounded-full', cat\.dot/,
+    expect(page, 'the card must open on the generated cover').toMatch(
+      /<PackCoverArt\b[\s\S]{0,120}category=\{cat\}/,
     );
-    expect(page, 'the identity row must carry the listing market').toMatch(
-      /marketLabel\(pack\.market\)/,
+    expect(page, 'the cover tint must be category-derived, not a fixed hue').toMatch(
+      /category\.tint/,
     );
-    expect(page, 'the identity row must carry the short dossier id').toMatch(
-      /pack\.id\.slice\(0, 6\)\.toUpperCase\(\)/,
+    expect(page, 'the cover mark must be the category icon').toMatch(
+      /name=\{category\.icon\}/,
+    );
+    // Per-pack variation on top of the per-category tint, so two packs in the same sector are not
+    // the same picture. Deterministic in `pack.id`: a cover that changes on reload is worse than
+    // no cover, because a returning reader cannot find the card they were looking at.
+    expect(page, 'the cover must vary per pack from a seed derived from the id').toMatch(
+      /Array\.from\(pack\.id\)\.reduce/,
+    );
+    // Comments stripped first: the component's own header names `Math.random()` while explaining
+    // why it is banned there, and a doc comment is not a call.
+    const withoutComments = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(withoutComments, 'the cover must not be random').not.toMatch(/Math\.random\(/);
+    // Tailwind scans source text, so an interpolated `left-[${n}%]` compiles to nothing and every
+    // mark silently stacks at the same offset -- a green test with an invisible regression.
+    expect(page, 'the offsets must be full literal class strings').toMatch(
+      /COVER_OFFSETS = \[[\s\S]{0,200}'left-\[\d+%\]'/,
+    );
+    expect(page, 'the cover must state the listing market in words').toMatch(
+      /For \{marketLabel\(pack\.market\)\} rules/,
+    );
+    expect(page, 'the market chip must render only when it differs from the reader\'s').toMatch(
+      /pack\.market !== viewerMarket/,
     );
   });
 

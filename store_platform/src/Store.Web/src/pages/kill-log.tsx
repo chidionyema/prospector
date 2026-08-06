@@ -10,7 +10,7 @@ import killLog from '@/data/kill-log.json';
 /*
   The rejects, published.
 
-  A visitor is asked for £49 on the strength of "these survived six brutal checks" and has no
+  A visitor is asked for £49 on the strength of "these survived a filter built to kill them" and has no
   way to see the brutality. The conventional fix is testimonials, which we cannot honestly
   show, there are no reviews to quote, and inventing one is both a lie and an offence under
   the DMCCA 2024 fake-review rules. On a storefront whose entire pitch is source-or-die it

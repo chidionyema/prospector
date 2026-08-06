@@ -89,35 +89,42 @@ describe('US-3 - Hero with a demonstration of the moat', () => {
     );
   });
 
-  it('home page mounts LiveKillCard as a deliberate breakpoint pair, not by accident', () => {
+  it('home page mounts LiveKillCard exactly once, after the shelf, at every width', () => {
     if (!liveCardExists) return;
-    // This asserted exactly ONE mount until 2026-08-06. The reason recorded here was "both
-    // breakpoint copies mounted and both ran their interval" -- a real defect, but the interval
-    // is what made it one, and the interval is independently forbidden by `no polling timer
-    // behind a static snapshot` above, which reads LiveKillCard's own source. The component is
-    // now 150 lines with no useEffect, no useState, no fetch and no timer.
+    // THE HISTORY, because this assertion has now been three different things and each change
+    // was made for a measured reason:
     //
-    // A second copy was then required by a measurement no source test can take: the panel is the
-    // hero's right column on lg+, free vertically, and stacking it on a phone put the first pack
-    // card 1.23 screens down at 390x844 (1.37 at 360x780, 1.08 at 430x932) -- an ecommerce home
-    // page with no product on the first screen. It moved below the shelf on mobile only.
+    //  1. "exactly ONE" -- both breakpoint copies mounted and both ran a polling interval. The
+    //     interval is what made that a defect, and it is independently forbidden by `no polling
+    //     timer behind a static snapshot` above, which reads LiveKillCard's own source.
+    //  2. "exactly TWO, breakpoint-complementary" -- the panel was the hero's right column on
+    //     lg+, and stacking it on a phone put the first pack card 1.23 screens down at 390x844
+    //     (1.37 at 360x780, 1.08 at 430x932). The mobile copy moved below the shelf; the desktop
+    //     copy stayed in the hero.
+    //  3. "exactly ONE, after the shelf" -- 2026-08-06. Both of those positions were the same
+    //     mistake at two widths. A shop's first screen has to show the thing you can buy, and on
+    //     desktop the largest and only coloured object above the fold was a ledger of ideas we had
+    //     thrown away. With the panel below the shelf at every width, the breakpoint pair has
+    //     nothing left to solve: one mount, no `hidden`/`lg:block` split to keep in sync, and one
+    //     fewer way for a class typo to render the same panel twice.
     //
-    // So the assertion changes from "never two" to "exactly the two we meant": the pair must be
-    // breakpoint-complementary, which is what stops a third copy or an unguarded duplicate. That
-    // a reader sees only ONE of them is a rendered-DOM property and is asserted at both viewports
-    // in e2e/discovery.spec.ts -- a class typo showing both is invisible from here.
+    // The panel is NOT deleted. It is the only claim on the page a sceptic can check without
+    // leaving it; what changed is that the reader meets it after seeing the products, i.e. once
+    // they have a reason to interrogate the shelf rather than before they know what is on it.
     const mounts = page.match(/<LiveKillCard\b[^>]*>/g) ?? [];
-    expect(mounts.length, 'index.tsx must render exactly two <LiveKillCard>, one per breakpoint').toBe(2);
+    expect(mounts.length, 'index.tsx must render exactly one <LiveKillCard>').toBe(1);
     expect(
-      mounts.filter((m) => /\bhidden\b[^"]*\blg:block\b/.test(m)),
-      'one copy must be desktop-only (hidden lg:block)',
-    ).toHaveLength(1);
-    // The mobile copy carries no breakpoint class of its own -- `lg:hidden` sits on the Section
-    // wrapping it -- so asserting on the tag would prove nothing about it. Match the wrapper.
+      mounts[0],
+      'the single mount must not be breakpoint-gated -- it shows at every width now',
+    ).not.toMatch(/\bhidden\b|\blg:block\b|\blg:hidden\b/);
+    // Position, not just presence: this is the whole point of the change. `<CatalogBrowser>` is
+    // the shelf, so the panel's offset in the source must be after it.
+    const shelf = page.indexOf('<CatalogBrowser');
+    expect(shelf, 'the shelf (<CatalogBrowser>) must exist to position against').toBeGreaterThan(-1);
     expect(
-      page,
-      'the other copy must sit inside a lg:hidden Section, below the shelf',
-    ).toMatch(/lg:hidden"[\s>][\s\S]{0,160}<LiveKillCard\b/);
+      page.indexOf('<LiveKillCard'),
+      'the kill ledger must render AFTER the shelf, never above the first product',
+    ).toBeGreaterThan(shelf);
   });
 
   it('home page renders LiveKillCard inside the hero', () => {

@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { cx } from './cx';
 import { Icon } from './Icon';
 
@@ -76,10 +77,37 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
   }, [open, onClose]);
 
   if (!open) return null;
+  // Portalled, so there is nothing to render during SSR or the first client pass before
+  // `document` exists. `open` only ever becomes true from a user event, so this costs no
+  // visible content.
+  if (typeof document === 'undefined') return null;
 
   const isDrawer = placement === 'right';
 
-  return (
+  /*
+   * PORTALLED TO <body>, and it has to be. Measured 2026-08-06 at 390x844 with three packs in the
+   * basket:
+   *
+   *   the panel's own bounding box was 390x64 -- the height of the site header -- while its
+   *   scrollable content was 285px tall. Only the drawer's title row painted `bg-surface`; the
+   *   line items, the total and the Pay button rendered outside the panel's painted box, over
+   *   live page content, unreadable. `elementsFromPoint` inside the body region returned the page
+   *   `<section>` and `<main>` directly beneath it.
+   *
+   * The cause is NOT a missing background -- `bg-surface` is on the panel and resolves to
+   * rgb(255,255,255). It is that `<CartButton>` renders this Modal inside `<header class="sticky
+   * ... bg-bg/90 backdrop-blur-md">`, and an ancestor with a `backdrop-filter` becomes the
+   * containing block for `position: fixed` descendants. So `fixed inset-0` resolved against the
+   * 65px header instead of the viewport. The same ancestor is `z-30` and establishes a stacking
+   * context, so the drawer's `z-50` was scoped inside it and could never rise above page content
+   * regardless of the number.
+   *
+   * A background on the body row would have hidden the symptom at one width and left the drawer
+   * still trapped in a 65px box. Escaping to <body> fixes both, and fixes them for every future
+   * caller that happens to sit under a blurred or transformed ancestor -- which is invisible at
+   * the call site, and is exactly why this belongs here and not in CartButton.
+   */
+  return createPortal(
     <div className="fixed inset-0 z-50 flex" role="presentation">
       <div
         className="absolute inset-0 bg-text/40 backdrop-blur-sm"
@@ -127,6 +155,7 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
           {footer && <div className="shrink-0 border-t border-border px-6 py-4">{footer}</div>}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
