@@ -367,6 +367,21 @@ def _card_line(raw: str) -> str:
     return line
 
 
+def _derive_copy(headline: str, subhead: str, what: List[str], proof_point: str) -> str:
+    """Assemble the prose body from the structured fields.
+
+    Extracted so the salvage path can RE-derive it after a field is dropped. A derived body
+    is a concatenation of its parts, so re-running it is the only thing that keeps a
+    discarded claim from reappearing in the prose the storefront actually renders.
+    """
+    parts = [p for p in (headline, subhead) if p]
+    if what:
+        parts.append("What you get: " + "; ".join(what))
+    if proof_point:
+        parts.append(proof_point)
+    return "\n\n".join(parts)
+
+
 def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
     """Coerce a (possibly partial) listing_page response into the structured contract.
 
@@ -391,14 +406,7 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
 
     what = [str(x).strip() for x in (data.get("what_you_get") or []) if str(x).strip()][:5]
     effort = _s("effort_tag").lower()
-    copy = _s("copy")
-    if not copy:
-        parts = [p for p in (_s("headline"), _s("subhead")) if p]
-        if what:
-            parts.append("What you get: " + "; ".join(what))
-        if _s("proof_point"):
-            parts.append(_s("proof_point"))
-        copy = "\n\n".join(parts)
+    copy = _s("copy") or _derive_copy(_s("headline"), _s("subhead"), what, _s("proof_point"))
     return {
         "type": "listing_page",
         "copy": copy,
@@ -438,6 +446,78 @@ def _listing_check_text(piece: Dict[str, Any]) -> str:
     return "\n".join(b for b in bits if b)
 
 
+def _salvage_listing(check_op: Operator, piece: Dict[str, Any], claims: List[Dict[str, Any]],
+                     *, copy_supplied: bool) -> Optional[Dict[str, Any]]:
+    """Re-check a failed listing_page field by field, keeping only the fields that clear.
+
+    ``_listing_check_text`` deliberately checks everything a buyer sees, but it checks it as
+    ONE blob under ONE verdict, so a single unverifiable sentence discarded the whole piece.
+    Measured 2026-08-06 over 258 non-KILL dossiers: listing_page survived 18 times (7%) —
+    the worst of the four marketing pieces and the only one that reaches the storefront.
+    Six independent fields each 90% clean clear together ~53% of the time; the blob verdict,
+    not the claim bar, is what collapsed the yield.
+
+    This is a salvage path, not a relaxation. Every surviving field has passed the SAME gate
+    on the same moat operator, alone instead of in company. A field that violates is dropped,
+    never softened, and the prose body is re-derived so a dropped claim cannot reappear in it.
+
+    Returns None when nothing verifiable is left — an empty shell would read as "copy exists"
+    to every downstream check while carrying no buyer-facing text.
+    """
+    fields: List[tuple[str, str]] = [
+        (key, piece[key]) for key in ("card_line", "headline", "subhead", "proof_point")
+        if piece.get(key)
+    ]
+    bullets = list(piece.get("what_you_get") or [])
+    fields.extend((f"what_you_get[{i}]", b) for i, b in enumerate(bullets))
+    # A derived body is its parts re-joined, so checking it again would double-charge the moat
+    # for text already being checked. Only an operator-authored body needs its own verdict.
+    if copy_supplied and piece.get("copy"):
+        fields.append(("copy", piece["copy"]))
+    if not fields:
+        return None
+
+    with ThreadPoolExecutor(max_workers=min(len(fields), 8)) as ex:
+        futures = {ex.submit(verify_claims_detail, check_op, text, claims): label
+                   for label, text in fields}
+        passed: Dict[str, bool] = {}
+        for future in as_completed(futures):
+            label = futures[future]
+            try:
+                passed[label] = future.result()[0]
+            except Exception as e:
+                # A check that could not run is not a pass. Failing open here would ship the
+                # exact unverified copy this gate exists to stop.
+                logger.error(f"Listing field claim-check errored, dropping {label}: {e}",
+                             extra={"field": label, "error": str(e)})
+                passed[label] = False
+
+    salvaged = dict(piece)
+    for key in ("card_line", "headline", "subhead", "proof_point"):
+        if piece.get(key) and not passed.get(key):
+            salvaged[key] = ""
+    salvaged["what_you_get"] = [b for i, b in enumerate(bullets)
+                               if passed.get(f"what_you_get[{i}]")]
+
+    if not (copy_supplied and passed.get("copy")):
+        salvaged["copy"] = _derive_copy(salvaged["headline"], salvaged["subhead"],
+                                        salvaged["what_you_get"], salvaged["proof_point"])
+
+    if not salvaged["copy"].strip():
+        logger.warning("Listing salvage kept no verifiable field; dropping piece",
+                       extra={"type": "listing_page", "fields_checked": len(fields)})
+        return None
+
+    dropped = sorted(label for label, ok in passed.items() if not ok)
+    logger.warning(
+        f"Listing salvaged: kept {len(fields) - len(dropped)}/{len(fields)} fields, "
+        f"dropped {dropped}",
+        extra={"type": "listing_page", "kept": len(fields) - len(dropped),
+               "checked": len(fields), "dropped": dropped},
+    )
+    return salvaged
+
+
 def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claims_json: str,
                      claims: List[Dict[str, Any]], t: str) -> Optional[Dict[str, Any]]:
     """Generate one marketing piece with regeneration that feeds claim-check violations.
@@ -450,6 +530,8 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
     feedback = ""
     # listing_page is required for publish; give it one extra repair turn with violations.
     attempts = 3 if t == "listing_page" else 2
+    last_listing: Optional[Dict[str, Any]] = None
+    copy_supplied = False
     for attempt in range(attempts):
         system, user = render("content_gen", candidate_json=cand_json,
                               claims_json=claims_json, type=t)
@@ -458,6 +540,10 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
         data = gen_op.complete_json(system, user, temperature=0.7 if attempt == 0 else 0.3)
         if t == "listing_page":
             piece = _normalize_listing(data)
+            last_listing = piece
+            # Operators sometimes return a list or a bare string; _normalize_listing coerces
+            # those, but only a dict can have carried an authored `copy`.
+            copy_supplied = isinstance(data, dict) and bool(str(data.get("copy") or "").strip())
             check_text = _listing_check_text(piece)
         else:
             piece = {"type": t, "copy": str(data.get("copy", ""))}
@@ -475,6 +561,14 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
             "or channels. Empty optional fields are safer than invention. Violations:\n"
             f"{json.dumps(violations, ensure_ascii=False)}"
         )
+
+    # Every repair turn is spent. For listing_page the whole-piece verdict is not the last
+    # word: re-check field by field and keep whatever clears on its own, because one
+    # unverifiable sentence costing all six fields is what drove survival to 7% (see
+    # _salvage_listing). The cheap path above is unchanged — salvage is only ever reached
+    # after the single blob check has already failed.
+    if t == "listing_page" and last_listing is not None:
+        return _salvage_listing(check_op, last_listing, claims, copy_supplied=copy_supplied)
 
     logger.warning(f"Dropping unverified marketing piece: {t}", extra={"type": t})
     return None
