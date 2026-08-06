@@ -21,9 +21,11 @@ test('pack detail renders with a buy button', async ({ page }) => {
   await firstCard.click();
   await expect(page).toHaveURL(new RegExp('/pack/'));
   await expect(page.locator('h1').first()).toBeVisible();
-  // The buy control renders ("Unlock this pack · £XX"). The handler/redirect is proven
+  // The buy control renders ("Buy this pack" + the price in a separate mono span, brand v3). The
+  // accessible name still carries both, which is why matching on the words alone is enough here.
+  // The handler/redirect is proven
   // server-side by prove_launch.sh, so the smoke stops here and needs no card.
-  await expect(page.getByRole('button', { name: /unlock this pack/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /buy this pack/i }).first()).toBeVisible();
   expect(href).toMatch(/^\/pack\//);
 });
 

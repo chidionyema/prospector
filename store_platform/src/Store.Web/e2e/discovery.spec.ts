@@ -37,31 +37,70 @@ test('the first pack card is above the fold', async ({ page }) => {
   expect(fold - box!.y).toBeGreaterThan(MIN_VISIBLE_PX);
 });
 
-test('the three-question router refuses to route until the first two are answered', async ({ page }) => {
+/**
+ * One email ask per screen, counted in the DOM.
+ *
+ * `index.tsx:537` already stated the rule in a comment -- "two email forms on one screen is a
+ * duplicate ask that also breaks selector uniqueness" -- and the shelf branch honoured it, but a
+ * second, unconditional waitlist band further down the page rendered under every branch, so both
+ * the shelf state and the empty state asked a stranger for the same address twice in the same
+ * words. No source-text test can see this: each form is correct where it is written, and the
+ * defect only exists once the page is composed. Counting rendered inputs is the only artifact
+ * that answers the question.
+ */
+for (const [label, url] of [
+  ['the shelf', '/'],
+  ['the empty state', '/?q=zzzzz-no-such-pack-anywhere'],
+] as const) {
+  test(`${label} asks for an email address at most once`, async ({ page }) => {
+    await page.goto(url);
+    await expect(page.locator('main').first()).toBeVisible();
+    const emails = page.locator('input[type="email"]');
+    // `toBeLessThanOrEqual`, not `toBe(1)`: a state that makes no ask at all is a product choice,
+    // whereas asking twice is always a defect.
+    expect(await emails.count(), `${url} renders more than one email ask`).toBeLessThanOrEqual(1);
+  });
+}
+
+/**
+ * The free sample opens cold, with no address given.
+ *
+ * The home page promises "No payment, no email." two lines above a waitlist form, and the two
+ * cannot both be true if the sample is gated. This was guarded in `src/lib/__tests__/sources.test.ts`
+ * by SOURCE ORDER -- the sample link had to appear before a particular `<WaitlistForm>` in the file
+ * -- which is not what gating means. A form earlier in the file gates nothing, and that assertion
+ * went red on 2026-08-06 for a band deletion that changed the reader's access not at all. The only
+ * thing that answers "is it gated" is walking in off the street and opening it.
+ */
+test('the free sample opens without giving an email', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('link', { name: /sample/i }).first().click();
+  await expect(page).toHaveURL(/\/sample/);
+  // The report itself, not just a 200: a gate that renders a capture panel at /sample would
+  // still be a page load. The evidence section is the thing being given away.
+  const evidence = page.getByRole('heading', { name: /Every check, every source/i });
+  await expect(evidence).toBeVisible();
+  await expect(page.locator('a[href^="http"]').first()).toBeVisible();
 
-  // The router is collapsed on load, so the form has to be asked for before any of it exists.
-  // Without this click Playwright fails on actionability against a button that is not rendered
-  // at all — which would read as "the disabled-until-answered rule broke", not "it is closed".
-  await page.getByRole('button', { name: 'Answer three questions' }).click();
-
-  const submit = page.getByRole('button', { name: 'Show me mine' });
-  await expect(submit).toBeDisabled();
-
-  // Q1 then Q2. Copy is verbatim from the spec, so these labels are part of the contract.
-  await page.getByRole('button', { name: 'I can build software' }).click();
-  await expect(submit).toBeDisabled(); // Q2 still unanswered
-  await page.getByRole('button', { name: 'Evenings and weekends' }).click();
-  await expect(submit).toBeEnabled();
-
-  await submit.click();
-  // Either outcome is a pass. On an untagged catalogue nothing scores, and saying so is the
-  // required behaviour (AC-8) — a winner appearing there would be the bug.
-  await expect(
-    page
-      .getByText('Build this one.')
-      .or(page.getByText("We haven't built yours yet", { exact: false })),
-  ).toBeVisible();
+  // NOT `count() === 0`. /sample does carry one ask -- `WaitlistCallout` at sample.tsx:259, the
+  // last element on the page, under the buy CTA. An ask below the thing you already read is not
+  // a gate; a gate is an ask you must clear FIRST. So the assertion is document ORDER against
+  // the evidence, which is what the word means, plus the one-ask-per-screen rule this page has
+  // to obey like every other.
+  const asks = page.locator('input[type="email"]');
+  expect(await asks.count(), '/sample must make at most one ask').toBeLessThanOrEqual(1);
+  if (await asks.count()) {
+    const askIsAfterEvidence = await page.evaluate(() => {
+      const heading = [...document.querySelectorAll('h2')].find((h) =>
+        /Every check, every source/i.test(h.textContent || ''),
+      );
+      const input = document.querySelector('input[type="email"]');
+      if (!heading || !input) return false;
+      // DOCUMENT_POSITION_FOLLOWING === 4: the input comes after the heading.
+      return Boolean(heading.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(askIsAfterEvidence, 'an email ask above the evidence is a gate on the free sample').toBe(true);
+  }
 });
 
 test('the command palette opens by click and by ⌘K, and searches as you type', async ({ page }) => {

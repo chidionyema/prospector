@@ -11,6 +11,21 @@ function existsRelative(relativePath: string): boolean {
 }
 
 /**
+ * The source with every comment removed.
+ *
+ * A source-text assertion that scans the raw file is satisfied by PROSE. `encodes the canonical
+ * label` below matched `/Unlock this pack/`, and PackBuyButton.tsx mentions that string four times
+ * in its comments explaining why the label is no longer that. So the assertion stayed green across
+ * the rename to "Buy this pack" (brand v3, 2026-08-06), pinning a label the button had stopped
+ * using, while the e2e spec -- which reads the rendered DOM -- was the only thing that noticed.
+ */
+function readCode(relativePath: string): string {
+  return readSource(relativePath)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+}
+
+/**
  * US-1 — One primary buy button, one label, used everywhere.
  *
  * The audit found the buy action labelled four different ways across one page
@@ -37,11 +52,16 @@ describe('US-1 — One primary buy button', () => {
     expect(exportsDefault || exportsNamed, 'PackBuyButton must be exported (default or named)').toBe(true);
   });
 
-  it('encodes the canonical label "Unlock this pack"', () => {
-    // The single label encoded in the source. The rendered text uses the buyer's price.
+  it('encodes the canonical label "Buy this pack"', () => {
+    // The single label encoded in the source, read with comments stripped so the docblock
+    // explaining the rename cannot satisfy the assertion. The rendered text appends the buyer's
+    // price as a separate mono span, so this pins the words only.
     if (!componentExists) return;
-    const source = readSource('../components/checkout/PackBuyButton.tsx');
-    expect(source, 'PackBuyButton must encode the canonical label').toMatch(/Unlock this pack/);
+    const code = readCode('../components/checkout/PackBuyButton.tsx');
+    expect(code, 'PackBuyButton must encode the canonical label').toMatch(/'Buy this pack'/);
+    expect(code, 'the "Unlock" label was retired in brand v3; it survives only in comments').not.toMatch(
+      /Unlock this pack/,
+    );
   });
 
   it('does not prepend a currency symbol to an already-formatted price', () => {

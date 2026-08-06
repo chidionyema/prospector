@@ -11,7 +11,6 @@ import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackC
 import { DossierPreview } from '@/components/marketing/DossierPreview';
 import LiveKillCard from '@/components/marketing/LiveKillCard';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
-import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
@@ -626,7 +625,19 @@ export default function Home({ packs, stats, initialState, market, currency, per
           and text-align inherits, so it also centred every row inside the filter-log card below
           it, turning a log into ragged decoration. A centred paragraph gives each line a
           different starting x, which the reader's eye has to re-find on every line. */}
-      <SectionBand bg="white" width="7xl" className="animate-rise pt-10 pb-12 md:pt-14 md:pb-16">
+      {/* The short-viewport override is a HEIGHT query, not a width one, because the thing being
+          protected is a height budget. At 1280x720 (Playwright's Desktop Chrome, and a real 720p
+          laptop) the header + this band + the catalogue's own heading block put the first pack card
+          at y=727 against a 720px fold: on an ecommerce home page the product was entirely
+          off-screen. Width breakpoints cannot express that, and the previous answer -- capping the
+          h1's measure, see the comment on the h1 below -- bought 1.5px of clearance, which is not a
+          margin, it is a coincidence. Trimming 56px of band padding on short screens only leaves
+          tall displays with the generous hero and puts the shelf back on the first screen. */}
+      <SectionBand
+        bg="white"
+        width="7xl"
+        className="animate-rise pt-10 pb-12 md:pt-14 md:pb-16 [@media(max-height:820px)]:md:pt-8 [@media(max-height:820px)]:md:pb-8"
+      >
         {/* Two columns on lg+: the claim on the left, the evidence for it on the right. The
             filter-log card is the argument -- it is the only thing above the fold that a
             sceptical stranger can check. */}
@@ -773,28 +784,17 @@ export default function Home({ packs, stats, initialState, market, currency, per
         </div>
       </SectionBand>
 
-      {/* 7xl like every other band on this page, with the CARD bounded instead of the band.
-          Down the home page the bands ran 7xl, 6xl, 6xl, 4xl, 3xl, so the left edge stepped inward
-          four times between the shelf and the footer while the page stayed one column
-          (desktop-home-full.png, 2026-08-06). A narrow band moves the whole column; a narrow card
-          keeps the column and makes the card look deliberate. */}
-      <Section bg="white" width="7xl" className="!py-10 md:!py-12">
-        <div className="max-w-4xl rounded-md border border-border bg-surface2 p-6 md:p-8">
-          <h2 className="text-h2 font-semibold text-text">
-            Want the next one, when it survives?
-          </h2>
-          <p className="mt-3 max-w-[60ch] text-body text-muted">
-            Most ideas we run die on the incumbent test, so this is not a weekly send, there is
-            nothing to send most weeks. Leave an address and you get one email on the day a pack
-            clears all six checks. The sample above stays free either way, and this form is not in
-            front of it.
-          </p>
-          <div className="mt-5">
-            <WaitlistForm source="home-after-sample" submitLabel="Email me when one survives" />
-          </div>
-        </div>
-      </Section>
-
+      {/* The second "Want the next one, when it survives?" band used to sit here, and it was the
+          home page's SECOND email ask. The shelf branch above already renders `ShelfEndCapture`,
+          the empty and near-miss branches carry their own, and this band rendered under all three,
+          so every state of this page asked a stranger for the same address twice in the same words
+          (measured on the rendered DOM: 2 `input[type=email]` on `/` and on `/?q=<no match>`,
+          2026-08-06). The rule was already written down one screen up (`index.tsx:537`: "two email
+          forms on one screen is a duplicate ask that also breaks selector uniqueness") and this
+          band was the thing violating it -- it also made the consent e2e fail strict mode, which is
+          how it surfaced at all. The contextual asks win: they sit where the shelf actually runs
+          out, and their `source` tags keep shelf-end and empty-state signups tellable apart in the
+          ledger. One ask per state, enforced by `oneEmailAskPerScreen` in e2e/discovery.spec.ts. */}
       {/* N1: the single trust-and-guarantees row above the CtaBand. Three purchase terms,
           one place. The buyer who scrolls the page from top to bottom sees the terms of the sale
           once, definitively. */}
