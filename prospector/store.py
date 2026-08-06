@@ -93,7 +93,15 @@ class Store:
                                ("adversarial_confidence", "REAL"),
                                ("persona", "TEXT"),
                                ("retrieval_degraded", "INTEGER DEFAULT 0"),
-                               ("market", "TEXT")]:
+                               ("market", "TEXT"),
+                               # Why a row must no longer be acted on, or NULL for a live row.
+                               # The index and the disk can disagree: 189 rows on the live store
+                               # (all created 2026-06-13..06-21) have no dossier JSON behind them,
+                               # and 45 of those are DEFERs that the bounded drain re-selects and
+                               # re-skips every tick forever. They are not deletable — the ruling
+                               # happened and the audit trail should say so — but they are not
+                               # workable either. A tombstone records both facts.
+                               ("tombstone", "TEXT")]:
                 if col not in cols:
                     conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
             
@@ -249,3 +257,36 @@ class Store:
             rows = conn.execute(
                 "SELECT * FROM dossiers WHERE provisional = 1").fetchall()
         return [dict(row) for row in rows]
+
+    def tombstone(self, candidate_id: str, reason: str, *,
+                  path: Optional[str] = None, decision: Optional[str] = None) -> bool:
+        """Mark a row as recorded-but-not-workable. Returns False if no such row.
+
+        Deliberately NOT a delete: the ruling happened, and a catalogue that silently loses
+        189 of its 1594 rows cannot answer "what did we decide, and when". Readers that act
+        on rows (the resume drain, generation exemplars) skip tombstoned ones; readers that
+        count history do not.
+
+        `path` and `decision` are for the case where the dossier was MOVED rather than lost
+        (nine PASSes were relocated to store/dossiers/quarantine_ungrounded/ without the
+        index being updated), so the row can be re-pointed at the file that still exists in
+        the same statement that voids it.
+
+        NOTE: `_UPSERT` is INSERT OR REPLACE over an explicit column list that excludes
+        `tombstone`, so re-saving a dossier for this candidate_id CLEARS the mark. That is
+        the wanted behaviour — a fresh ruling with a file behind it supersedes a tombstone —
+        but it means a tombstone is not a permanent ban, and must not be used as one.
+        """
+        sets = ["tombstone = ?"]
+        params: list = [reason]
+        if path is not None:
+            sets.append("path = ?")
+            params.append(path)
+        if decision is not None:
+            sets.append("decision = ?")
+            params.append(decision)
+        params.append(candidate_id)
+        with self._connect() as conn:
+            cur = conn.execute(
+                f"UPDATE dossiers SET {', '.join(sets)} WHERE candidate_id = ?", params)
+            return cur.rowcount > 0

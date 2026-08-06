@@ -282,6 +282,39 @@ def test_orphaned_rows_do_not_consume_the_bounded_pass(monkeypatch):
     assert seen == ["real0", "real1", "real2"], "and the pass must reach the real backlog"
 
 
+def test_a_tombstoned_row_is_not_backlog(monkeypatch):
+    """Reporting orphans made the waste visible; tombstoning takes it out of the count.
+
+    `orphaned: 45` stopped the drain wasting its budget, but the operator was still told the
+    backlog was 406 when 45 of those rows could never be re-vetted — so the "~11d to drain"
+    estimate was a fiction, and every tick re-scanned rows already known to be dead. Once
+    reconciled (scripts/reconcile_orphan_index.py) they are neither backlog nor orphans:
+    they are history.
+    """
+    from prospector import run as run_mod
+
+    rows = [{"candidate_id": "dead", "decision": "defer", "tombstone": "dossier_missing",
+             "created_at": "2026-06-14T00:00:00+00:00"},
+            {"candidate_id": "live", "decision": "defer",
+             "created_at": "2026-07-01T00:00:00+00:00"},
+            {"candidate_id": "deadprov", "decision": "kill", "provisional": 1,
+             "tombstone": "quarantined_ungrounded", "created_at": "2026-06-21T00:00:00+00:00"}]
+
+    seen: list[str] = []
+    _stub_vetting(monkeypatch, seen)
+    summary = run_mod._cmd_resume(
+        argparse.Namespace(limit=3, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={"live"}),
+    )
+
+    assert summary["backlog"] == 1, "a tombstoned row is history, not work awaiting the moat"
+    assert seen == ["live"]
+    assert "orphaned" not in summary, (
+        "a reconciled row must not be re-counted as an orphan every tick either"
+    )
+
+
 def test_orphans_are_still_reported_when_everything_is_orphaned():
     from prospector import run as run_mod
 

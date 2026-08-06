@@ -1083,8 +1083,12 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     #   2. provisional — a real verdict WAS reached, but by the cheap emergency fallback
     #      tail (moat exhausted). Re-vet so the trusted moat overwrites the cheap ruling.
     # De-dup by candidate_id (a dossier can't be both, but guard against overlap).
-    deferred = store.all(decision="defer")
-    provisional = store.provisional()
+    # Tombstoned rows are excluded from BOTH populations. A tombstone means the dossier is
+    # gone for good, so there is nothing to re-vet — and leaving them in inflated the backlog
+    # the operator reads (406 reported, 45 of them undrainable) and made the drain's ETA a
+    # fiction. They stay in the catalogue for history; they are just not work.
+    deferred = [r for r in store.all(decision="defer") if not r.get("tombstone")]
+    provisional = [r for r in store.provisional() if not r.get("tombstone")]
     seen_ids = {r.get("candidate_id", "") for r in deferred}
     pending = list(deferred) + [r for r in provisional
                                 if r.get("candidate_id", "") not in seen_ids]

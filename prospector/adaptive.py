@@ -300,6 +300,11 @@ def _exemplar_eligible(store: Store, rows: list[dict]) -> list[dict]:
     falls back to get(): real index rows always have one (`all()` is a SELECT *), so the slow
     branch costs nothing in production, and the fast branch must not become the definition of
     eligibility for any other store shape.
+
+    A tombstoned row is excluded too, and that is not redundant with the file check: the nine
+    quarantined PASSes get re-pointed at the file that still exists in
+    quarantine_ungrounded/, so after reconciliation they have a readable dossier again. The
+    reason they must not teach the generator is the tombstone, not the missing file.
     """
     def _grounded(row: dict) -> bool:
         path = row.get("path")
@@ -307,7 +312,8 @@ def _exemplar_eligible(store: Store, rows: list[dict]) -> list[dict]:
             return Path(str(path)).exists()
         return store.get(row.get("candidate_id", "") or "") is not None
 
-    return [r for r in rows if not r.get("provisional") and _grounded(r)]
+    return [r for r in rows
+            if not r.get("provisional") and not r.get("tombstone") and _grounded(r)]
 
 
 def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> str:
