@@ -1239,7 +1239,15 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                # file — so at 00:58 the tick's cost report was still sitting unflushed in the
                # process. The summary dict is the stream that survives: run_scheduled.py:190
                # logs it to stderr and it lands in the tick row.
-               "cost_usd": round(usage.get("total_cost_usd", 0.0), 4)}
+               #
+               # `metered_usd`, NOT `cost_usd`. This is billed money only — the figure
+               # `daily_cap_usd` enforces. It is legitimately 0.00 for a drain that ran on the
+               # Claude Code subscription, which is the moat's primary brain, so a key called
+               # `cost_usd` reading 0.0 would say "the drain was free" when it in fact spent
+               # subscription allowance. The other leg is already in the same tick row as
+               # `today_subscription_usd` (scheduler/guard.py:161). Two legs, two names —
+               # guard.py:21-45 has the full measurement of why they must never be added up.
+               "metered_usd": round(usage.get("total_cost_usd", 0.0), 4)}
     if orphaned:
         # Surfaced into the tick row so a store inconsistency is visible in ticks.jsonl and the
         # state probe instead of showing up as an inexplicable `attempted: 3, resumed: 0`.

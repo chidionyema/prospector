@@ -75,8 +75,19 @@ def _record_claude_usage(data: dict, web: bool) -> None:
     cached = int(u.get("cache_read_input_tokens", 0) or 0)
     total = inp + out + cached + int(u.get("cache_creation_input_tokens", 0) or 0)
     cost = float(data.get("total_cost_usd", 0) or 0)
+    # `provider=` matters: without it record_usage defaults to "unknown" (telemetry.py:194), so
+    # every call through the moat's PRIMARY brain was filed under a bucket named after nothing
+    # and `get_usage_summary()["by_provider"]` could never name claude_cli. Same shape as the
+    # web_calls counter that was structurally zero.
+    #
+    # This deliberately does NOT add claude_cli to telemetry.PRICING. That would make
+    # record_usage emit an `event: "spend"` row (telemetry.py:227 gates on `cost > 0`), which is
+    # what scheduler/guard.py counts as METERED, billed money against `daily_cap_usd`. CLI usage
+    # is subscription-equivalent — guard.py:36-39 measured that folding it in "would halt the
+    # daemon within about two hours of every day for spend that is never invoiced". The
+    # subscription leg is already tracked separately, from the "Claude CLI usage" row below.
     record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
-                 cached_tokens=cached, web=web)
+                 cached_tokens=cached, web=web, provider="claude_cli")
     # cost_usd here is the CLI's own billed figure (more accurate than an estimate);
     # costs_report sums it into spend.
     logger.info("Claude CLI usage", extra={"web": web, "input": inp, "output": out,

@@ -341,10 +341,75 @@ def test_the_drain_returns_its_cost_because_its_stdout_is_unread(monkeypatch):
         store=_FakeStore(rows, on_disk={"live"}),
     )
 
-    assert "cost_usd" in summary, "the tick row is the only channel the operator actually reads"
+    assert "metered_usd" in summary, "the tick row is the only channel the operator actually reads"
     # 1M in @ $0.27 + 1M out @ $1.10 (telemetry.PRICING['deepseek']).
-    assert summary["cost_usd"] == pytest.approx(1.37), (
+    assert summary["metered_usd"] == pytest.approx(1.37), (
         "and it must be the spend this pass actually made, not a placeholder"
+    )
+
+
+def test_the_drains_number_is_billed_money_only_and_says_so(monkeypatch):
+    """A drain on the subscription CLI is not free, so the key must not be called `cost_usd`.
+
+    The moat's primary brain is claude_cli, whose burn is subscription-equivalent and is
+    deliberately NOT priced (see the metered/subscription split at scheduler/guard.py:21-45).
+    So a real drain reports 0.00 here — true for billed money, and actively misleading under a
+    name like `cost_usd`. The second leg rides in the same tick row as `today_subscription_usd`.
+    """
+    from prospector import run as run_mod
+    from prospector import telemetry
+    from prospector.models import Decision
+
+    telemetry.reset_usage()
+    rows = [{"candidate_id": "live", "decision": "defer",
+             "created_at": "2026-07-01T00:00:00+00:00"}]
+
+    def vet_on_the_subscription(cand, *_a, **_k):
+        # Exactly claude_cli._record_claude_usage's call shape.
+        telemetry.record_usage(input_tokens=900_000, output_tokens=400_000,
+                               web=True, provider="claude_cli")
+        return types.SimpleNamespace(decision=Decision.KILL)
+
+    monkeypatch.setattr("prospector.run.vet_candidate", vet_on_the_subscription)
+
+    summary = run_mod._cmd_resume(
+        argparse.Namespace(limit=1, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={"live"}),
+    )
+
+    assert "cost_usd" not in summary, (
+        "0.00 under the name `cost_usd` reads as 'the drain was free'; it spent subscription"
+    )
+    assert summary["metered_usd"] == 0.0, "no billed money was spent — that part is true"
+    assert "claude_cli" in telemetry.get_usage_summary()["by_provider"], (
+        "and the moat's primary brain must be attributable, not filed under 'unknown'"
+    )
+
+
+def test_pricing_claude_cli_would_arm_the_metered_cap(monkeypatch):
+    """Guard on the fix above: naming the provider must never make it billable.
+
+    record_usage emits an `event: "spend"` row only when `cost > 0` (telemetry.py:227), and
+    those rows are what scheduler/guard.py counts against `daily_cap_usd`. guard.py:36-39
+    measured that folding subscription burn into that cap "would halt the daemon within about
+    two hours of every day for spend that is never invoiced". So claude_cli must stay unpriced.
+    """
+    from prospector import telemetry
+
+    assert "claude_cli" not in telemetry.PRICING, (
+        "pricing claude_cli turns subscription burn into billed spend and stops the daemon"
+    )
+
+    records: list = []
+    monkeypatch.setattr(telemetry.logger, "info",
+                        lambda msg, *a, **k: records.append((msg, k.get("extra") or {})))
+    telemetry.reset_usage()
+    telemetry.record_usage(input_tokens=900_000, output_tokens=400_000,
+                           web=True, provider="claude_cli")
+
+    assert not [r for r in records if (r[1] or {}).get("event") == "spend"], (
+        "a spend event here would be counted as billed money by the daily cap"
     )
 
 
