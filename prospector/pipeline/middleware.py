@@ -11,6 +11,7 @@ it becomes a ruling.  Four hard checks enforce structural integrity:
 from __future__ import annotations
 
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -20,8 +21,28 @@ from prospector.pipeline.moat_contract import MoatVerificationContract
 
 logger = logging.getLogger(__name__)
 
-# Default ledger path relative to repo root.
-_DEFAULT_LEDGER = Path(__file__).resolve().parents[2] / "storage" / "durable_ledger.md"
+# Ledger path relative to repo root. NOT read directly — go through
+# default_ledger_path() so the override below can bite.
+_REPO_LEDGER = Path(__file__).resolve().parents[2] / "storage" / "durable_ledger.md"
+
+# Env override, honoured at CALL time.
+_LEDGER_ENV = "PROSPECTOR_LEDGER_PATH"
+
+
+def default_ledger_path() -> Path:
+    """Resolve the durable-ledger path, honouring $PROSPECTOR_LEDGER_PATH.
+
+    Deliberately a function, not a module constant. A constant binds at IMPORT, which is
+    before any pytest fixture can redirect it, so `monkeypatch.setenv` would be a silent
+    no-op — the exact defect that let the test suite append 1196 fixture `LAW:` lines to
+    the production `storage/durable_ledger.md` and get them committed. Those laws are fed
+    back into every generator and verifier prompt (moat_prompts._load_ledger), so the
+    pollution does not just sit in a log: it constrains what the engine is allowed to
+    propose. Same family as audit.py's `_AUDIT_DIR`; resolved here at call time so the
+    env var is sufficient on its own.
+    """
+    override = os.environ.get(_LEDGER_ENV)
+    return Path(override) if override else _REPO_LEDGER
 
 # Sentinel values the LLM uses when short-circuiting.
 _SHORT_CIRCUITED_SENTINEL = "SHORT_CIRCUITED"
@@ -31,7 +52,7 @@ class TribunalMiddleware:
     """Validates LLM responses and enforces pipeline invariants."""
 
     def __init__(self, ledger_path: str | Path | None = None) -> None:
-        self.ledger_path = Path(ledger_path) if ledger_path else _DEFAULT_LEDGER
+        self.ledger_path = Path(ledger_path) if ledger_path else default_ledger_path()
 
     # ── public entry point ─────────────────────────────────────────────
 

@@ -7,22 +7,23 @@ disconfirming queries; the only LLM work is ruling on the fetched passages.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Optional
 
 from prospector.domain.primitives import CandidateSpec
+from prospector.pipeline.middleware import default_ledger_path
 from prospector.pipeline.moat_contract import MoatVerificationContract
-
-# ── Ledger path (same as middleware) ──────────────────────────────────────
-
-_LEDGER_PATH = Path(__file__).resolve().parents[2] / "storage" / "durable_ledger.md"
 
 
 def _load_ledger(max_lines: int = 15) -> str:
-    """Read the last `max_lines` non-empty bullet points from the ledger."""
-    if not _LEDGER_PATH.exists():
+    """Read the last `max_lines` non-empty bullet points from the ledger.
+
+    Resolves the path per call via middleware.default_ledger_path() — one definition
+    shared with the writer, so a redirected ledger is read AND written in the same place.
+    """
+    ledger = default_ledger_path()
+    if not ledger.exists():
         return "(no ledger laws recorded yet)"
-    lines = _LEDGER_PATH.read_text(encoding="utf-8").splitlines()
+    lines = ledger.read_text(encoding="utf-8").splitlines()
     bullets = [ln.strip() for ln in lines if ln.strip().startswith("*")]
     recent = bullets[-max_lines:] if len(bullets) > max_lines else bullets
     if not recent:
