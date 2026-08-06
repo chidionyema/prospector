@@ -143,10 +143,18 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
 
     The completed-tick log (`ticks.jsonl`) only records ticks that FINISH, so a hung or killed
     batch — exactly what a 15–30 min grounded run can do — leaves no trace there. This heartbeat is
-    written at the START of work (and on sleep), so a monitor can flag "phase=generating, but
-    heartbeat is 40 min stale" as a stall. `next_check` (when set) lets a watchdog tell idle from dead.
+    written at the START of work (and repeatedly during sleep), so a monitor can flag
+    "phase=generating, but heartbeat is 40 min stale" as a stall. `next_check` (when set) lets a
+    watchdog tell idle from dead.
+
+    `mono` is `time.monotonic()` alongside the wall-clock `ts`, because the two disagree in exactly
+    the cases that matter and only their difference names the cause. A wall clock that is stepped
+    (NTP correction, a VM/laptop resuming, the 1970-dated ticks this machine has produced) inflates
+    the wall age while the loop is turning normally; a loop that has actually stopped inflates both.
+    Written, not yet acted on — see `_liveness`.
     """
-    beat = {"ts": datetime.now(timezone.utc).isoformat(), "pid": os.getpid(), "phase": phase, **extra}
+    beat = {"ts": datetime.now(timezone.utc).isoformat(), "mono": time.monotonic(),
+            "pid": os.getpid(), "phase": phase, **extra}
     try:
         _heartbeat_path(cfg).write_text(json.dumps(beat, default=str), encoding="utf-8")
     except OSError as exc:
@@ -257,6 +265,13 @@ def _default_generate(cfg, batch_size: int) -> dict:
 # The watchdog's 'generating' stall threshold is derived from this constant (see _liveness) so
 # the in-process deadline always fires first and the process self-heals before the watchdog acts.
 _TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "10800"))  # 3h
+
+# How often the daemon re-stamps its heartbeat while asleep (see the refresh loop in
+# `run_daemon`). 60s against a 5s sleep slice, so it costs one small file write per twelve slices
+# — roughly 120 writes across a 2h cadence, against a watchdog that samples every ~15 min. The
+# point is the RATIO: any budget the watchdog sets is now compared against a write that should
+# never be more than a minute old, instead of one that is legitimately two hours old.
+_SLEEP_HEARTBEAT_REFRESH_S = 60
 
 # After an unproductive tick (error or 0 dossiers despite the guard allowing spend) retry soon
 # instead of burning the full 2h cadence idle — one provider blip cost days of ~$0 barren ticks.
@@ -565,13 +580,38 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
             # firing is the system working, not a failure, and must not inherit an outage's
             # backoff. `_tick_unproductive` already excludes it.
             consecutive_unproductive = 0
-        # Sleep in short slices so a stop request is honoured promptly mid-cadence.
-        _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles)
+        # Sleep in short slices so a stop request is honoured promptly mid-cadence, and REFRESH
+        # the heartbeat from inside that sleep rather than stamping it once on the way in.
+        #
+        # Stamped once, a `sleeping` heartbeat is a full cadence old by the end of a normal sleep,
+        # so "is it stale?" was really asking "has the WALL CLOCK moved more than interval+35min
+        # since a single write?" — a question that a clock step, an NTP correction or a system
+        # suspend answers wrongly, and that says nothing about whether the loop is turning.
+        # Refreshed every ~60s, a stale `sleeping` heartbeat can only mean the loop STOPPED, which
+        # is the property the watchdog is there to watch. Damage this is meant to end: 47 SIGKILLs
+        # of daemons that `ps` proved were live, every one of them `phase=sleeping`, ages clustered
+        # 156–175 min against a 155 min budget.
+        #
+        # `beat_every_s` marks the new format. `_liveness` keeps the old, generous budget for a
+        # heartbeat without it: a daemon that went to sleep under the old code and wakes up after
+        # this deploy must not be judged dead by the watchdog's next 15-min pass and SIGKILLed for
+        # running exactly the code it was started with.
         slept = 0
+
+        def _beat() -> None:
+            _write_heartbeat(cfg, phase="sleeping", interval_s=sleep_target, cycles=cycles,
+                             beat_every_s=_SLEEP_HEARTBEAT_REFRESH_S, slept_s=slept)
+
+        _beat()
+        since_beat = 0
         while slept < sleep_target and not flag.stop:
             chunk = min(5, sleep_target - slept)
             sleep_fn(chunk)
             slept += chunk
+            since_beat += chunk
+            if since_beat >= _SLEEP_HEARTBEAT_REFRESH_S:
+                _beat()
+                since_beat = 0
     logger.info("Daemon stopped after %d cycle(s)", cycles)
     return cycles
 
@@ -719,20 +759,45 @@ def _liveness(cfg) -> tuple[bool, str]:
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return False, f"unreadable heartbeat ({exc})"
     phase = beat.get("phase", "?")
+    # The monotonic age beside the wall-clock one, whenever the heartbeat carries a `mono`.
+    #
+    # Every budget below is written in wall-clock minutes and is UNCHANGED here, on purpose: a
+    # large wall age is what the watchdog has always acted on, and narrowing that on an unproven
+    # theory would trade 47 false criticals for a missed real stall (the 8.5h wedge of 2026-07-01
+    # is why the kill exists at all). What changes is that the reason string now carries both
+    # numbers, so the NEXT stale heartbeat identifies its own cause instead of being unexplainable:
+    # a loop that stopped shows both ages large, while a stepped clock or a suspended machine shows
+    # a large wall age beside a small monotonic one.
+    #
+    # HYPOTHESIS this instruments (unproven, do not act on it yet): the 47 SIGKILLs were wall-clock
+    # artefacts, not dead loops. Circumstantial support — ages clustered 156–175 min against a
+    # 155 min budget, drift measured at only +0.057% (needs 38.3% to reach 166 min), `pmset` showing
+    # no suspend around pid 91757's last beat, and 110 ticks dated 1970 found on this machine.
+    # Confirmed if a future failure prints a wall age far above its monotonic age; killed if the two
+    # track each other, which would mean the loop really did stop and the refresh above is the fix.
+    # NOTE the monotonic reading is only comparable within one boot: after a restart the daemon
+    # rewrites the heartbeat within seconds, so a cross-boot comparison is not a state this reaches
+    # in practice, and a negative age is reported rather than hidden.
+    mono = beat.get("mono")
+    age_mono_min = (time.monotonic() - mono) / 60 if isinstance(mono, (int, float)) else None
+    ages = (f"{age_min:.0f} min old"
+            if age_mono_min is None
+            else f"{age_min:.0f} min old by wall clock / {age_mono_min:.0f} min monotonic")
     # Derived from the tick hard deadline (+10 min grace) so the in-process deadline always
     # self-exits a hung tick FIRST; the watchdog kill is the backstop for when even the
     # in-process timer wedges. A fixed number here silently strands the coupling when the
     # deadline changes (proven: the old hardcoded 55 assumed the old 45-min deadline).
     stall_min = _TICK_HARD_DEADLINE_S / 60 + 10
     if phase == "generating" and age_min > stall_min:
-        return False, (f"stuck in 'generating' for {age_min:.0f} min "
+        return False, (f"stuck in 'generating', heartbeat {ages} "
                        f"(deadline {_TICK_HARD_DEADLINE_S // 60} min should have force-exited it)")
     if phase == "sleeping":
         budget = beat.get("interval_s", 7200) / 60 + 35  # interval + grace
         if age_min > budget:
-            return False, f"'sleeping' heartbeat {age_min:.0f} min old (> interval+grace {budget:.0f}); loop likely dead"
+            return False, (f"'sleeping' heartbeat {ages} (> interval+grace {budget:.0f}); "
+                           f"loop likely dead")
     if phase in ("evaluating", "idle") and age_min > 45:
-        return False, f"stuck in '{phase}' for {age_min:.0f} min"
+        return False, f"stuck in '{phase}', heartbeat {ages}"
     return True, f"alive (phase={phase}, {age_min:.1f} min ago)"
 
 
@@ -824,7 +889,40 @@ def _watch_status(cfg, interval: int) -> None:
         print("\nstopped.")
 
 
+def _log_formatter() -> logging.Formatter:
+    """The one line format for everything this entry point logs: UTC timestamp, level, message.
+
+    Split out from `_configure_logging` so the shape is assertable without installing a handler.
+    """
+    fmt = logging.Formatter("%(asctime)sZ %(levelname)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
+    fmt.converter = time.gmtime  # UTC, matching the heartbeat's `ts` so the two can be diffed
+    return fmt
+
+
+def _configure_logging() -> None:
+    """Install that formatter on the root logger. Nothing else in this package configures logging.
+
+    Without it, `logger.critical` fell through to `logging.lastResort`, which writes the bare
+    message to stderr with no time and no level. The cost was concrete and current: 173 lines of
+    `watchdog.err.log` recording 47 SIGKILLs, not one of which can be placed in time, correlated
+    with a tick, or checked against `pmset` — so the alerts could be counted and never explained.
+    Every liveness theory in `_liveness` is only testable once the kills carry timestamps.
+
+    Level INFO, because `lastResort` also swallows the watchdog's PASS line (`logger.info`
+    "Watchdog: %s"), leaving a log that records only the kills — which reads as though the daemon
+    is killed every time it is checked. Guarded on `root.handlers` so a caller that has already
+    configured logging (a test harness, an embedding process) keeps its own setup.
+    """
+    root = logging.getLogger()
+    if not root.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(_log_formatter())
+        root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
+
 def main(argv: list[str] | None = None) -> None:
+    _configure_logging()
     p = argparse.ArgumentParser(description="Prospector always-on generation daemon")
     p.add_argument("--config", default="config.yaml", help="Path to config.yaml")
     mode = p.add_mutually_exclusive_group()
