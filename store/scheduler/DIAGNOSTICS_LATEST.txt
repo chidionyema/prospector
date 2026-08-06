@@ -1,26 +1,18 @@
 ════════════════════════════════════════════════════════════════════════
-BATCH DIAGNOSTICS  ·  2026-08-06T09:23:01.930201+00:00
+BATCH DIAGNOSTICS  ·  2026-08-06T10:38:12.722711+00:00
 ════════════════════════════════════════════════════════════════════════
 ── Funnel (top → bottom) ──
-  generated=15  dedup_dropped=0  rejection_fastpath=0  prescreen_in=15  prescreened_out=0  novelty_selected=15  vetted=15
-── Decisions ──  PASS 6 · KILL 9 · DEFER 0 · provisional 15 (of 15 vetted)
-  kill gates: min_composite=5, moat_ungrounded=2, distribution=1, incumbency=1
-── Grounding ──  unverifiable 19.8%  ·  sources/check {1: 2, 2: 7, 3: 16, 4: 26, 5: 26, 6: 24}  ·  retrieval-empty checks 0
+  generated=15  dedup_dropped=0  rejection_fastpath=0  prescreen_in=15  prescreened_out=1  novelty_selected=14  vetted=14
+── Decisions ──  PASS 0 · KILL 0 · DEFER 14 · provisional 0 (of 14 vetted)
+── Grounding ──  unverifiable 48.4%  ·  sources/check {0: 22, 2: 1, 3: 3, 5: 3, 6: 2}  ·  retrieval-empty checks 22
 ── Per-check verdicts (supported / refuted / unverifiable) ──
-  pain_reality       sup  8 | ref  0 | unv  3
-  value_durability   sup  4 | ref  1 | unv  2
-  incumbency         sup  4 | ref  1 | unv  2
-  payer_solvency     sup  8 | ref  0 | unv  5
-  distribution       sup 11 | ref  1 | unv  1
-  legality           sup  6 | ref  0 | unv  7
-── Confidence ──  supported med=0.63 (n=72)  ·  refuted med=0.5 (n=4)  ·  unverifiable med=0.652 (n=25)
-── Composite (need ≥2.5) ──  n=11 min=2.3 med=2.55 max=3.0 · within-0.5-of-bar=11
-── Brain ──  minimax=101
-── Closest-to-pass kills ──
-  2.75  SetList Split — the pub band's booking, split and tax record, built for the person who fronts the money
-  2.55  SwitchProof — the tool that proves your relative's care home raised fees against the wrong index
-  2.50  SwapSeat — the auction where families sell an unwanted school transport place back to the council's waiting list
-  2.45  Kerbside Cut — the mobile diamond-drilling round that gets an EV charge cable through a UK doorway in one visit
-  2.30  PatchWagon — the mobile bike-shed clinic that meets delivery riders where they park, and fixes the thing that would have killed tomorrow's shift
-── PASSES ──  GhostShift — the fixed-fee service that gets a gig worker's deactivated account switched back on; MortarMuster — the tinted lime mortar match kit that lets a small builder repoint a listed wall without waiting on a lab; SwitchCost — the tool that tells a small business what leaving a supplier contract actually costs, before they sign the next one; GearBack Court — the fixed-fee service that sues the buyer who charged back your kit, and collects; TowLine Tools — the pocket weight check that tells a UK van driver if the trailer they're about to tow is legal; GaugeProof — the water borehole owner's abstraction diary that survives an Environment Agency audit
-── Cost ──  {'total': {'calls': 826, 'web_calls': 470, 'input': 1592630, 'output': 1040690, 'total': 8071566, 'cached': 1771668, 'self_corrections': 7}, 'total_cost_usd': 0.6854, 'by_phase': {'main': {'calls': 197, 'web_calls': 0, 'input': 939203, 'output': 883506, 'total': 6579138, 'cached': 1450935, 'self_corrections': 2}, 'vetting': {'calls': 629, 'web_calls': 470, 'input': 653427, 'output': 157184, 'total': 1492428, 'cached': 320733, 'self_corrections': 5}}, 'by_provider': {'claude_cli': {'calls': 116, 'web_calls': 0, 'input': 232, 'output': 348289, 'total': 5786767, 'cached': 1771668, 'self_corrections': 0, 'cost_usd': 0.0}, 'fallback(claude_cli+minimax)': {'calls': 1, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 1, 'cost_usd': 0.0}, 'cache': {'calls': 235, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'ddg': {'calls': 235, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'minimax': {'calls': 233, 'web_calls': 0, 'input': 1592398, 'output': 692401, 'total': 2284799, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.68544}, 'fallback(claude_cli+cursor_cli+minimax)': {'calls': 5, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 5, 'cost_usd': 0.0}, 'fallback(claude_cli+cursor_cli)': {'calls': 1, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 1, 'cost_usd': 0.0}}}
+  pain_reality       sup  0 | ref  0 | unv  4
+  value_durability   sup  0 | ref  0 | unv  4
+  incumbency         sup  0 | ref  0 | unv  1
+  payer_solvency     sup  0 | ref  0 | unv  1
+  distribution       sup  0 | ref  0 | unv  1
+  legality           sup  0 | ref  0 | unv  4
+── Confidence ──  supported med=0.562 (n=7)  ·  refuted n=0  ·  unverifiable med=0.0 (n=24)
+── Composite (need ≥2.5) ──  0 candidates reached scoring (all died kill-fast)
+── Brain ──  ?=22, claude-cli/default=9
+── Cost ──  {'total': {'calls': 190, 'web_calls': 124, 'input': 83627, 'output': 194946, 'total': 1494980, 'cached': 610920, 'self_corrections': 6}, 'total_cost_usd': 0.0773, 'by_phase': {'main': {'calls': 41, 'web_calls': 0, 'input': 58509, 'output': 170227, 'total': 1045392, 'cached': 412371, 'self_corrections': 5}, 'vetting': {'calls': 149, 'web_calls': 124, 'input': 25118, 'output': 24719, 'total': 449588, 'cached': 198549, 'self_corrections': 1}}, 'by_provider': {'minimax': {'calls': 20, 'web_calls': 0, 'input': 83547, 'output': 174186, 'total': 257733, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.07732}, 'claude_cli': {'calls': 40, 'web_calls': 0, 'input': 80, 'output': 20760, 'total': 1237247, 'cached': 610920, 'self_corrections': 0, 'cost_usd': 0.0}, 'fallback(claude_cli+minimax)': {'calls': 5, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 5, 'cost_usd': 0.0}, 'cache': {'calls': 62, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'ddg': {'calls': 62, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 0, 'cost_usd': 0.0}, 'claude-cli': {'calls': 1, 'web_calls': 0, 'input': 0, 'output': 0, 'total': 0, 'cached': 0, 'self_corrections': 1, 'cost_usd': 0.0}}}
