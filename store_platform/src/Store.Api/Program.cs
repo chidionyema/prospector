@@ -652,6 +652,104 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
 .WithName("PatchPackFacets")
 .WithOpenApi();
 
+// Replace a live pack's storefront copy, touching nothing else about it.
+//
+// Same reasoning as the facets PATCH above, with a sharper edge. Routing a copy job through
+// POST /internal/catalog would let it rewrite the money-bearing fields of a live listing, and
+// on this endpoint that is not a hypothetical: the upsert assigns ProviderProductId and
+// ProviderPriceId unconditionally on update (`request.X ?? request.PaddleX`, so omitting them
+// NULLS them) while PricePence is only ever assigned on INSERT. So a copy job that re-published
+// would either null the provider ids — breaking FulfilmentService's `p.ProviderProductId ==
+// item.ProductId` lookup, i.e. the buyer pays and delivery never resolves — or carry freshly
+// minted ones, leaving the buy button on a price minted at today's ladder number while the
+// fulfilment floor still holds the old one. Both are silent in the catalogue row.
+//
+// ProviderProductId is returned by no GET projection, so such a job could not even read back
+// what it was about to overwrite. The fix is to make the fields unreachable, not to ask the
+// caller to echo them correctly.
+//
+// The response deliberately includes pricePence, providerPriceId and isListed alongside the
+// copy. A backfill's invariance assertion should be answerable from the write's own response
+// rather than a follow-up GET that could read a different pack's row after a concurrent write.
+app.MapPatch("/internal/catalog/{id}/copy", async (
+    string id,
+    CopyPatchRequest request,
+    HttpRequest http,
+    StoreDbContext db,
+    IConfiguration config) =>
+{
+    var expectedKey = config["Store:InternalApiKey"]
+        ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+    if (string.IsNullOrEmpty(expectedKey))
+    {
+        return Results.Problem("Internal API key not configured", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    var providedKey = http.Headers["X-Internal-Key"].ToString();
+    if (string.IsNullOrEmpty(providedKey) ||
+        !CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey)))
+    {
+        return Results.Unauthorized();
+    }
+
+    var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
+    if (pack is null) return Results.NotFound();
+
+    // null = leave alone, "" = clear. Same rule and same reason as the facets PATCH: "this copy
+    // was wrong, take it off" has to be expressible, or null-means-no-change is a trap.
+    static string? Applied(string? incoming, string? current)
+    {
+        if (incoming is null) return current;
+        return incoming.Length == 0 ? null : incoming;
+    }
+
+    pack.CardLine = Applied(request.CardLine, pack.CardLine);
+    pack.Headline = Applied(request.Headline, pack.Headline);
+    pack.Subhead = Applied(request.Subhead, pack.Subhead);
+    pack.ProofPoint = Applied(request.ProofPoint, pack.ProofPoint);
+    pack.WhoPays = Applied(request.WhoPays, pack.WhoPays);
+    pack.EffortTag = Applied(request.EffortTag, pack.EffortTag);
+    pack.TimeToFirstRevenue = Applied(request.TimeToFirstRevenue, pack.TimeToFirstRevenue);
+    if (request.WhatYouGet is not null)
+    {
+        pack.WhatYouGetJson = request.WhatYouGet.Length == 0
+            ? null
+            : JsonSerializer.Serialize(request.WhatYouGet);
+    }
+    if (request.SampleExtract is not null)
+    {
+        pack.SampleExtractJson = request.SampleExtract.Length == 0
+            ? null
+            : JsonSerializer.Serialize(request.SampleExtract);
+    }
+
+    await db.SaveChangesAsync().ConfigureAwait(false);
+
+    return Results.Ok(new
+    {
+        pack.Id,
+        pack.CardLine,
+        pack.Headline,
+        pack.Subhead,
+        pack.ProofPoint,
+        pack.WhoPays,
+        pack.EffortTag,
+        pack.TimeToFirstRevenue,
+        WhatYouGet = RehydrateStringArray(pack.WhatYouGetJson),
+        SampleExtract = RehydrateStringArray(pack.SampleExtractJson),
+        // Invariants, echoed so the caller can assert on them without a second read.
+        pack.PricePence,
+        pack.MinBillablePence,
+        pack.ProviderPriceId,
+        pack.ProviderProductId,
+        pack.IsListed,
+        pack.ContentKey,
+    });
+})
+.WithName("PatchPackCopy")
+.WithOpenApi();
+
 // Withdraw a pack from sale (or restore one), touching nothing else about it.
 //
 // The alternative was re-POSTing the pack to /internal/catalog with IsListed=false, but that
