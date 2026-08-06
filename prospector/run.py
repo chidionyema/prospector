@@ -1626,6 +1626,38 @@ def resume_deferred(cfg: Config, *, limit: int | None = None,
                        log_path=cfg.store_dir / "prospector.jsonl")
 
 
+def run_decay_sweep(cfg: Config, *, limit: int | None = None) -> dict:
+    """Run one bounded decay sweep (re-vet PASSes past `reverify_due_at`), in-process.
+
+    THE GAP THIS CLOSES — the same shape as `resume_deferred` above, one rail over.
+    `decay.py::run_decay_loop` has always existed and always worked, and nothing ever called
+    it: its only importer was `tests/sim/test_decay.py`. So `reverify_due_at` was stamped on
+    every dossier and read by nothing, and a PASS minted under a superseded gate kept its
+    ruling forever. Measured 2026-08-06: 29 of 83 live PASSes past SLA, and the 5 that fail
+    today's `moat_ungrounded` gate were all minted on or before the day it landed (73ae976).
+
+    Brains are built here exactly as `resume_deferred` builds them, so the daemon does not have
+    to import the CLI's argparse plumbing.
+    """
+    from .decay import run_decay_loop
+    from .operator import make_operator
+    from .telemetry import get_usage_summary, reset_usage
+    reset_usage()
+    op = make_operator(cfg)
+    args = argparse.Namespace(limit=limit, publish=False, board=None,
+                              fixtures=None, search=None)
+    search = _make_search(cfg, args)
+    store = Store(cfg)
+    out = run_decay_loop(store, op, search, cfg, limit=limit)
+    usage = get_usage_summary()
+    # `metered_usd`, NOT `cost_usd` — billed money only, the figure `daily_cap_usd` enforces.
+    # A sweep run on the Claude Code subscription is legitimately 0.00 here while still
+    # spending allowance; the subscription leg rides in the tick row as
+    # `today_subscription_usd` (scheduler/guard.py:161). Two legs, two names, never summed.
+    out["metered_usd"] = round(usage.get("total_cost_usd", 0.0), 4)
+    return out
+
+
 def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:
     """Run the full signal pipeline from text or file."""
     cfg = _build_config_and_overrides(args)

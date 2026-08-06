@@ -1,5 +1,35 @@
 """Decay loop (Part 7).
 Re-verifies published dossiers when they exceed their SLA (reverify_due_at).
+
+WHY THIS EXISTS AT ALL (root cause, 2026-08-06)
+-----------------------------------------------
+Gates tighten over time; already-published dossiers are not re-judged when they do.
+`moat_ungrounded` (lane-aware PASS gate) landed 2026-06-28 in 73ae976, and every PASS
+minted before it kept its ruling forever. Audited 2026-08-06 over `store/dossiers/*.pass.json`:
+5 of 83 live PASSes fail today's gate, and ALL 5 were created on or before 2026-06-28 —
+zero minted after it fail. The gate works; nothing ever re-applied it.
+
+The reason nothing re-applied it is that THIS MODULE HAD NO PRODUCTION CALLER. `run_decay_loop`
+was imported by exactly one thing, `tests/sim/test_decay.py`, so `reverify_due_at` was a
+write-only field in production (29 of 83 passes were past their SLA with nothing coming for
+them). The rail existed, was tested, and never ran. See `scheduler/run_scheduled.py::_decay_pass`
+for the caller that closes this.
+
+AN OUTAGE MUST NEVER DELIST (the defect that made wiring this dangerous)
+-----------------------------------------------------------------------
+This loop used to call `vet_candidate(..., store=store)` and treat every non-PASS as a
+delisting. Both halves were wrong, and the persistence half was the dangerous one:
+`Store.save` writes `{cid}.{decision}.json` AND deletes the stale-decision file
+(`store.py:178-182`). So a re-vet that DEFERRED — the ruling the engine returns when the moat
+is down or retrieval failed, i.e. precisely "we could not look" — would write `{cid}.defer.json`,
+DELETE `{cid}.pass.json`, and re-point the index row to `defer`. A single provider outage would
+have permanently delisted live, sellable packs and destroyed the dossiers behind them.
+
+That is the same class CLAUDE.md already fences elsewhere ("an exception is never evidence;
+a failed call DEFERS" — `verify.py:365`/`:693`): a DEFER is the absence of a ruling, never a
+negative one. So the re-vet now runs with `store=None` and this loop decides what is durable:
+only a DECISIVE outcome (PASS or KILL) is persisted. A DEFER leaves the live PASS exactly as it
+was — file, index row and all — and is retried on a later sweep.
 """
 from __future__ import annotations
 
@@ -7,12 +37,17 @@ import datetime
 from typing import Optional
 
 from .config import Config
-from .models import Decision, Dossier
+from .errors import ProviderExhaustedError
+from .models import Decision
 from .operator import Operator
 from .retrieval import SearchProvider
 from .run import vet_candidate
 from .store import Store
 from .telemetry import logger, set_context, track_latency
+
+#: Outcomes this loop is willing to write over a live PASS. A DEFER is deliberately absent:
+#: it means the re-vet could not reach a ruling, which is not grounds to change one.
+_DECISIVE = frozenset({Decision.PASS, Decision.KILL})
 
 
 @track_latency(name="run_decay_loop")
@@ -21,66 +56,107 @@ def run_decay_loop(
     op: Operator,
     search: SearchProvider,
     cfg: Config,
-    now: Optional[datetime.datetime] = None
+    now: Optional[datetime.datetime] = None,
+    limit: Optional[int] = None,
 ) -> dict[str, int]:
-    """Check all PASS dossiers for staleness. Re-verify if due."""
+    """Re-verify PASS dossiers past their SLA. Never delists on an inconclusive re-vet.
+
+    `limit` bounds how many due dossiers one sweep may re-vet, so a scheduler tick can spend a
+    fixed budget instead of re-vetting the whole overdue population in one pass. None = no bound.
+
+    Returns counts: total_due (how many were past SLA and in scope), revetted, refreshed
+    (still PASS), delisted (now a grounded KILL), deferred (inconclusive, left untouched),
+    plus `stopped_early` when the moat went down mid-sweep.
+    """
     set_context(phase="decay_loop")
     logger.info("Starting decay loop re-verification")
 
     if now is None:
         now = datetime.datetime.now(datetime.timezone.utc)
-    
-    # Load all PASS dossiers
+
     all_pass = store.all(decision=Decision.PASS.value)
-    
+
     refreshed = 0
     delisted = 0
+    deferred = 0
+    revetted = 0
     total_due = 0
-    
+    stopped_early = ""
+
     for row in all_pass:
         cid = row["candidate_id"]
         due_str = row["reverify_due_at"]
         if not due_str:
             continue
-            
-        due_dt = datetime.datetime.fromisoformat(due_str)
+
+        try:
+            due_dt = datetime.datetime.fromisoformat(due_str)
+        except (TypeError, ValueError):
+            # A malformed SLA stamp is a data bug, not a licence to re-vet on every sweep.
+            logger.warning("Unparseable reverify_due_at %r", due_str, extra={"candidate_id": cid})
+            continue
         if now < due_dt:
             continue
-            
+
         total_due += 1
+        if limit is not None and revetted >= limit:
+            # Counted as due (so the caller can see the remaining backlog) but not worked.
+            continue
+
         set_context(candidate_id=cid)
         logger.info(f"Re-verifying due dossier: {row['title']!r}", extra={"candidate_id": cid})
-        
-        # Load full dossier
+
         d_dict = store.get(cid)
         if not d_dict:
             logger.warning(f"Dossier record missing for {cid}")
             continue
-            
-        # Re-verify using the candidate from the dossier
+
         from .models import Candidate
         cand = Candidate.from_dict(d_dict["candidate"])
-        
-        # Run full vet
-        new_dossier = vet_candidate(cand, op, search, cfg, store=store)
-        
+
+        # store=None: this loop, not vet_candidate, decides what survives contact with the
+        # catalogue. See the module docstring — persisting a DEFER would delete the .pass.json.
+        try:
+            new_dossier = vet_candidate(cand, op, search, cfg, store=None)
+        except ProviderExhaustedError as exc:
+            # The moat is down. Every remaining row would DEFER for the same reason, so paying
+            # for them proves nothing. Stop the sweep and leave the catalogue exactly as it is;
+            # the next tick picks up where this one stopped (these rows are still past SLA).
+            stopped_early = f"{type(exc).__name__}: {exc}"
+            logger.warning("Decay sweep stopped early — moat exhausted: %s", stopped_early,
+                           extra={"candidate_id": cid})
+            break
+
+        revetted += 1
+
+        if new_dossier.decision not in _DECISIVE:
+            # DEFER: we could not look. Not evidence, so it changes nothing — the live PASS keeps
+            # its file, its index row and its (still-past) SLA date, and is retried next sweep.
+            deferred += 1
+            logger.info("Re-vet inconclusive (%s) — PASS left live, will retry.",
+                        new_dossier.gate_fired, extra={"candidate_id": cid})
+            continue
+
+        store.save(new_dossier)
+
         if new_dossier.decision == Decision.PASS:
             refreshed += 1
             logger.info("Dossier still valid. Date refreshed.", extra={"candidate_id": cid})
         else:
             delisted += 1
-            logger.info(f"Dossier FAILED: {new_dossier.gate_fired}. Delisted.", 
+            logger.info(f"Dossier FAILED: {new_dossier.gate_fired}. Delisted.",
                         extra={"candidate_id": cid, "gate": new_dossier.gate_fired})
-            # store.save() already handled the delisting in the index by setting decision=KILL
+            # store.save() handled the delisting in the index by setting decision=KILL
             # and updating the path to .kill.json
 
-    logger.info("Decay loop complete", extra={
+    out = {
         "total_due": total_due,
+        "revetted": revetted,
         "refreshed": refreshed,
-        "delisted": delisted
-    })
-    return {
-        "total_due": total_due,
-        "refreshed": refreshed,
-        "delisted": delisted
+        "delisted": delisted,
+        "deferred": deferred,
     }
+    if stopped_early:
+        out["stopped_early"] = stopped_early
+    logger.info("Decay loop complete", extra=out)
+    return out

@@ -559,6 +559,60 @@ def _drain_only_resume_per_tick(cfg) -> int:
     return max(_resume_per_tick(cfg), _batch_size(cfg, None))
 
 
+#: How many SLA-expired PASSes one tick may re-verify. Deliberately NOT 0.
+#:
+#: `prospector/decay.py::run_decay_loop` shipped with no production caller at all — its only
+#: importer was `tests/sim/test_decay.py` — so `reverify_due_at` was written on every dossier
+#: and read by nothing. Measured 2026-08-06: 29 of 83 live PASSes were past their SLA, and the
+#: 5 that fail today's `moat_ungrounded` gate were ALL minted on or before 2026-06-28, the day
+#: that gate landed (73ae976). Shipping this defaulted to 0 would reproduce the exact bug it
+#: fixes: a rail that exists, is tested, and never runs.
+#:
+#: 2 per tick is small on purpose. A re-vet is a full moat run (~5.5 min measured) competing
+#: with the drain for the same subscription CLI slots, so this is a trickle that clears the
+#: overdue population over roughly a day at the live cadence, not a burst that starves the
+#: drain. Override with `schedule.decay_per_tick`; 0 disables the sweep.
+_DECAY_PER_TICK_DEFAULT = 2
+
+
+def _decay_per_tick(cfg) -> int:
+    """How many SLA-expired PASSes one tick may re-verify. 0 disables the decay sweep."""
+    raw = _sched(cfg, "decay_per_tick", _DECAY_PER_TICK_DEFAULT)
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        logger.warning("schedule.decay_per_tick=%r is not an integer", raw)
+        return _DECAY_PER_TICK_DEFAULT
+
+
+def _decay_pass(cfg, n_decay: int) -> dict | None:
+    """Re-verify up to `n_decay` SLA-expired PASSes. Never raises. None if the sweep is off.
+
+    Callers must already have cleared the guard (spend/PAUSE) and the moat preflight — a decay
+    sweep on a blind moat would only DEFER every row, which `run_decay_loop` correctly refuses
+    to persist, so it would be pure cost for no state change.
+    """
+    if not n_decay:
+        return None
+    # Late import, mirroring `_drain_pass`: a tick that returned early never builds brains.
+    from prospector.run import run_decay_sweep
+    try:
+        out = run_decay_sweep(cfg, limit=n_decay)
+        logger.info("Tick decay sweep: %s", out)
+        # STDERR + print for the same reason as `_drain_pass`: logging below CRITICAL never
+        # reaches launchd.err.log (verified 2026-08-05), so a sweep that only logged at INFO
+        # would be indistinguishable from the "no caller" bug this whole change fixes.
+        print(f"⟳ tick decay sweep: {out}", file=sys.stderr, flush=True)
+        return out
+    except Exception as exc:  # noqa: BLE001
+        # A decay failure must never cost the tick its generation batch. Recorded, not raised.
+        out = {"error": f"{type(exc).__name__}: {exc}"}
+        logger.warning("Tick decay sweep failed (tick continues): %s", out["error"])
+        print(f"⟳ tick decay sweep FAILED (tick continues): {out['error']}",
+              file=sys.stderr, flush=True)
+        return out
+
+
 def _default_generate(cfg, batch_size: int) -> dict:
     """Run one bounded blue-sky generation batch in-process and publish PASSes.
 
@@ -803,9 +857,13 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         deadline.start()
         try:
             resumed = _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
+            # Inside the deadline guard, for the reason spelled out above it: this branch is the
+            # daemon's entire workload while the brake is engaged, and `_decay_pass` swallows
+            # every exception by design, so an uncovered sweep could wedge the tick invisibly.
+            decayed = _decay_pass(cfg, _decay_per_tick(cfg))
         finally:
             deadline.cancel()
-        tick["result"] = {"dossiers": 0, "resumed": resumed}
+        tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed}
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
         _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=None)
@@ -823,6 +881,13 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     try:
         logger.info("Tick: generating %d candidates (%s)", batch_size, decision.reason)
         tick["result"] = gen(cfg, batch_size)
+        # After generation, inside the same deadline guard. The SLA sweep is re-vet work of the
+        # same class as the drain, and it must run on a normal tick too — a decay rail that only
+        # fired while the generation brake was engaged would be as good as unwired for any week
+        # the brake never engages, which is the failure this whole change exists to fix.
+        decayed = _decay_pass(cfg, _decay_per_tick(cfg))
+        if isinstance(tick.get("result"), dict) and decayed is not None:
+            tick["result"]["decayed"] = decayed
         logger.info("Tick complete: %s", tick["result"])
     except GroundingInfrastructureError as exc:
         # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent exit here

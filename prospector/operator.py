@@ -944,7 +944,7 @@ class FallbackOperator(Operator):
 
     def _raw(self, system: str, user: str, temperature: float) -> str:
         from .errors import (PERMANENT, ProviderExhaustedError, classify_exhaustion,
-                             parse_reset_seconds)
+                             limit_window_seconds)
         from .health import DEFAULT_EXHAUSTION_S, TRANSIENT_EXHAUSTION_S
         from .telemetry import logger
         last_err: Optional[Exception] = None
@@ -972,8 +972,13 @@ class FallbackOperator(Operator):
                     # that, backpressure gets the 60s floor and a spent allowance gets the hour.
                     # Before 2026-08-06 both got the hour, so an HTTP 429 under our own drain
                     # load benched a live brain for 3600s and the emergency tail ruled instead.
+                    # `limit_window_seconds` supersedes the old `parse_reset_seconds` here: same
+                    # stated-reset-time-always-wins precedence, but it also reads ABSOLUTE resets
+                    # ("resets at 5pm") and falls back to a per-CLASS window when nothing is
+                    # stated. Before 2026-08-06 an absolute reset parsed to nothing, so Claude
+                    # Code's weekly limit took the 1h default and was re-probed hourly for a week.
                     kind = classify_exhaustion(str(e))
-                    dead_for = (parse_reset_seconds(str(e))
+                    dead_for = (limit_window_seconds(str(e))
                                 or (DEFAULT_EXHAUSTION_S if kind == PERMANENT
                                     else TRANSIENT_EXHAUSTION_S))
                     self._health.mark_exhausted(name, dead_for, error=str(e))

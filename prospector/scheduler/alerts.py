@@ -239,6 +239,83 @@ def _webhook_post(record: dict) -> None:
         logger.warning("Alert webhook POST failed: %s", exc)
 
 
+# --- Off-machine sink: the Hermes Telegram agent ---------------------------------------------
+#
+# WHY A FIFTH SINK (2026-08-06). The four sinks above are ALL machine-local: alerts.jsonl,
+# ALERT.txt, an osascript notification, and a webhook that was never armed. Audited 2026-08-06:
+# `ALERT_WEBHOOK_URL` is read at `_webhook_post` and assigned NOWHERE — not `.env`, not
+# `~/.zshrc`, not `~/.zprofile`, not any installed LaunchAgent plist (every plist hit is prose in
+# a comment telling the operator to set it). So with the Mac asleep or the founder away, every
+# alert this daemon raised was invisible. That is the black box.
+#
+# WHY NOT JUST SET THE WEBHOOK. `_webhook_post` sends a Slack/Discord-shaped body. Telegram's API
+# needs `chat_id`/`text` form-encoded to a bot-token URL, so a generic POST cannot work. Hermes
+# already builds exactly that, with debounce and a documented never-raises contract:
+#   ~/.hermes/scripts/estate_alert.py:63
+#   send_operator_alert(text, *, debounce_key=None, debounce_s=300.0, dry_run=False) -> bool
+# Credentials stay in `~/.hermes/.env` (TELEGRAM_BOT_TOKEN, TELEGRAM_HOME_CHANNEL) and never
+# enter this repo, which keeps the "no hosted service / no API keys beyond this repo" rule: this
+# is a local import of a local script the founder already owns and already runs.
+_HERMES_ALERT_PATH = Path.home() / ".hermes" / "scripts" / "estate_alert.py"
+
+#: Alert keys that reach the founder OFF-MACHINE. The principle: Telegram is for states that will
+#: NOT clear without a human. `moat_deferred` / `moat_provisional` are self-healing by design (a
+#: DEFER is not an error) and `barren_generation` is single-tick noise — paging on those gets the
+#: channel muted, and a muted rail is an unwired rail with extra steps.
+TELEGRAM_KEYS = frozenset({"liveness", "tick_error", "zero_yield", "barren_streak"})
+
+
+def _load_hermes_sender():
+    """Return Hermes' `send_operator_alert`, or None if the estate isn't present/importable.
+
+    UNDER PYTEST THIS ALWAYS RETURNS None, and `dry_run` is not considered a sufficient fence.
+    Proven 2026-08-06: `tests/scheduler/test_run_scheduled.py` reached the real sender, and
+    Hermes checks `_debounced()` BEFORE it checks `dry_run` — so a test run writes
+    `~/.hermes/logs/.alert-debounce.json` and can suppress a genuine founder alert for the next
+    30 minutes. Loading the module at all is the side effect; refusing to load it is the fix.
+    Tests that need to exercise this path monkeypatch THIS function.
+    """
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return None
+    if not _HERMES_ALERT_PATH.exists():
+        return None
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("_hermes_estate_alert", _HERMES_ALERT_PATH)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return getattr(mod, "send_operator_alert", None)
+    except Exception:  # noqa: BLE001 — a moved/broken estate degrades to the local sinks
+        return None
+
+
+def _telegram_push(record: dict) -> None:
+    """Send founder-actionable alerts to Telegram via Hermes. Best-effort; never raises.
+
+    THE TEST FENCE IS NOT OPTIONAL. `test_coordinator.py` in the Hermes estate once messaged the
+    founder for real. `PYTEST_CURRENT_TEST` is set by pytest itself on every test, so the suite
+    physically cannot send: it degrades to Hermes' own `dry_run` path. Do not replace this with an
+    opt-in env var a test could forget to set.
+    """
+    key = record.get("key")
+    if key not in TELEGRAM_KEYS:
+        return
+    send = _load_hermes_sender()
+    if send is None:
+        logger.info("Telegram sink unavailable (no %s); alert stayed local", _HERMES_ALERT_PATH)
+        return
+    line = (f"{_ICON.get(record.get('severity'), '')} Prospector [{record.get('severity')}] "
+            f"{record.get('title')}: {record.get('message')}")
+    try:
+        sent = send(line, debounce_key=f"prospector:{key}", debounce_s=1800.0,
+                    dry_run="PYTEST_CURRENT_TEST" in os.environ)
+        logger.info("Telegram alert key=%s sent=%s", key, sent)
+    except Exception as exc:  # noqa: BLE001 — documented never-raises, but trust nothing here
+        logger.warning("Telegram alert push failed: %s", exc)
+
+
 def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
                throttle_s: int = 3600, **fields) -> dict:
     """Record an alert and (unless throttled) push it to the notification sinks.
@@ -273,6 +350,7 @@ def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
     try:
         _desktop_notify(f"Prospector: {title}", message)
         _webhook_post(record)
+        _telegram_push(record)
         logger.warning("ALERT [%s] %s: %s", severity, title, message)
     except Exception:  # noqa: BLE001 — alerting must not be able to take down the daemon
         logger.exception("Alert push failed (alert was still recorded to alerts.jsonl)")

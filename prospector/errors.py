@@ -8,6 +8,7 @@ empty result (real evidence of nothing — never a failover).
 """
 from __future__ import annotations
 
+import datetime as _dt
 import re
 from typing import Optional
 
@@ -101,7 +102,16 @@ _PERMANENT_MARKERS = (
 # "rate limit" is deliberately NOT matched here — it stays transient, in _TRANSIENT_MARKERS.
 # A long window is cheap now: health.py's half-open probe re-tests at ~120s, so classifying an
 # allowance limit PERMANENT costs at most one extra probe if the allowance is actually restored.
-_ALLOWANCE_LIMIT_RE = re.compile(r"\b(spend|usage|monthly|weekly|daily)\s+limit\b")
+# 2026-08-06: `session limit` and `5-hour limit` were missing, and that is the DANGEROUS half
+# described immediately above — not a missed hour of failover, but a limit that never becomes a
+# ProviderExhaustedError at all, so verify.py takes its generic-exception path and the outage is
+# recorded as an `unverifiable` check instead of deferring the candidate. Proven before the fix:
+#     classify_exhaustion("5-hour limit reached; try again later") -> ""   (NOT_EXHAUSTION)
+# `\d+-hour` is bounded to a leading digit run so "hour limit" alone (e.g. prose about rate
+# limits per hour) still does not match.
+_ALLOWANCE_LIMIT_RE = re.compile(
+    r"\b(spend|usage|monthly|weekly|daily|hourly|session)\s+limit\b"
+    r"|\b(?:[0-9]+|five)[-\s]?hour\s+limit\b")
 _TRANSIENT_MARKERS = (
     "rate_limit",
     "rate limit",
@@ -164,7 +174,7 @@ _RESET_HMS = re.compile(r"reset(?:\s+\w+){0,3}?\s+after\s+([0-9hms\s]+)", re.I)
 _HMS_PART = re.compile(r"([0-9]+)\s*([hms])", re.I)
 
 
-def parse_reset_seconds(text: str) -> Optional[float]:
+def parse_reset_seconds(text: str, now: Optional["_dt.datetime"] = None) -> Optional[float]:
     """Seconds until a quota resets, parsed from an exhaustion error, or None.
 
     Prefers the machine-precise retryDelayMs; falls back to an 'Xh Ym Zs' phrase.
@@ -184,4 +194,124 @@ def parse_reset_seconds(text: str) -> Optional[float]:
             total += int(value) * mult
         if total > 0:
             return float(total)
+    # `now` is threaded through purely so callers and tests can pin the clock; every existing
+    # caller passes nothing and gets the previous behaviour.
+    return _parse_absolute_reset(t, now=now)
+
+
+# --- Limit CLASSES: a 5-hour window is not a week is not a spent account -----------------------
+#
+# THE GAP THIS CLOSES (2026-08-06). Everything above parses only RELATIVE durations —
+# `retryDelayMs` and "reset after 6h54m27s". A grep across `prospector/` for
+# `5[- ]hour|five[- ]hour|weekly limit|resets? at|reset_at|session limit` returned ZERO matches,
+# so Claude Code's limits — which are stated as an ABSOLUTE wall-clock reset — parsed to nothing
+# and fell through to DEFAULT_EXHAUSTION_S (3600s). The daemon then re-probed a brain that was
+# guaranteed dead once an hour for up to a WEEK: every probe a full-price failed call, every tick
+# logged `moat_blind`. Nothing distinguished a 5-hour window from a weekly cap from a spent
+# account, so all three were served the same one-hour guess.
+#
+# These are limit CLASSES, not exhaustion classes: `classify_exhaustion` still decides
+# PERMANENT vs TRANSIENT (and PERMANENT still wins ties). This decides HOW LONG to stay away,
+# and only refines the window — it never resurrects a brain the classifier benched.
+LIMIT_SESSION_5H = "session_5h"
+LIMIT_WEEKLY = "weekly"
+LIMIT_NONE = ""
+
+#: Fallback windows, used ONLY when the provider states no reset time we can parse.
+DEFAULT_LIMIT_WINDOW_S = {
+    LIMIT_SESSION_5H: 5 * 3600,
+    LIMIT_WEEKLY: 7 * 24 * 3600,
+}
+
+#: A weekly cap is the one limit nothing automatic can clear, so it is worth naming separately
+#: even when the same words could be read as a session cap. Checked FIRST for that reason.
+_WEEKLY_LIMIT_RE = re.compile(
+    r"\bweekly\s+limit\b|\blimit\s+resets?\s+(?:on|next)\s+\w+day\b|\bper[-\s]week\b", re.I)
+_SESSION_5H_RE = re.compile(
+    r"\b(?:5|five)[-\s]?hour\b|\bsession\s+limit\b|\bcurrent\s+session\b", re.I)
+
+# "resets at 2026-08-07T00:00:00Z" / "resets on 2026-08-07 00:00"
+_RESET_AT_ISO = re.compile(
+    r"resets?\s+(?:at|on)\s+"
+    r"([0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?"
+    r"(?:Z|[+-][0-9]{2}:?[0-9]{2})?)", re.I)
+# "resets at 5pm" / "resets at 17:00" — no date, so it means the NEXT such wall-clock time.
+_RESET_AT_CLOCK = re.compile(r"resets?\s+at\s+([0-9]{1,2})(?::([0-9]{2}))?\s*(am|pm)?\b", re.I)
+
+#: No parsed window may exceed this. A malformed or far-future timestamp must not bench a brain
+#: for a month; a week is the longest real limit this system meets.
+_MAX_WINDOW_S = 7 * 24 * 3600
+
+
+def _parse_absolute_reset(text: str, now: Optional[_dt.datetime] = None) -> Optional[float]:
+    """Seconds until an ABSOLUTE reset time stated in `text`, or None.
+
+    Returns None (not a negative or zero) for an already-past reset: that means the window has
+    expired and the caller should use its own default rather than treat the brain as live.
+    """
+    if now is None:
+        now = _dt.datetime.now(_dt.timezone.utc)
+    t = text or ""
+
+    m = _RESET_AT_ISO.search(t)
+    if m:
+        raw = m.group(1).replace(" ", "T")
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        try:
+            when = _dt.datetime.fromisoformat(raw)
+        except ValueError:
+            when = None
+        if when is not None:
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=_dt.timezone.utc)
+            delta = (when - now).total_seconds()
+            if delta > 0:
+                return float(min(delta, _MAX_WINDOW_S))
+
+    m = _RESET_AT_CLOCK.search(t)
+    if m:
+        hour = int(m.group(1))
+        minute = int(m.group(2) or 0)
+        meridiem = (m.group(3) or "").lower()
+        if meridiem == "pm" and hour < 12:
+            hour += 12
+        elif meridiem == "am" and hour == 12:
+            hour = 0
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            when = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            if when <= now:                      # that time already passed today -> tomorrow
+                when += _dt.timedelta(days=1)
+            return float(min((when - now).total_seconds(), _MAX_WINDOW_S))
+    return None
+
+
+def classify_limit(text: str) -> str:
+    """Classify WHICH limit was hit: LIMIT_WEEKLY, LIMIT_SESSION_5H, or LIMIT_NONE.
+
+    Weekly is checked first and wins: it is the only class nothing automatic can clear, so
+    mistaking it for a session cap costs a week of hourly full-price probes, while mistaking a
+    session cap for weekly costs at most one delayed half-open probe (health.py re-probes).
+    """
+    t = text or ""
+    if _WEEKLY_LIMIT_RE.search(t):
+        return LIMIT_WEEKLY
+    if _SESSION_5H_RE.search(t):
+        return LIMIT_SESSION_5H
+    return LIMIT_NONE
+
+
+def limit_window_seconds(text: str, now: Optional[_dt.datetime] = None) -> Optional[float]:
+    """How long to bench a provider given its error text, or None to use the caller's default.
+
+    Precedence: a STATED reset time (relative or absolute) always beats a class default, because
+    the provider knows when its own quota returns and we are only guessing. Only when nothing is
+    parseable does the limit class supply a window.
+    """
+    stated = parse_reset_seconds(text, now=now)
+    if stated is not None and stated > 0:
+        return float(min(stated, _MAX_WINDOW_S))
+    klass = classify_limit(text)
+    if klass:
+        return float(DEFAULT_LIMIT_WINDOW_S[klass])
     return None
