@@ -61,3 +61,21 @@ The engine is composed of pluggable modules:
 - **Moat exhaustion = DEFER, not crash.** When every MOAT_PRIMARY brain is exhausted, verification defers and `vet --resume` picks up when the moat recovers. A DEFER is not a worse answer than a provisional ruling, it is a cheaper one: a provisional PASS can never publish, so it costs a full verdict run now AND a full re-vet later to reach the conclusion a DEFER reaches once.
 - **The daemon must not mint work the moat cannot finish.** `_moat_blind_reason` (`scheduler/run_scheduled.py:180`) is a generation preflight: when EVERY trusted brain carries a live dead mark, the tick is skipped, logged as `moat_blind`, and counted unproductive so the escalating 5m/10m/20m retry applies instead of the 2h cadence. One live brain is enough to run — it is a floor, not a fair-weather switch. It reads the raw `dead_until`, never `is_dead`, so a bookkeeping check can never consume the half-open probe slot a real verdict call should get. Without it (2026-08-06) the daemon generated provisional passes at the same rate a two-hour `vet --resume` drain retired them: 229 → 230 rows, net flat, both processes competing for the same subscription CLI.
 - **Price is a rung, and evidence and action are separate decisions.** `price_comparables` retrieves cited willingness-to-pay anchors on by default; letting them move a price is a second, explicitly-enabled switch. Retrieving evidence and acting on it must never be the same config flag — that is how a catalogue re-prices itself the day a feature merges.
+
+## Working in a git worktree
+
+Worktrees are the right tool here — this checkout is often shared by two concurrent sessions, and a worktree is how you merge, build or test without touching another session's working tree and index. But `git worktree add` produces a tree that **looks** complete and is not, and each gap fails by accusing something else. Run this first, always:
+
+```bash
+git worktree add --detach ../my-worktree <ref>
+./scripts/setup_worktree.sh ../my-worktree
+```
+
+What it fixes, and why you would otherwise misdiagnose it:
+
+- **`node_modules` cannot be symlinked.** Turbopack rejects any `node_modules` symlink leaving the project root — `Symlink [project]/node_modules is invalid, it points out of the filesystem root` — and it fails identically when the target is on the same filesystem, so "same volume" is not the fix. It must be a real directory; `cp -Rc` clones the 665M via APFS copy-on-write in seconds. Compounding it: **`npm run build 2>&1 | tail` reports the exit status of `tail`**, so a failed build reads as `exit 0`. Capture the build's own status before any pipe.
+- **`.lux/keys/agent.pem` is untracked**, so a worktree has no POPDD signing key and the pre-commit gate cannot sign. The hook itself is shared (git resolves hooks through the common dir), so the gate runs and then fails — which reads like a gate violation rather than a missing file.
+- **`.venv` is absent, and `.lux/hooks/pre-commit:67` pins `.venv/bin/python` relative to the cwd.** Every commit in a worktree dies with `sh: .venv/bin/python: No such file or directory` and then `POPDD gate BLOCKED this commit` — which reads as a failed proof rather than a missing interpreter. A symlink is fine here; `node_modules` is the odd one out.
+- **`store/` and `storage/` are tracked runtime state**, and pytest writes to them. Nothing can fix that, so: **never `git add -A` in a worktree.** Stage explicit paths.
+
+Anything reading `<root>/.git/…` as a directory is a bug: in a worktree `.git` is a **file** containing `gitdir:`. Ask git instead — `git rev-parse --git-path hooks`, `--git-common-dir` — which also honours `core.hooksPath`. `tests/unit/test_popdd_gate_lanes.py` had exactly this defect and reported the POPDD gate as uninstalled in a checkout where it was installed and working.
