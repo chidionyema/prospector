@@ -34,6 +34,8 @@ was — file, index row and all — and is retried on a later sweep.
 from __future__ import annotations
 
 import datetime
+import json
+from pathlib import Path
 from typing import Optional
 
 from .config import Config
@@ -48,6 +50,47 @@ from .telemetry import logger, set_context, track_latency
 #: Outcomes this loop is willing to write over a live PASS. A DEFER is deliberately absent:
 #: it means the re-vet could not reach a ruling, which is not grounds to change one.
 _DECISIVE = frozenset({Decision.PASS, Decision.KILL})
+
+# store.save() rewrites the ENGINE's own bookkeeping (.pass.json -> .kill.json) but never touches
+# the storefront: found 2026-08-06 when 4 candidates re-vetted to KILL kept selling live on
+# mumchimp.com because store/listings/{cid}.json and Store.Api's IsListed both outlive the kill
+# with nothing to tell them otherwise. Manually unlisted that day (fly ssh + sqlite3, no admin
+# endpoint exists yet); the 5 stale receipts live under LISTINGS_ARCHIVE_DIR.
+#
+# This loop still does not call Store.Api directly — it has no Fly/network credentials, and a
+# money-rail write does not belong inside an unattended re-vet sweep. It archives the local
+# receipt and durably queues the unlist instead; `tools/unlist_killed.py` drains the queue. A
+# queue nobody drains is exactly the "no production caller" bug this module's own docstring
+# describes, so the drain script ships in the same change as the write.
+LISTINGS_DIR = Path("store/listings")
+LISTINGS_ARCHIVE_DIR = Path("store/listings_archive")
+PENDING_UNLIST = Path("store/scheduler/pending_unlist.jsonl")
+
+
+def _queue_unlist(cid: str, title: str, gate: str, now: datetime.datetime) -> bool:
+    """Archive a killed candidate's listing receipt and queue its Store.Api unlist.
+
+    Returns False (no-op) when the candidate was never published — most kills aren't live
+    listings, and only a published one needs unlisting. Returns True once the receipt is
+    archived and the queue entry is written, so the caller can log loudly: a live pack just
+    lost its ground and is still sellable until `tools/unlist_killed.py` runs.
+    """
+    listing_path = LISTINGS_DIR / f"{cid}.json"
+    if not listing_path.exists():
+        return False
+
+    LISTINGS_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    listing_path.rename(LISTINGS_ARCHIVE_DIR / listing_path.name)
+
+    PENDING_UNLIST.parent.mkdir(parents=True, exist_ok=True)
+    with PENDING_UNLIST.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({
+            "candidate_id": cid,
+            "title": title,
+            "gate_fired": gate,
+            "queued_at": now.isoformat(timespec="seconds"),
+        }) + "\n")
+    return True
 
 
 @track_latency(name="run_decay_loop")
@@ -144,8 +187,19 @@ def run_decay_loop(
             logger.info("Dossier still valid. Date refreshed.", extra={"candidate_id": cid})
         else:
             delisted += 1
+            was_published = _queue_unlist(cid, row["title"], new_dossier.gate_fired, now)
             logger.info(f"Dossier FAILED: {new_dossier.gate_fired}. Delisted.",
-                        extra={"candidate_id": cid, "gate": new_dossier.gate_fired})
+                        extra={"candidate_id": cid, "gate": new_dossier.gate_fired,
+                               "was_published": was_published})
+            if was_published:
+                # logger.info/.warning do not reach launchd.err.log (daemon log drops
+                # non-CRITICAL) — this is revenue-affecting, so it must not depend on that path.
+                logger.critical(
+                    "LIVE PACK KILLED ON RE-VET, still sellable until unlisted: %r (%s, gate=%s). "
+                    "Run tools/unlist_killed.py.",
+                    row["title"], cid, new_dossier.gate_fired,
+                    extra={"candidate_id": cid, "gate": new_dossier.gate_fired},
+                )
             # store.save() handled the delisting in the index by setting decision=KILL
             # and updating the path to .kill.json
 
