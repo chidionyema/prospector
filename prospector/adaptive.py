@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -267,6 +268,48 @@ def blue_sky_failure_steer(fails: str) -> str:
     return base
 
 
+def _exemplar_eligible(store: Store, rows: list[dict]) -> list[dict]:
+    """Drop index rows that must never steer generation.
+
+    An exemplar is a claim to the generator that "this is what a winner looks like", so it
+    inherits the source-or-die rule: it may only be built from a ruling whose evidence is
+    still on disk and which was ruled by the moat.
+
+    TWO WAYS A ROW FAILED THAT, BOTH PROVEN ON THE LIVE STORE 2026-08-06:
+
+    1. NO DOSSIER BEHIND IT. `store.get()` returns None when the JSON is gone (store.py:215),
+       and the caller below falls back to the INDEX row's title/one_liner — so a row with no
+       evidence file still produced a fully-formed exemplar. 189 of 1594 rows are in that
+       state. Nine of them are `decision='pass'` rows whose files were moved to
+       `store/dossiers/quarantine_ungrounded/` without updating the index, i.e. rulings
+       quarantined for being UNGROUNDED were the one thing the fallback could still reach.
+       Measured: `1d265b27af000625` ("The School Appeal Dossier Engine", composite 3.6) ranked
+       #3 of all 154 pass rows, inside the top-3 slice taken below.
+
+    2. PROVISIONAL. A provisional ruling came from the cheap tail after the moat was exhausted;
+       it never publishes and is auto re-vetted (operator.py:878). Teaching the generator from
+       one promotes an unverified verdict into every future batch through the back door.
+       71 of the 154 `pass` rows are provisional and every one was exemplar-eligible.
+
+    Filtering leaves 75 passes and 973 kills to draw from, so this starves nothing.
+
+    The predicate is "the dossier is retrievable". `store.get()` answers that directly but
+    parses the whole JSON, and this runs over every kill row (1282 of them, up to 130KB each)
+    on every generation call — so when the row carries an indexed `path` we test that instead,
+    which is the exact condition get() returns None on (store.py:215). A row WITHOUT a path
+    falls back to get(): real index rows always have one (`all()` is a SELECT *), so the slow
+    branch costs nothing in production, and the fast branch must not become the definition of
+    eligibility for any other store shape.
+    """
+    def _grounded(row: dict) -> bool:
+        path = row.get("path")
+        if path:
+            return Path(str(path)).exists()
+        return store.get(row.get("candidate_id", "") or "") is not None
+
+    return [r for r in rows if not r.get("provisional") and _grounded(r)]
+
+
 def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> str:
     """Stage 2: Retrieve top winners and decisive kills as few-shot exemplars.
     
@@ -274,9 +317,9 @@ def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> st
       - Top 2 PASSes by composite score.
       - Top 2 Decisive Kills (adversarial certainty).
     """
-    all_pass = store.all(decision=Decision.PASS.value)
-    all_kill = store.all(decision=Decision.KILL.value)
-    
+    all_pass = _exemplar_eligible(store, store.all(decision=Decision.PASS.value))
+    all_kill = _exemplar_eligible(store, store.all(decision=Decision.KILL.value))
+
     if not all_pass and not all_kill:
         return ""
 
