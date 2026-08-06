@@ -75,22 +75,28 @@ from typing import Any
 #
 # THE MISSING DAYS, measured 2026-08-06 (this is what the day-files can and cannot tell you).
 #
-#   store/scheduler/audit/2026-07-31.jsonl : 1586 rows, first 00:04:27Z, LAST 02:48:37Z
-#   store/scheduler/audit/2026-08-01.jsonl : does not exist
-#   store/scheduler/audit/2026-08-02.jsonl : 5 rows, first 19:55:04Z
-#   store/prospector.jsonl over the same span: 19,620 rows (07-31) and 23,236 rows (08-01)
-#   store/prospector.db dossiers created 08-01: 77 kill + 24 pass + 1 defer = 102
+# Count RETRIEVAL rows (event="search" or "verify_search") per day against rulings in
+# `store/prospector.db`. Those two numbers cannot legitimately disagree — a verdict is reachable
+# only through retrieval — so where they do, the log lost something:
 #
-# So the engine ruled 102 candidates, 24 of them PASS (which cannot happen without retrieval —
-# verdict-from-retrieval-only), while the audit sink recorded nothing.
+#     day         retrieval rows       dossiers ruled                store/prospector.jsonl
+#     2026-07-30           4635         28 kill +  7 pass + 4 defer         22,680 rows
+#     2026-07-31           1310         87 kill +  9 pass                   19,620 rows
+#     2026-08-01              0         77 kill + 24 pass + 1 defer         23,236 rows   <──
+#     2026-08-02              0         22 kill +  6 pass                    6,772 rows   <──
+#     2026-08-03              2          none                                     6 rows
+#     2026-08-04            470         (log resumes)
 #
-# The blackout is WIDER than the missing day-file suggests, and re-measuring it is what narrows
-# the cause (2026-08-06, `store/prospector.db` + this tree):
+# 08-01 and 08-02 logged ZERO retrieval rows while the engine ruled 130 candidates, 30 of them
+# PASS. The last retrieval row before the hole is 2026-07-31T02:48:37Z and the next substantive
+# one is 2026-08-04T13:17:09Z — 106.5 hours, bridged only by the two "startup sanity check"
+# searches on 08-03, a day with no rulings at all.
 #
-#     last row before  : 2026-07-31T02:48:37Z   (07-31.jsonl, 1586 rows, none after 02:48)
-#     first row after  : 2026-08-04T13:17:09Z   (632 rows that day)
-#     ~82 hours dark, not the ~41 of 08-01 alone. Rulings across it: 07-31 96, 08-01 102,
-#     08-02 28 — 623 checks on 08-01 ALONE, every one carrying `queries` and 3 `sources`.
+# Do NOT read every gap here as loss. This log is written only when searches run, and the tree
+# holds a 264-hour gap over 07-11..07-22 that is simply a daemon not generating; 07-23/24/26/27
+# hold exactly one row each, the daemon's startup sanity check, and 2026-07-25 has no file
+# because zero dossiers were created that day. An absent day-file is the CORRECT output for an
+# idle day. What makes 08-01/08-02 a loss is the ruling count standing beside the zero.
 #
 # Two mechanisms were candidates. The surviving evidence rules one of them OUT:
 #
@@ -104,8 +110,10 @@ from typing import Any
 #      pid 89502, started 2026-08-01T04:19Z, still writing `moat_preflight` rows into THIS
 #      directory at 2026-08-02T20:16Z. That same process ruled the 08-02 batches, and generation
 #      and verification run in it — there is no ProcessPoolExecutor, multiprocessing or
-#      subprocess anywhere in run_scheduled.py / generate.py / verify.py / run.py. A sink that
-#      accepts one row and drops the next 165 from the same process is not a broken sink.
+#      subprocess anywhere in run_scheduled.py / generate.py / verify.py / run.py. Those 5 rows
+#      landed across 19:55:04Z..20:16:19Z on 08-02, a day on which the same process ruled 28
+#      candidates and wrote 0 retrieval rows. A sink that accepts every row it is handed and
+#      drops only the retrieval ones, from one process, is not a broken sink.
 #
 # Which leaves the call path, not the sink: on 08-01/08-02 the `search` and `verify_search` calls
 # in retrieval.py and verify.py did not run, while checks still came back with sources. Not
@@ -118,11 +126,6 @@ from typing import Any
 # 2026-07-31, so `git checkout main` here deletes 2026-08-02..05.jsonl from the working tree —
 # a gap indistinguishable from the one above. Untracking the trail is a founder call (it is also
 # the committed evidence), so this is recorded, not silently changed.
-#
-# 2026-07-25 is NOT one of these. `store/prospector.db` has ZERO dossiers created that day, so
-# an absent day-file is the correct output, not a dropped one. Same for 07-23/24/26/27, whose
-# 193-386 byte files hold exactly one row each: the daemon's "startup sanity check" search, and
-# nothing after it. Absence of a day-file is not evidence of loss — check the index first.
 #
 # Unlike cli_governor's slot root — which is deliberately cwd- AND __file__-independent
 # because that ceiling must bind across every checkout on the machine — the audit log is

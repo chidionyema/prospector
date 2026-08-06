@@ -30,6 +30,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from prospector.audit import run_id as audit_run_id
 from prospector.config import load_config
 from prospector.errors import GroundingInfrastructureError
 from prospector.scheduler import paths
@@ -103,10 +104,30 @@ def _ticks_path(cfg) -> Path:
 
 
 def _append_tick(cfg, tick: dict) -> None:
+    """Append one completed tick, stamped with the process that produced it.
+
+    ATTRIBUTION, added 2026-08-06 after measuring who actually writes this file. `ticks.jsonl`
+    is NOT written by the daemon alone. Caught live by watching the file and dumping `ps` on
+    every append::
+
+        32982  hermes_cli.main gateway run --replace
+         └ 37045  ~/.hermes/scripts/otto-dispatch.py
+           └ 37094  bash ~/.hermes/scripts/prospector-run.sh
+             └ 37096  timeout 110 uv run --directory <this repo> \
+                          python -m prospector.scheduler.run_scheduled --once --dry-run
+
+    A driver in the ADJACENT estate fires a one-shot dry run into this checkout's production log
+    at a measured 59.6 rows/hour, while the daemon's own real ticks are ~2.5 h apart. Nothing in
+    the row said so, which is why it went unnoticed — the same blindness `prospector/audit.py`
+    was just fixed for, in the log that actually drives the alerts. `run_id` is shared with the
+    audit log (one identity per process), so a tick and the searches it performed can be joined.
+    """
     path = _ticks_path(cfg)
+    # Identity last: a tick dict assembled upstream must not be able to misattribute itself.
+    row = {**tick, "pid": os.getpid(), "run_id": audit_run_id()}
     try:
         with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(tick, default=str) + "\n")
+            f.write(json.dumps(row, default=str) + "\n")
     except OSError as exc:
         logger.error("Failed to write tick log: %s", exc)
 
@@ -374,29 +395,52 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     return tick
 
 
+#: How many trailing LINES to scan to find `window` real ticks. Sized against the measured
+#: pollution rate: an external driver appends ~60 dry-run rows/hour (see `_append_tick`) and the
+#: daemon's real ticks are ~2.5 h apart, so ~150 junk rows can separate two real ones. 5000 lines
+#: covers ~33 real ticks at that ratio and costs one read of a file that is ~1300 lines today.
+_TICK_SCAN_LINES = 5000
+
+
 def _trailing_barren_count(cfg, window: int = 50) -> int:
     """Count the trailing streak of barren real ticks in ticks.jsonl, EXCLUDING the
     just-appended current tick (callers run after _append_tick). Guard-skipped and
     dry-run rows are ignored entirely (controlled idle is not evidence either way);
     the streak breaks on any real tick with dossiers > 0 or an error (errors alert
-    on their own key). Never raises."""
+    on their own key). Never raises.
+
+    `window` counts REAL TICKS, not lines. It used to count lines, and that made this alert
+    structurally dead rather than merely noisy. Measured 2026-08-06 on the live log: the last 50
+    rows held 1 real tick and 49 skipped ones, because a driver in the adjacent estate appends a
+    dry run every ~60 seconds (see `_append_tick`). With a 50-LINE window, two consecutive real
+    ticks — 2.5 h and ~150 junk rows apart — could never both be inside it, so the streak could
+    never reach 2 and `barren_streak` could never fire. An alert that cannot fire is worse than
+    no alert: it reads as an all-clear. Nothing here changes what counts as barren; it changes
+    only how far back we look to find the ticks that count.
+    """
     streak = 0
     try:
         with open(_ticks_path(cfg), encoding="utf-8") as f:
-            rows = f.readlines()[-window:]
-        for line in reversed(rows[:-1]):  # rows[-1] is the current tick
-            try:
-                t = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not t.get("allowed") or t.get("dry_run"):
-                continue
-            res = t.get("result") or {}
-            if t.get("error") or int(res.get("dossiers", 0) or 0) > 0:
-                break
-            streak += 1
+            lines = f.readlines()[-_TICK_SCAN_LINES:]
     except OSError:
-        pass
+        return 0
+    real = []
+    for line in lines:
+        try:
+            t = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not t.get("allowed") or t.get("dry_run"):
+            continue
+        real.append(t)
+    # real[-1] is the current tick when the caller's tick was itself real. When it was not, the
+    # value this function returns is discarded — `alerts_for_tick` yields nothing for a skipped,
+    # dry or errored tick — so dropping one extra row there costs nothing.
+    for t in reversed(real[-window:][:-1]):
+        res = t.get("result") or {}
+        if t.get("error") or int(res.get("dossiers", 0) or 0) > 0:
+            break
+        streak += 1
     return streak
 
 
@@ -566,7 +610,7 @@ def _aggregate_ticks(cfg) -> dict:
     Aggregating tells the founder whether the factory is actually producing, not just breathing.
     """
     path = _ticks_path(cfg)
-    agg = {"ticks": 0, "candidates": 0, "passes": 0, "errors": 0, "skipped": 0,
+    agg = {"ticks": 0, "dry_runs": 0, "candidates": 0, "passes": 0, "errors": 0, "skipped": 0,
            "last_pass_ts": None, "last_error": None}
     if not path.exists():
         return agg
@@ -577,6 +621,14 @@ def _aggregate_ticks(cfg) -> dict:
         try:
             t = json.loads(line)
         except json.JSONDecodeError:
+            continue
+        # A dry run generated nothing and cost nothing; counting it as a tick inflates the one
+        # number a founder reads as "is the factory running?". Measured 2026-08-06: 133 of the
+        # 315 August rows were dry runs, nearly all of them fired by a driver outside this repo
+        # (see `_append_tick`). Reported separately so the pollution stays VISIBLE rather than
+        # being silently dropped — a tick count that quietly shrank would be its own puzzle.
+        if t.get("dry_run"):
+            agg["dry_runs"] += 1
             continue
         agg["ticks"] += 1
         if t.get("error"):
