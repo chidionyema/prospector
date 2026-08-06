@@ -311,6 +311,64 @@ def test_the_drain_reports_its_cost_against_the_real_ledger(tmp_path, monkeypatc
     )
 
 
+def test_the_drain_returns_its_cost_because_its_stdout_is_unread(monkeypatch):
+    """A printed cost report is not a reported cost report.
+
+    Passing the real ledger fixed WHAT gets rendered; it did not fix WHERE. Under launchd the
+    daemon's fd 1 is store/scheduler/launchd.out.log (measured on pid 48771 with lsof) — a file
+    nothing reads, and one Python block-buffers, so the 00:58 tick's report was still unflushed
+    in the process. The return value is the stream that survives: run_scheduled.py:190 logs it
+    to stderr and it lands in the tick row, which the state probe reads.
+    """
+    from prospector import run as run_mod
+    from prospector import telemetry
+    from prospector.models import Decision
+
+    telemetry.reset_usage()
+    rows = [{"candidate_id": "live", "decision": "defer",
+             "created_at": "2026-07-01T00:00:00+00:00"}]
+
+    def vet_that_spends(cand, *_a, **_k):
+        telemetry.record_usage(provider="deepseek", input_tokens=1_000_000,
+                                 output_tokens=1_000_000)
+        return types.SimpleNamespace(decision=Decision.KILL)
+
+    monkeypatch.setattr("prospector.run.vet_candidate", vet_that_spends)
+
+    summary = run_mod._cmd_resume(
+        argparse.Namespace(limit=1, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={"live"}),
+    )
+
+    assert "cost_usd" in summary, "the tick row is the only channel the operator actually reads"
+    # 1M in @ $0.27 + 1M out @ $1.10 (telemetry.PRICING['deepseek']).
+    assert summary["cost_usd"] == pytest.approx(1.37), (
+        "and it must be the spend this pass actually made, not a placeholder"
+    )
+
+
+def test_reset_usage_clears_the_cost_a_long_lived_daemon_reports(monkeypatch):
+    """`reset_usage` cleared `_USAGE` only, and cost is computed from `_USAGE_BY_PROVIDER`.
+
+    A CLI process dies after one run so nothing showed. The daemon does not: it calls
+    reset_usage() per tick (run.py:1235) and would have reported cost cumulative since process
+    start, which grows forever. Without the fix the second assert reads ~$1.37, not 0.
+    """
+    from prospector import telemetry
+
+    telemetry.reset_usage()
+    telemetry.record_usage(provider="deepseek", input_tokens=1_000_000,
+                                 output_tokens=1_000_000)
+    assert telemetry.get_usage_summary()["total_cost_usd"] > 0, "precondition: spend recorded"
+
+    telemetry.reset_usage()
+
+    after = telemetry.get_usage_summary()
+    assert after["total_cost_usd"] == 0.0, "a reset ledger must report a reset cost"
+    assert after["by_provider"] == {}, "and must not still name the provider it forgot"
+
+
 def test_a_tombstoned_row_is_not_backlog(monkeypatch):
     """Reporting orphans made the waste visible; tombstoning takes it out of the count.
 

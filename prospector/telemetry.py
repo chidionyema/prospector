@@ -275,6 +275,19 @@ def get_usage_summary() -> Dict[str, Any]:
 
 
 def reset_usage() -> None:
-    """Clear the usage ledger (e.g. at the start of a run or in tests)."""
+    """Clear the usage ledger (e.g. at the start of a run or in tests).
+
+    BOTH maps, because `total_cost_usd` and `by_provider` are computed from
+    `_USAGE_BY_PROVIDER` (line 261) while only `by_phase` comes from `_USAGE`. Clearing one
+    left the reported cost cumulative since PROCESS START, which every caller here contradicts
+    — run.py:453 spells the intent "fresh token ledger for this run". A CLI process dies after
+    one run so the leak was invisible; the scheduler daemon is long-lived and re-vets every 2h,
+    so its per-tick cost could only ever grow. Found 2026-08-06 wiring the drain's spend into
+    the tick row.
+
+    Not a money-rail change: the daily cap is computed from the persistent
+    store/prospector.jsonl ledger (scheduler/guard.py:158), never from this in-process map.
+    """
     with _USAGE_LOCK:
         _USAGE.clear()
+        _USAGE_BY_PROVIDER.clear()

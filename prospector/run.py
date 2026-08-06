@@ -1207,7 +1207,14 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     from .report import costs_report
     print(f"\n{costs_report(log_path or '')}")
     summary = {"backlog": backlog, "attempted": len(pending), "resumed": len(resumed_dossiers),
-               "passes": n_pass, "kills": n_kill, "defers": n_defer}
+               "passes": n_pass, "kills": n_kill, "defers": n_defer,
+               # In the RETURN value, not just the print above. Under launchd this function's
+               # stdout is fd 1 → store/scheduler/launchd.out.log (measured on pid 48771 via
+               # lsof), which nothing reads and which Python block-buffers because it is a
+               # file — so at 00:58 the tick's cost report was still sitting unflushed in the
+               # process. The summary dict is the stream that survives: run_scheduled.py:190
+               # logs it to stderr and it lands in the tick row.
+               "cost_usd": round(usage.get("total_cost_usd", 0.0), 4)}
     if orphaned:
         # Surfaced into the tick row so a store inconsistency is visible in ticks.jsonl and the
         # state probe instead of showing up as an inexplicable `attempted: 3, resumed: 0`.
