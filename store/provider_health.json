@@ -33,5 +33,15 @@
     "dead_until": 1781539872.553098,
     "marked_at": 1781536272.5535092,
     "dead_for_s": 3600.0
+  },
+  "cursor_cli": {
+    "dead_until": 1786008345.4753978,
+    "marked_at": 1786004745.475863,
+    "dead_for_s": 3600.0
+  },
+  "claude_cli": {
+    "dead_until": 1786008360.181159,
+    "marked_at": 1786004760.1814,
+    "dead_for_s": 3600.0
   }
 }
