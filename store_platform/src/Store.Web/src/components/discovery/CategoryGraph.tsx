@@ -97,9 +97,18 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
   const minCount = Math.min(...categories.map((c) => c.count), 1);
   const maxCount = Math.max(...categories.map((c) => c.count), 1);
   const range = Math.max(maxCount - minCount, 1);
+  /**
+   * 18-36px, down from 24-56px, because the label now sits BELOW the circle and has to fit in
+   * the same cell.
+   *
+   * The old radius could not be kept. The cell is 100px tall ((480 - 80) / 4), so a 56px radius
+   * was already a 112px circle in a 100px cell, and adding a label under it would have run the
+   * label straight through the row beneath. At 36px the circle is 72px and leaves 28px for the
+   * caption. Size still encodes count, over a smaller but honest range.
+   */
   const radiusFor = (count: number): number => {
     const t = (count - minCount) / range;
-    return 24 + t * 32;
+    return 18 + t * 18;
   };
 
   const pathFor = filterPath ?? ((kind: string) => `/?kind=${encodeURIComponent(kind)}`);
@@ -139,28 +148,39 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
                 strokeWidth={1.5}
                 className="transition-all hover:fill-opacity-20"
               />
+              {/* The COUNT goes inside, the label goes underneath. It used to be the other way
+                  around, and the label could not survive it: the widest text a circle of radius
+                  r can hold is its chord, about 1.6r, and the font was sized r / 3.2, so the
+                  character budget came out at ~9 REGARDLESS of how large the node was. Growing
+                  the circle grew the font in step and bought nothing. Every multi-word category
+                  therefore rendered clipped -- "Business ideas" as "Busin…" -- on the one page
+                  whose entire job is letting a visitor see what the catalogue contains.
+                  A count is two or three digits and always fits; a label never did. */}
               <text
                 x={cx}
-                y={cy + 4}
+                y={cy + r / 3.4}
                 textAnchor="middle"
                 className="pointer-events-none select-none"
-                fontSize={Math.max(10, r / 3.2)}
+                fontSize={Math.max(12, r / 2.2)}
                 fontWeight={600}
                 fill="var(--text)"
               >
-                {truncate(node.label, Math.floor(r / 6))}
+                {node.count}
               </text>
-              <text
-                x={cx}
-                y={cy + r + 14}
-                textAnchor="middle"
-                className="pointer-events-none select-none"
-                fontSize={10}
-                fontWeight={500}
-                fill="#78716C"
-              >
-                {node.count} packs
-              </text>
+              {wrapLabel(node.label, cellW).map((lineText, lineIndex) => (
+                <text
+                  key={lineText + lineIndex}
+                  x={cx}
+                  y={cy + r + 14 + lineIndex * 12}
+                  textAnchor="middle"
+                  className="pointer-events-none select-none"
+                  fontSize={11}
+                  fontWeight={500}
+                  fill="var(--text-muted, #78716C)"
+                >
+                  {lineText}
+                </text>
+              ))}
             </Link>
           );
         })}
@@ -172,7 +192,45 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
   );
 }
 
-function truncate(s: string, maxChars: number): string {
-  if (s.length <= maxChars) return s;
-  return `${s.slice(0, Math.max(0, maxChars - 1))}\u2026`;
+/** Label font size, and the average glyph width it produces. Used to turn a pixel budget into a
+ *  character budget. 0.55em is the usual approximation for a humanist sans at small sizes; it is
+ *  deliberately pessimistic, so the estimate errs towards wrapping early rather than overflowing. */
+const LABEL_FONT_PX = 11;
+const LABEL_GLYPH_RATIO = 0.55;
+const LABEL_MAX_LINES = 2;
+
+/**
+ * Break a category label across at most two lines that fit the cell width.
+ *
+ * Wraps on word boundaries, so "Productised service" becomes two whole words rather than
+ * "Productised s\u2026". Only when a single word is itself wider than the cell does this fall back to
+ * cutting, and then it marks the cut. With a 160px cell (720 - 80 padding, over 4 columns) the
+ * budget is ~26 characters per line against the ~9 the old in-circle label had.
+ */
+export function wrapLabel(label: string, cellWidth: number): string[] {
+  const maxChars = Math.max(6, Math.floor(cellWidth / (LABEL_FONT_PX * LABEL_GLYPH_RATIO)));
+  const words = label.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length <= maxChars) {
+      current = candidate;
+      continue;
+    }
+    if (current) lines.push(current);
+    if (lines.length === LABEL_MAX_LINES) break;
+    // A single word longer than the whole budget is the only case that still has to be cut.
+    current = word.length > maxChars ? `${word.slice(0, maxChars - 1)}\u2026` : word;
+  }
+  if (current && lines.length < LABEL_MAX_LINES) lines.push(current);
+
+  // Anything that did not fit in two lines is signalled, never dropped silently.
+  const rendered = lines.join(' ').replace(/\u2026$/, '');
+  if (rendered.length < label.trim().length && !lines[lines.length - 1].endsWith('\u2026')) {
+    lines[lines.length - 1] = `${lines[lines.length - 1]}\u2026`;
+  }
+  return lines;
 }

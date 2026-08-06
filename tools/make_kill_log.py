@@ -148,6 +148,37 @@ def _sources_by_id(dossier: dict) -> dict[str, str]:
     return index
 
 
+# The engine's own `reason` field is frequently cut mid-sentence: 67 of the 636 kill dossiers with
+# a substantive reason end without terminal punctuation (11%, measured 2026-08-06), e.g.
+# "...so they do not offset the sol". Published raw, that put 26 of the 60 entries on the public
+# page ending mid-WORD, with no ellipsis and no expand control -- on the one page whose entire job
+# is to look rigorous, where it reads as broken rather than concise.
+#
+# Trimming to the last complete sentence is the honest repair at publish time. Fixing whatever
+# truncates the verdict upstream in the engine is the real one; this only stops the storefront
+# shipping the damage.
+_SENTENCE_END = re.compile(r"[.!?][\"')\]]?(?=\s|$)")
+
+# Below this share of the text, the last full stop is too early to trim to: a reason whose first
+# sentence ends at 20% would lose four fifths of its argument to a cosmetic fix. Those keep their
+# text and get an explicit ellipsis, which says "cut" rather than pretending to be finished.
+_TRIM_KEEP_RATIO = 0.75
+
+
+def _whole_sentences(text: str) -> str:
+    """End on a sentence boundary, or say plainly that the text was cut."""
+    stripped = text.rstrip()
+    if not stripped:
+        return stripped
+    ends = list(_SENTENCE_END.finditer(stripped))
+    if ends:
+        cut = ends[-1].end()
+        # A reason that already ends in punctuation hits this with cut == len and is returned whole.
+        if cut >= len(stripped) * _TRIM_KEEP_RATIO:
+            return stripped[:cut]
+    return stripped.rstrip(",;:-") + "…"
+
+
 def _clean_reason(reason: str) -> str:
     """Strip the engine's internal prefix and inline hashes, keeping only the argument.
 
@@ -161,7 +192,9 @@ def _clean_reason(reason: str) -> str:
     text = re.sub(r"^refuted \(conf [\d.]+\):\s*", "", text).strip()
     text = CITATION_REF.sub("", text)
     text = re.sub(r"\s{2,}", " ", text).strip()
-    return nodash(re.sub(r"\s+([.,;])", r"\1", text))
+    # Last, after the citation hashes are stripped: removing a trailing "(a1b2…)" can itself leave
+    # the sentence looking finished when it is not, so the boundary check has to see the final text.
+    return _whole_sentences(nodash(re.sub(r"\s+([.,;])", r"\1", text)))
 
 
 def build(limit: int) -> dict:

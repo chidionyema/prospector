@@ -24,6 +24,7 @@ import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/f
 import { track } from '@/lib/analytics';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 import { categoryFor, type Category } from '@/lib/category';
+import { engineGateIds } from '@/lib/checks';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
   cardHeading,
@@ -476,6 +477,9 @@ function CatalogBrowser({
   // No spotlight slab any more (see the deletion note above SpotlightCard's former home): the
   // default sort is `newest`, so the newest pack is already the first card in the grid.
   const gridPacks = grouped.matching;
+  /* The packs that render in the per-market groups below the shelf. The shelf's "showing X of Y"
+     line has to account for them or its Y silently disagrees with the hero's total. */
+  const offMarketCount = grouped.others.reduce((n, group) => n + group.packs.length, 0);
 
   /*
    * The shelf's editorial shape (spec section 7, 2026-08-05).
@@ -684,9 +688,18 @@ function CatalogBrowser({
                     <Icon name="arrowRight" size={15} />
                   </Button>
                   {/* The count the button used to give was the total, which read as "you have seen
-                      none of 63" directly under twelve packs the reader had just scrolled. */}
+                      none of 63" directly under twelve packs the reader had just scrolled.
+
+                      IT ALSO HAD A DIFFERENT DENOMINATOR FROM THE HERO. The hero prints
+                      `packs.length` (every pack, 63); this line printed `gridPacks`, which is the
+                      reader's market only (52), because off-market packs render in their own group
+                      below. Two totals for one catalogue, ~800px apart, on a site whose product is
+                      not inventing numbers -- and no way for the reader to discover that the 11
+                      missing ones were further down rather than missing. Naming the basis and the
+                      remainder makes 52 + 11 = 63 legible instead of contradictory. */}
                   <p className="text-caption text-subtle">
-                    Showing {shown + newestRow.length} of {tailPacks.length + newestRow.length}.
+                    Showing {shown + newestRow.length} of {tailPacks.length + newestRow.length} written for your market
+                    {offMarketCount > 0 && `, plus ${offMarketCount} written for other markets below`}.
                   </p>
                 </div>
               )}
@@ -1077,8 +1090,11 @@ export default function Home({ packs, stats, initialState, market, currency, per
               buyer_intent, currency and claims_verifiable. about.tsx and faqContent.ts were fixed
               on 2026-08-06; this line was missed because the regression test read about.tsx only.
               `fixedCheckCount.test.ts` now reads every rendered copy surface. */}
+          {/* Derived from `COMMON_CHECKS`, not typed out. This row was hand-written and was
+              missed by the regression sweep that fixed about.tsx and faqContent.ts, because that
+              test read about.tsx only. A derived row cannot be missed by the next sweep. */}
           <p className="mt-6 font-mono text-caption text-subtle">
-            pain reality · value durability · incumbency · payer solvency · distribution · legality
+            {engineGateIds()}
           </p>
           {/* Its own line, not a trailing clause on the mono row: the row is set in the engine's
               own identifiers and this sentence is the site talking, so running them together in

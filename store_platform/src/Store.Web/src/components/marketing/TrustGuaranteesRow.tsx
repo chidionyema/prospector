@@ -87,9 +87,13 @@ export default function TrustGuaranteesRow({
           ))}
         </ul>
         <p className="mt-4 text-caption text-subtle">
+          {/* WAS "has every one, with the sourced reason why", which /kill-log itself contradicts
+              in its own copy: it publishes 60 of the 1,168. Promising the complete log and then
+              delivering a sample is the exact overclaim the kill log exists to disprove, made on
+              the page that links to it. It now promises what the log actually contains. */}
           {killed.toLocaleString('en-GB')} ideas were killed to list these {live}. The{' '}
           <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">kill log</Link>
-          {' '}has every one, with the sourced reason why.
+          {' '}has every kill that came with an argument, and the sourced reason why.
         </p>
       </div>
     </section>

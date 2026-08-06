@@ -679,7 +679,22 @@ export interface CardHeading {
  * kept exactly. Nothing is shortened here to manufacture a heading: a long line is left where
  * it already renders correctly rather than cut into a claim nobody made.
  */
-export function cardHeading(pack: FacetedPack): CardHeading {
+/**
+ * The three fields a heading is decided from, and nothing else.
+ *
+ * Narrowed from `FacetedPack` so the plain catalogue `Pack` can use it too. It had to: the
+ * homepage called `cardHeading` and `/ideas/*` called `splitTitle` directly, so the SAME pack was
+ * headed by its short descriptive card line on one page and by its brand name on the other. A
+ * visitor who followed a category landing to the catalogue could not tell they were looking at
+ * the same product twice.
+ */
+export interface CardHeadingInput {
+  title: string;
+  headline?: string;
+  cardLine?: string;
+}
+
+export function cardHeading(pack: CardHeadingInput): CardHeading {
   const { name, descriptor } = splitTitle(pack.title, pack.headline);
   const card = pack.cardLine?.trim();
 

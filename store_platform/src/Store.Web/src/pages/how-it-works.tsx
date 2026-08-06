@@ -5,6 +5,7 @@ import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { buttonClasses, Icon } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
+import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
 import killLog from '@/data/kill-log.json';
 import killTotals from '@/data/kill-log-totals.json';
 
@@ -16,14 +17,23 @@ interface KillExample {
   reason: string;
 }
 
-const SIX_GATES: { gate: string; heading: string; exampleTitle: string }[] = [
-  { gate: 'pain_reality', heading: 'Real pain', exampleTitle: 'NI-GapSweep' },
-  { gate: 'value_durability', heading: 'Lasting value', exampleTitle: 'DecibelKit' },
-  { gate: 'incumbency', heading: 'Room past the incumbents', exampleTitle: 'SaltCourt' },
-  { gate: 'payer_solvency', heading: 'Payer can actually pay', exampleTitle: 'SplitCare' },
-  { gate: 'route_to_market', heading: 'Route to the buyer', exampleTitle: 'AssessAid' },
-  { gate: 'legality', heading: 'Legality', exampleTitle: 'GasSafe' },
-];
+/**
+ * The curated illustration for each check, keyed by the engine's gate id.
+ *
+ * The buyer-facing NAME is deliberately not in this table any more -- it comes from
+ * `COMMON_CHECKS`. This page used to carry its own, which is how one gate ended up with three
+ * names across the site: `payer_solvency` was "Payer can actually pay" here, "Someone will pay"
+ * on /about and "Whether anyone will actually pay" on the pack page. Only the example is a
+ * property of this page; the vocabulary is not.
+ */
+const EXAMPLE_TITLES: Record<string, string> = {
+  pain_reality: 'NI-GapSweep',
+  value_durability: 'DecibelKit',
+  incumbency: 'SaltCourt',
+  payer_solvency: 'SplitCare',
+  distribution: 'AssessAid',
+  legality: 'GasSafe',
+};
 
 /**
  * The illustration for one gate: the curated kill if it is still in the log, otherwise any kill
@@ -43,17 +53,26 @@ const SIX_GATES: { gate: string; heading: string; exampleTitle: string }[] = [
  * fails silently and in public. The curated pick stays because a chosen example reads better than
  * an arbitrary one; it is now a preference, not the only path.
  *
- * `route_to_market` also accepts `distribution`: the engine emits two keys for that one check and
- * both carry the same buyer-facing label (see the note in `pages/kill-log.tsx`).
+ * `distribution` also accepts `route_to_market`: the engine emits two keys for that one check and
+ * both carry the same buyer-facing label. That alias list now lives on the check itself
+ * (`lib/checks.ts`), so it is stated once for the whole site rather than per page.
  */
-const GATE_ALIASES: Record<string, string[]> = { route_to_market: ['route_to_market', 'distribution'] };
-
-function findExample(gate: string, titleFragment: string): KillExample | undefined {
+function findExample(check: Check, titleFragment: string): KillExample | undefined {
   const entries = killLog.entries as KillExample[];
   const curated = entries.find((e) => e.title.toLowerCase().includes(titleFragment.toLowerCase()));
   if (curated) return curated;
-  const keys = GATE_ALIASES[gate] ?? [gate];
+  const keys = idsFor(check);
   return entries.find((e) => keys.includes(e.gate));
+}
+
+/**
+ * The gate id to print under the heading. When the curated example died on one of this check's
+ * ids, print THAT one, so the identifier on screen is the identifier that actually fired for the
+ * kill shown directly beneath it. Otherwise print the check's primary id.
+ */
+function gateIdFor(check: Check, example: KillExample | undefined): string {
+  if (example && idsFor(check).includes(example.gate)) return example.gate;
+  return check.id;
 }
 
 function truncateReason(reason: string, max: number): string {
@@ -93,12 +112,12 @@ export default function HowItWorks() {
         {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
             content. Keeping both stacked 88px between the lede and step 1. */}
         <div>
-          {SIX_GATES.map((gate, i) => {
-            const example = findExample(gate.gate, gate.exampleTitle);
-            const last = i === SIX_GATES.length - 1;
+          {COMMON_CHECKS.map((check, i) => {
+            const example = findExample(check, EXAMPLE_TITLES[check.id] ?? '');
+            const last = i === COMMON_CHECKS.length - 1;
             return (
               <div
-                key={gate.gate}
+                key={check.id}
                 // `pb-8` on the row, not `space-y-8` on the list. The connector below is
                 // `flex-1` inside this row, so it can only grow to the row's own height: with the
                 // gap living OUTSIDE the row, the rail stopped at each card's bottom edge and
@@ -128,10 +147,10 @@ export default function HowItWorks() {
                     (desktop-how-it-works-fold.png, 2026-08-06). */}
                 <div className="max-w-3xl flex-1 pb-6">
                   <h2 className="text-h2 font-semibold text-text leading-tight">
-                    {gate.heading}
+                    {check.name}
                   </h2>
          <p className="mt-1 text-caption font-medium text-muted">
-                    <code className="bg-bg px-1.5 py-0.5 rounded-md text-caption">{gate.gate}</code>
+                    <code className="bg-bg px-1.5 py-0.5 rounded-md text-caption">{gateIdFor(check, example)}</code>
                   </p>
 
                   {example && (

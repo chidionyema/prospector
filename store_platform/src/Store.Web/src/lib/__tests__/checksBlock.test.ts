@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { COMMON_CHECKS } from '../checks';
 
 /**
  * The pack page's "How we tried to kill it" block is STATIC, it is the same six lines on
@@ -25,12 +26,17 @@ const PAGE = readFileSync(
   'utf8',
 );
 
-/** The CHECKS array literal, isolated so a match elsewhere on the page cannot mask a regression. */
-function checksArray(): string {
-  const start = PAGE.indexOf('const CHECKS = [');
-  expect(start, 'CHECKS array not found, rename it and update this guard').toBeGreaterThan(-1);
-  const end = PAGE.indexOf('];', start);
-  return PAGE.slice(start, end);
+/**
+ * The lines the block renders.
+ *
+ * These used to be a literal array in `pages/pack/[id].tsx` and this guard read it out of the
+ * source. They now come from `COMMON_CHECKS` in `lib/checks.ts`, the site-wide vocabulary, so the
+ * guard reads the values themselves. That is strictly tighter than the string-matching it
+ * replaces: it tests what renders rather than how the file happens to be written, and it now also
+ * covers /about and /how-it-works, which render the same objects.
+ */
+function checkLines(): string[] {
+  return COMMON_CHECKS.map((check) => check.refutation);
 }
 
 /** The <ul> that renders CHECKS, isolated the same way. */
@@ -51,21 +57,30 @@ describe('the six-checks block claims no per-pack finding', () => {
       'A route existed',
       'came back clean',
     ];
+    const rendered = checkLines().join(' | ');
     for (const claim of verdictClaims) {
       expect(
-        checksArray(),
+        rendered,
         `"${claim}" asserts a per-pack finding this page has no verdict data for`,
       ).not.toContain(claim);
     }
   });
 
   it('has exactly six lines, none of them a two-clause assertion', () => {
-    const lines = checksArray().match(/'[^']+'/g) ?? [];
+    const lines = checkLines();
     expect(lines).toHaveLength(6);
     for (const line of lines) {
       // A full stop mid-string is how the "attack. Result." shape returns.
-      expect(line.replace(/'/g, ''), `${line} reads as attack-then-verdict`).not.toMatch(/\.\s+\S/);
+      expect(line, `${line} reads as attack-then-verdict`).not.toMatch(/\.\s+\S/);
     }
+  });
+
+  it('still renders those lines from the shared vocabulary, not a local copy', () => {
+    // The defect this whole file guards against comes back the moment the page re-declares its
+    // own array, because the guard above would then be testing a list nothing renders.
+    expect(PAGE, 'the pack page must map the shared checks').toContain(
+      'COMMON_CHECKS.map((check) => check.refutation)',
+    );
   });
 
   it('marks each line with a neutral numeral, not a success tick', () => {

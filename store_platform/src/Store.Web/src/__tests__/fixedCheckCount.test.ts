@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { engineGateIds } from '@/lib/checks';
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 
@@ -148,7 +149,14 @@ describe('the methodology surfaces hedge the count where they enumerate it', () 
 
   it('the homepage method band qualifies its row of gate names', () => {
     const page = stripComments(readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8'));
-    const enumeration = page.indexOf('pain reality · value durability');
+    // The row is DERIVED from `COMMON_CHECKS` now (lib/checks.ts) rather than typed out, which is
+    // itself the fix for how this row was missed last time: the earlier sweep updated about.tsx
+    // and faqContent.ts and left this literal behind. So the guard anchors on the call site, and
+    // separately asserts what the call actually produces.
+    expect(engineGateIds(), 'the derived row no longer lists the engine gate ids').toContain(
+      'pain reality · value durability',
+    );
+    const enumeration = page.indexOf('{engineGateIds()}');
     expect(enumeration, 'the gate-name row is gone or renamed').toBeGreaterThan(-1);
     // Adjacent to the row, not merely somewhere on a 1,700-line page. The window is the
     // enumeration plus the element that follows it, and it is deliberately narrow: the first cut
