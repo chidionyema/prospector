@@ -156,6 +156,68 @@ def classify_exhaustion(text: str) -> str:
     return NOT_EXHAUSTION
 
 
+def cause_context(text: str, width: int = 140, limit: int = 3) -> str:
+    """Every exhaustion marker found ANYWHERE in `text`, with surrounding context.
+
+    Why this exists, and why it lives next to the markers rather than in an adapter.
+
+    An adapter that must shorten a payload before logging it has to choose a slice, and every
+    fixed slice is a bet about where the cause sits. `claude_cli.py` bet on the TAIL
+    (`proc.stdout.strip()[-300:]`), which is right for prose — a CLI that dies printing an
+    error prints it last — and a bet nonetheless under `--output-format json`, where the tail
+    is trailing metadata and the cause is a `result` field somewhere in the middle.
+
+    THIS IS A DEFENSIVE CHANGE, NOT A FIX FOR AN OBSERVED MISS. It is documented that way
+    because the first write-up of it claimed the opposite and was wrong. Measured 2026-08-07
+    on the actual payload that ended E3 run #6, recovered untruncated from
+    `tools/experiments/e3_concurrency_knee_receipts.json`:
+
+        detail length                     300      (the tail slice, exactly full)
+        'monthly spend limit' sits        167 chars from the end
+        classify_exhaustion(detail)  ->   'permanent'
+
+    The bet PAID on that payload, with 133 characters of margin: the account's spend-limit
+    message reached the classifier, `looks_exhausted` was True, and every call in the receipt
+    is a `ProviderExhaustedError` — which `run_claude_cli` raises only on that branch. What
+    this function removes is the margin, not a live defect: it is 133 characters of luck about
+    how much metadata trails the `result` field, and no test anywhere pinned it.
+
+    Scanning for the MARKER instead of guessing at an offset is shape-agnostic — prose, JSON,
+    or a truncated fragment of either — and it reuses the single marker vocabulary that
+    `classify_exhaustion` already rules on, so the two can never disagree about what counts as
+    a cause. The payload in `tests/unit/test_errors_limits.py` that DOES defeat the tail slice
+    is constructed, and is labelled there as constructed.
+    """
+    t = (text or "")
+    low = t.lower()
+    hits: list[str] = []
+    seen: set[int] = set()
+    for marker in (*_PERMANENT_MARKERS, *_TRANSIENT_MARKERS):
+        i = low.find(marker)
+        if i < 0:
+            continue
+        start = max(0, i - width // 2)
+        # Collapse overlapping windows so three markers in one sentence do not print it thrice.
+        if any(abs(start - s) < width // 2 for s in seen):
+            continue
+        seen.add(start)
+        hits.append(t[start:start + width].strip())
+        if len(hits) >= limit:
+            break
+    for rx in (_HTTP_PERMANENT_RE, _BILLING_RE, _ALLOWANCE_LIMIT_RE, _HTTP_TRANSIENT_RE):
+        if len(hits) >= limit:
+            break
+        m = rx.search(low)
+        if not m:
+            continue
+        start = max(0, m.start() - width // 2)
+        if any(abs(start - s) < width // 2 for s in seen):
+            continue
+        seen.add(start)
+        hits.append(t[start:start + width].strip())
+    return " ⋯ ".join(hits)
+
+
 def looks_exhausted(text: str) -> bool:
     """True if an error string indicates quota/credit exhaustion OR backpressure (-> failover).
 

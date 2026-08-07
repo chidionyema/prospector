@@ -128,3 +128,78 @@ def test_no_limit_and_no_reset_returns_none():
 def test_relative_shapes_unchanged():
     assert parse_reset_seconds('{"retryDelayMs": 90000}') == pytest.approx(90.0)
     assert parse_reset_seconds("quota will reset after 6h54m27s") == pytest.approx(24867.0)
+
+
+# ---------------------------------------------------------------------------
+# cause_context — a fixed slice is a bet about where the cause sits
+#
+# 2026-08-07: the account hit its monthly spend limit mid-run. `claude_cli.py` built its error
+# detail from `proc.stdout.strip()[-300:]`; under `--output-format json` the tail is trailing
+# metadata and the causal message is a `result` field further back.
+#
+# ON THE OBSERVED PAYLOAD THE SLICE WON, with 133 characters to spare: the detail was exactly
+# 300 chars, 'monthly spend limit' sat 167 from the end, and it classified 'permanent'. These
+# tests therefore pin a DEFENSIVE property — that the cause reaches the classifier wherever it
+# sits — not a regression that was seen to bite. The first write-up of this change asserted a
+# real miss on the strength of a fragment that had been truncated in the reporting, and was
+# wrong; §29.5 of docs/COMMERCIAL_READINESS_PROGRAM.md carries the correction.
+# ---------------------------------------------------------------------------
+
+# CONSTRUCTED, not observed. Real claude-CLI JSON puts `result` near the end; this payload
+# moves it in front of modelUsage/permission_denials/timing so the cause falls outside a
+# 300-char tail, which is the shape the tail slice cannot survive.
+_SPEND_LIMIT_PAYLOAD = (
+    '{"type":"result","is_error":true,'
+    '"result":"API Error: Your monthly spend limit has been reached.",'
+    '"session_id":"9f2c1b7e-4a3d-4c8e-b1f0-77aa2e5d9c31",'
+    '"uuid":"c41e8a02-6b55-4f19-9d33-2ec7b40af6d8",'
+    '"modelUsage":{"claude-opus-5":{"inputTokens":1204,"outputTokens":0,'
+    '"cacheReadInputTokens":88210,"cacheCreationInputTokens":0,"costUSD":0.0}},'
+    '"permission_denials":[],"num_turns":1,"duration_ms":812,"duration_api_ms":790,'
+    '"total_cost_usd":0.0,"fast_mode_state":"off",'
+    '"fast_mode_disabled_reason":"sdk_opt_in_required","subtype":"success",'
+    '"api_error_status":400}'
+)
+
+
+def test_tail_slice_loses_the_cause_but_cause_context_recovers_it():
+    """On a payload the tail slice cannot survive, cause_context still reaches the verdict."""
+    from prospector.errors import cause_context, classify_exhaustion
+
+    # The defect is only real if the cause is genuinely outside the tail window.
+    assert len(_SPEND_LIMIT_PAYLOAD) - _SPEND_LIMIT_PAYLOAD.find("monthly spend limit") > 300
+
+    tail_only = _SPEND_LIMIT_PAYLOAD.strip()[-300:]
+    assert classify_exhaustion(f"claude cli exit 1: {tail_only}") == "", (
+        "the tail slice must still be shown to lose the cause — if this starts passing, the "
+        "constructed payload no longer defeats the slice and the test is vacuous")
+
+    recovered = cause_context(_SPEND_LIMIT_PAYLOAD)
+    assert "monthly spend limit" in recovered
+    assert classify_exhaustion(f"claude cli exit 1: {recovered} | {tail_only}") == "permanent"
+
+
+def test_cause_context_is_shape_agnostic():
+    """Prose, JSON and a bare fragment all carry the marker to the classifier."""
+    from prospector.errors import cause_context, classify_exhaustion
+
+    for text in ("Credit balance is too low. Please add funds.",
+                 '{"error":{"message":"Your credit balance is too low"},"x":1}',
+                 "...blah... credit balance is too low ...blah..."):
+        assert classify_exhaustion(cause_context(text)) == "permanent", text
+
+
+def test_cause_context_is_empty_when_there_is_no_cause():
+    """No marker anywhere → empty, so the caller falls back to its tail slice unchanged."""
+    from prospector.errors import cause_context
+
+    assert cause_context('{"type":"result","subtype":"success","result":"fine"}') == ""
+    assert cause_context("") == ""
+
+
+def test_cause_context_does_not_repeat_one_sentence_per_marker():
+    """Overlapping windows collapse; three markers in a phrase must not print it three times."""
+    from prospector.errors import cause_context
+
+    out = cause_context("credit balance is too low and usage limit reached")
+    assert out.count("credit balance is too low") == 1
