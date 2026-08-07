@@ -95,7 +95,9 @@ ACCUSATORY = re.compile(
 # of the 60 published entries (2026-08-06). The same omission cost those entries their citation
 # chips, because `findall` fed the resolver too: a grouped reference resolved to nothing, so the
 # kills with the MOST supporting passages were the ones rendered with none.
-CITATION_REF = re.compile(r"\s*[\(\[]\s*([0-9a-f]{16}(?:[,;]\s*[0-9a-f]{16})*)\s*[\)\]]")
+CITATION_REF = re.compile(
+    r"\s*[\(\[]\s*(?:sources?\s*:?\s*)?([0-9a-f]{16}(?:[,;]\s*[0-9a-f]{16})*)\s*[\)\]]"
+)
 
 
 def citation_ids(text: str) -> list[str]:
