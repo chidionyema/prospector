@@ -42,6 +42,8 @@ import gzip
 import hashlib
 import os
 import random
+import shutil
+import sqlite3
 import sys
 import tempfile
 import time
@@ -50,9 +52,18 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
 LEDGER = REPO_ROOT / "store" / "prospector.jsonl"
+DB = REPO_ROOT / "store" / "prospector.db"
 
 DOSSIER_PREFIX = "dossiers/"
 LEDGER_PREFIX = "ledger/"
+DB_PREFIX = "db/"
+
+# How many dated db snapshots to keep. 1.4M compresses to a few hundred K, so this is a
+# storage decision worth about a dollar a year — the reason it is bounded at all is that an
+# unbounded dated-key series is how a backup bucket becomes something someone turns off.
+# Pruning happens ONLY after the current run's snapshot has been read back and verified, so a
+# corrupt local db cannot delete the good copies on its way past.
+DEFAULT_DB_KEEP = 30
 
 # A DIFFERENT bucket from R2_BUCKET (prospector-packs), on purpose. The delivery bucket is
 # reachable by the storefront's credentials and could have a public r2.dev domain attached in
@@ -199,6 +210,55 @@ def _correct_clock_if_skewed(endpoint: str) -> float | None:
     return offset
 
 
+# ── Reachability ──────────────────────────────────────────────────────────────
+def _wait_for_endpoint(endpoint: str, budget_s: float = 180.0) -> bool:
+    """Block until the endpoint answers, or the budget expires.
+
+    Same root cause as the clock skew above, one layer lower down. launchd fires this job
+    at 03:40 on a laptop that is typically waking from sleep, and StartCalendarInterval
+    does NOT retry — the first call is the only call. On 2026-08-06 that call died with
+    RequestTimeTooSkewed (fixed above); on 2026-08-07 it died with
+
+        botocore.exceptions.EndpointConnectionError: Could not connect to the endpoint URL
+
+    because DNS/Wi-Fi had not come up yet. Correcting the clock cannot help if the packet
+    never leaves the machine. Between them these two shapes are the whole reason the job
+    failed 9 consecutive runs with 237 dossiers never uploaded — and was found by a human
+    reading a log rather than by anything raising.
+
+    A HEAD probe is the right test and needs no credentials: ANY HTTP response, including
+    400 or 403, proves DNS resolved and the TLS path is open, which is the only thing
+    being waited on here. Bounded, because a backup that waits forever is just a quieter
+    way to fail.
+    """
+    import urllib.error
+    import urllib.request
+
+    deadline = time.time() + budget_s
+    delay, attempt = 2.0, 0
+    while True:
+        attempt += 1
+        try:
+            urllib.request.urlopen(
+                urllib.request.Request(endpoint, method="HEAD"), timeout=10
+            )
+            return True
+        except urllib.error.HTTPError:
+            # An HTTP status IS a reachable endpoint. An unsigned HEAD is *expected* to be
+            # rejected, so this is the success path, not a retry.
+            return True
+        except Exception as exc:  # URLError, socket.gaierror, timeout — all "not up yet"
+            if time.time() + delay >= deadline:
+                print(
+                    f"STORE_BACKUP NOTE endpoint unreachable after {attempt} attempt(s) "
+                    f"in {budget_s:.0f}s: {type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
+                return False
+            time.sleep(delay)
+            delay = min(delay * 2, 30.0)
+
+
 def _retry_on_skew(fn, *args, **kwargs):
     """Run fn, and if the signature is rejected as skewed, re-measure and retry once.
 
@@ -244,10 +304,23 @@ def _client():
         sys.exit("STORE_BACKUP FAIL boto3 not installed (it is in requirements.txt)")
 
     account = os.environ["R2_ACCOUNT_ID"]
-    _correct_clock_if_skewed(f"https://{account}.r2.cloudflarestorage.com")
+    endpoint = f"https://{account}.r2.cloudflarestorage.com"
+
+    # Wait for the network BEFORE measuring the clock, and the order is load-bearing:
+    # _server_time_offset() learns the time from the endpoint's own Date header, so on an
+    # unreachable endpoint it returns None, _correct_clock_if_skewed() no-ops, and the run
+    # then fails on the first signed call having silently skipped its own safety net.
+    if not _wait_for_endpoint(endpoint):
+        sys.exit(
+            "STORE_BACKUP UNREACHABLE R2 endpoint did not answer within the wait budget; "
+            "nothing was uploaded. This is a network failure, not a data failure — the "
+            "next scheduled run retries from the same local state."
+        )
+
+    _correct_clock_if_skewed(endpoint)
     return boto3.client(
         "s3",
-        endpoint_url=f"https://{account}.r2.cloudflarestorage.com",
+        endpoint_url=endpoint,
         aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
         aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
         config=BotoConfig(signature_version="s3v4", region_name="auto"),
@@ -280,15 +353,37 @@ def _md5(path: Path) -> str:
     return h.hexdigest()
 
 
-def sync(s3, bucket: str, *, dry_run: bool = False) -> tuple[int, int, str]:
-    """Mirror the dossiers and append a dated ledger snapshot. Returns (uploaded, skipped, key)."""
+# ── What counts as a dossier ──────────────────────────────────────────────────
+# rglob, not glob, and the difference was live data loss: `store/dossiers/quarantine_ungrounded/`
+# holds 9 indexed dossiers (tombstone='quarantined_ungrounded') that a non-recursive glob never
+# saw, so they had NEVER been uploaded. Found by restore_drill.py's first live run failing
+# `[FAIL] index_vs_tree ... 9 rows with NO restored file` (§23.4). Any future subdirectory is
+# now included automatically rather than silently excluded.
+#
+# The key carries the RELATIVE path, not the bare name: two files named the same in different
+# subdirectories would otherwise map to one object, and the second upload would overwrite the
+# first without any error anywhere.
+def _dossier_files() -> list[Path]:
+    return sorted(DOSSIER_DIR.rglob("*.json"))
+
+
+def _dossier_key(path: Path) -> str:
+    return DOSSIER_PREFIX + path.relative_to(DOSSIER_DIR).as_posix()
+
+
+def sync(s3, bucket: str, *, dry_run: bool = False,
+         db_keep: int = DEFAULT_DB_KEEP) -> tuple[int, int, str, str]:
+    """Mirror dossiers, append a dated ledger snapshot and a dated db snapshot.
+
+    Returns (uploaded, skipped, ledger_key, db_key).
+    """
     if not DOSSIER_DIR.is_dir():
         sys.exit(f"STORE_BACKUP FAIL no {DOSSIER_DIR} — nothing to back up")
 
     remote = _remote_index(s3, bucket, DOSSIER_PREFIX)
     uploaded = skipped = 0
-    for path in sorted(DOSSIER_DIR.glob("*.json")):
-        key = DOSSIER_PREFIX + path.name
+    for path in _dossier_files():
+        key = _dossier_key(path)
         if remote.get(key) == _md5(path):
             skipped += 1
             continue
@@ -301,6 +396,7 @@ def sync(s3, bucket: str, *, dry_run: bool = False) -> tuple[int, int, str]:
     # overwritten object: a mirror would faithfully replicate a truncation the moment one
     # happened, which is the single failure this copy exists to survive.
     ledger_key = ""
+    db_key = ""
     if LEDGER.is_file():
         stamp = LEDGER.stat().st_mtime
         import datetime
@@ -316,7 +412,111 @@ def sync(s3, bucket: str, *, dry_run: bool = False) -> tuple[int, int, str]:
             finally:
                 tmp_path.unlink(missing_ok=True)
 
-    return uploaded, skipped, ledger_key
+    # The catalogue index. Until 2026-08-07 this file was in the backup ONLY as ad-hoc
+    # migration copies somebody made by hand before a schema change (.pre-market.bak,
+    # .pre-tombstone-*.bak). It is the index that says which dossier is live, tombstoned,
+    # published and at what price: without it a restored dossier tree is 1,581 loose JSON
+    # files with no state. Dated keys for the same reason as the ledger — a mirror faithfully
+    # replicates a truncation, which is the failure this copy exists to survive.
+    if DB.is_file() and not dry_run:
+        import datetime
+
+        day = datetime.datetime.fromtimestamp(
+            DB.stat().st_mtime, datetime.timezone.utc
+        ).strftime("%Y-%m-%d")
+        db_key = f"{DB_PREFIX}{DB.stem}-{day}.db.gz"
+        with tempfile.NamedTemporaryFile(suffix=".db.gz", delete=False) as tmp:
+            snap = Path(tmp.name)
+        try:
+            size, counts = _snapshot_db(snap)
+            s3.upload_file(str(snap), bucket, db_key,
+                           ExtraArgs={"ContentType": "application/gzip"})
+            # Read back HERE, while the local snapshot still exists. Every other object in
+            # this bucket can be re-checked later against its local original; a db snapshot
+            # is a point-in-time artifact that exists nowhere else the moment this function
+            # returns, so "verify it later" means "never verify it".
+            body = s3.get_object(Bucket=bucket, Key=db_key)["Body"].read()
+            if _sha256_bytes(body) != _sha256(snap):
+                sys.exit(f"STORE_BACKUP FAIL {db_key} reads back differently than it was written")
+            print(f"  db {db_key} {size} bytes gz, "
+                  + ", ".join(f"{n}={c}" for n, c in sorted(counts.items())))
+        finally:
+            snap.unlink(missing_ok=True)
+        # Only after a verified upload. Pruning before would let a machine whose local db has
+        # gone bad delete the last good copies on its way past.
+        _prune_db_snapshots(s3, bucket, keep=db_keep)
+    elif DB.is_file():
+        db_key = f"{DB_PREFIX}{DB.stem}-<day>.db.gz"
+
+    return uploaded, skipped, ledger_key, db_key
+
+
+def _snapshot_db(out_gz: Path) -> tuple[int, dict[str, int]]:
+    """Gzip a consistent hot snapshot of `DB` into `out_gz`. Returns (gz bytes, row counts).
+
+    `Connection.backup()`, NOT `shutil.copy`. The daemon holds this database open in WAL mode
+    and writes to it unattended; copying the file byte-for-byte under a live writer can capture
+    a page set that never existed as a committed state, and the `-wal`/`-shm` sidecars are not
+    copied with it. sqlite's backup API walks pages under the source's own locking and produces
+    a single self-contained file.
+
+    The source is opened `mode=ro`, so this can never take the write lock the daemon needs —
+    a backup that stalls the engine is a backup that gets disabled.
+
+    `PRAGMA integrity_check` runs against the SNAPSHOT before it is uploaded. Verifying the
+    source instead would prove the wrong artifact: the thing that gets restored is this file.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        tmp_db = Path(tmp.name)
+    tmp_db.unlink()  # sqlite wants to create it itself
+    try:
+        src = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+        try:
+            dst = sqlite3.connect(str(tmp_db))
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+        finally:
+            src.close()
+
+        conn = sqlite3.connect(f"file:{tmp_db}?mode=ro", uri=True)
+        try:
+            verdict = conn.execute("PRAGMA integrity_check").fetchone()[0]
+            if verdict != "ok":
+                sys.exit(f"STORE_BACKUP FAIL snapshot of {DB.name} fails integrity_check: {verdict}")
+            counts = {
+                name: conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+                for (name,) in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                ).fetchall()
+            }
+        finally:
+            conn.close()
+
+        with tmp_db.open("rb") as fsrc, gzip.open(out_gz, "wb", compresslevel=6) as fdst:
+            shutil.copyfileobj(fsrc, fdst, 1 << 20)
+    finally:
+        tmp_db.unlink(missing_ok=True)
+    return out_gz.stat().st_size, counts
+
+
+def _prune_db_snapshots(s3, bucket: str, *, keep: int) -> list[str]:
+    """Delete all but the newest `keep` dated db snapshots. `keep<=0` disables pruning.
+
+    Dated `YYYY-MM-DD` keys sort lexicographically in chronological order, so "newest" needs
+    no metadata call and no clock.
+    """
+    if keep <= 0:
+        return []
+    keys = sorted(_remote_index(s3, bucket, DB_PREFIX))
+    stale = keys[:-keep] if len(keys) > keep else []
+    for key in stale:
+        s3.delete_object(Bucket=bucket, Key=key)
+    if stale:
+        print(f"  pruned {len(stale)} db snapshot(s), keeping the newest {keep}")
+    return stale
 
 
 def _snapshot_ledger(out: Path) -> int:
@@ -352,14 +552,14 @@ def _snapshot_ledger(out: Path) -> int:
 
 def verify_sample(s3, bucket: str, n: int = DEFAULT_SAMPLE) -> tuple[int, int, list[str]]:
     """Download a random sample and compare SHA-256 with the local file."""
-    local = sorted(DOSSIER_DIR.glob("*.json"))
+    local = _dossier_files()
     if not local:
         return 0, 0, ["no local dossiers to verify against"]
     sample = random.sample(local, min(n, len(local)))
     ok = 0
     problems: list[str] = []
     for path in sample:
-        key = DOSSIER_PREFIX + path.name
+        key = _dossier_key(path)
         try:
             body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
         except Exception as exc:  # noqa: BLE001 - any failure to read back is a failure
@@ -380,6 +580,11 @@ def restore(s3, bucket: str, dest: Path) -> int:
     object in the bucket is garbage. The three checks here each have an outside referent —
     the ETag R2 computed at upload time, the local file where one still exists, and whether
     the bytes actually parse as the dossier JSON a restore is supposed to yield.
+
+    Layout: `dest/dossiers/<relative path>` plus `dest/prospector.db`. That is exactly what
+    `scripts/restore_drill.py --backup DIR` consumes, so a pull from R2 can be handed straight
+    to the drill and checked row-by-row against the live index — the two halves of recovery
+    stop being separate rituals that have never been run end to end.
     """
     dest.mkdir(parents=True, exist_ok=True)
     remote = _remote_index(s3, bucket, DOSSIER_PREFIX)
@@ -392,25 +597,27 @@ def restore(s3, bucket: str, dest: Path) -> int:
     compared_to_local = 0
     for key, etag in sorted(remote.items()):
         body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
-        name = Path(key).name
+        rel = key[len(DOSSIER_PREFIX):]
 
         if hashlib.md5(body).hexdigest() != etag:  # noqa: S324 - matching R2's ETag
-            bad.append(f"{name}: bytes differ from the ETag R2 recorded at upload")
+            bad.append(f"{rel}: bytes differ from the ETag R2 recorded at upload")
             continue
         try:
             json.loads(body)
         except ValueError:
-            bad.append(f"{name}: restored bytes are not valid JSON")
+            bad.append(f"{rel}: restored bytes are not valid JSON")
             continue
 
-        local = DOSSIER_DIR / name
+        local = DOSSIER_DIR / rel
         if local.is_file():
             if _sha256_bytes(body) != _sha256(local):
-                bad.append(f"{name}: differs from the local original")
+                bad.append(f"{rel}: differs from the local original")
                 continue
             compared_to_local += 1
 
-        (dest / name).write_bytes(body)
+        out = dest / "dossiers" / rel
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(body)
 
     if bad:
         for line in bad[:10]:
@@ -418,7 +625,48 @@ def restore(s3, bucket: str, dest: Path) -> int:
         sys.exit(f"STORE_BACKUP RESTORE FAIL {len(bad)}/{len(remote)} objects failed")
 
     print(f"  checked {len(remote)} against R2's ETag, {compared_to_local} against local originals")
+    restore_db(s3, bucket, dest)
     return len(remote)
+
+
+def restore_db(s3, bucket: str, dest: Path) -> str:
+    """Pull the newest db snapshot into `dest/prospector.db` and prove it opens. Returns its key.
+
+    A restore that stops at "the bytes arrived" has not proved recovery: the artifact is a
+    database, and the question is whether sqlite can open it and read its own pages back. So
+    the restored file is integrity-checked and censused here, and a failure is a hard exit —
+    there is no useful degraded mode for "your index came back corrupt".
+    """
+    keys = sorted(_remote_index(s3, bucket, DB_PREFIX))
+    if not keys:
+        print("  no db snapshot in the bucket — restore is dossiers only", file=sys.stderr)
+        return ""
+    # `restore()` has already made this, but the index is the half of a recovery someone
+    # reaches for on its own ("I only need the catalogue back"), and dying on a missing
+    # directory is a bad way to learn that this entry point is not stand-alone.
+    dest.mkdir(parents=True, exist_ok=True)
+    key = keys[-1]
+    raw = gzip.decompress(s3.get_object(Bucket=bucket, Key=key)["Body"].read())
+    out = dest / DB.name
+    out.write_bytes(raw)
+
+    conn = sqlite3.connect(f"file:{out}?mode=ro", uri=True)
+    try:
+        verdict = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        if verdict != "ok":
+            sys.exit(f"STORE_BACKUP RESTORE FAIL {key} fails integrity_check: {verdict}")
+        counts = {
+            name: conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+            for (name,) in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+            ).fetchall()
+        }
+    finally:
+        conn.close()
+    print(f"  restored {key} -> {out.name}, integrity ok, "
+          + ", ".join(f"{n}={c}" for n, c in sorted(counts.items())))
+    return key
 
 
 def main() -> int:
@@ -429,6 +677,9 @@ def main() -> int:
                         help="download every backed-up dossier into DIR and verify each")
     parser.add_argument("--sample", type=int, default=DEFAULT_SAMPLE,
                         help=f"how many objects to read back and check (default {DEFAULT_SAMPLE})")
+    parser.add_argument("--db-keep", type=int, default=DEFAULT_DB_KEEP,
+                        help=f"dated db snapshots to retain, 0 = keep every one "
+                             f"(default {DEFAULT_DB_KEEP})")
     args = parser.parse_args()
 
     s3, bucket = _client()
@@ -439,9 +690,11 @@ def main() -> int:
         return 0
 
     uploaded = skipped = 0
-    ledger_key = ""
+    ledger_key = db_key = ""
     if not args.verify_only:
-        uploaded, skipped, ledger_key = _retry_on_skew(sync, s3, bucket)
+        uploaded, skipped, ledger_key, db_key = _retry_on_skew(
+            sync, s3, bucket, db_keep=args.db_keep
+        )
 
     ok, total, problems = _retry_on_skew(verify_sample, s3, bucket, args.sample)
     for problem in problems:
@@ -449,9 +702,10 @@ def main() -> int:
 
     verdict = "PASS" if total and ok == total and not problems else "FAIL"
     print(
-        f"STORE_BACKUP {verdict} dossiers={len(list(DOSSIER_DIR.glob('*.json')))} "
+        f"STORE_BACKUP {verdict} dossiers={len(_dossier_files())} "
         f"uploaded={uploaded} unchanged={skipped} verified={ok}/{total}"
         + (f" ledger={ledger_key}" if ledger_key else "")
+        + (f" db={db_key}" if db_key else "")
     )
     return 0 if verdict == "PASS" else 1
 

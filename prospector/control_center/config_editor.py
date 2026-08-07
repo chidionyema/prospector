@@ -18,16 +18,49 @@ from typing import Any
 
 import yaml
 
+from prospector import paths
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
-CONFIG_PATH = Path("config.yaml")
-_BACKUP_DIR = Path("store/control_center/backups")
-_CC_DIR = Path("store/control_center")
-_CERT_PATH = _CC_DIR / "certification.json"
-_CONFIG_HISTORY = _CC_DIR / "config_history.jsonl"
+# Resolved per call, never bound at import — see prospector/paths.py for why, and note this
+# module is where the class did live damage. `_CONFIG_HISTORY` used to be computed at import
+# from `_CC_DIR`, so a test that redirected `_CC_DIR` moved the backups and left the history
+# pointing at production. It did: `store/control_center/config_history.jsonl` on this branch
+# carries rows whose backup path is
+#   /private/var/.../pytest-of-chidionyema/pytest-4835/test_write_config_creates_back0/backups/
+# The fence was applied and the file was written anyway, because a derived constant does not
+# follow the thing it was derived from. Deriving inside the accessor is what makes it follow.
+#
+# The module-level names survive as OVERRIDES. `None` means "resolve now"; assigning a Path
+# pins it, which is the contract tests/control_center/test_config_editor.py already uses
+# (`orig = _ce_module._CC_DIR` … restore in `finally`).
+CONFIG_PATH: Path | None = None
+_BACKUP_DIR: Path | None = None
+_CC_DIR: Path | None = None
+_CERT_PATH: Path | None = None
+_CONFIG_HISTORY: Path | None = None
+
+
+def _config_path() -> Path:
+    return CONFIG_PATH or paths.repo_path("config.yaml")
+
+
+def _cc_dir() -> Path:
+    return _CC_DIR or paths.store_path("control_center")
+
+
+def _backup_dir() -> Path:
+    return _BACKUP_DIR or _cc_dir() / "backups"
+
+
+def _cert_path() -> Path:
+    return _CERT_PATH or _cc_dir() / "certification.json"
+
+
+def _config_history() -> Path:
+    return _CONFIG_HISTORY or _cc_dir() / "config_history.jsonl"
 
 
 # ---------------------------------------------------------------------------
@@ -36,10 +69,10 @@ _CONFIG_HISTORY = _CC_DIR / "config_history.jsonl"
 
 def load_config_raw() -> dict[str, Any]:
     """Load config.yaml as a raw dict (never cached)."""
-    if not CONFIG_PATH.exists():
+    if not _config_path().exists():
         return {}
     try:
-        with open(CONFIG_PATH, encoding="utf-8") as f:
+        with open(_config_path(), encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     except (yaml.YAMLError, OSError):
         return {}
@@ -58,12 +91,12 @@ def config_hash(cfg: dict[str, Any]) -> str:
 
 def get_config_mtime() -> float:
     """Return the on-disk mtime of config.yaml."""
-    return CONFIG_PATH.stat().st_mtime if CONFIG_PATH.exists() else 0.0
+    return _config_path().stat().st_mtime if _config_path().exists() else 0.0
 
 
 def mtime_conflict(orig_mtime: float) -> bool:
     """Return True if config.yaml has been modified since orig_mtime."""
-    return CONFIG_PATH.exists() and CONFIG_PATH.stat().st_mtime > orig_mtime
+    return _config_path().exists() and _config_path().stat().st_mtime > orig_mtime
 
 
 # ---------------------------------------------------------------------------
@@ -249,24 +282,24 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
 
     # ── Backup ─────────────────────────────────────────────────────────────
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    bak = _BACKUP_DIR / f"config.yaml.bak.{ts}"
-    shutil.copy2(CONFIG_PATH, bak)
+    _backup_dir().mkdir(parents=True, exist_ok=True)
+    bak = _backup_dir() / f"config.yaml.bak.{ts}"
+    shutil.copy2(_config_path(), bak)
 
     # ── Validate ─────────────────────────────────────────────────────────────
     ok, errs = validate_config(new_cfg)
     if not ok:
-        return False, f"Config validation failed:\n" + "\n".join(f"  - {e}" for e in errs)
+        return False, "Config validation failed:\n" + "\n".join(f"  - {e}" for e in errs)
 
     # ── Write ─────────────────────────────────────────────────────────────
     try:
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        with open(_config_path(), "w", encoding="utf-8") as f:
             yaml.safe_dump(new_cfg, f, default_flow_style=False, sort_keys=False)
     except OSError as e:
         return False, f"Could not write config.yaml: {e}"
 
     # ── Log history ─────────────────────────────────────────────────────────
-    _CC_DIR.mkdir(parents=True, exist_ok=True)
+    _cc_dir().mkdir(parents=True, exist_ok=True)
     from prospector.control_center import readers as _r
     _r.load_config_dict.clear()
     _r.load_config_typed.clear()
@@ -278,7 +311,7 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
         "backup": str(bak),
     }
     try:
-        with open(_CONFIG_HISTORY, "a", encoding="utf-8") as f:
+        with open(_config_history(), "a", encoding="utf-8") as f:
             f.write(yaml.safe_dump(entry, default_flow_style=False))
     except OSError:
         pass
@@ -302,7 +335,7 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
             )
         _r.load_certification.clear()
 
-    return True, f"Config saved → {CONFIG_PATH} (backup: {bak.name})"
+    return True, f"Config saved → {_config_path()} (backup: {bak.name})"
 
 
 # ---------------------------------------------------------------------------
@@ -311,10 +344,10 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
 
 def load_certification() -> dict[str, Any]:
     """Load the certification state from store/control_center/certification.json."""
-    if not _CERT_PATH.exists():
+    if not _cert_path().exists():
         return {"certified": False}
     try:
-        return yaml.safe_load(_CERT_PATH.read_text(encoding="utf-8")) or {}
+        return yaml.safe_load(_cert_path().read_text(encoding="utf-8")) or {}
     except (yaml.YAMLError, OSError):
         return {"certified": False}
 
@@ -323,7 +356,7 @@ def _write_certification(certified: bool, reason: str = "",
                         config_hash: str = "", certified_by: str = "",
                         golden_run: str = "") -> None:
     """Write the certification state file."""
-    _CC_DIR.mkdir(parents=True, exist_ok=True)
+    _cc_dir().mkdir(parents=True, exist_ok=True)
     cert = {
         "certified": certified,
         "config_hash": config_hash,
@@ -336,7 +369,7 @@ def _write_certification(certified: bool, reason: str = "",
     if golden_run:
         cert["golden_run"] = golden_run
 
-    with open(_CERT_PATH, "w", encoding="utf-8") as f:
+    with open(_cert_path(), "w", encoding="utf-8") as f:
         yaml.safe_dump(cert, f, default_flow_style=False)
 
 
@@ -363,10 +396,10 @@ def certify_from_golden(golden_run_id: str, operator: str,
 
 def list_backups() -> list[dict[str, Any]]:
     """List available timestamped config backups."""
-    if not _BACKUP_DIR.exists():
+    if not _backup_dir().exists():
         return []
     backups = []
-    for p in sorted(_BACKUP_DIR.glob("config.yaml.bak.*"), reverse=True):
+    for p in sorted(_backup_dir().glob("config.yaml.bak.*"), reverse=True):
         backups.append({
             "filename": p.name,
             "mtime": p.stat().st_mtime,
@@ -377,13 +410,13 @@ def list_backups() -> list[dict[str, Any]]:
 
 def restore_backup(filename: str) -> tuple[bool, str]:
     """Restore config.yaml from a backup file."""
-    bak = _BACKUP_DIR / filename
+    bak = _backup_dir() / filename
     if not bak.exists():
         return False, f"Backup not found: {filename}"
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    safety_bak = CONFIG_PATH.with_suffix(".yaml.bak.restore." + ts)
-    shutil.copy2(CONFIG_PATH, safety_bak)
-    shutil.copy2(bak, CONFIG_PATH)
+    safety_bak = _config_path().with_suffix(".yaml.bak.restore." + ts)
+    shutil.copy2(_config_path(), safety_bak)
+    shutil.copy2(bak, _config_path())
     from prospector.control_center import readers as _r
     _r.load_config_dict.clear()
     _r.load_config_typed.clear()

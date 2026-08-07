@@ -35,24 +35,53 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-QUEUE = REPO_ROOT / "store" / "scheduler" / "pending_unlist.jsonl"
-DONE = REPO_ROOT / "store" / "scheduler" / "pending_unlist.done.jsonl"
+sys.path.insert(0, str(REPO_ROOT))
+
+from prospector import paths  # noqa: E402
+from prospector.jsonl_atomic import append_jsonl, consume_jsonl, read_jsonl  # noqa: E402
+
 FLY_APP = "prospector-store-api"
 
 
+def _queue() -> Path:
+    return paths.store_path("scheduler", "pending_unlist.jsonl")
+
+
+def _done() -> Path:
+    return paths.store_path("scheduler", "pending_unlist.done.jsonl")
+
+
 def _read_queue() -> list[dict]:
-    if not QUEUE.exists():
-        return []
-    entries = []
-    for line in QUEUE.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            entries.append(json.loads(line))
-        except json.JSONDecodeError:
-            print(f"WARNING: skipping unparseable queue line: {line[:120]}", file=sys.stderr)
-    return entries
+    """Non-destructive read. The queue is only emptied after the unlist actually succeeded."""
+    return [e for e in read_jsonl(_queue()) if isinstance(e, dict)]
+
+
+def _commit(processed: list[dict]) -> int:
+    """Move `processed` into the done log and take them out of the queue. Returns how many.
+
+    The old code did `QUEUE.write_text("")`. That is a lost update: `decay._queue_unlist`
+    appends to this file from the unattended re-vet sweep, and every entry it added between
+    `_read_queue()` above and the truncation here was deleted unprocessed — a killed pack left
+    sellable, with no trace that anything was dropped. The whole point of this queue is that a
+    re-vetted KILL cannot stay in the catalogue.
+
+    `consume_jsonl` takes the file's contents under the same lock the appender holds, so
+    nothing can land in the window. Anything it returns that we did NOT just process arrived
+    during the fly round-trip and is put straight back.
+    """
+    done = _done()
+    done.parent.mkdir(parents=True, exist_ok=True)
+    for entry in processed:
+        append_jsonl(done, entry)
+
+    seen = {json.dumps(e, sort_keys=True, default=str) for e in processed}
+    drained = consume_jsonl(_queue())
+    requeued = [e for e in drained if json.dumps(e, sort_keys=True, default=str) not in seen]
+    for entry in requeued:
+        append_jsonl(_queue(), entry)
+    if requeued:
+        print(f"  {len(requeued)} entry(s) arrived while unlisting; left queued for the next run")
+    return len(processed)
 
 
 def _ssh_sql(sql: str) -> str:
@@ -106,12 +135,8 @@ def main() -> int:
               "leaving the queue untouched, re-run once fixed.", file=sys.stderr)
         return 1
 
-    DONE.parent.mkdir(parents=True, exist_ok=True)
-    with DONE.open("a", encoding="utf-8") as fh:
-        for e in entries:
-            fh.write(json.dumps(e) + "\n")
-    QUEUE.write_text("", encoding="utf-8")
-    print(f"unlisted {len(ids)} pack(s); moved to {DONE.relative_to(REPO_ROOT)}")
+    _commit(entries)
+    print(f"unlisted {len(ids)} pack(s); moved to {_done()}")
     return 0
 
 

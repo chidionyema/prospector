@@ -24,8 +24,8 @@ from typing import Any, Optional
 
 import streamlit as st
 
+from prospector import paths
 from prospector.config import load_config
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -49,7 +49,7 @@ def _jsonl_lines(path: Path) -> list[dict]:
 
 def _control_center_dir() -> Path:
     """Get or create the control_center store dir."""
-    d = Path("store/control_center")
+    d = paths.store_path("control_center")
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -90,7 +90,7 @@ def catalogue_index(decision: Optional[str] = None) -> list[dict[str, Any]]:
     gate_fired, composite, created_at, reverify_due_at, path, ambition_tier,
     structural_form, provisional, dense_reward, adversarial_confidence.
     """
-    db_path = Path("store/prospector.db")
+    db_path = paths.store_path("prospector.db")
     if not db_path.exists():
         return []
 
@@ -119,7 +119,7 @@ def catalogue_stats() -> dict[str, Any]:
         "n_pass_non_prov": 0, "n_pass_provisional": 0, "n_listed": 0,
         "pass": 0, "kill": 0, "defer": 0,
     }
-    db_path = Path("store/prospector.db")
+    db_path = paths.store_path("prospector.db")
     if not db_path.exists():
         empty["n_listed"] = _count_listings()
         return empty
@@ -163,7 +163,7 @@ def catalogue_stats() -> dict[str, Any]:
 
 def _count_listings() -> int:
     """Local listing receipts under store/listings/ (CC Pub badge source)."""
-    listings = Path("store/listings")
+    listings = paths.store_path("listings")
     if not listings.is_dir():
         return 0
     try:
@@ -175,7 +175,7 @@ def _count_listings() -> int:
 @st.cache_data(ttl=15)
 def catalogue_has_rows() -> bool:
     """Cheap emptiness check — avoids loading the full index on Overview boot."""
-    db_path = Path("store/prospector.db")
+    db_path = paths.store_path("prospector.db")
     if not db_path.exists():
         return False
     conn = sqlite3.connect(str(db_path), timeout=5.0)
@@ -223,7 +223,7 @@ def load_listing(candidate_id: str) -> Optional[dict[str, Any]]:
 @st.cache_data(ttl=5)
 def load_pending_signals() -> list[dict[str, Any]]:
     """Load all pending signals from signals/pending/*.json."""
-    pending_dir = Path("signals/pending")
+    pending_dir = paths.repo_path("signals", "pending")
     if not pending_dir.exists():
         return []
     results = []
@@ -531,7 +531,7 @@ def job_outcome_summary(job: dict[str, Any]) -> str:
 
 def scheduler_paused() -> bool:
     """True when the filesystem kill switch ``store/scheduler/PAUSE`` exists."""
-    return Path("store/scheduler/PAUSE").exists()
+    return paths.store_path("scheduler", "PAUSE").exists()
 
 
 def launch_operator_choices() -> list[str]:
@@ -629,7 +629,7 @@ def launch_profile_choices() -> list[str]:
 def recent_dossier_rows(limit: int = 8) -> list[dict[str, Any]]:
     """Newest catalogue rows for the Overview inventory strip (SQL LIMIT)."""
     limit = max(0, int(limit))
-    db_path = Path("store/prospector.db")
+    db_path = paths.store_path("prospector.db")
     if not db_path.exists() or limit == 0:
         return []
     conn = sqlite3.connect(str(db_path), timeout=5.0)
@@ -667,7 +667,7 @@ def stuck_paths() -> dict[str, str]:
 @st.cache_data(ttl=5)
 def load_provider_health() -> dict[str, Any]:
     """Load circuit-breaker state from store/provider_health.json."""
-    path = Path("store/provider_health.json")
+    path = paths.store_path("provider_health.json")
     if not path.exists():
         return {}
     try:
@@ -714,7 +714,7 @@ def load_audit_log() -> list[dict[str, Any]]:
 
     Kept for Reports. Overview must never call this on the hot path.
     """
-    return _jsonl_lines(Path("store/prospector.jsonl"))
+    return _jsonl_lines(paths.store_path("prospector.jsonl"))
 
 
 def _spend_ts(ev: dict[str, Any]) -> str:
@@ -802,7 +802,7 @@ def _today_spend_from_events(audit: list[dict[str, Any]], today: str) -> dict[st
 def _today_spend_from_ledger(_mtime: float) -> dict[str, Any]:
     """Cached reverse-tail spend — ``_mtime`` busts cache when the ledger grows."""
     today = datetime.now(timezone.utc).date().isoformat()
-    path = Path("store/prospector.jsonl")
+    path = paths.store_path("prospector.jsonl")
     if not path.exists():
         return {"total_usd": 0.0, "by_phase": {}}
     return _scan_today_spend_from_tail(path, today)
@@ -819,7 +819,7 @@ def today_spend(audit: Optional[list[dict[str, Any]]] = None) -> dict[str, Any]:
 
 def today_spend_cached() -> dict[str, Any]:
     """Overview-safe spend helper — keyed by ledger mtime, never loads full jsonl."""
-    path = Path("store/prospector.jsonl")
+    path = paths.store_path("prospector.jsonl")
     mtime = 0.0
     try:
         if path.exists():
@@ -837,7 +837,7 @@ def today_spend_cached() -> dict[str, Any]:
 @st.cache_data(ttl=30)
 def load_golden_runs() -> list[dict[str, Any]]:
     """Load all golden run files from store/golden_runs/, newest first."""
-    golden_dir = Path("store/golden_runs")
+    golden_dir = paths.store_path("golden_runs")
     if not golden_dir.exists():
         return []
     results = []
