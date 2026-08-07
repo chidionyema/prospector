@@ -31,6 +31,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from prospector.jsonl_atomic import append_jsonl
 from prospector.scheduler import paths
 
 logger = logging.getLogger(__name__)
@@ -173,8 +174,7 @@ def resolve_alert(cfg, *, key: str, reason: str) -> bool:
               "title": f"RESOLVED: {resolved.get('title')}", "message": reason,
               "resolves_ts": resolved.get("ts")}
     try:
-        with open(_scheduler_dir(cfg) / "alerts.jsonl", "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, default=str) + "\n")
+        append_jsonl(_scheduler_dir(cfg) / "alerts.jsonl", record)
     except OSError as exc:
         logger.error("Failed to append alert resolution: %s", exc)
 
@@ -332,8 +332,10 @@ def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
 
     sdir = _scheduler_dir(cfg)
     try:
-        with open(sdir / "alerts.jsonl", "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, default=str) + "\n")
+        # R3: single O_APPEND write + fsync. Concurrent appenders (daemon + manual CLI) can
+        # never split each other's record, and an alert that was not durably written is the
+        # one record class we cannot afford to lose to a torn tail.
+        append_jsonl(sdir / "alerts.jsonl", record)
     except OSError as exc:
         logger.error("Failed to append alert: %s", exc)
 
