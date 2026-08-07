@@ -130,6 +130,18 @@ export default function AboutPage() {
             has no source, it is not in a pack. If an idea cannot survive
             the filter, it is not on the shelf.
           </p>
+          {/* Was disclosed nowhere but clause 6 of the refund policy. A shop whose whole pitch is
+              "every claim traces to a source you can open" should say plainly what does the
+              tracing, in the same place it makes that pitch, not bury it in legal fine print --
+              the gap between the two is exactly what a reader who trusts the site is trusting. */}
+          <p className="mt-4 max-w-[60ch] text-body text-muted">
+            The research is done by an AI pipeline, not a person typing an opinion. It is built to
+            argue against every idea it is given, using only passages it actually retrieves from
+            the open web: no claim ships without a link to where it came from, and an idea with no
+            evidence against it is not proof the idea is good, just that the pipeline could not
+            find the evidence yet. That is what &quot;every claim traces to a source&quot; means in
+            practice, and it is why the process is adversarial rather than generative.
+          </p>
         </div>
 
         <div className="mt-12">

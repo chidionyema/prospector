@@ -125,7 +125,7 @@ export function DossierPreview() {
           href="/sample"
           className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
         >
-          Read a full pack free
+          Read a full dossier free
           <Icon name="arrowRight" size={14} />
         </Link>
       </div>

@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-08-07T07:30:11+00:00",
+  "generatedAt": "2026-08-07T12:29:35+00:00",
   "totals": {
-    "killed": 1323,
-    "passed": 80,
+    "killed": 1328,
+    "passed": 81,
     "shown": 60,
     "byGate": {
-      "min_composite": 611,
+      "min_composite": 614,
       "incumbency": 196,
-      "moat_ungrounded": 178,
+      "moat_ungrounded": 179,
       "adversarial_decisive": 142,
-      "value_durability": 79,
+      "value_durability": 80,
       "payer_solvency": 47,
       "source_or_die": 24,
       "legality": 16,
@@ -227,6 +227,24 @@
         {
           "url": "https://withfarra.co.uk/guides/probate-waiting-times-uk-2026",
           "domain": "withfarra.co.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "SchoolFees Swap, the broker that turns unused school fee credit into cash for another family",
+      "oneLiner": "A broker that matches parents leaving an independent school early with parents joining it, so unused advance fee payments transfer between them instead of being forfeited.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages describe how prepaid fees actually work at these schools: one states that once notice has expired, any prepaid and unused terms are refunded back to the parent, and another describes the advance scheme as money held on deposit that is drawn down term by term. If the parent simply gets the money back when they give notice, there is no stranded, forfeited credit for a broker to rescue and no share of a recovery to charge for.",
+      "citations": [
+        {
+          "url": "https://johnwhitgiftfoundation.org/",
+          "domain": "johnwhitgiftfoundation.org"
+        },
+        {
+          "url": "https://taxpolicy.org.uk/2024/05/09/private_school_vat_risk/",
+          "domain": "taxpolicy.org.uk"
         }
       ],
       "date": "2026-08-07"
@@ -1246,32 +1264,6 @@
       "gateLabel": "The payer cannot actually pay",
       "reason": "The passages show the median UK tradesperson day rate (£207) sits below the £218 floor needed to net £35,000/year, that the bottom 25% of small businesses make no or negative profit, and that small-business insolvencies are rising 7-13%, meaning most of the target payer segment is already financially stretched rather than sitting on spare budget for a £30-50/week add-on service.",
       "citations": [],
-      "date": "2026-08-06"
-    },
-    {
-      "title": "SilverClaim Denial Decryptor",
-      "oneLiner": "A data-intelligence tool that builds a proprietary dataset of AXA & BUPA claim denial patterns and generates AI-crafted, evidence-backed appeal letters specifically for UK retirees, turning real-world case outcomes into a high-success reversal engine.",
-      "gate": "value_durability",
-      "gateLabel": "The value would not last",
-      "reason": "One passage shows Claimable already sells exactly this, an expert-backed appeal letter you create and send in minutes to overturn an insurance denial, and another shows generic how-to-appeal guidance circulating freely, while the UK's Financial Ombudsman Service handles insurance complaints at no cost to the consumer.",
-      "citations": [
-        {
-          "url": "https://www.getclaimable.com/",
-          "domain": "getclaimable.com"
-        },
-        {
-          "url": "https://www.tiktok.com/discover/how-to-appeal-denied-health-insurance-claim",
-          "domain": "tiktok.com"
-        },
-        {
-          "url": "https://www.financial-ombudsman.org.uk/",
-          "domain": "financial-ombudsman.org.uk"
-        },
-        {
-          "url": "https://www.gov.uk/complain-financial-service",
-          "domain": "gov.uk"
-        }
-      ],
       "date": "2026-08-06"
     }
   ]
