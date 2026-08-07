@@ -37,7 +37,7 @@ describe('the drawer carries the pre-contract set', () => {
   });
 
   it('keeps the honesty note that a pack is research, not a promise', () => {
-    expect(drawer).toContain('grounded research, not a promise of business success');
+    expect(drawer).toContain('evidence-backed research, not a promise of business success');
   });
 
   it('always offers the full evidence one click away', () => {

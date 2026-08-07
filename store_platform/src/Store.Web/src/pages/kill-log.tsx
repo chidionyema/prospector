@@ -121,7 +121,7 @@ const BY_GATE = (killLog.totals as { byGate: Record<string, number> }).byGate;
 // draws. The published rows carry their own `gateLabel` from the engine.
 const EXTRA_LABELS: Record<string, string> = {
   min_composite: 'Scored below the bar overall',
-  moat_ungrounded: 'The defensibility claim was not grounded',
+  moat_ungrounded: 'The defensibility claim was not evidence-backed',
   source_or_die: 'Its own claims could not be sourced',
   buyer_intent: 'No sign anyone is trying to buy it',
 };
@@ -234,8 +234,8 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
   return (
     <MarketingLayout>
       <Seo
-        title="The kill log, the ideas we rejected, and the sourced reason why"
-        description={`We researched ${researched.toLocaleString('en-GB')} business ideas and rejected ${rejectRate}% of them. Here are ${publishedKills} of the rejects, each with the evidence that killed it.`}
+        title="The kill log, the ideas we killed, and the sourced reason why"
+        description={`We researched ${researched.toLocaleString('en-GB')} business ideas and killed ${rejectRate}% of them. Here are ${publishedKills} of the kills, each with the evidence that killed it.`}
       />
 
       {/* Left-aligned, one column, no centred hero (spec §7.4). A centred 22ch headline over a
@@ -254,7 +254,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
           </h1>
           <p className="mt-5 max-w-[60ch] text-body text-muted">
             Anyone can claim their research is rigorous. This is the receipt. Every row below was
-            generated, researched against live sources, and then shot, with the argument that killed
+            generated, researched against live sources, and then killed, with the argument that killed
             it and, where a page was cited, a link so you can check it yourself.
           </p>
           {/* THE CAVEAT, AT THE TOP.
@@ -273,7 +273,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
           <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-meta">
             <span className="inline-flex items-center gap-2 text-kill">
               <Icon name="warning" size={14} />
-              {rejectRate}% rejected
+              {rejectRate}% killed
             </span>
             {/* "published" was the wrong noun on the survivor count: more survived than are on the
                 shelf. `survivorsSummary` states the gap rather than printing whichever of the two
@@ -297,7 +297,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
           </h2>
           <p className="mt-2 max-w-[68ch] text-meta text-muted">
             Every rejection across all {killed.toLocaleString('en-GB')} kills, by the check that
-            fired first. The filter stops at the first hard failure, so each idea is counted once,
+            fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
           </p>
           <ul className="mt-6 list-none space-y-2 p-0">
@@ -401,7 +401,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
         <div className="mt-6 overflow-x-auto border-y border-border">
           <table className="w-full min-w-[44rem] border-collapse text-left">
             <caption className="sr-only">
-              Rejected ideas, with the check that killed each one, its published sources and the
+              Killed ideas, with the check that killed each one, its published sources and the
               date it was assessed. Select a row to read the argument.
             </caption>
             <thead>

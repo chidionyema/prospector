@@ -27,8 +27,8 @@ const SITE = BRAND.name;
  * does not quote one.
  */
 const DEFAULT_DESCRIPTION =
-  'Mumchimp sells grounded business opportunity packs. Each is an idea passed by the ' +
-  'Mumchimp engine: build spec, GTM plan, operations and unit economics, and a QA report with ' +
+  'Mumchimp sells sourced business opportunity packs. Each is an idea passed by the ' +
+  'engine: build spec, GTM plan, operations and unit economics, and a QA report with ' +
   'every claim sourced. Instant download.';
 
 export interface SeoProps {
@@ -69,7 +69,7 @@ export function Seo({
   ogImageAlt,
   ogType = 'website',
 }: SeoProps) {
-  const fullTitle = title ? `${title} · ${SITE}` : `${SITE} · grounded business packs.`;
+  const fullTitle = title ? `${title} · ${SITE}` : `${SITE} · sourced business packs.`;
 
   // Canonical/og:url need an absolute URL, so they only emit when SITE_URL is configured (prod).
   // Path only: strip the query string so canonical points at the clean page, not a tracked variant.

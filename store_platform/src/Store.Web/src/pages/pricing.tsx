@@ -56,7 +56,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           {/* Was "One price, every pack." The mode is stated alongside the spread on purpose:
               quoting only "from £29" when most packs are dearer is the airline-fare move. */}
           {range ? priceSentence(range) : 'One payment, yours forever. The price is on each pack\'s own page.'}{' '}
-          No seat fees, no drip-feed. If a pack survives the filter
+          No seat fees, no drip-feed. If a pack survives the checks
           it is listed. If it does not, it is in the{' '}
           <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">
             kill log
@@ -140,7 +140,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           </p>
           <ul className="mt-6 space-y-3">
             {[
-              'A guarantee that the business will succeed. A pack is grounded research, not a promise of outcome.',
+              'A guarantee that the business will succeed. A pack is evidence-backed research, not a promise of outcome.',
               'Live updates. Packs are a one-time artefact, dated at publish. The kill log is the live surface.',
               'Personal coaching. The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
               'A subscription, dashboard, or seat. The pack is a file you own.',
@@ -180,7 +180,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             </div>
             <p className="mt-2 text-meta leading-relaxed text-muted">
               Every figure in every pack links to a retrievable source. Open
-              the QA report inside the pack and trace any claim to its
+              the QA report inside the pack and trace any claim to its{' '}
               {/* Was the literal "1,080". Every other kill count on the site reads
                   `kill-log-totals.json`, so this one number drifted the moment the engine ran
                   again -- on the page whose whole subject is what the price buys. */}

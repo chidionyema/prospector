@@ -172,7 +172,7 @@ function BuyDrawer({
         </div>
 
         <p className="text-caption leading-relaxed text-muted">
-          A pack is grounded research, not a promise of business success. See our{' '}
+          A pack is evidence-backed research, not a promise of business success. See our{' '}
           <Link href="/refund" className={textLinkClass()}>
             refund policy
           </Link>

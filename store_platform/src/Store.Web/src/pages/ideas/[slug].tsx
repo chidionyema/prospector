@@ -148,16 +148,16 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
         <PackGrid packs={packs} />
 
         <p className="mt-10 text-meta leading-relaxed text-muted">
-          Every pack on this page faced the same filter: {checksSentence()}. Each then survived an
+          Every pack on this page faced the same checks: {checksSentence()}. Each then survived an
           adversarial review.{' '}
           <Link href="/how-it-works" className={textLinkClass('font-medium')}>
-            How the filter works
+            How the checks work
           </Link>
           , and the{' '}
           <Link href="/kill-log" className={textLinkClass('font-medium')}>
             kill log
           </Link>{' '}
-          lists what it rejected.
+          lists what it killed.
         </p>
 
         {siblings.length > 0 && (
