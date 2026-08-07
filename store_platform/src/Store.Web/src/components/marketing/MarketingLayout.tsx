@@ -293,7 +293,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 {/* "£49 each" removed: the footer renders on every page including ones with no
                     catalogue loaded, and the shelf has not been one price since the segment
                     ladder shipped. The live figures live on /pricing, which reads them. */}
-                Business ideas that survived the filter. Fully sourced, ready to build.
+                Business ideas that survived the checks. Fully sourced, ready to build.
               </p>
             </div>
             <dl className="m-0 flex flex-none items-end gap-10">
@@ -385,7 +385,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               </Button>
             </Link>
             <Link href="/kill-log">
-              <Button size="md" variant="secondary">See what we rejected</Button>
+              <Button size="md" variant="secondary">See what we killed</Button>
             </Link>
           </div>
 
@@ -429,7 +429,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 Read the full disclaimer
               </summary>
               <p className="mt-2 text-caption leading-relaxed text-subtle">
-                Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
+                Each pack is an evidence-backed analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
               </p>
             </details>
           </div>

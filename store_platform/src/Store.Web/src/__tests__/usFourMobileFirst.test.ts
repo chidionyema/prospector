@@ -99,8 +99,8 @@ describe('US-4 — Mobile-first pack detail', () => {
     // strongest case (US-6 will own the move).
     // The page uses a curly apostrophe ('); match either.
     const deliverablesIdx = Math.max(
-      page.indexOf("What's inside your download"),
-      page.indexOf("What\u2019s inside your download"),
+      page.indexOf("What's inside your pack"),
+      page.indexOf("What\u2019s inside your pack"),
     );
     /*
      * Scoped to the METHODOLOGY disclosures by name, not to `page.search(/<details\b/)`.
@@ -120,7 +120,7 @@ describe('US-4 — Mobile-first pack detail', () => {
     expect(Number.isFinite(methodologyIdx), 'the methodology disclosures must exist').toBe(true);
     expect(
       deliverablesIdx < methodologyIdx,
-      'pack/[id].tsx must render "What\u2019s inside your download" before the methodology disclosures',
+      'pack/[id].tsx must render "What\u2019s inside your pack" before the methodology disclosures',
     ).toBe(true);
   });
 

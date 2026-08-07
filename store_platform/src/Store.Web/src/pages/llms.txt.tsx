@@ -108,16 +108,16 @@ unverifiable is a finding (retrieval ran and no passage settled it), not a missi
 
 What a pack is NOT, stated so it is not inferred wrongly: it is not financial, legal, or investment
 advice, and it is not a guarantee that the business will succeed. The guarantee is that the
-analysis is grounded and sourced. Execution is the buyer's.
+analysis is evidence-backed and sourced. Execution is the buyer's.
 
-Ideas that FAIL the filter are published too, with the sourced reason they were rejected, that is
-the kill log, and it is the evidence the filter is real rather than a marketing claim.
+Ideas that FAIL the checks are published too, with the sourced reason they were killed, that is
+the kill log, and it is the evidence the checks are real rather than a marketing claim.
 
 ## Guide
 
 - [How it works](${origin}/how-it-works): the checks, the adversarial review, and what lands in the zip.
 - [Sample pack](${origin}/sample): a real pack's contents, readable without buying.
-- [Kill log](${origin}/kill-log): ideas rejected by the filter, each with its sourced reason.
+- [Kill log](${origin}/kill-log): ideas killed by the checks, each with its sourced reason.
 - [FAQ](${origin}/faq): what you are buying, delivery, refunds, and licensing.
 
 ## Packs

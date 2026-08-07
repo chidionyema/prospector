@@ -43,7 +43,7 @@ export const PACK_CONTENTS: {
     title: 'Executive Summary',
     filename: '00_Executive_Summary.md',
     desc:
-      'The opportunity in one page: what it is, the grounded signals that survived the checks, and an explicit list of what the pack does NOT claim. Read this first to decide if it is for you.',
+      'The opportunity in one page: what it is, the sourced signals that survived the checks, and an explicit list of what the pack does NOT claim. Read this first to decide if it is for you.',
   },
   {
     title: 'The Blueprint (Build Spec)',
@@ -100,7 +100,7 @@ export const PACK_CONTENTS: {
  * receipts line is that pack's number, and omit it on the homepage where no single number is true.
  */
 export function PackContentsSection({
-  heading = 'What’s inside your download',
+  heading = 'What’s inside your pack',
   lead,
   sourceCount,
   className,
@@ -144,7 +144,7 @@ export function PackContentsSection({
       <div className="mt-6 overflow-hidden rounded-md bg-surface">
         <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
           <Icon name="download" size={14} className="flex-none text-subtle" />
-          <span className="font-mono text-caption text-text">your download/</span>
+          <span className="font-mono text-caption text-text">your pack/</span>
           <span className="ml-auto font-mono text-caption text-subtle">
             {PACK_CONTENTS.length} files
           </span>

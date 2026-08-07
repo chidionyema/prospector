@@ -117,16 +117,16 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     globalHookDescription:
       'The buyer, the price, the margins and the plan. Every claim links to its source.',
 
-    howItWorksEyebrow: 'The panel',
-    howItWorksTitle: 'Every idea faces a panel built to kill it.',
+    howItWorksEyebrow: 'The checks',
+    howItWorksTitle: 'Every idea faces checks built to kill it.',
     howItWorksLead:
       'Before anything reaches the store, it runs a gauntlet of AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every pack is a grounded business opportunity, vetted against a filter built to kill it and sourced to retrievable evidence before it can be listed.',
+      'How Mumchimp works: every pack is a sourced business opportunity, vetted against checks built to kill it and sourced to retrievable evidence before it can be listed.',
 
     sixChecksTitle: 'The checks, one kill, and it stops',
     sixChecksDescription:
-      'Every candidate faces the same filter, in this order. The panel kills fast at the first hard fail. Which checks run depends on the idea, and the pack page names the ones it faced. Only ideas that clear every hard gate and survive an adversarial cross‑examination become a pack, and every kill is logged with its reason, so the filter is auditable, not a black box.',
+      'Every candidate faces the same checks, in this order. The checks kill fast at the first hard fail. Which checks run depends on the idea, and the pack page names the ones it faced. Only ideas that clear every hard gate and survive an adversarial cross‑examination become a pack, and every kill is logged with its reason, so the checks are auditable, not a black box.',
 
     automatedIdeasIntro:
       'Code does the heavy lifting. These ideas scale on software, not your time. The core delivery (gathering data, generating docs, running checks) is automated rather than billed by the hour. We will tell you exactly where you still need a human in the loop.',
@@ -140,7 +140,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     globalHookDescription:
       'The buyer, the price, the unit economics and the plan. Every number links to its source.',
 
-    howItWorksEyebrow: 'The panel',
+    howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea is tested to destruction.',
     howItWorksLead:
       'Before an idea reaches the store, it faces a panel of AI agents designed to figure out why it would fail. They hunt for hidden legal red tape, a lack of real demand, and bad profit margins. If it survives, it gets published. If it fails, we document exactly why.',
@@ -153,7 +153,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // only about.tsx. 23 of the 63 live packs report a denominator other than 6.
     sixChecksTitle: 'The checks an idea has to survive',
     sixChecksDescription:
-      'Every pack faced the same filter: a real problem, proven value, room to compete, buyers who can pay, a clear way to reach them, and no legal red tape. Which checks ran depends on the idea, and the pack page shows exactly which ones it cleared.',
+      'Every pack faced the same checks: a real problem, proven value, room to compete, buyers who can pay, a clear way to reach them, and no legal red tape. Which checks ran depends on the idea, and the pack page shows exactly which ones it cleared.',
 
     automatedIdeasIntro:
       'Businesses where systems do the heavy lifting. Delivery relies on tools, templates, and automated checks so you do not run out of hours as you grow. We are honest about the limits: automatable does not mean autonomous. We list the exact steps that still require your input.',
@@ -172,14 +172,14 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksLead:
       'Before publication, every concept is subjected to a simulated panel of AI agents programmed to invalidate the business model. They assess regulatory friction, market saturation, and margin compression. Validated models are published; failed models are documented in the Kill Log.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every dossier is subjected to an adversarial review by AI agents before it can be listed.',
+      'How Mumchimp works: every pack is subjected to an adversarial review by AI agents before it can be listed.',
 
     sixChecksTitle: 'The rigid criteria',
     sixChecksDescription:
-      'Every dossier is held to the same rigid criteria: verified market pain, quantifiable value, fragmented incumbents, a solvent payer base, viable acquisition channels, and regulatory compliance. The criteria applied depend on the model under review, and each dossier records which were run.',
+      'Every pack is held to the same rigid criteria: verified market pain, quantifiable value, fragmented incumbents, a solvent payer base, viable acquisition channels, and regulatory compliance. The criteria applied depend on the model under review, and each pack records which were run.',
 
     automatedIdeasIntro:
-      'High-leverage operations. The core unit of delivery in these models is machine-executable: data parsing, document generation, and compliance checks. This decouples revenue from billable hours. Each dossier explicitly outlines the operational bottlenecks that still require human oversight.',
+      'High-leverage operations. The core unit of delivery in these models is machine-executable: data parsing, document generation, and compliance checks. This decouples revenue from billable hours. Each pack explicitly outlines the operational bottlenecks that still require human oversight.',
 
     categoryH1: CATEGORY_H1_C,
     categoryMetaTitle: CATEGORY_H1_C,

@@ -127,7 +127,7 @@ export function HeroDossier({ className }: { className?: string }) {
           records. */}
       <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-subtle">
         <span>
-          {KILLED.toLocaleString('en-GB')} ideas were rejected by these same checks.
+          {KILLED.toLocaleString('en-GB')} ideas were killed by these same checks.
         </span>
         <Link
           href="/kill-log"
