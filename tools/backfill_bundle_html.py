@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Backfill (or correct) the in-zip HTML reader, index.html, on already-listed packs.
+"""Backfill (or correct) the two GENERATED files on already-listed packs: the in-zip HTML
+reader, index.html, and the machine-readable manifest, manifest.jsonld.
 
 Packs bundled before prospector/pack_html.py shipped contain only the eight .md
 deliverables. This tool retrofits index.html WITHOUT regenerating anything: the
@@ -16,9 +17,16 @@ first-week checklist, the one document that tells a buyer what to do, last. The
 generator was fixed to take its order from the BUNDLE_FILES contract instead;
 this tool now does the same, so the shelf can be brought in line with it.
 
-Only the generated index.html is ever written or replaced. The .md deliverables
-of record are never rewritten — that would be editing a document someone already
-paid for, which is a different decision and not this tool's to make.
+Only the generated files (index.html, manifest.jsonld) are ever written or
+replaced. The .md deliverables of record are never rewritten — that would be
+editing a document someone already paid for, which is a different decision and
+not this tool's to make.
+
+manifest.jsonld carries the evidence (every check, verdict and cited passage),
+which exists only in this repo's store/dossiers, never in the shipped zip. A pack
+whose dossier is no longer on disk therefore gets its reader corrected and is
+reported `no-dossier` — it is never given an EMPTY manifest, which an agent would
+read as "this pack was never verified".
 
 Content storage is content-addressed (packs/<id>/<sha256-of-zip>.zip,
 bridge.py:_sha256/content_key), so the new zip lands at a NEW object key and the
@@ -46,18 +54,23 @@ from __future__ import annotations
 import argparse
 import hashlib
 import io
+import json
 import os
 import sys
 import zipfile
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from prospector import pack_html  # noqa: E402
+from prospector import pack_html, pack_manifest  # noqa: E402
 from prospector.bridge import BUNDLE_FILES, _SECTION_TITLES  # noqa: E402
 
-DEFAULT_API_URL = "https://api.mumchimp.com"
+# Env-overridable so a backfill can be pointed at staging. This script PATCHes live
+# catalogue rows; a hardcoded production constant means there is no way to rehearse
+# one except against the real store.
+DEFAULT_API_URL = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
 
 
 @dataclass
@@ -113,35 +126,104 @@ def ordered_md_entries(src: zipfile.ZipFile) -> List[Tuple[str, str]]:
     ]
 
 
-def rebuild_zip_with_index(zip_bytes: bytes, meta: pack_html.PackMeta) -> Optional[bytes]:
-    """Return new zip bytes carrying a correct index.html, or None if it is already correct.
+DOSSIER_DIR = Path(os.environ.get("PROSPECTOR_DOSSIER_DIR", "store/dossiers"))
+
+
+def load_local_dossier(pack_id: str) -> Optional[Any]:
+    """The stored dossier for a listed pack, in the shape `pack_manifest` reads, or None.
+
+    The manifest's whole value is the EVIDENCE — every check with its verdict, and every source
+    with its URL and the passage the verdict was formed from. None of that survives in the shipped
+    zip: the .md files carry the prose conclusions, not the machine-readable record. So unlike
+    index.html, which this tool can rebuild from the zip alone, a manifest can only be backfilled
+    where the dossier that produced the pack is still on this disk.
+
+    A pack whose dossier is missing is REPORTED and skipped for the manifest, never given an empty
+    one. A manifest listing zero checks would read, to an agent, as a pack that was never verified —
+    strictly worse than a pack that ships no manifest at all, because absence is honest and an empty
+    evidence record is a false statement about the product.
+
+    `.pass.json` first, because a listed pack is a survivor; the others are tried so a manually
+    listed or re-vetted row still resolves rather than silently degrading.
+    """
+    for decision in ("pass", "defer", "kill"):
+        path = DOSSIER_DIR / f"{pack_id}.{decision}.json"
+        if path.exists():
+            try:
+                return pack_manifest.dossier_from_dict(json.loads(path.read_text()))
+            except Exception:  # noqa: BLE001 — a corrupt record is a skip, never a wrong manifest
+                return None
+    return None
+
+
+def rebuild_zip_with_index(
+    zip_bytes: bytes,
+    meta: pack_html.PackMeta,
+    dossier: Any = None,
+    pack_id: str = "",
+) -> Optional[bytes]:
+    """Return new zip bytes carrying a correct index.html and manifest.jsonld, or None if both
+    are already correct.
 
     Every .md entry is copied byte-identical, in its original order, so the deliverables of
-    record are untouched — only the generated index.html is written or replaced.
+    record are untouched — only the two GENERATED files are written or replaced.
 
     Idempotency is by CONTENT, not by presence. The first version of this tool skipped any
     bundle that already had an index.html, which meant a pack backfilled with the old
     write-order reader could never be corrected: it was permanently "done" while opening on
     the wrong page. Rendering and comparing costs one render per pack and makes the tool safe
-    to re-run after any reader change.
+    to re-run after any reader change. The manifest is held to the same rule and for the same
+    reason — and note the check is an AND: a pack with a correct reader and no manifest must
+    convert, which a presence test on index.html alone would have skipped.
+
+    `dossier` is optional. Without one the tool behaves exactly as it did before this feature
+    (reader only), which is what keeps a pack whose evidence record is no longer on disk from
+    being handed an empty manifest. See `load_local_dossier`.
+
+    The manifest is rendered AFTER index.html so it can carry index.html's digest, and it is
+    given the .md entries as BYTES read straight out of the source zip, so the digests it
+    publishes are of the files that actually ship rather than of a decode round-trip.
     """
     src = zipfile.ZipFile(io.BytesIO(zip_bytes))
     names = src.namelist()
+    generated = {"index.html", pack_manifest.MANIFEST_FILENAME}
     index_html = pack_html.render_pack_html(ordered_md_entries(src), meta)
 
-    if "index.html" in names and src.read("index.html").decode("utf-8", errors="replace") == index_html:
+    manifest_json: Optional[str] = None
+    if dossier is not None:
+        carried: Dict[str, Any] = {n: src.read(n) for n in names if n not in generated}
+        manifest_json = pack_manifest.render_manifest(
+            dossier, carried, BUNDLE_FILES, _SECTION_TITLES, pack_id,
+            extra_files={"index.html": index_html},
+        )
+
+    def current(name: str) -> Optional[str]:
+        if name not in names:
+            return None
+        return src.read(name).decode("utf-8", errors="replace")
+
+    reader_ok = current("index.html") == index_html
+    manifest_ok = manifest_json is None or current(pack_manifest.MANIFEST_FILENAME) == manifest_json
+    if reader_ok and manifest_ok:
         return None
 
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
         for name in names:
-            # The stale reader is dropped here and rewritten below, so a corrected bundle can
-            # never end up with two index.html members (zipfile permits duplicates silently,
-            # and readers disagree about which one wins).
-            if name == "index.html":
+            # The stale generated files are dropped here and rewritten below, so a corrected
+            # bundle can never end up with two index.html members (zipfile permits duplicates
+            # silently, and readers disagree about which one wins).
+            if name in generated:
                 continue
             dst.writestr(name, src.read(name))
         dst.writestr("index.html", index_html)
+        if manifest_json is not None:
+            dst.writestr(pack_manifest.MANIFEST_FILENAME, manifest_json)
+        elif pack_manifest.MANIFEST_FILENAME in names:
+            # No dossier this run, but the pack already HAS a manifest: keep the one it has.
+            # Dropping it would delete shipped evidence because a local file was missing, which
+            # is a data loss disguised as a no-op.
+            dst.writestr(pack_manifest.MANIFEST_FILENAME, src.read(pack_manifest.MANIFEST_FILENAME))
     return out.getvalue()
 
 
@@ -243,7 +325,11 @@ def main() -> int:
                 pack_id=pid,
             )
 
-            new_bytes = rebuild_zip_with_index(zip_bytes, meta)
+            # The manifest needs the evidence record, which lives only on this disk. A pack
+            # whose dossier is gone still gets its reader corrected; it is reported as
+            # `no-dossier` rather than being handed an empty evidence document.
+            dossier = load_local_dossier(pid)
+            new_bytes = rebuild_zip_with_index(zip_bytes, meta, dossier, pid)
             if new_bytes is None:
                 report.add(PackResult(pid, "already-correct", old_key.rsplit("/", 1)[-1]))
                 continue
@@ -254,8 +340,15 @@ def main() -> int:
             # Two different jobs under one action, worth telling apart in the log: a pack that
             # never had a reader is gaining one, a pack that had the write-order reader is
             # having it corrected. Only the second is a change to what an existing buyer sees.
-            kind = "reordered reader" if "index.html" in zipfile.ZipFile(
-                io.BytesIO(zip_bytes)).namelist() else "new reader"
+            had = zipfile.ZipFile(io.BytesIO(zip_bytes)).namelist()
+            parts = ["reordered reader" if "index.html" in had else "new reader"]
+            if dossier is None:
+                parts.append("no-dossier: manifest SKIPPED")
+            elif pack_manifest.MANIFEST_FILENAME in had:
+                parts.append("manifest refreshed")
+            else:
+                parts.append("new manifest")
+            kind = ", ".join(parts)
             sized = f"{len(zip_bytes)}B -> {len(new_bytes)}B ({delta:+d}B, {kind})"
 
             if not args.apply:
@@ -267,7 +360,7 @@ def main() -> int:
             patch = requests.patch(
                 f"{args.api_url}/internal/catalog/{pid}/content",
                 json={"contentKey": new_key, "contentHash": new_hash,
-                      "reason": "index.html reader backfill (bundle format, no content change)"},
+                      "reason": "index.html reader + manifest.jsonld backfill (bundle format, no deliverable change)"},
                 headers={"X-Internal-Key": internal_key},
                 timeout=15,
             )

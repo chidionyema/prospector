@@ -65,7 +65,12 @@ class TestIndexHtmlShipsAlongsideTheEightFiles:
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
         entries = _entries(path)
         assert set(BUNDLE_FILES) <= set(entries)
-        assert len(entries) == len(BUNDLE_FILES) + 1
+        # Was `len(entries) == len(BUNDLE_FILES) + 1`. That counted the bonus files rather than
+        # naming them, so shipping a second one (manifest.jsonld) failed here as though a
+        # DELIVERABLE had gone missing — which is the opposite of what this test is for. Naming
+        # them keeps the real guarantee (nothing unexpected enters a bundle, and nothing promised
+        # leaves it) while letting the bonus set grow deliberately.
+        assert set(entries) - set(BUNDLE_FILES) == {"index.html", "manifest.jsonld"}
 
     def test_index_html_is_not_part_of_the_sellability_contract(self):
         """BUNDLE_FILES is the drift-tested contract with the storefront's PackContents.tsx —

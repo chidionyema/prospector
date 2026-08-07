@@ -936,6 +936,12 @@ class EngineBridge:
                 # intent: an unguarded render exception here would fail _create_bundle and
                 # block the listing — exactly what "bonus, not promised" forbids. Loud
                 # (warning, never silent) so a broken renderer can't rot unnoticed.
+                # Files shipped that are NOT promised deliverables. Populated only AFTER a
+                # successful write, never from the intent to write: the manifest below states a
+                # sha256 for every entry it lists, and listing an entry the zip does not contain
+                # would make the one file whose job is to be machine-checkable the one file that
+                # lies.
+                extra_written: Dict[str, str] = {}
                 try:
                     from . import pack_html
                     pack_meta = pack_html.PackMeta(
@@ -957,10 +963,43 @@ class EngineBridge:
                     ]
                     index_html = pack_html.render_pack_html(md_entries, pack_meta)
                     self._add_to_zip(zipf, "index.html", index_html)
+                    if index_html:
+                        extra_written["index.html"] = index_html
                 except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
                     logger.warning(
                         f"index.html render failed for {candidate_id}: {e}; "
                         "shipping the 8-file bundle without it")
+
+                # 10. manifest.jsonld — the machine-readable half of the pack: every file with its
+                # sha256, every check with its verdict and confidence, and every source with its
+                # URL, its fetch date and the exact passage the verdict was formed from. See
+                # pack_manifest.py for why the passage travels with the pack and why the PRICE
+                # never does.
+                #
+                # A bonus file on exactly the same terms as index.html above, and for the same
+                # reason: BUNDLE_FILES is the sellability contract that storefront's
+                # PackContents.tsx is drift-tested against, and a manifest is not one of the eight
+                # documents a buyer is promised. Guarded so that a renderer fault can never be the
+                # thing that blocks a listing — and loud, so it cannot rot unnoticed either.
+                #
+                # Written LAST, after index.html, so it can describe index.html. It describes
+                # itself by omission: `render_manifest` skips MANIFEST_FILENAME, because a file
+                # cannot carry the digest of its own final bytes.
+                try:
+                    from . import pack_manifest
+                    manifest_json = pack_manifest.render_manifest(
+                        dossier,
+                        written,
+                        BUNDLE_FILES,
+                        _SECTION_TITLES,
+                        candidate_id,
+                        extra_files=extra_written,
+                    )
+                    self._add_to_zip(zipf, pack_manifest.MANIFEST_FILENAME, manifest_json)
+                except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
+                    logger.warning(
+                        f"manifest.jsonld render failed for {candidate_id}: {e}; "
+                        "shipping the bundle without it")
 
             # Structural check on the artefact we actually wrote — not on the inputs we think
             # we passed. This is the assertion that would have caught the 5-file bundles and
