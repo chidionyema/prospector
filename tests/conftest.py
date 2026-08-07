@@ -20,6 +20,30 @@ def _isolate_provider_health(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_usage_wall(tmp_path, monkeypatch):
+    """Point the usage-wall marker at a per-test temp file, in BOTH directions.
+
+    READ leak, observed 2026-08-08. `run_claude_cli` preflights the wall and raises before it
+    ever spawns the subprocess (`claude_cli.py:268-273`). The marker is a shared ESTATE file
+    (`~/.hermes/state/claude_usage_limit.json`) that Otto and this daemon both write, so its
+    contents depend on what the machine did in the last hour. `test_claude_cli_failure_reason.py
+    ::test_exhaustion_on_stdout_retires_the_brain_instead_of_retrying` asserts one subprocess
+    attempt was made; it passed all day and then failed with `assert 0 == 1` immediately after a
+    live E1 run tripped the wall, because the preflight short-circuited the very code path under
+    test. A test whose colour depends on the estate's last hour is not a test.
+
+    WRITE leak, same file. `usage_wall.observe()` writes the marker, so any test exercising a
+    CLI-exhaustion path could bench the SHARED subscription for Otto and the daemon machine-wide
+    — the same defect class as the suite that called Stripe for real. Fence the PATH, not each
+    call site, so a new test cannot opt out by accident.
+
+    setenv is sufficient: `marker_path()` (usage_wall.py:72) reads the env var per call, and the
+    module documents the override as existing for tests only.
+    """
+    monkeypatch.setenv("PROSPECTOR_USAGE_WALL_MARKER", str(tmp_path / "usage_wall.json"))
+
+
+@pytest.fixture(autouse=True)
 def _isolate_audit_log(tmp_path, monkeypatch):
     """Redirect the append-only audit log at a per-test temp dir.
 
