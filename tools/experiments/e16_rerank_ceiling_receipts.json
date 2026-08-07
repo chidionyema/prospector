@@ -1,0 +1,114 @@
+{
+  "scope": "CURRENT MOAT ONLY (claude_cli/claude)",
+  "checks_analysed": 1481,
+  "passages_scored": 5673,
+  "overall_reachable_share": 0.4079,
+  "junk_share": 0.0344,
+  "junk_reasons": {
+    "stub": 188,
+    "non_latin": 4,
+    "chrome": 3
+  },
+  "best_passage_rank_histogram": {
+    "0": 388,
+    "1": 150,
+    "2": 98,
+    "3": 47,
+    "4": 35,
+    "5": 18,
+    "6": 1,
+    "7": 1
+  },
+  "per_check": [
+    {
+      "check": "payer_solvency",
+      "n_supported": 62,
+      "n_bucketD": 145,
+      "supported_median_best": 0.333,
+      "bucketD_median_best": 0.273,
+      "bucketD_p90_best": 0.455,
+      "reachable_share": 0.386
+    },
+    {
+      "check": "incumbency",
+      "n_supported": 23,
+      "n_bucketD": 134,
+      "supported_median_best": 0.308,
+      "bucketD_median_best": 0.308,
+      "bucketD_p90_best": 0.455,
+      "reachable_share": 0.515
+    },
+    {
+      "check": "value_durability",
+      "n_supported": 139,
+      "n_bucketD": 118,
+      "supported_median_best": 0.333,
+      "bucketD_median_best": 0.286,
+      "bucketD_p90_best": 0.45,
+      "reachable_share": 0.432
+    },
+    {
+      "check": "legality",
+      "n_supported": 109,
+      "n_bucketD": 110,
+      "supported_median_best": 0.333,
+      "bucketD_median_best": 0.25,
+      "bucketD_p90_best": 0.417,
+      "reachable_share": 0.318
+    },
+    {
+      "check": "distribution",
+      "n_supported": 117,
+      "n_bucketD": 91,
+      "supported_median_best": 0.308,
+      "bucketD_median_best": 0.273,
+      "bucketD_p90_best": 0.417,
+      "reachable_share": 0.396
+    },
+    {
+      "check": "pain_reality",
+      "n_supported": 104,
+      "n_bucketD": 76,
+      "supported_median_best": 0.333,
+      "bucketD_median_best": 0.273,
+      "bucketD_p90_best": 0.417,
+      "reachable_share": 0.408
+    },
+    {
+      "check": "buyer_intent",
+      "n_supported": 77,
+      "n_bucketD": 20,
+      "supported_median_best": 0.364,
+      "bucketD_median_best": 0.308,
+      "bucketD_p90_best": 0.5,
+      "reachable_share": 0.35
+    },
+    {
+      "check": "currency",
+      "n_supported": 45,
+      "n_bucketD": 18,
+      "supported_median_best": 0.364,
+      "bucketD_median_best": 0.286,
+      "bucketD_p90_best": 0.583,
+      "reachable_share": 0.444
+    },
+    {
+      "check": "route_to_market",
+      "n_supported": 28,
+      "n_bucketD": 17,
+      "supported_median_best": 0.308,
+      "bucketD_median_best": 0.286,
+      "bucketD_p90_best": 0.385,
+      "reachable_share": 0.412
+    },
+    {
+      "check": "claims_verifiable",
+      "n_supported": 39,
+      "n_bucketD": 9,
+      "supported_median_best": 0.375,
+      "bucketD_median_best": 0.267,
+      "bucketD_p90_best": 0.357,
+      "reachable_share": 0.111
+    }
+  ]
+}

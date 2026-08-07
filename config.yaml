@@ -187,12 +187,22 @@ thresholds:
   # confidence_floor: KILL-SIDE lever only (kill_filter.is_hard_fail). A grounded killing
   # verdict (refuted) only HARD-kills when its confidence clears this floor; below it the
   # candidate falls through to scoring. Tunable for the value_durability over-restriction
-  # wall (war-room 2026-06-15). LEFT AT 0.0 (inert) deliberately: measured 2026-06-25, a
-  # floor of 0.3 here would UN-KILL 21/156 (13%) of historical refuted-gate kills (firing
-  # conf < 0.3) — loosening the kill gate, the opposite of the laxness goal. Raising this
-  # is a SEPARATE decision (live-calibrated control run), NOT part of the pass-side
-  # laxness fix. Do NOT conflate with min_supported_confidence below. See P0-2.
-  confidence_floor: 0.0
+  # wall (war-room 2026-06-15). Do NOT conflate with min_supported_confidence below.
+  #
+  # RAISED 0.0 -> 0.4 on 2026-08-07 (founder sign-off; E11 result, programme doc §17).
+  # Calibration, not a product change: replaying store/dossiers/*.kill.json through the REAL
+  # kill_filter.apply_gates (tools/experiments/e11_confidence_floor.py) over the 333 kills whose
+  # gate reproduces under the shipped config gives 66 freed at 0.4 = 19.8%, against a firing-check
+  # confidence distribution of p10 0.23 / p25 0.40 / median 0.55 / p90 0.70. So 0.4 retires the
+  # bottom quartile and never touches the median kill. Freed at 0.4 by gate: incumbency=31,
+  # value_durability=16, payer_solvency=7, legality=6, pain_reality=3 — concentrated in exactly
+  # the two gates the 2026-06-15 war room flagged as over-restrictive (kill_filter.py:47-50).
+  # This loosens KILLING, never PUBLISHING: freed candidates fall through to scoring, where
+  # min_composite_to_pass and the adversarial gate still stand between them and the catalogue.
+  # 0.5 frees 43.2% and is a PRODUCT decision, not a calibration — do not drift upward silently.
+  # Supersedes the 2026-06-25 note that a 0.3 floor would un-kill 21/156 refuted-gate kills; that
+  # measurement stands, it was simply taken before the pass-side laxness fix made it safe.
+  confidence_floor: 0.4
   # min_supported_confidence: PASS-SIDE floor (dossier source-or-die only). A SUPPORTED
   # check counts as grounded — toward both the n>=min_supported_to_pass requirement and the
   # moat-grounded requirement — only when its confidence clears this floor. CALIBRATED
@@ -404,7 +414,7 @@ lanes:
       - route_to_market
       - claims_verifiable
     thresholds:
-      confidence_floor: 0.0   # calibrate live under supervision before raising (see thresholds note)
+      confidence_floor: 0.4   # E11-calibrated 2026-08-07, founder sign-off (see thresholds note, §17)
       min_composite_to_pass: 2.6   # above side_hustle (2.0), below growth/venture
       # Publish-critical (source-or-die at PASS): smb's headline is "the PAYER must be solvent"
       # — that is the decisive grounded evidence to publish, NOT value_durability/incumbency
@@ -455,7 +465,7 @@ lanes:
       - buyer_intent
       - claims_verifiable
     thresholds:
-      confidence_floor: 0.0   # calibrate live under supervision before raising (see thresholds note)
+      confidence_floor: 0.4   # E11-calibrated 2026-08-07, founder sign-off (see thresholds note, §17)
       min_composite_to_pass: 2.9   # above smb (2.6), just below venture (3.2)
       # Publish-critical (source-or-die at PASS): growth's headline is a SOLVENT PAYER on a
       # SCALABLE CHANNEL — a deep moat is explicitly NOT yet required (314-320). Decisive grounded

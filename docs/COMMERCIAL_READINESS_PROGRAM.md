@@ -897,3 +897,139 @@ the restart shows `query_source present on checks: {'llm_batched': 4}`. No Augus
 that field at all (§18.4) — it can only have been written by code that reached the checkout with
 today's merge. The new daemon (pid 19735) is therefore executing the merged `verify.py`, not the
 old image. That is the receipt "P0 is live" needs; the merge commit alone is not.
+
+## 19. Floor applied · the rerank ceiling measured · E1 reordered (2026-08-07, offline, zero LLM)
+
+Founder direction opening this session: *"i need this done yesterday, 2 weeks is unrealistic."*
+The §4 estimate was never a statement about the WORK — it is the wall-clock of the *measurements*.
+This section separates the two and collapses the measurement half where it can be collapsed.
+
+### 19.1 `confidence_floor` 0.0 -> 0.4 — APPLIED (founder sign-off 2026-08-07)
+
+§17 left this pending; it is now shipped. `config.yaml` global (`thresholds.confidence_floor`) and
+both lanes that were still inert (`smb`, `growth`). Note `side_hustle` and `venture` were **already
+at 0.4**, so this is harmonisation across lanes, not a novel setting — half the engine has been
+running this calibration all along.
+
+Receipt that it is live, not merely edited (`load_config()` -> `cfg.for_lane(t)`):
+
+    global 0.4 · side_hustle 0.4 · smb 0.4 · growth 0.4 · venture 0.4
+
+**Cross-validated by a second, independent method.** §17's figure came from replaying
+`kill_filter.apply_gates`. Counting the *recorded* `gate_fired` + firing-check confidence straight
+off `store/dossiers/*.kill.json` is a different path to the same population, and the gate mixes
+agree to within noise:
+
+| gate | E11 replay (freed at 0.4) | recorded-gate count (conf < 0.4) |
+|---|---|---|
+| incumbency | 31 | 32 |
+| value_durability | 16 | 16 |
+| payer_solvency | 7 | 7 |
+| legality | 6 | 4 |
+| pain_reality | 3 | 3 |
+| distribution | — | 1 |
+| **total** | **66 / 333** | **63 / 1,323 kill dossiers** |
+
+**It closes §11 hallucination gap 3, which was not the stated goal.** §11 flagged the
+"refuted-with-zero-citations edge": `verify.py:377` downgrades an *uncited supported* check to
+unverifiable, but no equivalent rail existed for *refuted*. There is now, and it falls out of the
+arithmetic rather than needing new code — confidence is recomputed from citations
+(`verify.py:70-133`), so a refutation citing nothing scores exactly 0.0 and sits below the floor.
+An uncited refutation can no longer hard-kill a candidate.
+
+This surfaced as three test failures (`test_shadow_moat.py`, `test_stochastic_full_vetting.py` x2),
+all of which were mocking `"citations": []` and asserting that the resulting kill short-circuited —
+i.e. **asserting the unsafe behaviour**. Fixed the fixtures, not the gate, per the instruction
+already written at `test_shadow_moat.py:21-31` for this exact fixture class ("make the mock's PASS
+genuinely grounded, never relax the gate so the mock's story works"). Added
+`test_an_uncited_refutation_does_not_short_circuit_at_the_confidence_floor` to pin the property the
+floor bought, with a vacuity guard asserting the floor is non-zero.
+
+**Receipts.** `922 passed, 2 skipped` (`.venv/bin/python -m pytest tests/unit -q`), up from 920 on
+the merge. **Non-vacuity bisected, not assumed**: with `config.yaml` stashed back to floor 0.0 the
+new test FAILS and the three repaired tests pass, so each one is testing the floor and not the
+weather.
+
+**Cost consequence, stated because §17 did not.** Raising the floor makes kill-fast fire less often:
+a candidate that used to die on its first refuted check now runs the rest of the order. Measured:
+63 of 1,323 historical kills (4.8%) fired a sub-0.4 refuted gate, having run a mean of 2.22 checks —
+so roughly 3.8 additional checks each, ~240 extra checks across the entire two-month kill history.
+Real, bounded, and small. Not a reason to reconsider; a number to have rather than to discover.
+
+### 19.2 E16 CEILING RESULT — the rerank has partial headroom, and the judge is the bigger half
+
+§14 registers E16 as "bge-rerank the stored passages of bucket-D checks". Running the real reranker
+needs a ~2GB local `torch`+`transformers` install (confirmed absent: no `torch`, `transformers`,
+`sentence_transformers`, or `FlagEmbedding` in `.venv`; Ollama is present with gemma3/llama3.2).
+Before buying the tool, measure whether there is anything for it to find.
+
+Script: `tools/experiments/e16_rerank_ceiling.py` (read-only, zero LLM, zero network; `--current-moat`
+restricts to `claude_cli`/`claude` per §10's provider-era confound). It scores every stored passage
+by overlap with the **candidate-specific** query vocabulary — template boilerplate from
+`_DISCONFIRM_TEMPLATES`/`_CONFIRM_TEMPLATES` is stripped first, since it is byte-identical across
+every candidate and would inflate every set equally. Then, stratified by `check_name` so no easy
+check is compared against a hard one, it asks: does a bucket-D check already hold a passage as
+query-relevant as the MEDIAN best passage of that same check's *supported* rulings?
+
+Population: **4,500 bucket-D checks** (unverifiable, passages stored, no infra failure) over 24,329
+scored passages; 738 checks / 5,673 passages on the current moat alone.
+
+| scope | checks | reachable | best passage NOT already rank 0 | junk share |
+|---|---|---|---|---|
+| all provider eras | 4,500 | **37.9%** | 45.5% | 4.8% |
+| current moat only | 738 | **40.8%** | 47.4% | 3.4% |
+
+Per-check reachability is strikingly flat (22.6%–44.8%), which is itself informative: this is not a
+property of one badly-templated check, it is uniform across the engine.
+
+**Three readings, in order of how much they change the plan.**
+
+1. **Reranking has real but partial headroom.** ~38–41% of bucket-D checks already hold a passage
+   as query-relevant as what actually sufficed to rule elsewhere. Combined with §18's 35.8% of
+   August kills lost to grounding quality, that is roughly **14% of all kills recoverable from
+   evidence already on disk and already paid for** — no new retrieval, no new tokens.
+2. **The judge is the bigger half, and this is the finding that reorders E1.** In **54.5%** of
+   bucket-D checks the most query-relevant passage was **already at rank 0** — the judge saw the
+   best available passage first and still ruled unverifiable. A reranker cannot help those. That is
+   direct support for §10's R1 ("the question class is unanswerable in principle") and for the E13
+   claim reframe over any retrieval-side fix, and it is consistent from the other direction with
+   §18's finding that grounding fails on relevance at ~4-5 citations per check.
+3. **Junk is NOT the story, and my first read of it was wrong.** A hand-inspected bucket-D sample
+   showed a UK employment-tribunal check grounded on zhihu.com homepage boilerplate in Chinese, and
+   the obvious inference was that the corpus is full of garbage. Measured: junk is **4.8%** of all
+   stored passages (1,100 stubs, 53 non-Latin, 6 nav-chrome out of 24,329). The anecdote was real
+   and the generalisation from it was false. Recorded here because that inference was one script
+   away from becoming a work item.
+
+**Caveat, load-bearing.** Lexical overlap is a PROXY for probativeness. A passage can share query
+vocabulary and still not answer the question — so 37.9% is an **upper bound** on rerank headroom,
+not a prediction of yield. The probe's job is to decide whether the 2GB install is worth making
+(it is: an upper bound of ~14% of all kills clears any reasonable bar) and to rank E13 above E16
+(it does, on the rank-0 result). It is not a substitute for running the reranker.
+
+### 19.3 `ffecc4c` — CLOSED, after three sessions of being carried as an open question
+
+It was never missing. `ffecc4c` and `a447e4f` have the **identical patch-id**
+(`2e3786251e069c66f63a0343d13f2ebe3fca3c52`) and an empty tree-diff: the commit was replayed under
+a new hash by the §16 `git rebase --onto origin/main e9d3a8b`. `a447e4f` is on `HEAD`
+(`fix/durable-ledger-fence`) and reaches main through PR #123. `ffecc4c` itself is unreachable from
+any ref, which is why it kept reading as lost.
+
+**Rule this produced: a dangling commit hash is not evidence of lost work — compare patch-ids
+before hunting for the content.** `git show <sha> | git patch-id --stable` costs nothing and
+answers it outright.
+
+### 19.4 What this does to §4's sequencing
+
+The reordering is driven by the rank-0 result, not by preference:
+
+1. **E13 claim reframe** (§10) — primary. Addresses the ~55% of bucket-D where the best passage was
+   already on top, which no retrieval-side change can touch. Replayable offline on stored passages.
+2. **E16 rerank** (§14) — secondary, ~38% upper bound, now justified enough to pay the 2GB install.
+3. **E1 entity templates** — still worth shipping (it improves the queries feeding BOTH of the
+   above), but it is no longer the head of the queue. `_ENTITY_TEMPLATES` (`verify.py:223-232`)
+   still needs extending to `incumbency`/`legality` per §18.3; that remains a code change.
+
+The measurement half of §4 collapses because E13/E16/E15/E17 all replay data already on disk.
+What does NOT collapse: E2 (needs biased live batches) and E3 (needs live concurrency probing).
+Those two are genuinely wall-clock-bound and no reframing changes that.
