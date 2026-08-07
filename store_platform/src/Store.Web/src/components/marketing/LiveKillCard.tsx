@@ -103,6 +103,15 @@ export default function LiveKillCard({ className, listed }: LiveKillCardProps) {
 
   return (
     <div
+      // The live smoke's anchor for "this panel appears exactly once, below the shelf"
+      // (e2e/discovery.spec.ts). It used to find the panel by its header copy, which has since
+      // been renamed -- "The filter log" -> "The checks log" -- and the rename took the live
+      // smoke red on main (run 31226558030) for a copy edit that broke nothing a buyer can see.
+      // Worse, matching on text counted TEXT NODES, so the header nav gaining a "Kill log" link
+      // would have failed a test about this card. A testid on the root counts PANELS, which is
+      // what the assertion actually claims. Copy stays free to change; the structural promise --
+      // one of these, after the shelf, at every width -- stays pinned.
+      data-testid="checks-log"
       className={cx(
         // A light ledger, not a black terminal (brand v3, 2026-08-06). The slab version wore
         // `border-2 border-text bg-text` plus a 3px hard offset shadow -- a sticker sitting on

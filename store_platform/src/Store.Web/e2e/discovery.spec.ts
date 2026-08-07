@@ -98,11 +98,17 @@ for (const [w, h, label] of [
   [1280, 720, 'desktop'],
   [390, 844, 'mobile'],
 ] as const) {
-  test(`the filter-log panel is visible exactly once, below the shelf, on ${label}`, async ({ page }) => {
+  test(`the checks-log panel is visible exactly once, below the shelf, on ${label}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/');
-    const panels = page.getByText('The filter log', { exact: true });
-    expect(await panels.count(), 'exactly one filter-log panel may be in the HTML').toBe(1);
+    // Anchored on `data-testid`, not on the header copy. This asserted `getByText('The filter
+    // log', {exact:true})` until 2026-08-08, when the sitewide rename in 75ed46d made the panel
+    // say "The checks log" and the live smoke went red on main (run 31226558030) with
+    // `Received: 0` -- a red that described a copy edit, not a broken page. Text matching was
+    // also measuring the wrong noun: it counted TEXT NODES, so a nav link repeating the words
+    // would have failed a test about this card. The testid counts panels.
+    const panels = page.locator('[data-testid="checks-log"]');
+    expect(await panels.count(), 'exactly one checks-log panel may be in the HTML').toBe(1);
     await expect(panels.first()).toBeVisible();
 
     const panelBox = await panels.first().boundingBox();
@@ -153,7 +159,14 @@ for (const [label, url] of [
  */
 test('the free sample opens without giving an email', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /sample/i }).first().click();
+  // By destination, not by accessible name. `getByRole('link', {name: /sample/i})` matched zero
+  // links on 2026-08-08 (run 31226558030, a 30s timeout) because none of the three routes to
+  // /sample says the word: they read "Read a full pack free, no email needed.", "See the whole
+  // thing" and "Read a full evidence record free". Naming a CTA after the URL it points at is
+  // bad copy, so the test was pinning the wrong half -- what this test claims is that a stranger
+  // can REACH the sample from the homepage, and the href is that claim. `:visible` because the
+  // desktop-only route is display:none at 390px and Playwright will not click a hidden link.
+  await page.locator('a[href="/sample"]:visible').first().click();
   await expect(page).toHaveURL(/\/sample/);
   // The report itself, not just a 200: a gate that renders a capture panel at /sample would
   // still be a page load. The evidence section is the thing being given away.
