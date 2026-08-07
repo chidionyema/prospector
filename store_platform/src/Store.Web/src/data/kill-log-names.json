@@ -12,8 +12,36 @@
     "gate": "value_durability"
   },
   {
+    "title": "The Brief Winnow",
+    "gate": "incumbency"
+  },
+  {
+    "title": "Care Home True Cost Index",
+    "gate": "incumbency"
+  },
+  {
+    "title": "FlightBite DIY, The Delay Compensation Claim Kit",
+    "gate": "incumbency"
+  },
+  {
     "title": "CropPlan, The Market Gardener's Planting & Revenue Optimizer",
     "gate": "value_durability"
+  },
+  {
+    "title": "PotBridge, moves your old pensions to a better one, and lets the new provider pay the fee, not you",
+    "gate": "incumbency"
+  },
+  {
+    "title": "RotaRisk, a fixed-fee check-up that scores your NHS shift pattern for fatigue, using the maths airlines use for pilots",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "Invoice Justice, The Freelancer's Non-Payment Recovery Service",
+    "gate": "value_durability"
+  },
+  {
+    "title": "RateProof, shows freelance creatives what to actually charge, built from quotes that won",
+    "gate": "distribution"
   },
   {
     "title": "The Vet's Fee Extractor",
@@ -24,20 +52,32 @@
     "gate": "incumbency"
   },
   {
-    "title": "FosterClaim, The Carer's Finance & Permission Slip Generator",
+    "title": "AI Meal Planner Subscription App",
     "gate": "value_durability"
   },
   {
-    "title": "SprayWindow, the spray-day planner that proves to Red Tractor your pesticide timing was legal",
-    "gate": "incumbency"
+    "title": "FosterClaim, The Carer's Finance & Permission Slip Generator",
+    "gate": "value_durability"
   },
   {
     "title": "VanVault: The Trades Van Depreciation Guard",
     "gate": "incumbency"
   },
   {
+    "title": "WorkLog Shield, the day-by-day proof that you're really self-employed, not a hidden employee",
+    "gate": "incumbency"
+  },
+  {
     "title": "Probate Delay Atlas",
     "gate": "value_durability"
+  },
+  {
+    "title": "SponsorGuard, cash cover for the day the Home Office suspends your visa sponsor licence",
+    "gate": "value_durability"
+  },
+  {
+    "title": "The Uni Fee Refund Sleuth",
+    "gate": "incumbency"
   },
   {
     "title": "SchoolFees Swap, the broker that turns unused school fee credit into cash for another family",
@@ -184,10 +224,6 @@
     "gate": "incumbency"
   },
   {
-    "title": "Spine-Point Forensics, The Public-Sector Pay-Disc Audit",
-    "gate": "incumbency"
-  },
-  {
     "title": "RotaRest, the day-room network that lets NHS night-shift staff sleep before driving home",
     "gate": "incumbency"
   },
@@ -201,42 +237,6 @@
   },
   {
     "title": "CareEstate, The Specialist Care Equipment Liquidator",
-    "gate": "incumbency"
-  },
-  {
-    "title": "The Boatyard Parts Runner",
-    "gate": "incumbency"
-  },
-  {
-    "title": "AfterInk, the tattooist's client file with the age check and healing photos your council wants",
-    "gate": "payer_solvency"
-  },
-  {
-    "title": "The Planning Objection API",
-    "gate": "incumbency"
-  },
-  {
-    "title": "DescriptorDeck, The Carer's PIP Award Defence Workbench",
-    "gate": "payer_solvency"
-  },
-  {
-    "title": "The Care Means-Test Challenge Data Pack",
-    "gate": "incumbency"
-  },
-  {
-    "title": "BreakBroker, The Carer's Unpublished Respite-Bed Desk",
-    "gate": "incumbency"
-  },
-  {
-    "title": "GigProfile Architect, The Freelancer's Platform Profile Optimization Pack",
-    "gate": "legality"
-  },
-  {
-    "title": "The Solo Scaffolder's Safety Certifier",
-    "gate": "incumbency"
-  },
-  {
-    "title": "BedBridge, the family carer's broker for the hospital bed your relative is blocking",
     "gate": "incumbency"
   }
 ]

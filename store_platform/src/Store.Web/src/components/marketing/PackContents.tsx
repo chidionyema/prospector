@@ -43,43 +43,43 @@ export const PACK_CONTENTS: {
     title: 'Executive Summary',
     filename: '00_Executive_Summary.md',
     desc:
-      'The opportunity in one page: what it is, the sourced signals that survived the checks, and an explicit list of what the pack does NOT claim. Read this first to decide if it is for you.',
+      'The opportunity on one page: what it is, what checked out, and what we do not claim.',
   },
   {
     title: 'The Blueprint (Build Spec)',
     filename: '01_Blueprint_BuildSpec.md',
     desc:
-      'What is actually being built, and in what order. Phased build plan, the recommended stack, the explicit non-goals for v1, and a straight section on what would kill this.',
+      'What to build, in what order, on what stack. Includes the non-goals for v1 and what would kill this.',
   },
   {
     title: 'The Go-To-Market Plan',
     filename: '02_Marketing_Plan_GTM.md',
     desc:
-      'Where your first customers come from. The named channels and the communities behind them, the positioning you lead with, the beachhead to start in, and the kill criteria that tell you to stop.',
+      'Where your first customers come from. Named channels, the beachhead to start in, and the signals that say stop.',
   },
   {
     title: 'The Operations Plan',
     filename: '03_Operations_Plan.md',
     desc:
-      'How the thing actually runs once someone pays. Delivery workflow, capacity limits, the compliance gates you cannot skip, and where the manual work really sits.',
+      'How it runs once someone pays. Delivery, capacity limits, the compliance you cannot skip, and where the manual work sits.',
   },
   {
     title: 'The Financial Model',
     filename: '04_Financial_Model.md',
     desc:
-      'Pricing mechanics and unit economics. Figures the engine could not ground are marked as absent rather than filled in, no invented revenue, cost or TAM.',
+      'Pricing and the numbers behind it. Anything we could not verify is marked missing, never made up.',
   },
   {
     title: 'First-Week Checklist',
     filename: '05_First_Week_Checklist.md',
     desc:
-      'Six concrete steps for days one to seven: confirm the buyer, sketch the smallest paid offer, pick one channel and ignore the rest, and log what you could not verify.',
+      'Six steps for days one to seven: confirm the buyer, size the smallest paid offer, pick one channel.',
   },
   {
     title: 'Marketing Assets',
     filename: 'Marketing_Assets.md',
     desc:
-      'Launch copy you can send today, listing page, outreach and social drafts. Every asset passes the same claim-check as the research, so nothing here overstates the product.',
+      'Launch copy you can send today: listing page, outreach, social. Claim-checked like the research.',
   },
   {
     title: 'The QA Report, with the receipts',
@@ -89,7 +89,7 @@ export const PACK_CONTENTS: {
       // Not "all six checks": the check set is lane-dependent, so this file carries eight or
       // nine verdicts on the packs vetted by the side-hustle lanes. The claim that is true of
       // every pack is "every check that was run, with its verdict and its source".
-      'Every check the pack was put through, each verdict, and a clickable source behind every claim. This is the file that proves the rest of the pack is not invented.',
+      'Every check this pack faced, each verdict, and a clickable source behind every claim.',
   },
 ];
 
@@ -193,16 +193,16 @@ export function PackContentsSection({
           and zip are engineer words for a shopper, and putting them in the first three words made
           the £49 purchase sound like a developer artefact rather than eight finished documents.
 
-          The order is now substance, then portability, then container. Every fact in the old
-          sentence survives; the zip is at the end, where it reads as "and it opens anywhere"
-          rather than as the description of what you are buying. */}
+          The Notion and Obsidian name-drops are GONE. They were two brands most readers do not
+          use, spent to make one point ("it opens anywhere") that "paste anywhere" makes without
+          asking anyone to recognise a product. Every fact in the old sentence survives; the zip is
+          at the end, where it reads as "and it opens anywhere" rather than as the description of
+          what you are buying. */}
       <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-[62ch] text-meta text-muted">
-          <span className="font-medium text-text">{PACK_CONTENTS.length} documents, 5,000+ words,
-          yours to keep.</span>{' '}
-          Read them, edit them, or paste them straight into Notion, Obsidian or your AI tool of
-          choice. They are plain text files in a zip, so there is no PDF viewer, no login and no
-          subscription between you and them.
+          <span className="font-medium text-text">{PACK_CONTENTS.length} plain-text files in a zip,
+          5,000+ words.</span>{' '}
+          Yours to keep, edit, or paste anywhere. No login, no subscription.
         </p>
         <span className="inline-flex flex-none items-center gap-2 text-meta font-medium text-text">
           <Icon name="download" size={16} className="text-success" />

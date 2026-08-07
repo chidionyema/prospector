@@ -50,6 +50,15 @@ export interface Check {
   refutation: string;
   /** Lowercase noun phrase, for use inline in a running sentence. */
   prose: string;
+  /**
+   * The verdict the kill log prints when this check is the one that killed an idea.
+   *
+   * VERBATIM from the engine. These are the `gateLabel` values in `src/data/kill-log.json`, which
+   * /kill-log renders as its filter chips and on every row. They are here so the homepage can show
+   * a reader what a check actually decides, in the same words the receipt will use, without
+   * re-typing them into a page and inventing a fourth lexicon.
+   */
+  verdict: string;
 }
 
 export const COMMON_CHECKS: readonly Check[] = [
@@ -60,6 +69,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Is the pain real, or are we imagining it?',
     refutation: 'Whether the pain is imagined',
     prose: 'real pain',
+    verdict: 'The pain was not real',
   },
   {
     id: 'value_durability',
@@ -68,6 +78,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Does the value last, or does it decay?',
     refutation: 'Whether the value decays',
     prose: 'lasting value',
+    verdict: 'The value would not last',
   },
   {
     id: 'incumbency',
@@ -76,6 +87,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Have the big players already won?',
     refutation: 'Whether incumbents already own the space',
     prose: 'room past the incumbents',
+    verdict: 'Incumbents already own the space',
   },
   {
     id: 'payer_solvency',
@@ -84,6 +96,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Is the buyer actually solvent?',
     refutation: 'Whether anyone will actually pay',
     prose: 'a payer who can pay',
+    verdict: 'The payer cannot actually pay',
   },
   {
     id: 'distribution',
@@ -92,6 +105,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Can this reach a market at all?',
     refutation: 'Whether it can reach a market at all',
     prose: 'a route to the buyer',
+    verdict: 'There is no route to reach buyers',
   },
   {
     id: 'legality',
@@ -100,6 +114,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     question: 'Is there a regulatory path?',
     refutation: 'Whether there is a legal landmine',
     prose: 'no legal landmine',
+    verdict: 'There is a legal landmine',
   },
 ] as const;
 
@@ -131,4 +146,17 @@ export function checksSentence(): string {
  */
 export function engineGateIds(): string {
   return COMMON_CHECKS.map((c) => c.id.replace(/_/g, ' ')).join(' · ');
+}
+
+/**
+ * The verdicts, in gate order, for a surface that shows what a check can conclude.
+ *
+ * The homepage used to print `engineGateIds()` here: six machine identifiers, "pain reality ·
+ * value durability · ...", which name the subject of each check and say nothing about what it
+ * decides. A stranger cannot tell from "incumbency" whether we passed or failed an idea on it.
+ * These are the same strings the kill log puts on the receipt, so a reader who follows the link
+ * meets the words they just read, on rows they can open.
+ */
+export function checkVerdicts(): readonly string[] {
+  return COMMON_CHECKS.map((c) => c.verdict);
 }
