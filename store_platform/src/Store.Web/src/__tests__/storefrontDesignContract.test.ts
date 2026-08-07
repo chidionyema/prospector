@@ -620,11 +620,14 @@ describe('Design contract — wordmark (Logo.tsx)', () => {
 describe('Design contract — favicon (public/icon.svg)', () => {
   const svg = readSource('../../public/icon.svg');
 
-  it('is a 32×32 square', () => {
-    expect(svg).toMatch(/viewBox="0 0 32 32"/);
-    // The rect should be 32×32
-    expect(svg).toMatch(/width="32"/);
-    expect(svg).toMatch(/height="32"/);
+  it('is square', () => {
+    // Squareness is the contract, not one particular unit count. The icon was authored in a
+    // 32-unit box; it is now authored in the SAME 100-unit box as `BrandMark` in Logo.tsx, so the
+    // two can be compared coordinate-for-coordinate (see the parity test below) instead of being
+    // eyeballed. Pinning the literal 32 would have failed that improvement for no reason.
+    const box = svg.match(/viewBox="0 0 (\d+) (\d+)"/);
+    expect(box, 'icon.svg must declare a viewBox').toBeTruthy();
+    expect(box![1]).toBe(box![2]);
   });
 
   it('has an ink background matching the monogram tile', () => {
@@ -636,20 +639,50 @@ describe('Design contract — favicon (public/icon.svg)', () => {
     );
   });
 
-  it('has a white letter M centred', () => {
-    // The letter should be "M", not "P"
-    expect(svg, 'white M').toMatch(/fill="#ffffff"[^>]*>M</);
-    // Or the other way around
-    if (!/>M</.test(svg)) {
-      // Maybe it's in a different order
-      expect(svg).toMatch(/>M</);
-    }
+  it('carries the strata mark, not a letter', () => {
+    // This replaces "has a white letter M centred" (founder decision, 2026-08-07). A single
+    // capital in a rounded tile is the most-copied favicon on the web and identifies nothing; the
+    // strata tile is the one shape this brand owns, and it is the same shape the 57 pack marks are
+    // drawn from. The assertion is therefore inverted: no glyph, three knocked-out bands.
+    expect(svg, 'a favicon must not fall back to a letterform').not.toMatch(/<text[\s>]/);
+    const bands = svg.match(/<rect[^>]*fill="#ffffff"[^>]*\/>/g) ?? [];
+    expect(bands).toHaveLength(3);
+  });
+
+  it('mirrors BrandMark in Logo.tsx band for band', () => {
+    // The favicon and the header lockup are the same object seen at two sizes. They are separate
+    // files -- one hand-authored SVG, one React component -- so nothing but this test stops them
+    // drifting into two different marks for one brand, which is the exact failure the lettered
+    // monogram used to have (a tile "M" in tight slots, a wordmark everywhere else).
+    const logo = readSource('../components/ui/Logo.tsx');
+
+    const logoBox = logo.match(/viewBox="0 0 (\d+) (\d+)"/);
+    expect(logoBox, 'BrandMark must declare a viewBox').toBeTruthy();
+    expect(svg, 'same coordinate space, or the coordinates below are not comparable').toMatch(
+      new RegExp(`viewBox="0 0 ${logoBox![1]} ${logoBox![2]}"`),
+    );
+
+    // `{ y: 24, w: 64 }, ...` in the component, `y="24" width="64"` in the file.
+    const logoBands = [...logo.matchAll(/\{\s*y:\s*(\d+),\s*w:\s*(\d+)\s*\}/g)].map(
+      (m) => `${m[1]}/${m[2]}`,
+    );
+    const svgBands = [...svg.matchAll(/<rect[^>]*y="(\d+)"[^>]*width="(\d+)"[^>]*\/>/g)].map(
+      (m) => `${m[1]}/${m[2]}`,
+    );
+    expect(logoBands.length, 'BrandMark band list must be readable').toBe(3);
+    expect(svgBands).toEqual(logoBands);
   });
 
   it('contains no monkey/ape imagery (brand name in aria-label is not imagery)', () => {
     // Strip the aria-label which contains the brand name "Mumchimp".
     const visual = svg.replace(/aria-label="[^"]*"/i, '');
-    expect(visual.toLowerCase()).not.toMatch(/monkey|chimp|ape|gorilla|primate/);
+    // WORD BOUNDARIES, not substrings. Unanchored, this matched "ape" inside "shape" in the file's
+    // own comment and failed a mark that contains no imagery at all -- the same defect class as
+    // the bare-substring HTTP-code match that once benched a live provider. A guard that fires on
+    // an innocent word gets loosened or deleted, so it has to be exact to stay useful.
+    expect(visual.toLowerCase()).not.toMatch(
+      /\b(monkey|monkeys|chimp|chimps|chimpanzee|ape|apes|gorilla|gorillas|primate|primates)\b/,
+    );
   });
 });
 
