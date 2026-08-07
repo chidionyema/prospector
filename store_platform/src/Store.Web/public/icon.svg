@@ -1,10 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Mumchimp">
-  <!-- Wordmark-derived favicon: white "M" on the ink field, mirroring Logo.tsx's monogram tile
-       (bg-text = #171717, rounded-md = 8px, white letter). It was #042F2E teal, a colour that no
-       longer appears anywhere in the palette, so the one mark that shows up in a tab strip beside
-       every other site was the last thing still wearing the old brand. -->
-  <rect width="32" height="32" rx="8" fill="#171717" />
-  <text x="16" y="17" text-anchor="middle" dominant-baseline="central"
-        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
-        font-weight="600" font-size="20" fill="#ffffff">M</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mumchimp">
+  <!-- The brand mark, mirroring Logo.tsx's `BrandMark` EXACTLY: same viewBox, same radius, same
+       three band rects, so the tab-strip icon and the header lockup cannot drift apart. It was a
+       white "M" on the ink field; a single letter is shared with several thousand other sites,
+       and the strata tile is the one shape this brand owns. Ink is #171717 (bg-text) and the
+       bands are knocked out in white, which is the page ground the lockup sits on. -->
+  <rect width="100" height="100" rx="22" fill="#171717" />
+  <rect x="18" y="24" width="64" height="12" rx="3" fill="#ffffff" />
+  <rect x="18" y="44" width="40" height="12" rx="3" fill="#ffffff" />
+  <rect x="18" y="64" width="56" height="12" rx="3" fill="#ffffff" />
 </svg>

@@ -21,7 +21,6 @@ import { track, trackPriceEvent } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import DossierExcerptPlate from '@/components/marketing/DossierExcerptPlate';
-import PackCover from '@/components/marketing/PackCover';
 import PackMark from '@/components/ui/PackMark';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
@@ -161,6 +160,10 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
   // one, and packs missing a field are the common case, not the edge case.
   const checks = parseCheckCounts(pack.qaVerdictSummary);
   const evidenceTokens = [
+    // The market leads, because it is the qualifier on everything after it: "34 sources" means
+    // something different for a UK listing than a US one. It moved here from the identity plate
+    // above the title, which was removed as duplicated chrome (see the note at its old site).
+    pack.market ? pack.market.toUpperCase() : null,
     typeof pack.sourceCount === 'number' && pack.sourceCount > 0
       ? `${pack.sourceCount} sources`
       : null,
@@ -533,9 +536,28 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 cat.ink,
               )}
             >
-              <PackMark id={pack.id} morph />
+              <PackMark id={pack.id} morph emphasis />
             </div>
-            <PackCover pack={pack} className="mb-6" />
+            {/* `PackCover` was here, a 44px bordered strip holding the sector chip, the market and
+                "№ 08B220". It is gone from the fold, and each of its three facts is accounted for
+                rather than dropped:
+
+                  - THE SECTOR CHIP was a duplicate. The breadcrumb directly above already ends on
+                    `cat.label` (see the trail above, whose last crumb is exactly this string), so
+                    "Care and benefits claims" rendered twice inside ~120px, once bold and once
+                    tinted. The trail is the one that locates the pack, so the chip is the copy
+                    that goes.
+                  - THE MARKET moved into the evidence line below, which is where the page's other
+                    mono facts already live.
+                  - THE DOSSIER NUMBER was `pack.id.slice(0, 6)`, a TRUNCATED id presented as a
+                    product number. The full, untruncated reference is already on this page in
+                    `DossierExcerptPlate` ("dossier:08b22037fc2afc07"), so the strip was showing a
+                    worse copy of an identifier the page states properly a few inches lower. A
+                    buyer quoting a reference in a support email is better served by the complete
+                    one.
+
+                `PackCover` itself is untouched and still exported; this page was its only caller,
+                so nothing else moves. */}
 
             {/* No `md:text-display` (48px). Titles here average ~90 characters, so at 48px the
                 h1 alone consumed ~400px and was still unfinished at the fold. One step, 32px.

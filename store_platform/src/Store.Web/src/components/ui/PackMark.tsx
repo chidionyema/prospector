@@ -24,10 +24,30 @@ export function PackMark({
    * name silently kills every view transition on the document rather than just this one.
    */
   morph = false,
+  /**
+   * Raises the strata out of the furniture range. OFF everywhere by default, and ON only for the
+   * detail-page masthead.
+   *
+   * WHY THIS EXISTS. `strata()` caps opacity at 0.34 for a stated reason: on a shelf card the mark
+   * sits BEHIND a title and a chip, so anything stronger competes with the text. That ceiling is
+   * correct there and wrong on the detail page, where the mark sits alone on a pale tint with no
+   * text over it. At 0.10-0.34 of the sector ink, on `cat.tint`, what renders is a stack of pale
+   * horizontal bars of varying width -- which is the exact visual idiom of a LOADING PLACEHOLDER.
+   * `components/ui/Skeleton.tsx` is that idiom, in this same UI kit: `bg-border/60`, rounded, and
+   * bar-shaped. A buyer meeting that above the fold on a paid product page reads an unfinished
+   * render, not an identity.
+   *
+   * So the fix is contrast, not geometry: the form still means THIS PACK (same seed, same bands,
+   * same insets, so the shelf-to-detail morph still lands on the same shape), it is simply drawn
+   * as a deliberate graphic rather than a ghost. Clamped at 0.86 so it stays ink-on-tint and never
+   * goes flat black.
+   */
+  emphasis = false,
 }: {
   id: string;
   className?: string;
   morph?: boolean;
+  emphasis?: boolean;
 }) {
   const bands = strata(id);
 
@@ -55,7 +75,12 @@ export function PackMark({
              going negative and disappearing entirely. */
           height={Math.max(b.h - 0.006, 0.004)}
           fill="currentColor"
-          opacity={b.o}
+          /* 2.6x lifts the 0.10-0.34 furniture range to 0.26-0.88 before the clamp, so the
+             faintest band in the set still reads as drawn rather than as a gap. The multiply is
+             applied here rather than in `strata()` on purpose: the geometry stays one function
+             with one output, so the two renderings cannot drift into different shapes and break
+             the morph. */
+          opacity={emphasis ? Math.min(b.o * 2.6, 0.86) : b.o}
         />
       ))}
     </svg>
