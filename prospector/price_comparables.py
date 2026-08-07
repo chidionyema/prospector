@@ -42,7 +42,7 @@ from .models import CHECKS, Candidate, ComparablesResult, PriceAnchor, PRICING_C
 from .operator import Operator
 from .prompts import render
 from .retrieval import SearchProvider
-from .telemetry import logger, track_latency
+from .telemetry import logger, stage as telemetry_stage, track_latency
 from .trimming import RATIONALE_MAX, clip_to_sentence
 from .audit import audit
 
@@ -171,7 +171,8 @@ def extract_anchors(op: Operator, cand: Candidate, sources: list[Source],
     user += f"\n\nPassages:\n{passages}"
 
     try:
-        data = op.complete_json(system, user, temperature=0.0)
+        with telemetry_stage("price_comparables"):
+            data = op.complete_json(system, user, temperature=0.0)
     except ProviderExhaustedError:
         # Every brain is out. This check is evidence-only, so an outage must not defer or
         # kill the candidate — it just produces no anchors, and the pack prices at its rung.

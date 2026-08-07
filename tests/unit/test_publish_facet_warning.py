@@ -18,6 +18,35 @@ import pytest
 from prospector.bridge import EngineBridge
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict
 
+# The financial model is never free prose in production: _validate_artifact_shape forces a
+# dict and artifacts.py:258 renders it through _render_financial_model, so every real pack
+# carries these sections and Python-computed (arithmetically exact) figures. The publish
+# gate lints it (pack_linter), so the fixture below has to be the shape the pipeline
+# actually emits. Deliberately duplicated rather than imported across test modules —
+# tests/unit is not a package, so a cross-file import breaks collection.
+RENDERED_FINANCIAL_MODEL = """## Financial Model
+
+### Revenue
+- **Month 1:** £50 × 10 customers = **£500**
+- **Month 12:** £50 × 120 customers = **£6,000**
+- **Growth (M1→M12):** 12.0×
+
+### Gross Margin: **88%** (COGS: 12% of revenue)
+- **Per customer/month:** £44.00
+
+### Payback Period
+- **~2.3 months** (CAC £100 / gross margin £44.00/month)
+
+### Customer Lifetime Value (CLV)
+- ~**£1,000** (ARPU £50 / 5.0% monthly churn)
+
+### LTV:CAC Ratio
+- 10.0
+
+### Month 1 P&L
+- Revenue £500, COGS £60, gross profit £440.
+"""
+
 
 class _FakeProvisioner:
     def create_product(self, name, description, metadata):
@@ -78,9 +107,14 @@ def _dossier(facets, automatability=None, structural_form=""):
     )
     cand.automatability = automatability
     cand.structural_form = structural_form
+    artifacts = {k: f"# {k}\n\n{body}" for k in
+                 ("build_spec", "gtm_plan", "ops_plan", "financial_model")}
+    # The financial model is never free prose in production (artifacts.py:258 renders it
+    # through _render_financial_model), and the publish gate now lints it — so the fixture
+    # carries the rendered shape with arithmetically exact figures.
+    artifacts["financial_model"] = RENDERED_FINANCIAL_MODEL
     cand.tags = {
-        "artifacts": {k: f"# {k}\n\n{body}" for k in
-                      ("build_spec", "gtm_plan", "ops_plan", "financial_model")},
+        "artifacts": artifacts,
         "marketing": [listing],
     }
     return Dossier(

@@ -22,7 +22,7 @@ from .config import Config
 from .models import Candidate
 from .operator import Operator
 from .prompts import render
-from .telemetry import logger, track_latency
+from .telemetry import logger, stage as telemetry_stage, track_latency
 
 # Regex patterns keyed by structural violation. Each maps to a human-readable label
 # for the rejection reason. Order matters: most specific first (avoid substring false
@@ -188,7 +188,8 @@ def prescreen(
     # Stage 2 — model-based triage (only for structural survivors).
     try:
         system, user = render("prescreen", candidate_json=json.dumps(cand.to_dict()))
-        data = op.complete_json(system, user)
+        with telemetry_stage("prescreen"):
+            data = op.complete_json(system, user)
     except Exception as e:
         logger.warning(f"Prescreen failed for {cand.title!r}: {e}", extra={"error": str(e)})
         return True, 0.5, "kept on uncertainty", ""
