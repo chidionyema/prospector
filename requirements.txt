@@ -43,6 +43,11 @@ streamlit>=1.40
 stripe>=15.2
 ddgs>=9.14
 exa_py>=2.14
+# F3 (COMMERCIAL_READINESS_PROGRAM.md): the buyer's editable XLSX financial model, written
+# with live `=`-formulas so the model can be re-run rather than just read. Pure Python, so
+# unlike torch/onnxruntime/matplotlib it HAS a wheel for this venv's python 3.14 x86_64 —
+# that constraint is why F2's radar chart is hand-written SVG instead of matplotlib.
+openpyxl>=3.1
 # NOTE: the LUX packages (lux-popdd / lux-spec / lux-spec-cli) are NOT listed here.
 # They were pinned to absolute file:/// paths on one developer's machine, which made this
 # file uninstallable anywhere else — including CI and any deploy host. Nothing in

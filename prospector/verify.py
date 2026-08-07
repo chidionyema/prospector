@@ -31,7 +31,9 @@ from .models import (
     Source,
     Verdict,
 )
+from .numeric_citation import record_shadow as record_numeric_shadow
 from .operator import Operator
+from .pricing import price_for
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
 from .telemetry import logger, track_latency
@@ -284,6 +286,45 @@ def _market_vars(cfg: Config | None, *, for_moat: bool = False) -> dict[str, str
     return market_kwargs(cfg, for_moat=for_moat)
 
 
+def _check_question(check_name: str, cand: Candidate, cfg: Config | None) -> str:
+    """``CHECKS[check_name]``, plus the pack's REAL ladder price for ``payer_solvency``.
+
+    Register §25.6 item 3: this check argued affordability against a price it INVENTED,
+    sometimes off the ladder entirely, and those invented figures are ~2/3 of the corpus's
+    untraceable-number count. The price is the one quantity in the check that is not
+    retrievable and never could be — it is OUR list price, declared in
+    ``config.yaml listing.pricing``, not a claim about the world. So the fix is not a
+    grounding fix: handing the number over replaces an invented figure with the true one.
+
+    This does NOT weaken verdict-from-retrieval-only. A list price is not market knowledge
+    and carries no information about the buyer; the model still rules on whether the
+    PASSAGES show the payer can pay, only now against the right figure.
+
+    Scope is deliberately one check. The other six questions render byte-identically, so
+    the golden set cannot move underneath this change. ``gen_queries`` (`:292`) is
+    deliberately NOT given the price either — a list price in a search query retrieves our
+    own storefront, which is self-citation, not evidence about the payer.
+    """
+    question = CHECKS[check_name]
+    if check_name != "payer_solvency" or cfg is None:
+        return question
+    try:
+        # `score` is accepted for interface stability and never consulted (pricing.py:98),
+        # which is exactly what lets the moat ask this before scoring has run at all.
+        price_pence = price_for(cand, None, cfg).price_pence
+    except Exception as exc:
+        # A config edit must never take the moat down. Degrade to today's behaviour — the
+        # bare question — rather than failing a check over a pricing lookup.
+        logger.warning(
+            f"payer_solvency price lookup failed; asking without a price: {exc}",
+            extra={"candidate_id": getattr(cand, "candidate_id", None)})
+        return question
+    pounds = f"{price_pence / 100:,.0f}"
+    return (f"{question} The buyer pays £{pounds} once for this pack — that is our actual "
+            f"list price, not an estimate. Judge affordability against £{pounds} and do "
+            f"not substitute a different figure.")
+
+
 @track_latency(name="gen_queries")
 def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int,
                 cfg: Config | None = None) -> list[str]:
@@ -393,7 +434,8 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     # precedents, never the market's evidence-landscape prose. Handing the moat market
     # knowledge is the prior-knowledge leak that verdict-from-retrieval-only forbids.
     system, user = render("verdict", candidate_json=json.dumps(cand.to_dict()),
-                          check_name=check_name, check_question=CHECKS[check_name],
+                          check_name=check_name,
+                          check_question=_check_question(check_name, cand, cfg),
                           verdict_bias=verdict_bias,
                           **_market_vars(cfg, for_moat=True))
     user = user.replace("{for each: [source_id] (url, published_at) text}", passages)
@@ -617,6 +659,14 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
             degraded=True, retrieval_failed=True)
     result.queries = queries
     result.query_source = query_source
+    # §25.6 item 2 — deterministic numeric-citation check, SHADOW MODE ONLY (founder
+    # decision: it logs, it never changes a verdict). Placed AFTER `result` is complete
+    # and its return value DISCARDED, so it is structurally incapable of altering the
+    # ruling; `record_shadow` is a no-op unless `numeric_citation.enabled` is true and
+    # swallows every exception internally. It audits `result.sources` — the passages the
+    # verdict actually cited — truncated to the same VERDICT_PASSAGE_TRUNCATE budget the
+    # model saw, which is what makes "this figure was never retrieved" provable offline.
+    record_numeric_shadow(cfg, cand, result, truncate=VERDICT_PASSAGE_TRUNCATE)
     logger.info(f"Check {check_name} result: {result.verdict.value}",
                 extra={"check": check_name, "verdict": result.verdict.value, "confidence": result.confidence})
     audit("verify_search", check=check_name,
@@ -654,7 +704,26 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
         if not isinstance(data, dict):
             data = {}
         citations = [str(c) for c in (data.get("citations") or [])]
-        
+        # Register §27.2 item 1 — a citation must RESOLVE, not merely exist. The per-check
+        # path has filtered against the retrieved source ids since forever (`:443-445`);
+        # this path never did, so an adversarial pass could kill a candidate on invented
+        # receipts and the guard below would wave it through because the LIST was non-empty.
+        # Measured before the fix (tools/experiments/e12_adversarial_groundedness_receipts.json):
+        # 8 of 142 adversarial_decisive kills cited ONLY ids resolving to nothing — two of
+        # them at our own repo files — and the `partial` class was 0, i.e. no kill mixes
+        # resolving and dangling ids, so this filter has never half-stripped a live kill.
+        # The checks' sources are exactly what the model was shown (CheckResult.to_dict
+        # ships each source_id), so a citable id was always available to it.
+        _valid_ids = {s.source_id for c in checks for s in (c.sources or [])}
+        _dangling = [c for c in citations if c not in _valid_ids]
+        if _dangling:
+            logger.warning(
+                f"Adversarial cited {len(_dangling)} id(s) resolving to no retrieved "
+                f"passage; dropping them",
+                extra={"dangling": _dangling[:10], "candidate_id": getattr(cand, "candidate_id", None)})
+        citations = [c for c in citations if c in _valid_ids]
+
+
         # New risk-sensor model: Python decides, LLM only classifies risk vectors.
         critical_regulatory = bool(data.get("critical_regulatory_blocker", False))
         impossible_economics = bool(data.get("impossible_unit_economics", False))

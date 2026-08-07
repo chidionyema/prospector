@@ -69,6 +69,60 @@ def _isolate_durable_ledger(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_numeric_citation_shadow(tmp_path, monkeypatch):
+    """Redirect the numeric-citation shadow log at a per-test temp dir.
+
+    Fifth instance of the same leak, and the only one caught by its own canary rather
+    than by reading production state after the fact: `numeric_citation.enabled` flipped
+    to `true` (config.yaml:1065, founder 2026-08-07), and the very next suite run wrote
+    118 rows stamped `"provider": "mock"` into
+    store/numeric_citation_shadow/shadow-2026-08.jsonl. Every test that drives a check
+    through a `load_config()` cfg logs a row, and that file is the corpus we read to
+    decide whether the observer is worth promoting out of shadow mode — fixture figures
+    in it would bias exactly the measurement it exists to produce.
+
+    setenv is sufficient: resolve_log_path() resolves per call and reads the env var
+    itself (numeric_citation.py:551), so nothing is bound at import."""
+    monkeypatch.setenv("PROSPECTOR_NUMERIC_CITATION_LOG_DIR",
+                       str(tmp_path / "numeric_citation_shadow"))
+
+
+@pytest.fixture(autouse=True)
+def _no_live_payment_credentials(monkeypatch):
+    """Strip money-rail credentials from os.environ for every test.
+
+    Sixth instance of this file's recurring leak, and the first one that left the machine.
+    On 2026-08-07 three tests in tests/behavioural/test_publish.py failed with a REAL Stripe
+    idempotency error carrying a real request id — `Keys for idempotent requests can only be
+    used with the same parameters they were first used with ...
+    'prospector-product-af1647af560711a1'`. The suite had been calling Stripe over the network
+    and creating products there; the collision only surfaced once the product's parameters
+    drifted, so the calls had been succeeding silently before that.
+
+    Two things had to line up, and the second is why patching more mocks would not have fixed
+    it. `EngineBridge` builds a live provisioner from the environment at bridge.py:281
+    (`StripeProvisioner(self.stripe_api_key) if self.stripe_api_key else None`), and
+    test_publish.py patches `requests.post` — but StripeProvisioner does not use requests. It
+    uses the Stripe SDK (`self._stripe.Product.create(...)`, bridge.py:1284), which carries its
+    own HTTP client and sails straight past that patch. Every one of those tests passes in
+    isolation and fails in-suite, because in isolation the environment happens to be clean.
+
+    So the fence is on the credential, not on the transport: with no key, bridge.py:281 yields
+    None and the money rail cannot be reached however a future test mocks (or forgets to mock)
+    the wire. `.env` in this repo carries STRIPE_LIVE_API_KEY as well as the test key, and
+    `_select_stripe_key` (bridge.py:293) prefers the live one whenever the store URL is not
+    local — so the same leak against a non-local store would have reached live Stripe, not the
+    sandbox. That is the reason this is fenced rather than tidied.
+
+    Deleting rather than blanking: bridge.py tests truthiness, and `patch.dict` in
+    tests/test_engine_bridge.py sets these keys inside the test body — i.e. after this fixture
+    runs — so the key-selection tests keep working exactly as written."""
+    for key in ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY", "PADDLE_API_KEY",
+                "STORE_INTERNAL_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _no_live_grounding_probe(monkeypatch):
     """Stub the per-tick grounding probe to "healthy" unless a test says otherwise.
 

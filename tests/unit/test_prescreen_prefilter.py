@@ -10,8 +10,10 @@ touched: every test pins `prescreen_prefilter.log_dir` to `tmp_path`.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import urllib.error
 
 import pytest
 
@@ -73,8 +75,224 @@ def _cfg(tmp_path, *, shadow: bool, **over) -> Config:
 @pytest.fixture(autouse=True)
 def _clean_cache():
     pf.reset_cache()
+    pf.reset_embed_cache()
     yield
     pf.reset_cache()
+    pf.reset_embed_cache()
+
+
+# --------------------------------------------------------------------------- #
+# ollama backend — mocked HTTP (CI has no ollama; the ONE live test is below)
+# --------------------------------------------------------------------------- #
+
+def _fake_vector(text: str, dim: int = 16) -> list[float]:
+    """Deterministic pseudo-embedding with REAL similarity structure.
+
+    Content words are hashed into `dim` buckets, so a reworded idea lands in
+    overlapping buckets and an unrelated one does not. A constant vector would
+    make every kNN test vacuous.
+    """
+    vec = [0.0] * dim
+    for tok in pf._content_tokens(text):
+        vec[int(hashlib.sha1(tok.encode("utf-8")).hexdigest(), 16) % dim] += 1.0
+    if not any(vec):
+        vec[0] = 1.0
+    return vec
+
+
+class FakeOllamaHTTP:
+    """Stands in for `pf._http_post_json`. Records every call; can fail on cue."""
+
+    def __init__(self, dim: int = 16, fail_after: int | None = None,
+                 error: Exception | None = None, body: dict | None = None) -> None:
+        self.dim = dim
+        self.fail_after = fail_after
+        self.error = error or urllib.error.URLError("Connection refused")
+        self.body = body
+        self.calls: list[tuple[str, dict, float]] = []
+
+    def __call__(self, url: str, payload: dict, timeout: float) -> dict:
+        self.calls.append((url, payload, timeout))
+        if self.fail_after is not None and len(self.calls) > self.fail_after:
+            raise self.error
+        if self.body is not None:
+            return self.body
+        return {"embedding": _fake_vector(payload["prompt"], self.dim)}
+
+
+@pytest.fixture
+def fake_http(monkeypatch):
+    """Mocked transport AND a pinned environment.
+
+    Without the delenv the url/timeout assertions below read whatever
+    `OLLAMA_BASE_URL` the developer's shell happens to export, which is a test
+    that passes on one machine and fails on the next.
+    """
+    monkeypatch.delenv(pf.OLLAMA_BASE_URL_ENV, raising=False)
+    monkeypatch.delenv(pf.OLLAMA_TIMEOUT_ENV, raising=False)
+    http = FakeOllamaHTTP()
+    monkeypatch.setattr(pf, "_http_post_json", http)
+    return http
+
+
+def test_ollama_backend_is_accepted_in_the_same_backend_slot(fake_http):
+    """`ollama:<model>` loads a dense encoder and talks to /api/embeddings."""
+    emb = pf.load_embedder("ollama:nomic-embed-text")
+    assert emb.name == "ollama:nomic-embed-text"
+    assert emb.degraded is False
+    # Loading probes once, so an unreachable daemon is caught before the run.
+    url, payload, timeout = fake_http.calls[0]
+    assert url == "http://localhost:11434/api/embeddings"
+    assert payload["model"] == "nomic-embed-text"
+    assert timeout == pf.OLLAMA_DEFAULT_TIMEOUT_S
+
+    vec = emb.encode("Probate clear-out concierge")
+    assert len(vec) == 16 and sorted(vec, key=int)[0] == "0"
+    assert all(isinstance(v, float) for v in vec.values())
+    # Dense keys are positional indices; lexical keys are "w:"/"c:" prefixed.
+    assert not any(k.startswith(("w:", "c:")) for k in vec)
+
+
+def test_ollama_backend_keeps_the_model_tag_and_defaults_the_model(fake_http):
+    assert pf.load_embedder("ollama:nomic-embed-text:latest").model == "nomic-embed-text:latest"
+    assert pf.load_embedder("ollama").model == pf.OLLAMA_DEFAULT_MODEL
+
+
+def test_ollama_embeddings_are_cached_by_content_hash(fake_http):
+    emb = pf.load_embedder("ollama:nomic-embed-text")
+    before = len(fake_http.calls)
+    a = emb.encode("Probate clear-out concierge")
+    assert len(fake_http.calls) == before + 1
+    b = emb.encode("Probate clear-out concierge")
+    assert b == a, "cache returned a different vector"
+    assert len(fake_http.calls) == before + 1, "re-embedded a text already seen"
+    emb.encode("Retiree garden harvest share")
+    assert len(fake_http.calls) == before + 2, "a new text must actually be embedded"
+
+
+def test_ollama_unreachable_degrades_to_lexical_and_says_so(monkeypatch):
+    """The write-only-field trap: degraded lexical must not read as chosen lexical."""
+    monkeypatch.setattr(pf, "_http_post_json",
+                        FakeOllamaHTTP(fail_after=0))  # probe itself fails
+    emb = pf.load_embedder("ollama:nomic-embed-text")
+    assert emb.degraded is True
+    assert emb.name == "lexical<-ollama:nomic-embed-text"
+    vec = emb.encode("Probate clear-out concierge")
+    assert vec and all(k.startswith(("w:", "c:")) for k in vec), "not the lexical vector"
+
+
+@pytest.mark.parametrize("body", [{"error": "model 'nope' not found"}, {"embedding": []}, {}])
+def test_a_daemon_that_answers_without_an_embedding_is_a_failure(monkeypatch, body):
+    """200-with-an-error-body must degrade, not yield an empty vector that abstains."""
+    monkeypatch.setattr(pf, "_http_post_json", FakeOllamaHTTP(body=body))
+    emb = pf.load_embedder("ollama:nomic-embed-text")
+    assert emb.degraded is True and emb.name == "lexical<-ollama:nomic-embed-text"
+
+
+def test_every_shadow_row_records_the_degraded_backend(tmp_path, monkeypatch):
+    monkeypatch.setattr(pf, "_http_post_json", FakeOllamaHTTP(fail_after=0))
+    op = ScriptedOp(_DECISIONS)
+    cfg = _cfg(tmp_path, shadow=True, backend="ollama:nomic-embed-text")
+    for c in _cands():
+        prescreen(op, cfg, c)
+    rows = _rows(tmp_path)
+    assert rows and all(r["backend_used"] == "lexical<-ollama:nomic-embed-text" for r in rows)
+
+
+def test_a_mid_run_ollama_failure_flips_backend_used_on_the_row_it_happens(tmp_path, monkeypatch):
+    """Rows embedded densely keep the dense name; rows after the outage do not."""
+    # 1 probe + 1 successful encode, then the daemon dies.
+    monkeypatch.setattr(pf, "_http_post_json", FakeOllamaHTTP(fail_after=2))
+    emb = pf.load_embedder("ollama:nomic-embed-text")
+    shadow = pf.PrescreenShadow(
+        tmp_path / "s.jsonl",
+        pf.PrefilterSettings(shadow_mode=True, backend="ollama:nomic-embed-text",
+                             min_exemplars=1, min_similarity=0.0),
+        embedder=emb,
+    )
+    first = shadow.record(_cands()[1], llm_keep=True, llm_score=0.9,
+                          llm_reason="kept", llm_called=True)
+    second = shadow.record(_cands()[3], llm_keep=True, llm_score=0.9,
+                           llm_reason="kept", llm_called=True)
+    assert first["backend_used"] == "ollama:nomic-embed-text"
+    assert second["backend_used"] == "lexical<-ollama:nomic-embed-text"
+
+
+def test_prescreen_result_identical_with_shadow_on_and_off_ollama_backend(tmp_path, fake_http):
+    """The E6 invariant again, on the dense path: still zero decisions changed."""
+    off_op = ScriptedOp(_DECISIONS)
+    off = [prescreen(off_op, _cfg(tmp_path, shadow=False), c) for c in _cands()]
+
+    on_op = ScriptedOp(_DECISIONS)
+    on_cfg = _cfg(tmp_path, shadow=True, backend="ollama:nomic-embed-text",
+                  min_exemplars=1, threshold=0.99, min_similarity=0.0)
+    on = [prescreen(on_op, on_cfg, c) for c in _cands()]
+
+    assert json.dumps(off) == json.dumps(on)
+    assert off_op.calls == on_op.calls
+    rows = _rows(tmp_path)
+    # The dense encoder really ran (no silent degradation), and it WANTED to drop
+    # something — otherwise the identity above proves nothing.
+    assert all(r["backend_used"] == "ollama:nomic-embed-text" for r in rows)
+    assert any(r["would_drop"] for r in rows), "prefilter never fired; identity is vacuous"
+    assert len(fake_http.calls) > 1
+
+
+def test_host_and_timeout_come_from_the_environment(monkeypatch):
+    """No config key exists for either (config.py's strict allowlist), so: env."""
+    monkeypatch.delenv(pf.OLLAMA_BASE_URL_ENV, raising=False)
+    monkeypatch.delenv(pf.OLLAMA_TIMEOUT_ENV, raising=False)
+    assert pf.ollama_base_url() == "http://localhost:11434"
+    assert pf.ollama_timeout_s() == pf.OLLAMA_DEFAULT_TIMEOUT_S
+
+    # operator.py's OLLAMA_BASE_URL points at the OpenAI-compatible /v1 root;
+    # /api/embeddings is not under it, so the suffix must be stripped or every
+    # call 404s and reads as "ollama is down".
+    monkeypatch.setenv(pf.OLLAMA_BASE_URL_ENV, "http://box:11434/v1/")
+    assert pf.ollama_base_url() == "http://box:11434"
+    monkeypatch.setenv(pf.OLLAMA_BASE_URL_ENV, "http://box:11434")
+    assert pf.ollama_base_url() == "http://box:11434"
+
+    monkeypatch.setenv(pf.OLLAMA_TIMEOUT_ENV, "2.5")
+    assert pf.ollama_timeout_s() == 2.5
+    for bad in ("", "abc", "0", "-1"):
+        monkeypatch.setenv(pf.OLLAMA_TIMEOUT_ENV, bad)
+        assert pf.ollama_timeout_s() == pf.OLLAMA_DEFAULT_TIMEOUT_S
+
+
+# --------------------------------------------------------------------------- #
+# The ONE live test: skipped whenever ollama is not reachable.
+# Run it explicitly with: -k live_ollama
+# --------------------------------------------------------------------------- #
+
+def test_live_ollama_backend_discriminates_paraphrase_from_unrelated():
+    """Proof the dense backend is real: 768 dims, and it ranks a rewording higher.
+
+    Skips (never fails) when the daemon or the model is absent — CI has neither.
+    """
+    try:
+        probe = pf.ollama_embed("prescreen prefilter probe",
+                                model=pf.OLLAMA_DEFAULT_MODEL, timeout=15.0)
+    except Exception as e:  # unreachable daemon, missing model, timeout
+        pytest.skip(f"live ollama unavailable ({type(e).__name__}: {e})")
+
+    assert len(probe) == 768, f"nomic-embed-text should be 768-dim, got {len(probe)}"
+
+    emb = pf.load_embedder(f"ollama:{pf.OLLAMA_DEFAULT_MODEL}")
+    assert emb.degraded is False and emb.name == f"ollama:{pf.OLLAMA_DEFAULT_MODEL}"
+
+    probate = emb.encode("Probate clear-out concierge sorting a deceased relative's home")
+    reworded = emb.encode("Deceased estate clearance concierge for probate executors")
+    unrelated = emb.encode("Weekly produce boxes from retired gardeners' allotments")
+    assert len(probate) == 768
+
+    near = pf._sparse_cosine(probate, reworded)
+    far = pf._sparse_cosine(probate, unrelated)
+    print(f"\n[live ollama {pf.OLLAMA_DEFAULT_MODEL}] dim={len(probate)} "
+          f"cos(probate, reworded)={near:.4f}  cos(probate, unrelated)={far:.4f}  "
+          f"margin={near - far:+.4f}")
+    assert near > far, f"no discrimination: paraphrase {near:.4f} <= unrelated {far:.4f}"
+    assert pf._sparse_cosine(probate, probate) == pytest.approx(1.0, abs=1e-6)
 
 
 # --------------------------------------------------------------------------- #
@@ -110,13 +328,39 @@ def test_shadow_off_writes_nothing(tmp_path):
     assert not (tmp_path / "shadow").exists()
 
 
-def test_default_config_block_is_off():
-    """Default = OFF, both in the dataclass and in the shipped config.yaml."""
+def test_an_absent_config_block_is_off():
+    """A config that never mentions the block must not enable it. This is the half of the
+    old `test_default_config_block_is_off` that is a SAFETY property rather than a record of
+    what config.yaml happened to say, and it does not move when the shipped file does."""
     assert Config().prescreen_prefilter == {}
     assert pf.settings_from_config(Config()).shadow_mode is False
+    assert pf.get_shadow(Config()) is None
+
+
+# The shipped file's own value is asserted separately and deliberately. The old single test
+# bundled both, so turning the shadow on — the ONLY route to E6's measurement, since no
+# historical prescreen decision is persisted to replay offline — read as a safety regression
+# when it is nothing of the kind. Splitting them keeps the safety guard load-bearing while
+# letting the operational value change with a reason attached.
+_LOG_ONLY_KEYS = {"shadow_mode", "backend", "threshold", "neighbours", "min_similarity",
+                  "min_exemplars", "max_exemplars", "log_dir"}
+
+
+def test_shipped_block_is_on_and_still_cannot_act():
+    """Shadow ON since 2026-08-07, and every key in the block is log-only.
+
+    `shadow_mode` being true is not a licence to drop anything: there is no acting key in
+    this block at all, and that is what this pins. If someone adds one, the key-set
+    assertion fails here before it can ever run against a live candidate.
+    """
     shipped = load_config()
-    assert shipped.prescreen_prefilter.get("shadow_mode") is False
-    assert pf.get_shadow(shipped) is None
+    block = shipped.prescreen_prefilter
+    assert block.get("shadow_mode") is True, "E6 needs live rows; see config.yaml"
+    assert pf.get_shadow(shipped) is not None
+    assert set(block) <= _LOG_ONLY_KEYS, f"new key in a log-only block: {set(block) - _LOG_ONLY_KEYS}"
+    # The backend stays lexical while E6 is being measured — switching it mid-measurement
+    # would change what the agreement number means (config.yaml says so at the `backend` key).
+    assert block.get("backend") == "lexical"
 
 
 def test_record_shadow_never_raises_on_a_broken_recorder(tmp_path, monkeypatch):

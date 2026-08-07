@@ -1023,12 +1023,38 @@ dedup_threshold: 0.85
 # one has no measured agreement yet. Turn shadow_mode on to start accumulating that measurement
 # (read it back with prescreen_prefilter.summarise_shadow_log).
 prescreen_prefilter:
-  shadow_mode: false
+  # ON 2026-08-07. Register §27.2 item 6 was written as "shadow rows exist; agreement still
+  # unmeasured" — the rows did NOT exist: this flag was false and store/prescreen_shadow/ was
+  # absent, so E6 had no corpus to decide on and could not have had one. E6 cannot be measured
+  # offline either: the prefilter votes over a rolling window of the LLM's OWN accumulated
+  # prescreen decisions (min_exemplars 20), and no historical prescreen decision is persisted
+  # anywhere to replay. So the only route to the measurement is to let live ticks write it.
+  # Safe to turn on: shadow is log-only by construction — there is no key in this block that
+  # can drop a candidate, and `test_prescreen_result_identical_with_shadow_on_and_off` pins
+  # that prescreen returns exactly what it returned before. `backend` stays `lexical` on
+  # purpose (see below): switching it would change what E6 is measuring.
+  shadow_mode: true
   # `lexical` = dedup's content-word tokeniser + char trigrams, cosine via novelty.py.
-  # No sentence-transformers/torch/onnx package is installed and the local ollama carries no
-  # embedding model (measured 2026-08-07), so a dense backend would mean a multi-GB download.
-  # `sentence_transformers:<model>` is accepted and degrades to lexical (logged, and recorded
-  # per-row as `backend_used`) if the import fails.
+  #
+  # A REAL dense backend now exists: `ollama:<model>` — e.g. `ollama:nomic-embed-text`, 768-dim,
+  # installed on this box. It posts to `<OLLAMA_BASE_URL>/api/embeddings` (default
+  # http://localhost:11434; a trailing `/v1` is stripped, because that path is NOT under /v1 and
+  # a 404 there reads exactly like "ollama is down"), timeout from
+  # PROSPECTOR_OLLAMA_EMBED_TIMEOUT_S. Measured live 2026-08-07: cos(text, reworded)=0.8374 vs
+  # cos(text, unrelated)=0.4930, margin +0.3444 — it discriminates, which the lexical backend
+  # cannot be assumed to do on a reworded idea.
+  #
+  # The comment this replaces said no embedding model was available and a dense backend "would
+  # mean a multi-GB download". That was true when measured and is now stale: `nomic-embed-text`
+  # is 274MB and already pulled. sentence-transformers/torch remain genuinely impossible here
+  # (python 3.14 x86_64 has no wheels), which is why the route is ollama-over-HTTP, not an import.
+  #
+  # Both dense backends degrade to lexical if unavailable, logged, and recorded per-row as
+  # `backend_used` — for ollama that reads `lexical<-ollama:<model>`, NOT a bare `lexical`, so the
+  # log can never be ambiguous between "lexical was configured" and "the encoder died".
+  #
+  # Still `lexical` on purpose: switching the backend changes what E6 measures, and E6's whole
+  # point is to calibrate `threshold` against real agreement. Flip this when E6 runs, not before.
   backend: lexical
   # Would-drop when the neighbour-weighted keep-rate falls below this. Uncalibrated by
   # construction — calibrating it against real agreement IS experiment E6.
@@ -1038,6 +1064,65 @@ prescreen_prefilter:
   min_exemplars: 20          # below this the prefilter ABSTAINS — cold start never drops
   max_exemplars: 500         # rolling window over accumulated LLM decisions
   log_dir: ""                # "" => <store.dir>/prescreen_shadow (honours PROSPECTOR_STORE_DIR)
+
+# §25.6 — the numeric-citation check. Q4c measured that roughly ONE FIGURE IN TEN in a
+# dossier rationale appears in no retrieved passage at all: it was never retrieved, the
+# model produced it. This check is deterministic and costs microseconds — it extracts the
+# figures from a rationale and confirms each appears in the passage that rationale cites.
+# Founder decision: SHADOW FIRST. It writes a log; it never demotes a check to
+# `unverifiable` and never strips a sentence. Turning that action on is a second decision.
+numeric_citation:
+  enabled: true              # founder 2026-08-07 — SHADOW only; `shadow_mode` below is the fence
+  shadow_mode: true          # true => log only. The action variant is not built.
+  min_digits: 1
+  ignore_years: true         # "in 2024" is a date, not a claim figure
+  tolerance: 0.0             # 0 => exact match after normalisation. Rounding slack, not fuzz.
+  log_dir: ""                # "" => <store.dir>/numeric_citation_shadow
+
+# V2 — the under-coverage sampler. Note the axes: `sector` is NOT among them and cannot
+# be, because no sector column exists in `dossiers` and generation never writes one — it
+# lives only inside prompt text. These four are real columns, all set at generation time.
+# `ambition_tier` is blank on about two thirds of rows; `unknown` is therefore an explicit
+# cell rather than a silent drop, and `min_coverage` stops a mostly-blank axis dominating.
+coverage_sampler:
+  enabled: false             # inert until switched on; the daemon's behaviour is unchanged
+  axes: [ambition_tier, structural_form, audience, market]
+  method: quota              # quota | entropy
+  unknown_policy: include    # include => blanks are their own cell, never invisible
+  recent_window: 200         # rows of recent-candidate history that count as "recent"
+  min_coverage: 0.25         # an axis below this fraction populated cannot drive sampling
+  seed: 0                    # a sampler you cannot replay is not a measurement
+
+# V4 — meta-shape monitor. Embeds catalogue one-liners with the LOCAL ollama model and
+# alerts when one cluster exceeds a share of the catalogue. This is what turns "78 niches,
+# one shape" from a suspicion into a number. Zero tokens, read-only.
+meta_shape_monitor:
+  enabled: false
+  embed_model: nomic-embed-text
+  ollama_host: "http://localhost:11434"
+  clusters: 8
+  alert_top_cluster_share: 0.35
+  min_rows: 50               # below this the share is noise; the monitor abstains
+  log_dir: ""                # "" => <store.dir>/meta_shape
+
+# R2 — per-candidate claim lock. A concurrent backlog drain and a manual `vet --resume`
+# can both pick up the same candidate and pay for the same re-vet twice. Mirrors the
+# file-locked, half-open probe idiom already proven in `health.py:130`. Defaults ON: this
+# is a correctness rail, not an experiment. `stale_after_s` exists because a lock that
+# outlives a crashed holder forever is a deadlock, which this repo has already met once.
+claim_lock:
+  enabled: true
+  dir: ""                    # "" => <store.dir>/claims
+  stale_after_s: 3600
+
+# F1-F4 — deterministic buyer-facing data artifacts, zero LLM calls. The comparables line
+# is the pointed one: `price_comparables` already fetches cited willingness-to-pay anchors
+# and the pack then DISCARDS them, so the buyer never sees the price evidence we paid to
+# retrieve. `pdf` and `xlsx` degrade to absent (logged) rather than failing a bundle.
+pack_data:
+  enabled: true              # founder 2026-08-07 — the data files now ship in the bundle
+  formats: [json, csv, svg]  # add xlsx / pdf once F3/F4 are exercised on a real pack
+  chrome_path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # Second dedup signal: content-word overlap (Jaccard, 0..1). Char ratio above is blind to
 # the SAME idea reworded — that is how the catalogue accumulated 4 "retiree garden harvest"

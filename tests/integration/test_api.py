@@ -51,8 +51,25 @@ def setup_store(tmp_path):
     # publish() now routes through EngineBridge (Store API catalog + R2) and writes
     # no local listing when those are unconfigured, so write the listing the endpoint
     # reads directly. This keeps the API-contract test independent of money-rail infra.
+    #
+    # The first six keys are what publish.publish writes for every real pack, and what
+    # publish.validate_listing now enforces on the write path (Q4b.3). They were absent
+    # here, so this fixture was building a receipt shape production has never produced —
+    # exactly how the two mock fixtures got into the operator's store/listings/.
+    #
+    # The rest (reverify_due_at, source_count, packs) are what /v1/listings reads at
+    # prospector/api.py:98-104, and they are the reason this fixture had to invent a
+    # shape at all: 73 of 73 live receipts carry NONE of them, and api.py:105's bare
+    # `except Exception: continue` swallows the resulting KeyError, so the endpoint
+    # returns [] for every real listing. Keeping them here preserves what this test
+    # asserts; the endpoint/writer divergence is recorded in the readiness register and
+    # is not fixed by widening a fixture.
     listing = {
         "candidate_id": cand.candidate_id,
+        "title": cand.title,
+        "market": getattr(cand, "market", "") or "",
+        "published_via": "EngineBridge",
+        "catalog": True,
         "verified_at": dossier.created_at,
         "reverify_due_at": dossier.created_at,
         "source_count": len(dossier.all_sources),

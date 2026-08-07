@@ -165,8 +165,13 @@ def main(argv: list[str]) -> int:
             if complete:
                 break
             print(f"  generating artifacts (artifact_operator chain), attempt {attempt}/{MAX_GEN_ATTEMPTS}...")
+            # Pass the whole dossier, not just its checks: pack_data reads `.score` for the
+            # scorecard and `.all_sources` for the price comparables. Without it this
+            # republish path emitted `score_available: false` and an empty comparables file
+            # while a fully-scored dossier sat right here in scope (register §27.2 item 4).
             cand.tags["artifacts"] = generate_artifacts(
-                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg)
+                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg,
+                dossier=dossier)
             cand.tags["marketing"] = generate_marketing_content(
                 op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, check_op=op)
             # Epic C lite: if LLM listing_page fails claim-check, fill a claim-safe

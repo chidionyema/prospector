@@ -14,21 +14,43 @@ Why shadow first is not ceremony: an unproven prefilter that acts silently kills
 good candidates, and the pipeline's own rule is that nothing is killed at
 generation time (project CLAUDE.md, "Creativity lives in generation").
 
-EMBEDDING BACKEND — measured 2026-08-07, no network:
-  `sentence_transformers`, `torch`, `transformers`, `onnxruntime`, `model2vec`
-  and `fastembed` are all ABSENT from `.venv`, and the local `ollama` install
-  carries no embedding model (qwen2.5-coder / gemma3 / gemma2 / llama3.2 are
-  chat models). Pulling nomic-embed-text (~274MB) or Qwen3-Embedding-0.6B
-  (~1.5GB) is a download, which this task forbids. So the DEFAULT backend is
-  `lexical`: a sparse bag-of-content-words + character-trigram vector built from
-  the SAME tokeniser dedup already uses (`dedup._content_tokens`), scored with
-  the SAME cosine the DPP selector already uses (`novelty.cosine_similarity`).
-  There is exactly one similarity implementation in this repo and this reuses it
-  rather than adding a second one.
-  `backend: sentence_transformers` is accepted and will use a real dense model
-  IF one is ever installed; when the import fails it logs and degrades to
-  `lexical`, and every shadow row records `backend_used` so a mixed log is never
-  ambiguous about which encoder produced a score.
+EMBEDDING BACKENDS — three accepted in the same `backend:` string slot:
+  `lexical` (the DEFAULT, and the only one that needs nothing installed): a
+  sparse bag-of-content-words + character-trigram vector built from the SAME
+  tokeniser dedup already uses (`dedup._content_tokens`), scored with the SAME
+  cosine the DPP selector already uses (`novelty.cosine_similarity`). There is
+  exactly one similarity implementation in this repo and this reuses it rather
+  than adding a second one.
+
+  `ollama:<model>` (e.g. `ollama:nomic-embed-text`) — a REAL dense encoder, over
+  HTTP to the local ollama daemon's `/api/embeddings`, stdlib `urllib` only, no
+  new dependency and no hosted inference. This is the only dense route available
+  here: `torch` / `sentence_transformers` have no cp314 x86_64 wheels, so they
+  can never install into this venv, whereas `nomic-embed-text` (274MB, 768-dim)
+  is already pulled on this box.
+
+  `sentence_transformers:<model>` — accepted, and will use a real dense model IF
+  the package is ever installable.
+
+  Both dense backends degrade to `lexical` through ONE path when the encoder is
+  unavailable (import failure, ollama unreachable, model missing, timeout): the
+  reason is logged and `backend_used` on every subsequent row reads
+  `lexical<-ollama:<model>`, never a bare `lexical`. A dense backend that
+  silently becomes lexical is a write-only field, and this repo has already paid
+  for that class of defect — a mixed log must never be ambiguous about which
+  encoder produced a score, nor about whether lexical was chosen or fallen back
+  to. Degradation is sticky per encoder instance: one failure switches the whole
+  run, so the exemplar corpus does not silently interleave two vector spaces
+  beyond the switch point (an ollama vector and a lexical vector share no keys,
+  so their cosine is 0 — the effect of a mid-run switch is ABSTAIN, i.e. keep,
+  never a drop).
+
+  Host and timeout carry NO config key: `config.py:313` enforces a strict
+  allowlist on the `prescreen_prefilter` block, so the host is read from
+  `OLLAMA_BASE_URL` — the same env var `operator.OllamaOperator` already honours
+  (`operator.py:787`) — and the timeout from `PROSPECTOR_OLLAMA_EMBED_TIMEOUT_S`.
+  `OLLAMA_BASE_URL` conventionally points at the OpenAI-compatible `/v1` root;
+  `/api/embeddings` is NOT under `/v1`, so a trailing `/v1` is stripped.
 
 HOW THE SCORE IS FORMED (prequential kNN, zero LLM, zero network):
   There is no labelled corpus of "obvious near-misses" on disk, so the prefilter
@@ -42,10 +64,13 @@ HOW THE SCORE IS FORMED (prequential kNN, zero LLM, zero network):
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import threading
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -117,6 +142,186 @@ class LexicalEmbedder:
         return lexical_vector(text)
 
 
+# --------------------------------------------------------------------------- #
+# ollama dense backend (stdlib HTTP only — no new dependency, no hosted call)
+# --------------------------------------------------------------------------- #
+
+OLLAMA_DEFAULT_MODEL = "nomic-embed-text"
+OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL_ENV = "OLLAMA_BASE_URL"          # shared with operator.py:787
+OLLAMA_TIMEOUT_ENV = "PROSPECTOR_OLLAMA_EMBED_TIMEOUT_S"
+OLLAMA_DEFAULT_TIMEOUT_S = 20.0
+
+# Bounded, process-local embedding cache keyed by sha256(encoder-name + text).
+# In memory ONLY, and deliberately so: a persisted cache would be a new file
+# under the store dir that tests and the daemon would then race over, and the
+# whole win here — not re-embedding the same exemplar window on a re-run within
+# a process — is available without one. Nothing in this module resolves a store
+# path at import time (see `resolve_log_path`).
+_EMBED_CACHE_MAX = 8192
+_EMBED_CACHE: dict[str, dict[str, float]] = {}
+_EMBED_CACHE_LOCK = threading.Lock()
+
+
+def reset_embed_cache() -> None:
+    """Drop the process-local embedding cache (tests, and any long-lived UI)."""
+    with _EMBED_CACHE_LOCK:
+        _EMBED_CACHE.clear()
+
+
+def _cache_key(encoder: str, text: str) -> str:
+    h = hashlib.sha256()
+    h.update(encoder.encode("utf-8"))
+    h.update(b"\x00")
+    h.update(text.encode("utf-8"))
+    return h.hexdigest()
+
+
+def _cache_get(key: str) -> Optional[dict[str, float]]:
+    with _EMBED_CACHE_LOCK:
+        return _EMBED_CACHE.get(key)
+
+
+def _cache_put(key: str, vec: dict[str, float]) -> None:
+    with _EMBED_CACHE_LOCK:
+        if len(_EMBED_CACHE) >= _EMBED_CACHE_MAX:
+            # Plain FIFO eviction: insertion order is dict order in py3.7+, and a
+            # true LRU would need a second structure for no measurable gain on a
+            # window bounded by `max_exemplars`.
+            for stale in list(_EMBED_CACHE)[: max(1, _EMBED_CACHE_MAX // 8)]:
+                _EMBED_CACHE.pop(stale, None)
+        _EMBED_CACHE[key] = vec
+
+
+def ollama_base_url() -> str:
+    """Base URL for the local ollama daemon, `/v1` suffix stripped.
+
+    `OLLAMA_BASE_URL` is the var `operator.OllamaOperator` already reads, and it
+    conventionally carries the OpenAI-compatible `.../v1` root. The native
+    embeddings endpoint is NOT under `/v1`, so pointing at the same var without
+    stripping would 404 on every call and read as "ollama is down".
+    """
+    raw = (os.environ.get(OLLAMA_BASE_URL_ENV) or "").strip() or OLLAMA_DEFAULT_BASE_URL
+    raw = raw.rstrip("/")
+    if raw.endswith("/v1"):
+        raw = raw[: -len("/v1")].rstrip("/")
+    return raw or OLLAMA_DEFAULT_BASE_URL
+
+
+def ollama_timeout_s() -> float:
+    raw = (os.environ.get(OLLAMA_TIMEOUT_ENV) or "").strip()
+    try:
+        val = float(raw) if raw else OLLAMA_DEFAULT_TIMEOUT_S
+    except ValueError:
+        logger.warning(
+            f"prescreen prefilter: {OLLAMA_TIMEOUT_ENV}={raw!r} is not a number; "
+            f"using {OLLAMA_DEFAULT_TIMEOUT_S}s")
+        return OLLAMA_DEFAULT_TIMEOUT_S
+    return val if val > 0 else OLLAMA_DEFAULT_TIMEOUT_S
+
+
+def _http_post_json(url: str, payload: dict[str, Any], timeout: float) -> dict[str, Any]:
+    """POST JSON, return parsed JSON. The ONE network seam — tests patch this."""
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=body, method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 - fixed http scheme
+        raw = resp.read().decode("utf-8", "replace")
+    out = json.loads(raw)
+    if not isinstance(out, dict):
+        raise ValueError(f"expected a JSON object from {url}, got {type(out).__name__}")
+    return out
+
+
+def ollama_embed(
+    text: str,
+    *,
+    model: str,
+    base_url: Optional[str] = None,
+    timeout: Optional[float] = None,
+) -> list[float]:
+    """One embedding from the local ollama daemon. Raises on ANY failure.
+
+    Accepts both response shapes: `/api/embeddings` returns `{"embedding": [...]}`,
+    and a newer daemon answering the same path in batch form returns
+    `{"embeddings": [[...]]}`. A daemon that is up but has no such model answers
+    HTTP 404 with an `error` field, which must raise rather than yield [].
+    """
+    url = f"{base_url or ollama_base_url()}/api/embeddings"
+    out = _http_post_json(url, {"model": model, "prompt": text},
+                          timeout if timeout is not None else ollama_timeout_s())
+    if out.get("error"):
+        raise RuntimeError(f"ollama error: {out['error']}")
+    vec = out.get("embedding")
+    if vec is None:
+        batch = out.get("embeddings") or []
+        vec = batch[0] if batch else None
+    if not vec:
+        raise RuntimeError(f"ollama returned no embedding for model {model!r}")
+    return [float(x) for x in vec]
+
+
+class OllamaEmbedder:
+    """Dense encoder over the local ollama daemon, with sticky lexical fallback.
+
+    `name` is the value written to `backend_used` on every shadow row. After a
+    degradation it reads `lexical<-ollama:<model>` — distinguishable from a
+    configured `lexical`, which is the whole point: the E6 numbers must never be
+    attributable to an encoder that was not actually running.
+    """
+
+    def __init__(self, model: str, base_url: Optional[str] = None,
+                 timeout: Optional[float] = None) -> None:
+        self.model = model
+        self.base_url = base_url or ollama_base_url()
+        self.timeout = timeout if timeout is not None else ollama_timeout_s()
+        self.name = f"ollama:{model}"
+        self._fallback: Optional[LexicalEmbedder] = None
+        self._lock = threading.Lock()
+
+    @property
+    def degraded(self) -> bool:
+        return self._fallback is not None
+
+    def probe(self) -> None:
+        """One cheap embed so an unreachable daemon is caught at load, not mid-run."""
+        ollama_embed("prescreen prefilter probe", model=self.model,
+                     base_url=self.base_url, timeout=self.timeout)
+
+    def degrade(self, reason: object) -> None:
+        """Switch to lexical for the rest of this encoder's life, once, loudly."""
+        with self._lock:
+            if self._fallback is not None:
+                return
+            self._fallback = LexicalEmbedder()
+            self.name = f"lexical<-ollama:{self.model}"
+        logger.warning(
+            f"prescreen prefilter: ollama backend {self.model!r} at {self.base_url} "
+            f"unavailable ({type(reason).__name__ if isinstance(reason, BaseException) else 'error'}"
+            f": {reason}); falling back to lexical — rows now record "
+            f"backend_used={self.name!r}")
+
+    def encode(self, text: str) -> dict[str, float]:
+        if self._fallback is not None:
+            return self._fallback.encode(text)
+        if not str(text).strip():
+            return {}
+        key = _cache_key(self.name, text)
+        hit = _cache_get(key)
+        if hit is not None:
+            return hit
+        try:
+            vec = ollama_embed(text, model=self.model, base_url=self.base_url,
+                               timeout=self.timeout)
+        except (urllib.error.URLError, OSError, ValueError, RuntimeError, TypeError) as e:
+            self.degrade(e)
+            return self._fallback.encode(text) if self._fallback else {}
+        out = {str(i): float(v) for i, v in enumerate(vec)}
+        _cache_put(key, out)
+        return out
+
+
 def load_embedder(backend: str) -> Any:
     """Return an encoder for `backend`, degrading to lexical with a logged reason.
 
@@ -128,6 +333,16 @@ def load_embedder(backend: str) -> Any:
     backend = (backend or "lexical").strip()
     if backend in ("", "lexical"):
         return LexicalEmbedder()
+    if backend == "ollama" or backend.startswith("ollama:"):
+        # partition on the FIRST colon only, so `ollama:nomic-embed-text:latest`
+        # keeps its tag — ollama model names are `name:tag`.
+        model_name = backend.partition(":")[2].strip() or OLLAMA_DEFAULT_MODEL
+        emb = OllamaEmbedder(model_name)
+        try:
+            emb.probe()
+        except Exception as e:
+            emb.degrade(e)
+        return emb
     if backend.startswith("sentence_transformers"):
         model_name = backend.partition(":")[2] or "nomic-ai/nomic-embed-text-v2-moe"
         try:  # pragma: no cover - no such package is installed in this venv

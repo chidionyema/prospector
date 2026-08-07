@@ -79,7 +79,15 @@ class TestIndexHtmlShipsAlongsideTheEightFiles:
 
     def test_md_file_bytes_are_byte_identical_to_before_the_feature(self, bridge):
         """The feature must not touch the existing deliverables in any way — same bytes with
-        or without index.html in the zip."""
+        or without index.html in the zip.
+
+        The reference is each document AS THE PUBLISH PASS LEAVES IT
+        (`plain_text.publish_pass_document`, wired into `_create_bundle` 2026-08-07): a pack
+        `.md` is opened offline from the zip, so the pass has to run on this side of the
+        fence. That is a deliberate change to the bytes and it is asserted directly by
+        tests/unit/test_publish_pass.py; what THIS test still pins is that index.html is not
+        the thing changing them.
+        """
         artifacts = _full_artifacts()
         path = bridge._create_bundle(_dossier(), artifacts, [])
         entries = _entries(path)
@@ -90,15 +98,16 @@ class TestIndexHtmlShipsAlongsideTheEightFiles:
         from prospector.bridge import _held_back_md
         from prospector.dossier import render_markdown
         from prospector.pack_floors import exec_summary_md, first_week_checklist_md
+        from prospector.plain_text import publish_pass_document
 
         d = _dossier()
         expected = {
-            "01_Blueprint_BuildSpec.md": artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec"),
-            "02_Marketing_Plan_GTM.md": artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan"),
-            "03_Operations_Plan.md": artifacts.get("ops_plan", "") or _held_back_md("Operations plan"),
-            "QA_Report.md": render_markdown(d),
-            "00_Executive_Summary.md": exec_summary_md(d.candidate, d.checks),
-            "05_First_Week_Checklist.md": first_week_checklist_md(d.candidate),
+            "01_Blueprint_BuildSpec.md": publish_pass_document(artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec")),
+            "02_Marketing_Plan_GTM.md": publish_pass_document(artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan")),
+            "03_Operations_Plan.md": publish_pass_document(artifacts.get("ops_plan", "") or _held_back_md("Operations plan")),
+            "QA_Report.md": publish_pass_document(render_markdown(d), keep_confidence_figures=True),
+            "00_Executive_Summary.md": publish_pass_document(exec_summary_md(d.candidate, d.checks)),
+            "05_First_Week_Checklist.md": publish_pass_document(first_week_checklist_md(d.candidate)),
         }
         for name, text in expected.items():
             assert entries[name] == text.encode(), f"{name} bytes changed"

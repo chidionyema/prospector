@@ -477,8 +477,12 @@ def vet_candidate(
             # marketing stay on fast_op; claim-check runs on the moat `op` (a verification gate
             # must never be judged by the cheap model that wrote the copy).
             quality_op = _build_artifact_op(cfg, op)
+            # `score` (computed just above) is passed explicitly because this call runs
+            # BEFORE `build_dossier` below — without it the pack's scorecard artifact ships
+            # `score_available: false` (register §27.2 item 4).
             cand.tags["artifacts"] = generate_artifacts(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg)
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg,
+                score=score)
             cand.tags["marketing"] = generate_marketing_content(
                 op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op)
 

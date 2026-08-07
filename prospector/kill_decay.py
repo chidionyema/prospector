@@ -254,6 +254,92 @@ def get_stale_domains(
     return [domain for domain, _ in stale[:top_k]]
 
 
+#: Purpose string for the re-vet claim (see prospector/claim_lock.py). The drain
+#: (`run.py::_cmd_resume`) and this walker MUST use the same one, or the lock protects nothing.
+REVET_PURPOSE = "revet"
+
+
+def decayed_kill_ids(
+    store_path: Path,
+    half_life_days: int = 30,
+    revisit_below: float = 0.5,
+    limit: int | None = None,
+) -> list[str]:
+    """Candidate ids whose KILL has decayed below `revisit_below` — eligible for a re-vet.
+
+    Same exponential decay as `get_active_steers`, applied per CANDIDATE rather than per
+    domain: a kill loses half its weight every `half_life_days`, and once it is weak enough
+    the idea is allowed back in front of the moat. Weakest (oldest) first, so a bounded walk
+    re-vets the most-decayed kills rather than an arbitrary glob order.
+    """
+    dossiers_dir = store_path / "dossiers"
+    if not dossiers_dir.is_dir():
+        return []
+
+    now = datetime.now(timezone.utc)
+    decay_lambda = math.log(2) / max(1, half_life_days)
+    scored: list[tuple[float, str]] = []
+
+    for f in sorted(dossiers_dir.glob("*.json")):
+        try:
+            d = json.loads(f.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if not isinstance(d, dict) or str(d.get("verdict", "")).upper() != "KILL":
+            continue
+        cid = str(d.get("candidate_id") or d.get("id") or f.name.split(".")[0]).strip()
+        if not cid:
+            continue
+        ts_str = d.get("killed_at") or d.get("timestamp") or d.get("ts") or ""
+        if not ts_str:
+            continue
+        try:
+            ts = datetime.fromisoformat(str(ts_str).replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            continue
+        days_ago = max(0.0, (now - ts).total_seconds() / 86400)
+        strength = math.exp(-decay_lambda * days_ago)
+        if strength < revisit_below:
+            scored.append((strength, cid))
+
+    scored.sort(key=lambda x: x[0])
+    ids: list[str] = []
+    for _, cid in scored:
+        if cid not in ids:
+            ids.append(cid)
+    return ids[:limit] if limit else ids
+
+
+def iter_revet_claims(
+    store_path: Path,
+    cfg=None,
+    *,
+    half_life_days: int = 30,
+    revisit_below: float = 0.5,
+    limit: int | None = None,
+):
+    """Yield each decayed-KILL candidate id this worker EXCLUSIVELY claimed (register R2).
+
+    The claim is held for the duration of the consumer's loop body and released on the way to
+    the next item — including when the body raises, because the claim is taken inside a `with`.
+    A candidate another worker already holds (a concurrent backlog drain, or a manual
+    `vet --resume`) is SKIPPED, not waited on: without this, the drain and the walker both
+    picked up the same id and the same re-vet was paid for twice.
+
+    `cfg=None` (or `claim_lock.enabled: false`) yields every id unclaimed — the pre-rail
+    behaviour, so this is a drop-in for a caller that has no config to hand.
+    """
+    from . import claim_lock
+
+    for cid in decayed_kill_ids(store_path, half_life_days, revisit_below, limit):
+        with claim_lock.claiming(cid, REVET_PURPOSE, cfg=cfg) as got:
+            if not got:
+                continue
+            yield cid
+
+
 def re_seed_suggestions(store_path: Path, count: int = 3) -> list[str]:
     """Generate re-seeding suggestions for stale domains."""
     stale = get_stale_domains(store_path, top_k=count * 2)

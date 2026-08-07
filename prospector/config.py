@@ -336,6 +336,50 @@ def _validate_prescreen_prefilter(raw: Any) -> dict[str, Any]:
     return dict(raw)
 
 
+# Strict key allowlists for the blocks added by the commercial-readiness programme.
+# Same rule as `_validate_admissibility` and `_validate_prescreen_prefilter`: a typo must
+# stop the process at startup, because the alternative — `shadow_mod: true` silently doing
+# nothing — is a failure this repo has already paid for more than once.
+_BLOCK_KEYS: dict[str, frozenset[str]] = {
+    # §25.6 — deterministic numeric-citation check. SHADOW ONLY by founder decision.
+    "numeric_citation": frozenset({
+        "enabled", "shadow_mode", "min_digits", "ignore_years", "tolerance", "log_dir",
+    }),
+    # V2 — under-coverage sampler over the four axes that actually exist as columns.
+    "coverage_sampler": frozenset({
+        "enabled", "axes", "method", "unknown_policy", "recent_window",
+        "min_coverage", "seed",
+    }),
+    # V4 — nightly meta-shape monitor: "78 niches, one shape" becomes a measured number.
+    "meta_shape_monitor": frozenset({
+        "enabled", "embed_model", "ollama_host", "clusters",
+        "alert_top_cluster_share", "min_rows", "log_dir",
+    }),
+    # R2 — per-candidate claim lock so a drain and a manual resume cannot both pay for
+    # the same re-vet. A correctness rail, so unlike the others it defaults ON.
+    "claim_lock": frozenset({"enabled", "dir", "stale_after_s"}),
+    # F1-F4 — deterministic buyer-facing data artifacts (scorecard, financials,
+    # comparables, radar SVG, XLSX, PDF). Zero LLM calls.
+    "pack_data": frozenset({"enabled", "formats", "chrome_path"}),
+}
+
+
+def _validate_block(name: str, raw: Any) -> dict[str, Any]:
+    """Validate one of the `_BLOCK_KEYS` config blocks, failing loudly on a typo."""
+    if not raw:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"config `{name}` must be a mapping, got {type(raw).__name__}")
+    known = _BLOCK_KEYS[name]
+    unknown = set(raw) - known
+    if unknown:
+        raise ValueError(
+            f"config `{name}` has unknown key(s): {sorted(unknown)}; "
+            f"known keys are {sorted(known)}")
+    return dict(raw)
+
+
 @dataclass
 class Config:
     # str (single brain) or list[str] (ordered failover chain, Part 9).
@@ -407,6 +451,25 @@ class Config:
     # block can change a prescreen decision — acting on the prefilter is a separate,
     # unbuilt change that E6 must earn with measured agreement first.
     prescreen_prefilter: dict[str, Any] = field(default_factory=dict)
+    # §25.6 — deterministic numeric-citation check. Q4c measured that ~1 figure in 10 in a
+    # dossier rationale appears in NO retrieved passage: the model invented it. This check
+    # extracts the figures and confirms each one appears in the passage its own rationale
+    # cites. Founder decision: SHADOW MODE FIRST — it logs, it never demotes a verdict.
+    numeric_citation: dict[str, Any] = field(default_factory=dict)
+    # V2 — under-coverage sampler. Built on the four axes that are real COLUMNS in
+    # `dossiers` (ambition_tier, structural_form, audience, market), not on `sector`,
+    # which exists only as prompt text and is therefore unmeasurable. Default OFF.
+    coverage_sampler: dict[str, Any] = field(default_factory=dict)
+    # V4 — meta-shape monitor: embeds catalogue one-liners locally and alerts when one
+    # cluster exceeds a share. Makes "78 niches, one shape" a number instead of a worry.
+    meta_shape_monitor: dict[str, Any] = field(default_factory=dict)
+    # R2 — per-candidate claim lock for drain/decay/resume. Without it a concurrent drain
+    # and a manual `vet --resume` can both claim the same candidate and pay twice for the
+    # same re-vet. Defaults ON: this is a correctness rail, not an experiment.
+    claim_lock: dict[str, Any] = field(default_factory=dict)
+    # F1-F4 — deterministic buyer-facing data artifacts. The comparables in particular are
+    # already fetched today and then DISCARDED; the buyer never sees the price evidence.
+    pack_data: dict[str, Any] = field(default_factory=dict)
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
@@ -776,6 +839,12 @@ def load_config(path: str | Path | None = None) -> Config:
             else float(raw.get("dedup_token_threshold", 0.34))
         ),
         prescreen_prefilter=_validate_prescreen_prefilter(raw.get("prescreen_prefilter")),
+        numeric_citation=_validate_block("numeric_citation", raw.get("numeric_citation")),
+        coverage_sampler=_validate_block("coverage_sampler", raw.get("coverage_sampler")),
+        meta_shape_monitor=_validate_block(
+            "meta_shape_monitor", raw.get("meta_shape_monitor")),
+        claim_lock=_validate_block("claim_lock", raw.get("claim_lock")),
+        pack_data=_validate_block("pack_data", raw.get("pack_data")),
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},
