@@ -2420,38 +2420,55 @@ and the preflight is free.
 tails — `"productized uses proprietary employment"`, `"paralegal drafts court-ready witness"` are real
 rendered fragments. Same defect class as the `who_pays` one above, in the slot E1 does not vary.
 
-### 29.5 The spend limit was invisible to the classifier — the outage that could not self-heal
+### 29.5 Why run #6 kept spending — and the retraction of my first answer to that question
 
-Run #6 did not merely die on the monthly spend limit. It died **without the engine ever learning
-that is what happened**, which is why nothing fell back and why 50 further calls were spent into a
-provider already known to be dead. The chain of custody, each link measured:
+**RETRACTED, 2026-08-07, same day.** The first version of this section claimed the monthly spend
+limit was invisible to `classify_exhaustion`, and that the resulting absence of a dead mark is why
+50 further calls burned. That is false, and it was committed before it was checked. The fragment it
+reasoned from — `'…e_state":"off","fast_mode_disabled_reason":"sdk_opt_in_required","subtype":
+"success","api_error_st'` — was not the payload. It was the payload after **my own reporting script
+cut it to 180 characters**, and I then classified the cut and reported the result as the engine's.
+
+The untruncated error, recovered from `tools/experiments/e3_concurrency_knee_receipts.json`:
 
 ```
-classify_exhaustion('claude cli exit 1: e_state":"off","fast_mode_disabled_reason":
-                     "sdk_opt_in_required","subtype":"success","api_error_st')
-  ->  ''          # NOT_EXHAUSTION
+detail length                      300      # the tail slice, exactly full
+'monthly spend limit' sits         167 chars from the end   (inside the window)
+classify_exhaustion(detail)   ->   'permanent'
+detail contains ' | ' cause prefix?  False  # i.e. this is UNFIXED-code output
 ```
 
-`claude_cli.py:200` built its error detail from `proc.stdout.strip()[-300:]`. The tail is the right
-slice for prose — a CLI that dies printing an error prints it last — and the **wrong** slice for
-`--output-format json`, where the last 300 chars are trailing metadata (`fast_mode_disabled_reason`,
-`subtype`, `api_error_status`) and the causal message sits in a `result`/`error` field further back.
-On the reproduced payload the phrase naming the cause is **494 characters from the end**, against a
-300-character window. So:
+The tell I should have taken first: every error in that receipt reads `ProviderExhaustedError:
+claude cli exhausted after 1 attempts`, and `run_claude_cli` raises that class **only** under
+`if looks_exhausted(str(last_err))`. The classification I claimed was missing is a precondition of
+the exception that is sitting in the receipt. One `grep` of the raise site would have killed the
+claim before it shipped.
 
-`looks_exhausted` False → no `ProviderExhaustedError` carrying PERMANENT → no dead mark in
-`health.py` → no failover to the non-critical chain's next tier → every subsequent call re-probes a
-provider whose allowance is gone. Exactly the defect class CLAUDE.md names as "a dead brain must
-leave a trace", and the third instance of it after the 402 miss and the word-boundary HTTP miss.
+**So why did 50 more calls run?** Two reasons, neither of them the classifier:
 
-**Fix — scan for the marker, do not bet on an offset.** `errors.cause_context()` searches the WHOLE
-payload for the same marker vocabulary `classify_exhaustion` already rules on, and prepends any hit
-to the detail; the tail slice is kept after it, because it remains the best summary when there is no
-marker at all. It is shape-agnostic by construction — prose, JSON, or a truncated fragment of either
-— and it reuses the single classifier, so the two can never disagree about what counts as a cause.
-Before/after on the reproduced payload: `''` → `'permanent'`. Four tests in
-`tests/unit/test_errors_limits.py`, including one that asserts the tail slice **still** loses the
-cause, so the test cannot quietly go vacuous if the padding stops reproducing the real shape.
+1. **The harness had no abort.** `_worker` dispatched every planned wave regardless of outcome, so
+   a correctly-classified permanent exhaustion was simply retried at the next wave. Fixed below.
+2. **E3 has no failover layer to fall back to, by construction.** It calls `run_claude_cli` directly
+   (`tools/experiments/e3_concurrency_knee.py:112`) and never builds an `Operator`. The only writer
+   of a dead mark on this path is `operator.py:984` (`self._health.mark_exhausted(name, dead_for,
+   error=str(e))`, with `dead_for` from `limit_window_seconds` or the PERMANENT default). A transport
+   probe deliberately bypasses that — measuring the CLI *through* a failover chain would measure the
+   chain — so "no dead mark was written" is true of E3 and says nothing about the engine.
+
+The engine path was never shown to be broken here, and this section no longer claims it was.
+
+**Kept — but as hardening, not a fix.** `errors.cause_context()` searches the WHOLE payload for the
+marker vocabulary `classify_exhaustion` already rules on and prepends any hit to the detail; the tail
+slice is kept after it, because it remains the best summary when there is no marker at all. It is
+shape-agnostic by construction — prose, JSON, or a truncated fragment of either — and it reuses the
+single classifier, so the two can never disagree about what counts as a cause. It is retained because
+what it removes is real even though the failure was not: the observed payload cleared the window by
+**133 characters**, that margin is a function of how much metadata trails the `result` field, and no
+test anywhere pinned it. The `''` → `'permanent'` transition is measured on a **constructed** payload
+(`_SPEND_LIMIT_PAYLOAD`, `tests/unit/test_errors_limits.py`) that moves `result` in front of
+`modelUsage`/`permission_denials`/timing; whether a real CLI ever emits that ordering is **HYPOTHESIS
+— unverified**, and the test file says so. Four tests, one of which asserts the tail slice still
+loses the cause on that payload so the pair cannot quietly go vacuous.
 
 **Fix — the harness stops spending.** `_worker` now aborts a level the moment a call returns a
 PERMANENT exhaustion, and the sweep aborts with it; the partial level is **dropped, not pooled**,
@@ -2462,10 +2479,56 @@ tests in `tests/unit/test_e3_abort_on_exhaustion.py`, CLI stubbed, zero spend; t
 pins the rule to `errors.classify_exhaustion` rather than a private string list.
 
 **What MiniMax can and cannot heal.** `MINIMAX_API_KEY` is present and `_NONCRITICAL_ORDER =
-("claude_cli", "minimax")` (`run.py:285`) already fails generation/prescreen/score over — and that
-path now actually fires, because the cause finally reaches the classifier. It does **not** heal
+("claude_cli", "minimax")` (`run.py:285`) already fails generation/prescreen/score over. Given the
+retraction above, the honest statement of that path's status is: it is **wired and unexercised in
+evidence I hold** — `operator.py:984` writes the dead mark and the classifier ruled `permanent` on
+the real payload, but no run in this session drove a spend-limit outage through the operator chain,
+because E3 does not use one. Proving it end to end is a named open item below. It does **not** heal
 verdicts: `config.yaml:36` is `operator: [claude_cli]`, MiniMax having been removed from the verdict
 chain by founder decision on 2026-08-06 on the recorded ground that a provisional ruling costs a full
 verdict run now plus a full re-vet later. That fence is intact and was not touched. It also means E1
 and E3 genuinely cannot fall back: E1 measures verdicts, and E3 measures the Claude CLI's transport
 specifically, so a MiniMax arm would be a different measurement wearing the same name.
+
+### 29.6 Closing the hole the retraction opened: the failover path, exercised
+
+§29.5 ends by admitting the self-heal path was **wired and unexercised in evidence I held**. It is
+now exercised. `tests/unit/test_spend_limit_failover.py` replays the outage through a real
+`FallbackOperator` on the **verbatim** payload from the receipt — `claude_cli` raising, `minimax`
+next — and asserts what actually has to be true for the engine to heal itself:
+
+| Property | Assertion |
+|---|---|
+| The retraction's load-bearing fact | `classify_exhaustion(OBSERVED_DETAIL) == PERMANENT` |
+| The tie is real, not won by default | strip the `result` sentence → the same payload reads `TRANSIENT` |
+| The next tier serves | `fb.complete_json(...) == {"ok": True}`, `minimax.calls == 1` |
+| The dead brain leaves a trace | `h.is_dead("claude_cli")`, `dead_until - now == 3600.0` (not the 60s floor) |
+| The trace survives the process | a SECOND chain over the same health file calls `claude_cli` **0** times |
+
+**Mutation-proved, because a green test is not evidence that it can fail.** Deleting
+`self._health.mark_exhausted(...)` at `operator.py:984` must break exactly the health assertions:
+
+```
+MUTATION: operator.py:984 -> pass
+FAILED test_the_outage_fails_over_to_minimax_and_marks_claude_cli_dead
+FAILED test_the_dead_brain_is_not_re_probed_by_a_LATER_CHAIN
+2 failed, 3 passed
+(restored) 5 passed
+```
+
+The first draft of that second test made two calls on ONE chain and **passed under the mutation** —
+the in-run circuit breaker skips a hard-tripped brain by itself, so the assertion was pinning the
+breaker while the health file was free to rot. Only a second chain, with fresh breakers over the
+same file, isolates persistence. That is the same class of error as §29.5's: a green result read as
+proof of the mechanism I had in mind rather than of the mechanism actually under load.
+
+**A real gap found while proving this, and deliberately not "fixed".** `limit_window_seconds` returns
+`None` for a MONTHLY spend limit: `classify_limit` (`errors.py:283-293`) knows only session-5h and
+weekly, so the outage takes `DEFAULT_EXHAUSTION_S` = 3600s and the brain is re-probed hourly until
+the billing month turns. Lengthening it was rejected on two measurements, not on taste: `health.py:167`
+clamps every window to `_MAX_DEAD_S` = 24h, so a "one month" class cannot exist anyway and the most
+it could buy is 24 probes/day → 1/day; and a spend limit is the one limit an operator clears at will
+— it was raised by hand **during this very outage**, so a longer bench trades ~24 fast-failing probes
+a day (the observed failures returned in ~1.3s) for up to 24h of silence after a raise. Pinned as a
+decision in `test_a_monthly_limit_takes_the_hourly_default_and_that_is_deliberate`, to be revisited
+only on evidence that the probes cost more than the staleness.

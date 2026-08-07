@@ -164,24 +164,29 @@ def cause_context(text: str, width: int = 140, limit: int = 3) -> str:
     An adapter that must shorten a payload before logging it has to choose a slice, and every
     fixed slice is a bet about where the cause sits. `claude_cli.py` bet on the TAIL
     (`proc.stdout.strip()[-300:]`), which is right for prose — a CLI that dies printing an
-    error prints it last — and wrong for `--output-format json`, where the tail is trailing
-    metadata and the cause is a `result`/`error` field in the middle. Measured 2026-08-07, on
-    the real payload that ended E3 run #6 after 50 calls:
+    error prints it last — and a bet nonetheless under `--output-format json`, where the tail
+    is trailing metadata and the cause is a `result` field somewhere in the middle.
 
-        classify_exhaustion('claude cli exit 1: e_state":"off","fast_mode_disabled_reason":'
-                            '"sdk_opt_in_required","subtype":"success","api_error_st')
-        -> ''            i.e. NOT_EXHAUSTION
+    THIS IS A DEFENSIVE CHANGE, NOT A FIX FOR AN OBSERVED MISS. It is documented that way
+    because the first write-up of it claimed the opposite and was wrong. Measured 2026-08-07
+    on the actual payload that ended E3 run #6, recovered untruncated from
+    `tools/experiments/e3_concurrency_knee_receipts.json`:
 
-    The account had hit its monthly spend limit. The phrase saying so was in the payload and
-    the slice threw it away, so `looks_exhausted` was False, no `ProviderExhaustedError`
-    carried a permanent classification, no dead mark was written, and nothing could fail over
-    to the non-critical chain's next tier. That is the same defect class as the 402 miss and
-    the word-boundary HTTP miss: a dead brain that leaves no trace.
+        detail length                     300      (the tail slice, exactly full)
+        'monthly spend limit' sits        167 chars from the end
+        classify_exhaustion(detail)  ->   'permanent'
 
-    Scanning for the MARKER instead of guessing at an offset is shape-agnostic — it works on
-    prose, on JSON, on a truncated fragment of either — and it reuses the single marker
-    vocabulary that `classify_exhaustion` already rules on, so the two can never disagree
-    about what counts as a cause.
+    The bet PAID on that payload, with 133 characters of margin: the account's spend-limit
+    message reached the classifier, `looks_exhausted` was True, and every call in the receipt
+    is a `ProviderExhaustedError` — which `run_claude_cli` raises only on that branch. What
+    this function removes is the margin, not a live defect: it is 133 characters of luck about
+    how much metadata trails the `result` field, and no test anywhere pinned it.
+
+    Scanning for the MARKER instead of guessing at an offset is shape-agnostic — prose, JSON,
+    or a truncated fragment of either — and it reuses the single marker vocabulary that
+    `classify_exhaustion` already rules on, so the two can never disagree about what counts as
+    a cause. The payload in `tests/unit/test_errors_limits.py` that DOES defeat the tail slice
+    is constructed, and is labelled there as constructed.
     """
     t = (text or "")
     low = t.lower()

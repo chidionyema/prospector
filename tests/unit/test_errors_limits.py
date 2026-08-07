@@ -131,17 +131,23 @@ def test_relative_shapes_unchanged():
 
 
 # ---------------------------------------------------------------------------
-# cause_context — a truncation that drops the cause is an outage with no trace
+# cause_context — a fixed slice is a bet about where the cause sits
 #
 # 2026-08-07: the account hit its monthly spend limit mid-run. `claude_cli.py` built its error
-# detail from `proc.stdout.strip()[-300:]`, and with `--output-format json` the last 300 chars
-# are trailing metadata, so the phrase naming the cause was sliced away. The classifier saw
-# NOT_EXHAUSTION, no permanent dead mark was written, nothing failed over, and the harness
-# spent 50 more calls into a provider already known to be dead.
+# detail from `proc.stdout.strip()[-300:]`; under `--output-format json` the tail is trailing
+# metadata and the causal message is a `result` field further back.
+#
+# ON THE OBSERVED PAYLOAD THE SLICE WON, with 133 characters to spare: the detail was exactly
+# 300 chars, 'monthly spend limit' sat 167 from the end, and it classified 'permanent'. These
+# tests therefore pin a DEFENSIVE property — that the cause reaches the classifier wherever it
+# sits — not a regression that was seen to bite. The first write-up of this change asserted a
+# real miss on the strength of a fragment that had been truncated in the reporting, and was
+# wrong; §29.5 of docs/COMMERCIAL_READINESS_PROGRAM.md carries the correction.
 # ---------------------------------------------------------------------------
 
-# Faithful to the observed payload: the real 300-char tail held ONLY metadata
-# (…fast_mode_disabled_reason…subtype…api_error_st), so the cause sat further back than that.
+# CONSTRUCTED, not observed. Real claude-CLI JSON puts `result` near the end; this payload
+# moves it in front of modelUsage/permission_denials/timing so the cause falls outside a
+# 300-char tail, which is the shape the tail slice cannot survive.
 _SPEND_LIMIT_PAYLOAD = (
     '{"type":"result","is_error":true,'
     '"result":"API Error: Your monthly spend limit has been reached.",'
@@ -157,7 +163,7 @@ _SPEND_LIMIT_PAYLOAD = (
 
 
 def test_tail_slice_loses_the_cause_but_cause_context_recovers_it():
-    """The regression, stated as the two classifications it produced."""
+    """On a payload the tail slice cannot survive, cause_context still reaches the verdict."""
     from prospector.errors import cause_context, classify_exhaustion
 
     # The defect is only real if the cause is genuinely outside the tail window.
@@ -166,7 +172,7 @@ def test_tail_slice_loses_the_cause_but_cause_context_recovers_it():
     tail_only = _SPEND_LIMIT_PAYLOAD.strip()[-300:]
     assert classify_exhaustion(f"claude cli exit 1: {tail_only}") == "", (
         "the tail slice must still be shown to lose the cause — if this starts passing, the "
-        "payload padding no longer reproduces the 2026-08-07 shape and the test is vacuous")
+        "constructed payload no longer defeats the slice and the test is vacuous")
 
     recovered = cause_context(_SPEND_LIMIT_PAYLOAD)
     assert "monthly spend limit" in recovered
