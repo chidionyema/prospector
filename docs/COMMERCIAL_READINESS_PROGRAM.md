@@ -769,3 +769,131 @@ doctrine at `:210-214`, and neither kill reproduces. But `:215-219` still carrie
 ending "hence legality kills on `supported`" — the code was right and the comment argued for the
 bug. Replaced with the history plus the two receipts and a "do NOT fix this back" line. Not a
 behaviour change; a change to the thing that would have caused the next regression.
+
+## 18. The grounding bottleneck is RELEVANCE, not availability (2026-08-07, offline, zero LLM)
+
+This section replaces the standing "the 19:55 tick had healthy retrieval and still killed all 15"
+lead. That framing is retired: the premise was partly wrong, and the corrected version points at a
+bigger, cheaper lever.
+
+### 18.1 The premise, corrected
+
+There is no 19:55 tick. `store/scheduler/ticks.jsonl` has 2,087 rows, 874 of them allowed and
+non-dry, and none carries a 19:55 timestamp. Reconstructing batches from `created_at` clustering
+over `store/dossiers/*.json` (gap > 20 min starts a new batch), the nearest evening batch on
+2026-08-06 is **19:38:41, n=8** — not 15 — and its kills are NOT one systemic cause:
+
+    min_composite 3, moat_ungrounded 3, source_or_die 2
+
+So 5 of 8 died on grounding-QUALITY gates. "Healthy retrieval" was true at the probe level and
+false at the passage level, and that distinction is the whole finding.
+
+Also confirmed while measuring, so nobody re-derives them:
+- The R2 grounding halt is **exactly one row** in the whole file: `2026-08-06T21:58:21`,
+  `err=GroundingInfrastructureError: ALL grounding providers dead`. The measured severity in §16
+  (1 halt / 195 real ticks / 17 min) stands.
+- The rate gate is **live and firing in production**: `2026-08-07T02:52:58` logged
+  "grounding degraded: the retrieval probe did not answer within 45s — generating now would mint
+  DEFER rows rather than verdicts, so this tick only drains". The rule works as designed.
+- Tick rows carry an EMPTY `result` object in every row measured. E4 stage telemetry landed on
+  `main` and only reached the daemon's checkout with the merge below, so tick-level outcome
+  attribution starts from now, not retroactively.
+
+### 18.2 The actual bottleneck
+
+Across 473 August dossiers, `moat_ungrounded` fired 117 times — the second-largest gate after
+`min_composite` (119), and combined with `source_or_die` (14) that is **131 of 366 August kills
+(35.8%) lost to grounding quality rather than idea quality**.
+
+The decisive measurement: those 117 dossiers carry a **mean of 21.4 citations each, and ZERO of
+them have zero citations**. Retrieval fetched documents every time. The checks still ruled
+`unverifiable` (320 unverifiable vs 218 supported vs 2 refuted across their checks). The engine is
+not starved of sources; it is starved of sources that ANSWER THE QUESTION ASKED.
+
+Per-check grounding yield, all August dossiers (`verdict` distribution, mean citations per check).
+**This table is a snapshot of a MOVING store — do not quote it, re-run it.** The daemon writes new
+dossiers continuously, so the figures drift within minutes (re-run 20 minutes later: kills
+366 -> 371, grounding share 35.8% -> 35.3%, incumbency 55.0% -> 54.8%). The authority is
+`.venv/bin/python tools/experiments/e12_grounding_yield.py`, which prints this table, the gate
+mix, the zero-citation count and the E1 eligibility check, and writes
+`e12_grounding_yield_receipts.json`. The RANKING is what is stable, not the decimals.
+
+| check | n | unverifiable | supported | refuted | mean cites | mean conf |
+|---|---|---|---|---|---|---|
+| payer_solvency | 311 | **60.5%** | 30.5% | 9.0% | 4.3 | 0.56 |
+| incumbency | 229 | **55.0%** | 17.0% | 27.9% | 4.9 | 0.62 |
+| legality | 305 | **54.8%** | 42.6% | 2.6% | 4.7 | 0.57 |
+| value_durability | 290 | 48.3% | 40.7% | 11.0% | 3.9 | 0.51 |
+| pain_reality | 237 | 40.5% | 57.8% | 1.7% | 4.2 | 0.57 |
+| distribution | 288 | 37.5% | 61.5% | 1.0% | 4.4 | 0.58 |
+| claims_verifiable | 104 | 35.6% | 55.8% | 8.7% | 4.9 | 0.61 |
+| buyer_intent | 209 | 33.0% | 67.0% | 0.0% | 4.2 | 0.56 |
+| route_to_market | 80 | 32.5% | 61.2% | 6.2% | 4.1 | 0.53 |
+| currency | 129 | 28.7% | 66.7% | 4.7% | 4.7 | 0.59 |
+
+Every check retrieves ~4-5 citations. The spread from 28.7% to 60.5% unverifiable is therefore
+NOT a retrieval-volume effect. It is query targeting.
+
+### 18.3 What this changes about E1
+
+E1's arm list is half right and cannot be fixed by config alone.
+
+- **`payer_solvency` is the correct target** — the worst check in the engine at 60.5%
+  unverifiable, and the entity template ("{payer} budget spending on {base}") attacks exactly the
+  failure mode.
+- **`distribution` is the wrong second target.** At 37.5% it is the fifth-BEST check of ten. The
+  headroom is small and the measurement will be noisy.
+- **The two checks that deserve the arm — `incumbency` (55.0%) and `legality` (54.8%) — cannot
+  receive it today.** `_ENTITY_TEMPLATES` (`prospector/verify.py:223-232`) has exactly two keys,
+  `payer_solvency` and `distribution`. `_entity_queries` returns `[]` for any other check
+  (`verify.py:241-243`) and the caller silently falls through to the LLM chain
+  (`verify.py:478-483`).
+
+  **TRAP: `retrieval.hybrid_entity_checks` looks like a general switch and is not.** Listing
+  `incumbency` or `legality` there is INERT — no error, no log, the arm simply never engages and
+  the experiment reads as "no effect". Extending `_ENTITY_TEMPLATES` is a code change, and it is
+  the natural E1 follow-on.
+
+### 18.4 A limit on E1's measurement plan
+
+The plan recorded earlier ("compute per-arm unverifiable rate offline from
+`CheckResult.query_source`") works **forward only**. `query_source` exists and is populated
+(`models.py:213`; set at `verify.py:481-493`, persisted at `:527/:534/:553/:561`), but no August
+dossier carries the field, because the code reached the daemon's checkout only with today's merge.
+There is no retroactive control arm. Both arms must be run fresh.
+
+### 18.5 Deployment — P0 is now actually live
+
+The standing blocker ("merging PR #122 to main did not make P0 live, because the daemon's launchd
+`WorkingDirectory` is the checkout on `fix/durable-ledger-fence`") is CLOSED.
+
+The "~27 conflicting source files" estimate was wrong. Measured with
+`git merge-tree --write-tree origin/main HEAD`: **exactly two files conflict**,
+`prospector/decay.py` and `prospector/scheduler/alerts.py`, and both conflicts are additive rather
+than semantic. Resolved per-hunk so each file keeps the other side's auto-merged changes:
+
+- `decay.py` kept HEAD — a strict superset: the same `logger.info` plus `_queue_unlist()` and the
+  CRITICAL "LIVE PACK KILLED ON RE-VET, still sellable" alert. Taking main's side would have
+  re-opened the money-rail gap where a re-vetted KILL keeps selling.
+- `alerts.py` kept origin/main — the superset: `TELEGRAM_KEYS` gains `moat_blind`.
+
+Receipts: merge commit `190cd00`, **920 passed / 3 skipped** on the merged tree (up from 875 on the
+branch alone), POPDD gate PASS (1725 python-lane tests). Fast-forwarded into the daemon's checkout
+and pushed. Daemon restarted onto it: pid 49515 -> 19735, cwd
+`/Users/chidionyema/Documents/code/prospector`. `hybrid_entity_checks`, `moat_blind`,
+`_queue_unlist` and `_infra_exception_action` are all present in the live checkout.
+
+### 18.6 Ranking, revised
+
+`moat_ungrounded` + `source_or_die` = 35.8% of August kills, all of them on candidates that DID
+retrieve evidence. That is a larger and cheaper lever than E11's confidence floor (§17: floor 0.4
+frees 66 of 333 hard-gate kills) because it does not loosen any gate — it makes the evidence
+actually arrive. Query targeting should outrank the floor decision in sequencing.
+
+### 18.7 Daemon-level proof that the merge is actually running
+
+Presence on disk is not deployment. The probe that settles it: re-running E12 twenty minutes after
+the restart shows `query_source present on checks: {'llm_batched': 4}`. No August dossier carries
+that field at all (§18.4) — it can only have been written by code that reached the checkout with
+today's merge. The new daemon (pid 19735) is therefore executing the merged `verify.py`, not the
+old image. That is the receipt "P0 is live" needs; the merge commit alone is not.
