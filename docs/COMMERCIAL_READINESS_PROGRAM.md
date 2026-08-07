@@ -620,31 +620,51 @@ comment at `config.yaml:127-131`:
 
 ### R2 — a raised grounding outage walked around the 3-strike rail and killed the daemon (2026-08-07)
 
-**Symptom, measured not asserted.** Distinct daemon pids per hour in `store/scheduler/audit/*.jsonl`,
-against a ~2.5h tick cadence (healthy value: 1):
+**Mechanism (this part holds).** `_infra_abort_check` (`run.py:61`) is a correct 3-strike rail, but
+it is fed *only* by dossiers a vet RETURNED. A vet that RAISES `GroundingInfrastructureError`
+returns nothing, so it never reached the rail: `run.py:845` re-raised unconditionally on first
+sight → `scheduler/run_scheduled.py:892` → `sys.exit(1)` → launchd `KeepAlive` relaunch.
 
-| hour (UTC) | distinct daemon pids |
-|---|---|
-| 2026-08-06T17 | 6 |
-| 2026-08-06T23 | 7 |
-| 2026-08-07T00 | 8 |
+**⚠️ The SEVERITY claim did not survive measurement — twice.** The premise entering this work was
+"seven daemon deaths in fourteen minutes", read off the **pid column of
+`store/scheduler/audit/*.jsonl`**. I reproduced that count (8 distinct pids in the 00:00 hour of
+2026-08-07) and wrote it up before attributing it. Both readings are wrong: **audit-log pids are
+not daemon-restart counts** — any process writing audit rows appears there (CLI runs, control
+centre, pytest). Confirmed live: pids 89119 and 90803 appear in the 05:00 hour while daemon pid
+49515 was continuously up (`ps` elapsed 05:55:25).
 
-**Mechanism.** `_infra_abort_check` (`run.py:61`) is a correct 3-strike rail, but it is fed *only*
-by dossiers a vet RETURNED. A vet that RAISES `GroundingInfrastructureError` returns nothing, so it
-never reached the rail: `run.py:845` re-raised unconditionally on first sight →
-`scheduler/run_scheduled.py:892` → `sys.exit(1)` → launchd `KeepAlive` relaunch.
+The attributable signature is a tick row in `store/scheduler/ticks.jsonl` whose **top-level**
+`error` contains `GroundingInfrastructureError`, because `run_scheduled.py` writes the tick and
+*then* exits. Across **195 real (non-dry-run) ticks, 2026-08-01..07**:
 
-**Why one bad search collapsed the entire chain** (same audit window, 2026-08-06/07):
+| where the error appeared | count | daemon exited? |
+|---|---|---|
+| top-level `tick["error"]` | **1** (2026-08-06T21:58:21) | yes — `sys.exit(1)` |
+| nested in `tick["result"]["resumed"]` | 1 (2026-08-07T02:52) | **no** — caught downstream |
+
+**Actual cost of the one real halt:** next real tick 2026-08-07T00:15:01 → a 2.28 h gap against a
+2.00 h configured interval = **17 minutes** of lost generation, plus ~7 wasted process launches.
+
+The 00:00-hour pid churn is real but has a *different* cause: seven short-lived pids each emitting
+1-2 `search` rows over ~15 s at ~2-minute intervals — launchd relaunching and
+`_startup_grounding_check` correctly refusing to start on a cheap probe. That is the **designed**
+behaviour, not this bug.
+
+**Also refuted: my own arithmetic.** I computed "ddg fails 0.83% per search (25/3014) → at ~200
+searches/batch, P(≥1 full-chain collapse) = 81%". That model assumes every ddg miss collapses the
+whole chain, i.e. that tier 3 always fails too. One halt in ~70 real ticks refutes it: exa was
+consulted only 29 times (≈ the 25 ddg failures), and `claude_cli` usually *succeeded*.
+**Do not reuse the 81% figure.** The per-provider counts themselves stand:
 
 | provider | calls | failed | rate |
 |---|---|---|---|
-| ddg (tier 1) | 3014 | 25 | **0.83%** |
-| exa (tier 2) | 29 | 28 | **96.6%** (DNS flap on `api.exa.ai`; resolves fine now — it was transient) |
-| claude_cli (tier 3) | — | — | timing out at 150s |
+| ddg (tier 1) | 3014 | 25 | 0.83% |
+| exa (tier 2) | 29 | 28 | 96.6% — DNS flap on `api.exa.ai`; it resolves fine now, so this was transient |
 
-So whenever ddg missed, tier 2 was effectively absent and the chain rested on a timing-out tier 3.
-At ~200 searches/batch a 0.83% per-search failure rate gives **P(≥1 full-chain collapse) = 81%** —
-this was not a rare event, which is what the pid table shows.
+**Verdict on priority:** the fix is right — a design where one tail-query failure can exit the
+daemon is wrong on its face, and its blast radius is unbounded if grounding degrades for longer.
+But it is a **latent-risk fix worth ~17 minutes of measured loss**, not the cause of the 0-PASS
+run, and it should not be sequenced ahead of E1/E2/E3 on the strength of the original framing.
 
 **Fix.** `_infra_exception_action(streak, threshold)` (`run.py:76`) routes the raise through the
 *same* counter as the returned defers: `continue` below threshold, `halt` at/above it (cancel
@@ -653,15 +673,25 @@ un-started vets, then raise **after** the completion loop drains so in-flight ve
 than no brake. The spend rails are untouched: `_startup_grounding_check` still refuses to start on
 a cheap probe, and the daily cap is unmoved.
 
-**Receipts.** `875 passed, 2 skipped in 34.01s` (`.venv/bin/python -m pytest tests/unit -q`), up
-from 869 — six new tests in `tests/unit/test_grounding_outage_does_not_kill_daemon.py` plus nine
+**Receipts.** `875 passed, 2 skipped in 31.74s` (`.venv/bin/python -m pytest tests/unit -q`), up
+from 866 — six new tests in `tests/unit/test_grounding_outage_does_not_kill_daemon.py` plus nine
 in `test_infra_abort_streak.py`. **Non-vacuity was bisected, not assumed:** with only the old
-`except GroundingInfrastructureError: raise` reinstated, exactly the three regression tests fail
-(`test_one_grounding_outage_does_not_kill_the_batch`,
+`except GroundingInfrastructureError: raise` reinstated, exactly the three loop-level regression
+tests fail (`test_one_grounding_outage_does_not_kill_the_batch`,
 `test_two_consecutive_outages_still_do_not_kill_the_batch`,
-`test_a_healthy_ruling_between_outages_resets_the_streak`); the three guard tests pass both ways
-by design. The wiring tests drive the real `run_signal` loop, because the wiring — not the policy —
+`test_many_scattered_outages_below_the_threshold_never_halt`); the guard tests pass both ways by
+design. The wiring tests drive the real `run_signal` loop, because the wiring — not the policy —
 was the bug.
+
+**A flaky test of my own making, and why the obvious test is impossible here.** The first version
+of the reset test alternated outage/success through the real loop. It passed five runs, then
+failed. Cause: the streak advances in `as_completed` order, and `as_completed` yields futures that
+were *already finished* when it was first called out of a **set**, i.e. in arbitrary order — even
+with a single worker, where execution order is fixed. So no submission pattern with ≥3 collapses
+can be guaranteed not to present 3 consecutively. The loop-level file now asserts only
+order-INDEPENDENT properties; the streak-RESET property is pinned deterministically at policy level
+(`test_infra_abort_streak.py::test_a_healthy_verdict_resets_the_streak_before_a_raise`). Stability
+re-checked: 10 consecutive randomized runs, 29 passed each.
 
 **Known, accepted limitation (not silently dropped).** On the `continue` path the candidate that
 hit the outage produces no dossier and is not banked for `vet --resume`. It is a freshly generated

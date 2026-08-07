@@ -143,6 +143,68 @@ def test_the_REAL_config_yaml_parses_and_carries_the_key():
     assert run_mod._infra_abort_streak(cfg) >= 0
 
 
+# ------------------------------------------- the RAISED outage (the 2026-08-07 daemon-death bug)
+#
+# `_infra_abort_check` above only ever sees a dossier that was RETURNED. A vet that RAISES
+# GroundingInfrastructureError produces no dossier, so before 2026-08-07 it bypassed the streak
+# rail entirely: `run.py` re-raised on first sight, `run_scheduled.py:892` caught it and called
+# `sys.exit(1)`, and launchd's KeepAlive relaunched. Measured cost in the audit log: 8 distinct
+# daemon pids in the 00:00 hour of 2026-08-07 and 7 in the 23:00 hour of 2026-08-06, against a
+# ~2.5h tick cadence. These pin the streak-gated replacement.
+
+def test_a_single_raised_outage_does_not_halt():
+    """THE regression. One unlucky tail query must not kill the daemon."""
+    assert run_mod._infra_exception_action(1, 3) == "continue"
+
+
+def test_second_consecutive_raised_outage_still_does_not_halt():
+    assert run_mod._infra_exception_action(2, 3) == "continue"
+
+
+def test_third_consecutive_raised_outage_halts():
+    """A SUSTAINED outage must still stop the daemon — the spend rail is not being removed."""
+    assert run_mod._infra_exception_action(3, 3) == "halt"
+
+
+def test_streak_beyond_threshold_stays_halt():
+    assert run_mod._infra_exception_action(9, 3) == "halt"
+
+
+def test_threshold_of_one_halts_immediately():
+    """threshold=1 reproduces the old behaviour exactly, for an operator who wants it."""
+    assert run_mod._infra_exception_action(1, 1) == "halt"
+
+
+def test_disabled_rail_preserves_the_old_immediate_raise():
+    """threshold 0 disables the streak rail. It must fall back to the pre-2026-08-07 halt,
+    NOT to swallowing every outage — disabling a brake must never be quieter than having none."""
+    for streak in (1, 2, 3, 50):
+        assert run_mod._infra_exception_action(streak, 0) == "raise"
+
+
+def test_raised_and_returned_outages_share_one_streak():
+    """A batch that defers twice on DEFER_GATE and THEN raises has seen three consecutive
+    'cannot rule' events, so the third must trip. If the two paths kept separate counters an
+    alternating outage would never reach any threshold."""
+    streak = 0
+    for gate in (DEFER_GATE, DEFER_GATE):
+        streak, cancelled = run_mod._infra_abort_check(_dossier(gate), streak, 3, [])
+        assert cancelled is None
+    streak += 1  # the raise, counted into the SAME streak by run_signal
+    assert run_mod._infra_exception_action(streak, 3) == "halt"
+
+
+def test_a_healthy_verdict_resets_the_streak_before_a_raise():
+    """Two outages, one clean ruling, one outage = not sustained. Must not halt."""
+    streak = 0
+    for gate in (DEFER_GATE, DEFER_GATE):
+        streak, _ = run_mod._infra_abort_check(_dossier(gate), streak, 3, [])
+    streak, _ = run_mod._infra_abort_check(_dossier(None), streak, 3, [])
+    assert streak == 0, "a grounded ruling must reset the consecutive counter"
+    streak += 1
+    assert run_mod._infra_exception_action(streak, 3) == "continue"
+
+
 def test_infra_gates_are_only_non_verdict_gates():
     """Guard against a grounded gate (e.g. 'incumbency') ever being treated as an outage —
     that would let a run of legitimately-killed candidates abort a perfectly healthy batch."""
