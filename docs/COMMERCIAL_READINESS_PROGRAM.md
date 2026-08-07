@@ -716,3 +716,56 @@ run: the 19:55 tick had healthy retrieval and still killed all 15. That remains 
   **Engage it at the START of the measurement session and delete it at the end** — a pause file
   left behind for an experiment nobody is running is the same failure mode as the backlog cap that
   suppressed generation for six weeks.
+
+## 17. E11 RESULT — confidence-floor calibration (2026-08-07, offline, zero LLM)
+
+Script: `tools/experiments/e11_confidence_floor.py` (re-runnable, read-only over `store/dossiers/*.kill.json`).
+It drives the **real** `prospector.kill_filter.apply_gates` per lane via `cfg.for_lane(tier)`,
+not a reimplementation, and only mutates `thresholds.confidence_floor`.
+
+**Methodology correction, stated because the first pass got it wrong.** An initial run reported
+"74.6% of kills do not reproduce at floor 0.0", which is an artefact, not a finding: `apply_gates`
+only fires the per-check hard gates, so kills recorded as `min_composite` (607), `moat_ungrounded`
+(171), `adversarial_decisive` (142) and `source_or_die` (24) fire *downstream* and can never
+reproduce in this replay. The honest denominator is the **333 kills whose gate reproduces under the
+shipped config** — the only population `confidence_floor` can move. 187 of the 333 were ruled by a
+brain still on the moat today.
+
+| floor | still KILL | freed to scoring | % of the 333 |
+|---|---|---|---|
+| 0.0 (shipped, inert) | 333 | 0 | 0.0% |
+| 0.3 | 292 | 41 | 12.3% |
+| **0.4** | **267** | **66** | **19.8%** |
+| 0.5 | 189 | 144 | 43.2% |
+| 0.6 | 146 | 187 | 56.2% |
+| 0.7 | 60 | 273 | 82.0% |
+
+Confidence of the firing check (n=333): p10 0.23, p25 0.40, **median 0.55**, p75 0.65, p90 0.70.
+Freed at 0.4, by gate: `incumbency=31, value_durability=16, payer_solvency=7, legality=6,
+pain_reality=3`. At 0.5: `incumbency=66, value_durability=29, payer_solvency=17`.
+
+**Reading.** The freed kills concentrate in exactly the two gates the 2026-06-15 war room flagged
+for over-restriction (`kill_filter.py:47-50` cites it: known-good theses killed at conf 0.25 while
+the gate had already computed the signal). A floor of **0.4 is the defensible calibration** — it
+retires the bottom quartile of grounded kills (66 candidates, 19.8%) without touching the median
+kill at 0.55; those candidates fall through to scoring, where a low composite and the adversarial
+gate still stop them publishing, so this loosens *killing*, never *publishing*. 0.5+ frees ~43%+
+and is a product decision, not a calibration. NOT YET APPLIED — `confidence_floor` is still 0.0
+pending founder sign-off, because it widens what survives into the catalogue funnel.
+
+**Second finding, config-era drift.** 34 recorded per-check kills do NOT reproduce under today's
+config (`incumbency` 22, `value_durability` 9, `legality` 2, `payer_solvency` 1) — they were ruled
+under superseded gate configurations. Consistent with §10's provider-era confound: kill-rate
+comparisons across eras are measuring config changes as well as ideas.
+
+### §9 legality-polarity HYPOTHESIS — CLOSED (was: "check the claim text")
+Confirmed real, and **already fixed in the shipped config**; what remained was a comment telling
+the next reader to re-introduce it. Both dossiers fired `legality=supported` on a rationale saying
+the activity is lawful — `459b72f3630d21be` ("heirloom tomatoes are completely legal to grow, sell,
+buy, and eat anywhere in the United States", conf 0.43) and `7e603974bcde1e09` ("basic gardening
+work does not require a specific licence", conf 0.42). Both were killed for being legal. Today
+`config.yaml:224` reads `legality: [refuted]` at every lane, matching the positive-polarity
+doctrine at `:210-214`, and neither kill reproduces. But `:215-219` still carried a stale paragraph
+ending "hence legality kills on `supported`" — the code was right and the comment argued for the
+bug. Replaced with the history plus the two receipts and a "do NOT fix this back" line. Not a
+behaviour change; a change to the thing that would have caused the next regression.

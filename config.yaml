@@ -212,11 +212,16 @@ hard_gates:                      # Part 4 kill-filter; evaluated kill-fast in th
   # "supported" = PASS (space is open, legal, durable, solvent)
   # "refuted"   = KILL (incumbent exists, illegal, obsolete, broke)
   # This unified polarity ensures all hard gates kill on `refuted`.
-  # legality was historically `[refuted]`, which inverted it: it killed LEGAL ideas
-  # (verdict refuted = "no, it doesn't break the law") and let genuinely unlawful ones
-  # through. A creative-but-LAWFUL workaround (exploiting a legitimate statutory
-  # mechanism) must SURVIVE; only a margin that requires actually breaking law/terms or
-  # falsifying data is a kill — hence legality kills on `supported`.
+  # HISTORY, and a trap to not walk back into: legality once killed on `supported`, which
+  # inverted it against the positive polarity above and killed LAWFUL ideas. Receipts on
+  # disk: store/dossiers/459b72f3630d21be.kill.json (rationale: heirloom tomatoes are
+  # "completely legal to grow, sell, buy, and eat anywhere in the United States") and
+  # 7e603974bcde1e09 (rationale: "basic gardening work does not require a specific
+  # licence") — both KILLED for being legal, at conf 0.43/0.42. The gate below is now
+  # `[refuted]`, matching every other check. A creative-but-LAWFUL workaround (exploiting
+  # a legitimate statutory mechanism) must SURVIVE; only a margin that requires actually
+  # breaking law/terms or falsifying data is a kill, and that reads `refuted`.
+  # Do NOT "fix" this back to `[supported]`: that is the bug, not the fix.
   - value_durability: [refuted]
   - incumbency: [refuted]
   - payer_solvency: [refuted]
