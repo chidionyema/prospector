@@ -4,7 +4,6 @@ Structured JSON logging with latency tracking and context propagation.
 from __future__ import annotations
 
 import contextvars
-import json
 import logging
 import threading
 import time

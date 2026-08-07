@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Button, Icon, Modal, cx, useToast } from '@/components/ui';
 import { createCartCheckout, formatPrice, PacksUnavailableError } from '@/lib/api/client';
 import { useCart } from '@/lib/cart';
-import { track } from '@/lib/analytics';
+import { track, trackPriceEvent } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 
@@ -40,6 +40,17 @@ export function CartButton() {
   const checkout = async () => {
     setCheckingOut(true);
     setError(null);
+
+    // The basket is the SECOND checkout path, and until now the only untracked one. Measured
+    // 2026-08-07 over a 90-day production window: price_viewed 172, checkout_completed 1,
+    // checkout_started ZERO, a funnel with one completion and no starts, because
+    // `usePackCheckout.buy()` (which does emit, at usePackCheckout.ts:98) is not on this path.
+    // One event per line, matching price_viewed's per-pack granularity so the two compose into
+    // a rate. Fired on INTENT, before the provider call and outside the try, for the same
+    // reason the single-pack path gives: a numerator that counted only checkouts Stripe managed
+    // to open would hide exactly the case a price change is most likely to cause.
+    cart.lines.forEach((line) => trackPriceEvent('checkout_started', line));
+
     try {
       // createCartCheckout already refuses any URL that is not Stripe's hosted checkout.
       window.location.href = await createCartCheckout(

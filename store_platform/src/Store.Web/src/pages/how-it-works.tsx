@@ -3,10 +3,10 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, Icon } from '@/components/ui';
+import { buttonClasses, Icon, textLinkClass } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
-import Gauntlet from '@/components/marketing/Gauntlet';
+import CheckSequence from '@/components/marketing/CheckSequence';
 /* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
    check and needs the whole record (reason, citations), so the names file is not enough. The
    examples file is `entries[:60]` with every field intact -- byte-for-byte what `kill-log.json`
@@ -82,9 +82,32 @@ function gateIdFor(check: Check, example: KillExample | undefined): string {
   return check.id;
 }
 
-function truncateReason(reason: string, max: number): string {
-  if (reason.length <= max) return reason;
-  return reason.slice(0, max).replace(/\s+\S*$/, '') + '…';
+/**
+ * The example's reason, cut at a SENTENCE boundary, never mid-word.
+ *
+ * This used to be `slice(0, 160)` with the tail word trimmed and an ellipsis bolted on, so the six
+ * cards that carry the only evidence on the page each ended in a hanging clause and a "…". On the
+ * page whose subject is that our arguments are complete and checkable, an argument visibly cut off
+ * halfway is the wrong thing to show, and the ellipsis says "there is more we are not telling you"
+ * directly under a heading promising the opposite.
+ *
+ * So: take whole sentences while they fit. If even the first sentence is over the budget, print
+ * that whole sentence anyway. The card is then always a complete thought, and the length varies by
+ * a line or two, which is a cheaper cost than an amputated one.
+ */
+function firstSentences(reason: string, budget: number): string {
+  const text = reason.trim();
+  if (text.length <= budget) return text;
+  // Split after ., ! or ? followed by whitespace. Keeps the terminator on the sentence.
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) ?? [text];
+  let out = '';
+  for (const sentence of sentences) {
+    const next = (out + sentence).trimEnd();
+    if (out && next.length > budget) break;
+    out = next;
+    if (out.length >= budget) break;
+  }
+  return out || text;
 }
 
 export default function HowItWorks() {
@@ -105,14 +128,14 @@ export default function HowItWorks() {
       />
 
       {/*
-       * A. THE GAUNTLET, and it goes first.
+       * A. THE CHECK SEQUENCE, and it goes first.
        *
        * The page opened on an abstract description of the filter and then showed six unrelated
        * ideas dying on six different gates. Nothing on it showed a single idea going through the
        * checks in order, which is the one thing the page is named after. A reader could finish it
        * knowing the gates exist and still not know what a run looks like.
        *
-       * So a real dossier runs first, then the gate-by-gate kills. The order is the argument:
+       * So a real evidence record runs first, then the gate-by-gate kills. The order is the argument:
        * here is the machine working on one subject you can audit; here is the same machine when
        * the subject does not survive. Reversing them puts six disconnected failures in front of
        * the reader before they have seen a single complete run.
@@ -121,9 +144,9 @@ export default function HowItWorks() {
         bg="white"
         width="6xl"
         title="One idea, all the way through"
-        intro="Every pack on the shelf carries a dossier like this. The one below is real, it is the free sample, and every source in it opens."
+        intro="Every pack on the shelf carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
       >
-        <Gauntlet />
+        <CheckSequence />
       </Section>
 
       {/* B. The checks, as a stepped timeline */}
@@ -138,6 +161,18 @@ export default function HowItWorks() {
         // belongs to. The `intro` slot exists for exactly this and sits at `mt-3`.
         intro={variant.sixChecksDescription}
       >
+        {/* THE AI DISCLOSURE, AND THIS PAGE OWNS IT.
+            It was disclosed nowhere but clause 6 of the refund policy and, until 2026-08-07, a
+            paragraph on /about that told the same fact in different words. Inconsistent disclosure
+            across a site reads as evasive, so it is stated ONCE, here, on the page that explains
+            the mechanism, and the home page and /about say nothing about mechanism and link here.
+            One sentence, before the first check, because a reader who learns this after reading
+            six verdicts has been told late. */}
+        <p className="mb-10 max-w-3xl text-body leading-relaxed text-muted">
+          Every check below is run by an AI agent rather than by a person forming an opinion: the
+          agent may rule only on passages it fetched from the open web, and the sources it used are
+          published with the verdict.
+        </p>
         {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
             content. Keeping both stacked 88px between the lede and step 1. */}
         <div>
@@ -191,7 +226,7 @@ export default function HowItWorks() {
                         {example.title}
                       </h3>
                       <p className="mt-2 text-meta leading-relaxed text-muted">
-                        {truncateReason(example.reason, 160)}
+                        {firstSentences(example.reason, 160)}
                       </p>
                       <Link
                         href="/kill-log"
@@ -224,7 +259,7 @@ export default function HowItWorks() {
         <div className="max-w-3xl space-y-4">
           <p className="text-body font-normal leading-relaxed text-muted">
             After the checks clear, a second agent attacks the surviving claim. It hunts for
-            contradictions, weak citations, and gaps the first pass missed. The dossier survives
+            contradictions, weak citations, and gaps the first pass missed. The record survives
             only if every objection can be answered with the evidence already on file, no new
             research, no hand‑waving.
           </p>
@@ -232,7 +267,7 @@ export default function HowItWorks() {
             This is why silence in the evidence record means &ldquo;unverifiable,&rdquo; not
             &ldquo;false.&rdquo; The agent rules only on passages it actually fetched. If it
             cannot find the evidence, it cannot mount the kill, so the bar is high, and the
-            surviving dossiers are the ones that cleared it honestly.
+            records that survive are the ones that cleared it honestly.
           </p>
         </div>
       </Section>
@@ -252,9 +287,15 @@ export default function HowItWorks() {
             Of {(totals.killed + totals.passed).toLocaleString()} ideas researched,{' '}
             {totals.passed.toLocaleString()} survived.
           </p>
+          {/* "The checks are auditable, not a black box" was on this page TWICE: here, and in the
+              section intro directly above the six steps (`sixChecksDescription`, lib/copyConfig.ts,
+              in all three variants). A claim about our own transparency, made twice on one page,
+              is the one kind of repetition a sceptic reads as insistence. The copy dictionary keeps
+              it, because that is where it sits beside the checks it describes; this copy drops it
+              and says what is actually published instead. */}
           <p className="text-body leading-relaxed text-muted">
-            The rejects are published in full, each with the gate that fired and the sourced
-            argument that killed it. The checks are auditable, not a black box.
+            Every kill is published in full, with the check that fired and the sourced argument that
+            killed it.
           </p>
           <Link
             href="/kill-log"
@@ -266,15 +307,25 @@ export default function HowItWorks() {
         </div>
       </Section>
 
-      {/* E. Honest limits, preserved verbatim */}
+      {/* E. Honest limits, ONE LINE, and then the page that owns them.
+          /pricing is the sitewide owner of "what you do not get": it lists all four limits (no
+          guarantee of success, no live updates, no coaching, no subscription or seat) beside the
+          price they qualify, which is where a buyer is actually deciding. A second, softer account
+          of the same limits here meant the honest bit was said twice and in full nowhere. */}
       <Section
         bg="white"
         width="6xl"
         title="The honest limits"
       >
-        <div className="max-w-3xl space-y-6">
+        <div className="max-w-3xl">
           <p className="text-body font-normal leading-relaxed text-muted">
-            A pack is sourced research, not a guarantee. It&apos;s a high quality, evidence backed starting point. The work of finding, vetting, and sourcing the opportunity is done for you. Execution is still yours, and no analysis can promise a business outcome.
+            A pack is evidence-backed research, not a guarantee: the finding, the vetting and the
+            sourcing are done for you, the execution is still yours, and no analysis can promise a
+            business outcome. Everything a pack does not include is listed on the{' '}
+            <Link href="/pricing#what-you-do-not-get" className={textLinkClass('font-medium')}>
+              pricing page
+            </Link>
+            .
           </p>
         </div>
       </Section>

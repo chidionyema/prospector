@@ -17,18 +17,19 @@ If any of these fail, we are back to guessing what happened. They MUST stay gree
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from prospector import audit
 from prospector.retrieval import (
-    ExaSearchProvider, BraveSearchProvider, FixtureProvider,
-    DiskCache, FallbackSearchProvider,
+    BraveSearchProvider,
+    DiskCache,
+    ExaSearchProvider,
+    FallbackSearchProvider,
+    FixtureProvider,
 )
-
 
 # ----------------------------------------------------------------------------------
 # Fixtures / helpers
@@ -147,8 +148,9 @@ def test_search_failure_still_increments_web_calls(web_calls_snapshot, monkeypat
 
 def test_search_writes_audit_row():
     """Every search call writes exactly one audit row with the required shape."""
-    from prospector.retrieval import ExaSearchProvider
     import os
+
+    from prospector.retrieval import ExaSearchProvider
     os.environ["EXA_API_KEY"] = "test-key"
     fake_item = MagicMock(url="https://example.com/x", highlights=None, text="hi")
     with patch("exa_py.Exa") as MockExa:
@@ -207,9 +209,9 @@ def test_fallback_records_actual_provider(web_calls_snapshot, monkeypatch):
 def test_verify_run_check_writes_audit_row(monkeypatch):
     """run_check must write its own audit row so we can prove the verifier reached search."""
     from prospector.config import load_config
+    from prospector.models import Candidate
     from prospector.operator import MockOperator
     from prospector.verify import run_check
-    from prospector.models import Candidate
 
     cfg = load_config("config.yaml")
     cfg.retrieval.queries_per_check = 0  # force the deterministic template path

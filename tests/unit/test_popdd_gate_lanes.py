@@ -102,6 +102,27 @@ class TestTheLaneMapCoversEachSourceKind:
         assert lanes == ["web"]
         assert unclassified == []
 
+    def test_the_python_lane_lints_before_it_tests(self, runner):
+        """W2.3: ruff is part of the python proof, and runs repo-wide.
+
+        Two things are asserted, both of which were the defect. (1) The step exists at all
+        — a lint baseline of 0 decays back to 395 the moment nothing enforces it. (2) It
+        carries NO path arguments: `lanes_for` routes any `.py` to this lane, including
+        `run_v2.py` and `publish/publish.py` at the repo root, so scoping ruff to
+        prospector/tools/scripts/tests would report green over files it never opened.
+        """
+        py = runner.LANES["python"]
+        names = [name for name, _ in py.steps]
+        assert names[0] == "ruff", f"ruff must run before pytest (seconds vs ~175s): {names}"
+        assert "pytest" in names, names
+
+        ruff_argv = dict(py.steps)["ruff"]
+        assert ruff_argv[1:4] == ["-m", "ruff", "check"], ruff_argv
+        paths = [a for a in ruff_argv[4:] if not a.startswith("-")]
+        # "concise" is --output-format's value, not a path.
+        paths = [p for p in paths if p != "concise"]
+        assert paths == [], f"ruff must lint the whole repo, not a subset: {paths}"
+
     def test_the_web_lane_proof_is_not_pytest(self, runner):
         """A green pytest is not evidence about a .tsx diff, so the web lane must not use it."""
         web = runner.LANES["web"]

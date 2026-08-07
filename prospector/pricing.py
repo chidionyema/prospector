@@ -84,7 +84,7 @@ def _anchor_adjustment(rung_idx: int, rungs: list[int],
     return new_idx, ev, suffix
 
 
-def price_for(candidate: Candidate, score: ScoreResult, cfg: Config,
+def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
               anchors: Optional[list[PriceAnchor]] = None) -> PriceDecision:
     """Resolve a Candidate to a rung on the L1 ladder.
 
@@ -97,7 +97,10 @@ def price_for(candidate: Candidate, score: ScoreResult, cfg: Config,
 
     ``score`` is accepted for interface stability and is deliberately NOT consulted: the
     composite has a fail-safe all-zero mode (``ScoreResult.score_failed``), and tying price
-    to it would turn a scoring outage into a pricing outage.
+    to it would turn a scoring outage into a pricing outage. It is typed ``Optional``
+    because that unconsultedness has a second caller now: ``verify._check_question`` needs
+    the rung DURING the moat, which runs long before ``run.py:465`` scores anything. Passing
+    ``None`` is honest; fabricating a zeroed ``ScoreResult`` to satisfy a type would not be.
 
     ``anchors`` are the C3 ``price_comparables`` results for this candidate. They can move
     the rung by at most one step, and ONLY when config sets

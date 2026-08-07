@@ -120,7 +120,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea faces checks built to kill it.',
     howItWorksLead:
-      'Before anything reaches the store, it runs a gauntlet of AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
+      'Before anything reaches the store, it faces the checks: AI agents that each hunt for the reason it fails. Here is exactly how an idea earns its place.',
     howItWorksSeoDescription:
       'How Mumchimp works: every pack is a sourced business opportunity, vetted against checks built to kill it and sourced to retrievable evidence before it can be listed.',
 
@@ -143,9 +143,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea is tested to destruction.',
     howItWorksLead:
-      'Before an idea reaches the store, it faces a panel of AI agents designed to figure out why it would fail. They hunt for hidden legal red tape, a lack of real demand, and bad profit margins. If it survives, it gets published. If it fails, we document exactly why.',
+      'Before an idea reaches the store, it faces the checks, run by AI agents designed to figure out why it would fail. They hunt for hidden legal red tape, a lack of real demand, and bad profit margins. If it survives, it gets published. If it fails, we document exactly why.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every idea is tested to destruction by a panel of AI agents before it can be listed.',
+      'How Mumchimp works: every idea is tested to destruction by the checks, run by AI agents, before it can be listed.',
 
     // NOT "The checks every pack faced". It sat above a list of exactly six steps, which made
     // the heading assert that the six ARE the set -- the same falsehood corrected in about.tsx
@@ -170,7 +170,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksEyebrow: 'The methodology',
     howItWorksTitle: 'An adversarial review process.',
     howItWorksLead:
-      'Before publication, every concept is subjected to a simulated panel of AI agents programmed to invalidate the business model. They assess regulatory friction, market saturation, and margin compression. Validated models are published; failed models are documented in the Kill Log.',
+      'Before publication, every concept is subjected to the checks, run by AI agents programmed to invalidate the business model. They assess regulatory friction, market saturation, and margin compression. Validated models are published; failed models are documented in the Kill Log.',
     howItWorksSeoDescription:
       'How Mumchimp works: every pack is subjected to an adversarial review by AI agents before it can be listed.',
 

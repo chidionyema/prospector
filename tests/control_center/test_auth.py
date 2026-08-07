@@ -1,10 +1,9 @@
 """The Control Center operator gate must fail closed and only pass on the right password."""
 from __future__ import annotations
 
-import streamlit as st
 from streamlit.testing.v1 import AppTest
 
-from prospector.control_center.auth import _AUTHED_KEY, _PASSWORD_ENV, require_auth
+from prospector.control_center.auth import _AUTHED_KEY, _PASSWORD_ENV
 
 
 def _gated_app():

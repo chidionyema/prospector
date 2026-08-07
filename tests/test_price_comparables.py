@@ -25,13 +25,26 @@ import pytest
 
 from prospector.config import Config
 from prospector.kill_filter import is_hard_fail
-from prospector.models import (CHECKS, PRICING_CHECK, Candidate, CheckResult, PriceAnchor,
-                               ScoreResult, Source, Verdict)
-from prospector.price_comparables import (_appears_in, anchor_evidence, comparables_config,
-                                          comparables_queries, eligible_anchors,
-                                          extract_anchors, to_pence_gbp)
+from prospector.models import (
+    CHECKS,
+    PRICING_CHECK,
+    Candidate,
+    CheckResult,
+    PriceAnchor,
+    ScoreResult,
+    Source,
+    Verdict,
+)
+from prospector.price_comparables import (
+    _appears_in,
+    anchor_evidence,
+    comparables_config,
+    comparables_queries,
+    eligible_anchors,
+    extract_anchors,
+    to_pence_gbp,
+)
 from prospector.pricing import price_for
-
 
 # --- helpers ---------------------------------------------------------------
 

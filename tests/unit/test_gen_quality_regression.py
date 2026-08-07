@@ -7,14 +7,12 @@ that regresses these numbers without an intentional re-baseline fails CI.
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
-import pytest
-from prospector.adaptive import get_pass_traits, calculate_grid_priorities, get_exemplars
+from prospector.adaptive import calculate_grid_priorities, get_exemplars, get_pass_traits
 from prospector.config import Config, Thresholds
 from prospector.models import Candidate
-from prospector.novelty import select_diverse_candidates, _text_similarity
+from prospector.novelty import _text_similarity, select_diverse_candidates
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 BASELINE_PATH = FIXTURES / "gen_quality_baseline.json"
@@ -199,7 +197,6 @@ def test_grid_priorities_boosting_meets_baseline():
 
 def test_exemplars_handle_edge_cases():
     """get_exemplars must never crash on missing/incomplete dossiers."""
-    baseline = _load_baseline()["exemplars"]["baseline"]
 
     class MockStore:
         def all(self, decision=None):
@@ -222,7 +219,7 @@ def test_exemplars_handle_edge_cases():
     # Even with missing dossiers, should not raise
     assert True  # survived
 
-    print(f"  Exemplar robustness: survived missing dossier — PASS")
+    print("  Exemplar robustness: survived missing dossier — PASS")
 
 
 # ---------------------------------------------------------------------------
@@ -232,8 +229,8 @@ def test_exemplars_handle_edge_cases():
 def test_thin_candidates_skip_refinement():
     """The _refine_wave filter in generate.py must not send thin candidates to LLM.
     Proof: with 2 structural forms, thin candidate survives in its own form slot."""
-    from prospector.generate import generate
     from prospector.config import Config as Cfg
+    from prospector.generate import generate
 
     refinement_calls = []
 

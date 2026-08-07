@@ -2,13 +2,12 @@
 
 import json
 import tempfile
-import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from prospector.kill_decay import (
-    get_active_steers,
     check_diversity_floor,
+    get_active_steers,
     get_stale_domains,
     re_seed_suggestions,
 )

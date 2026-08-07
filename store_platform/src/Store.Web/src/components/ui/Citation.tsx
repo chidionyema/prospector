@@ -27,7 +27,7 @@
  *   the only square-cornered element left in a row that otherwise sits beside `rounded-md` cards,
  *   and `text-text/75` is an opacity fake of a grey we have a real token for.
  */
-import { Icon } from './Icon';
+import { SourceChip, SourceChipRow } from './SourceChip';
 import { parseCitations, type Citation } from '@/lib/citations';
 
 export interface CitationChipProps {
@@ -35,19 +35,22 @@ export interface CitationChipProps {
   className?: string;
 }
 
+/**
+ * A citation, drawn as the sitewide source chip.
+ *
+ * The markup moved to `SourceChip` (2026-08-07) when it turned out four other surfaces had each
+ * grown their own copy of it. This stays as the name the citation-parsing code calls it by --
+ * `Citation` is a parsed thing with a `host` and a `quote`, `SourceChip` is a way of drawing a
+ * link -- but there is now exactly one implementation underneath.
+ */
 export function CitationChip({ citation, className = '' }: CitationChipProps) {
   return (
-    <a
-      href={citation.url}
-      target="_blank"
-      rel="noopener noreferrer nofollow"
-      title={citation.quote ? `“${citation.quote}”` : citation.url}
-      data-citation="true"
-      className={`inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-caption leading-normal text-muted transition-colors duration-[120ms] hover:border-border-strong hover:text-text ${className}`}
-    >
-      <Icon name="arrowRight" size={10} className="-rotate-45 shrink-0" aria-hidden="true" />
-      <span className="truncate">{citation.host}</span>
-    </a>
+    <SourceChip
+      url={citation.url}
+      host={citation.host}
+      quote={citation.quote}
+      className={className}
+    />
   );
 }
 
@@ -58,14 +61,7 @@ export interface CitationListProps {
 
 /** A row of chips. Renders nothing at all when there is nothing to cite. */
 export function CitationList({ citations, className = '' }: CitationListProps) {
-  if (citations.length === 0) return null;
-  return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
-      {citations.map((c) => (
-        <CitationChip key={c.url} citation={c} />
-      ))}
-    </div>
-  );
+  return <SourceChipRow sources={citations} className={className} />;
 }
 
 export interface SourcedLineProps {

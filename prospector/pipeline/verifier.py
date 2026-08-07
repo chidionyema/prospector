@@ -11,7 +11,7 @@ force KILL and write a law.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 from prospector.domain.primitives import CandidateJourney, CandidateSpec
 from prospector.pipeline.middleware import TribunalMiddleware

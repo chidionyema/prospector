@@ -13,10 +13,12 @@ from datetime import datetime
 from typing import Any, Optional
 
 from .config import Config
+from .coverage import plan_cells
 from .models import Candidate
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
-from .telemetry import logger, stage as telemetry_stage, track_latency
+from .telemetry import logger, track_latency
+from .telemetry import stage as telemetry_stage
 
 
 def _parse_candidates(data: Any) -> list[Candidate]:
@@ -154,7 +156,7 @@ def generate(
     target = k
     max_per_call = int(gen_cfg.get("max_per_call", 10) or 10)
     max_rounds = int(gen_cfg.get("max_rounds", 6) or 6)  # now a cap on WAVES
-    lenses = [l.strip() for l in str(strategy_lens).split(",") if l.strip()] or ["broaden"]
+    lenses = [item.strip() for item in str(strategy_lens).split(",") if item.strip()] or ["broaden"]
 
     # PRIMARY diversity axis = the structural business FORM (not the creativity lens).
     # Lenses vary the angle of attack but every angle on a regulatory signal collapsed
@@ -259,6 +261,18 @@ def generate(
     except AttributeError:  # a Config built before Epic D (e.g. a stubbed test double)
         run_market = ""
         market_vars = {k: "" for k in ALL_MARKET_KEYS}
+
+    # V2 COVERAGE SAMPLER (default OFF — `coverage_sampler.enabled: false`). When enabled it
+    # replaces the round-robin form x audience rotation below with cells chosen from the
+    # MEASURED under-coverage of store/prospector.db (read-only, zero LLM calls, deterministic
+    # on seed). It returns [] when disabled, when the index is missing, when every axis is
+    # suppressed by min_coverage, or on any error — so with the flag off, and whenever the
+    # sampler cannot speak, generation behaves byte-for-byte as it does today.
+    coverage_cells: list[dict[str, str]] = plan_cells(
+        cfg, k,
+        domains={"structural_form": forms, "audience": audience_forms},
+        context={"market": run_market} if run_market else None,
+    )
 
     # Audience forms loaded and rotated AFTER structural forms so both are ready here.
     logger.info("Generation started", extra={
@@ -474,6 +488,13 @@ def generate(
                 aud = audience_forms[(aud_base + g + (g // len(forms))) % A]
             else:
                 aud = ""
+            # V2: when the coverage sampler is on it OWNS the (form, audience) cell — the
+            # rotation above is the fallback for axes the sampler suppressed or has no
+            # domain for. Empty list (the default) => rotation, unchanged.
+            if coverage_cells:
+                cell = coverage_cells[g % len(coverage_cells)]
+                form = cell.get("structural_form") or form
+                aud = cell.get("audience") or aud
             return form, lens, aud
 
         def _fan_out(indices: range) -> list[tuple[str, str, list[Candidate]]]:

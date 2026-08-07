@@ -13,17 +13,32 @@ import json
 import re
 from typing import Callable, Optional
 
-from .config import Config
+from .admissibility import demotion_reason
+from .admissibility import host_of as admissibility_host_of
+from .audit import audit
+from .config import Admissibility, Config
+from .entity_templates import ENTITY_SLOTS, ENTITY_TEMPLATES
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .kill_filter import is_hard_fail
-from .models import (CHECKS, DEFAULT_CHECKS, DEFER_GATE, PRICING_CHECK, AdversarialResult,
-                     Candidate, CheckResult, Source, Verdict)
+from .models import (
+    CHECKS,
+    DEFAULT_CHECKS,
+    DEFER_GATE,
+    PRICING_CHECK,
+    AdversarialResult,
+    Candidate,
+    CheckResult,
+    Source,
+    Verdict,
+)
+from .numeric_citation import record_shadow as record_numeric_shadow
 from .operator import Operator
+from .pricing import price_for
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
-from .telemetry import logger, stage as telemetry_stage, track_latency
+from .telemetry import logger, track_latency
+from .telemetry import stage as telemetry_stage
 from .trimming import RATIONALE_MAX, clip_to_sentence
-from .audit import audit
 
 
 def _served_provider(op: Operator) -> str:
@@ -100,8 +115,11 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     for cid in citations:
         src = cited_sources_map.get(cid)
         if src:
-            from urllib.parse import urlparse
-            netloc = urlparse(src.url).netloc.replace("www.", "").lower()
+            # Shared with the admissibility tiers so "distinct domains" means the same thing
+            # in the confidence score and in the gate. The old inline expression lowercased
+            # AFTER stripping, so `WWW.x.com` and `x.com` counted as two distinct domains and
+            # inflated the diversity term.
+            netloc = admissibility_host_of(src.url)
             if netloc:
                 cited_netlocs.add(netloc)
     n_domains = len(cited_netlocs)
@@ -216,20 +234,11 @@ def _templated_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
     return out[:max(1, n)] or [f"{base} {check_name}"]
 
 
-# E1: templates that NAME the concrete entity the check turns on, slot-filled from candidate
-# fields. Generic keyword queries starve payer_solvency/distribution (programme doc §8:
-# 771 vs 145 unverifiable:supported on kills); "who actually pays / how do you reach them"
-# pages exist for NAMED entities, not for product restatements.
-_ENTITY_TEMPLATES: dict[str, list[str]] = {
-    "payer_solvency": [
-        "{payer} budget spending on {base}",
-        "how much do {payer} pay for {base}",
-    ],
-    "distribution": [
-        "how to reach {aud} marketing channels {base}",
-        "{aud} customer acquisition cost by channel",
-    ],
-}
+# E1: templates that NAME the concrete entity the check turns on. The data lives in the
+# leaf module `entity_templates` so `config.py` can validate against it at load time
+# without importing this one (see that module's docstring). Re-exported under the original
+# private name because that is what the arm's tests and this file already bind.
+_ENTITY_TEMPLATES = ENTITY_TEMPLATES
 
 
 def _entity_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
@@ -237,18 +246,30 @@ def _entity_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
 
     A template whose entity slot is blank is SKIPPED (it would degenerate to the product-shaped
     query this arm exists to replace); all-blank returns [] and the caller uses the LLM chain.
+
+    Returning [] for an unknown check is deliberate and is asserted by
+    tests/unit/test_e1_hybrid_queries.py — a missing template must never crash a verdict
+    mid-run. That is precisely why a config naming a check with no template has to be
+    rejected at LOAD time (`config._validate_hybrid_entity_checks`); caught here it would
+    be a silent no-op, and the experiment would report a null result it never ran.
     """
     tpls = _ENTITY_TEMPLATES.get(check_name, [])
     if not tpls:
         return []
-    payer = (cand.who_pays or "").strip()
-    aud = (cand.audience or "").strip().replace("_", " ")
+    values = {
+        "{payer}": (cand.who_pays or "").strip(),
+        "{aud}": (cand.audience or "").strip().replace("_", " "),
+        "{market}": (cand.market or "").strip(),
+    }
     base = _keywords(cand, k=4)
     out: list[str] = []
     for t in tpls:
-        if ("{payer}" in t and not payer) or ("{aud}" in t and not aud):
+        if any(slot in t and not values[slot] for slot in ENTITY_SLOTS):
             continue
-        out.append(t.format(payer=payer, aud=aud, base=base))
+        out.append(t.format(
+            payer=values["{payer}"], aud=values["{aud}"],
+            market=values["{market}"], base=base,
+        ))
     return out[:max(1, n)]
 
 
@@ -263,6 +284,45 @@ def _market_vars(cfg: Config | None, *, for_moat: bool = False) -> dict[str, str
         keys = MOAT_MARKET_KEYS if for_moat else ALL_MARKET_KEYS
         return {k: "" for k in keys}
     return market_kwargs(cfg, for_moat=for_moat)
+
+
+def _check_question(check_name: str, cand: Candidate, cfg: Config | None) -> str:
+    """``CHECKS[check_name]``, plus the pack's REAL ladder price for ``payer_solvency``.
+
+    Register §25.6 item 3: this check argued affordability against a price it INVENTED,
+    sometimes off the ladder entirely, and those invented figures are ~2/3 of the corpus's
+    untraceable-number count. The price is the one quantity in the check that is not
+    retrievable and never could be — it is OUR list price, declared in
+    ``config.yaml listing.pricing``, not a claim about the world. So the fix is not a
+    grounding fix: handing the number over replaces an invented figure with the true one.
+
+    This does NOT weaken verdict-from-retrieval-only. A list price is not market knowledge
+    and carries no information about the buyer; the model still rules on whether the
+    PASSAGES show the payer can pay, only now against the right figure.
+
+    Scope is deliberately one check. The other six questions render byte-identically, so
+    the golden set cannot move underneath this change. ``gen_queries`` (`:292`) is
+    deliberately NOT given the price either — a list price in a search query retrieves our
+    own storefront, which is self-citation, not evidence about the payer.
+    """
+    question = CHECKS[check_name]
+    if check_name != "payer_solvency" or cfg is None:
+        return question
+    try:
+        # `score` is accepted for interface stability and never consulted (pricing.py:98),
+        # which is exactly what lets the moat ask this before scoring has run at all.
+        price_pence = price_for(cand, None, cfg).price_pence
+    except Exception as exc:
+        # A config edit must never take the moat down. Degrade to today's behaviour — the
+        # bare question — rather than failing a check over a pricing lookup.
+        logger.warning(
+            f"payer_solvency price lookup failed; asking without a price: {exc}",
+            extra={"candidate_id": getattr(cand, "candidate_id", None)})
+        return question
+    pounds = f"{price_pence / 100:,.0f}"
+    return (f"{question} The buyer pays £{pounds} once for this pack — that is our actual "
+            f"list price, not an estimate. Judge affordability against £{pounds} and do "
+            f"not substitute a different figure.")
 
 
 @track_latency(name="gen_queries")
@@ -374,7 +434,8 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     # precedents, never the market's evidence-landscape prose. Handing the moat market
     # knowledge is the prior-knowledge leak that verdict-from-retrieval-only forbids.
     system, user = render("verdict", candidate_json=json.dumps(cand.to_dict()),
-                          check_name=check_name, check_question=CHECKS[check_name],
+                          check_name=check_name,
+                          check_question=_check_question(check_name, cand, cfg),
                           verdict_bias=verdict_bias,
                           **_market_vars(cfg, for_moat=True))
     user = user.replace("{for each: [source_id] (url, published_at) text}", passages)
@@ -432,6 +493,28 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     # The deterministic formula audits the actual grounding quality objectively:
     # citation fraction + source diversity + keyword relevance.
     confidence = _calc_confidence(sources, citations, CHECKS[check_name])
+    # Q4 / programme doc §20: citation ADMISSIBILITY, applied at RULING time.
+    # A ruling stands unless EVERY one of its citations sits in a tier that cannot establish
+    # THIS check (an AI stats farm, dictionary chrome, or — for non-channel checks — a social
+    # post). One good source rescues it. This runs here, not in retrieval, because §18 measured
+    # grounding as relevance-bound: shrinking the fetched pool is the one thing that cannot
+    # help. Demotion is to UNVERIFIABLE, never `retrieval_failed` — the evidence was fetched
+    # and judged, so this is a ruling we decline to trust, not an outage to come back from.
+    # `cfg` is Optional on this signature, so the policy falls back to the dataclass default —
+    # which IS the config default, keeping ONE definition of "what we ship" (deterministic on
+    # config: a caller that passes no config gets the configured default, not a special case).
+    _policy = (cfg.admissibility.policy if cfg is not None else Admissibility().policy)
+    _cited_urls = [s.url for s in sources if s.source_id in citations]
+    if verdict in (Verdict.SUPPORTED, Verdict.REFUTED) and _cited_urls:
+        _reason = demotion_reason(check_name, _cited_urls, _policy)
+        if _reason:
+            logger.info(f"Admissibility demotion on {check_name}: {_reason}",
+                        extra={"check": check_name, "policy": cfg.admissibility.policy,
+                               "was_verdict": verdict.value})
+            verdict = Verdict.UNVERIFIABLE
+            confidence = 0.0
+            data = {**data, "rationale": _reason + " Original rationale: "
+                    + str(data.get("rationale", ""))}
     return CheckResult(
         check_name=check_name, verdict=verdict,
         confidence=confidence,
@@ -576,6 +659,14 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
             degraded=True, retrieval_failed=True)
     result.queries = queries
     result.query_source = query_source
+    # §25.6 item 2 — deterministic numeric-citation check, SHADOW MODE ONLY (founder
+    # decision: it logs, it never changes a verdict). Placed AFTER `result` is complete
+    # and its return value DISCARDED, so it is structurally incapable of altering the
+    # ruling; `record_shadow` is a no-op unless `numeric_citation.enabled` is true and
+    # swallows every exception internally. It audits `result.sources` — the passages the
+    # verdict actually cited — truncated to the same VERDICT_PASSAGE_TRUNCATE budget the
+    # model saw, which is what makes "this figure was never retrieved" provable offline.
+    record_numeric_shadow(cfg, cand, result, truncate=VERDICT_PASSAGE_TRUNCATE)
     logger.info(f"Check {check_name} result: {result.verdict.value}",
                 extra={"check": check_name, "verdict": result.verdict.value, "confidence": result.confidence})
     audit("verify_search", check=check_name,
@@ -613,17 +704,33 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
         if not isinstance(data, dict):
             data = {}
         citations = [str(c) for c in (data.get("citations") or [])]
-        
+        # Register §27.2 item 1 — a citation must RESOLVE, not merely exist. The per-check
+        # path has filtered against the retrieved source ids since forever (`:443-445`);
+        # this path never did, so an adversarial pass could kill a candidate on invented
+        # receipts and the guard below would wave it through because the LIST was non-empty.
+        # Measured before the fix (tools/experiments/e12_adversarial_groundedness_receipts.json):
+        # 8 of 142 adversarial_decisive kills cited ONLY ids resolving to nothing — two of
+        # them at our own repo files — and the `partial` class was 0, i.e. no kill mixes
+        # resolving and dangling ids, so this filter has never half-stripped a live kill.
+        # The checks' sources are exactly what the model was shown (CheckResult.to_dict
+        # ships each source_id), so a citable id was always available to it.
+        _valid_ids = {s.source_id for c in checks for s in (c.sources or [])}
+        _dangling = [c for c in citations if c not in _valid_ids]
+        if _dangling:
+            logger.warning(
+                f"Adversarial cited {len(_dangling)} id(s) resolving to no retrieved "
+                f"passage; dropping them",
+                extra={"dangling": _dangling[:10], "candidate_id": getattr(cand, "candidate_id", None)})
+        citations = [c for c in citations if c in _valid_ids]
+
+
         # New risk-sensor model: Python decides, LLM only classifies risk vectors.
         critical_regulatory = bool(data.get("critical_regulatory_blocker", False))
         impossible_economics = bool(data.get("impossible_unit_economics", False))
         incumbent_monopoly = bool(data.get("incumbent_monopoly", False))
         risk_summary = str(data.get("risk_summary", ""))
-        
+
         # Circuit breaker: only kill on objective brick-wall risks.
-        # Count how many checks produced a real verdict (supported or refuted).
-        decided_checks = sum(1 for c in checks if c.verdict.value in ("supported", "refuted"))
-        
         decisive = False
         if critical_regulatory or impossible_economics:
             # Objective, verifiable kill conditions.

@@ -36,16 +36,16 @@ import json
 import re
 from typing import Any, Optional
 
+from .audit import audit
 from .config import Config
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
-from .models import CHECKS, Candidate, ComparablesResult, PriceAnchor, PRICING_CHECK, Source
+from .models import CHECKS, PRICING_CHECK, Candidate, ComparablesResult, PriceAnchor, Source
 from .operator import Operator
 from .prompts import render
 from .retrieval import SearchProvider
-from .telemetry import logger, stage as telemetry_stage, track_latency
+from .telemetry import logger, track_latency
+from .telemetry import stage as telemetry_stage
 from .trimming import RATIONALE_MAX, clip_to_sentence
-from .audit import audit
-
 
 # Queries aimed at PRICE PAGES, not at the market. "{q} pricing plans cost per month" hits
 # a vendor's own pricing page; "{q} market size" hits an analyst press release whose numbers

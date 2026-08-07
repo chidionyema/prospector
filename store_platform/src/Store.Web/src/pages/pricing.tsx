@@ -43,7 +43,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         description={
           range
             ? `${priceSentence(range)} 14 day money back. Every claim cited.`
-            : 'One payment per pack, no subscription, no upsell, 14 day money back. Every claim cited.'
+            : 'One payment per pack, no subscription, 14 day money back. Every claim cited.'
         }
       />
 
@@ -55,8 +55,13 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         <p className="mt-4 max-w-[60ch] text-body text-muted">
           {/* Was "One price, every pack." The mode is stated alongside the spread on purpose:
               quoting only "from £29" when most packs are dearer is the airline-fare move. */}
+          {/* "No seat fees, no drip-feed" is cut, along with "no upsell" in the fallback meta
+              description above. All three are the same promise as "One payment. No subscription."
+              directly beside them, and the section below states each one as a thing you do not get,
+              which is the honest place for it: a denial in a headline block reads as a boast, and
+              the same denial in "What you do not get" reads as a limit. */}
           {range ? priceSentence(range) : 'One payment, yours forever. The price is on each pack\'s own page.'}{' '}
-          No seat fees, no drip-feed. If a pack survives the checks
+          If a pack survives the checks
           it is listed. If it does not, it is in the{' '}
           <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">
             kill log
@@ -83,10 +88,14 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
                 sentence, and keeping both is the site telling the reader the same thing twice, in
                 the weaker medium first. */}
             <PriceLadder rungs={ladder} className="mt-6" />
+            {/* "aiming at the US earns one rung over the same idea aimed at the UK" was our own
+                internal vocabulary published: a "rung" is a row of `config.yaml listing.pricing`,
+                and nothing on the page tells a buyer that, so the sentence explaining why one pack
+                costs more than another was written in the one register a buyer cannot read. */}
             <p className="mt-8 max-w-[60ch] text-body text-muted">
-              Two things set the rung, not a guess: how big the idea could realistically become,
-              and which market it targets (aiming at the US earns one rung over the same idea aimed
-              at the UK, because the market it could reach is bigger). A weekend side business and a
+              Two things set the price, not a guess: how big the idea could realistically become,
+              and which market it targets. US-market packs sit one price step higher, because the
+              market they address is bigger. A weekend side business and a
               venture-scale one get the same{' '}
               {PACK_CONTENTS.length} documents, researched to the same standard and held to the same
               bar. What differs is how much is on the table if it works, so a cheaper pack is not a
@@ -100,7 +109,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           <h2 className="text-h2 font-semibold text-text">What you get, at every price</h2>
           <p className="mt-3 max-w-[60ch] text-body text-muted">
             Every pack is the same shape: {PACK_CONTENTS.length} documents, sourced
-            and cited. No tier, no upsell, no add-on. The list below is
+            and cited. No tier, no add-on. The list below is
             identical for every pack on the shelf
             {range && !range.uniform ? `, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}` : ''}
             .
@@ -132,9 +141,13 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           </ul>
         </div>
 
-        {/* What's not included */}
+        {/* What's not included. THIS is the sitewide owner of the honest limits: /how-it-works
+            states the one-line version and links to `#what-you-do-not-get` here, so the anchor is
+            part of the contract, not decoration. Renaming it breaks that link silently. */}
         <div className="mt-12">
-          <h2 className="text-h2 font-semibold text-text">What you do not get</h2>
+          <h2 id="what-you-do-not-get" className="scroll-mt-24 text-h2 font-semibold text-text">
+            What you do not get
+          </h2>
           <p className="mt-3 max-w-[60ch] text-body text-muted">
             Honesty about the limits is part of the brand.
           </p>

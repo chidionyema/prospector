@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 from typing import NamedTuple, Optional
 
+
 # Max candidates vetted in parallel. Each vet drives slow CLI subprocesses, so the
 # real throughput ceiling is retrieval.claude_concurrency; this caps how many candidate
 # vets are in flight at once. Sourced from config (retrieval.vet_workers).
@@ -207,25 +208,39 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
             pass
     return results
 
-from .config import Config, load_config
-from . import drain_state
-from .dedup import dedup, drops_by_market
-from .dossier import build_dossier, render_markdown
-from .errors import GroundingInfrastructureError, ProviderExhaustedError
-from .generate import generate
-from .models import DEFER_GATE, Candidate, Decision, Dossier
+# Base imports for the deferred import block below; see _INFRA_GATES comment for the rationale.
+from . import drain_state  # noqa: E402 - deferred import after the helper block
+from .config import Config, load_config  # noqa: E402 - deferred import after the helper block
+from .dedup import dedup, drops_by_market  # noqa: E402 - deferred import after the helper block
+from .dossier import (  # noqa: E402 - deferred import after the helper block
+    build_dossier,
+    render_markdown,
+)
+from .errors import ProviderExhaustedError  # noqa: E402 - deferred import after the helper block
+from .generate import generate  # noqa: E402 - deferred import after the helper block
+from .models import (  # noqa: E402 - deferred import after the helper block
+    DEFER_GATE,
+    Candidate,
+    Decision,
+    Dossier,
+)
 
 #: Gates meaning "the pipeline could not rule", as opposed to "this idea failed". Both are set
 #: by verify.py when a check never got an answer — never by a grounded verdict. Defined here
 #: rather than beside `_infra_abort_check` above, because this module's early helper block
 #: precedes its import block: a module-level tuple there evaluates DEFER_GATE too soon.
 _INFRA_GATES = (DEFER_GATE, "moat_exhausted")
-from .operator import Operator
-from .prescreen import prescreen
-from .retrieval import SearchProvider
-from .score import score_candidate
-from .store import Store
-from .telemetry import logger, set_context, track_latency
+from .operator import Operator  # noqa: E402 - deferred import after the helper block
+from .prescreen import prescreen  # noqa: E402 - deferred import after the helper block
+from .retrieval import SearchProvider  # noqa: E402 - deferred import after the helper block
+from .score import score_candidate  # noqa: E402 - deferred import after the helper block
+from .store import Store  # noqa: E402 - deferred import after the helper block
+from .telemetry import (  # noqa: E402 - deferred import after the helper block
+    logger,
+    set_context,
+    track_latency,
+)
+
 
 # verify is imported lazily inside vet_candidate to avoid a pre-existing
 # dead-import error in verify.py (gate_check listed but not defined in
@@ -285,8 +300,8 @@ def _build_artifact_op(cfg: Config, fallback_op: Operator) -> Operator:
     blind the Claude->Gemini moat verdict path). Falls back to ``fallback_op`` (the moat) when
     none of the configured CLI operators are available, so generation never hard-fails on this.
     """
-    from .operator import _build_operator, FallbackOperator
     from .health import get_noncritical_health
+    from .operator import FallbackOperator, _build_operator
 
     order = cfg.artifact_operator
     if isinstance(order, str):
@@ -392,7 +407,8 @@ def vet_candidate(
     board_results = {}
     if board_personas:
         for p_name in board_personas:
-            if p_name == cfg.active_persona: continue
+            if p_name == cfg.active_persona:
+                continue
             logger.info(f"ADVISORY BOARD: persona {p_name!r} analyzing {cand.title!r}")
             try:
                 p_cfg = cfg.for_persona(p_name)
@@ -461,8 +477,12 @@ def vet_candidate(
             # marketing stay on fast_op; claim-check runs on the moat `op` (a verification gate
             # must never be judged by the cheap model that wrote the copy).
             quality_op = _build_artifact_op(cfg, op)
+            # `score` (computed just above) is passed explicitly because this call runs
+            # BEFORE `build_dossier` below — without it the pack's scorecard artifact ships
+            # `score_available: false` (register §27.2 item 4).
             cand.tags["artifacts"] = generate_artifacts(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg)
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg,
+                score=score)
             cand.tags["marketing"] = generate_marketing_content(
                 op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op)
 
@@ -539,8 +559,8 @@ def run_signal(
       - [X, Y, ...]  => MIXED catalogue: fan generation out per tier, auto-classify each idea
                         into its natural tier, then vet EACH against its OWN tier's bar.
     """
-    from .telemetry import get_usage_summary, reset_usage
     from . import progress
+    from .telemetry import get_usage_summary, reset_usage
     set_context(phase="signal_pipeline")
     logger.info("Starting signal pipeline")
     reset_usage()  # fresh token ledger for this run
@@ -568,10 +588,9 @@ def run_signal(
     # DeepSeek skips it and tries MiniMax; MiniMax exhausted skips to Gemini-flash;
     # Gemini-flash exhausted → all three skipped → ProviderExhaustedError → DEFER.
     # A tier's health mark does NOT pollute the moat health file (moat stays clean).
-    from .operator import _build_operator, FallbackOperator
     from .errors import GroundingInfrastructureError, ProviderExhaustedError
-    from .telemetry import record_usage
     from .health import get_noncritical_health
+    from .operator import FallbackOperator, _build_operator
 
     # Founder-fence: the non-critical chain records exhaustion to its OWN health file,
     # never the moat's. A dead DeepSeek/MiniMax/Gemini-flash here must not blind the
@@ -624,9 +643,14 @@ def run_signal(
         store = Store(cfg)
 
     # --- Adaptive creativity (Part 3) ---
-    from .adaptive import (calculate_exploration_level, get_recent_failure_modes,
-                           select_lenses, blue_sky_failure_steer, get_exemplars,
-                           calculate_grid_priorities)
+    from .adaptive import (
+        blue_sky_failure_steer,
+        calculate_exploration_level,
+        calculate_grid_priorities,
+        get_exemplars,
+        get_recent_failure_modes,
+        select_lenses,
+    )
     expl = exploration if exploration is not None else calculate_exploration_level(store, cfg=cfg)
     fails = get_recent_failure_modes(store, cfg=cfg)
     # Blue-sky (no signal): the kill log is domain-specific and, fed raw, drags
@@ -710,7 +734,7 @@ def run_signal(
         logger.warning(f"Generation chain exhausted ({'/'.join(_NONCRITICAL_ORDER)} all "
                        f"unavailable or quota depleted). Signal saved for retry. Run "
                        f"`generate --resume` when generation chain recovers.")
-        progress.step(f"generation chain exhausted — signal saved, re-run with generate --resume")
+        progress.step("generation chain exhausted — signal saved, re-run with generate --resume")
         return []
     logger.info(f"Generated {len(candidates)} candidates")
     progress.step(f"generated {len(candidates)} candidates")
@@ -730,7 +754,6 @@ def run_signal(
     # --- Rejection fast-path (Part 8) ---
     # If an exact near-duplicate was KILLED within the SLA window, return that dossier immediately.
     final_candidates = []
-    rejection_dossiers = []
 
     # Load recent KILLS
     all_kills = store.all(decision=Decision.KILL.value)
@@ -945,7 +968,7 @@ def run_signal(
     # never break a run. Written to store/scheduler/{DIAGNOSTICS_LATEST.txt,
     # batch_diagnostics.jsonl}.
     try:
-        from .diagnostics import diagnose_batch, persist_batch_diagnostics, render_batch_diagnostics
+        from .diagnostics import diagnose_batch, persist_batch_diagnostics
         stage_counts = {
             "generated": len(candidates),
             "dedup_dropped": len(dropped),
@@ -1098,7 +1121,7 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
     cfg = _build_config_and_overrides(args)
 
     from .operator import make_operator
-    from .telemetry import get_usage_summary, reset_usage
+    from .telemetry import reset_usage
     reset_usage()
     op = make_operator(cfg)
     fast_op = make_operator(cfg, fast=True)
@@ -1128,7 +1151,6 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
         n_kill=1 if d.decision == Decision.KILL else 0,
         n_defer=1 if d.decision == Decision.DEFER else 0)
     print(render_markdown(d))
-    usage = get_usage_summary()
     from .report import costs_report
     print(f"\n{costs_report(log_path or '')}")
 
@@ -1142,9 +1164,9 @@ def _cmd_replicate(args: argparse.Namespace, log_path: Path) -> None:
     against the target market's own chain. A replicated PASS is a new PASS, or it is a
     KILL with its own cited reason.
     """
-    from .operator import make_operator
-    from .telemetry import get_usage_summary, reset_usage
     from . import progress
+    from .operator import make_operator
+    from .telemetry import reset_usage
 
     source_market = args.source_market.lower()
     cfg = _build_config_and_overrides(args)  # --market is the TARGET (gate-checked)
@@ -1561,9 +1583,9 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
           f"{len(pending)} of them with the moat ({mix}; highest-value population "
           f"first)...{excluded}")
-    from .models import Candidate
-    from .telemetry import get_usage_summary, reset_usage
     from . import progress
+    from .models import Candidate
+    from .telemetry import get_usage_summary
 
     n_pass = n_kill = n_defer = 0
     resumed_dossiers = []
@@ -1750,7 +1772,6 @@ def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:
                           board_personas=_resolve_board(args))
 
     # Durable, human-readable result on stdout (stderr carried the live progress).
-    from .telemetry import get_usage_summary
     print(f"\n=== Signal result: {len(dossiers)} candidate(s) vetted ===")
     for d in dossiers:
         glyph = {Decision.PASS: "PASS", Decision.KILL: "KILL",
@@ -1791,7 +1812,6 @@ def _cmd_generate(args: argparse.Namespace, log_path: Path) -> None:
                           focus=getattr(args, "focus", None),
                           board_personas=_resolve_board(args))
 
-    from .telemetry import get_usage_summary
     print(f"\n=== Blue-sky result: {len(dossiers)} candidate(s) vetted ===")
     for d in dossiers:
         glyph = {Decision.PASS: "PASS", Decision.KILL: "KILL",
@@ -1822,10 +1842,9 @@ def _cmd_generate_resume(args: argparse.Namespace, cfg: Config, log_path: Path) 
         print("No pending signals to resume. signals/pending/ is empty.")
         return
 
-    from .operator import make_operator
-    from .retrieval import make_provider
-    from .telemetry import reset_usage, get_usage_summary
     from . import progress
+    from .operator import make_operator
+    from .telemetry import reset_usage
 
     reset_usage()
     op = make_operator(cfg)
@@ -1854,7 +1873,7 @@ def _cmd_generate_resume(args: argparse.Namespace, cfg: Config, log_path: Path) 
             print(f"  [{n_pass} pass / {n_kill} kill / {n_defer} defer] → pending file removed")
         else:
             # Generation still failing — leave the pending file for retry.
-            print(f"  Generation still failing — pending file retained")
+            print("  Generation still failing — pending file retained")
 
     print(f"\n=== Resume complete: {total_pass} pass / {total_kill} kill / {total_defer} defer ===")
     if total_defer > 0:
@@ -1866,9 +1885,15 @@ def _cmd_generate_resume(args: argparse.Namespace, cfg: Config, log_path: Path) 
 def _cmd_report(args, cfg, log_path) -> None:
     """Render the catalogue / metrics / costs / generation quality / trend.
     Reads on-disk state only; no model calls."""
-    from .report import (catalogue_report, metrics_report, costs_report,
-                           generation_quality_report, trend_report, full_report)
     from .diagnostics import calibration_alarms, render_alarms
+    from .report import (
+        catalogue_report,
+        costs_report,
+        full_report,
+        generation_quality_report,
+        metrics_report,
+        trend_report,
+    )
     from .store import Store
     store = Store(cfg)
     if args.full:
@@ -1895,8 +1920,7 @@ def _cmd_report(args, cfg, log_path) -> None:
 def _cmd_diagnose(args, cfg, log_path) -> None:
     """Calibration self-diagnostics. Free catalogue alarms always; --deep also runs
     the golden set through the production brain chain against fixed evidence."""
-    from .diagnostics import (calibration_alarms, render_alarms,
-                              run_calibration, render_calibration)
+    from .diagnostics import calibration_alarms, render_alarms, render_calibration, run_calibration
     from .store import Store
     store = Store(cfg)
     print("═" * 72)
@@ -1918,9 +1942,10 @@ def _cmd_operators(args) -> None:
     are alive, how fast they respond, and what the persisted health marks say.
     """
     import time
+
     from .config import load_config
     from .health import get_health
-    from .operator import _build_operator, make_operator, FallbackOperator
+    from .operator import _build_operator
 
     SIMPLE_PROMPT = ("You are a helpful assistant. "
                       "Reply to the following with exactly three words: Hello, how are you?")
@@ -1976,9 +2001,6 @@ def _cmd_operators(args) -> None:
     # fast_op: scoring + prescreen (0-5 axis, simple prompts)
     # Run `python -m prospector.run operators --gen` to measure and update these.
     try:
-        from .errors import GroundingInfrastructureError, ProviderExhaustedError
-        r = cfg.retrieval
-
         def build_chain(order, fast_label):
             tiers = []
             for kind in order:
@@ -1994,8 +2016,6 @@ def _cmd_operators(args) -> None:
                 return f"{fast_label or 'chain'}: (none available)"
             if len(tiers) == 1:
                 return f"{fast_label}: {tiers[0][0]} (single)"
-            fb = FallbackOperator(tiers, failure_threshold=r.breaker_failure_threshold,
-                                 cooldown_s=r.breaker_cooldown_s)
             return f"{fast_label}: {' → '.join(n for n, _ in tiers)}"
 
         print(f"  {build_chain(_NONCRITICAL_ORDER, 'gen_op')}")
@@ -2039,11 +2059,11 @@ def _cmd_operators(args) -> None:
     if working:
         by_speed = sorted(working, key=lambda x: x[1])
         print(f"  Fastest : {by_speed[0][0]}({by_speed[0][1]:.1f}s)")
-        print(f"  All     : " + ", ".join(f"{n}({t:.1f}s)" for n, t in by_speed))
+        print("  All     : " + ", ".join(f"{n}({t:.1f}s)" for n, t in by_speed))
     if slow:
-        print(f"  Slow    : " + ", ".join(f"{n}({t:.1f}s)" for n, t in slow))
+        print("  Slow    : " + ", ".join(f"{n}({t:.1f}s)" for n, t in slow))
     if dead:
-        print(f"  Dead    : " + ", ".join(dead))
+        print("  Dead    : " + ", ".join(dead))
     if not working and not dead:
         print("  (no operators probed — check network and API keys)")
 
@@ -2235,6 +2255,7 @@ def _cmd_markets(args: argparse.Namespace, cfg: Config, log_path: Path) -> None:
 def _set_market_status(args: argparse.Namespace, market: str, status: str) -> None:
     """Rewrite `status:` for one market in config.yaml, preserving comments."""
     import re
+
     from .config import REPO_ROOT
 
     path = Path(args.config) if getattr(args, "config", None) else REPO_ROOT / "config.yaml"
@@ -2363,9 +2384,9 @@ def _cmd_discover(args: argparse.Namespace, log_path: Path) -> None:
     """
     cfg = _build_config_and_overrides(args)
 
-    from .operator import make_operator
-    from .discover import discover_signals
     from . import progress
+    from .discover import discover_signals
+    from .operator import make_operator
 
     op = make_operator(cfg)
     search = _make_search(cfg, args)
@@ -2432,7 +2453,18 @@ def _load_dotenv() -> None:
 
     Both are simple KEY=VALUE; a leading `export ` is tolerated (so the SAME file can be
     sourced by zsh and parsed here — single source of truth). Blanks and #-comments are
-    skipped; surrounding quotes stripped. Missing/malformed files are silently ignored."""
+    skipped; surrounding quotes stripped. Missing/malformed files are silently ignored.
+
+    `PROSPECTOR_DISABLE_DOTENV` makes this a no-op, and it exists for exactly one reason.
+    "Existing env vars always win" also means *absent* env vars always lose: a test fence
+    that DELETES a credential from os.environ (tests/conftest.py
+    `_no_live_payment_credentials`) leaves a gap, and this function's whole job is filling
+    gaps. Proven by repro on 2026-08-07 — strip STRIPE_API_KEY and STRIPE_LIVE_API_KEY,
+    call this once, and both come back from `.env`, live key included. The suite reaching
+    real Stripe is the failure that fence was written for, so the fence has to cover the
+    disk read too, not just the environment."""
+    if os.environ.get("PROSPECTOR_DISABLE_DOTENV", "").strip() not in ("", "0", "false", "False"):
+        return
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     candidates = [
         os.path.join(repo_root, ".env"),

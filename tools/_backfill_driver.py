@@ -20,6 +20,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Aliased: this module uses `paths` as a local variable name in two functions, and a bare
+# `from prospector import paths` would read as though those locals shadowed the module.
+from prospector import paths as _paths  # noqa: E402
+
 try:
     import fcntl
 except ImportError:  # pragma: no cover - non-POSIX
@@ -31,7 +37,14 @@ except ImportError:  # pragma: no cover - non-POSIX
 BATCH_SIZE = 5
 
 EXIT_ALREADY_RUNNING = 3
-LOCK_PATH = Path("store/.backfill_listings.lock")
+# Resolved per call, not bound at import (prospector/paths.py): a cwd-relative lock file is a
+# lock that only excludes processes started from the same directory, which is the one guarantee
+# a lock must not have. `None` means "resolve now"; assigning a Path pins it.
+LOCK_PATH: Path | None = None
+
+
+def _lock_path() -> Path:
+    return LOCK_PATH or _paths.store_path(".backfill_listings.lock")
 
 _stop = False
 _child: subprocess.Popen | None = None
@@ -50,8 +63,8 @@ def _acquire_single_instance() -> bool:
     if fcntl is None:
         print("WARNING no fcntl — single-instance lock disabled", flush=True)
         return True
-    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _lock_handle = open(LOCK_PATH, "w")
+    _lock_path().parent.mkdir(parents=True, exist_ok=True)
+    _lock_handle = open(_lock_path(), "w")
     try:
         fcntl.flock(_lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
@@ -72,7 +85,7 @@ def _handle_signal(signum, _frame):
 def _pending() -> list[str]:
     """PASS dossiers with no listing receipt yet."""
     paths: list[str] = []
-    for f in sorted(Path("store/dossiers").glob("*.pass.json")):
+    for f in sorted(_paths.store_path("dossiers").glob("*.pass.json")):
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
         except Exception:
@@ -80,14 +93,14 @@ def _pending() -> list[str]:
         if str(d.get("decision", "")).lower() != "pass" or d.get("provisional"):
             continue
         cid = (d.get("candidate") or {}).get("candidate_id") or f.stem.split(".")[0]
-        if Path(f"store/listings/{cid}.json").exists():
+        if _paths.store_path("listings", f"{cid}.json").exists():
             continue
         paths.append(str(f))
     return paths
 
 
 def _listing_count() -> int:
-    return len(list(Path("store/listings").glob("*.json")))
+    return len(list(_paths.store_path("listings").glob("*.json")))
 
 
 def main(argv: list[str]) -> int:
@@ -96,7 +109,7 @@ def main(argv: list[str]) -> int:
     signal.signal(signal.SIGINT, _handle_signal)
 
     if not _acquire_single_instance():
-        print(f"backfill already running (lock: {LOCK_PATH}) — refusing to start a second one",
+        print(f"backfill already running (lock: {_lock_path()}) — refusing to start a second one",
               flush=True)
         return EXIT_ALREADY_RUNNING
 
@@ -104,8 +117,8 @@ def main(argv: list[str]) -> int:
 
     # A pack that was mid-publish when a previous run died may be live in the catalog with no
     # local receipt, in which case it looks "missing" here and would be published twice.
-    stale = sorted(p.stem for p in Path("store/listings/.inflight").glob("*.json")) \
-        if Path("store/listings/.inflight").is_dir() else []
+    inflight = _paths.store_path("listings", ".inflight")
+    stale = sorted(p.stem for p in inflight.glob("*.json")) if inflight.is_dir() else []
     if stale:
         print(f"WARNING unreconciled={stale} — these were interrupted mid-publish and may "
               f"already be live in the catalog; verify before trusting the missing count",
@@ -121,13 +134,15 @@ def main(argv: list[str]) -> int:
             return 130
         batch = [
             p for p in paths[i:i + BATCH_SIZE]
-            if not Path(f"store/listings/{Path(p).name.replace('.pass.json', '')}.json").exists()
+            if not _paths.store_path("listings",
+                                     f"{Path(p).name.replace('.pass.json', '')}.json").exists()
         ]
         if not batch:
             continue
         print(f"batch {i // BATCH_SIZE + 1}/{total_batches}: {batch}", flush=True)
         _child = subprocess.Popen(
-            [sys.executable, "-u", "-m", "tools.publish_passes", *extra, *batch], cwd="."
+            [sys.executable, "-u", "-m", "tools.publish_passes", *extra, *batch],
+            cwd=str(_paths.repo_root()),
         )
         rc = _child.wait()
         _child = None

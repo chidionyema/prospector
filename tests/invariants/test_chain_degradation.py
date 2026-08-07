@@ -47,7 +47,9 @@ class _Health:
         self.dead[name] = dead_for_s
         self.errors[name] = error
 
-    def clear(self, name): self.cleared.append(name); self.dead.pop(name, None)
+    def clear(self, name):
+        self.cleared.append(name)
+        self.dead.pop(name, None)
 
 
 def test_the_health_stub_still_matches_the_real_signature():
@@ -56,6 +58,7 @@ def test_the_health_stub_still_matches_the_real_signature():
     drifted from ProviderHealth would fail LOUDLY here rather than silently testing a shape the
     production chain no longer calls. (`error=` was added to mark_exhausted on 2026-08-06.)"""
     import inspect
+
     from prospector.health import ProviderHealth
     for method in ("is_dead", "mark_exhausted", "clear"):
         real = inspect.signature(getattr(ProviderHealth, method))
@@ -70,8 +73,12 @@ class _Raises:
 
 
 class _Answers:
-    def __init__(self, text="ok"): self.text = text; self.calls = 0
-    def _raw(self, system, user, temperature): self.calls += 1; return self.text
+    def __init__(self, text="ok"):
+        self.text = text
+        self.calls = 0
+    def _raw(self, system, user, temperature):
+        self.calls += 1
+        return self.text
 
 
 # ── the classifier: what counts as "this brain is out of allowance" ──────────
@@ -115,6 +122,7 @@ def test_a_402_from_the_real_adapter_marks_the_brain_dead(monkeypatch, adapter_n
     """
     import urllib.error
     import urllib.request
+
     import prospector.operator as opmod
 
     def _boom(*a, **kw):

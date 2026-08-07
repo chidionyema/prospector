@@ -13,11 +13,9 @@ domain queries for all checks. These tests lock the contract:
 """
 from __future__ import annotations
 
-import pytest
-
-from prospector.models import Candidate, CHECKS
-from prospector.prompts import render
 from prospector import verify
+from prospector.models import CHECKS, Candidate
+from prospector.prompts import render
 
 
 class _RecordingOp:

@@ -39,7 +39,6 @@ answers a different question — how many heavy commands may run *at all*.
 from __future__ import annotations
 
 import argparse
-import os
 import signal
 import subprocess
 import sys

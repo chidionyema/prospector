@@ -4,11 +4,11 @@ import tempfile
 from pathlib import Path
 
 from prospector.self_modify import (
-    SelfModificationLog,
-    ConfigSnapshot,
     STATUS_ACTIVE,
     STATUS_ROLLED_BACK,
     STATUS_SUPERSEDED,
+    ConfigSnapshot,
+    SelfModificationLog,
 )
 
 

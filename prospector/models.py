@@ -6,11 +6,11 @@ the engine -> store -> (later) the read/commerce API with no translation layer.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-from typing import Any, Optional
 import hashlib
 import json
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from typing import Any, Optional
 
 
 class Verdict(str, Enum):

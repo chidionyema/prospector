@@ -23,15 +23,21 @@ import json
 import sys
 from pathlib import Path
 
-from prospector.config import load_config
-from prospector.operator import make_operator
-from prospector.models import (
-    Candidate, CheckResult, ScoreResult, Source, Dossier, Decision, Verdict,
-)
 from prospector.artifacts import generate_artifacts, generate_marketing_content
+from prospector.config import load_config
+from prospector.models import (
+    Candidate,
+    CheckResult,
+    Decision,
+    Dossier,
+    ScoreResult,
+    Source,
+    Verdict,
+)
+from prospector.operator import make_operator
 from prospector.pack_floors import ensure_marketing_floor
 from prospector.pack_validation import validate_pack
-from prospector.run import _build_artifact_op, _NONCRITICAL_ORDER, _load_dotenv
+from prospector.run import _NONCRITICAL_ORDER, _build_artifact_op, _load_dotenv
 from publish.publish import publish
 
 # Generation flakiness budget: regenerate the whole pack this many times before giving up
@@ -159,8 +165,13 @@ def main(argv: list[str]) -> int:
             if complete:
                 break
             print(f"  generating artifacts (artifact_operator chain), attempt {attempt}/{MAX_GEN_ATTEMPTS}...")
+            # Pass the whole dossier, not just its checks: pack_data reads `.score` for the
+            # scorecard and `.all_sources` for the price comparables. Without it this
+            # republish path emitted `score_available: false` and an empty comparables file
+            # while a fully-scored dossier sat right here in scope (register §27.2 item 4).
             cand.tags["artifacts"] = generate_artifacts(
-                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg)
+                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg,
+                dossier=dossier)
             cand.tags["marketing"] = generate_marketing_content(
                 op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, check_op=op)
             # Epic C lite: if LLM listing_page fails claim-check, fill a claim-safe

@@ -97,7 +97,7 @@ Buyers currently get 8 .md files + 1 static HTML render (`bridge.py:98-105`, `pa
 pipeline already computes and discards exactly what the market pays more for (§6: CSV export gates
 Exploding Topics' $39→$99 jump; spreadsheet artifacts sell $70–99 standalone):
 
-- **F1 `scorecard.json` + `financials.json/.csv` + `comparables.json`** in every bundle —
+- **F1 `scorecard.json` + `financial.json/.csv` + `comparables.json`** in every bundle —
   the six-axis `ScoreResult` (`models.py:299`), the Python-computed financial model inputs/outputs,
   and the `PriceAnchor` comparables already fetched at `bridge.py:539` and then discarded.
 - **F2 Score radar + key charts as static SVG** — deterministic matplotlib/SVG, no LLM.
@@ -138,13 +138,17 @@ one batch (likely trips the Max-plan cap, threshold unverifiable — not written
   cursor_cli-removal; raise `claude_concurrency`/`vet_workers` in lockstep to the knee. Expected up
   to ~2x wall clock; the prior collision-at-2 fix (`claude_cli.py:150-152` per-slot stable cwd)
   must be load-tested at the new N, not assumed.
-- **S2 Fund the metered API operator** — config only: `ANTHROPIC_API_KEY` + add `claude` to
+- **S2 · BLOCKED ON FUNDING (founder decision 2026-08-07: hold).** Not open work — nothing here is
+  buildable until the spend decision changes, so it must stop being counted among the open items.
+  **Fund the metered API operator** — config only: `ANTHROPIC_API_KEY` + add `claude` to
   `config.yaml:36` operator chain. The key-based `ClaudeOperator` exists and is already in
   MOAT_PRIMARY (`operator.py:161-183`, `:889`, dispatch `:1027-1035`). This removes the CLI-
   subprocess ceiling AND the subscription cap from the k=100 path, and unlocks prompt caching.
   Upper-bound cost if the ENTIRE pipeline ran metered Sonnet: ≈$124/day at k=100 (intro pricing,
   whole-batch token profile — verdict-only share needs E4's instrumentation).
-- **S3 Batch API for overnight k=100** — VERIFIED 2026-08-06 (docs.anthropic.com, §7): 50%
+- **S3 · BLOCKED ON FUNDING (founder decision 2026-08-07: hold).** Downstream of S2 — the batch API
+  is the same metered rail at a discount, so it cannot start earlier than S2 does.
+  **Batch API for overnight k=100** — VERIFIED 2026-08-06 (docs.anthropic.com, §7): 50%
   discount; most batches complete <1h, 24h expiry (expired requests unbilled); 100k requests or
   256MB per batch; a SEPARATE rate-limit pool from the Messages API; prompt caching STACKS with
   batch (best-effort 30–98% hit rate — use 1-hour TTL `cache_control`, not 5-min); **server-side
@@ -190,7 +194,7 @@ decay wiring, absolute limit-reset parsing, Telegram sink, truncation write path
 | E5 | Coverage sampler lifts sector/persona entropy without PASS-rate loss | V2 on for 3 batches vs 3 control | distribution entropy; PASS rate |
 | E6 | Local embedding prescreen prefilter drops ≥20% of LLM prescreen calls at no PASS loss | shadow-mode first (log, don't act) | agreement with LLM prescreen on kept/dropped |
 | E7 | Kill-log visibility converts (marketing) | storefront A/B kill-log visible vs hidden | conversion rate |
-| E8 | Batch API halves bulk-vet metered cost | pending research-track fact sheet; then one real k=15 batch via batch API | $/candidate vs S2 interactive |
+| E8 **BLOCKED ON FUNDING** | Batch API halves bulk-vet metered cost | pending research-track fact sheet; then one real k=15 batch via batch API | $/candidate vs S2 interactive. Cannot run: the experiment IS a metered batch, and metered spend is on hold (founder, 2026-08-07). Blocked, not open. |
 
 ## 4. Sequencing
 
@@ -1382,6 +1386,172 @@ Already DONE, wrongly carried as open: **Q2** (`9276736` + fix `b2d64da`, §16),
 (`tools/experiments/e12_grounding_yield.py` + receipts), **E16** (`e0f6991`, §19.2). With R1, R2
 (`770a5a5`), E4, V1, E11 and Q4 also landed, the real open backlog is ~33 items, not 38.
 
+## 24. Wave 2 — §23.6 closed, and the two P0 backup gaps closed (2026-08-07)
+
+> Numbering note — **W2.4 CLOSED 2026-08-07.** The note this replaces said the register carried two
+> `## 23.` headers. It no longer does: by the time W2.4 was actioned the collision had already been
+> resolved into 24 and 25, and the surviving defect was ORDER — `## 25.` sat physically above
+> `## 24.` in the file, so the document read out of sequence. Fixed by moving the §24 block ahead of
+> §25, which is safe precisely because every cross-reference in the repo is by NUMBER, not position
+> (`§23.4`, `§24.2`, `§25.5` and the rest all still resolve). Verified after the move: headers run
+> `0,1,2,…,25` monotonically with no duplicates, and the file is 1739 lines before and after — a
+> reorder, not an edit. Renumbering was never needed; had it been, the cost would have been the
+> cross-references, which is what the original note was right to be wary of.
+
+The brief was "fix the CLASS of defect, not the six instances". Four of the six §23.6 items are one
+class — **a path that is resolved relative to the current working directory, or bound at import** —
+so the fix is a module, not six edits.
+
+### 24.1 The lost-update drain (`unlist_killed.py`) — proved before it was fixed
+
+`QUEUE.write_text("")` empties a queue that `decay._queue_unlist` appends to concurrently, so every
+entry that arrives during the `fly ssh` round-trip is destroyed unprocessed. A pack the engine has
+KILLED then stays on sale, and there is no trace that it was ever queued. The failure is written down
+as a test first, `tests/unit/test_jsonl_consume.py`:
+
+```python
+append_jsonl(q, {"n": 1})
+entries = read_jsonl(q)              # drainer reads the queue
+append_jsonl(q, {"n": 2})            # producer appends while the drainer works
+q.write_text("", encoding="utf-8")   # the old drain
+assert read_jsonl(q) == []           # record 2 is simply gone
+```
+
+Fix: `prospector/jsonl_atomic.consume_jsonl` — an `fcntl.flock(LOCK_EX)`-serialised read-and-rewrite
+that writes back exactly the bytes appended after the read offset. `unlist_killed` retires processed
+entries to `pending_unlist.done.jsonl` and prints `N entry(s) arrived while unlisting`. A run that
+FAILS (a row still `IsListed=1` after the UPDATE) leaves the queue untouched and writes no done log —
+asserted, because a drain that retires work it did not finish is the same data loss wearing a
+different mask.
+
+The concurrency test spawns **4 subprocess producers × 150 records** against a draining parent and
+asserts conservation. It has to be subprocesses: `flock` is held per open file description, so a
+single-process test proves nothing about the lock.
+
+Receipts: `tests/unit/test_jsonl_consume.py` 13 tests, `tests/unit/test_unlist_killed_queue.py` 8 tests.
+
+### 24.2 The two P0 backup gaps — CLOSED, with live R2 receipts
+
+**Gap 2 (non-recursive glob).** `sync` now walks `rglob("*.json")` and keys objects by path relative
+to `DOSSIER_DIR`, so `quarantine_ungrounded/<id>.json` is a distinct key from `<id>.json`. Live:
+
+```
+STORE_BACKUP PASS dossiers=1588 uploaded=48 unchanged=1540 verified=8/8
+REMOTE quarantine_ungrounded=9   local=9   LOCAL FILES NOT IN BUCKET: 0
+```
+
+**Gap 1 (no db backup).** `sync` now also uploads a gzipped hot snapshot of `store/prospector.db`,
+taken with `Connection.backup()` from a `file:...?mode=ro` URI (never `shutil.copy` — under WAL with
+the daemon writing, a copy can capture a torn page set), `PRAGMA integrity_check` run on the
+**snapshot**, dated key, retention by lexicographic sort of the ISO date. No new launchd job was
+needed: the installed `com.prospector.backup.plist` already runs `scripts/backup_store.py` daily at
+03:40 with `WorkingDirectory` set, so the db rides the schedule that already existed.
+
+```
+db db/prospector-2026-08-07.db.gz 493891 bytes gz, dossiers=1760
+STORE_BACKUP RESTORE PASS files=1701
+  restored db/prospector-2026-08-07.db.gz -> prospector.db, integrity ok, dossiers=1760
+RESTORE_DRILL PASS checks=12 failures=0
+  [PASS] dossier_coverage  1588 live source file(s), all present in the restore
+  retained_history         1701 restored vs 1588 live — 113 object(s) the backup keeps that
+                           the source no longer has
+```
+
+**The drill was asserting the wrong property, and finding that cost a false FAIL.** Its first run
+against the real R2 payload failed `dossier_files restored=1701 source=1588` while `index_vs_tree`
+PASSED — every live row had a restored file. A cumulative bucket legitimately holds more than the
+live tree. **Backup coverage is MEMBERSHIP, not count**: count-equality can pass while N files are
+missing and N stale ones are present. `verify_counts` now checks that every live source file is in
+the restore and reports the surplus as a note; two tests pin the replacement, including one where an
+unindexed live source file is dropped from the payload — `dossier_coverage` fails while
+`index_vs_tree` still passes, which is exactly the hole the old check had.
+
+Receipts: `tests/unit/test_backup_store_coverage.py` 18 tests, `tests/unit/test_restore_drill.py`
+17 tests.
+
+### 24.3 The class itself — `prospector/paths.py`
+
+A cwd-relative `Path("store/...")` fails two ways, and the second is the expensive one: run the
+daemon from anywhere but the repo root and it reads and writes a *phantom* `store/`; bind it at
+import and no test fence can redirect it afterwards. That second mode is the documented cause of
+fixture rows in the production audit log and 1,874 fixture `LAW:` lines in the durable ledger.
+
+`paths.py` resolves **per call** from an `ANCHOR` derived from `__file__`, with
+`PROSPECTOR_REPO_ROOT` / `PROSPECTOR_STORE_ROOT` overrides (store wins, so a fixture can redirect
+runtime state without faking a whole repo). `tests/unit/test_paths.py` pins the property a constant
+cannot have: it imports a consumer FIRST, then moves the root, and asserts the consumer follows —
+plus subprocess inheritance, because most of this code (daemon, backfill driver, cockpit runner)
+runs as its own process.
+
+Converted: **19 call-time cwd-relative literals**, all in `prospector/control_center/` —
+`readers.py` (13), `pages/_resume.py` (3), `runner.py` (2) — plus `decay.py` and `unlist_killed.py`
+from the §23.6 list. Grep for the literal in that package now returns nothing.
+
+**Left alone, deliberately:** 9 module-level constants that are already `__file__`-anchored
+(`audit.py:134 _AUDIT_DIR`, `health.py:31/37`, `pipeline/middleware.py:26`, `prompts.py:17`,
+`retrieval.py:36`, `run.py:167`, 2 in `tools/experiments/`). They are import-bound but not
+cwd-relative, i.e. the lesser half of the defect, and `audit.py` is already fenced by
+`tests/conftest.py:37-38` patching both the env var and the module attribute. Churning the audit hot
+path to remove a hazard a fence already covers buys nothing.
+
+`runner.py:104 _production_jobs_file()` deliberately does NOT route through the `_jobs_file()`
+accessor: it is the guard that answers "is this the real production jobs file?", so it must resolve
+the anchored path even when a test has redirected the accessors. Anchoring made that guard stronger,
+not weaker — it used to be cwd-relative, which is to say it could be fooled by a `cd`.
+
+### 24.4 `PYTHONPATH` is no longer required
+
+`pytest.ini` gained `pythonpath = .`. Proof is running it with the variable actively removed, from a
+foreign cwd:
+
+```
+$ cd /tmp && env -u PYTHONPATH <repo>/.venv/bin/python -m pytest <repo>/tests/unit/test_paths.py -q
+7 passed
+```
+
+### 24.5 A lint receipt now exists
+
+`ruff 0.16.2` is in `.venv` and in `requirements.txt`; the rule set is pinned in `ruff.toml` because
+installing ruff alone would not have produced a usable receipt — unconfigured it reports **1085**
+findings on ruff 0.16 and the set drifts with the version, so two checkouts would disagree about
+whether the tree is clean. Pinned to `E4/E7/E9/F/I`, the measured baseline is **393**, itemised in
+`ruff.toml` along with both moves it has already made. Not yet wired into the commit gate; the number
+is the ratchet.
+
+The path conversion added **zero** findings — each touched file was checked against its own HEAD
+version via `git show HEAD:<f> | ruff check --stdin-filename <f> -`.
+
+### 24.6 Receipts, whole-tree
+
+```
+full suite          1875 passed, 3 skipped in 1390.08s   exit 0
+the five new/changed suites   59 passed in 24.65s        exit 0
+POPDD python lane   1877 passed                          exit 0
+ruff  prospector/ tools/ scripts/ tests/   393 findings (baseline, unchanged by this work)
+```
+
+**One test had to be fixed to get there, and it is not a defect in the code under test.**
+`tests/control_center/test_auth.py::test_unconfigured_portal_fails_closed` failed four runs in a row
+with `RuntimeError: AppTest script run timed out after 3(s)` and then BLOCKED the POPDD gate
+(`1876 passed, 1 failed`). It is not this branch: `auth.py` imports only `hmac`, `os` and
+`streamlit`, it passed inside the green full-suite run above, and *which* of the two AppTest tests
+fails changes with run order — whichever goes first. Streamlit's `AppTest` deadline is 3
+**wall-clock** seconds (`local_script_runner.require_widgets_deltas`), and the box was at
+`load averages: 210.54` with three concurrent-session pytest processes and a graphify refresh on it.
+
+A wall-clock deadline that short is a load meter, not an assertion — none of the five assertions in
+that file is about speed. Fixed at the construction site,
+`AppTest.from_function(_gated_app, default_timeout=60)`, which is inherited by the chained
+`at.button[0].click().run()` calls too. `5 passed in 1.30s` — a genuine hang still fails.
+
+### 24.7 What this hands forward
+
+| # | action | note |
+|---|---|---|
+| W2.1 | ~~Decide whether the `AppTest` deadline should be raised~~ **DONE, §24.6** — `default_timeout=60`. `test_auth.py` is the only `AppTest` user in `tests/`, so there is nothing else to raise; re-apply the same at the construction site if another one is written | a 3s wall-clock deadline is a load meter, not an assertion |
+| W2.2 | Ratchet the 393 ruff findings down; the 10 `F821` first | an undefined name is a NameError waiting for its branch |
+| W2.3 | Wire `ruff check` into the POPDD gate once the baseline is 0 | a gate whose first act is a 700-file autofix gets turned off |
+| W2.4 | Renumber the duplicate `## 23.` sections in this register | cosmetic, but it breaks cross-references |
 ## 25. Q4 on the SELLING catalogue — what the shipped gate reaches, and what it leaves (2026-08-07)
 
 §20 measured citation source quality across the whole dossier corpus; §21.2 shipped
@@ -1577,163 +1747,527 @@ not a measurement of grounded reasoning.
 4. **`other_passage` at 0.9% is the good news** — mis-citation is rare. When a number is grounded,
    the citation usually points at the right source.
 
-## 24. Wave 2 — §23.6 closed, and the two P0 backup gaps closed (2026-08-07)
 
-> Numbering note: the register carries **two** `## 23.` headers (Wave 1 at the R3/R4/S5/E13 entry,
-> Q4-on-the-selling-catalogue below it), landed by concurrent sessions. Left as found — renumbering a
-> section other work links to costs more than the collision does. This is 24.
+## 26. Wave 3 — the config surface, W2.4, Q4b.2 answered, and the shelf gets a probe (2026-08-07)
 
-The brief was "fix the CLASS of defect, not the six instances". Four of the six §23.6 items are one
-class — **a path that is resolved relative to the current working directory, or bound at import** —
-so the fix is a module, not six edits.
+Six implementation tracks ran in parallel in one checkout, which is only safe under a file-ownership
+fence: every track was given a disjoint set of paths, and `config.yaml` + `prospector/config.py` were
+held centrally by one writer. Concurrent writes to a shared config file is exactly how this repo has
+torn files before. The tracks are recorded in §26.6; the items below were done by the holder.
 
-### 24.1 The lost-update drain (`unlist_killed.py`) — proved before it was fixed
+### 26.1 One config surface for five new arms, and it is loud
 
-`QUEUE.write_text("")` empties a queue that `decay._queue_unlist` appends to concurrently, so every
-entry that arrives during the `fly ssh` round-trip is destroyed unprocessed. A pack the engine has
-KILLED then stays on sale, and there is no trace that it was ever queued. The failure is written down
-as a test first, `tests/unit/test_jsonl_consume.py`:
+`_BLOCK_KEYS` + `_validate_block` (`prospector/config.py`) extend the `_validate_admissibility` /
+`_validate_prescreen_prefilter` idiom to five new blocks: `numeric_citation`, `coverage_sampler`,
+`meta_shape_monitor`, `claim_lock`, `pack_data`. A typo raises at config LOAD, not at first use:
+
+```
+config `claim_lock` has unknown key(s): ['enabld']; known keys are ['dir', 'enabled', 'stale_after_s']
+```
+
+That is the whole point. This register already carries two incidents of a block reading as
+configured-on while being inert, and an arm that silently does nothing is indistinguishable from an
+arm that was never wired. `tests/unit/test_config_blocks.py` (24 tests, green) locks four properties
+that prose cannot: every block resolves to a dict; every key known to Python is DECLARED in
+`config.yaml`, so no knob can live only in code; every experimental arm ships `enabled: false`; and
+`coverage_sampler.axes` cannot silently regress to include `sector`.
+
+`claim_lock` is the single deliberate exception to "ship inert" — it defaults ON, because a
+double-paid re-vet is a live cost, not an experiment. The test names it as an exception so that
+"everything defaults off" cannot be quietly weakened into "except whatever someone switched on".
+
+### 26.2 W2.4 CLOSED — and the item was describing a defect that no longer existed
+
+W2.4 said "renumber the duplicate `## 23.` sections". Measured first: **there are no duplicate
+section numbers**, at `##` or `###` level. The collision had already been resolved into 24 and 25.
+The surviving defect was ORDER — `## 25.` sat physically above `## 24.`, so the document read out of
+sequence. Fixed by moving the §24 block ahead of §25. Safe because every cross-reference in the repo
+is by number (`§23.4`, `§24.2`, `§25.5`), never by position. Receipts: headers now run `0,1,…,25`
+monotonic, no duplicates, and the file is **1739 lines before and after** — a reorder, not an edit.
+
+The general lesson is worth more than the item: a register entry is a claim about the code with an
+expiry date. This one had rotted into describing a defect that had been fixed by someone else, and
+actioning it as written would have renumbered sections that were already fine.
+
+### 26.3 Q4b.2 ANSWERED with receipts, before spending the re-vet
+
+The founder's decision was "re-vet `d8aa7528aa73eabb`, then decide". The re-vet should not be the
+FIRST move, because a cheaper measurement can make it unnecessary or make it obviously necessary.
+`tools/experiments/q4b2_storefrontshield_figures.py` — offline, zero-token, zero-network — asks the
+one question the ruling-level gate structurally cannot: **do the pack's figures appear in any passage
+that is not the stats farm?** Tiering comes from `prospector.admissibility` itself (`tier`,
+`host_of`, `LOW_TIERS`), never a second copy, so it cannot disagree with the shipped gate.
+
+| | count | meaning |
+|---|---|---|
+| figures examined | 15 | across all ruled checks in the live PASS dossier |
+| in NO retrieved passage | **0** | this pack is NOT in the §25.5 invented-figure class |
+| only in a low-tier passage | **2** | sole-basis on `gitnux.org` |
+| corroborated by an admissible passage | **13** | recoverable — annotate, do not re-vet |
+
+**The exposure is one sentence, not the pack.** The two sole-basis figures are `1.2 per 100` and
+`0.9` — the "1.2 lawsuits per 100 firms vs 0.9 national" comparison in `pain_reality`. Everything
+else stands on admissible sources: `$35,000` is corroborated by `wcagsafe.com`, `$12,000` by
+`www.legalnewsline.com`, the CASp figures by `www.caspcalifornia.com`.
+
+**§25.2 is corrected by this measurement.** It states the rationales "still carry the stats-farm
+figures — *92% plaintiff win rate*, *$35,000 per case*, *1.2 lawsuits per 100 firms vs 0.9
+national*". Two thirds of that is wrong. `92%` appears in the gitnux PASSAGE and in **no rationale
+at all** — it was retrieved and never used. `$35,000` IS in the rationale but is independently
+sourced. Only the third figure is genuinely sole-basis. The original claim was made by reading the
+passage and the rationale as one thing; they are not.
+
+Remedy, for the founder: strike one comparison sentence from `pain_reality`. A re-vet against the
+same retrieved corpus cannot improve on this, because the corpus is what was measured.
+
+### 26.4 The shelf now has a probe — `tools/verify_selling_catalogue.py`
+
+Nothing walked the selling catalogue after a re-vet. That is how `467187f2c95cb3b5` came to be
+SELLING at £49 with only a KILL dossier — found by a bundle backfill, not by any check. The check is
+trivial; the DENOMINATOR is the part that has produced wrong answers twice (§25.1), so this probe
+reads the production API and not `store/listings/` (a receipt that outlives listings) and not
+`store.db` (a dev database holding `demo-pack-001`).
+
+Live run, exit code captured before any pipe:
+
+```
+selling packs checked : 57
+backed by a PASS      : 56
+PROBLEMS              : 1
+  [KILL] 467187f2c95cb3b5 The Brief Winnow £49.00
+REAL exit with a bad pack present: 1   (expect 1)
+REAL exit on an all-PASS catalogue: 0   (expect 0)
+```
+
+Both directions are proven, which matters: a probe only ever tested against a dirty shelf can be
+one that always fails. An unreachable catalogue exits **2** and is treated as UNKNOWN, never PASS —
+a probe that reports green when it could not look is worse than no probe.
+
+It is wired into the project's `.state-probe`, so it runs at every session start and prints
+`🛒 shelf: all N selling packs are backed by a PASS dossier`, or names the offenders and turns the
+final line to `NEEDS A HUMAN`. That is the "state is a probe, not a paragraph" rule applied to the
+one surface that takes money.
+
+### 26.5 S2 / S3 / E8 relabelled BLOCKED ON FUNDING
+
+Founder decision 2026-08-07: hold on metered API spend. All three are downstream of that one
+decision — E8's experiment IS a metered batch — so none of them is open work, and carrying them
+among the open items overstates what is buildable. Relabelled in place (§2.3 and the §3 register).
+
+### 26.6 The six parallel tracks — what each one produced
+
+§26's preamble promised this table and the wave ended before it was written. Every track is on disk
+and green; **nothing in this wave is committed yet** (see §27.4). Each track was fenced to a disjoint
+path set, with `config.yaml` + `prospector/config.py` held by one writer (§26.1).
+
+| track | register item | new code | wire-in | tests | default |
+|---|---|---|---|---|---|
+| pack artifacts | F1–F4 | `prospector/pack_data.py` (845 ln) | `artifacts.py:357` | `test_pack_data.py` 31 | `pack_data.enabled: false` |
+| claim lock + fault harness | R2, R5 | `prospector/claim_lock.py` (358 ln) | `kill_decay.py:334`, +86/−0 | `test_claim_lock.py` 23 + `tests/faults/test_synthetic_exhaustion_harness.py` 38 | `claim_lock.enabled: **true**` |
+| numeric-citation check | §25.6 item 2 | `prospector/numeric_citation.py` (663 ln) | `verify.py:34`, 2 hunks | `test_numeric_citation.py` 52 | `numeric_citation.enabled: false` (shadow) |
+| coverage sampler | V2 | `prospector/coverage.py` (457 ln) | `generate.py:16` (`plan_cells`) | `test_coverage.py` | `coverage_sampler.enabled: false` |
+| meta-shape monitor | V4 | `tools/meta_shape_monitor.py` | standalone job | `test_meta_shape_monitor.py` | `meta_shape_monitor.enabled: false` |
+| experiment harness | L3 | `tools/experiments/runner.py` (+ `_corpus.py`, `_hhem.py`, `_groundedness.py`) | `runner.py list/describe/run` | — | n/a |
+
+Combined receipt for the arms, this session:
+`.venv/bin/pytest tests/unit/test_{claim_lock,coverage,numeric_citation,pack_data,config_blocks,meta_shape_monitor,prescreen_prefilter}.py -q`
+→ **194 passed, 1 skipped** in 69.39s. `ruff check .` → **All checks passed** (baseline is now 0;
+the two survivors were `F541` in `l1_corpus_reuse_overlap.py`, autofixed). Whole suite with every
+track's code resident: `pytest tests/unit -n 4 --timeout=180` → **1312 passed, 3 skipped**, EXIT=0.
+
+That run needed `-n 4`, and the reason is a receipt in itself: a **serial** run of the same suite
+wedged twice, blocked on a child headless-Chrome process from `test_pack_data.py` — the Chrome
+never-exits defect below, before it was fixed. It reported two `F`s at the point it was killed
+(`EXIT=143`). Those two are contention artefacts of the wedged process under three-way concurrent
+pytest, not reproducible failures: the same tests pass in isolation and the xdist run is clean. A
+suite that fails differently depending on how many sessions share the checkout is a measurement
+hazard this register has hit before; `-n 4 --timeout=180` is the reliable invocation here.
+
+Five of the six ship inert. `claim_lock` is the deliberate exception — a double-paid re-vet is a live
+cost, not an experiment — and `test_config_blocks.py` names it as the exception so "everything
+defaults off" cannot be quietly widened.
+
+**Two wire-in gaps found by the tracks themselves, both real and both still open:**
+
+1. **F1's scorecard is empty in production.** `generate_artifacts` receives `cand`, `checks`, `cfg`
+   but never the `ScoreResult` — `run.py:465` computes `score` and does not pass it. The wire-in
+   synthesises a candidate-only `Dossier` and honestly reports `"score_available": false` rather
+   than fabricating six zeros. An optional `dossier=None` kwarg is already in place; bundle assembly
+   lives in `bridge.py` (`BUNDLE_FILES:107`, zip at `:848`), which is the money rail. **One call-site
+   change, founder-fenced.**
+2. ~~**§2.3 names the files `financials.json/.csv`; the code writes `financial.json/.csv`.**~~
+   **CLOSED here** — §2.3 line 100 corrected to `financial.json/.csv`. The doc was the wrong one:
+   the filenames are already pinned by `test_pack_data.py`, so changing the code would have broken a
+   green test to satisfy a sentence.
+
+Also found: headless Chrome (151.0.7922.72, macOS 14.5) **writes a valid PDF and never exits** under
+`--headless`, `--headless=old` and `--headless=new` alike. `subprocess.run(timeout=…)` therefore hung
+the unit suite for the full 120s on a PDF that was already correct. `render_pdf` now polls for the
+file (size settles, header is `%PDF-`), kills Chrome itself, then validates: 123.03s → ~17s.
+
+### 26.7 Two measurements run this session — L1 says BUILD, E12 says 15.5% of decisive kills cite nothing
+
+Both were built in Wave 3 and left unrun. Run here through the L3 runner, so the receipt filename and
+the doc block are the runner's, not a script's invention.
+
+**L1 — corpus reuse is over the bar. Verdict: BUILD.**
+`.venv/bin/python tools/experiments/runner.py run L1` — 7,722 checks across 1,575 dossiers, whole
+population, no sampling. Replay is `created_at`-ascending with a path tiebreak, so a check may only
+hit passages banked by a **strictly earlier** candidate.
+
+| measure | hits | share |
+|---|---|---|
+| M1 url hit (observed refetch) — decisive | 1,675 / 7,722 | **21.69%** |
+| M2 exact query hit | 9 / 7,722 | 0.12% |
+| M3 topic hit, template stripped (upper bound) | 185 / 7,722 | 2.40% |
+| §13 bar | | 20% |
+
+Freshness does not kill it: a **30-day** TTL still serves 19.57%, a 90-day TTL the full 21.70%
+(p50 age gap of the freshest reusable passage: 1.3d; p90 29.9d; max 51.9d). The reuse concentrates
+in the expensive checks — `legality` 324, `payer_solvency` 290, `distribution` 253.
+
+M1 is a **lower** bound on corpus value (it counts only an observed refetch of the *same* url; a
+corpus could also serve a different url answering the same question), and M3's 2.4% is the *ceiling*
+for the lexical proxy, not a prediction for the embedding version. Receipt:
+`tools/experiments/l1_corpus_reuse_overlap_receipts.json`.
+
+> Nit, logged not fixed: the script's printed table says 7,706 checks / 1,672 hits while its own
+> receipt JSON says 7,722 / 1,675 — same process, same run. The ratio is 21.7% either way so the
+> verdict is unaffected, but a report and its receipt disagreeing is the exact failure L3 exists to
+> prevent. Fix before L1 is quoted anywhere else.
+
+**E12 (adversarial) — 22 of 142 decisive kills rest on no passage we hold, and every one is pre-guard.**
+`runner.py run E12` — the whole `gate_fired == 'adversarial_decisive'` population.
+
+| class | count | meaning |
+|---|---|---|
+| cited — every id resolves to a passage with text | 120 | 84.5% (95% CI 77.7–89.5) |
+| **dangling** — ids present, none resolves | 8 | invented receipts |
+| **uncited** — empty citations | 14 | pure model opinion |
+| dangling ids / all citation ids | 16 / 401 | 4.0% |
+
+The `dangling` cases are the finding: two of them cite `prospector-master-spec.md` and
+`fixtures/golden_set.json` — **our own repo files, offered to a buyer as evidence** — and one cites a
+`vertexaisearch.cloud.google.com/grounding-api-redirect/…` blob. All 22 fall in
+**2026-06-15..2026-06-16**, inside a population spanning 2026-06-15..2026-06-24, so this is a
+pre-guard artefact: `verify.py:672-674` now downgrades decisive-with-no-citations. That guard closes
+`uncited` and **does not close `dangling`** — it tests only that the list is non-empty, never that an
+id resolves. That residual is a one-line fence and it is now the cheapest open reliability item.
+
+Resolution is POINTING, not support: a resolving citation proves we hold the passage, not that the
+passage carries the kill case. E15 (HHEM over the same kill_case/passage pairs) is the other half and
+is unrun. Receipt: `tools/experiments/e12_adversarial_groundedness_receipts.json`.
+
+## 27. Where the programme stands (2026-08-07) — the complete open list
+
+> **Superseded in part by §28.** §27 was written from the register rather than from disk, and four
+> of its eleven "open" items were already built. Read §28 first; it is the re-derived list.
+
+### 27.1 Closed, with receipts in this register
+
+R1 (§16) · R2 (§26.6) · R3 (§23.3) · R4 (§23.4, §24.2) · R5 (§26.6) · Q1 · Q2 (§23.7) · Q4 (§21.2) ·
+Q4b (§25) · Q4b.1 (§25.5) · Q4b.2 (§26.3) · V1 · V4 built (§26.6) · E4 · E11 (§17, applied §19.1) ·
+E12 grounding-yield (§23.7) **and** E12 adversarial (§26.7) · E13 (§23.2) · E16 (§19.2) ·
+L1 sized (§26.7) · L3 (§26.6) · F1–F4 built (§26.6) · W2.1–W2.4 (§24.7, §26.2) · §25.6 numeric
+citation built (§26.6) · E6 shadow (§22) · the shelf probe (§26.4) · the config surface (§26.1).
+
+### 27.2 Open and buildable now — ranked by evidence, not by appetite
+
+| # | item | why it is next | cost |
+|---|---|---|---|
+| 1 | **Fence `dangling` adversarial citations** — require each id to RESOLVE, not merely exist (`verify.py:672-674`) | §26.7 measured 8 dossiers and 4.0% of all citation ids pointing at nothing, two of them at our own repo files | one-line guard + test |
+| 2 | **Build L1's passage corpus** | §26.7: 21.69% ≥ the 20% bar, and 19.57% survives a 30-day TTL. Cuts cost, latency, and the 10% degraded-retrieval bucket; makes the ~700-kill re-vet mostly retrieval-free | days |
+| 3 | **Turn on `numeric_citation` shadow logging** (`enabled: true`, `shadow_mode: true`) | §25.5 measured 10.3% of figures in no retrieved passage; the check is built and inert. Shadow costs microseconds and answers whether the offline rate holds live | one config flag |
+| 4 | **Wire `ScoreResult` into `generate_artifacts`** so F1's scorecard is non-empty | §26.6 gap 1 — the artifact ships today with `score_available: false` | 1 call site (`run.py:465`), founder-fenced via `bridge.py` |
+| 5 | **E1 / E2 / E3 / E5** — the four experiments needing a quiet daemon | §16 "Still open"; the harnesses exist, the offline A/B path exists | one measurement session |
+| 6 | **E6 decision** — shadow rows exist; agreement with LLM prescreen still unmeasured | §22. Kill criterion is ≥20% call reduction at no PASS loss | offline |
+| 7 | **E15 (HHEM)** over the E12 kill_case/passage pairs | §26.7: resolution is pointing, not support. `_hhem.py` + `_hhem_sidecar.py` are built and unrun | offline |
+| 8 | **V4 receipt + a throughput fix.** `tools/meta_shape_monitor.py` ran 17m+ at **0.0% CPU** and produced nothing. Not wedged — blocked on ollama: a single `nomic-embed-text` embed measured **6.06s / 20.73s / 23.13s** on three consecutive warm calls. A serial loop over a ~1,186-row catalogue is hours, not minutes. Batch the embeddings, or cache them per one-liner hash | turns "78 niches, one shape" into a number | one run once it can finish |
+| 9 | **Q4b.3** — archive the two mock fixtures out of `store/listings/`; reject schema-less writes | §25.4 | small |
+| 10 | **`payer_solvency` argues against a price it invents** | §25.6 item 3 — feeding it the actual rung from `config.yaml listing.pricing` removes ~2/3 of the corpus untraceable count | small |
+| 11 | **L2 demand telemetry into the coverage sampler** | §13 — needs storefront analytics to exist first (verify before building) | unsized |
+
+### 27.3 Blocked, not open
+
+**S2** (API operator + caching), **S3** (batch-API k=100 nightly), **E8** (batch-API cost A/B) — all
+downstream of one founder decision: metered API spend is on hold (2026-08-07, §26.5). E8's experiment
+*is* a metered batch. **S4** (hybrid parallel verdicts) is not funding-blocked but is downstream of
+S2's operator. Carrying any of these among the open items overstates what is buildable.
+
+### 27.4 Needs a human — ALL FIVE NOW ANSWERED, see §28.1
+
+Retained for the audit trail. Each item's disposition is recorded in §28.1.
+
+1. **`467187f2c95cb3b5` "The Brief Winnow" is SELLING at £49 with only a KILL dossier** — 1 of 57.
+2. **Q4b.2 remedy** — strike the "1.2 lawsuits per 100 firms vs 0.9 national" sentence from
+   `pain_reality` on `d8aa7528aa73eabb`.
+3. **The numeric-citation policy question** (§25.6 item 2, §15 P-items).
+4. **Wave 3 is uncommitted.**
+5. **The daemon is serving code older than HEAD** (pid 19735).
+
+## 28. The open list, re-derived from disk (2026-08-07, later session)
+
+§27 was assembled from the register. Checking each item against the working tree instead found that
+**items 1, 3, 4 and 9 were already built** — the register had drifted from the code. Everything below
+was verified by reading the file or running the command named beside it. The rule this cost us is the
+one already in CLAUDE.md: *no verdict from memory* applies to our own register too.
+
+### 28.1 The five human decisions — answered
+
+| # | disposition | receipt |
+|---|---|---|
+| 1 | **Unlisted.** Founder call. The shelf probe found **3** problem packs, not 1; `tools/unlist_killed.py` drained all four queued rows to `IsListed=0` in the live catalogue, exit 0, queue moved to `pending_unlist.done.jsonl` | `store/scheduler/pending_unlist.done.jsonl` |
+| 2 | **Leave it, log only.** Founder declined the strike: §26.3 already proved the exposure is one comparison sentence, not the pack, and a hand-edit to a published dossier is a worse precedent than a logged known-weak figure | founder, this session |
+| 3 | **Strip the sentence, keep the ruling.** A figure that traces to no cited passage does not invalidate a check that other cited evidence supports; demoting the whole check to `unverifiable` would discard grounded reasoning to punish one sentence. `numeric_citation` may ship enforcing under this policy — it remains in shadow until the live rate is measured | founder, this session |
+| 4 | **Committing this session** (see §28.3) | — |
+| 5 | **Kickstart queued with the commit** — restarting the daemon onto code it is about to be given is one action, not two | — |
+
+### 28.2 Already built — the register was wrong
+
+- **27.2 item 1 (dangling citations).** The fence exists at `verify.py:666-683`: `citations` are
+  filtered against `_valid_ids = {s.source_id for c in checks for s in (c.sources or [])}`. Nothing
+  to build.
+- **27.2 item 3 (`numeric_citation` shadow).** Already `enabled: true, shadow_mode: true` at
+  `config.yaml:1064-1070`. The register described the config it was asking for.
+- **27.2 item 4 (`ScoreResult` into `generate_artifacts`).** Already wired.
+- **27.2 item 9 (Q4b.3).** Both halves now closed. The two mock fixtures are gone —
+  `store/listings/` holds 73 receipts and a schema audit prints `0 listing(s) off-schema`. The
+  missing half, "reject schema-less writes", is now `publish.validate_listing` called from
+  `_write_listing` **before** the temp file is opened, so a rejected receipt leaves neither a file
+  nor a `.tmp`. 19 tests in `tests/unit/test_listing_schema_fence.py`, including a regression floor
+  asserting all 73 live receipts satisfy the rule.
+
+### 28.3 Built this session
+
+- **27.2 item 10 — `payer_solvency` now argues against the real rung.** The check was handed no
+  price at all, which is *why* it invented one. `verify._check_question` resolves the rung via
+  `pricing.price_for(cand, None, cfg)` and states it: "The buyer pays £49 once for this pack — that
+  is our actual list price, not an estimate." `price_for`'s `score` parameter became `Optional`
+  because the moat runs long before `run.py:465` scores anything; passing `None` is honest, and
+  fabricating a zeroed `ScoreResult` to satisfy a type would not be. `gen_queries` deliberately
+  keeps the bare question — a price does not belong in a search query.
+  13 tests in `tests/unit/test_payer_solvency_price.py`. The load-bearing one asserts the other five
+  `DEFAULT_CHECKS` render **byte-identically**: a prompt edit that quietly reworded all seven would
+  still pass a test that only looked for "£49". Full unit suite after: **1401 passed, 3 skipped**.
+- **27.2 item 6 — E6 shadow was NOT on.** The register's "shadow rows exist" was false;
+  `prescreen_prefilter.shadow_mode` was `false`, so no rows could accumulate and the decision could
+  never be reached. Now `true`, with `backend: lexical` held on purpose. The decision itself is
+  blocked on live daemon ticks producing rows — E6 cannot be measured offline.
+  `test_default_config_block_is_off` had to split: it was asserting both the dataclass safety
+  default *and* the shipped file's operational value, so flipping the flag failed a test that was
+  really two. Now `test_an_absent_config_block_is_off` (safety, still load-bearing) and
+  `test_shipped_block_is_on_and_still_cannot_act` (asserts shadow is on **and** that every shipped
+  key is in `_LOG_ONLY_KEYS`, so the block cannot start acting by config edit alone).
+
+### 28.4 L1 — the finding supersedes the build. Do not build it as specced.
+
+§26.7 sized the passage corpus at 21.74% overlap and the register carried it as the top buildable
+item. A fingerprinted rerun (`d97829ed7ea0bae0`, 1,597 dossiers) puts it at **1,698/7,774 = 21.84%**
+of checks refetching a URL an earlier candidate had already retrieved — clearing §13's 20% bar by
++1.84pp, but **the margin does not survive a freshness policy: at a 30-day TTL it falls to 19.71%,
+below the bar.** A cache with no TTL is not a cache we would ship on a corpus about live markets, so
+on the experiment's own terms the verdict is already marginal.
+
+Reading `prospector/retrieval.py` before building it kills the specced version outright:
+
+- The overlap is **URL-level**, but the existing `DiskCache` is **query-keyed**, and query-level
+  reuse measured **0.12%** (M2). Those are not the same number and the corpus would be keyed on the
+  one that does not predict a cache hit.
+- **Snippet text already arrives with the search result.** `Source.make(url=r,
+  text=str(it.get("text",""))[:max_chars], ...)` — the provider returns URL *and* passage in one
+  call, so a URL-keyed corpus saves **no search calls**.
+- `_resolve()` (`retrieval.py:151-180`) is HEAD-only and already parallel across candidates
+  (`resolve_sources()`, `:183-203`, `ThreadPoolExecutor(max_workers=len(cand))`), so the latency
+  saving is negligible too.
+
+Net: the specced corpus saves no search calls, no LLM spend, and no meaningful latency. The prize
+§26.7 was reaching for is real but needs a **pre-search local index** — something that changes what
+evidence the moat sees before a provider is called. That is an architecture change to the grounding
+chain, i.e. founder-fenced, not a drop-in. **Open question for the founder, not an open build.**
+
+### 28.5 Still genuinely open
+
+| # | item | state |
+|---|---|---|
+| 1 | **E1 / E2 / E3 / E5** | harnesses exist; need one quiet-daemon measurement session |
+| 2 | **E6 decision** | shadow now on; blocked on live rows. Bar: ≥20% call reduction at no PASS loss |
+| 3 | **E15 (HHEM)** | ran; receipt landed, but see §28.6 — what it can conclude is narrower than §26.7 assumed, and the headline rate is only stable to ~±5pp |
+| 4 | ~~**V4 receipt**~~ | **CLOSED — see §28.7** |
+| 5 | **L2 demand telemetry** | unchanged: needs storefront analytics to exist first |
+| 6 | **L1 pre-search index** | founder question (§28.4), not a build |
+
+### 28.6 E15 — two findings that narrow what it can claim
+
+E15 ran HHEM over the E12 `kill_case`/passage pairs. Both findings below are measured, and both are
+about the experiment's *reach*, not its result. A fingerprinted repeat of E15 and E17 is queued.
+
+**1. Citations carry no selectivity, so E15's control arm is empty by construction.** Of the
+**6,073** checks corpus-wide that cite anything, **6,073 (100.00%)** cite *every* passage they
+retrieved. Not one leaves a passage out. So `cited` does not mean "the moat chose this passage" — it
+means "this passage was retrieved for this check", and the UNCITED arm E15 was designed to compare
+against does not exist. **E15 therefore cannot test whether the moat picked the right passage**, only
+whether the passages it held entail what it wrote. Recorded as `citation_selectivity` in the receipts
+and in the limitations. This also reframes §26.7's dangling-citation finding: with selection ruled
+out, a citation is a retrieval record, and 4.0% of ids pointing at nothing is a bookkeeping defect
+rather than evidence of choosing badly.
+
+**2. The headline rate is stable to ~±5pp, not to the decimal.** Two concurrent E15 runs sampled the
+same 2,649-eligible population 40 minutes apart and disagreed: **tau 0.0589 → 43.4%** against **tau
+0.0691 → 48.9%**. The cause is not sampling noise in the usual sense — `dossier_paths()` is sorted,
+so sampling is deterministic *against a frozen corpus*, but the daemon rewrote 16 dossiers in
+between, which shifted which checks the every-k-th sample drew and moved the NULL-calibrated tau.
+Discrimination was stable across both (**+0.1230** and **+0.1253**), which is the number to quote.
+`corpus_fingerprint()` (`tools/experiments/_corpus.py`) now stamps each receipt with the corpus state
+it sampled, so a genuine repeat is distinguishable from a fresh sample. **Any experiment that samples
+a live corpus while the daemon runs has this defect** — E15 is where it was caught, not where it is
+confined.
+
+### 28.7 V4 — the catalogue is NOT one shape. Receipt, at last.
+
+V4 has been "built but never run" since §26.6. It ran to completion (exit 0) on 2026-08-07:
+
+| field | value |
+|---|---|
+| rows embedded | **1,773** one-liners |
+| model / dim | `nomic-embed-text`, 768 |
+| method | spherical k-means, k-means++ init, **seeded (seed 0)** — the receipt is reproducible |
+| clusters | 8 requested, 8 returned |
+| cluster sizes | 313 · 283 · 260 · 232 · 200 · 184 · 170 · 131 |
+| **top cluster share** | **0.1765** |
+| alert threshold | 0.35 |
+| **alert** | **false** |
+
+**The "78 niches, one shape" worry is refuted at k=8.** The largest cluster holds 17.65% of the
+catalogue against a 35% alert bar — less than half of it — and the eight clusters descend smoothly
+from 313 to 131 rather than collapsing into one bucket with a tail. Whatever else is wrong with
+supply, the generator is not producing a monoculture.
+
+Two honest limits on that claim: **k is forced to 8**, and spherical k-means at a forced k will
+always report *some* spread, so this measures "no single shape dominates at k=8", not "there are
+exactly 8 shapes". And it is one seed — the seed is recorded precisely so a second run can be
+compared rather than merely re-eyeballed. The eyeball check on the exemplars is consistent with the
+number: cluster 3 is compliance/evidence web apps, cluster 1 is solo-operator home services,
+cluster 6 is paid newsletters — three genuinely different businesses, not three phrasings of one.
+
+**Throughput, for whoever runs it next.** It was previously reported as wedged at 0.0% CPU. It was
+not wedged, and it was not the client either: `/api/embed` measured **2.53s for 1 input and 61.44s
+for 32** — 1.92s/text, i.e. batching buys nothing, because ollama is serving `-np 1` (a single
+slot). The fix, if this ever needs to be fast, is `OLLAMA_NUM_PARALLEL` on the server, not a smarter
+loop in `tools/meta_shape_monitor.py`. As a monthly monitor at ~35 minutes unattended, it is fine
+as-is.
+
+### 28.8 E12 re-run and E17 — both fingerprinted at `d97829ed7ea0bae0` (1,597 dossiers)
+
+**E12 (adversarial groundedness), re-run.** 22 of 142 `adversarial_decisive` kills (**15.5%**) rest
+on no passage we hold. That reads alarming until the dates are checked: **all 22 fall in
+2026-06-15..16, inside a population spanning 2026-06-15..24.** It is a pre-guard artefact, not a live
+defect — `verify.py:672-674` now downgrades decisive-with-no-passage. Worth stating plainly because
+the raw 15.5% would have been quoted as a current failure rate; the clustering is what makes it a
+historical one, and no amount of re-reading the percentage would have shown that.
+
+**E17 (HHEM ↔ moat agreement).** HHEM separates *ruled* from *unverifiable* checks at **AUC 0.673** —
+real signal, far from a decisive one. At tau=0.0591 agreement runs supported **52.8%** (n=182),
+refuted **71.0%** (n=38), unverifiable **67.6%** (n=380). The supported arm agreeing *least* is the
+result that matters, and E17 measured why rather than leaving it hanging: the **negation confound**.
+Supported checks have a median HHEM score of 0.0686 against refuted 0.1026 — a delta of
+**−0.0340** in the wrong direction, which is HHEM's documented weakness on negated statements, not
+evidence the moat's supported rulings are worse-grounded than its refutations. **HHEM cannot be used
+as an automatic gate on this corpus**, and E15's own reach is narrower still (§28.6): with 100% of
+checks citing every passage they retrieved, neither experiment can test passage *selection* — only
+entailment against passages we already held.
+
+### 28.9 The test suite was calling Stripe for real (found 2026-08-07, fenced)
+
+Three tests in `tests/behavioural/test_publish.py` failed with a **real Stripe error carrying a
+real request id**:
+
+```
+StripeProvisioner: product creation failed (request_id=req_izlM8MQqFm4sbi):
+Keys for idempotent requests can only be used with the same parameters they were first used
+with. Try using a key other than 'prospector-product-af1647af560711a1'
+```
+
+That message can only be produced by an authenticated request against an account where a prior
+request had already used that idempotency key. **The suite had been creating Stripe products over
+the network, and had been doing so silently** — the collision only surfaced once the product's
+parameters drifted. A passing suite was the symptom, not the absence of one.
+
+**Why every mock missed it.** `test_publish.py` patches `requests.post`. `StripeProvisioner` does
+not use requests — it uses the Stripe SDK (`self._stripe.Product.create(...)`, `bridge.py:1284`),
+which carries its own HTTP client and goes straight past that patch. `EngineBridge` builds the
+provisioner from the environment at `bridge.py:281`
+(`StripeProvisioner(self.stripe_api_key) if self.stripe_api_key else None`). The tests pass in
+isolation and fail in-suite, so neither running them alone nor reading them reveals it.
+
+**How bad it could have been.** `.env` carries **`STRIPE_LIVE_API_KEY`** alongside the test key, and
+`_select_stripe_key` (`bridge.py:293`) *prefers the live key whenever the store URL is not local*.
+The observed calls landed in test mode, so no real money moved — but the same defect against a
+non-local store URL selects the live key. This is fenced rather than tidied for that reason.
+
+**The fence** is on the credential, not the transport: `_no_live_payment_credentials`
+(`tests/conftest.py`) deletes `STRIPE_API_KEY`, `STRIPE_LIVE_API_KEY`, `PADDLE_API_KEY` and
+`STORE_INTERNAL_API_KEY` for every test, so `bridge.py:281` yields `None` and the money rail is
+unreachable however a future test mocks — or forgets to mock — the wire. Deleting rather than
+blanking, because `bridge.py` tests truthiness and `patch.dict` in `tests/test_engine_bridge.py`
+sets these keys *inside* the test body, after the fixture, so the key-selection tests are unaffected.
+Result: **1432 passed, 2 skipped**, the three failures gone.
+
+**What is NOT established.** A teardown-time probe over the whole suite found `STRIPE_API_KEY`
+resident in `os.environ` at *no* test boundary, so the provenance of the credential at the moment of
+the call is unexplained — it is reachable at construction but not resident at teardown. The fence
+holds regardless of provenance, which is why it was written at the credential seam; but the
+open question is real and worth closing, because whatever sets it may set other things.
+
+This is the **sixth** isolation fixture in `tests/conftest.py`, after provider health, the audit log,
+price rationale, the durable ledger and the numeric-citation shadow log. Five of those were written
+after fixture data reached production state. This is the first where the suite reached a third-party
+API, and the class deserves a standing rule: **a test that can construct a live client from ambient
+credentials is not fenced by mocking its transport.**
+
+### 28.10 `/v1/listings` returns `[]` for every real listing — found by the Q4b.3 fence
+
+Writing the listing fence (§28.3, Q4b.3) turned up a **fourth** consumer of `store/listings/` that
+§28.3 did not name, and it does not work against the data the directory actually holds.
+
+`prospector/api.py:98-104` builds each public teaser from five keys:
 
 ```python
-append_jsonl(q, {"n": 1})
-entries = read_jsonl(q)              # drainer reads the queue
-append_jsonl(q, {"n": 2})            # producer appends while the drainer works
-q.write_text("", encoding="utf-8")   # the old drain
-assert read_jsonl(q) == []           # record 2 is simply gone
+listings.append({
+    "id":              data["candidate_id"],
+    "verified_at":     data["verified_at"],
+    "reverify_due_at": data["reverify_due_at"],
+    "source_count":    data["source_count"],
+    "scout":           data["packs"]["scout"],
+})
 ```
 
-Fix: `prospector/jsonl_atomic.consume_jsonl` — an `fcntl.flock(LOCK_EX)`-serialised read-and-rewrite
-that writes back exactly the bytes appended after the read offset. `unlist_killed` retires processed
-entries to `pending_unlist.done.jsonl` and prints `N entry(s) arrived while unlisting`. A run that
-FAILS (a row still `IsListed=1` after the UPDATE) leaves the queue untouched and writes no done log —
-asserted, because a drain that retires work it did not finish is the same data loss wearing a
-different mask.
-
-The concurrency test spawns **4 subprocess producers × 150 records** against a draining parent and
-asserts conservation. It has to be subprocesses: `flock` is held per open file description, so a
-single-process test proves nothing about the lock.
-
-Receipts: `tests/unit/test_jsonl_consume.py` 13 tests, `tests/unit/test_unlist_killed_queue.py` 8 tests.
-
-### 24.2 The two P0 backup gaps — CLOSED, with live R2 receipts
-
-**Gap 2 (non-recursive glob).** `sync` now walks `rglob("*.json")` and keys objects by path relative
-to `DOSSIER_DIR`, so `quarantine_ungrounded/<id>.json` is a distinct key from `<id>.json`. Live:
+Measured over the operator's real store — every receipt, not a sample:
 
 ```
-STORE_BACKUP PASS dossiers=1588 uploaded=48 unchanged=1540 verified=8/8
-REMOTE quarantine_ungrounded=9   local=9   LOCAL FILES NOT IN BUCKET: 0
+live receipts: 73
+   73x  ['candidate_id', 'catalog', 'market', 'published_via', 'title', 'verified_at']
+receipts LACKING what /v1/listings reads (reverify_due_at/source_count/packs): 73/73
 ```
 
-**Gap 1 (no db backup).** `sync` now also uploads a gzipped hot snapshot of `store/prospector.db`,
-taken with `Connection.backup()` from a `file:...?mode=ro` URI (never `shutil.copy` — under WAL with
-the daemon writing, a copy can capture a torn page set), `PRAGMA integrity_check` run on the
-**snapshot**, dated key, retention by lexicographic sort of the ISO date. No new launchd job was
-needed: the installed `com.prospector.backup.plist` already runs `scripts/backup_store.py` daily at
-03:40 with `WorkingDirectory` set, so the db rides the schedule that already existed.
+`reverify_due_at`, `source_count` and `packs` are written by **nothing**. `publish.publish:67` is the
+only production caller of `_write_listing`, and it passes exactly the six thin keys above. So every
+iteration raises `KeyError` — and `api.py:105` is a bare `except Exception: continue`, which turns
+each one into a silent skip. **The endpoint returns `[]`, with a 200, on real data.**
 
-```
-db db/prospector-2026-08-07.db.gz 493891 bytes gz, dossiers=1760
-STORE_BACKUP RESTORE PASS files=1701
-  restored db/prospector-2026-08-07.db.gz -> prospector.db, integrity ok, dossiers=1760
-RESTORE_DRILL PASS checks=12 failures=0
-  [PASS] dossier_coverage  1588 live source file(s), all present in the restore
-  retained_history         1701 restored vs 1588 live — 113 object(s) the backup keeps that
-                           the source no longer has
-```
+**Why the test suite never said so.** `tests/integration/test_api.py`'s `setup_store` fixture wrote a
+receipt carrying `reverify_due_at`, `source_count` and a three-tier `packs` block — a shape production
+has never produced. The endpoint was only ever exercised against a shape invented to exercise it.
+This is the same failure mode as the two mock fixtures that reached the real `store/listings/`
+(§28.3): a hand-built listing that no writer produces. The fence caught it because the fixture goes
+through the real `_write_listing`, and the fixture now carries the six production keys as well.
 
-**The drill was asserting the wrong property, and finding that cost a false FAIL.** Its first run
-against the real R2 payload failed `dossier_files restored=1701 source=1588` while `index_vs_tree`
-PASSED — every live row had a restored file. A cumulative bucket legitimately holds more than the
-live tree. **Backup coverage is MEMBERSHIP, not count**: count-equality can pass while N files are
-missing and N stale ones are present. `verify_counts` now checks that every live source file is in
-the restore and reports the surplus as a note; two tests pin the replacement, including one where an
-unindexed live source file is dropped from the payload — `dossier_coverage` fails while
-`index_vs_tree` still passes, which is exactly the hole the old check had.
+**Not fixed here, deliberately.** Two defensible repairs exist — teach `publish.publish` to write the
+richer receipt, or teach the endpoint to serve the thin one — and they are different products, not
+different spellings. `packs` is the deleted 3-tier pricing shape (`test_api.py:19-21` records that
+`compose_packs` was removed as "orphaned, never called in production"), so restoring it would revive
+an abandoned model, while serving the thin receipt changes what a public endpoint returns. The
+storefront reads `api.mumchimp.com` (the C# Store platform), not this FastAPI, so **whether
+`/v1/listings` has any live consumer at all is the first question** and it is a founder question.
 
-Receipts: `tests/unit/test_backup_store_coverage.py` 18 tests, `tests/unit/test_restore_drill.py`
-17 tests.
-
-### 24.3 The class itself — `prospector/paths.py`
-
-A cwd-relative `Path("store/...")` fails two ways, and the second is the expensive one: run the
-daemon from anywhere but the repo root and it reads and writes a *phantom* `store/`; bind it at
-import and no test fence can redirect it afterwards. That second mode is the documented cause of
-fixture rows in the production audit log and 1,874 fixture `LAW:` lines in the durable ledger.
-
-`paths.py` resolves **per call** from an `ANCHOR` derived from `__file__`, with
-`PROSPECTOR_REPO_ROOT` / `PROSPECTOR_STORE_ROOT` overrides (store wins, so a fixture can redirect
-runtime state without faking a whole repo). `tests/unit/test_paths.py` pins the property a constant
-cannot have: it imports a consumer FIRST, then moves the root, and asserts the consumer follows —
-plus subprocess inheritance, because most of this code (daemon, backfill driver, cockpit runner)
-runs as its own process.
-
-Converted: **19 call-time cwd-relative literals**, all in `prospector/control_center/` —
-`readers.py` (13), `pages/_resume.py` (3), `runner.py` (2) — plus `decay.py` and `unlist_killed.py`
-from the §23.6 list. Grep for the literal in that package now returns nothing.
-
-**Left alone, deliberately:** 9 module-level constants that are already `__file__`-anchored
-(`audit.py:134 _AUDIT_DIR`, `health.py:31/37`, `pipeline/middleware.py:26`, `prompts.py:17`,
-`retrieval.py:36`, `run.py:167`, 2 in `tools/experiments/`). They are import-bound but not
-cwd-relative, i.e. the lesser half of the defect, and `audit.py` is already fenced by
-`tests/conftest.py:37-38` patching both the env var and the module attribute. Churning the audit hot
-path to remove a hazard a fence already covers buys nothing.
-
-`runner.py:104 _production_jobs_file()` deliberately does NOT route through the `_jobs_file()`
-accessor: it is the guard that answers "is this the real production jobs file?", so it must resolve
-the anchored path even when a test has redirected the accessors. Anchoring made that guard stronger,
-not weaker — it used to be cwd-relative, which is to say it could be fooled by a `cd`.
-
-### 24.4 `PYTHONPATH` is no longer required
-
-`pytest.ini` gained `pythonpath = .`. Proof is running it with the variable actively removed, from a
-foreign cwd:
-
-```
-$ cd /tmp && env -u PYTHONPATH <repo>/.venv/bin/python -m pytest <repo>/tests/unit/test_paths.py -q
-7 passed
-```
-
-### 24.5 A lint receipt now exists
-
-`ruff 0.16.2` is in `.venv` and in `requirements.txt`; the rule set is pinned in `ruff.toml` because
-installing ruff alone would not have produced a usable receipt — unconfigured it reports **1085**
-findings on ruff 0.16 and the set drifts with the version, so two checkouts would disagree about
-whether the tree is clean. Pinned to `E4/E7/E9/F/I`, the measured baseline is **393**, itemised in
-`ruff.toml` along with both moves it has already made. Not yet wired into the commit gate; the number
-is the ratchet.
-
-The path conversion added **zero** findings — each touched file was checked against its own HEAD
-version via `git show HEAD:<f> | ruff check --stdin-filename <f> -`.
-
-### 24.6 Receipts, whole-tree
-
-```
-full suite          1875 passed, 3 skipped in 1390.08s   exit 0
-the five new/changed suites   59 passed in 24.65s        exit 0
-POPDD python lane   1877 passed                          exit 0
-ruff  prospector/ tools/ scripts/ tests/   393 findings (baseline, unchanged by this work)
-```
-
-**One test had to be fixed to get there, and it is not a defect in the code under test.**
-`tests/control_center/test_auth.py::test_unconfigured_portal_fails_closed` failed four runs in a row
-with `RuntimeError: AppTest script run timed out after 3(s)` and then BLOCKED the POPDD gate
-(`1876 passed, 1 failed`). It is not this branch: `auth.py` imports only `hmac`, `os` and
-`streamlit`, it passed inside the green full-suite run above, and *which* of the two AppTest tests
-fails changes with run order — whichever goes first. Streamlit's `AppTest` deadline is 3
-**wall-clock** seconds (`local_script_runner.require_widgets_deltas`), and the box was at
-`load averages: 210.54` with three concurrent-session pytest processes and a graphify refresh on it.
-
-A wall-clock deadline that short is a load meter, not an assertion — none of the five assertions in
-that file is about speed. Fixed at the construction site,
-`AppTest.from_function(_gated_app, default_timeout=60)`, which is inherited by the chained
-`at.button[0].click().run()` calls too. `5 passed in 1.30s` — a genuine hang still fails.
-
-### 24.7 What this hands forward
-
-| # | action | note |
-|---|---|---|
-| W2.1 | ~~Decide whether the `AppTest` deadline should be raised~~ **DONE, §24.6** — `default_timeout=60`. `test_auth.py` is the only `AppTest` user in `tests/`, so there is nothing else to raise; re-apply the same at the construction site if another one is written | a 3s wall-clock deadline is a load meter, not an assertion |
-| W2.2 | Ratchet the 393 ruff findings down; the 10 `F821` first | an undefined name is a NameError waiting for its branch |
-| W2.3 | Wire `ruff check` into the POPDD gate once the baseline is 0 | a gate whose first act is a 700-file autofix gets turned off |
-| W2.4 | Renumber the duplicate `## 23.` sections in this register | cosmetic, but it breaks cross-references |
+The bare `except Exception: continue` is the reusable lesson: it converted a total schema divergence
+into an empty list and a 200. Cross-reference `built-and-unreachable-is-the-cockpit-defect-class`.

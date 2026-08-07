@@ -135,7 +135,6 @@ def test_grounding_exhaustion_trips_breaker_immediately():
 def test_grounding_recovers_after_cooldown():
     """A retired provider is NOT dead-listed for the run: after the cooldown it
     half-opens, and a successful probe returns it to full service."""
-    import prospector.retrieval as R
 
     class _Clock:
         def __init__(self): self.t = 100.0
@@ -200,7 +199,7 @@ def test_brain_all_exhausted_raises():
 # --- factory wiring ---------------------------------------------------------
 def test_make_provider_builds_chain_from_list():
     from prospector.config import load_config
-    from prospector.retrieval import DiskCache, make_provider
+    from prospector.retrieval import make_provider
     cfg = load_config()
     cfg.retrieval.provider = ["fixture", "fixture"]
     cfg.retrieval.cache = False

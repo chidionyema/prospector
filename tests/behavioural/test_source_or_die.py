@@ -9,10 +9,11 @@ Proves that verdict_for enforces strict grounding:
 from __future__ import annotations
 
 import pytest
+
 from prospector.config import load_config
-from prospector.models import Candidate, Source, Verdict
+from prospector.models import Candidate, CheckResult, Source, Verdict
 from prospector.operator import MockOperator
-from prospector.verify import verdict_for, adversarial
+from prospector.verify import adversarial, verdict_for
 
 
 @pytest.fixture
@@ -172,12 +173,62 @@ def test_adversarial_decisive_without_citations_downgraded(cand):
     assert result.decisive is False
 
 
+def _check_holding(*sources: Source) -> CheckResult:
+    """A minimal CheckResult that actually HOLDS the given passages.
+
+    The adversarial pass is shown `[c.to_dict() for c in checks]`, and CheckResult.to_dict
+    ships each source_id — so this is exactly the id set the model can legitimately cite.
+    """
+    return CheckResult(check_name="pain_reality", verdict=Verdict.UNVERIFIABLE,
+                       confidence=0.0, rationale="", sources=list(sources))
+
+
 def test_adversarial_decisive_with_citations_kept(cand):
-    """decisive=True WITH citations is grounded -> stays decisive."""
+    """decisive=True citing a passage we HOLD is grounded -> stays decisive.
+
+    The check must be supplied: previously this passed `checks=[]`, so the cited id
+    resolved to nothing and the test proved only that the list was non-empty.
+    """
     cfg = load_config()
     op = MockOperator(router=lambda s, u: {
         "critical_regulatory_blocker": True, "impossible_unit_economics": False, "incumbent_monopoly": False, "risk_summary": "Statute X bans it",
         "citations": [REAL_SOURCE.source_id],
     })
-    result = adversarial(op, cfg, cand, checks=[])
+    result = adversarial(op, cfg, cand, checks=[_check_holding(REAL_SOURCE)])
+    assert result.decisive is True
+    assert result.citations == [REAL_SOURCE.source_id]
+
+
+def test_adversarial_decisive_with_dangling_citation_downgraded(cand):
+    """Register §27.2 item 1: an id that RESOLVES TO NOTHING is not evidence.
+
+    Measured on the live corpus before this fence existed: 8 of 142 adversarial_decisive
+    kills cited only ids pointing at no retrieved passage (two of them at our own repo
+    files). The old guard passed them because the citations LIST was non-empty.
+    """
+    cfg = load_config()
+    op = MockOperator(router=lambda s, u: {
+        "critical_regulatory_blocker": True, "impossible_unit_economics": False,
+        "incumbent_monopoly": False, "risk_summary": "Statute X bans it",
+        "citations": ["src_that_was_never_retrieved"],
+    })
+    result = adversarial(op, cfg, cand, checks=[_check_holding(REAL_SOURCE)])
+    assert result.citations == []
+    assert result.decisive is False
+
+
+def test_adversarial_keeps_only_the_resolving_citations(cand):
+    """A mix keeps the real id, drops the invented one, and stays decisive.
+
+    `partial` was 0 in the measured corpus, so this case is not known to occur live — it is
+    pinned anyway, because the filter must not be all-or-nothing if it ever does.
+    """
+    cfg = load_config()
+    op = MockOperator(router=lambda s, u: {
+        "critical_regulatory_blocker": True, "impossible_unit_economics": False,
+        "incumbent_monopoly": False, "risk_summary": "Statute X bans it",
+        "citations": [REAL_SOURCE.source_id, "src_invented"],
+    })
+    result = adversarial(op, cfg, cand, checks=[_check_holding(REAL_SOURCE)])
+    assert result.citations == [REAL_SOURCE.source_id]
     assert result.decisive is True

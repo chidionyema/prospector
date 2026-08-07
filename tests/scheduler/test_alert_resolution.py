@@ -25,9 +25,16 @@ from pathlib import Path
 import pytest
 
 from prospector.scheduler import run_scheduled as rs
-from prospector.scheduler.alerts import (CRITICAL, TICK_ALERT_KEYS, WARNING, active_alerts,
-                                         alerts_for_tick, emit_alert, reconcile_alert_txt,
-                                         resolve_alert)
+from prospector.scheduler.alerts import (
+    CRITICAL,
+    TICK_ALERT_KEYS,
+    WARNING,
+    active_alerts,
+    alerts_for_tick,
+    emit_alert,
+    reconcile_alert_txt,
+    resolve_alert,
+)
 
 
 @pytest.fixture()
@@ -103,7 +110,7 @@ def test_a_resolution_is_recorded_in_the_audit_trail(cfg):
     emit_alert(cfg, severity=CRITICAL, key="tick_error", title="Tick FAILED", message="boom")
     resolve_alert(cfg, key="tick_error", reason="clean tick at 02:00")
 
-    rows = [json.loads(l) for l in
+    rows = [json.loads(line) for line in
             (Path(cfg.store_dir) / "scheduler" / "alerts.jsonl").read_text().splitlines()]
     assert [r["severity"] for r in rows] == ["critical", "info"]
     assert rows[1]["title"].startswith("RESOLVED:")

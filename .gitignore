@@ -122,3 +122,6 @@ store/scheduler/launchd.*.log
 # concurrent sessions, so the estate's stalest graph was the one nobody dared refresh.
 # Spec R8 in docs/GRAPHIFY_ENFORCEMENT_SPEC.md.
 graphify-out/
+
+# Derived HHEM score cache — recomputable from the corpus, not a receipt.
+tools/experiments/_hhem_score_cache.json

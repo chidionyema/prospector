@@ -12,10 +12,16 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from .models import (DEFER_GATE, Decision, Dossier, ScoreResult, CheckResult,
-                     AdversarialResult, Candidate)
+from .models import (
+    DEFER_GATE,
+    AdversarialResult,
+    Candidate,
+    CheckResult,
+    Decision,
+    Dossier,
+    ScoreResult,
+)
 from .score import passes_composite
-
 
 # ---------------------------------------------------------------------------
 # Assembly
@@ -293,7 +299,7 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append("> **Why we stopped:**")
         lines.append(f"> {_GATE_PREFIX.sub('', dossier.reason or '').strip()}")
         if dossier.gate_fired:
-            lines.append(f">")
+            lines.append(">")
             lines.append(f"> It failed on: {_labelled(dossier.gate_fired, _CHECK_LABEL)}")
         lines.append("")
 

@@ -84,7 +84,7 @@ describe('mono is the data voice', () => {
      *   90  after the structural design pass (2026-08-07), audited below
      *
      * WHY IT GREW TO 90. The pass added five data-dense surfaces that did not exist before: the
-     * hero dossier and the Gauntlet (a check-by-check verdict strip: ordinals, verdict tags,
+     * hero dossier and the CheckSequence (a check-by-check verdict strip: ordinals, verdict tags,
      * source hostnames, the survived/pushed-back tally), the ambient kill column (idea names and
      * the gate that killed each), the price ladder (amounts and per-rung pack counts), the doc
      * rail (section ordinals), and a killed/survived tally in the footer and on /about. Every one
@@ -93,7 +93,7 @@ describe('mono is the data voice', () => {
      * crept back into the mono.
      *
      * NINE FAILED THE AUDIT AND WERE CHANGED RATHER THAN COUNTED, all of them the eyebrow
-     * copy-paste this file exists to stop: `DocRail`'s eyebrow, `Gauntlet`'s "The idea that went
+     * copy-paste this file exists to stop: `DocRail`'s eyebrow, `CheckSequence`'s "The idea that went
      * in", `PriceLadder`'s two figcaption lines and its "N documents, every source cited" (a
      * sentence with a number in it, not a value), and the four `killed` / `survived` /
      * "ideas killed" / "survived and listed" LABELS under the tallies in `MarketingLayout` and
@@ -143,7 +143,7 @@ describe('mono is the data voice', () => {
       const lines = src.split('\n');
       lines.forEach((line, i) => {
         // A ±2 line window, because the tag's colour usually sits on the next line of a `cx()`
-        // ternary rather than beside the classes (DossierPreview's SURVIVED / PUSHED BACK).
+        // ternary rather than beside the classes (EvidenceRecordPanel's SURVIVED / PUSHED BACK).
         const window = lines.slice(Math.max(0, i - 2), i + 3).join(' ');
         const isGateTag = /text-(?:warning|success|danger)\b/.test(window) || /Badge\.tsx$/.test(path);
         if (!isGateTag && /\bfont-mono\b/.test(line) && /\buppercase\b/.test(line)) {

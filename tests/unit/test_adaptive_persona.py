@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
 import pytest
-from prospector.config import load_config
-from prospector.models import Decision
+
 from prospector.adaptive import calculate_exploration_level, calculate_persona_drift
+from prospector.config import load_config
+
 
 class MockStore:
     def __init__(self, rows, dossiers=None):

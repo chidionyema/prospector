@@ -169,11 +169,11 @@ describe('US-2 — Pack cards with pack art', () => {
       'the empty hero cover must not come back to the pack page',
     ).toBe(false);
     expect(
-      /<DossierExcerptPlate\s+pack=\{pack\}/.test(packPage),
-      'pack/[id].tsx must open on <DossierExcerptPlate pack={pack} />',
+      /<EvidenceExcerptPlate\s+pack=\{pack\}/.test(packPage),
+      'pack/[id].tsx must open on <EvidenceExcerptPlate pack={pack} />',
     ).toBe(true);
 
-    const plate = readSource('../components/marketing/DossierExcerptPlate.tsx');
+    const plate = readSource('../components/marketing/EvidenceExcerptPlate.tsx');
     expect(plate, 'the plate must read the pack\'s own extract').toMatch(/sampleExtract/);
     expect(plate, 'the plate must resolve sources to anchors').toMatch(/parseCitations/);
     expect(

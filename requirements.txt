@@ -10,6 +10,13 @@ pytest>=8.0
 # drift between versions and two checkouts disagree about whether the tree is clean.
 ruff>=0.16
 python-json-logger>=2.0
+# Porter stemming for fixture key matching (retrieval.py::_stem). The import IS guarded
+# (try/except -> no stemming), so a clean install does not crash — it silently matches
+# fixture keys differently. That is worse than a crash and is exactly the divergence
+# tests/test_suite_is_machine_independent.py exists to catch: "incumbency" stems to
+# "incumb" on a machine that happens to have nltk and does not on one that does not.
+# PorterStemmer is pure algorithm, so this pulls in no corpus download.
+nltk>=3.9
 # Markdown -> HTML for the bundle's self-contained index.html reading experience
 # (bridge.py::_create_bundle -> pack_html.py). Imported at module top level (not lazy) since
 # pack_html.py is loaded on every publish, not just an optional path.
@@ -36,6 +43,19 @@ streamlit>=1.40
 stripe>=15.2
 ddgs>=9.14
 exa_py>=2.14
+# F3 (COMMERCIAL_READINESS_PROGRAM.md): the buyer's editable XLSX financial model, written
+# with live `=`-formulas so the model can be re-run rather than just read. Pure Python, so
+# unlike torch/onnxruntime/matplotlib it HAS a wheel for this venv's python 3.14 x86_64 —
+# that constraint is why F2's radar chart is hand-written SVG instead of matplotlib.
+openpyxl>=3.1
+# tools/meta_shape_monitor.py imports numpy at module top level, and
+# tests/unit/test_meta_shape_monitor.py is in the CI suite. It resolves today only because
+# streamlit happens to pull numpy in transitively, which is precisely the accident this file
+# exists to stop: the machine-independence gate
+# (tests/test_suite_is_machine_independent.py:179) parametrizes over prospector/**/*.py ONLY,
+# so a direct import under tools/ is invisible to it and would break the day streamlit drops
+# the transitive edge.
+numpy>=1.26
 # NOTE: the LUX packages (lux-popdd / lux-spec / lux-spec-cli) are NOT listed here.
 # They were pinned to absolute file:/// paths on one developer's machine, which made this
 # file uninstallable anywhere else — including CI and any deploy host. Nothing in

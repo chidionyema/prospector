@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, Icon } from '@/components/ui';
+import { buttonClasses, Icon, SourceChipRow } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
@@ -110,23 +110,15 @@ const SECTIONS: DocSectionRef[] = [
  * title stays sans as supporting prose.
  */
 function SourceChips({ sources }: { sources: Source[] }) {
-  if (!sources.length) return null;
+  // The markup is `SourceChipRow` now. Everything the docblock above argues for survives the move
+  // -- domain first, mono, title in sans behind it -- but this page no longer owns a private copy
+  // of it. That copy was one of five, and the fifth is how "the domain leads" became true on
+  // /sample and false in the hero.
   return (
-    <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-      {sources.map((s) => (
-        <a
-          key={s.url}
-          href={s.url}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-caption text-muted transition-colors hover:border-border-strong hover:text-text"
-        >
-          <Icon name="arrowRight" size={12} className="-rotate-45 shrink-0" />
-          <span className="font-mono font-medium text-text">{s.domain}</span>
-          {s.label && <span className="truncate">{s.label}</span>}
-        </a>
-      ))}
-    </div>
+    <SourceChipRow
+      sources={sources.map((s) => ({ url: s.url, host: s.domain, label: s.label }))}
+      className="mt-4 border-t border-border pt-4"
+    />
   );
 }
 
@@ -371,7 +363,7 @@ export default function SamplePage() {
           </h2>
           <p className="mx-auto mt-3 max-w-[56ch] text-body leading-relaxed text-muted">
             A pack adds the build spec, the go to market plan, and the operations playbook on top of the
-            dossier you just read. One payment, yours to keep.
+            evidence record you just read. One payment, yours to keep.
           </p>
           <Link
             href="/#catalog"

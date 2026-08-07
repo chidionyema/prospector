@@ -1,0 +1,68 @@
+{
+  "candidate_id": "9c4df0f3e0c5cc30",
+  "verified_at": "2026-06-13T20:46:20.426452+00:00",
+  "reverify_due_at": "2026-07-13T20:46:20.426452+00:00",
+  "source_count": 1,
+  "packs": {
+    "scout": {
+      "name": "Scout",
+      "price_cents": 6000,
+      "contents": {
+        "thesis": "",
+        "evidence": [
+          {
+            "source_id": "c2195027fae63845",
+            "url": "https://api-economy.example.com",
+            "text": "proven pattern; moat = un-shortcuttable integration work",
+            "published_at": "2024-01-01",
+            "query": "Unified-API niche bridge",
+            "fetched_at": null
+          }
+        ],
+        "score": {
+          "scores": {
+            "pain_acuity": 4,
+            "money_provability": 4,
+            "automatability": 4,
+            "distribution": 4,
+            "defensibility": 4,
+            "build_feasibility": 4
+          },
+          "justification": {
+            "pain_acuity": "looks good",
+            "money_provability": "looks good",
+            "automatability": "looks good",
+            "distribution": "looks good",
+            "defensibility": "looks good",
+            "build_feasibility": "looks good"
+          },
+          "composite": 4.0
+        }
+      }
+    },
+    "operator": {
+      "name": "Operator",
+      "price_cents": 18000,
+      "contents": {
+        "scout": "included",
+        "build_spec": "",
+        "gtm_plan": "",
+        "ops_plan": ""
+      }
+    },
+    "founder_investor": {
+      "name": "Founder / Investor",
+      "price_cents": 60000,
+      "contents": {
+        "operator": "included",
+        "financial_model": "",
+        "risk_register": "included in financial_model",
+        "market_memo": "included in gtm_plan"
+      }
+    }
+  },
+  "trust_metadata": {
+    "model": "mock",
+    "grounding": "100% sourced"
+  }
+}

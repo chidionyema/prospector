@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter, defaultdict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -62,7 +62,7 @@ def catalogue_report(store: Store, decision: Optional[str] = None) -> str:
             out.append(f"  {title}")
             out.append(f"      {tail}   id={r.get('candidate_id')}")
     out.append("")
-    out.append(f"Full dossier JSON: store/dossiers/<id>.<decision>.json")
+    out.append("Full dossier JSON: store/dossiers/<id>.<decision>.json")
     return "\n".join(out)
 
 
@@ -314,9 +314,11 @@ def costs_report(jsonl_path: str | Path) -> str:
 
     with p.open() as f:
         for line in f:
-            try: d = json.loads(line)
-            except: continue
-            
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+
             ev = d.get("event")
             # 1. Track errors (latency status="error")
             if ev == "latency" and d.get("status") == "error":
@@ -346,7 +348,8 @@ def costs_report(jsonl_path: str | Path) -> str:
                 # Backward compat for older logs
                 if not provider and "message" in d:
                     msg = d["message"].lower()
-                    if "claude cli usage" in msg: provider = "claude"
+                    if "claude cli usage" in msg:
+                        provider = "claude"
                 
                 if provider:
                     root = provider.split("/")[0].lower()
@@ -705,7 +708,7 @@ def costs_data(jsonl_path: str | Path) -> dict[str, Any]:
         for line in f:
             try:
                 d = json.loads(line)
-            except:
+            except Exception:
                 continue
             ev = d.get("event")
             if ev == "latency" and d.get("status") == "error":

@@ -6,12 +6,8 @@ disconfirming queries; the only LLM work is ruling on the fetched passages.
 """
 from __future__ import annotations
 
-import json
-from typing import Optional
-
 from prospector.domain.primitives import CandidateSpec
 from prospector.pipeline.middleware import default_ledger_path
-from prospector.pipeline.moat_contract import MoatVerificationContract
 
 
 def _load_ledger(max_lines: int = 15) -> str:

@@ -37,6 +37,7 @@ sys.path.insert(0, str(REPO_ROOT))
 DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
 LEDGER = REPO_ROOT / "store" / "prospector.jsonl"
 BACKFILL = REPO_ROOT / "store_platform" / "data" / "facets-backfill.json"
+LISTINGS_DIR = REPO_ROOT / "store" / "listings"
 
 # Was `assert len(idx) >= 300` in tests/control_center/test_readers.py. The number is a floor
 # on a catalogue that only grows, not a measurement — it catches a reader silently returning
@@ -100,6 +101,26 @@ def main() -> int:
         check("BACKFILL_ENTRIES", not phantom,
               f"{len(data)} entries, all backed by a dossier" if not phantom
               else f"no dossier justifies: {phantom[:5]}")
+
+    # ── listing receipts are receipts ────────────────────────────────────────
+    # Was tests/unit/test_listing_schema_fence.py::test_the_shipped_listings_dir_all_passes
+    # _the_fence. store/listings/ is read as authority by three consumers that never
+    # re-derive what they find there (the Control Center Pub badge, backfill_missing_
+    # listings.sh, decay._queue_unlist), and two mock fixtures once landed in it and were
+    # counted as published packs by all three. publish.validate_listing now rejects that
+    # shape on the write path; this proves nothing already on disk predates the fence.
+    if LISTINGS_DIR.is_dir():
+        from publish.publish import validate_listing
+        bad: list[str] = []
+        files = sorted(LISTINGS_DIR.glob("*.json"))
+        for p in files:
+            try:
+                validate_listing(p.stem, json.loads(p.read_text(encoding="utf-8")))
+            except Exception as exc:  # a receipt is off-schema, or is not JSON at all
+                bad.append(f"{p.name}: {exc}")
+        check("LISTINGS", not bad,
+              f"{len(files)} receipts, all on-schema" if not bad
+              else f"{len(bad)} off-schema: {bad[:3]}")
 
     # ── the backup actually happened ─────────────────────────────────────────
     # The point of an audit that runs where the data is: prove the offsite copy matches, not

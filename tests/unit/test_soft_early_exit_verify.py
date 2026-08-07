@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from prospector.config import load_config
-from prospector.models import Candidate, DEFER_GATE
+from prospector.models import DEFER_GATE, Candidate
 from prospector.operator import MockOperator
 from prospector.pass_ceiling import SOFT_EXIT_GATES
 from prospector.retrieval import SearchProvider

@@ -7,9 +7,8 @@ char-ratio dedup because difflib.SequenceMatcher is blind to reworded titles
 (token-overlap) signal so that regression can never ship again, AND pin that
 genuinely distinct ideas are NOT collapsed.
 """
-from prospector.dedup import dedup, is_near_duplicate, _token_overlap
+from prospector.dedup import _token_overlap, dedup, is_near_duplicate
 from prospector.models import Candidate
-
 
 # The exact live titles that exposed the flaw, plus the distinct ideas that must survive.
 RETIREE_GARDEN = [

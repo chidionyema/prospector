@@ -54,10 +54,10 @@ from typing import Any, Optional
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from prospector.config import load_config                    # noqa: E402
-from prospector.models import Candidate, ScoreResult          # noqa: E402
-from prospector.price_rationale import write_rationale        # noqa: E402
-from prospector.pricing import price_for                      # noqa: E402
+from prospector.config import load_config  # noqa: E402
+from prospector.models import Candidate, ScoreResult  # noqa: E402
+from prospector.price_rationale import write_rationale  # noqa: E402
+from prospector.pricing import price_for  # noqa: E402
 
 STORE_API = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
 ACTOR = "claude:C1-ladder-backfill"
@@ -79,7 +79,13 @@ def ladder_version() -> str:
 
 def _load_dotenv() -> None:
     """Read .env without a dependency. `grep -r` never opens it (it is gitignored, and grep
-    here is ugrep --ignore-files), so this is also the only reliable way to see these keys."""
+    here is ugrep --ignore-files), so this is also the only reliable way to see these keys.
+
+    Honours `PROSPECTOR_DISABLE_DOTENV` for the same reason `prospector.run._load_dotenv`
+    (:2444) does: `setdefault` fills exactly the gap a test credential-fence creates by
+    deleting a key, so any un-guarded copy of this function re-arms live keys from disk."""
+    if os.environ.get("PROSPECTOR_DISABLE_DOTENV", "").strip() not in ("", "0", "false", "False"):
+        return
     path = REPO / ".env"
     if not path.exists():
         return

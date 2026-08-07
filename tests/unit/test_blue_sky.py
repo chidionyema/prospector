@@ -29,6 +29,7 @@ def test_blue_sky_steer_handles_empty_history():
 
 from unittest.mock import MagicMock
 
+
 def test_blue_sky_run_reframes_failure_modes_but_signal_run_keeps_raw(monkeypatch):
     cfg = load_config()
     cfg.operator = "mock"

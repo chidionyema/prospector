@@ -1,0 +1,154 @@
+{
+  "headline": {
+    "decision": "KILL",
+    "llm_reject_rate": 0.0472,
+    "llm_decisions_measured": 975,
+    "max_call_reduction_at_zero_false_drops": 0.0472,
+    "bar": 0.2,
+    "bar_reachable_at_ci_upper": false,
+    "usable_shadow_rows": 15,
+    "fixture_rows_excluded": 0,
+    "observed_call_reduction": 0.0,
+    "observed_false_drops": 0
+  },
+  "observed": {
+    "rows_total": 15,
+    "rows_abstained": 1,
+    "abstain_reasons": {
+      "no_neighbours": 1
+    },
+    "rows_scored": 14,
+    "would_drop": 0,
+    "call_reduction": 0.0,
+    "false_drops": 0,
+    "agreement": {
+      "agree_keep": 13,
+      "disagree_missed_drop": 2
+    },
+    "llm_keep_rate": 0.8666666666666667
+  },
+  "threshold_sweep": [
+    {
+      "threshold": 0.35,
+      "scored": 14,
+      "would_drop": 0,
+      "call_reduction": 0.0,
+      "false_drops": 0,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.5,
+      "scored": 14,
+      "would_drop": 0,
+      "call_reduction": 0.0,
+      "false_drops": 0,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.65,
+      "scored": 14,
+      "would_drop": 0,
+      "call_reduction": 0.0,
+      "false_drops": 0,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.75,
+      "scored": 14,
+      "would_drop": 0,
+      "call_reduction": 0.0,
+      "false_drops": 0,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.8,
+      "scored": 14,
+      "would_drop": 1,
+      "call_reduction": 0.07142857142857142,
+      "false_drops": 1,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.85,
+      "scored": 14,
+      "would_drop": 5,
+      "call_reduction": 0.35714285714285715,
+      "false_drops": 4,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.9,
+      "scored": 14,
+      "would_drop": 5,
+      "call_reduction": 0.35714285714285715,
+      "false_drops": 4,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.95,
+      "scored": 14,
+      "would_drop": 5,
+      "call_reduction": 0.35714285714285715,
+      "false_drops": 4,
+      "meets_bar": false
+    },
+    {
+      "threshold": 0.99,
+      "scored": 14,
+      "would_drop": 5,
+      "call_reduction": 0.35714285714285715,
+      "false_drops": 4,
+      "meets_bar": false
+    },
+    {
+      "threshold": 1.0,
+      "scored": 14,
+      "would_drop": 5,
+      "call_reduction": 0.35714285714285715,
+      "false_drops": 4,
+      "meets_bar": false
+    }
+  ],
+  "ceiling_neighbourhood_model": {
+    "keep_rate": 0.8667,
+    "neighbours": 5,
+    "threshold": 0.35,
+    "max_keep_neighbours_that_still_drops": 1,
+    "expected_drop_rate": 0.001411687242798353,
+    "shortfall_vs_bar_x": 141.67444029850756
+  },
+  "ceiling_arithmetic": {
+    "available": true,
+    "batches": 94,
+    "prescreen_in": 975,
+    "prescreened_out": 46,
+    "reject_rate": 0.04717948717948718,
+    "reject_rate_ci95": [
+      0.03555571605723706,
+      0.06235757246666712
+    ],
+    "bar_reachable": false,
+    "bar_reachable_at_ci_upper": false
+  },
+  "keep_rate_at_which_neighbourhood_bar_is_reachable": 0.4901923429721943,
+  "verdict": {
+    "observed_meets_bar": false,
+    "any_threshold_meets_bar": false,
+    "sample_large_enough_to_rule_on_observed": false,
+    "min_rows_to_rule": 100,
+    "killed_on_arithmetic_ceiling": true,
+    "decision": "KILL"
+  },
+  "files_read": [
+    "shadow-2026-08.jsonl:15"
+  ],
+  "fixture_rows_excluded": {},
+  "_meta": {
+    "experiment": "E6",
+    "module": "e6_prefilter_agreement.py",
+    "run_at_utc": "2026-08-07T21:19:39+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

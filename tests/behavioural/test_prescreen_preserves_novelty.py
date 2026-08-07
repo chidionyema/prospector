@@ -10,9 +10,10 @@ unconventional opportunities are never silently dropped.
 from __future__ import annotations
 
 import pytest
+
 from prospector.config import load_config
 from prospector.models import Candidate
-from prospector.operator import MockOperator, ParseError
+from prospector.operator import MockOperator
 from prospector.prescreen import prescreen
 
 

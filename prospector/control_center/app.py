@@ -16,8 +16,8 @@ if str(_ROOT) not in sys.path:
 
 import streamlit as st
 
-from prospector.control_center import state as _state
 from prospector.control_center import pages as _pages_mod
+from prospector.control_center import state as _state
 from prospector.control_center.auth import require_auth
 from prospector.control_center.theme import inject_theme
 
@@ -92,7 +92,7 @@ def main():
 
         st.divider()
         st.caption(f"Project: `{_ROOT.name}`")
-        st.caption(f"Store: `store/`")
+        st.caption("Store: `store/`")
 
     # ── Active page ──────────────────────────────────────────────────────────
     mod = _PAGE_MODULES.get(key, _PAGE_MODULES[_DEFAULT_KEY])

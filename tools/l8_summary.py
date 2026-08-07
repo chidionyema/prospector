@@ -4,7 +4,7 @@ import json
 import statistics as st
 import sys
 
-rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+rows = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
 if not rows:
     print("no rows — every call failed or the grader never ran")
     sys.exit(1)

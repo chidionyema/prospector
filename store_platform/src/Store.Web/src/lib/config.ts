@@ -42,8 +42,22 @@ export const FOUNDER = {
   name: 'Chidi',
   /** Optional. What they were doing before this, in a few words. */
   role: '',
-  /** Optional. Two or three sentences, first person. Why this shop exists. */
-  bio: "I always wanted to run my own business. I spent a lot of time coming up with ideas, and after a few failed attempts at launching them properly, I'd talk myself out of the next one before it got anywhere. What I actually enjoyed was the ideating, not the talking myself out of it. So I built the part I kept losing to doubt, and made it check every idea harder than I ever did. That's the seed this platform grew from.",
+  /*
+   * There is deliberately NO `bio` field here.
+   *
+   * There was one, and it held a five-sentence first-person story that was the same story
+   * `pages/about.tsx` tells at length -- same opening ("I always wanted to run my own business"),
+   * same hinge sentence, which is also that page's `<h1>`. §5.3's rule is that a fact renders on
+   * exactly one page, and the homepage comment at `pages/index.tsx:1785` had already recorded the
+   * decision in prose: "the founder's paragraph now lives once, on /about". A config string that
+   * still holds the paragraph is that decision waiting to be un-made -- the next surface that wants
+   * a human on it reads `FOUNDER.bio`, gets a second telling, and the two drift.
+   *
+   * So the story lives on /about, in markup, once, pinned by `factOwnership.test.ts`. If a surface
+   * needs the founder, it renders the name and links there. Shortening the bio was the other option
+   * and was rejected: a one-line summary is still a second copy, of a smaller thing, and it would
+   * have been a compression of /about's own `<h1>`.
+   */
   /** Optional. A path under /public, e.g. '/founder.jpg'. Omitted renders text only. */
   photo: '',
   /** Optional. A profile the reader can check: LinkedIn, GitHub, a personal site. */

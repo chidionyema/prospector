@@ -15,8 +15,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from prospector import prompts
 from prospector.config import load_config
 
@@ -122,9 +120,13 @@ def test_evidence_rules_survive_the_restyle():
 def test_kill_reasons_no_longer_start_with_gate_jargon():
     """The stored kill reason used to open with Gate 'legality' fired — … which
     leaked filing-system vocabulary into every dossier and adaptive feed."""
-    from prospector.dossier import build_dossier, _CHECK_LABEL
+    from prospector.dossier import _CHECK_LABEL, build_dossier
     from prospector.models import (
-        AdversarialResult, Candidate, CheckResult, Decision, Verdict,
+        AdversarialResult,
+        Candidate,
+        CheckResult,
+        Decision,
+        Verdict,
     )
 
     cfg = load_config()

@@ -357,8 +357,8 @@ def _diagnostics_cached() -> dict:
     cfg = readers.load_config_typed()
     if cfg is None:
         return {"alarms": [], "error": "no config"}
-    from prospector.store import Store
     from prospector.diagnostics import diagnostics_data
+    from prospector.store import Store
     try:
         return diagnostics_data(Store(cfg), cfg)
     except Exception as e:

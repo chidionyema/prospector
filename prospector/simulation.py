@@ -7,10 +7,8 @@ time, and that bad changes are detected and reverted.
 Part of the production-grade self-improvement infrastructure (Priority 5).
 """
 
-import json
 import copy
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Optional
 
 
@@ -283,12 +281,6 @@ class SimulationHarness:
 
     def _update_diversity_bonuses(self):
         """Add exploration bonus for domains that haven't been seen recently."""
-        # Get recent domains from metrics
-        trend = self.metrics_store.trend(window=20)
-        # For simulation, use a simple counter
-        import collections
-        recent_runs = self.run_count
-
         all_domains = set(i.domain.lower() for i in self.ideas)
         seen_domains = set(self.steer_strengths.keys())
 
@@ -312,8 +304,6 @@ class SimulationHarness:
 
     def _compute_diversity(self) -> float:
         """Compute domain diversity (Shannon entropy approximation)."""
-        import math
-        from collections import Counter
 
         trend = self.metrics_store.trend(window=50)
         if trend["summary"]["total_runs"] < 2:

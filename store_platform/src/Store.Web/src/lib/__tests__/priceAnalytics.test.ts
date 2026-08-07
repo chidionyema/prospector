@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -95,7 +95,7 @@ describe('the beacon carries the fields the instrument is made of', () => {
 describe('both events are wired to a real surface', () => {
   // Source-level, matching this repo's convention (no RTL setup here). The property is
   // structural: which module fires the beacon, not what it renders.
-  it('fires checkout_started from the ONE shared buy path, on intent', () => {
+  it('fires checkout_started from the single-pack buy path, on intent', () => {
     const hook = readFileSync(join(SRC, 'lib', 'checkout', 'usePackCheckout.ts'), 'utf8');
     expect(hook).toContain("trackPriceEvent('checkout_started', pack)");
 
@@ -105,6 +105,57 @@ describe('both events are wired to a real surface', () => {
     const tryBlock = hook.indexOf('try {', hook.indexOf('const buy = async'));
     expect(emit).toBeGreaterThan(-1);
     expect(emit).toBeLessThan(tryBlock);
+  });
+
+  it('fires checkout_started from the BASKET path too, one event per line', () => {
+    // This test exists because the instrument was half-built and read as fully built.
+    // Production, 90-day window, 2026-08-07: price_viewed 172, checkout_completed 1,
+    // checkout_started ZERO. A funnel cannot complete a checkout nobody started; the basket
+    // was simply a second checkout path that emitted nothing, and a missing numerator looks
+    // exactly like "nobody ever clicks buy".
+    const cartButton = readFileSync(join(SRC, 'components', 'cart', 'CartButton.tsx'), 'utf8');
+    expect(cartButton).toContain("trackPriceEvent('checkout_started'");
+
+    // Per line, so the numerator has the same per-pack granularity as price_viewed. A single
+    // basket-level event could not divide by a per-pack denominator.
+    expect(cartButton).toMatch(/cart\.lines\.forEach\([^\n]*trackPriceEvent\('checkout_started'/);
+
+    // On intent, before the redirect — same rule as the single-pack path.
+    const emit = cartButton.indexOf("trackPriceEvent('checkout_started'");
+    const redirect = cartButton.indexOf('createCartCheckout(');
+    expect(emit).toBeGreaterThan(-1);
+    expect(emit).toBeLessThan(redirect);
+  });
+
+  it('every module that STARTS a checkout also emits checkout_started', () => {
+    // The tripwire. Two paths existed and only one was instrumented; a third would be just as
+    // invisible, because a beacon that is never fired produces no error anywhere. Any module
+    // that calls a checkout-creating API and does not emit is listed by name here.
+    const dirs = ['components', 'pages', 'lib'];
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== '__tests__') walk(full);
+          continue;
+        }
+        if (!/\.tsx?$/.test(entry.name)) continue;
+        const src = readFileSync(full, 'utf8');
+        // The three calls that send a buyer to a payment page, verified against client.ts on
+        // 2026-08-07 (:329 createStripeCheckout, :359 createEmbeddedCheckout, :417
+        // createCartCheckout). `client.ts` DEFINES them, so a file that also exports them is the
+        // transport, not a checkout surface.
+        const CREATORS = /(createStripeCheckout|createEmbeddedCheckout|createCartCheckout)/;
+        const starts = new RegExp(`${CREATORS.source}\\s*\\(`).test(src) &&
+          !new RegExp(`export\\s+async\\s+function\\s+${CREATORS.source}`).test(src);
+        if (starts && !src.includes("trackPriceEvent('checkout_started'")) {
+          offenders.push(full.slice(SRC.length + 1));
+        }
+      }
+    };
+    dirs.forEach((d) => walk(join(SRC, d)));
+    expect(offenders).toEqual([]);
   });
 
   it('fires price_viewed from the pack page, keyed on the price', () => {

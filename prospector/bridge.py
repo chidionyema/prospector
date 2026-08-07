@@ -11,20 +11,26 @@ import json
 import logging
 import os
 import re
-import requests
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Tuple
-from datetime import datetime
 from urllib.parse import urlparse
 
-from . import facet_derive
+import requests
+
+from . import facet_derive, indexnow
 from . import facets as facets_mod
-from . import indexnow
-from .models import Dossier, Decision, ScoreResult
+from .models import Decision, Dossier, ScoreResult
 from .pack_linter import lint_pack
 from .pack_validation import validate_pack
+
+# Aliased on import: `EngineBridge.publish_pass` below is the whole publish ROUTINE (upload,
+# price, list), and two unrelated things called `publish_pass` in one file is how a reader ends
+# up misreading both. `prose_pass` is the text gate; `publish_pass` is the money rail.
 from .plain_text import plain_lines, to_plain_text
+from .plain_text import publish_pass as prose_pass
+from .plain_text import publish_pass_document as prose_pass_document
 from .price_comparables import anchors_from_tags
 from .price_rationale import write_rationale
 from .pricing import price_for
@@ -46,6 +52,21 @@ def listing_gate(*, uploaded: bool, pack_complete: bool, priced: bool,
 # storefront needs to sell each pack specifically (sample excerpt, proof point, economics
 # teaser, trust signals) instead of generic chips. All extraction, no new generation.
 # ---------------------------------------------------------------------------
+
+def _card_field(raw: Any) -> str:
+    """Markdown-strip, then publish-pass, one single-line catalogue field.
+
+    Two different gates, in this order and both mandatory. `to_plain_text` takes the markup
+    off (the storefront has no markdown parser). `prose_pass` takes off what was never meant
+    to be published at all: passage ids, empty citation markers, raw confidence floats and
+    the register denylist — see prospector/plain_text.py for the measured defect classes.
+
+    `sentences=False` deliberately: a card line or a headline legitimately ends on a noun, and
+    the strict form would empty the whole shelf. It still repairs a TRUNCATED field, and
+    returns "" when nothing publishable survives so the caller can omit it and fall back.
+    """
+    return prose_pass(to_plain_text(raw, collapse=True))
+
 
 # A line is "cited" if it carries a source marker or a year alongside a number — safe to show
 # pre-purchase because it demonstrates the research is real without revealing the how-to.
@@ -398,9 +419,10 @@ class EngineBridge:
         listing_copy = listing.get("copy", "")
         # `copy` is markdown (it starts with `# <title>`), and oneLine is rendered as literal
         # text on the storefront card — take the markup off before it becomes the fallback.
-        one_liner = to_plain_text(candidate.one_liner, collapse=True) or to_plain_text(
-            listing_copy, collapse=True
-        )
+        # `_card_field` = markdown strip + publish pass. It runs BEFORE the 150-char cut
+        # below, so the truncation repair sees the full sentence and the deliberate `…` this
+        # code adds afterwards is the only ellipsis a buyer ever sees.
+        one_liner = _card_field(candidate.one_liner) or _card_field(listing_copy)
         # Cut on a WORD BOUNDARY, not a character index.
         #
         # This was `one_liner[:150] + "..."`, and measured against the live catalogue on
@@ -431,7 +453,7 @@ class EngineBridge:
         # Store.Web pack/[id].tsx), so each one goes through to_plain_text. Sanitising here —
         # at the single boundary where the payload is built — covers operator-generated
         # listings too, not just the deterministic floors in pack_floors.
-        subhead = to_plain_text(listing.get("subhead"), collapse=True)
+        subhead = _card_field(listing.get("subhead"))
         # `Candidate.audience` (models.py) is the single normaliser, shared with the SQLite
         # index in Store.save — see the note on the catalog_meta entry below.
         audience = getattr(candidate, "audience", "") or ""
@@ -440,16 +462,19 @@ class EngineBridge:
             # truncate), so no [:n] slice here — a slice would reintroduce exactly the
             # mid-clause cut that enforcement exists to prevent. "" when the operator could
             # not write a truthful short line; the card then falls back to the pack title.
-            "cardLine": to_plain_text(listing.get("card_line"), collapse=True),
-            "headline": to_plain_text(listing.get("headline"), collapse=True)[:140],
+            "cardLine": _card_field(listing.get("card_line")),
+            "headline": _card_field(listing.get("headline"))[:140],
             "subhead": subhead[:280],
-            "whatYouGet": plain_lines(listing.get("what_you_get"))[:5],
-            "proofPoint": to_plain_text(listing.get("proof_point"), collapse=True),
-            "whoPays": to_plain_text(listing.get("who_pays"), collapse=True),
+            # Empties dropped AFTER the pass as well as before it: a bullet that was nothing
+            # but a passage id has no words left, and an empty chip on the card is worse than
+            # one fewer chip.
+            "whatYouGet": [x for x in
+                           (prose_pass(x) for x in plain_lines(listing.get("what_you_get")))
+                           if x][:5],
+            "proofPoint": _card_field(listing.get("proof_point")),
+            "whoPays": _card_field(listing.get("who_pays")),
             "effortTag": (listing.get("effort_tag") or "").strip(),
-            "timeToFirstRevenue": to_plain_text(
-                listing.get("time_to_first_revenue"), collapse=True
-            ),
+            "timeToFirstRevenue": _card_field(listing.get("time_to_first_revenue")),
             "sampleExtract": _sample_excerpts(artifacts.get("build_spec", ""), listing.get("proof_point", "")),
             "financialSnapshot": _financial_snapshot(artifacts.get("financial_model", "")),
             "verifiedAt": getattr(dossier, "created_at", "") or "",
@@ -852,22 +877,35 @@ class EngineBridge:
                 # completeness gate correctly keeps such a pack UNLISTED, but a structurally
                 # incomplete zip is still worse than an honest placeholder — a missing file
                 # reads as an oversight, a stub says what happened and why nothing is for sale.
-                build_spec_md = artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec")
+                # THE PACK PROSE PASS. Every engine-authored document below goes through
+                # `prose_pass_document` before it enters the zip — the same five repairs the
+                # storefront gets, applied here because a pack `.md` is opened OFFLINE from a
+                # downloaded zip, where no web-side fix can ever reach it. The document form is
+                # line-wise and markdown-preserving: headings, list nesting and fenced code
+                # come out untouched, and a line is only truncation-repaired when it actually
+                # ends in an ellipsis.
+                build_spec_md = prose_pass_document(
+                    artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec"))
                 self._add_to_zip(zipf, "01_Blueprint_BuildSpec.md", build_spec_md)
                 written["01_Blueprint_BuildSpec.md"] = build_spec_md
 
-                gtm_md = artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan")
+                gtm_md = prose_pass_document(
+                    artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan"))
                 self._add_to_zip(zipf, "02_Marketing_Plan_GTM.md", gtm_md)
                 written["02_Marketing_Plan_GTM.md"] = gtm_md
 
-                ops_md = artifacts.get("ops_plan", "") or _held_back_md("Operations plan")
+                ops_md = prose_pass_document(
+                    artifacts.get("ops_plan", "") or _held_back_md("Operations plan"))
                 self._add_to_zip(zipf, "03_Operations_Plan.md", ops_md)
                 written["03_Operations_Plan.md"] = ops_md
 
                 # 4. Financial Model — its own file, with a provenance banner. The arithmetic is
                 # Python-computed from verified inputs (no LLM math), which is a real trust
                 # differentiator, so we say so where the buyer reads it.
-                financials = artifacts.get("financial_model", "")
+                # The prose around the arithmetic is engine-authored; the arithmetic itself is
+                # Python-computed and the pass never touches a number that is not a stray
+                # confidence float attached to a gate name.
+                financials = prose_pass_document(artifacts.get("financial_model", ""))
                 if financials:
                     financials = (
                         "> All figures below are computed by Python from verified inputs. No "
@@ -888,7 +926,12 @@ class EngineBridge:
 
                 # 5. QA Report
                 from .dossier import render_markdown
-                qa_report = render_markdown(dossier)
+                # The ONE surface that keeps its confidence figures: in the QA report the
+                # number is the subject, not a stray internal. `keep_confidence_figures=True`
+                # also inserts `CONFIDENCE_SCALE_NOTE` once, so a buyer never meets a bare
+                # "0.0" without the sentence that says what the scale means.
+                qa_report = prose_pass_document(
+                    render_markdown(dossier), keep_confidence_figures=True)
                 self._add_to_zip(zipf, "QA_Report.md", qa_report)
                 written["QA_Report.md"] = qa_report
 
@@ -913,16 +956,21 @@ class EngineBridge:
                         )
                         if (m.get("copy") or "").strip()
                     ]
-                marketing_text = "# Marketing Assets\n\n" + "\n".join(sections)
+                marketing_text = prose_pass_document(
+                    "# Marketing Assets\n\n" + "\n".join(sections))
                 self._add_to_zip(zipf, "Marketing_Assets.md", marketing_text)
                 written["Marketing_Assets.md"] = marketing_text
 
                 # 7–8. Epic C lite floors (deterministic, claim-safe)
-                exec_summary_content = exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or [])
+                # Deterministic floors, but not id-free: they embed `check.rationale`, which is
+                # verdict-brain prose and carries the same passage ids as everything else.
+                exec_summary_content = prose_pass_document(
+                    exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or []))
                 self._add_to_zip(zipf, "00_Executive_Summary.md", exec_summary_content)
                 written["00_Executive_Summary.md"] = exec_summary_content
 
-                checklist_content = first_week_checklist_md(dossier.candidate)
+                checklist_content = prose_pass_document(
+                    first_week_checklist_md(dossier.candidate))
                 self._add_to_zip(zipf, "05_First_Week_Checklist.md", checklist_content)
                 written["05_First_Week_Checklist.md"] = checklist_content
 

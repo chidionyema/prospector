@@ -7,13 +7,16 @@ import { Seo } from '@/components/Seo';
 import { Button, Icon, Dropdown, chipClasses, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
-import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
-import { DossierPreview } from '@/components/marketing/DossierPreview';
+// The home page OWNS the pack manifest (§5.3 of docs/SITE_SPEC_PROGRAM.md, founder-confirmed
+// 2026-08-07). `PACK_CONTENTS` for the count beside the prices, `PackContentsSection` for the
+// manifest itself. /pricing keeps bare filenames only (`pricing.tsx:123`), which is the same
+// section's other half of the ownership split, not a duplicate.
+import { PACK_CONTENTS, PackContentsSection } from '@/components/marketing/PackContents';
+import { EvidenceRecordPanel } from '@/components/marketing/EvidenceRecordPanel';
 import LiveKillCard from '@/components/marketing/LiveKillCard';
-import { HeroDossier } from '@/components/marketing/HeroDossier';
+import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
 import AmbientKillColumn from '@/components/marketing/AmbientKillColumn';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
-import FounderNote from '@/components/marketing/FounderNote';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
@@ -30,7 +33,7 @@ import { track } from '@/lib/analytics';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 import { allCategories, categoryFor, type Category } from '@/lib/category';
 import type { Sector } from '@/lib/facets';
-import { engineGateIds } from '@/lib/checks';
+import { checkVerdicts } from '@/lib/checks';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
   cardHeading,
@@ -50,9 +53,6 @@ import {
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
 import { useCopyVariant } from '@/lib/useCopyVariant';
-// Totals only, the full kill log is a separate import on /kill-log so its 60 entries stay
-// out of the home page bundle. Both files come from tools/make_kill_log.py.
-import killTotals from '@/data/kill-log-totals.json';
 
 interface HomeProps {
   packs: Pack[];
@@ -872,9 +872,6 @@ function CatalogBrowser({
   // No spotlight slab any more (see the deletion note above SpotlightCard's former home): the
   // default sort is `newest`, so the newest pack is already the first card in the grid.
   const gridPacks = grouped.matching;
-  /* The packs that render in the per-market groups below the shelf. The shelf's "showing X of Y"
-     line has to account for them or its Y silently disagrees with the hero's total. */
-  const offMarketCount = grouped.others.reduce((n, group) => n + group.packs.length, 0);
 
   /*
    * The shelf's editorial shape (spec section 7, 2026-08-05).
@@ -1023,30 +1020,20 @@ function CatalogBrowser({
           not invertible from the price, because a us/smb pack and a uk/growth pack both land on
           £79, so a badge derived from the price would be a label we cannot source.
 
-          THE SENTENCE IS `sm:` AND UP; the link is at every width. Measured on this build at
-          360x780, the full sentence wraps to four lines and pushed the first card to y=755, which
-          fails `e2e/discovery.spec.ts` "the first pack card is above the fold at 360x780" by 16px
-          -- and that test exists precisely because this kind of block gets added above the grid
-          and nobody measures. The split is not a dodge: the sentence answers "why does the card
-          BESIDE this one cost less", a question only a reader seeing two prices at once can ask,
-          and at 360px the grid is one card wide. What a phone gets instead is a one-line labelled
-          route to the same explanation, plus the "8 documents" strip on every cover, which is the
-          substantive half of the answer and renders at every width. */}
+          ONE LINE, AT EVERY WIDTH, ONCE ON THE PAGE. This used to be a `sm:`-and-up sentence plus
+          a shorter `sm:hidden` twin, and the same explanation ran again ~6,000px below in the
+          "What you get" intro and a third time on /pricing: the ladder was described three times
+          on one scroll. The full rule (ambition tier plus a market offset, on a fixed published
+          ladder) belongs to /pricing, which is the page a buyer opens with that exact question.
+          What has to be here is the part that stops the misreading at the shelf -- "the dear ones
+          must be the better ones" -- and that is two facts: the contents never change, and the
+          price tracks the size of the opportunity.
+
+          Short enough to sit on one line at 360px, which is a fold-budget constraint, not a style
+          one: `e2e/discovery.spec.ts` asserts the first pack card is above the fold at 360x780,
+          and the four-line version of this paragraph failed it by 16px. */}
       <p className="mb-4 max-w-[68ch] text-caption text-subtle">
-        <span className="hidden sm:inline">
-          Every pack contains the same {PACK_CONTENTS.length} documents. The price is set by how
-          big the idea could become and which market it targets, on a fixed published ladder, never
-          by the length of the pack.{' '}
-        </span>
-        {/* A SHORT sentence, not nothing. Hiding the whole explanation below `sm` left the link
-            standing on its own line under the filter chips, where "Why prices differ" answers a
-            question the phone reader has not been given -- no price is even on screen yet. An
-            orphaned link reads as a stray fragment; six words of antecedent cost one line that
-            the paragraph was already occupying. */}
-        {/* Short enough to sit on ONE line at 360px. The first draft ended "...whatever it
-            costs", which wrapped, and a wrapped caption here costs 18px of the fold budget the
-            first card is fighting for. */}
-        <span className="sm:hidden">Same {PACK_CONTENTS.length} documents in every pack. </span>
+        Same {PACK_CONTENTS.length} documents in every pack. Bigger opportunity, higher price.{' '}
         <Link href="/pricing" className={textLinkClass('font-medium')}>
           Why prices differ
         </Link>
@@ -1259,19 +1246,30 @@ function CatalogBrowser({
                     Show the other {tailPacks.length - shown} packs
                     <Icon name="arrowRight" size={15} />
                   </Button>
-                  {/* The count the button used to give was the total, which read as "you have seen
-                      none of 63" directly under twelve packs the reader had just scrolled.
+                </div>
+              )}
 
-                      IT ALSO HAD A DIFFERENT DENOMINATOR FROM THE HERO. The hero prints
-                      `packs.length` (every pack, 63); this line printed `gridPacks`, which is the
-                      reader's market only (52), because off-market packs render in their own group
-                      below. Two totals for one catalogue, ~800px apart, on a site whose product is
-                      not inventing numbers -- and no way for the reader to discover that the 11
-                      missing ones were further down rather than missing. Naming the basis and the
-                      remainder makes 52 + 11 = 63 legible instead of contradictory. */}
+              {gridPacks.length > 0 && (
+                <div className="mt-4 flex justify-center">
+                  {/* THE SHELF, BROKEN DOWN BY MARKET, and by nothing else.
+
+                      This read "Showing 13 of 47 written for your market, plus 10 written for other
+                      markets below." Three numbers, two of which are an artefact of how far the
+                      reader has scrolled: 13 is the pagination cursor, and it changes when the
+                      button directly above it is pressed. The one durable fact a reader needs here
+                      is how the catalogue splits, because the split is the reason some packs are
+                      below the divider rather than in the grid.
+
+                      Every figure is counted from the packs in this render, so the parts sum to the
+                      total the page states elsewhere by construction. The earlier version could
+                      not: the hero printed `packs.length` (63) while this line printed `gridPacks`
+                      (52), two totals for one catalogue ~800px apart, with nothing saying the 11
+                      missing ones were further down rather than missing. */}
                   <p className="text-caption text-subtle">
-                    Showing {shown + newestRow.length} of {tailPacks.length + newestRow.length} written for your market
-                    {offMarketCount > 0 && `, plus ${offMarketCount} written for other markets below`}.
+                    {[
+                      `${gridPacks.length} ${marketLabel(market)} packs`,
+                      ...grouped.others.map((group) => `${group.packs.length} ${group.label} packs`),
+                    ].join(' · ')}
                   </p>
                 </div>
               )}
@@ -1292,8 +1290,8 @@ function CatalogBrowser({
                     Written for {group.label} rules
                   </h3>
                   <p className="mt-1 max-w-[60ch] text-caption text-subtle">
-                    The research, the buyers and the regulations in these are {group.label}. Worth
-                    reading anywhere, but the numbers and the legal steps will not transfer.
+                    {group.label} research, {group.label} law, {group.label} buyers. The method
+                    transfers; the numbers won’t.
                   </p>
                   {/* Rows, not cards. This group is explicitly secondary -- the copy directly
                       above says the numbers and legal steps will not transfer -- so giving it the
@@ -1395,7 +1393,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
      the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
      card in the grid. */
   const featured = packs[0];
-  /* The hero's kill total moved into `HeroDossier`, which reads the SAME `kill-log-totals.json`
+  /* The hero's kill total moved into `HeroEvidenceStrip`, which reads the SAME `kill-log-totals.json`
      this page still reads for the panel below the shelf. That shared source is the point: a
      "1,168 killed" figure repeated across components is exactly how one of them goes stale, so no
      component is allowed to hold its own copy of the number. */
@@ -1526,16 +1524,17 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 onClick={() => track('sample_cta_clicked')}
                 className="inline-flex items-center gap-1.5 px-1 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
               >
-                Read a free sample
+                {/* ONE LINE, IN THE LINK. This was a link ("Read a free sample") over a caption
+                    ("A whole report, free. No payment, no email."), which restated "free" twice
+                    and then answered a question nobody had asked twice more. It then became a
+                    short link over a three-word caption, which is still two elements for one
+                    offer: a reader scanning the hero has to assemble the sentence from a link and
+                    a line of grey text below the button row. The offer and the friction it removes
+                    are one thought, so they are one clickable string. */}
+                Read a full pack free, no email needed.
                 <Icon name="arrowRight" size={14} />
               </Link>
             </div>
-            {/* One line, was two. "A whole dossier, unredacted, every source clickable. No payment,
-                no email." wrapped at 390px, and "unredacted" only means anything to someone who
-                already suspected we were redacting -- the defensive register the critique named. */}
-            <p className="mt-3 text-caption text-subtle">
-              A whole report, free. No payment, no email.
-            </p>
             {/* The kill log, DEMOTED to one line.
                 It used to be a 420px panel in the right column, listing three named dead ideas
                 behind red crosses -- so the first colour a stranger met on the page was failure,
@@ -1558,7 +1557,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 entirely in adjectives, on the one screen that had room to prove it instead. The
                 full dossier panel was 80% down the page, below the whole shelf.
 
-                `HeroDossier` replaces the sentence with the artefact: eight real verdicts from
+                `HeroEvidenceStrip` replaces the sentence with the artefact: eight real verdicts from
                 `sample-report.json`, one of them a failure, and four live source domains a
                 stranger can click before they trust a single word on this page. The kill total is
                 not lost, it moved INSIDE that component, where it sits next to the failed check
@@ -1566,7 +1565,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
 
                 `hidden md:block` is kept from the line it replaces, for the same reason: on a
                 phone this is the last object between the fold and a product. */}
-            <HeroDossier className="mt-5 hidden md:mt-6 md:block" />
+            <HeroEvidenceStrip className="mt-5 hidden md:mt-6 md:block" />
           </div>
           {/* THE PRODUCT, not the filter log.
               What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline
@@ -1590,7 +1589,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
                   the accessible name in sentence case while a screen reader may spell out the
                   rendered form, and this label sits directly above the one product on screen. */}
               <h2 className="mb-3 text-meta font-semibold text-text">
-                Newest on the shelf
+                New this week
               </h2>
               <PackCard
                 pack={featured}
@@ -1649,28 +1648,33 @@ export default function Home({ packs, stats, initialState, market, currency, per
           it. A reader who has scrolled past a screen of products is exactly the one with a
           question; a reader who has seen nothing yet just wanted to know what you sell. */}
       <Section bg="bg" width="7xl" className="!pt-0 !pb-10">
-        <LiveKillCard className="w-full lg:mx-auto lg:max-w-2xl" />
+        {/* `listed` is the live catalogue count, so the card can reconcile the two survivor
+            numbers the site prints. It said "81 survived" and the shelf said 57, ~600px apart,
+            and nothing on the page ever explained the 24. */}
+        <LiveKillCard listed={stats?.listed} className="w-full lg:mx-auto lg:max-w-2xl" />
       </Section>
 
-      {/* 3. WHAT YOU GET, the deliverable breakdown. Format ambiguity is the biggest killer on a
-             digital download page: the buyer's real fear is paying £49 for a two-page Google Doc. */}
-      {/* The heading has said "at every price" since the ladder shipped, and the page never once
-          said what the prices MEAN. A shelf running £29 to £199 with no stated rule reads as
-          arbitrary -- worse, it reads as "the dear ones must be the good ones", which invites the
-          buyer to distrust the cheap ones and hesitate over the dear ones. The rule is real and
-          simple (config.yaml `listing.pricing`: the rung is chosen by the opportunity's ambition
-          tier, side_hustle through venture, plus a market offset, and every pack gets the identical
-          eight documents), so it is stated in the intro where the spread is first named rather than
-          left on /pricing for the reader who thought to go looking. */}
+      {/* 3. ONE REAL PACK, SHOWN. Format ambiguity is the biggest killer on a digital download
+             page: the buyer's real fear is paying £49 for a two-page Google Doc. */}
+      {/* "What you get, at every price" IS GONE. The manifest under it is not, and the difference
+          is the whole point of §5.3.
+
+          Two sections used to argue the same thing here. The first was an essay about the ladder:
+          which rung a pack lands on, why £29 and £199 buy the same documents, what the ambition
+          tier and the market offset do -- that is /pricing's fact, and it is now one line above the
+          shelf ("Same {PACK_CONTENTS.length} documents in every pack...") plus a link. The second,
+          `PackContentsSection`, is the manifest, and §5.3 names THIS page its owner: the buyer's
+          "what do I actually get for £49" is answered where they meet the price, not one click
+          away. /pricing keeps bare filenames only; a pack page lists its own.
+
+          Recorded because it was got wrong once: on 2026-08-07 two concurrent sessions each
+          deleted one of these two sections, neither knowing about the other, and the manifest
+          left the page entirely -- a fact with a named owner ended up stated nowhere. If you are
+          about to delete this again, the section you want is the pricing essay, and it already
+          went. */}
       <Section
         bg="white"
         width="7xl"
-        title={`What you get${range ? ', at every price' : ''}`}
-        intro={
-          range && !range.uniform
-            ? `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. Every pack contains the same ${PACK_CONTENTS.length}, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}: the price is set by how big the idea could become and which market it targets, on a fixed published ladder, never by the length of the pack. No subscription, no drip feed, no upsell.`
-            : `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`
-        }
         className="!py-14 md:!py-20"
       >
         {/* The three-pill row that stood here is GONE, not restyled. It rendered
@@ -1682,12 +1686,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
             sourcing promise six, which is what makes a page read as though it is trying to
             convince you rather than sell you something. One statement, in the row that says it
             is the statement. */}
-        <PackContentsSection heading="What’s inside your pack" />
-        {/* The list above names the documents; this shows one. The fear on a digital download
+        {/* A list of filenames names the documents; this shows one. The fear on a digital download
             page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
             rows from the free sample, including the check that failed, a preview of eight
             green ticks would advertise better and claim something the shop does not. */}
-        <DossierPreview />
+        <PackContentsSection heading="What's inside your pack" />
+        <EvidenceRecordPanel />
         {/*
           `MethodCostAnchor` and `ComparisonBlock` were REMOVED from the homepage (2026-08-06) and
           are not deleted -- both are cited, carefully-sourced arguments, and both belong to
@@ -1704,12 +1708,14 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <SectionBand bg="surface2" width="7xl" className="border-y border-border py-16 md:py-24">
         <div className="max-w-[46rem]">
           <h2 className="text-h1 font-semibold text-text">
-            Stress tested the way a sceptical investor would.
+            Every idea is checked the way a sceptical investor would check it.
           </h2>
+          {/* Two sentences, was three, and neither of them is an adjective. The old pair opened
+              "Every opportunity walks into the engine", which spends a line describing a queue,
+              and closed on "what you see is everything that survived" -- the only load-bearing
+              claim in the paragraph. The rule that produces it is four words long. */}
           <p className="mt-4 max-w-[60ch] text-body text-muted">
-            Every opportunity walks into the engine. Anything that cannot back a
-            claim with a real source dies before it reaches this store. What you see is everything
-            that survived.
+            No source, no listing. What’s here is what survived.
           </p>
           {/* The common gates, named. Mono because these are the engine's own gate identifiers --
               the same strings the kill log prints beside each rejection, so a reader can match
@@ -1722,32 +1728,39 @@ export default function Home({ packs, stats, initialState, market, currency, per
               buyer_intent, currency and claims_verifiable. about.tsx and faqContent.ts were fixed
               on 2026-08-06; this line was missed because the regression test read about.tsx only.
               `fixedCheckCount.test.ts` now reads every rendered copy surface. */}
-          {/* Derived from `COMMON_CHECKS`, not typed out. This row was hand-written and was
-              missed by the regression sweep that fixed about.tsx and faqContent.ts, because that
-              test read about.tsx only. A derived row cannot be missed by the next sweep. */}
-          <p className="mt-6 font-mono text-caption text-subtle">
-            {engineGateIds()}
-          </p>
-          {/* Its own line, not a trailing clause on the mono row: the row is set in the engine's
-              own identifiers and this sentence is the site talking, so running them together in
-              one paragraph would read as a seventh gate named "the fronts common to every idea".
-              A dash would have separated them visually; `dashFree.test.ts` forbids em/en-dashes in
-              source, and the rule is right here anyway, since the break is structural. */}
-          <p className="mt-2 max-w-[46ch] text-caption text-subtle">
+          {/* THE VERDICTS, not the gate ids. This row printed `engineGateIds()` --
+              "pain reality · value durability · incumbency ..." -- six machine identifiers naming
+              the SUBJECT of each check while saying nothing about what it decides. A stranger
+              cannot tell from the word "incumbency" whether that check passed an idea or killed
+              it, which makes the row decoration on the one band whose job is to explain the
+              method.
+
+              `checkVerdicts()` returns the kill log's own `gateLabel` strings, so these are
+              literally the sentences printed on the receipts a reader meets one click away. Still
+              derived, never typed out: this row was hand-written once and was missed by the
+              regression sweep that fixed about.tsx and faqContent.ts, because that test read
+              about.tsx only. */}
+          <ul className="mt-6 grid list-none grid-cols-1 gap-x-10 gap-y-1.5 p-0 text-caption text-subtle sm:grid-cols-2">
+            {checkVerdicts().map((v) => (
+              <li key={v}>{v}</li>
+            ))}
+          </ul>
+          {/* Its own element, not a trailing clause on the list: six verdicts with nothing after
+              them assert that six IS the set, which is false for 23 of the 63 live packs, and a
+              seventh line inside the same list would read as a seventh verdict. A dash would have
+              separated them visually; `dashFree.test.ts` forbids em/en-dashes in source, and the
+              rule is right here anyway, since the break is structural. */}
+          <p className="mt-4 max-w-[46ch] text-caption text-subtle">
             Those are the checks common to every idea. Some face more, and each pack page names the
             checks that idea faced.
           </p>
-          {/* Two links, because this band makes two different promises. "How it works" describes
-              the process; the kill log is the only thing on the site that proves it ran. A
-              stranger who doubts the claim above needs evidence, not a longer description. */}
+          {/* The kill-log link that stood first here is GONE, and the kill total with it. The
+              card directly above this band IS the kill log: it prints the running total, three
+              real kills, and its own "Read the kill log" link. Repeating both one screen later
+              made the total the third number on the page pointing at the same thing. Two links
+              remain, and each answers a different question: how the process works, and who is
+              behind it. */}
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
-            <Link
-              href="/kill-log"
-              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
-            >
-              See the {killTotals.killed.toLocaleString('en-GB')} we killed
-              <Icon name="arrowRight" size={14} />
-            </Link>
             <Link
               href="/how-it-works"
               className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
@@ -1769,11 +1782,11 @@ export default function Home({ packs, stats, initialState, market, currency, per
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
-          {/* Renders nothing at all until a real person is named in `lib/config.ts`. Deliberately
-              in this band rather than the hero: the reader who wants to know who we are is the one
-              who has just read the argument, and a bio above the shelf is the founder's-syndrome
-              move this whole pass is undoing. */}
-          <FounderNote className="mt-10 max-w-[46rem]" />
+          {/* `FounderNote` is REMOVED from the homepage (not deleted, and not from the site): the
+              founder's paragraph now lives once, on /about, which is the page that answers "who is
+              behind this" in full and which the link directly above reaches. Rendering the bio
+              here as well meant a stranger met the same person twice in two lengths, and the
+              homepage's job is the product. */}
         </div>
       </SectionBand>
 
@@ -1802,7 +1815,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <CtaBand
         width="7xl"
         title={range ? `Find your next business from ${formatGbp(range.min)}.` : 'Find your next business.'}
-        lead={`${packs.length} of them, each with the research and the sources already done.`}
+        lead={`${packs.length} packs. Research done, every claim sourced.`}
         primary={{ href: '#catalog', label: 'Browse the packs' }}
         secondary={{ href: '/how-it-works', label: 'How it works' }}
       />

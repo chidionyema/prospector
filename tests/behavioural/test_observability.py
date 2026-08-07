@@ -7,13 +7,13 @@ Proofs:
 """
 from __future__ import annotations
 
+import io
 import json
 import logging
-import io
-from typing import Any
 
 import pytest
-from prospector.telemetry import CustomJsonFormatter, set_context, track_latency, logger
+
+from prospector.telemetry import CustomJsonFormatter, logger, set_context, track_latency
 
 
 @pytest.fixture

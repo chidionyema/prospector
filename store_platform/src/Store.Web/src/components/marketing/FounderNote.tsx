@@ -13,9 +13,15 @@ import { FOUNDER, hasFounder } from '@/lib/config';
  * absence, never a placeholder -- no grey silhouette, no "founder photo coming soon", nothing that
  * looks like a broken promise on a page arguing that its promises are checkable.
  *
+ * It does NOT carry the founder's story. `FOUNDER.bio` used to exist and used to be rendered here
+ * in two lengths -- the full paragraph on /about, the same paragraph `line-clamp-2`'d on the home
+ * page -- which is how a stranger met the same person twice. /about owns the story now (see the
+ * block where `bio` used to be in `lib/config.ts`, and `factOwnership.test.ts`), so this component
+ * names the person and points at it.
+ *
  * Two variants, because the two places that want a founder want different amounts of them:
- *  - `compact` (home page): a name, a line, and a link out. It exists to prove a person exists.
- *  - `full` (/about): the same plus the bio, where a reader who came looking has room to read.
+ *  - `compact`: name, role, and the link to /about. It exists to prove a person exists.
+ *  - `full` (/about): the same, larger, WITHOUT the link -- you are already on the page it goes to.
  */
 export function FounderNote({
   variant = 'compact',
@@ -53,17 +59,6 @@ export function FounderNote({
       <div className="min-w-0">
         <p className="text-body font-semibold text-text">{FOUNDER.name}</p>
         {FOUNDER.role && <p className="mt-0.5 text-meta text-muted">{FOUNDER.role}</p>}
-        {full && FOUNDER.bio && (
-          <p className="mt-3 max-w-[60ch] text-body leading-relaxed text-muted">{FOUNDER.bio}</p>
-        )}
-        {!full && FOUNDER.bio && (
-          /* One line on the home page. `line-clamp-2` rather than a separate short-bio field:
-             a second field is a second thing to keep true, and the founder would have to write
-             the same thing twice. */
-          <p className="mt-2 line-clamp-2 max-w-[60ch] text-meta leading-relaxed text-muted">
-            {FOUNDER.bio}
-          </p>
-        )}
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
           {FOUNDER.profileUrl && (
             <a

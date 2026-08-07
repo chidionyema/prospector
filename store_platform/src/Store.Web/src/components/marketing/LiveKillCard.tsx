@@ -4,6 +4,7 @@ import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import killTotals from '@/data/kill-log-totals.json';
 import killNames from '@/data/kill-log-names.json';
+import { survivorsSummary } from '@/lib/stats';
 
 /**
  * US-3 - The hero's demonstration of the moat.
@@ -76,9 +77,14 @@ const KILL_LINES = KILLS.map((k) => ({
 
 export interface LiveKillCardProps {
   className?: string;
+  /**
+   * Packs on the shelf right now, from the live catalogue. Optional: a caller with no catalogue
+   * to hand gets the survivor count on its own, which is a historical total and cannot go stale.
+   */
+  listed?: number;
 }
 
-export default function LiveKillCard({ className }: LiveKillCardProps) {
+export default function LiveKillCard({ className, listed }: LiveKillCardProps) {
   /*
    * No timer, and no "LIVE" badge.
    *
@@ -94,7 +100,6 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
    * elsewhere. Deleting Skeleton would have silently stopped the hero animating.
    */
   const killed = (killTotals as { killed: number; passed: number }).killed;
-  const passed = (killTotals as { killed: number; passed: number }).passed;
 
   return (
     <div
@@ -115,10 +120,13 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
       {/* Header. Labelled as what it is, a snapshot of the audit trail, rather than "LIVE". */}
       <div className="flex h-11 items-center justify-between gap-3 border-b border-border px-5">
         <span className="text-meta font-semibold text-text">The checks log</span>
-        <span className="truncate font-mono text-caption text-subtle">
-          <span className="text-danger">{killed.toLocaleString('en-GB')} killed</span>
-          {' · '}
-          <span className="text-success">{passed.toLocaleString('en-GB')} survived</span>
+        {/* Killed only. The chip used to read "1,331 killed · 81 survived", and 81 was the one
+            number on the page nothing ever reconciled: the shelf beside it holds 57. Two counts of
+            the same thing, ~600px apart, on the site whose pitch is that it checks its numbers.
+            The survivor figure is not dropped, it moved to the footer, where there is room to say
+            what makes it different from the shelf count. */}
+        <span className="truncate font-mono text-caption text-danger">
+          {killed.toLocaleString('en-GB')} killed
         </span>
       </div>
 
@@ -139,7 +147,11 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
         ))}
       </div>
 
-      <div className="border-t border-border px-5 py-3">
+      <div className="flex flex-col gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* The two survivor numbers, reconciled in one line, once on the page. `listed` is the
+            live catalogue count and `survived` is a historical total, so they are never equal and
+            the difference is the packaging queue, not a mistake. */}
+        <span className="font-mono text-caption text-subtle">{survivorsSummary(listed)}</span>
         <Link
           href="/kill-log"
           className="inline-flex items-center gap-1 text-meta font-medium text-accent transition-colors hover:text-accent-hover"

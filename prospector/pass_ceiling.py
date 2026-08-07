@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Iterable, Optional, Sequence
 
-from .models import CheckResult, SCORE_AXES
+from .models import SCORE_AXES, CheckResult
 from .score import composite
 
 # PASS-side floors soft-exit may return. Not hard gates (cited refuted kills).

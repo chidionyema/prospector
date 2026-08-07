@@ -5,7 +5,7 @@ import { parseCitations } from '@/lib/citations';
 import type { PackDetails } from '@/lib/api/client';
 
 /**
- * The first thing on the money page: a real page of the pack's own dossier.
+ * The first thing on the money page: a real page of the pack's own evidence record.
  *
  * WHAT THIS REPLACED
  *
@@ -17,7 +17,7 @@ import type { PackDetails } from '@/lib/api/client';
  *
  * WHY AN EXCERPT AND NOT A NICER COVER
  *
- * The claim under test on this page is "this dossier exists and is sourced". A cover cannot
+ * The claim under test on this page is "this record exists and is sourced". A cover cannot
  * carry that claim -- a pack with nothing behind it renders an identical cover, which is exactly
  * what makes it worthless as evidence. A line lifted from `sampleExtract` with its source
  * resolved to a live anchor cannot be rendered by an empty pack: no extract, no plate.
@@ -30,7 +30,7 @@ import type { PackDetails } from '@/lib/api/client';
  * this is the pull-quote, that is the section. What must never diverge is the source -- both
  * render through `parseCitations`, so a line's anchor is the same anchor in both places.
  */
-export default function DossierExcerptPlate({
+export default function EvidenceExcerptPlate({
   pack,
   className,
 }: {
@@ -54,7 +54,7 @@ export default function DossierExcerptPlate({
       <figcaption className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-surface2 px-5 py-3">
         <span className="inline-flex items-center gap-2 text-caption font-medium text-muted">
           <Icon name="verified" size={13} className="text-success" />
-          One page of the verification dossier
+          One page of the evidence record
         </span>
         {/* The reference only. Mono because it is the one value on this plate a reader would
             transcribe or quote back to us; prose stays in the sans (`monoIsTheDataVoice`).
@@ -62,7 +62,8 @@ export default function DossierExcerptPlate({
             why that was wrong: `33 sources` printed here and again ~200px below in the evidence
             row under the sub-copy, so the fold of the money page spent two lines saying one
             number. The count is a fact about the PACK and belongs in the pack's evidence row;
-            this plate identifies the DOSSIER the excerpt was lifted from. */}
+            this plate identifies the RECORD the excerpt was lifted from (`dossierRef` is the
+            API's own field name, and renaming a wire field is a different, breaking change). */}
         <span className="font-mono text-caption text-subtle">{pack.dossierRef}</span>
       </figcaption>
 

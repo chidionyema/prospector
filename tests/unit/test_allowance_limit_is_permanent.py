@@ -26,8 +26,13 @@ from __future__ import annotations
 
 import pytest
 
-from prospector.errors import (NOT_EXHAUSTION, PERMANENT, TRANSIENT,
-                               classify_exhaustion, looks_exhausted)
+from prospector.errors import (
+    NOT_EXHAUSTION,
+    PERMANENT,
+    TRANSIENT,
+    classify_exhaustion,
+    looks_exhausted,
+)
 
 # Verbatim from the live daemon log, 2026-08-06T10:24:36Z.
 REAL_CLI_LIMIT_ERROR = (

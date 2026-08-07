@@ -13,7 +13,6 @@ from .models import SCORE_AXES, Candidate, CheckResult, ScoreResult
 from .operator import Operator
 from .prompts import render
 from .telemetry import stage as telemetry_stage
-from typing import Optional
 
 
 def composite(scores: dict[str, int], weights: dict[str, float]) -> float:

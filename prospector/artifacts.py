@@ -19,11 +19,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
 from . import facets
-from .models import Candidate, CheckResult, Verdict
+from .models import Candidate, CheckResult, Decision, Dossier, Verdict
 from .operator import Operator, ParseError, _extract_json
 from .pack_linter import symbol_for_currency
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
-from .telemetry import logger, stage as telemetry_stage
+from .telemetry import logger
+from .telemetry import stage as telemetry_stage
 
 # Prose pack bodies: schema is {"type", "content"} where content is markdown.
 # cursor_cli often emits the markdown body without the JSON envelope.
@@ -252,8 +253,15 @@ def _validate_artifact_shape(t: str, data: Any) -> Any:
 
 def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
                       t: str, market_vars: Optional[Dict[str, str]] = None
-                      ) -> tuple[str, str]:
-    """Generate one artifact type. Runs in a thread; returns (type, content)."""
+                      ) -> tuple[str, str, Optional[Dict[str, Any]]]:
+    """Generate one artifact type. Runs in a thread.
+
+    Returns ``(type, content, raw)``. ``raw`` is the financial model's structured
+    assumptions dict — the verified INPUTS behind the rendered arithmetic. It used to be
+    discarded the moment `_render_financial_model` had run, which is why the buyer's bundle
+    could never ship a spreadsheet or a machine-readable financial file (register F1/F3).
+    It is ``None`` for every other artifact type.
+    """
     system, user = render("artifacts", candidate_json=cand_json,
                           claims_json=claims_json, type=t,
                           **(market_vars or {}))
@@ -275,10 +283,10 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
             assumptions, claims_list,
             currency=symbol_for_currency((market_vars or {}).get("currency_hint")),
         )
-        return t, content
+        return t, content, assumptions
 
     # All other types return {type, content}.
-    return t, str(data.get("content", ""))
+    return t, str(data.get("content", "")), None
 
 
 def generate_artifacts(
@@ -289,6 +297,8 @@ def generate_artifacts(
     fast_op: Optional[Operator] = None,
     quality_op: Optional[Operator] = None,
     cfg: Optional[Any] = None,
+    dossier: Optional[Dossier] = None,
+    score: Optional[Any] = None,
 ) -> Dict[str, str]:
     """Generate build_spec, gtm_plan, ops_plan, financial_model in parallel.
 
@@ -299,6 +309,17 @@ def generate_artifacts(
     (the Gemini CLI -> Claude CLI quality chain) when provided. The financial_model is a
     pure JSON fill that Python turns into arithmetic, so it stays on the cheap ``fast_op``.
     Both fall back to ``op`` (the moat) when their preferred operator isn't supplied.
+
+    ``dossier`` is optional and only feeds the `pack_data` data files (register F1/F2): pass
+    the real one and the scorecard carries the six-axis ScoreResult; omit it and a candidate-
+    only stand-in is used, which reports ``score_available: false`` rather than inventing
+    zeros. It is never consulted for the prose artifacts.
+
+    ``score`` exists because the publish path cannot pass ``dossier``: `run.py` calls this
+    BEFORE `build_dossier`, so at that point there is a real ScoreResult but no Dossier to
+    hang it on. Passing it here puts the six axes into the stand-in, which is the difference
+    between a scorecard and a `score_available: false` placeholder in a bundle the buyer
+    paid for. Ignored when ``dossier`` is supplied — the real one already carries its score.
     """
     cheap_op = fast_op or op
     prose_op = quality_op or op
@@ -309,6 +330,7 @@ def generate_artifacts(
 
     types = ["build_spec", "gtm_plan", "ops_plan", "financial_model"]
     results: Dict[str, str] = {}
+    financial_assumptions: Optional[Dict[str, Any]] = None
 
     # Money figures in the pack must be denominated in the OPPORTUNITY's market currency
     # (a US pack quoting £ is wrong), independently of the £49 the pack itself sells for.
@@ -324,12 +346,28 @@ def generate_artifacts(
         for future in as_completed(futures):
             t = futures[future]
             try:
-                _, content = future.result()
+                _, content, raw = future.result()
                 results[t] = content
+                if t == "financial_model" and isinstance(raw, dict):
+                    financial_assumptions = raw
             except Exception as e:
                 logger.error(f"Artifact generation failed for {t}: {e}",
                              extra={"type": t, "error": str(e)})
                 results[t] = ""
+
+    # Register F1/F2 — the deterministic, zero-LLM data files (scorecard, financial model
+    # and price comparables as JSON+CSV, plus the score radar as SVG). Gated on
+    # `pack_data.enabled`, which defaults to False, so this is inert until switched on.
+    # Wrapped because a data file is a nice-to-have and the £49 prose is not: a failure here
+    # must cost the buyer a spreadsheet, never a pack.
+    try:
+        from . import pack_data as _pack_data
+        results.update(_pack_data.artifacts_for_bundle(
+            dossier if dossier is not None
+            else Dossier(candidate=cand, decision=Decision.PASS, checks=checks, score=score),
+            cfg, financial_assumptions=financial_assumptions))
+    except Exception as e:
+        logger.warning(f"pack_data artifacts skipped: {e}", extra={"error": str(e)})
 
     return results
 

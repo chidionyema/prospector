@@ -1,16 +1,11 @@
 """Regression: CC jobs must survive parent/Streamlit death without Broken pipe."""
 from __future__ import annotations
 
-import os
-import signal
 import sys
 import time
 from pathlib import Path
 
-import pytest
-
 import prospector.control_center.runner as runner
-
 
 _CHILD_TICKER = r"""
 import sys, time

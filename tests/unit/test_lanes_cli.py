@@ -7,16 +7,13 @@ All tests are offline — they operate on a temp config.yaml; no live calls.
 """
 from __future__ import annotations
 
-import os
-import re
-import textwrap
 import tempfile
+import textwrap
 from pathlib import Path
 
 import pytest
-from prospector.run import _manage_lanes, _resolve_lanes
-from prospector.config import load_config
 
+from prospector.run import _manage_lanes, _resolve_lanes
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -124,7 +121,6 @@ def test_nix_last_lane_leaves_empty_list(temp_config):
 
 def test_nix_unknown_lane_is_noop(capsys, temp_config):
     """Nixing a lane not in active_lanes is a no-op and warns."""
-    original_lines = temp_config.read_text()
     _manage_lanes("nix", "bogus_lane", temp_config)
     d = _read_config(temp_config)
     assert "side_hustle" in d["active_lanes"]  # unchanged

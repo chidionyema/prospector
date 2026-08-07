@@ -46,8 +46,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from prospector.config import load_config          # noqa: E402
-from prospector.store import Store                 # noqa: E402
+from prospector.config import load_config  # noqa: E402
+from prospector.store import Store  # noqa: E402
 
 QUARANTINE_DIRNAME = "quarantine_ungrounded"
 

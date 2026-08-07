@@ -24,12 +24,12 @@ import re
 from typing import Any
 
 import pytest
+
 from prospector.config import load_config
 from prospector.models import Candidate, Source
 from prospector.operator import MockOperator
 from prospector.retrieval import FixtureProvider
 from prospector.verify import verify
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

@@ -5,12 +5,7 @@ write/backup, and certification state.
 """
 from __future__ import annotations
 
-import json
-import shutil
 import time
-from pathlib import Path
-
-import pytest
 
 import prospector.control_center.config_editor as ce
 
@@ -150,7 +145,6 @@ class TestMtimeConflict:
     """mtime_conflict() must detect external edits while editing."""
 
     def test_no_conflict_when_file_hasnt_changed(self):
-        raw = ce.load_config_raw()
         current_mtime = ce.get_config_mtime()
         assert not ce.mtime_conflict(current_mtime)
 

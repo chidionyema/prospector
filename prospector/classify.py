@@ -13,7 +13,6 @@ tier the candidate was generated under. We never crash and never silently drop a
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 from .config import Config
 from .models import Candidate

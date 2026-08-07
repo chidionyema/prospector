@@ -4,8 +4,6 @@ These must PASS for the UI modernization to be considered done.
 """
 from __future__ import annotations
 
-import pytest
-
 
 class TestThemeCSS:
     """Theme CSS injection and module integrity."""
@@ -33,7 +31,6 @@ class TestThemeCSS:
     def test_inject_theme_does_not_raise(self):
         """inject_theme() must not raise (though it needs Streamlit context
         for full rendering, the import and CSS string formation must succeed)."""
-        from prospector.control_center.theme import inject_theme
         # inject_theme calls st.markdown which needs Streamlit runtime context.
         # We only test that the function exists and the CSS constant is valid.
         # The actual injection is tested via Streamlit integration tests.

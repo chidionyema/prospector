@@ -15,9 +15,10 @@ asserted here so the distinction can't silently regress.
 from __future__ import annotations
 
 import pytest
+
 from prospector.config import load_config
 from prospector.kill_filter import is_hard_fail
-from prospector.models import Candidate, Decision, DEFER_GATE, Verdict
+from prospector.models import DEFER_GATE, Candidate, Decision, Verdict
 from prospector.operator import MockOperator
 from prospector.retrieval import SearchProvider
 from prospector.run import vet_candidate

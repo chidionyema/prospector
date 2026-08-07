@@ -65,7 +65,7 @@ from typing import Any, Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from prospector import pack_html, pack_manifest  # noqa: E402
-from prospector.bridge import BUNDLE_FILES, _SECTION_TITLES  # noqa: E402
+from prospector.bridge import _SECTION_TITLES, BUNDLE_FILES  # noqa: E402
 
 # Env-overridable so a backfill can be pointed at staging. This script PATCHes live
 # catalogue rows; a hardcoded production constant means there is no way to rehearse

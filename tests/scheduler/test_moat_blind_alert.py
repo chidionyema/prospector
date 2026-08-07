@@ -20,8 +20,13 @@ import types
 import pytest
 
 from prospector.scheduler import run_scheduled as rs
-from prospector.scheduler.alerts import (CRITICAL, TELEGRAM_KEYS, TICK_ALERT_KEYS,
-                                         active_alerts, alerts_for_tick)
+from prospector.scheduler.alerts import (
+    CRITICAL,
+    TELEGRAM_KEYS,
+    TICK_ALERT_KEYS,
+    active_alerts,
+    alerts_for_tick,
+)
 
 
 @pytest.fixture()

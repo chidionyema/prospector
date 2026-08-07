@@ -21,7 +21,7 @@ import { cx } from '@/components/ui/cx';
 
   WHY IT IS `aria-hidden`. A screen reader must not wade through 120 rejected product names to
   reach the headline. The FACT this column expresses (how many were rejected, and that you can read
-  them) is carried in text by `HeroDossier` directly beside it, and links to `/kill-log` where the
+  them) is carried in text by `HeroEvidenceStrip` directly beside it, and links to `/kill-log` where the
   same records are a real, navigable table. The visual is the only thing being hidden.
 */
 

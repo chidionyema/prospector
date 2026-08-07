@@ -137,7 +137,7 @@ export function priceLadder(packs: { price?: string | null }[]): LadderRung[] {
  */
 export function priceSentence(range: PriceRange): string {
   if (range.uniform) {
-    return `Every pack is ${formatGbp(range.min)}. One payment, no subscription, no upsell.`;
+    return `Every pack is ${formatGbp(range.min)}. One payment, no subscription.`;
   }
   return (
     `${range.modeCount} of the ${range.total} packs on the shelf are ${formatGbp(range.mode)}. ` +
@@ -147,6 +147,6 @@ export function priceSentence(range: PriceRange): string {
     // 2026-08-06). The obvious repair, an en dash, is banned by `dashFree.test.ts`: em/en
     // dashes are the most recognisable AI-writing signature and this is a storefront pitching
     // source-or-die. Punctuation that is neither is the answer, so the clause takes a colon.
-    `Whichever you pick, it is one payment: no subscription, no upsell.`
+    `Whichever you pick, it is one payment: no subscription.`
   );
 }

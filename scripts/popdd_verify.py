@@ -163,11 +163,21 @@ class Lane:
 
 
 LANES: dict[str, Lane] = {
+    # ruff runs FIRST and repo-wide (no path args), for two reasons. First, it is seconds
+    # against pytest's ~175s, so a lint failure comes back fast. Second, `lanes_for` maps
+    # ANY `.py` to this lane, including files outside prospector/tools/scripts/tests —
+    # scoping ruff to those four dirs would green-light a staged `run_v2.py` that was never
+    # linted. The step loop breaks on a non-zero exit, so ruff's own status blocks the
+    # commit; _parse_pytest then reads 0/0 off the ruff output and the verdict is FAIL on
+    # `returncode != 0`, with ruff's findings already printed by the non-zero branch.
     "python": Lane(
         key="python",
-        label="python — pytest suite",
+        label="python — ruff + pytest suite",
         target="prospector:test-suite",
-        steps=(("pytest", [sys.executable, "-m", "pytest", "-q", "--tb=no", "-rf"]),),
+        steps=(
+            ("ruff", [sys.executable, "-m", "ruff", "check", "--output-format", "concise"]),
+            ("pytest", [sys.executable, "-m", "pytest", "-q", "--tb=no", "-rf"]),
+        ),
         parser=_parse_pytest,
     ),
     # The storefront proof CI itself does NOT fully run: ci.yml's `nextjs` job runs

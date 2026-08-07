@@ -49,6 +49,26 @@ OUT = "store_platform/src/Store.Web/src/data/kill-log.json"
 # The home page wants only the headline count. Importing the full log there would ship every
 # entry in the home page bundle for the sake of one number, so the totals are split out.
 OUT_TOTALS = "store_platform/src/Store.Web/src/data/kill-log-totals.json"
+# The SAME argument as OUT_TOTALS above, one level further in.
+#
+# `/kill-log` is an instrument over the whole dataset, so it wants every entry it can get: at
+# --limit 400 that file is ~507 KB. But two home page components (`LiveKillCard` and the hero's
+# `AmbientKillColumn`) render nothing but struck-through NAMES, and a static JSON import cannot be
+# tree-shaken -- an array is one value, so importing it for two fields ships all seven. Pointing
+# the home page at the full log would therefore have put half a megabyte of reasons and citations
+# into the bundle of the one page that never displays them.
+#
+# This file carries `title` and `gate` and nothing else, for the newest PREVIEW_LIMIT kills.
+OUT_NAMES = "store_platform/src/Store.Web/src/data/kill-log-names.json"
+# `/how-it-works` illustrates each of the six checks with one real kill, so unlike the home page it
+# needs WHOLE entries (reason, citations), not just names. It does not need four hundred of them.
+#
+# This file is exactly `entries[:PREVIEW_LIMIT]` with every field intact, which is byte-for-byte
+# what `kill-log.json` used to contain before the log was raised from 60 to 400 for the /kill-log
+# instrument. Pointing /how-it-works here therefore preserves its behaviour exactly, including
+# which example each check draws, while keeping the 452 KB full log out of that page's bundle.
+OUT_EXAMPLES = "store_platform/src/Store.Web/src/data/kill-log-examples.json"
+PREVIEW_LIMIT = 60
 DOSSIERS = "store/dossiers"
 
 # Gate names in the engine's vocabulary, rendered as the question the check actually asks.
@@ -258,12 +278,31 @@ def build(limit: int) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--limit", type=int, default=60,
-                        help="How many kills to publish (newest first, default 60).")
+    # 400, not 60. /kill-log is a dataset instrument (sortable, filterable, per-entry anchors) and
+    # 60 rows is not a dataset, it is a sample. 400 is not an arbitrary raise either: it is close
+    # to the ceiling of what CAN be published, because BOILERPLATE_GATES excludes the three
+    # score-only gates and those account for 818 of the 1,330 kills. Roughly 512 kills carry an
+    # actual argument; the rest have nothing to show.
+    parser.add_argument("--limit", type=int, default=400,
+                        help="How many kills to publish (newest first, default 400).")
     args = parser.parse_args()
 
     payload = build(args.limit)
-    for path, data in ((OUT, payload), (OUT_TOTALS, payload["totals"])):
+    names = [
+        {"title": entry["title"], "gate": entry["gate"]}
+        for entry in payload["entries"][:PREVIEW_LIMIT]
+    ]
+    examples = {
+        "generatedAt": payload["generatedAt"],
+        "totals": payload["totals"],
+        "entries": payload["entries"][:PREVIEW_LIMIT],
+    }
+    for path, data in (
+        (OUT, payload),
+        (OUT_TOTALS, payload["totals"]),
+        (OUT_NAMES, names),
+        (OUT_EXAMPLES, examples),
+    ):
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(data, handle, indent=2, ensure_ascii=False)
             handle.write("\n")

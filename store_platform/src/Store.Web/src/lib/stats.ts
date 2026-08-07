@@ -52,6 +52,11 @@ export const RESEARCH_STATS = {
  * on a smaller grid and left them to notice the shortfall themselves. Naming the gap is both
  * truer and more on-brand than quietly printing the smaller number.
  *
+ * The wording says what each number MEANS, not just that they differ: one is a verdict ("survived
+ * the checks"), the other is a state of packaging ("packaged and listed so far"). The site printed
+ * both figures on the same scroll and never once reconciled them, which reads to a sceptic as an
+ * arithmetic error on the one site claiming it checks its arithmetic.
+ *
  * Do not write either figure into copy. Both move: re-vetting the backlog on 2026-08-06 turned 62
  * former passes into kills, taking survivors 145 -> 83 in one regeneration, while `listed` changes
  * with no redeploy at all.
@@ -62,7 +67,7 @@ export const RESEARCH_STATS = {
 export function survivorsSummary(listed?: number): string {
   const { survived } = RESEARCH_STATS;
   if (typeof listed !== 'number' || listed <= 0 || listed >= survived) {
-    return `${survived.toLocaleString('en-GB')} survived`;
+    return `${survived.toLocaleString('en-GB')} survived the checks`;
   }
-  return `${survived.toLocaleString('en-GB')} survived, ${listed.toLocaleString('en-GB')} published so far`;
+  return `${survived.toLocaleString('en-GB')} survived the checks; ${listed.toLocaleString('en-GB')} are packaged and listed so far`;
 }

@@ -123,8 +123,8 @@ def _render_operator_health(health: dict):
 def _render_alarms(cfg):
     st.markdown("**Calibration alarms**")
     try:
-        from prospector.store import Store
         from prospector.diagnostics import diagnostics_data
+        from prospector.store import Store
         data = diagnostics_data(Store(cfg), cfg)
         alarms = data.get("alarms", [])
         st.session_state["_diag_data"] = data

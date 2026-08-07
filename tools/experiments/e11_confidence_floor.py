@@ -22,8 +22,8 @@ from pathlib import Path
 REPO = Path("/Users/chidionyema/Documents/code/prospector")
 sys.path.insert(0, str(REPO))
 
-from prospector.config import load_config          # noqa: E402
-from prospector.kill_filter import apply_gates      # noqa: E402
+from prospector.config import load_config  # noqa: E402
+from prospector.kill_filter import apply_gates  # noqa: E402
 from prospector.models import CheckResult, Verdict  # noqa: E402
 
 FLOORS = [0.0, 0.3, 0.4, 0.5, 0.6, 0.7]

@@ -191,7 +191,7 @@ class TestSingleActuator:
         runner._RING_BUFFERS.clear()
 
         # Start a long-running job
-        job_id = runner.launch([sys.executable, "-c", "import time; time.sleep(60)"])
+        runner.launch([sys.executable, "-c", "import time; time.sleep(60)"])
         time.sleep(0.4)  # let it fully start
 
         # Attempt a second launch — must raise RuntimeError

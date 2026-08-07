@@ -1,6 +1,5 @@
 """Tests for MetricsStore — time-series metrics and alert detection."""
 
-import json
 import tempfile
 from pathlib import Path
 

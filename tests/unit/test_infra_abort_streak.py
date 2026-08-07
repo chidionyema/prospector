@@ -11,8 +11,6 @@ landed in a backlog the drain pays for a second time.
 from concurrent.futures import Future
 from types import SimpleNamespace
 
-import pytest
-
 from prospector import run as run_mod
 from prospector.models import DEFER_GATE
 

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import urllib.request
-from prospector.retrieval import _resolve, _RESOLVE_TIMEOUT, _HIGH_AUTHORITY_TIMEOUT
+
+from prospector.retrieval import _HIGH_AUTHORITY_TIMEOUT, _RESOLVE_TIMEOUT, _resolve
+
 
 def test_resolve_uses_longer_timeout_for_high_authority(monkeypatch):
     recorded_timeouts = []

@@ -12,8 +12,8 @@ if str(_ROOT) not in sys.path:
 
 from prospector.control_center.components.gate_badge import render_gate_badge
 from prospector.control_center.components.source_list import (
-    render_source_summary,
     _truncate,
+    render_source_summary,
 )
 
 

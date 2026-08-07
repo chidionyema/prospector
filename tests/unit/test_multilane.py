@@ -12,8 +12,8 @@ They cover the four load-bearing properties of the multi-lane design:
 """
 from __future__ import annotations
 
-from prospector.config import load_config
 from prospector.classify import classify_tier
+from prospector.config import load_config
 from prospector.generate import generate_multilane
 from prospector.models import Candidate
 

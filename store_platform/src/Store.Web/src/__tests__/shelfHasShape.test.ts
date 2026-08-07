@@ -43,8 +43,18 @@ describe('the shelf has editorial shape', () => {
     expect(page, 'the control must say how many it opens').toMatch(
       /Show the other \{tailPacks\.length - shown\}/,
     );
-    expect(page, 'the reader must be told where they are in the shelf').toMatch(
-      /Showing \{shown \+ newestRow\.length\} of/,
+    // Was `Showing {shown + newestRow.length} of ...` until 2026-08-07. Two of that line's three
+    // numbers were the scroll position, which changes the moment the button above it is pressed,
+    // and the reader's real question at the foot of a grid is not "how far down am I" but "why are
+    // there more packs below the divider". The line states the market split now. The rule the
+    // assertion carries is unchanged and is the one that matters: the counts are COMPUTED from the
+    // packs in this render, never typed, so the parts cannot disagree with the total the rest of
+    // the page prints.
+    expect(page, 'the shelf must break its count down by market, from live data').toMatch(
+      /\$\{gridPacks\.length\} \$\{marketLabel\(market\)\} packs/,
+    );
+    expect(page, 'the off-market groups must be counted from the packs in this render').toMatch(
+      /grouped\.others\.map\(\(group\) => `\$\{group\.packs\.length\}/,
     );
   });
 
@@ -97,7 +107,7 @@ describe('the shelf has editorial shape', () => {
  *
  * The title was in the DOM 7 times, three of them inside the fold (breadcrumb, cover caption,
  * 60px h1), and a ~550px empty plate held the prime visual slot. See the header comment on
- * `DossierExcerptPlate` for why a cover cannot carry this page's claim.
+ * `EvidenceExcerptPlate` for why a cover cannot carry this page's claim.
  */
 describe('the pack page opens on evidence', () => {
   const packPage = read('../pages/pack/[id].tsx');

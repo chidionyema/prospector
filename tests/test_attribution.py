@@ -3,9 +3,9 @@
 import tempfile
 from pathlib import Path
 
+from prospector.attribution import attribute_all_active, measure_effect
 from prospector.metrics_store import MetricsStore
 from prospector.self_modify import SelfModificationLog
-from prospector.attribution import measure_effect, attribute_all_active
 
 
 def test_measure_effect_positive():
@@ -122,8 +122,8 @@ def test_attribute_all_active():
             })
 
         # Create two active modifications
-        cid1 = mod_log.record("a", "x", "old", "new")
-        cid2 = mod_log.record("b", "y", "old", "new")
+        mod_log.record("a", "x", "old", "new")
+        mod_log.record("b", "y", "old", "new")
 
         # Record post-change runs (better yield)
         for i in range(10):

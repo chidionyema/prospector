@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { engineGateIds } from '@/lib/checks';
+import { COMMON_CHECKS, checkVerdicts } from '@/lib/checks';
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 
@@ -147,17 +147,23 @@ describe('the methodology surfaces hedge the count where they enumerate it', () 
     );
   });
 
-  it('the homepage method band qualifies its row of gate names', () => {
+  it('the homepage method band qualifies its list of check verdicts', () => {
     const page = stripComments(readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8'));
-    // The row is DERIVED from `COMMON_CHECKS` now (lib/checks.ts) rather than typed out, which is
+    // The list is DERIVED from `COMMON_CHECKS` (lib/checks.ts) rather than typed out, which is
     // itself the fix for how this row was missed last time: the earlier sweep updated about.tsx
     // and faqContent.ts and left this literal behind. So the guard anchors on the call site, and
     // separately asserts what the call actually produces.
-    expect(engineGateIds(), 'the derived row no longer lists the engine gate ids').toContain(
-      'pain reality · value durability',
+    //
+    // The band listed `engineGateIds()` until 2026-08-07 ("pain reality · value durability · ..."),
+    // six machine identifiers naming the subject of each check and never its conclusion. It lists
+    // `checkVerdicts()` now, which is the kill log's own wording. The count claim this test exists
+    // to police is unchanged: six items, and a hedge beside them.
+    expect(checkVerdicts(), 'the derived list no longer carries the kill log verdicts').toContain(
+      'The pain was not real',
     );
-    const enumeration = page.indexOf('{engineGateIds()}');
-    expect(enumeration, 'the gate-name row is gone or renamed').toBeGreaterThan(-1);
+    expect(checkVerdicts().length, 'the list must be the full common set').toBe(COMMON_CHECKS.length);
+    const enumeration = page.indexOf('checkVerdicts()');
+    expect(enumeration, 'the verdict list is gone or renamed').toBeGreaterThan(-1);
     // Adjacent to the row, not merely somewhere on a 1,700-line page. The window is the
     // enumeration plus the element that follows it, and it is deliberately narrow: the first cut
     // required the hedge in the SAME <p>, which was the wrong shape -- the mono row is set in the

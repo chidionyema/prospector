@@ -5,25 +5,14 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
 from prospector.domain.primitives import CandidateJourney, CandidateSpec
-from prospector.pipeline.moat_contract import (
-    GateDistribution,
-    GateEvaluations,
-    GateIncumbency,
-    GateLegality,
-    GatePayerSolvency,
-    GateValueDurability,
-    LedgerAudit,
-    MoatVerificationContract,
-    PivotPayload,
-    VerdictDeclaration,
-)
 from prospector.pipeline.middleware import TribunalMiddleware
-
+from prospector.pipeline.moat_contract import (
+    MoatVerificationContract,
+)
 
 # ── CandidateSpec ───────────────────────────────────────────────────────
 
@@ -40,8 +29,6 @@ class TestCandidateSpec:
             spec.target_audience = "new_audience"  # type: ignore[misc]
 
     def test_deterministic_id_same_payload_same_id(self):
-        a = CandidateSpec("b1", "form_a", "aud_x", "concept")
-        b = CandidateSpec("b1", "form_a", "aud_x", "concept")
         # Same created_at needed for deterministic ID — use a fixed timestamp.
         ts = 1000.0
         a2 = CandidateSpec("b1", "form_a", "aud_x", "concept", created_at=ts)

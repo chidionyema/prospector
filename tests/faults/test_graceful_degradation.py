@@ -10,12 +10,12 @@ Proves that the engine fails safely and never crashes when:
 from __future__ import annotations
 
 import pytest
+
 from prospector.config import load_config
 from prospector.models import Candidate, Source, Verdict
 from prospector.operator import MockOperator
 from prospector.retrieval import FixtureProvider
 from prospector.verify import DEFER_GATE, run_check, verdict_for, verify
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

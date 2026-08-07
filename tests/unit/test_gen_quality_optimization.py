@@ -8,9 +8,7 @@ Tests the four load-bearing optimizations:
 """
 from __future__ import annotations
 
-import pytest
-from prospector.novelty import select_diverse_candidates, _text_similarity
-
+from prospector.novelty import _text_similarity, select_diverse_candidates
 
 # ---------------------------------------------------------------------------
 # 1. Text-based similarity fallback

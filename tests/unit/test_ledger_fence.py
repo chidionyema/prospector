@@ -16,8 +16,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from prospector.pipeline.middleware import (
-    TribunalMiddleware,
     _REPO_LEDGER,
+    TribunalMiddleware,
     default_ledger_path,
 )
 from prospector.pipeline.moat_prompts import _load_ledger

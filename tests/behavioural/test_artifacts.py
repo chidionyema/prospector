@@ -6,10 +6,10 @@ Proofs:
 """
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import pytest
+
 from prospector.artifacts import generate_artifacts, generate_marketing_content, verify_claims
 from prospector.models import Candidate, CheckResult, Verdict
 from prospector.operator import MockOperator
@@ -125,7 +125,6 @@ def test_marketing_content_regeneration_on_fail(cand, checks):
 
     op = MockOperator(router=router)
     # Filter to just listing_page for this test to keep call counts simple
-    from prospector import artifacts
     # Patch types temporarily or just check counts
     content = generate_marketing_content(op, cand, checks)
     

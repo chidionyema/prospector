@@ -14,7 +14,6 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Ledger audit (runs BEFORE the gates — pre-existing kill reasons) ───────
 
 
