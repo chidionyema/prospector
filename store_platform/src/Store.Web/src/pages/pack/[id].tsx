@@ -16,6 +16,7 @@ import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
+import { isTruncated, repairTruncation } from '@/lib/copy';
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
@@ -264,10 +265,14 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
        * and the model when they go looking for it. Nothing sourced was deleted -- the caveat
        * travels with the figures, as it must.
        */}
+      {/* "once" is gone from beside the number. The label two lines up already says "One-time
+          price", so the rail read `One-time price / £29 once` -- the same fact, twice, in three
+          words, on the most scrutinised element of the page. Saying a thing twice does not make
+          a nervous buyer more confident that there is no subscription; it makes them re-read the
+          sentence looking for the catch. */}
       <span className="text-caption text-subtle">One-time price</span>
-      <div className="mt-1 flex items-baseline gap-2">
+      <div className="mt-1">
         <span className="font-mono text-h2 font-semibold text-text">{priceLabel}</span>
-        <span className="text-caption text-subtle">once</span>
       </div>
       {/* The hedge sits with the number it hedges. The old note ("£49 at today's rate") named
           the wrong figure -- £49 is the catalogue's source price, the converted one is what the
@@ -442,7 +447,12 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
         {/* Breadcrumb */}
         <Breadcrumbs
           items={[
-            { href: '/', label: 'Catalog' },
+            /* "Catalogue". The header nav, the footer, the hero eyebrow and the page title all
+               say Catalogue; this one crumb said Catalog, on a UK-first storefront that prices in
+               £ and sells packs about Section 46 notices and DVSA inspections. A stranger does
+               not consciously register the spelling -- they register that the site was assembled
+               by more than one hand, on the page where they are about to enter a card number. */
+            { href: '/', label: 'Catalogue' },
             { href: '/ideas', label: 'Browse by category' },
             // Was `{ href: '#', label: pack.title }`. The title was rendered three times inside
             // the fold (breadcrumb, cover caption, h1) on a page where titles run past 100
@@ -461,10 +471,6 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
         <div className="mt-6 flex flex-col gap-12 lg:flex-row">
           {/* Left: Content */}
           <div className="flex-1">
-            {/* Proof, not decoration, in the prime visual slot -- see the header comment on
-                DossierExcerptPlate for what the 16:9 cover here was doing and why a cover cannot
-                carry this page's claim. Renders nothing when the pack has no sourced extract. */}
-            <DossierExcerptPlate pack={pack} />
             {/*
              * Header block (brand v3, 2026-08-06). Three facts, then the title.
              *
@@ -483,9 +489,25 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 sticky buy bar (mobile-pack-fold.png, 2026-08-06). The title is the longest string
                 on the page, not a slogan, so it is the one headline that has to step down. */}
             <h1 className="text-h2 font-semibold text-text md:text-h1">{pack.title}</h1>
-            <p className="mt-4 max-w-[60ch] text-body text-muted">{pack.oneLine}</p>
+            {/* THE LEAD IS NEVER A CUT STRING.
+                `oneLine` is truncated at 150 characters by the publish path on 34 of the 63 live
+                packs (see `lib/copy.ts` for the measurement and `bridge.py` for the cause), and
+                this paragraph is the first sentence a buyer reads about the product, four inches
+                above the buy button. It rendered as `...under that council's own rules...`.
+
+                Two different repairs, because two different situations:
+                  - There is a `subhead`: the cut sentence is dropped outright and the subhead is
+                    the lead. Nothing is lost -- the subhead is a complete sentence written for
+                    exactly this slot, and the full description is in the sections below.
+                  - There is no `subhead`: dropping it would leave the title with no sentence
+                    under it at all, so the cut is repaired back to a word boundary instead. */}
+            {!(isTruncated(pack.oneLine) && pack.subhead) && (
+              <p className="mt-4 max-w-[60ch] text-body text-muted">
+                {repairTruncation(pack.oneLine)}
+              </p>
+            )}
             {pack.subhead && (
-              <p className="mt-3 max-w-[60ch] text-body text-muted">{pack.subhead}</p>
+              <p className="mt-4 max-w-[60ch] text-body text-muted">{pack.subhead}</p>
             )}
 
             {/* The evidence line: what stands behind the listing, in mono because every item on it
@@ -508,6 +530,29 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 ))}
               </p>
             )}
+
+            {/* PROOF, BUT AFTER THE THING IT IS PROOF OF.
+                This plate opened the page -- above the breadcrumb's own product, above the title,
+                above every word saying what is for sale. What a stranger met first, verbatim from
+                the built page at 1440 (2026-08-06):
+
+                  "On top of that sits the legal pressure: councils can issue fixed penalty
+                   notices of up to £400 for putting the wrong thing in a bin, under section 46A
+                   of the Environmental Protection Act 1990."
+
+                It begins "On top of that". It is an excerpt, so it is always a fragment of a
+                longer argument, and lifted to the top of the page it has no antecedent -- the
+                reader is shown the second half of a claim about a product they have not been
+                told about yet. The argument for the slot was "proof, not decoration, in the prime
+                visual position", and that is right about the CONTENT and wrong about the ORDER:
+                evidence is only persuasive once the reader knows what it is evidence for.
+
+                It moves down by exactly one block. Identity (title), promise (lead), scale
+                (sources and checks), then the sample of the work itself -- still inside the first
+                screen on desktop, still the largest object on the left column, and now reading as
+                "here is a page of what you are buying" rather than as a stray quotation.
+                Renders nothing when the pack has no sourced extract. */}
+            <DossierExcerptPlate pack={pack} className="mt-8" />
 
             {/* US-6: the strongest case against the pack sits right under the title. The risk is
                 the buyer's first test of whether to trust the work; surfacing it above the

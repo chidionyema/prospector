@@ -90,9 +90,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
 > idea that passed an automated kill-first filter: ${checksSentence()}. It then survived an
 > adversarial review. Each claim in a pack cites a retrievable source.
 
-A pack is a zip of plain Markdown (5,000+ words) in four parts: a build spec, a go-to-market plan,
-an operations and unit-economics model, and a QA report with a source behind every claim. It is
-delivered instantly on payment and carries a 14-day, no-questions refund.
+A pack is a zip of plain Markdown (5,000+ words), eight documents: an executive summary, a build
+spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing
+assets, and a QA report with a source behind every claim. It is delivered instantly on payment and
+carries a 14-day, no-questions refund.
 
 What a pack is NOT, stated so it is not inferred wrongly: it is not financial, legal, or investment
 advice, and it is not a guarantee that the business will succeed. The guarantee is that the

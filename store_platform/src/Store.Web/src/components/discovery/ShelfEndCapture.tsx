@@ -39,7 +39,7 @@ export function ShelfEndCapture({ className }: { className?: string }) {
           </div>
 
           <div className="w-full max-w-md">
-            <WaitlistForm source="homepage-shelf-end" submitLabel="Email me" />
+            <WaitlistForm source="homepage-shelf-end" submitLabel="Tell me when one survives" />
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Button, Icon, Dropdown } from '@/components/ui';
+import { Button, Icon, Dropdown, chipClasses, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
@@ -21,9 +21,11 @@ import { AppliedFilterChips, StepFlow } from '@/components/discovery/FacetBar';
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/fx';
+import { repairTruncation } from '@/lib/copy';
 import { track } from '@/lib/analytics';
 import { priceRange, formatGbp } from '@/lib/priceRange';
-import { categoryFor, type Category } from '@/lib/category';
+import { allCategories, categoryFor, type Category } from '@/lib/category';
+import type { Sector } from '@/lib/facets';
 import { engineGateIds } from '@/lib/checks';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
@@ -32,6 +34,7 @@ import {
   EMPTY_DISCOVERY_STATE,
 
   encodeDiscoveryState,
+  facetCounts,
   filterPacks,
   isFiltered,
   nearMisses,
@@ -66,6 +69,13 @@ interface HomeProps {
    *  in which case `RecentlyViewed` is the fallback. (It used to fall back to a
    *  "Most sources" row; that row was deleted -- see the header comment.) */
   personalised: Pack[];
+  /** Pack ids from the `recentlyViewed` cookie, most-recent first. Two jobs, both server-rendered
+   *  so neither flashes: the "Recently viewed" row when there is nothing personalised to show, and
+   *  the "Viewed" marker on any card the buyer has already opened. It used to be read from
+   *  `localStorage` inside `RecentlyViewed`, which could never work -- the pack page writes a
+   *  COOKIE (`pages/pack/[id].tsx:1071`, asserted by `__tests__/nTwoPersonalised.test.ts`), so
+   *  that key was never set and the fallback row has never once rendered. */
+  viewedIds: string[];
 }
 
 /*
@@ -148,6 +158,7 @@ function PackCard({
   pack,
   currency,
   viewerMarket,
+  viewed = false,
 }: {
   pack: Pack;
   currency: Currency;
@@ -155,10 +166,17 @@ function PackCard({
      would be true of every card on screen -- see `PackCoverArt`. Optional so a caller with no
      market context (the hero's featured slot renders before any grouping) simply gets the chip. */
   viewerMarket?: string;
+  /* True when this pack is in the reader's `recentlyViewed` cookie. A returning buyer scanning
+     63 near-identical cards has no way to tell which ones they already opened, so the second
+     visit is the first visit again. Server-rendered from the cookie, so it is in the first paint
+     and never flashes in after hydration. */
+  viewed?: boolean;
 }) {
   const cat = categoryFor(pack);
   const { heading, sub } = cardHeading(pack);
-  const line = pack.oneLine || sub;
+  // `repairTruncation` because 34 of the 63 live packs carry a description the publish path cut
+  // at character 150, several of them inside a word. See `lib/copy.ts`.
+  const line = repairTruncation(pack.oneLine) || sub;
 
   return (
     <Link
@@ -170,27 +188,28 @@ function PackCard({
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
       )}
     >
-      <PackCoverArt pack={pack} category={cat} viewerMarket={viewerMarket} />
+      <PackCoverArt pack={pack} category={cat} viewerMarket={viewerMarket} viewed={viewed} />
 
+      {/* THE BODY OPENS ON THE TITLE, ON EVERY CARD.
+          The sector chip used to be the first element in here, and it renders only when the pack
+          carries a sector -- 9 of the 63 live packs do not. So in a three-up row where one card
+          was untagged, that card's title sat ~34px HIGHER than its neighbours' and its price row
+          was pushed down by the same amount. Measured on the built shelf at 1440 (2026-08-06):
+          row 1 mixed one tagged with two untagged, row 2 the reverse, so the title baseline
+          jittered on every row of the grid. Nothing else on the page telegraphs "assembled from
+          parts" as loudly as a column of headings that do not line up.
+
+          The chip now sits in the cover's top-left corner, where its presence or absence changes
+          no other element's position, and where it is next to the tint it is derived from. */}
       <div className="flex flex-1 flex-col p-5">
-        {cat.tagged && (
-          <span
-            className={cx(
-              'mb-2.5 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1',
-              'text-caption font-medium',
-              cat.tint,
-              cat.ink,
-            )}
-          >
-            <Icon name={cat.icon} size={12} />
-            {cat.label}
-          </span>
-        )}
-
         {/* No `group-hover:text-primary`. A title that changes colour on hover implies the title
             alone is the link; the whole card is. Border + lift already say "interactive". */}
         <h3 className="line-clamp-2 text-body font-semibold leading-snug text-text">{heading}</h3>
-        {line && <p className="mt-1.5 line-clamp-2 text-meta text-muted">{line}</p>}
+        {/* Three lines, was two. At two the one-liner was cut mid-clause on most cards ("...for
+            small" / "...that pulls your fleet's MOT, tacho and"), which reads as a broken string
+            rather than a summary. The price row is `mt-auto`, so the extra line costs card height
+            and nothing else. */}
+        {line && <p className="mt-1.5 line-clamp-3 text-meta text-muted">{line}</p>}
 
         {/* `mt-auto` is what equalises card heights in the grid: the price row sits at the same y
             on every card in a row regardless of how long the title ran. */}
@@ -235,101 +254,219 @@ function PackCard({
  * that is where a reader can buy the wrong country's rules by accident.
  */
 /**
- * Five offsets for the foreground mark. FULL LITERALS, indexed by seed: Tailwind scans source
- * text, so a computed `left-[${n}%]` compiles to nothing and the mark silently stacks at 0.
+ * The hairline weave every cover carries, tagged or not.
+ *
+ * Written as a full literal because Tailwind scans source text. It is stated in plain `rgb(0 0 0 /
+ * a)` rather than a design token on purpose: this is a surface texture, not a semantic colour, and
+ * a token would invite someone to "fix" its contrast against text that is never printed on it.
+ *
+ * Its whole job is to make an untagged cover read as DELIBERATELY blank instead of as a region
+ * that failed to load. 9 of the 63 live packs carry no sector, so on a three-up grid roughly every
+ * other row contained one flat, empty, pale rectangle sitting beside two covers with a mark on
+ * them -- which is the same "is this broken?" signal as a missing image.
  */
-const COVER_OFFSETS = [
-  'left-[18%]',
-  'left-[26%]',
-  'left-[34%]',
-  'left-[42%]',
-  'left-[50%]',
-] as const;
+const COVER_WEAVE =
+  'bg-[image:repeating-linear-gradient(135deg,rgb(0_0_0/0.03)_0px,rgb(0_0_0/0.03)_1px,transparent_1px,transparent_10px)]';
 
 function PackCoverArt({
   pack,
   category,
   viewerMarket,
+  viewed = false,
 }: {
   pack: Pack;
   category: Category;
   viewerMarket?: string;
+  viewed?: boolean;
 }) {
-  // A stable small integer from the id. Sum of char codes is enough: the only requirement is that
-  // it is deterministic and reasonably spread, not that it is uniform or unguessable.
-  const seed = React.useMemo(
-    () => Array.from(pack.id).reduce((acc, ch) => acc + ch.charCodeAt(0), 0),
-    [pack.id],
-  );
-  const offset = COVER_OFFSETS[seed % COVER_OFFSETS.length];
-  /* The untagged cover. Measured 2026-08-06 on the live API: 9 of 63 packs carry no `sector`, and
-     every one of them was drawing `UNLABELLED.icon` -- a grey briefcase, twice, at 40 and 96px.
-     That is the exact thing `lib/category.ts` forbids in its own header ("an untagged pack renders
-     NO marker at all ... a mute dot with no label beside it is decoration pretending to be
-     information"): a sector glyph on a pack whose sector we do not know is a claim with nothing
-     behind it, and nine identical grey briefcases on one shelf is also the worst case for telling
-     cards apart. The replacement carries no claim -- it is the initials of the words already
-     printed on this card, so it says nothing the reader cannot check by looking down.
-
-     Taken from `cardHeading(pack).heading`, NOT from `pack.title`. The first version used the raw
-     title and shot wrong at once: pack 0cc434887c47cb9a is titled "FridgePass Kit -- the fridge
-     logger that ..." but its card is headed by its `cardLine`, "Sell a fridge sensor that prints
-     daily hygiene logs". The cover read `FK`, two letters that appear nowhere on the card, which
-     is worse than no mark -- it looks like a code the buyer is supposed to recognise. The card
-     never renders `cardHeading`'s `eyebrow`, so the brand name is not on screen at all.
-
-     Stop-words are skipped for the same reason: "Sell a fridge sensor ..." would otherwise give
-     `SA`, where the `A` is the article. */
-  const monogram = React.useMemo(() => {
-    const stopWords = new Set([
-      'a', 'an', 'the', 'and', 'or', 'of', 'for', 'to', 'in', 'on', 'at', 'by', 'with', 'that',
-      'your', 'you', 'from', 'into', 'when', 'how',
-    ]);
-    const words = cardHeading(pack)
-      .heading.split(/\s+/)
-      .map((word) => word.replace(/[^a-z0-9]/gi, ''))
-      .filter((word) => word.length > 0 && /[a-z]/i.test(word));
-    const meaningful = words.filter((word) => !stopWords.has(word.toLowerCase()));
-    return (meaningful.length > 0 ? meaningful : words)
-      .slice(0, 2)
-      .map((word) => word[0].toUpperCase())
-      .join('');
-  }, [pack]);
-
   return (
+    /* 112px. It was 96px, and the extra 16px is bought outright: the sector chip moved up here out
+       of the body, which took ~34px off the text block, so the card is net SHORTER than it was
+       while the cover is bigger. */
     <div className={cx('relative h-28 overflow-hidden border-b border-border', category.tint)}>
+      {/* The UNTAGGED FALLBACK is "no mark", not "a different mark".
+          What stood here was a 5.5rem monogram of the card heading's initials, drawn for the 9 of
+          63 live packs that carry no `sector` (measured on the live /catalog, 2026-08-06). On the
+          rendered shelf it reads as `HA` and `SE` floating in the header of a product card: two
+          capitals that map to nothing the buyer can look up, sitting where a picture goes, which
+          is indistinguishable from placeholder art or a code you are expected to recognise. The
+          argument for it was that a flat tint "reads as an empty box" -- true of the tint alone,
+          and no longer true, because the tint now carries the spec strip below. A cryptic mark is
+          worse than no mark: it makes the reader stop and fail to decode something. */}
+      <div className={cx('pointer-events-none absolute inset-0', COVER_WEAVE)} />
+
+      {/* ONE mark, fully inside the frame, in the same place on every card.
+          What stood here was two marks at 36px and 88px, the small one at one of five seeded
+          `left-[n%]` offsets and the large one at `-bottom-7 -right-6`, i.e. clipped by two edges
+          at once. On the built shelf that reads as a rendering artifact rather than as art: the
+          eye sees a shape cut off on the corner and looks for the thing that cropped it, and no
+          two cards in a row cropped it the same way.
+
+          The seeded jitter existed to stop the grid looking uniform. That was solving the wrong
+          problem -- variety across the shelf already comes from twelve hues and twelve icons, and
+          a mark that lands somewhere different on each card does not read as variety, it reads as
+          unaligned. A grid of 63 products looks designed when the furniture repeats exactly. */}
       {category.tagged ? (
-        <>
-          <Icon
-            name={category.icon}
-            size={40}
-            className={cx('absolute top-1/2 -translate-y-1/2 opacity-[0.28]', offset, category.ink)}
-          />
-          {/* A second, larger, fainter mark bleeding off the right edge. Two marks at different
-              scales is what stops a flat tint from reading as an empty box. */}
-          <Icon
-            name={category.icon}
-            size={96}
-            className={cx('absolute -bottom-8 -right-6 opacity-[0.10]', category.ink)}
-          />
-        </>
-      ) : (
-        <span
-          aria-hidden="true"
+        <Icon
+          name={category.icon}
+          size={72}
           className={cx(
-            'absolute -bottom-6 -right-3 select-none font-semibold leading-none tracking-tight',
-            'text-[5.5rem] opacity-[0.12]',
+            'pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-[0.14]',
+            category.ink,
+          )}
+        />
+      ) : null}
+
+      {/* THE SECTOR, moved here from the body -- see the note in `PackCard` about the title
+          baseline. `bg-surface/90` rather than `cat.tint`, because the cover IS `cat.tint`: the
+          chip's own tint over the same tint at full strength is an invisible chip. The ink stays
+          the category's, so the chip still carries the hue, and it now matches the other three
+          corner chips instead of being a fourth treatment. */}
+      {category.tagged && (
+        <span
+          className={cx(
+            'absolute left-3 top-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5',
+            'truncate rounded-full bg-surface/90 px-2.5 py-1 text-caption font-medium',
             category.ink,
           )}
         >
-          {monogram}
+          <Icon name={category.icon} size={12} className="flex-none" />
+          {category.label}
         </span>
       )}
+
+      {/* THE SPEC STRIP -- what you are actually buying, on the shelf.
+          A £49 digital product whose card shows no page count, no file count and no preview is
+          bought blind, and the specific fear on a download page is "two pages in a Google Doc".
+          Both figures are checkable rather than promotional:
+            - `PACK_CONTENTS.length` is pinned to `prospector/bridge.py::BUNDLE_FILES` by
+              `__tests__/packContents.test.ts`, and `bridge.py` ANDs a re-audit of the written zip
+              into `is_listed`, so a pack missing a file cannot be on this shelf to be counted.
+            - `sourceCount` is present on all 63 live packs (measured on /catalog, 2026-08-06).
+          The card's own docblock argued sources are "a claim about us, not a benefit to them".
+          That is right about a source count ALONE, where "is 29 good?" has no answer. Beside a
+          fixed document count it stops being a ranking and becomes the spec of the thing in the
+          box, which is the question the card was previously leaving entirely unanswered. Mono
+          because both halves are quantities, the same voice as the toolbar caption. */}
+      <span className="absolute bottom-2.5 left-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 truncate rounded-full bg-surface/90 px-2.5 py-1 font-mono text-caption text-muted">
+        <Icon name="document" size={11} className="flex-none" />
+        {PACK_CONTENTS.length} documents
+        {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && ` · ${pack.sourceCount} sources`}
+      </span>
+
+      {/* FOUR CORNERS, one fact each, and each corner always holds the same KIND of fact:
+          top-left what it is about, top-right whose rules it is written for, bottom-left what is
+          in the box, bottom-right whether you have been here before. `viewed` was top-left, which
+          is now the sector's corner -- two chips fighting for one corner is how the market chip
+          and the sector badge ended up competing before. */}
       {pack.market && pack.market !== viewerMarket && (
         <span className="absolute right-3 top-3 rounded-full bg-surface/90 px-2.5 py-1 text-caption font-medium text-muted">
           For {marketLabel(pack.market)} rules
         </span>
       )}
+      {viewed && (
+        <span className="absolute bottom-2.5 right-3 rounded-full bg-surface/90 px-2.5 py-1 text-caption font-medium text-subtle">
+          Viewed
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The sector chips, directly above the grid.
+ *
+ * The shelf already prints a sector on every card and already holds a `sector` facet in the
+ * discovery state, and until now the only way to reach it was `StepFlow`'s "Advanced filters"
+ * disclosure -- which renders AFTER the last card, i.e. past 63 products. So the one filter the
+ * buyer can see on screen was the one filter they could not use, and a 63-item catalogue was a
+ * scroll-and-hope surface.
+ *
+ * Counts come from `facetCounts`, not from a tally of `pack.sector`. That matters as soon as any
+ * OTHER filter is on: `facetCounts` re-runs the whole state with the sector constraint removed, so
+ * each number answers "what do I get if I click this" rather than "how many of these exist" -- and
+ * a chip reading 12 that yields 3 because a query is also active is a number the catalogue made
+ * up. A sector that would yield nothing is not offered at all (the same rule `FacetBar` states: a
+ * filter whose every option returns nothing is a dead control that makes the shelf look broken).
+ *
+ * Shape comes from `chipClasses()` and nowhere else -- `__tests__/storefrontDesignContract.test.ts`
+ * fails any file that reproduces `h-8` + `rounded-full` itself, which is how the same chip once
+ * shipped three different ways.
+ */
+function SectorChips({
+  packs,
+  state,
+  onChange,
+}: {
+  packs: Pack[];
+  state: DiscoveryState;
+  onChange: (next: DiscoveryState) => void;
+}) {
+  const counts = React.useMemo(() => facetCounts(packs, state, 'sector'), [packs, state]);
+  /* "All packs" is the same question with the sector cleared, so it is the same computation --
+     never `packs.length`, which would print 63 beside chips summing to 21 whenever a query is on. */
+  const allCount = React.useMemo(
+    () => filterPacks(packs, { ...state, sector: null }).length,
+    [packs, state],
+  );
+
+  const offered = allCategories().filter((cat) => (counts[cat.key] ?? 0) > 0);
+  if (offered.length === 0) return null;
+
+  return (
+    /* Bleeds to the viewport edge and scrolls on a phone rather than wrapping to four rows above
+       the first product -- the fold budget this page's e2e test guards. From `sm` it wraps
+       normally, where there is width for it. */
+    <div
+      data-facet-control="sector"
+      /* The right-edge fade is the SCROLL AFFORDANCE, and it only exists below `sm`, where the
+         row is a single scrolling line. Without it the eleventh chip is simply sliced by the
+         viewport edge mid-word, which is the same silhouette as a layout bug -- a phone reader
+         has no scrollbar to tell them the difference, so the row reads as broken rather than as
+         "there is more this way". `sm:` and up the chips wrap and there is nothing to fade. */
+      className={cx(
+        '-mx-4 mb-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0',
+        '[mask-image:linear-gradient(to_right,transparent_0,black_1rem,black_calc(100%-2.5rem),transparent_100%)]',
+        'sm:[mask-image:none]',
+      )}
+    >
+      <div className="flex w-max gap-1.5 sm:w-auto sm:flex-wrap">
+        <button
+          type="button"
+          aria-pressed={state.sector === null}
+          onClick={() => onChange({ ...state, sector: null })}
+          className={chipClasses({
+            selected: state.sector === null,
+            className: 'gap-1.5 whitespace-nowrap',
+          })}
+        >
+          All packs
+          <span className={cx('font-mono text-caption', state.sector === null ? 'text-white/70' : 'text-subtle')}>
+            {allCount}
+          </span>
+        </button>
+        {offered.map((cat) => {
+          const active = state.sector === cat.key;
+          return (
+            <button
+              key={cat.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange({ ...state, sector: active ? null : (cat.key as Sector) })}
+              className={chipClasses({ selected: active, className: 'gap-1.5 whitespace-nowrap' })}
+            >
+              {/* The hue is the card's hue, so the chip and the pill on the card it filters to are
+                  visibly the same object. On the selected (ink-filled) chip the sector ink would
+                  fail contrast, so the glyph inherits the fill's own text colour instead. */}
+              <Icon name={cat.icon} size={12} className={active ? undefined : cat.ink} />
+              {cat.label}
+              <span className={cx('font-mono text-caption', active ? 'text-white/70' : 'text-subtle')}>
+                {counts[cat.key]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -357,35 +494,46 @@ function PackCoverArt({
  * pair is in the filter-log card, where it is evidence rather than chrome.
  */
 
-/** The last few packs the buyer viewed, from localStorage. Renders nothing on first visit. */
-function RecentlyViewed({ packs }: { packs: Pack[] }) {
-  const [viewed, setViewed] = React.useState<string[]>([]);
-  React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem('mumchimp.recentlyViewed');
-      if (raw) setViewed(JSON.parse(raw).slice(0, 3));
-    } catch { /* storage unavailable */ }
-  }, []);
-
-  if (viewed.length === 0) return null;
-  const items = viewed
+/**
+ * The last few packs the buyer viewed. Renders nothing on a first visit.
+ *
+ * Reads the ids handed down from `getServerSideProps`, NOT `localStorage`. The previous version
+ * called `localStorage.getItem('mumchimp.recentlyViewed')`, and nothing on the site has ever
+ * written that key: the pack page sets a `recentlyViewed` COOKIE
+ * (`pages/pack/[id].tsx:1071`, and `__tests__/nTwoPersonalised.test.ts` asserts it is a cookie and
+ * not localStorage). So this row was dead code -- the "empty state" the reader met on a second
+ * visit was not a design decision, it was a component reading a key that does not exist. Off the
+ * cookie it is also in the server HTML, so it does not pop in after hydration.
+ *
+ * It renders full `PackCard`s. It used to render one-line text rows with an arrow glyph, i.e. the
+ * packs we had the strongest reason to re-show got the weakest treatment on the page: no price,
+ * no picture, no CTA, and a tap target a third the height of a card.
+ */
+function RecentlyViewed({
+  packs,
+  viewedIds,
+  currency,
+  market,
+}: {
+  packs: Pack[];
+  viewedIds: string[];
+  currency: Currency;
+  market: string;
+}) {
+  const items = viewedIds
+    .slice(0, 3)
     .map((id) => packs.find((p) => p.id === id))
     .filter((p): p is Pack => !!p);
   if (items.length === 0) return null;
 
   return (
-    <div className="mb-6">
-      <h3 className="text-meta font-semibold text-text">Recently viewed</h3>
-      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="mb-8">
+      <h3 className="mb-3 text-meta font-semibold text-text">Pick up where you left off</h3>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((pack) => (
-          <Link
-            key={pack.id}
-            href={`/pack/${pack.id}`}
-            className="flex items-center gap-3 rounded-md border border-border bg-surface p-3 text-meta font-medium text-text transition-colors hover:border-border-strong hover:bg-surface2"
-          >
-            <Icon name="arrowRight" size={14} className="flex-none text-subtle" />
-            {pack.cardLine || pack.title}
-          </Link>
+          <div key={pack.id} className="flex">
+            <PackCard pack={pack} currency={currency} viewerMarket={market} viewed />
+          </div>
         ))}
       </div>
     </div>
@@ -421,6 +569,7 @@ function CatalogBrowser({
   market,
   currency,
   personalised,
+  viewedIds,
   featuredId,
 }: {
   packs: Pack[];
@@ -428,6 +577,7 @@ function CatalogBrowser({
   market: string;
   currency: Currency;
   personalised: Pack[];
+  viewedIds: string[];
   /* The pack the hero is already showing in its desktop-only featured slot, so the shelf can
      avoid printing the same product twice on the same screen. Undefined on any render where the
      hero has no featured card, in which case the shelf behaves exactly as it did before. */
@@ -437,6 +587,17 @@ function CatalogBrowser({
   const [state, setState] = React.useState<DiscoveryState>(initialState);
   const [sort, setSort] = React.useState<SortKey>('newest');
   const { open, setOpen, close, triggerRef } = useCommandPalette();
+  /* O(1) lookup for the "Viewed" marker, so the card does not scan the id list 63 times. */
+  const viewedSet = React.useMemo(() => new Set(viewedIds), [viewedIds]);
+
+  /* `/?search=1` opens the palette. That is the landing the header's search control uses from
+     every OTHER page on the site: the palette needs the catalogue to search, the catalogue is only
+     loaded here, and a search control in the chrome that does nothing on /faq is worse than no
+     search control at all. On this page the header dispatches a window event instead and never
+     navigates (see `useCommandPalette`). */
+  React.useEffect(() => {
+    if (router.query.search === '1') setOpen(true);
+  }, [router.query.search, setOpen]);
 
   const apply = React.useCallback(
     (next: DiscoveryState) => {
@@ -608,7 +769,53 @@ function CatalogBrowser({
         </div>
       </div>
 
-          <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
+      {/* The sector filter, in the same place the eye already met the sector: the pills on the
+          cards. Above the grid, not behind the "Advanced filters" disclosure that renders after
+          the 63rd card. */}
+      <SectorChips packs={packs} state={state} onChange={apply} />
+
+      <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
+
+      {/* WHY ONE CARD SAYS £49 AND THE NEXT SAYS £29, stated where the prices are.
+          Six distinct prices run down this grid (measured on the live /catalog 2026-08-06: £29 x7,
+          £49 x48, £79 x5, £99, £149, £199) with nothing on the page explaining the difference, so
+          the buyer is left to infer it -- and the inference they reach is "the dear ones must be
+          the better ones", which invites them to distrust the cheap ones and hesitate over the
+          dear ones. The rule is real and it is the opposite: `config.yaml listing.pricing` picks a
+          rung on a fixed ladder from the opportunity's ambition tier plus a market offset, and
+          every pack ships the identical `PACK_CONTENTS.length` documents. The page already said
+          this, ~6,000px below the shelf, in the "What you get" intro.
+          A per-card tier BADGE was the other option and is deliberately not built: the ladder is
+          not invertible from the price, because a us/smb pack and a uk/growth pack both land on
+          £79, so a badge derived from the price would be a label we cannot source.
+
+          THE SENTENCE IS `sm:` AND UP; the link is at every width. Measured on this build at
+          360x780, the full sentence wraps to four lines and pushed the first card to y=755, which
+          fails `e2e/discovery.spec.ts` "the first pack card is above the fold at 360x780" by 16px
+          -- and that test exists precisely because this kind of block gets added above the grid
+          and nobody measures. The split is not a dodge: the sentence answers "why does the card
+          BESIDE this one cost less", a question only a reader seeing two prices at once can ask,
+          and at 360px the grid is one card wide. What a phone gets instead is a one-line labelled
+          route to the same explanation, plus the "8 documents" strip on every cover, which is the
+          substantive half of the answer and renders at every width. */}
+      <p className="mb-4 max-w-[68ch] text-caption text-subtle">
+        <span className="hidden sm:inline">
+          Every pack contains the same {PACK_CONTENTS.length} documents. The price follows the size
+          of the opportunity the research found, never the length of the download.{' '}
+        </span>
+        {/* A SHORT sentence, not nothing. Hiding the whole explanation below `sm` left the link
+            standing on its own line under the filter chips, where "Why prices differ" answers a
+            question the phone reader has not been given -- no price is even on screen yet. An
+            orphaned link reads as a stray fragment; six words of antecedent cost one line that
+            the paragraph was already occupying. */}
+        {/* Short enough to sit on ONE line at 360px. The first draft ended "...whatever it
+            costs", which wrapped, and a wrapped caption here costs 18px of the fold budget the
+            first card is fighting for. */}
+        <span className="sm:hidden">Same {PACK_CONTENTS.length} documents in every pack. </span>
+        <Link href="/pricing" className={textLinkClass('font-medium')}>
+          Why prices differ
+        </Link>
+      </p>
 
 
 
@@ -619,34 +826,52 @@ function CatalogBrowser({
                   compact summaries, the same shape, so the page rhythm stays
                   consistent. */}
               {personalised.length > 0 ? (
-                <div className="mb-6">
-                  <h3 className="mb-3 text-meta font-semibold text-text">Based on your browsing</h3>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="mb-8">
+                  <h3 className="mb-1 text-meta font-semibold text-text">Based on your browsing</h3>
+                  <p className="mb-3 text-caption text-subtle">
+                    Same mechanics as the last pack you opened.
+                  </p>
+                  {/* FULL CARDS, was three one-line rows.
+                      Those rows were the worst treatment on the page given to the packs the site
+                      had the strongest reason to show: `truncate` cut every title mid-word at one
+                      line ("UV strips plus a paper log for gel ..."), so the value proposition was
+                      the part that got cut; there was no price above a fold, no picture, and no
+                      CTA, on a row the algorithm had just argued was the most relevant thing on
+                      screen. Reusing `PackCard` is also what stops this row and the shelf drifting
+                      apart: one card component, one set of rules. */}
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {personalised.slice(0, 3).map((pack) => (
-                      <Link
-                        key={pack.id}
-                        href={`/pack/${pack.id}`}
-                        className="group flex items-start gap-3 rounded-md border border-border bg-surface p-4 transition-colors hover:border-border-strong"
-                      >
-                        <Icon name="verified" size={16} className="mt-0.5 flex-none text-success" />
-                        <div className="min-w-0">
-                          <p className="truncate text-meta font-medium text-text">
-                            {pack.cardLine || pack.title}
-                          </p>
-                          <p className="mt-0.5 font-mono text-caption text-subtle">
-                            {pack.sourceCount ?? 0} sources · {formatPriceForMarket(pack.price, currency)}
-                          </p>
-                        </div>
-                      </Link>
+                      <div key={pack.id} className="flex">
+                        <PackCard
+                          pack={pack}
+                          currency={currency}
+                          viewerMarket={market}
+                          viewed={viewedSet.has(pack.id)}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <RecentlyViewed packs={packs} />
+                <RecentlyViewed
+                  packs={packs}
+                  viewedIds={viewedIds}
+                  currency={currency}
+                  market={market}
+                />
               )}
               {newestRow.length > 0 && (
                 <div className="mb-8">
-                  <h3 className="mb-3 text-meta font-semibold text-text">Newest survivors</h3>
+                  {/* `text-body`, was `text-meta`. A row heading set at the same size as the
+                      body copy INSIDE the cards it introduces does not read as a heading at all;
+                      on the built shelf "Newest survivors" and a card's one-line description were
+                      the same 14px, so the grid arrived with no visible tier between "label for a
+                      group of products" and "sentence about one product". This is the smallest
+                      step that separates them and it stays sentence case, so the house policy in
+                      `__tests__/weightAndCasePolicy.test.ts` is untouched. */}
+                  <h3 className="mb-3 hidden text-body font-semibold text-text sm:block">
+                    Newest survivors
+                  </h3>
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {newestRow.map((pack) => (
                       /* `lg:hidden`, not unmounted, and only on the one card the hero is already
@@ -656,16 +881,38 @@ function CatalogBrowser({
                         key={pack.id}
                         className={cx('flex', pack.id === featuredId && 'lg:hidden')}
                       >
-                        <PackCard pack={pack} currency={currency} viewerMarket={market} />
+                        <PackCard
+                          pack={pack}
+                          currency={currency}
+                          viewerMarket={market}
+                          viewed={viewedSet.has(pack.id)}
+                        />
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* Was "The rest of the catalogue, newest first". The shelf above it is headed
+                  "Newest survivors" -- a claim -- and then the same products, in the same order,
+                  were introduced as leftovers. "The rest of" says the good ones were the three
+                  above and these are what remains, which is not true of a catalogue where every
+                  row passed the identical filter. One voice, both headings. */}
               {editorial && tailPacks.length > 0 && (
-                <h3 className="mb-3 text-meta font-semibold text-text">
-                  The rest of the catalogue, newest first
+                /* BOTH row headings are desktop-only, and the pair is why.
+                   They label the two halves of a THREE-COLUMN grid: "Newest survivors" over the
+                   top row, "More survivors, newest first" over everything after it. On a phone
+                   the grid is one column, so the reader meets a heading, three cards, and then a
+                   second heading announcing more of the same list in the same order -- a
+                   distinction that only exists because of a breakpoint. The section is already
+                   headed "What survived" and the sort control already reads "Newest", so nothing
+                   is lost and the shelf reads as one continuous list, which is what it is.
+
+                   It also pays for the "What survived" heading added above: measured at 360x780
+                   on the built page, the first card had moved to y=779 against a bar of 740, and
+                   dropping this pair puts it back at 740. */
+                <h3 className="mb-3 hidden text-body font-semibold text-text sm:block">
+                  More survivors, newest first
                 </h3>
               )}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -677,7 +924,12 @@ function CatalogBrowser({
                     className={cx('flex animate-rise', i >= shown && 'hidden')}
                     style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
                   >
-                    <PackCard pack={pack} currency={currency} viewerMarket={market} />
+                    <PackCard
+                      pack={pack}
+                      currency={currency}
+                      viewerMarket={market}
+                      viewed={viewedSet.has(pack.id)}
+                    />
                   </div>
                 ))}
               </div>
@@ -725,7 +977,12 @@ function CatalogBrowser({
                   </p>
                   <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {group.packs.map((pack) => (
-                      <PackCard key={pack.id} pack={pack} currency={currency} />
+                      <PackCard
+                        key={pack.id}
+                        pack={pack}
+                        currency={currency}
+                        viewed={viewedSet.has(pack.id)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -760,7 +1017,13 @@ function CatalogBrowser({
                 {candidates.map((candidate) => {
                   const pack = packs.find((p) => p.id === candidate.pack.id);
                   return pack ? (
-                    <PackCard key={pack.id} pack={pack} currency={currency} viewerMarket={market} />
+                    <PackCard
+                      key={pack.id}
+                      pack={pack}
+                      currency={currency}
+                      viewerMarket={market}
+                      viewed={viewedSet.has(pack.id)}
+                    />
                   ) : null;
                 })}
               </div>
@@ -791,7 +1054,7 @@ function CatalogBrowser({
  * show the product.
  */
 
-export default function Home({ packs, stats, initialState, market, currency, personalised }: HomeProps) {
+export default function Home({ packs, stats, initialState, market, currency, personalised, viewedIds }: HomeProps) {
   // The live "N live now" figure is rendered by <Heartbeat>, which takes `stats` directly, so the
   // duplicate `stats?.listed ?? packs.length` that used to sit here was computed and dropped.
   const { variant } = useCopyVariant();
@@ -925,7 +1188,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 no email." wrapped at 390px, and "unredacted" only means anything to someone who
                 already suspected we were redacting -- the defensive register the critique named. */}
             <p className="mt-3 text-caption text-subtle">
-              A whole pack, free. No payment, no email.
+              A whole report, free. No payment, no email.
             </p>
             {/* The kill log, DEMOTED to one line.
                 It used to be a 420px panel in the right column, listing three named dead ideas
@@ -982,7 +1245,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
               <h2 className="mb-3 text-meta font-semibold text-text">
                 Newest on the shelf
               </h2>
-              <PackCard pack={featured} currency={currency} viewerMarket={market} />
+              <PackCard
+                pack={featured}
+                currency={currency}
+                viewerMarket={market}
+                viewed={viewedIds.includes(featured.id)}
+              />
             </div>
           )}
         </div>
@@ -990,15 +1258,26 @@ export default function Home({ packs, stats, initialState, market, currency, per
 
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
-        <div className="mb-6 hidden sm:block">
-          <h2 className="text-h2 font-semibold text-text">What survived</h2>
-          <p className="mt-1.5 max-w-[60ch] text-meta text-muted">
+        {/* THE SHELF HAS A NAME AT EVERY WIDTH NOW.
+            This block was `hidden sm:block` outright, to buy fold budget on a phone. What that
+            actually bought was a phone reader going from the hero's last line straight into a
+            bare search field and a row of chips, with no statement of what is being searched --
+            the one screen where the brand's whole claim ("these are the ones that survived") had
+            to be inferred from the placeholder text of an input.
+
+            The trade is taken at the level of the PARAGRAPH, not the heading: mobile gets the
+            heading, desktop additionally gets the two sentences under it. A heading is ~30px and
+            names the section; the paragraph is ~60px and repeats what the panel below the shelf
+            already says at every width. */}
+        <div className="mb-4 sm:mb-6">
+          <h2 className="text-h4 font-semibold text-text sm:text-h2">What survived</h2>
+          <p className="mt-1.5 hidden max-w-[60ch] text-meta text-muted sm:block">
             A pack is listed only once it clears every check, with a clickable source behind every
             claim. Most ideas never make it.
           </p>
         </div>
 
-        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} featuredId={featured?.id} />
+        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} />
       </Section>
 
       {/* THE FILTER LOG, at every width now, and always AFTER the shelf.
@@ -1240,12 +1519,12 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
       return similarPacks(anchor, packs);
     })();
     return {
-      props: { packs, stats, initialState, market, currency, personalised },
+      props: { packs, stats, initialState, market, currency, personalised, viewedIds: recentlyViewedIds },
     };
   } catch (error) {
     console.error('Error fetching catalog:', error);
     return {
-      props: { packs: [], stats: null, initialState, market, currency, personalised: [] },
+      props: { packs: [], stats: null, initialState, market, currency, personalised: [], viewedIds: recentlyViewedIds },
     };
   }
 };

@@ -401,8 +401,28 @@ class EngineBridge:
         one_liner = to_plain_text(candidate.one_liner, collapse=True) or to_plain_text(
             listing_copy, collapse=True
         )
+        # Cut on a WORD BOUNDARY, not a character index.
+        #
+        # This was `one_liner[:150] + "..."`, and measured against the live catalogue on
+        # 2026-08-06 it had cut 34 of the 63 listed packs -- 54% of the shelf -- with several
+        # landing inside a word: "for a flat fee per applicat...", "keeps you on ...". Those
+        # strings are printed verbatim as the card description AND as the lead paragraph of the
+        # pack page, directly above the buy button. A storefront whose whole claim is that its
+        # numbers are checked cannot ship a product description that stops mid-word.
+        #
+        # `rsplit` on the last space of the 150-char window is the entire fix: the result is
+        # never longer than 150, and never ends part-way through a word. `…` rather than "..."
+        # because it is one character, so it cannot wrap onto a line of its own, and a screen
+        # reader announces it once instead of as three full stops.
+        #
+        # The 34 rows already published are NOT repaired by this -- only a re-publish would do
+        # that, and that is a money-rail operation with its own hazards. The storefront repairs
+        # what it is handed (`store_platform/src/Store.Web/src/lib/copy.ts`); this stops any
+        # further row being written broken in the first place.
         if len(one_liner) > 150:
-            one_liner = one_liner[:150] + "..."
+            head = one_liner[:150].rstrip()
+            cut = head.rsplit(" ", 1)[0] if " " in head else head
+            one_liner = cut.rstrip(" ,;:-–—") + "…"
 
         # Per-pack catalog metadata: the structured listing fields + a safe sample excerpt +
         # the Python-computed economics teaser + moat trust signals. This is what lets the

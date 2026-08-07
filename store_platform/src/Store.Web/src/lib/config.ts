@@ -39,11 +39,11 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 
  */
 export const FOUNDER = {
   /** Full name, as the founder wants to be credited. Empty disables every founder surface. */
-  name: '',
+  name: 'Chidi',
   /** Optional. What they were doing before this, in a few words. */
   role: '',
   /** Optional. Two or three sentences, first person. Why this shop exists. */
-  bio: '',
+  bio: "I always wanted to run my own business. I spent a lot of time coming up with ideas, and after a few failed attempts at launching them properly, I'd talk myself out of the next one before it got anywhere. What I actually enjoyed was the ideating, not the talking myself out of it. So I built the part I kept losing to doubt, and made it check every idea harder than I ever did. That's the seed this platform grew from.",
   /** Optional. A path under /public, e.g. '/founder.jpg'. Omitted renders text only. */
   photo: '',
   /** Optional. A profile the reader can check: LinkedIn, GitHub, a personal site. */

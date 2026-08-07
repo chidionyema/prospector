@@ -210,16 +210,65 @@ test('the command palette opens by click and by ⌘K, and searches as you type',
   await expect(dialog).toHaveCount(0);
 });
 
+/**
+ * Search is reachable from the site chrome, on a page that has no catalogue.
+ *
+ * The header button cannot hold the palette: `MarketingLayout` renders on /faq, /terms and
+ * /pack/[id], none of which have the pack list the palette searches. So it takes two different
+ * routes to the same dialog — a window event on `/`, and a navigation to `/?search=1` everywhere
+ * else — and a two-path mechanism is exactly the kind that ships with one path working. Both are
+ * asserted here.
+ *
+ * Only the header button is targeted (`header` scope): on `/` the shelf's own SearchTrigger has
+ * the same accessible name, and an unscoped match would let this pass on the control that was
+ * already reachable.
+ */
+test('the header search button opens the palette from a page with no catalogue', async ({ page }) => {
+  await page.goto('/faq');
+  const headerSearch = page.locator('header').getByRole('button', { name: /Search the catalogue/ });
+  await expect(headerSearch).toBeVisible();
+  await headerSearch.click();
+
+  // It has to land on the catalogue AND open, not merely navigate.
+  await expect(page).toHaveURL(/\/\?search=1/);
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('option').first()).toBeVisible();
+});
+
+test('the header search button opens the palette in place on the catalogue', async ({ page }) => {
+  await page.goto('/');
+  const headerSearch = page.locator('header').getByRole('button', { name: /Search the catalogue/ });
+  await headerSearch.click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  // No navigation: the event path must not fall through to the `/?search=1` push.
+  expect(new URL(page.url()).search).toBe('');
+});
+
 test('a facet click lands in the URL, and that URL comes back filtered', async ({ page }) => {
   await page.goto('/');
 
-  // "All" is the one control guaranteed to exist in every rendered group — a group with no data
-  // does not render at all (AC-12), so this test picks whatever the catalogue actually offers.
-  const firstValue = page
-    .locator('aside button[aria-pressed]')
-    .filter({ hasNotText: /^All$/ })
-    .first();
-  const count = await page.locator('aside button[aria-pressed]').count();
+  /*
+   * THIS TEST WAS SKIPPING, EVERY RUN, SILENTLY.
+   *
+   * It scoped to `aside button[aria-pressed]`, which is `FacetBar` — a component that is exported
+   * and rendered by nothing (`grep -rn FacetBar src/ e2e/`, 2026-08-06: only its own file and its
+   * own test). So the count was 0, `test.skip` fired, and the suite reported a pass. The one
+   * property this file was written to prove in a real browser — that clicking a facet writes the
+   * URL and that the URL comes back SERVER-filtered rather than flashing 63 cards and narrowing
+   * after hydration — has never actually been checked.
+   *
+   * The selector is now the shelf's own sector chips, which is the control a buyer can reach:
+   * `data-facet-control` rather than a class, so restyling the chip cannot silently un-skip this
+   * back to zero. The `aside` form is kept in the union so a future FacetBar is covered too.
+   */
+  const controls = page.locator(
+    '[data-facet-control] button[aria-pressed], aside button[aria-pressed]',
+  );
+  // The "show everything" chip is excluded by prefix, not by exact text: it reads "All packs"
+  // followed by a count, so an `^All$` match — what this used — would have excluded nothing and
+  // then clicked the one control that deliberately writes NO parameter.
+  const firstValue = controls.filter({ hasNotText: /^All/ }).first();
+  const count = await controls.count();
   test.skip(count === 0, 'No facet is populated in this catalogue yet — nothing to click.');
 
   await firstValue.click();
@@ -230,7 +279,12 @@ test('a facet click lands in the URL, and that URL comes back filtered', async (
   const url = page.url();
   const filteredCount = await page.locator(cards).count();
   await page.goto(url);
-  await expect(page.locator('aside button[aria-pressed="true"]').first()).toBeVisible();
+  await expect(
+    page
+      .locator('[data-facet-control] button[aria-pressed="true"], aside button[aria-pressed="true"]')
+      .filter({ hasNotText: /^All/ })
+      .first(),
+  ).toBeVisible();
   expect(await page.locator(cards).count()).toBe(filteredCount);
 });
 

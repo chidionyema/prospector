@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Button, Logo, Icon } from '@/components/ui';
 import { CartButton } from '@/components/cart/CartButton';
 import { LEGAL, BRAND } from '@/lib/config';
+import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 import { useDisclosure } from '@/lib/useDisclosure';
 
 /**
@@ -39,6 +41,28 @@ interface MarketingLayoutProps {
 export default function MarketingLayout({ children }: MarketingLayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { triggerRef: menuButtonRef } = useDisclosure(menuOpen, () => setMenuOpen(false));
+  const router = useRouter();
+
+  /* SEARCH, PROMOTED INTO THE CHROME.
+     The catalogue has had full-text search since the command palette shipped, and it was
+     reachable by exactly two routes: Cmd-K / `/`, and a trigger that sits in the toolbar above
+     the shelf. A phone has neither a Cmd key nor that toolbar in view, so on the device most of
+     this traffic arrives on, a shop with 63 products offered no way to look one up.
+
+     The header cannot own the palette itself: it renders on /faq, /terms, /pack/[id] and
+     everything else, none of which hold the catalogue state the palette searches. So the button
+     is a dispatcher. On the catalogue it fires the window event `useCommandPalette` listens for;
+     anywhere else there is no listener at all, and it navigates to `/?search=1`, which
+     `CatalogBrowser` reads on mount and opens the palette itself. Both paths end in the same
+     open palette, and neither imports the other. */
+  const openSearch = useCallback(() => {
+    setMenuOpen(false);
+    if (router.pathname === '/') {
+      window.dispatchEvent(new Event(SEARCH_OPEN_EVENT));
+    } else {
+      void router.push('/?search=1');
+    }
+  }, [router]);
 
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -89,6 +113,20 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
 
           {/* Right: Actions */}
           <div className="flex h-full items-center gap-1">
+            {/* At every width, including mobile -- see `openSearch` above for why it is a
+                dispatcher and not the palette. The word is hidden below lg because the header
+                also carries five nav items at that width; the magnifier alone is the one icon
+                that needs no label. */}
+            <button
+              type="button"
+              onClick={openSearch}
+              aria-label="Search the catalogue"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <Icon name="search" size={18} />
+              <span className="hidden lg:inline">Search</span>
+            </button>
+
             {/* Renders nothing until there is something in it, see CartButton. */}
             <CartButton />
 
@@ -147,10 +185,15 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                   Account
                 </Link>
               </div>
+              {/* Was a full-width "Browse the packs" button pointing at `/` -- the same
+                  destination as the "Catalogue" item three rows above it, in a drawer whose whole
+                  job is to disambiguate destinations. The drawer's one emphasised action is now
+                  the thing the drawer did not otherwise offer. */}
               <div className="py-4">
-                <Link href="/" onClick={() => setMenuOpen(false)}>
-                  <Button fullWidth size="lg">Browse the packs</Button>
-                </Link>
+                <Button fullWidth size="lg" onClick={openSearch}>
+                  <Icon name="search" size={18} />
+                  Search the catalogue
+                </Button>
               </div>
             </nav>
           </div>
@@ -202,31 +245,107 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               </ul>
             </div>
 
+            {/* LEGAL IS SMALLER AND GREYER THAN STORE, deliberately.
+                Both columns were `text-meta text-muted`, so "Terms of Service" and "Kill log" had
+                identical weight, size and colour -- and on mobile the two columns sit side by
+                side, which made the boilerplate exactly as prominent as the evidence this shop
+                sells on. These links must be present and must be findable; they must not compete
+                with the ones a buyer came for. `text-subtle` is the same token the disclaimer
+                uses and clears 4.5:1 on --surface2 (`__tests__/categoryScale.test.ts` holds the
+                floor for the scale it belongs to). */}
             <div>
               <h3 className="mb-4 text-caption font-medium text-subtle">Legal</h3>
-              <ul className="flex flex-col gap-3">
-                <li><Link href="/terms" className="text-meta text-muted transition-colors hover:text-text">Terms of Service</Link></li>
-                <li><Link href="/privacy" className="text-meta text-muted transition-colors hover:text-text">Privacy Policy</Link></li>
-                <li><Link href="/refund" className="text-meta text-muted transition-colors hover:text-text">Refund Policy</Link></li>
+              <ul className="flex flex-col gap-2.5">
+                <li><Link href="/terms" className="text-caption text-subtle transition-colors hover:text-text">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="text-caption text-subtle transition-colors hover:text-text">Privacy Policy</Link></li>
+                <li><Link href="/refund" className="text-caption text-subtle transition-colors hover:text-text">Refund Policy</Link></li>
               </ul>
             </div>
 
-            <div>
+            <div className="col-span-2 md:col-span-1">
               <h3 className="mb-4 text-caption font-medium text-subtle">Contact</h3>
               <ul className="flex flex-col gap-3">
-                <li><a href={`mailto:${LEGAL.supportEmail}`} className="break-all text-meta text-muted transition-colors hover:text-text">{LEGAL.supportEmail}</a></li>
+                {/* `break-all` broke the address INSIDE a word -- it rendered as
+                    "support@mumchimp." / "com", because at 2 columns on a 375px screen the
+                    column is ~160px and `break-all` will split at any character it reaches. An
+                    email address split mid-domain reads as a typo on the one string a nervous
+                    buyer uses to check the shop is real. `break-words` only breaks a word that
+                    cannot fit at all, and the column is full-width below md so it never has to.
+                    An explicit `<wbr/>` after the @ gives it a legal break point if a narrower
+                    device ever appears. */}
+                <li>
+                  <a
+                    href={`mailto:${LEGAL.supportEmail}`}
+                    className="break-words text-meta text-muted transition-colors hover:text-text"
+                  >
+                    {LEGAL.supportEmail}
+                  </a>
+                </li>
               </ul>
             </div>
 
+          </div>
+
+          {/* THE SCROLL NO LONGER JUST ENDS.
+              A reader who reaches the bottom of the footer has read the whole page and not
+              bought; the last thing on screen was a copyright line. These are the two next steps
+              that are honest to offer at that point -- the shelf, and the log of what we
+              rejected -- and neither is a repeat of the hero's ask. */}
+          <div className="mt-10 flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:items-center">
+            <Link href="/">
+              <Button size="md">
+                Browse the catalogue
+                <Icon name="arrowRight" size={15} />
+              </Button>
+            </Link>
+            <Link href="/kill-log">
+              <Button size="md" variant="secondary">See what we rejected</Button>
+            </Link>
           </div>
 
           <div className="mt-10 border-t border-border pt-8">
             <p className="text-caption text-subtle">
               &copy; 2026 {BRAND.name}. All rights reserved.
             </p>
+            {/*
+              THE DISCLAIMER, one sentence visible and the rest behind a disclosure.
+              It is four sentences of unstyled small print, and on a 375px screen it wrapped to
+              nine lines -- the tallest single block in the footer, at the bottom of a page that
+              already runs ~16,000px. Collapsing it is only defensible because of WHICH sentence
+              stays: the one that says these are not financial, legal or investment advice. That
+              is the sentence with legal weight and it is never behind a click. What folds away
+              is the description of the product and the payment processor, both of which are
+              stated at more length on /how-it-works and at the checkout.
+
+              `<details>` and not a React toggle: it is open-able with no JavaScript, it is
+              keyboard-operable and screen-reader-announced for free, and -- the reason that
+              matters here -- its contents stay in the DOM and in the server HTML whether or not
+              anyone opens it, so collapsing it does not remove the text from the page.
+            */}
             <p className="mt-4 max-w-[80ch] text-caption leading-relaxed text-subtle">
-              Mumchimp packs are digital research products sold for information only, not financial, legal, or investment advice. Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
+              Mumchimp packs are sold for information only, not financial, legal, or investment advice.
             </p>
+            <details className="group mt-2 max-w-[80ch]">
+              {/* NOT `textLinkClass()`, and not an accent-coloured underline. This is a
+                  disclosure toggle, not a link into a sentence: it navigates nowhere, and the
+                  house inline-link treatment is reserved for things that do
+                  (`__tests__/storefrontDesignContract.test.ts`, "uses ONE inline-link
+                  treatment"). A caret that rotates on open is the affordance; the label stays in
+                  the same ink as the paragraph it belongs to. */}
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-caption text-subtle transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+                {/* `plus`, rotated 45deg when open, so the mark itself becomes the close
+                    affordance. The icon set carries no chevron and this needs no new one. */}
+                <Icon
+                  name="plus"
+                  size={13}
+                  className="flex-none transition-transform group-open:rotate-45"
+                />
+                Read the full disclaimer
+              </summary>
+              <p className="mt-2 text-caption leading-relaxed text-subtle">
+                Each pack is a grounded analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
+              </p>
+            </details>
           </div>
 
         </div>

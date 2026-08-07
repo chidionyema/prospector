@@ -73,6 +73,34 @@ def _infra_abort_check(dossier, streak: int, threshold: int, pending) -> tuple:
     return streak, sum(1 for f in pending if f.cancel())
 
 
+def _infra_exception_action(streak: int, threshold: int) -> str:
+    """What to do when a vet RAISES GroundingInfrastructureError, rather than returning a
+    defer. Takes the streak ALREADY incremented for this failure.
+
+    A returned infra-gated defer and a raised GroundingInfrastructureError are the same
+    event wearing two coats: "the pipeline could not rule". Until 2026-08-07 only the first
+    reached `_infra_abort_check`; the raise was re-thrown unconditionally at the first
+    occurrence, straight past the streak rail and out to `run_scheduled.py`'s `sys.exit(1)`.
+    One unlucky tail query therefore killed the daemon. Measured blast radius, so nobody
+    re-derives it: across 195 real ticks 2026-08-01..07, exactly ONE tick row in
+    `store/scheduler/ticks.jsonl` carries GroundingInfrastructureError at TOP level (the
+    signature of the exit path) — 2026-08-06T21:58:21, costing 17 min against the 2.00h
+    interval. Do NOT count daemon deaths from the audit log's pid column: any process
+    writing audit rows appears there, so that column reads ~8 restarts/hour while the
+    daemon is provably up. This is a latent-risk fix, not a headline outage.
+
+    Returns one of:
+      "raise"    — the streak rail is disabled (threshold 0), so preserve the pre-2026-08-07
+                   immediate halt rather than silently becoming a weaker rail than we had.
+      "halt"     — the outage is sustained: cancel un-started vets, let running ones bank
+                   themselves, and halt once the batch has drained.
+      "continue" — a blip. Bank nothing for this candidate, keep vetting the rest.
+    """
+    if not threshold:
+        return "raise"
+    return "halt" if streak >= threshold else "continue"
+
+
 def _sync_cli_concurrency(cfg) -> None:
     """Apply retrieval.*_concurrency to CLI governors (env vars still win when set)."""
     r = getattr(cfg, "retrieval", None)
@@ -804,6 +832,7 @@ def run_signal(
         infra_abort = _infra_abort_streak(cfg)
         infra_streak = 0
         infra_aborted = False
+        infra_halt: Optional[BaseException] = None
         n_cancelled = 0
         for future in as_completed(fut_meta):
             idx = fut_meta[future]
@@ -842,11 +871,48 @@ def run_signal(
                 # HERE: since 3.8 CancelledError derives from BaseException, so the generic
                 # `except Exception` below cannot see it and it would escape and kill the batch.
                 continue
-            except GroundingInfrastructureError:
-                raise  # circuit breaker — halt daemon, don't burn credits
+            except GroundingInfrastructureError as e:
+                # Every grounding provider was dead for THIS candidate's searches. Route it
+                # through the same consecutive-streak rail that governs infra-gated defers
+                # (see _infra_exception_action) instead of halting on first sight: a
+                # sustained outage still stops the daemon, a single tail-query failure
+                # no longer does.
+                infra_streak += 1
+                action = _infra_exception_action(infra_streak, infra_abort)
+                logger.warning(
+                    f"GROUNDING OUTAGE vetting candidate {idx}/{total_submitted} "
+                    f"(consecutive {infra_streak}/{infra_abort or 'rail-disabled'} → "
+                    f"{action}): {e}",
+                    extra={"infra_streak": infra_streak, "infra_threshold": infra_abort,
+                           "infra_action": action, "error": str(e)[:300]})
+                progress.note(f"[{idx}/{total_submitted}] ⚠ grounding outage "
+                              f"(streak {infra_streak}, {action})")
+                if action == "raise":
+                    raise
+                if action == "halt" and infra_halt is None:
+                    infra_halt = e
+                    # Future.cancel() refuses an already-running vet, so this declines to buy
+                    # more work; it cannot discard a verdict we have paid for.
+                    n_cancelled += sum(1 for f in fut_meta if f.cancel())
+                    msg = (f"GROUNDING LAYER COLLAPSE: {infra_streak} consecutive "
+                           f"infrastructure failures — the pipeline cannot rule, so this is "
+                           f"an outage, not a verdict. Cancelled {n_cancelled} un-started "
+                           f"vet(s) of {total_submitted}; halting once in-flight vets bank.")
+                    # CRITICAL: the daemon's launchd log drops info/warning.
+                    logger.critical(msg, extra={"cancelled": n_cancelled,
+                                                "submitted": total_submitted})
+                    print(f"⏹ {msg}", file=sys.stderr, flush=True)
+                    progress.note(f"⏹ {msg}")
+                continue
             except Exception as e:
                 logger.error(f"ERROR vetting candidate: {e}", extra={"error": str(e)})
                 progress.note(f"[{idx}/{total_submitted}] ⚠ error: {e}")
+
+        # Halt only AFTER the completion loop has drained. Every vet that was already
+        # running got to finish and persist itself (store.save lives inside vet_candidate),
+        # so the daemon halt costs us no evidence we have already paid for.
+        if infra_halt is not None:
+            raise infra_halt
 
     # --- Summary ---
     n_pass = sum(1 for d in dossiers if d.decision == Decision.PASS)
