@@ -17,7 +17,7 @@ import { SEARCH_ENGINE_VERIFICATIONS } from "@/lib/seo/verification";
 // element those would survive as literal entity text and corrupt the JSON. The builders emit plain
 // ASCII (apostrophes are fine); the assertion below is what stops that invariant rotting silently.
 const ORG_DESCRIPTION =
-  "Mumchimp sells grounded business opportunity packs. Each is a vetted idea with a " +
+  "Mumchimp sells sourced business opportunity packs. Each is a vetted idea with a " +
   "build spec, a GTM plan, operations and unit economics, and a sourced QA report.";
 
 const siteGraph = graph(organizationNode(ORG_DESCRIPTION), webSiteNode());

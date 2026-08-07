@@ -223,7 +223,7 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl space-y-4">
           <p className="text-body font-normal leading-relaxed text-muted">
-            After the gates clear, a second agent attacks the surviving claim. It hunts for
+            After the checks clear, a second agent attacks the surviving claim. It hunts for
             contradictions, weak citations, and gaps the first pass missed. The dossier survives
             only if every objection can be answered with the evidence already on file, no new
             research, no hand‑waving.
@@ -254,13 +254,13 @@ export default function HowItWorks() {
           </p>
           <p className="text-body leading-relaxed text-muted">
             The rejects are published in full, each with the gate that fired and the sourced
-            argument that killed it. The filter is auditable, not a black box.
+            argument that killed it. The checks are auditable, not a black box.
           </p>
           <Link
             href="/kill-log"
             className={buttonClasses({ size: 'lg' })}
           >
-            See the {totals.killed.toLocaleString()} we rejected{' '}
+            See the {totals.killed.toLocaleString()} we killed{' '}
             <Icon name="arrowRight" size={15} />
           </Link>
         </div>
@@ -274,7 +274,7 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl space-y-6">
           <p className="text-body font-normal leading-relaxed text-muted">
-            A pack is grounded research, not a guarantee. It&apos;s a high quality, evidence backed starting point. The work of finding, vetting, and sourcing the opportunity is done for you. Execution is still yours, and no analysis can promise a business outcome.
+            A pack is sourced research, not a guarantee. It&apos;s a high quality, evidence backed starting point. The work of finding, vetting, and sourcing the opportunity is done for you. Execution is still yours, and no analysis can promise a business outcome.
           </p>
         </div>
       </Section>

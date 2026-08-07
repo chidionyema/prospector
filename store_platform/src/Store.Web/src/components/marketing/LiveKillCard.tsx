@@ -114,7 +114,7 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
     >
       {/* Header. Labelled as what it is, a snapshot of the audit trail, rather than "LIVE". */}
       <div className="flex h-11 items-center justify-between gap-3 border-b border-border px-5">
-        <span className="text-meta font-semibold text-text">The filter log</span>
+        <span className="text-meta font-semibold text-text">The checks log</span>
         <span className="truncate font-mono text-caption text-subtle">
           <span className="text-danger">{killed.toLocaleString('en-GB')} killed</span>
           {' · '}

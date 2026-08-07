@@ -1036,7 +1036,7 @@ function CatalogBrowser({
         <span className="hidden sm:inline">
           Every pack contains the same {PACK_CONTENTS.length} documents. The price is set by how
           big the idea could become and which market it targets, on a fixed published ladder, never
-          by the length of the download.{' '}
+          by the length of the pack.{' '}
         </span>
         {/* A SHORT sentence, not nothing. Hiding the whole explanation below `sm` left the link
             standing on its own line under the filter chips, where "Why prices differ" answers a
@@ -1668,7 +1668,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
         title={`What you get${range ? ', at every price' : ''}`}
         intro={
           range && !range.uniform
-            ? `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. Every pack contains the same ${PACK_CONTENTS.length}, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}: the price is set by how big the idea could become and which market it targets, on a fixed published ladder, never by the length of the download. No subscription, no drip feed, no upsell.`
+            ? `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. Every pack contains the same ${PACK_CONTENTS.length}, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}: the price is set by how big the idea could become and which market it targets, on a fixed published ladder, never by the length of the pack. No subscription, no drip feed, no upsell.`
             : `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`
         }
         className="!py-14 md:!py-20"
@@ -1682,7 +1682,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             sourcing promise six, which is what makes a page read as though it is trying to
             convince you rather than sell you something. One statement, in the row that says it
             is the statement. */}
-        <PackContentsSection heading="What’s inside your download" />
+        <PackContentsSection heading="What’s inside your pack" />
         {/* The list above names the documents; this shows one. The fear on a digital download
             page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
             rows from the free sample, including the check that failed, a preview of eight
@@ -1707,7 +1707,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             Stress tested the way a sceptical investor would.
           </h2>
           <p className="mt-4 max-w-[60ch] text-body text-muted">
-            Every opportunity walks into a room built to destroy it. Anything that cannot back a
+            Every opportunity walks into the engine. Anything that cannot back a
             claim with a real source dies before it reaches this store. What you see is everything
             that survived.
           </p>
@@ -1734,7 +1734,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
               A dash would have separated them visually; `dashFree.test.ts` forbids em/en-dashes in
               source, and the rule is right here anyway, since the break is structural. */}
           <p className="mt-2 max-w-[46ch] text-caption text-subtle">
-            Those are the fronts common to every idea. Some face more, and each pack page names the
+            Those are the checks common to every idea. Some face more, and each pack page names the
             checks that idea faced.
           </p>
           {/* Two links, because this band makes two different promises. "How it works" describes
@@ -1745,7 +1745,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
               href="/kill-log"
               className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
             >
-              See the {killTotals.killed.toLocaleString('en-GB')} we rejected
+              See the {killTotals.killed.toLocaleString('en-GB')} we killed
               <Icon name="arrowRight" size={14} />
             </Link>
             <Link

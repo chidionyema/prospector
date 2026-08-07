@@ -306,7 +306,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
        */}
       <p className="mt-2 text-caption leading-relaxed text-subtle">
         Set by how big this idea could get and the market it targets, never by the size of the
-        download.{' '}
+        pack.{' '}
         <Link href="/pricing" className="text-accent underline underline-offset-2 hover:text-accent-hover">
           See the ladder
         </Link>
@@ -435,7 +435,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
       <p className="mt-6 text-caption leading-relaxed text-subtle">
         {/* Secure checkout named where it is relevant, in a sentence, instead of as a third
             icon row. */}
-        Secure checkout via {providerLabel}. A pack is grounded research, not a promise of business
+        Secure checkout via {providerLabel}. A pack is evidence-backed research, not a promise of business
         success. See our{' '}
         <Link href="/refund" className="text-accent underline underline-offset-2 hover:text-accent-hover">
           refund policy
@@ -667,7 +667,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 digital purchase, and it has to be answered before the trust argument. */}
             <div className="mt-12">
               <PackContentsSection
-                heading="What’s inside your download"
+                heading="What’s inside your pack"
                 lead={`The moment you pay, you download the whole pack. ${PACK_CONTENTS.length} documents, no drip feed, no login.`}
                 sourceCount={pack.sourceCount}
               />
@@ -704,7 +704,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   {/* NOT "the six fronts". The check count is lane-dependent (6/6, 8/8, 7/8, 9/9
                       and 6/8 all occur live), which is why `fixedCheckCount.test.ts` exists and
                       why it failed on this sentence the moment it was written. */}
-                  The fronts every idea is attacked on are below. For where this pack&rsquo;s case
+                  The checks every idea is attacked on are below. For where this pack&rsquo;s case
                   is strong and where it is thin, open <span className="font-medium text-text">How it
                   scores</span> further down, weak bars included.
                 </p>

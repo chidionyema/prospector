@@ -263,7 +263,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         )}
 
         <p className="mt-10 text-meta leading-relaxed text-muted">
-          Categories appear once enough packs have cleared the filter to fill them. Ideas that failed are in the{' '}
+          Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
           <Link href="/kill-log" className={textLinkClass('font-medium')}>
             kill log
           </Link>{' '}

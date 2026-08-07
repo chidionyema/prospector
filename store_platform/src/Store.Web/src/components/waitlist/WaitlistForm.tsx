@@ -87,7 +87,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
     return (
       <p className="text-meta leading-relaxed text-muted">
         <span className="font-semibold text-text">You&apos;re in the queue.</span> We&apos;ll email you from
-        support@mumchimp.com {query ? 'if a pack in this space survives the filter' : 'if a new pack survives the filter'}. Nothing else.
+        support@mumchimp.com {query ? 'if a pack in this space survives the checks' : 'if a new pack survives the checks'}. Nothing else.
       </p>
     );
   }

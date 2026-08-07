@@ -26,10 +26,10 @@ describe('US-6 — Where this could break at the top', () => {
     // The risk section must come before the deliverables. The audit's order:
     // hero, then risk, then deliverables, then methodology.
     const riskIdx = page.indexOf('Where this could break');
-    const deliverablesIdx = page.indexOf("What\u2019s inside your download");
+    const deliverablesIdx = page.indexOf("What\u2019s inside your pack");
     expect(
       riskIdx > 0 && deliverablesIdx > 0 && riskIdx < deliverablesIdx,
-      'pack/[id].tsx must render "Where this could break" before "What\u2019s inside your download"',
+      'pack/[id].tsx must render "Where this could break" before "What\u2019s inside your pack"',
     ).toBe(true);
   });
 

@@ -50,13 +50,13 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What am I actually buying?',
     answer: [
-      'A pack: eight documents built on the same grounded research, an executive summary, a build spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing assets, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears. Packs are priced individually and the price is shown on every pack page; whichever you pick it is one payment, with no subscription.',
+      'A pack: eight documents built on the same sourced research, an executive summary, a build spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing assets, and a QA report with a clickable source behind every claim. It arrives as one zip of plain Markdown files, 5,000+ words, yours to read and build from as soon as payment clears. Packs are priced individually and the price is shown on every pack page; whichever you pick it is one payment, with no subscription.',
     ],
   },
   { category: 'packs',
-    question: 'What makes a pack "grounded"?',
+    question: 'What makes a pack "evidence-backed"?',
     answer: [
-      `Every pack cleared the Mumchimp engine’s hard gates and survived an adversarial review. The fronts common to every idea are ${checksSentence()}; some ideas face more, and each pack page names the checks that idea faced and how many it cleared. Every claim and number cites a retrievable source, or it isn’t in the pack.`,
+      `Every pack cleared the engine’s hard gates and survived an adversarial review. The checks common to every idea are ${checksSentence()}; some ideas face more, and each pack page names the checks that idea faced and how many it cleared. Every claim and number cites a retrievable source, or it isn’t in the pack.`,
     ],
   },
   { category: 'payment',
@@ -82,7 +82,7 @@ export const FAQS: FaqItem[] = [
   { category: 'process',
     question: 'Are the opportunities guaranteed to work?',
     answer: [
-      'No, and we won’t pretend otherwise. We guarantee the analysis is grounded and sourced, not that the business will succeed. Execution is yours.',
+      'No, and we won’t pretend otherwise. We guarantee the analysis is evidence-backed and sourced, not that the business will succeed. Execution is yours.',
     ],
   },
   { category: 'packs',
@@ -96,7 +96,7 @@ export const FAQS: FaqItem[] = [
   { category: 'process',
     question: 'Is the store live right now?',
     answer: [
-      'Yes. Everything on this site works today, and new packs are published as they clear the filter.',
+      'Yes. Everything on this site works today, and new packs are published as they clear the checks.',
     ],
   },
   { category: 'payment',
@@ -122,9 +122,9 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'If 500 other people buy the same pack, aren\'t 500 people copying my idea?',
     answer: [
-      'The bar is the moat, not a copy count. Every pack is sized to a specific niche, with a concrete route to market and granular buyer profile, the gates that kill most candidates. See the ',
+      'The bar is the moat, not a copy count. Every pack is sized to a specific niche, with a concrete route to market and granular buyer profile, the checks that kill most candidates. See the ',
       { text: 'kill log', href: '/kill-log' },
-      ' to see how many ideas die on those very checks before they ever reach the store. A pack is grounded research, not a lottery ticket, and the value is in the execution you bring.',
+      ' to see how many ideas die on those very checks before they ever reach the store. A pack is evidence-backed research, not a lottery ticket, and the value is in the execution you bring.',
     ],
   },
   { category: 'process',
@@ -132,7 +132,7 @@ export const FAQS: FaqItem[] = [
     answer: [
       'Every kill is logged with the reason it failed, and the argument that killed it is published in the ',
       { text: 'kill log', href: '/kill-log' },
-      '. The filter is auditable, not a black box, you can read exactly why each idea died and which gate fired.',
+      '. The checks are auditable, not a black box, you can read exactly why each idea was killed and which gate fired.',
     ],
   },
 ];

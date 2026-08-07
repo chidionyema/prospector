@@ -105,7 +105,7 @@ export default function AboutPage() {
               every check. This names the fronts and hands off, which is what an about page owes
               the reader. */}
           <p className="mt-2 max-w-[60ch] text-body text-muted">
-            Every idea is attacked on the same fronts, and dies on the first
+            Every idea is attacked on the same checks, and dies on the first
             one where cited evidence is found against it. A listed pack is one
             where no hard gate produced that evidence.
           </p>
@@ -169,7 +169,7 @@ export default function AboutPage() {
             The voice is <span className="font-semibold text-text">source-or-die</span>.
             Sourced, not sold. Refutational, not promotional. If a claim
             has no source, it is not in a pack. If an idea cannot survive
-            the filter, it is not on the shelf.
+            the checks, it is not on the shelf.
           </p>
           {/* Was disclosed nowhere but clause 6 of the refund policy. A shop whose whole pitch is
               "every claim traces to a source you can open" should say plainly what does the
