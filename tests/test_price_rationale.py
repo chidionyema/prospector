@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 
 from prospector.config import Config
+from prospector.models import Candidate, ScoreResult
 from prospector.price_rationale import (
     RATIONALE_DIR,
     SCHEMA_VERSION,
@@ -32,7 +33,6 @@ from prospector.price_rationale import (
     write_rationale,
 )
 from prospector.pricing import PriceDecision, price_for
-from prospector.models import Candidate, ScoreResult
 
 AT = datetime(2026, 8, 6, 9, 15, 30, tzinfo=timezone.utc)
 

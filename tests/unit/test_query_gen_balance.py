@@ -36,7 +36,6 @@ def test_query_gen_prompt_is_balanced_not_disconfirming_only():
 
     # Require: prompt instructs for confirmation/supporting queries too
     has_confirm = any(w in combined for w in ("confirmation", "confirming", "supporting"))
-    has_refute = any(w in combined for w in ("refut", "refut", "disconfirm"))
     # At minimum, the prompt must not be disconfirming-only (already checked above).
     # It should instruct for confirmation or evidence-for queries.
     assert has_confirm, (

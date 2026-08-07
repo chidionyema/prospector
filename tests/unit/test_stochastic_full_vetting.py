@@ -1,13 +1,14 @@
 """Test for Stochastic Full-Vetting (verify.py)."""
 from __future__ import annotations
 
-from typing import Any
 import pytest
+
 from prospector.config import load_config
-from prospector.models import Candidate, Verdict, Source
+from prospector.models import Candidate
 from prospector.operator import MockOperator
 from prospector.retrieval import FixtureProvider
 from prospector.verify import verify
+
 
 @pytest.fixture
 def cfg():

@@ -9,7 +9,6 @@ Covers the five non-blocking robustness fixes cleared before launch:
 """
 from __future__ import annotations
 
-import json
 import os
 import sqlite3
 from pathlib import Path
@@ -126,6 +125,7 @@ def test_old_db_missing_retrieval_degraded_is_migrated(tmp_path):
 # --- 5. report uses get_price (no PRICING import) --------------------------
 def test_report_uses_get_price_not_pricing_import():
     import inspect
+
     from prospector import report
     src = inspect.getsource(report)
     assert "import PRICING" not in src
@@ -134,8 +134,7 @@ def test_report_uses_get_price_not_pricing_import():
 
 # --- 6. vet --resume: selection + no NameError on the cost summary ----------
 def _dossier(title, decision, *, provisional=False):
-    from prospector.models import (Candidate, CheckResult, Decision, Dossier,
-                                    ScoreResult, Verdict)
+    from prospector.models import Candidate, CheckResult, Dossier, ScoreResult, Verdict
     axes = ["pain_acuity", "money_provability", "automatability",
             "distribution", "defensibility", "build_feasibility"]
     return Dossier(
@@ -155,9 +154,10 @@ def test_resume_revets_deferred_and_provisional_only(tmp_path, monkeypatch):
     """`vet --resume` must pick up DEFER + provisional candidates (not clean PASSes),
     and must run its cost summary to completion without a NameError on log_path."""
     import argparse
+
+    from prospector import run as run_mod
     from prospector.models import Decision
     from prospector.store import Store
-    from prospector import run as run_mod
 
     cfg = load_config()
     cfg.store = {"dir": str(tmp_path)}

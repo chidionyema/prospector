@@ -5,7 +5,7 @@ grounding provider for the whole run (the bug behind the 13-DEFER cascade). Thes
 tests drive every transition deterministically via an injected clock — no sleeps."""
 from __future__ import annotations
 
-from prospector.breaker import CircuitBreaker, CLOSED, OPEN, HALF_OPEN
+from prospector.breaker import CLOSED, HALF_OPEN, OPEN, CircuitBreaker
 
 
 class FakeClock:

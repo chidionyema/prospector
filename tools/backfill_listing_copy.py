@@ -81,7 +81,10 @@ from prospector.operator import make_operator
 from prospector.pack_floors import claim_safe_marketing
 from prospector.plain_text import plain_lines, to_plain_text
 
-DEFAULT_API_URL = "https://api.mumchimp.com"
+# Env-overridable so a backfill can be pointed at staging. This script PATCHes live
+# catalogue rows; a hardcoded production constant means there is no way to rehearse
+# one except against the real store.
+DEFAULT_API_URL = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
 DOSSIER_GLOB = "store/dossiers/*.json"
 
 # Below this there is not enough grounded material to write a listing from, and the honest

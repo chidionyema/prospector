@@ -22,13 +22,9 @@ These tests lock the contract:
 """
 from __future__ import annotations
 
-import pytest
-
 from prospector.config import Retrieval, load_config
 from prospector.models import Candidate, CheckResult, Verdict
-from prospector.retrieval import SearchProvider
 from prospector.verify import _entity_queries, run_check
-
 
 # ---------------------------------------------------------------------------
 # 1. _entity_queries: payer is slot-filled

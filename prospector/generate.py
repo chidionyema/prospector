@@ -16,7 +16,8 @@ from .config import Config
 from .models import Candidate
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
-from .telemetry import logger, stage as telemetry_stage, track_latency
+from .telemetry import logger, track_latency
+from .telemetry import stage as telemetry_stage
 
 
 def _parse_candidates(data: Any) -> list[Candidate]:
@@ -154,7 +155,7 @@ def generate(
     target = k
     max_per_call = int(gen_cfg.get("max_per_call", 10) or 10)
     max_rounds = int(gen_cfg.get("max_rounds", 6) or 6)  # now a cap on WAVES
-    lenses = [l.strip() for l in str(strategy_lens).split(",") if l.strip()] or ["broaden"]
+    lenses = [item.strip() for item in str(strategy_lens).split(",") if item.strip()] or ["broaden"]
 
     # PRIMARY diversity axis = the structural business FORM (not the creativity lens).
     # Lenses vary the angle of attack but every angle on a regulatory signal collapsed

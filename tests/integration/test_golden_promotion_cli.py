@@ -17,15 +17,15 @@ from pathlib import Path
 
 import pytest
 
-# Pre-import so golden.main() calls don't hang on module-level init
-from prospector.run import vet_candidate  # noqa: F401
-
 from prospector.golden import (
     OPERATOR_CHOICES,
-    _mock_vet_candidate,
+)
+from prospector.golden import (
     main as golden_main,
 )
-from prospector.config import load_config
+
+# Pre-import so golden.main() calls don't hang on module-level init
+from prospector.run import vet_candidate  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -125,7 +125,6 @@ def test_golden_cli_runs_flag(tmp_path: Path):
     exit_code = _run_main(tmp_path, _CORRECT_CASES, extra_args=["--runs", "3"])
     assert exit_code == 0, f"Expected zero exit, got {exit_code}"
 
-    all_files = sorted(audit_dir.glob('*'))
     files = sorted(audit_dir.glob("mock_*.json"))
     assert len(files) == 3, (
         f"Expected 3 audit files, got {len(files)}"

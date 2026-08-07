@@ -6,10 +6,10 @@ clean set of checks passes all gates.
 from __future__ import annotations
 
 import pytest
-from prospector.config import load_config, Config
+
+from prospector.config import Config, load_config
 from prospector.kill_filter import apply_gates, is_hard_fail
 from prospector.models import CheckResult, Verdict
-
 
 # ---------------------------------------------------------------------------
 # Helpers

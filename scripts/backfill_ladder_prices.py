@@ -54,10 +54,10 @@ from typing import Any, Optional
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from prospector.config import load_config                    # noqa: E402
-from prospector.models import Candidate, ScoreResult          # noqa: E402
-from prospector.price_rationale import write_rationale        # noqa: E402
-from prospector.pricing import price_for                      # noqa: E402
+from prospector.config import load_config  # noqa: E402
+from prospector.models import Candidate, ScoreResult  # noqa: E402
+from prospector.price_rationale import write_rationale  # noqa: E402
+from prospector.pricing import price_for  # noqa: E402
 
 STORE_API = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
 ACTOR = "claude:C1-ladder-backfill"

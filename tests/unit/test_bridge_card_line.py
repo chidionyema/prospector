@@ -16,7 +16,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from prospector.artifacts import _normalize_listing
 from prospector.bridge import EngineBridge
-from prospector.models import Candidate, Decision, Dossier, CheckResult, ScoreResult, Verdict
+from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
 
 AXES = [
     "pain_acuity",

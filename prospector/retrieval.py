@@ -4,7 +4,9 @@ Google Search grounding — returns resolvable URLs + passages.
 Layers (Part 9 three-layer cache + graceful degradation):
   - GeminiGroundingProvider: live search+fetch in one call (google_search tool).
   - FixtureProvider: canned passages for tests / golden set (no network).
-  - DiskCache: content-addressed cache wrapping any provider.
+  - DiskCache: content-addressed CROSS-TICK cache wrapping any provider; entries
+    persist in store/_cache/, carry their fetch time, and expire on
+    `retrieval.cache_ttl_s`. `retrieval.cache: false` bypasses it entirely.
 Any failure returns [] so the caller downgrades that check to `unverifiable`,
 never crashing the run.
 """
@@ -13,24 +15,33 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 import time
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from nltk.stem import PorterStemmer
 import re
 import urllib.error
 import urllib.parse
 import urllib.request
 
+from .audit import audit
 from .breaker import CircuitBreaker
 from .errors import FixtureMiss, ProviderExhaustedError, ProviderUnavailable, SearchProviderError
 from .models import Source
-from .telemetry import track_latency, logger, record_usage
-from .audit import audit
+from .telemetry import logger, record_usage, track_latency
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / "store" / "_cache"
+
+# Cache entry format. v2 is an envelope {"v", "fetched_at", "sources"} so TTL is
+# judged on the recorded FETCH time rather than on mtime alone; v1 (a bare JSON
+# list) is still read, so the existing on-disk cache stays valid.
+_CACHE_ENTRY_VERSION = 2
 
 # Minimum word-overlap ratio for FixtureProvider word-level matching.
 # Set to 0 to always pick the best-overlap key (useful when fixture keys are short
@@ -1193,12 +1204,25 @@ class OpenRouterSearchProvider(_LLMSearchProvider):
 
 
 class DiskCache(SearchProvider):
-    """Content-addressed cache over any provider (Part 9). Misses delegate; hits
-    are served from store/_cache/<sha>.json."""
-    def __init__(self, inner: SearchProvider, cache_dir: Path = CACHE_DIR,
+    """Content-addressed CROSS-TICK cache over any provider (Part 9 / S5).
+
+    Entries live in `store/_cache/<sha>.json` and outlive the process, so a query
+    repeated in a later tick — or by a different run entirely — is served from disk
+    instead of re-hitting ddg/exa/claude_cli. Misses delegate to `inner`.
+
+    Concurrency: the scheduler daemon and interactive runs share this directory.
+    Writes are tmp+rename (atomic on POSIX) so a reader never observes half a file,
+    and ANY unreadable entry — torn, truncated, wrong shape — is a MISS that gets
+    re-fetched. This sits on the grounding path, where a raised exception would fail
+    a verdict that one re-fetch answers.
+    """
+    def __init__(self, inner: SearchProvider, cache_dir: Path | None = None,
                  ttl_s: int = 0, key_salt: str = ""):
         self.inner = inner
-        self.cache_dir = cache_dir
+        # Resolved at construction, NOT bound as a default argument at import time:
+        # a module-level default freezes the path before a test can redirect it, which
+        # is how production store/ has been polluted by test runs before.
+        self.cache_dir = Path(cache_dir) if cache_dir is not None else CACHE_DIR
         # 0 disables expiry; otherwise a cache file older than ttl_s is a miss and
         # the page is re-grounded so a verdict never rules on stale evidence.
         self.ttl_s = ttl_s
@@ -1216,32 +1240,107 @@ class DiskCache(SearchProvider):
         h = hashlib.sha1(base.encode()).hexdigest()[:20]
         return self.cache_dir / f"{h}.json"
 
-    def _is_fresh(self, p: Path) -> bool:
-        """A cache file is fresh if expiry is disabled or it is younger than ttl_s."""
+    def _age_s(self, p: Path, fetched_at: float | None) -> float | None:
+        """Seconds since this entry was fetched, or None when age is unknowable.
+
+        The OLDEST available evidence of age wins. `fetched_at` is stamped into the
+        entry at write time; mtime is the only signal a v1 entry carries, but mtime
+        alone is forgeable — any copy, rsync or restore of the store/ tree
+        (`scripts/backup_store.py`) resets it to now and would silently revive
+        months-old grounding as "fresh". Taking the minimum can only ever re-fetch.
+        """
+        stamps: list[float] = []
+        if fetched_at is not None:
+            stamps.append(fetched_at)
+        try:
+            stamps.append(p.stat().st_mtime)
+        except OSError:
+            pass
+        if not stamps:
+            return None
+        return time.time() - min(stamps)
+
+    def _is_fresh(self, p: Path, fetched_at: float | None = None) -> bool:
+        """A cache entry is fresh if expiry is disabled or it is younger than ttl_s."""
         if self.ttl_s <= 0:
             return True
+        age = self._age_s(p, fetched_at)
+        return age is not None and age < self.ttl_s
+
+    def _read_entry(self, p: Path) -> tuple[list[Source], float | None] | None:
+        """Parse a cache file into (sources, fetched_at), or None meaning MISS.
+
+        Every failure mode — unreadable file, torn/partial JSON, an envelope of the
+        wrong shape, a source dict with unexpected keys — returns None rather than
+        raising, so a damaged entry costs one re-fetch and never a failed verdict.
+        """
         try:
-            return (time.time() - p.stat().st_mtime) < self.ttl_s
-        except OSError:
-            return False
+            raw = json.loads(p.read_text())
+        except Exception as e:
+            logger.warning(f"Unreadable search cache entry, treating as miss: {e}",
+                           extra={"path": str(p)})
+            return None
+        fetched_at: float | None = None
+        if isinstance(raw, dict):
+            payload = raw.get("sources")
+            ts = raw.get("fetched_at")
+            if isinstance(ts, (int, float)) and not isinstance(ts, bool):
+                fetched_at = float(ts)
+        else:
+            payload = raw               # v1 entry: a bare list, aged by mtime alone.
+        if not isinstance(payload, list):
+            logger.warning("Malformed search cache entry, treating as miss",
+                           extra={"path": str(p)})
+            return None
+        try:
+            sources = [Source(**d) for d in payload]
+        except Exception as e:
+            logger.warning(f"Malformed search cache entry, treating as miss: {e}",
+                           extra={"path": str(p)})
+            return None
+        return sources, fetched_at
+
+    def _write_entry(self, p: Path, results: list[Source]) -> None:
+        """Publish an entry atomically: unique temp file in the same dir, then rename.
+
+        `os.replace` is atomic on POSIX, so a concurrent reader sees either the old
+        entry or the new one, never a prefix of the new one. A plain write left a
+        window in which the daemon could read a truncated file — the torn-write
+        defect class this store has hit before.
+        """
+        payload = json.dumps({"v": _CACHE_ENTRY_VERSION, "fetched_at": time.time(),
+                              "sources": [s.to_dict() for s in results]},
+                             ensure_ascii=False)
+        fd, tmp = tempfile.mkstemp(dir=str(self.cache_dir), prefix=f".{p.stem}.",
+                                   suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as fh:
+                fh.write(payload)
+            os.replace(tmp, p)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
     @track_latency(name="cached_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
         record_usage(web=True, provider="cache")
         start = time.monotonic()
         p = self._path(query, k, max_chars)
+        # mtime is a cheap prefilter: because freshness takes the OLDER of mtime and
+        # the stamped fetch time, an mtime-stale entry is stale whatever it contains.
         if p.exists() and self._is_fresh(p):
-            try:
-                results = [Source(**d) for d in json.loads(p.read_text())]
+            entry = self._read_entry(p)
+            if entry is not None and self._is_fresh(p, entry[1]):
+                results = entry[0]
                 logger.info("Search cache hit", extra={"query": query, "count": len(results)})
                 audit("search", provider="cache", query=query[:200], k=k,
                       max_chars=max_chars, returned_n=len(results),
                       latency_ms=int((time.monotonic() - start) * 1000),
                       status="ok" if results else "empty", cache_hit=True)
                 return results
-            except Exception as e:
-                logger.warning(f"Failed to read search cache: {e}", extra={"path": str(p)})
-                pass
 
         logger.info("Search cache miss", extra={"query": query})
         results = self.inner.search(query, k, max_chars)
@@ -1249,7 +1348,7 @@ class DiskCache(SearchProvider):
         # results stay uncached so a transient outage does not poison the cache.
         if results:
             try:
-                p.write_text(json.dumps([s.to_dict() for s in results], ensure_ascii=False))
+                self._write_entry(p, results)
             except Exception as e:
                 logger.warning(f"Failed to write search cache: {e}", extra={"path": str(p)})
         audit("search", provider="cache", query=query[:200], k=k,

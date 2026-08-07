@@ -4,7 +4,6 @@ from __future__ import annotations
 from prospector.pack_validation import (
     MIN_ARTIFACT_CHARS,
     PROSE_ARTIFACTS,
-    REQUIRED_ARTIFACTS,
     validate_pack,
 )
 

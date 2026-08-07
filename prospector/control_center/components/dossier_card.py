@@ -77,9 +77,6 @@ def _render_checks(checks: list[dict]) -> None:
         citations = check.get("citations", [])
         sources = check.get("sources", [])
 
-        verdict_color = "green" if verdict in ("SUPPORTED",) else \
-                        "red" if verdict in ("REFUTED",) else "yellow"
-
         with st.expander(
             f"**{name}** → `{verdict}` conf {confidence:.2f}",
             expanded=(verdict in ("REFUTED", "UNVERIFIABLE")),

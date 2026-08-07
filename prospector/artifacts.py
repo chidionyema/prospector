@@ -23,7 +23,8 @@ from .models import Candidate, CheckResult, Verdict
 from .operator import Operator, ParseError, _extract_json
 from .pack_linter import symbol_for_currency
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
-from .telemetry import logger, stage as telemetry_stage
+from .telemetry import logger
+from .telemetry import stage as telemetry_stage
 
 # Prose pack bodies: schema is {"type", "content"} where content is markdown.
 # cursor_cli often emits the markdown body without the JSON envelope.

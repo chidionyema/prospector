@@ -49,7 +49,7 @@ def audit_dir(tmp_path, monkeypatch):
 def _rows(audit_dir: Path) -> list[dict]:
     files = sorted(audit_dir.glob("*.jsonl"))
     assert files, f"no audit file written under {audit_dir}"
-    return [json.loads(l) for f in files for l in f.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for f in files for line in f.read_text().splitlines() if line.strip()]
 
 
 def test_every_row_carries_the_identity_of_the_run_that_wrote_it(audit_dir):

@@ -28,14 +28,17 @@ from pathlib import Path
 # Allow running as a bare script (python tools/prove_reliability.py).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from prospector import verify as verify_mod
 from prospector.config import load_config
 from prospector.errors import ProviderExhaustedError
 from prospector.models import Candidate, Verdict
-from prospector.retrieval import (ExaSearchProvider, FallbackSearchProvider,
-                                  SearchProvider, make_provider)
-from prospector.scheduler import alerts as alerts_mod
+from prospector.retrieval import (
+    ExaSearchProvider,
+    FallbackSearchProvider,
+    SearchProvider,
+    make_provider,
+)
 from prospector.scheduler import run_scheduled as rs
-from prospector import verify as verify_mod
 
 _RESULTS: list[tuple[str, bool, str]] = []
 

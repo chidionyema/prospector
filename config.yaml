@@ -183,6 +183,24 @@ retrieval:
                                  # timeout under load no longer permanently dead-lists it)
   breaker_cooldown_s: 60         # seconds a retired provider stays out before a half-open recovery probe
 
+# Citation ADMISSIBILITY at ruling time (programme doc §20, the Q4 lever). Decides which
+# domains may be the SOLE basis of a supported/refuted ruling. It does NOT touch retrieval:
+# §18 measured grounding as RELEVANCE-bound, so shrinking the fetched pool is the one
+# intervention that provably cannot help. Every passage is still fetched, judged and stored;
+# this only declines to TRUST a ruling whose every citation is an AI stats farm, dictionary
+# chrome, or — for checks where it cannot be probative — a social post.
+#
+# Measured cost, ruled verdicts demoted over store/dossiers/*.json (§20.3, zero LLM):
+#     P2_farm_only     0  (0.00%)  all eras | 0 (0.00%) current moat
+#     P1_check_aware  12  (0.47%)  all eras | 1 (0.08%) current moat   <- SHIPPED
+#     P0_global       52  (2.02%)  all eras | 17 (1.38%) current moat  <- do NOT ship
+# P0 costs 4.3x P1 and pays it precisely in the channel checks (distribution 26,
+# route_to_market 8) where user-generated content WAS the right source. `off` = pre-§20.
+# An unrecognised value raises at startup (config.py _validate_admissibility) rather than
+# silently disabling the gate.
+admissibility:
+  policy: P1_check_aware
+
 thresholds:
   # confidence_floor: KILL-SIDE lever only (kill_filter.is_hard_fail). A grounded killing
   # verdict (refuted) only HARD-kills when its confidence clears this floor; below it the
@@ -995,6 +1013,31 @@ store_payments:
 # Near-duplicate similarity ratio for Part 3 dedup (0..1). At or above this, the later
 # candidate is dropped as a duplicate. Higher = stricter (fewer dropped); lower = looser.
 dedup_threshold: 0.85
+
+# E6 (programme doc §3): local-embedding prescreen prefilter — SHADOW MODE ONLY.
+# The register mandates "shadow-mode first (log, don't act)", and only the shadow half is
+# built: with shadow_mode on, prescreen still returns exactly what it returns today and the
+# prefilter writes what it WOULD have dropped to store/prescreen_shadow/shadow-YYYY-MM.jsonl
+# next to the LLM's actual decision. There is no key here that can drop a candidate.
+# OFF by default — an unproven prefilter that acts silently kills good candidates, and this
+# one has no measured agreement yet. Turn shadow_mode on to start accumulating that measurement
+# (read it back with prescreen_prefilter.summarise_shadow_log).
+prescreen_prefilter:
+  shadow_mode: false
+  # `lexical` = dedup's content-word tokeniser + char trigrams, cosine via novelty.py.
+  # No sentence-transformers/torch/onnx package is installed and the local ollama carries no
+  # embedding model (measured 2026-08-07), so a dense backend would mean a multi-GB download.
+  # `sentence_transformers:<model>` is accepted and degrades to lexical (logged, and recorded
+  # per-row as `backend_used`) if the import fails.
+  backend: lexical
+  # Would-drop when the neighbour-weighted keep-rate falls below this. Uncalibrated by
+  # construction — calibrating it against real agreement IS experiment E6.
+  threshold: 0.35
+  neighbours: 5              # k in the kNN vote
+  min_similarity: 0.15       # a neighbour below this says nothing; ignored
+  min_exemplars: 20          # below this the prefilter ABSTAINS — cold start never drops
+  max_exemplars: 500         # rolling window over accumulated LLM decisions
+  log_dir: ""                # "" => <store.dir>/prescreen_shadow (honours PROSPECTOR_STORE_DIR)
 
 # Second dedup signal: content-word overlap (Jaccard, 0..1). Char ratio above is blind to
 # the SAME idea reworded — that is how the catalogue accumulated 4 "retiree garden harvest"

@@ -1,0 +1,177 @@
+{
+  "experiment": "E13 \u2014 proxy-framed claim reframe, offline replay over stored passages",
+  "programme_ref": "docs/COMMERCIAL_READINESS_PROGRAM.md \u00a710 (line 366), \u00a719.4",
+  "scope": "CURRENT MOAT ONLY (claude_cli/claude)",
+  "method": "deterministic lexical/entity proxy-evidence detector; no LLM verdict simulated",
+  "kill_criterion": "improvement factor < 2x over baseline grounded-rate => reframe wrong",
+  "run_at_utc": "2026-08-07T14:08:17+00:00",
+  "dossier_files_globbed": 1569,
+  "limitations": [
+    "Lexical/entity match is an UPPER BOUND on probativeness \u2014 a passage can carry a price and a segment term and still not evidence willingness-to-pay. See `examples`: several first-hit passages are clearly not probative on inspection.",
+    "The two detectors are not equally specific. The distribution pattern (named channel) is looser than the payer_solvency pattern (money + spend), which is why the SWAPPED control on payer_solvency passages exceeds that check's own hit rate.",
+    "store/dossiers is written by the live daemon; re-running on a later corpus will shift counts by a few checks. run_at_utc + dossier_files_globbed pin this run.",
+    "No LLM verdict is simulated. The follow-up is a live re-rule of these checks with proxy-framed claim text on the current moat."
+  ],
+  "segment_df_max": 0.05,
+  "candidates": 236,
+  "generic_terms_removed": 133,
+  "distinct_candidate_terms": 4196,
+  "checks_analysed": 444,
+  "passages_scored": 1692,
+  "per_check": {
+    "payer_solvency": {
+      "check": "payer_solvency",
+      "population_ruled": 90,
+      "population_unverifiable": 145,
+      "baseline_grounded_rate": 0.383,
+      "absence_ratio": 1.61,
+      "bucketD_checks_scored": 145,
+      "bucketD_passages": 574,
+      "bucketD_proxy_hit": 33,
+      "bucketD_proxy_hit_share": 0.2276,
+      "bucketD_proxy_hit_strict_2seg": 21,
+      "bucketD_proxy_hit_strict_share": 0.1448,
+      "control_swapped_detector_share": 0.3103,
+      "control_shuffled_segment_share": 0.1103,
+      "ruled_checks_scored": 90,
+      "calibration_ruled_hit_share": 0.3444,
+      "bucketD_no_segment_terms": 0,
+      "projected_grounded_rate_upper_bound": 0.5234,
+      "improvement_factor_upper_bound": 1.37,
+      "first_hit_already_cited": 19
+    },
+    "distribution": {
+      "check": "distribution",
+      "population_ruled": 118,
+      "population_unverifiable": 91,
+      "baseline_grounded_rate": 0.5646,
+      "absence_ratio": 0.77,
+      "bucketD_checks_scored": 91,
+      "bucketD_passages": 327,
+      "bucketD_proxy_hit": 36,
+      "bucketD_proxy_hit_share": 0.3956,
+      "bucketD_proxy_hit_strict_2seg": 22,
+      "bucketD_proxy_hit_strict_share": 0.2418,
+      "control_swapped_detector_share": 0.1648,
+      "control_shuffled_segment_share": 0.2527,
+      "ruled_checks_scored": 118,
+      "calibration_ruled_hit_share": 0.5593,
+      "bucketD_no_segment_terms": 0,
+      "projected_grounded_rate_upper_bound": 0.7368,
+      "improvement_factor_upper_bound": 1.31,
+      "first_hit_already_cited": 24
+    }
+  },
+  "combined": {
+    "bucketD_checks_scored": 236,
+    "bucketD_proxy_hit": 69,
+    "bucketD_proxy_hit_share": 0.2924,
+    "population_ruled": 208,
+    "population_unverifiable": 236,
+    "baseline_grounded_rate": 0.4685,
+    "projected_grounded_rate_upper_bound": 0.6239,
+    "improvement_factor_upper_bound": 1.3317,
+    "absence_ratio_measured": 1.13,
+    "max_possible_factor_if_all_unverifiable_ruled": 2.1346,
+    "verdict": "KILLED",
+    "kill_criterion_note": "\u00a710 calibrated the 2x bar against an assumed 10:1 absence ratio. Measured on disk for these two checks the absence ratio is 1.13:1 and the baseline grounded-rate is 46.8%, so the ceiling \u2014 every unverifiable check becoming ruled \u2014 is only 2.13x. The literal 2x bar is therefore near-unreachable by arithmetic, not by the reframe's merit. Judge the reframe on the bucket-D recovery share instead."
+  },
+  "first_hit_rank_histogram": {
+    "payer_solvency": {
+      "0": 18,
+      "1": 7,
+      "2": 5,
+      "3": 1,
+      "4": 1,
+      "5": 1
+    },
+    "distribution": {
+      "0": 20,
+      "1": 9,
+      "2": 3,
+      "3": 2,
+      "5": 1,
+      "9": 1
+    }
+  },
+  "first_hit_already_cited": {
+    "distribution": 24,
+    "payer_solvency": 19
+  },
+  "followup_sizing": {
+    "unit": "one verdict call per bucket-D check, zero new retrieval calls",
+    "checks_full_replay": 236,
+    "checks_doc_sample": 30,
+    "bucketD_passage_chars": 439044,
+    "approx_passage_tokens_full_replay": 109761,
+    "approx_passage_tokens_per_check": 465,
+    "new_retrieval_calls": 0,
+    "note": "Passages are already on disk (store/dossiers[].checks[].sources[].text), so the replay costs verdict tokens only. Dollar cost is NOT computed here \u2014 deriving it requires the spend ledger, which this read-only probe does not touch."
+  },
+  "examples": {
+    "payer_solvency": [
+      {
+        "candidate_id": "02d8f86206e8cad2",
+        "rank": 1,
+        "source_id": "d6c6521772d673a5",
+        "passage": "# Scott Whatley left fearing for independence amid NDIS grievance | The Examiner | Launceston, TAS\n\nPublished: 2026-06-21T19:30:00+00:00\nSource: examiner.com.au (examiner.com.au)\nLanguage: en\n\n## Story\n\nScott Whatley left fearing for independence amid NDIS grievance | The Examine"
+      },
+      {
+        "candidate_id": "0317805edf9ad3b0",
+        "rank": 2,
+        "source_id": "8c45b6ca0cb4cca8",
+        "passage": "But since 2020, Singh says the female tenant has paid only intermittently: he produced a ledger showing Deeqa Rafle owes $41,600 in back rent and $5,249.35 in unpaid utilities. In the meantime, she\u2019s still living in Singh\u2019s 32nd-floor apartment. Global's Sean O'Shea has the detai"
+      },
+      {
+        "candidate_id": "0f1726115def45b6",
+        "rank": 2,
+        "source_id": "c70a6c2f84cccb77",
+        "passage": "The Seller's Guide to Surviving a Depop Refund: Rules, Risks, and Real \u2013 CLOSO\n\nI still remember the first time I woke up to a PayPal dispute notification. It was 2019, and I had sold a vintage 90s windbreaker for $45. The buyer claimed it smelled like \"old attic\" and wanted thei"
+      },
+      {
+        "candidate_id": "120593ed8df558f4",
+        "rank": 0,
+        "source_id": "b4dec7f74d809cea",
+        "passage": "How much do care homes cost in the UK? Average UK care home costs in 2025/26 range from around \u00a3800 per week for residential care to \u00a31,100 per week for nursing care, and approximately \u00a3950 per week for dementia care."
+      },
+      {
+        "candidate_id": "1505cbd61ae4066f",
+        "rank": 2,
+        "source_id": "0a303627463d7c44",
+        "passage": "Rent Repayment Order mediated, saving landlord \u00a311,000 | Landlord Licensing & Defence\n\n## Rent Repayment Order mediated, saving landlord \u00a311,000\n\n- Site Map\n- Home\n- /\n- Rent Repayment Order\n- /\n- Rent Repayment Order mediated, saving landlord \u00a311,000\n\n##### Property manager used"
+      }
+    ],
+    "distribution": [
+      {
+        "candidate_id": "02d8f86206e8cad2",
+        "rank": 0,
+        "source_id": "51a094bad23bfb6f",
+        "passage": "LOI Template & Guide for Buying a Home Medical Equipment Business | HME Acquisition\n\nLOI Template & Guide \u00b7 Home Medical Equipment\n\n# Letter of Intent Template for Acquiring a Home Medical Equipment Business\n\nA practical LOI framework and negotiation guide built for HME and DME a"
+      },
+      {
+        "candidate_id": "0f1726115def45b6",
+        "rank": 1,
+        "source_id": "734e11c315973fa9",
+        "passage": "Can I Get Scammed on Depop? Safety Tips & Protection \u2013 CLOSO\n\n## Can I Get Scammed on Depop? What Every Seller and Buyer Needs to Know Before Listing or Buying\n\nLast updated: June 2026\n\nBottom line: Depop fraud is a documented, recurring problem affecting thousands of transaction"
+      },
+      {
+        "candidate_id": "191758b1e754b0f0",
+        "rank": 0,
+        "source_id": "56f9dd2c4f7245a6",
+        "passage": "IRCODE. The Technology.\n\nThe platform\n\n# One recognition layer.Three connected systems. Always on.\n\nEvery frame you publish, every image your audience encounters, every scan that follows feeds a single system that gets sharper, faster, and more attributable over time. Three layer"
+      },
+      {
+        "candidate_id": "2068c79f4f048a13",
+        "rank": 0,
+        "source_id": "3c435ceb34eea115",
+        "passage": "Payfolio\n\nFeaturesHow It WorksPricingFAQ\n\nLog InGet Started\n\nBuilt for the creator economy\n\n# Revenue trackingthat bookkeepersactually love\n\nPayfolio connects to every creator platform, splits revenue from fees on every line item, and keeps your books reconciliation-ready \u2014 autom"
+      },
+      {
+        "candidate_id": "252bdc589ce8c102",
+        "rank": 0,
+        "source_id": "3ab4196bdfebd35d",
+        "passage": "RightCareHome \u2014 Independent Care Home Advice UK | Funded by Families\n\n# Independent Care Home Guidance for Families\n\nFind, compare, and verify care homes with independent help at every stage \u2014 from the first search to funding questions to final checks. RightCareHome is funded by "
+      }
+    ]
+  }
+}

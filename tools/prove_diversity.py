@@ -26,17 +26,16 @@ Claims:
 from __future__ import annotations
 
 import os
-import sys
 import re
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from prospector.config import load_config
-from prospector.errors import ProviderExhaustedError
-from prospector.models import (Candidate, CheckResult, Decision, Dossier, ScoreResult,
-                               Verdict)
 from prospector.dossier import build_dossier
+from prospector.errors import ProviderExhaustedError
+from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
 from prospector.store import Store
 
 _RESULTS: list[tuple[str, bool, str]] = []
@@ -123,8 +122,8 @@ def d3_cross_run_memory_live(cfg) -> None:
 def _build_gen_op(cfg):
     """Replicate run.py's non-critical generation chain (same _NONCRITICAL_ORDER, so this
     proof exercises the chain production actually runs, not a stale copy)."""
-    from prospector.operator import _build_operator, FallbackOperator
     from prospector.health import get_noncritical_health
+    from prospector.operator import FallbackOperator, _build_operator
     from prospector.run import _NONCRITICAL_ORDER
     tiers = []
     for kind in _NONCRITICAL_ORDER:

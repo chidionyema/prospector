@@ -1,6 +1,5 @@
 import os
 import sys
-import json
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -8,8 +7,15 @@ from unittest.mock import MagicMock, patch
 # Add the prospector directory to the path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from prospector.models import Candidate, Dossier, Decision, ScoreResult, CheckResult, Verdict
-from prospector.bridge import EngineBridge, ProductProvisioner, StripeProvisioner, PaddleClient, ProvisioningError
+from prospector.bridge import (
+    EngineBridge,
+    PaddleClient,
+    ProductProvisioner,
+    ProvisioningError,
+    StripeProvisioner,
+)
+from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
+
 
 class TestEngineBridge(unittest.TestCase):
     def setUp(self):

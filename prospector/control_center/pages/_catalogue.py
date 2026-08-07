@@ -40,7 +40,7 @@ def render():
     lanes = ["all"] + sorted({r.get("ambition_tier") or "(no lane)" for r in rows})
     if preset_lane is not None:
         lookup = "(no lane)" if preset_lane == "" else preset_lane
-        lane_idx = next((i for i, l in enumerate(lanes) if l == lookup), 0)
+        lane_idx = next((i for i, lane in enumerate(lanes) if lane == lookup), 0)
     else:
         lane_idx = 0
     lane_filter = col2.selectbox("Lane", lanes, index=lane_idx)

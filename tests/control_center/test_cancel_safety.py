@@ -8,14 +8,10 @@ from __future__ import annotations
 
 import json
 import os
-import signal
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
-
-import pytest
 
 
 class TestCancelSafety:
@@ -23,8 +19,8 @@ class TestCancelSafety:
 
     def test_atomic_write_leaves_no_partial_file(self, tmp_path: Path):
         """A simulated mid-write kill leaves no partial JSON at the target path."""
-        from prospector.store import Store
         from prospector.config import Config
+        from prospector.store import Store
 
         # Use a temp store so we don't pollute the real one
         store_dir = tmp_path / "store"
@@ -35,7 +31,7 @@ class TestCancelSafety:
         store = Store(cfg)
 
         # Write a large dossier — large enough that a kill mid-write is plausible
-        from prospector.models import Candidate, Dossier, Decision
+        from prospector.models import Candidate, Decision, Dossier
         cand = Candidate(
             title="Test Cancel Safety",
             one_liner="Verify atomic writes",
@@ -153,11 +149,13 @@ time.sleep(300)
 
     def test_runner_cancel_updates_job_status(self, tmp_path: Path):
         """The runner's cancel_job sets status to 'cancelled'."""
-        from prospector.control_center.runner import launch, cancel_job
-        from prospector.control_center.runner import load_jobs, _JOBS_FILE, _CC_DIR, _RUNS_DIR
-
         # Patch the file paths to isolate from real state
         import prospector.control_center.runner as runner
+        from prospector.control_center.runner import (
+            cancel_job,
+            launch,
+            load_jobs,
+        )
         saved_jobs = runner._JOBS_FILE
         saved_dir = runner._CC_DIR
         saved_runs = runner._RUNS_DIR
@@ -195,7 +193,8 @@ time.sleep(300)
                 pid = j.get("pid")
                 if pid:
                     try:
-                        import os, signal
+                        import os
+                        import signal
                         os.kill(pid, signal.SIGKILL)
                     except OSError:
                         pass

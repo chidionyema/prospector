@@ -5,10 +5,10 @@ every parallel call) from re-paying a dead provider's full timeout to rediscover
 from __future__ import annotations
 
 from prospector.errors import ProviderExhaustedError, parse_reset_seconds
-from prospector.health import DEFAULT_EXHAUSTION_S, ProviderHealth
+from prospector.health import ProviderHealth
+from prospector.models import Source
 from prospector.operator import FallbackOperator, Operator
 from prospector.retrieval import FallbackSearchProvider, SearchProvider
-from prospector.models import Source
 
 
 # --- reset-time parsing -----------------------------------------------------
@@ -92,7 +92,9 @@ def test_corrupt_file_is_ignored(tmp_path):
 # --- failover chains consult & record persisted health ----------------------
 class _Op(Operator):
     def __init__(self, name, behaviour):
-        self.name = name; self.behaviour = behaviour; self.calls = 0
+        self.name = name
+        self.behaviour = behaviour
+        self.calls = 0
 
     def _raw(self, system, user, temperature):
         self.calls += 1
@@ -124,7 +126,8 @@ def test_brain_exhaustion_is_recorded_to_health(tmp_path):
 
 class _Search(SearchProvider):
     def __init__(self, behaviour):
-        self.behaviour = behaviour; self.calls = 0
+        self.behaviour = behaviour
+        self.calls = 0
 
     def search(self, query, k=4, max_chars=1500):
         self.calls += 1

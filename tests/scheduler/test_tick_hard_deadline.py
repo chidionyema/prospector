@@ -25,7 +25,6 @@ from __future__ import annotations
 import json
 import os
 import types
-from pathlib import Path
 
 import pytest
 
@@ -74,7 +73,7 @@ def test_the_force_exit_writes_a_tick_row_and_an_alert_before_it_kills_the_daemo
         "relaunches. 99 means the function returned without exiting."
     )
 
-    rows = [json.loads(l) for l in (store / "scheduler" / "ticks.jsonl").read_text().splitlines()]
+    rows = [json.loads(line) for line in (store / "scheduler" / "ticks.jsonl").read_text().splitlines()]
     assert len(rows) == 1
     assert "tick_hard_deadline" in rows[0]["error"], (
         "without this row a repeating deadline breach is indistinguishable from a daemon that "
@@ -83,8 +82,8 @@ def test_the_force_exit_writes_a_tick_row_and_an_alert_before_it_kills_the_daemo
     assert str(rs._TICK_HARD_DEADLINE_S) in rows[0]["error"]
     assert "batch=15" in rows[0]["error"]
 
-    alerts = [json.loads(l)
-              for l in (store / "scheduler" / "alerts.jsonl").read_text().splitlines()]
+    alerts = [json.loads(line)
+              for line in (store / "scheduler" / "alerts.jsonl").read_text().splitlines()]
     assert [a["severity"] for a in alerts] == ["critical"], (
         "a force-exit is not a warning; it is the daemon killing itself"
     )

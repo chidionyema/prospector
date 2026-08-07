@@ -6,7 +6,6 @@ The diff is shown before write. Moat-affecting edits are flagged uncertified.
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 
 import streamlit as st
 
@@ -432,7 +431,6 @@ def _run_golden_regression():
         st.code(output, language="bash")
         if result.returncode == 0:
             # Mark as certified
-            cert = readers.load_certification()
             _ce.certify_from_golden(
                 golden_run_id="regression_run",
                 operator="regression",

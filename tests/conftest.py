@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import pytest
-from prospector.config import load_config, Config
+
+from prospector.config import Config, load_config
 
 
 @pytest.fixture(autouse=True)

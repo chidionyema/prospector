@@ -22,8 +22,6 @@ import json
 import sqlite3
 import types
 
-import pytest
-
 from prospector import drain_state
 from prospector import run as run_mod
 from prospector.models import Decision
@@ -126,7 +124,7 @@ def test_the_brake_names_the_rows_it_set_aside(tmp_path, capsys):
     A brake that waits on a count has to be able to tell an operator which rows are holding it,
     or the freeze is unexplainable from the daemon log.
     """
-    store = _store_with(tmp_path, [("live", "defer", False, True), ("gone", "defer", False, False)])
+    _store_with(tmp_path, [("live", "defer", False, True), ("gone", "defer", False, False)])
     assert rs._backlog_size(_cfg(tmp_path, backlog_cap=99)) == 1
     err = capsys.readouterr().err
     assert "1 orphaned" in err and "0 stalled" in err

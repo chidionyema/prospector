@@ -2,10 +2,11 @@
 golden set can tune them without code changes."""
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
-import os
+
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -232,6 +233,110 @@ class Pricing:
 
 
 @dataclass
+class Admissibility:
+    """Citation admissibility at RULING time (programme doc §20, the Q4 lever).
+
+    `policy` is one of `prospector.admissibility.POLICIES`. Default `P1_check_aware`:
+    measured to demote 12 ruled verdicts across two months (0.47%), one on the current moat,
+    while removing the 18.8% low-tier exposure. `P0_global` is available but was measured at
+    4.3x P1's cost and is NOT recommended — it destroys user-generated evidence precisely in
+    the channel checks where that evidence was the right shape for the question.
+
+    Set `policy: off` to restore pre-§20 behaviour exactly.
+    """
+    policy: str = "P1_check_aware"
+
+
+def _validate_admissibility(raw: Any) -> "Admissibility":
+    """Fail LOUDLY on an unknown policy rather than silently disabling the gate.
+
+    Same rule as `_build_operator` raising for the removed `cursor_cli`: a typo in
+    `config.yaml` must stop the process at startup, because the alternative is a gate that
+    quietly does nothing while the config file says it is on. `inadmissible_tiers` returns an
+    empty set for an unknown policy by design (it must never crash mid-verdict), which is
+    exactly why the typo has to be caught HERE instead.
+    """
+    from .admissibility import POLICIES
+    if not raw:
+        return Admissibility()
+    if not isinstance(raw, dict):
+        raise ValueError(f"config `admissibility` must be a mapping, got {type(raw).__name__}")
+    unknown = set(raw) - {"policy"}
+    if unknown:
+        raise ValueError(f"config `admissibility` has unknown key(s): {sorted(unknown)}")
+    policy = str(raw.get("policy") or "P1_check_aware")
+    if policy not in POLICIES:
+        raise ValueError(
+            f"config `admissibility.policy` = {policy!r} is not one of {list(POLICIES)}")
+    return Admissibility(policy=policy)
+
+
+def _validate_retrieval(raw: Any) -> "Retrieval":
+    """Build Retrieval, rejecting a `hybrid_entity_checks` entry that has no template.
+
+    The defect this closes: `_entity_queries` returns [] for a check with no entity
+    template (deliberately — a missing template must not crash a verdict mid-run, and
+    tests/unit/test_e1_hybrid_queries.py asserts that contract). The caller then falls
+    through to the ordinary LLM/template chain. So listing `incumbency` in
+    `hybrid_entity_checks` when no `incumbency` template existed did not enable the E1
+    arm for that check — it did NOTHING, while config.yaml read as though the arm was on.
+    The experiment would then report a null result for a condition it never ran.
+
+    Same rule as `_validate_admissibility` and `_build_operator`'s removed `cursor_cli`:
+    a config that cannot mean what it says must stop the process at startup.
+    """
+    from .entity_templates import checks_with_entity_templates
+
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise ValueError(f"config `retrieval` must be a mapping, got {type(raw).__name__}")
+
+    requested = raw.get("hybrid_entity_checks") or []
+    if isinstance(requested, str) or not isinstance(requested, (list, tuple)):
+        raise ValueError(
+            "config `retrieval.hybrid_entity_checks` must be a list of check names, "
+            f"got {type(requested).__name__}"
+        )
+    known = checks_with_entity_templates()
+    unbacked = [c for c in requested if c not in known]
+    if unbacked:
+        raise ValueError(
+            f"config `retrieval.hybrid_entity_checks` names check(s) with no entity "
+            f"template: {sorted(unbacked)}. Known: {sorted(known)}. Listing a check here "
+            f"without a template in prospector/entity_templates.py silently disables the "
+            f"E1 arm for it instead of enabling it — add the template, or remove the name."
+        )
+    return Retrieval(**raw)
+
+
+_PRESCREEN_PREFILTER_KEYS = frozenset({
+    "shadow_mode", "backend", "threshold", "neighbours",
+    "min_similarity", "min_exemplars", "max_exemplars", "log_dir",
+})
+
+
+def _validate_prescreen_prefilter(raw: Any) -> dict[str, Any]:
+    """Fail LOUDLY on an unknown key (same rule as `_validate_admissibility`).
+
+    A typo in this block must stop the process at startup. The alternative —
+    `shadow_mod: true` silently doing nothing — is exactly the failure this repo
+    already paid for with a gate that read as configured-on while inert.
+    """
+    if not raw:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"config `prescreen_prefilter` must be a mapping, got {type(raw).__name__}")
+    unknown = set(raw) - _PRESCREEN_PREFILTER_KEYS
+    if unknown:
+        raise ValueError(
+            f"config `prescreen_prefilter` has unknown key(s): {sorted(unknown)}; "
+            f"known keys are {sorted(_PRESCREEN_PREFILTER_KEYS)}")
+    return dict(raw)
+
+
+@dataclass
 class Config:
     # str (single brain) or list[str] (ordered failover chain, Part 9).
     operator: "str | list[str]" = "mock"
@@ -246,6 +351,7 @@ class Config:
     artifact_operator: "str | list[str]" = field(default_factory=lambda: ["claude_cli"])
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
+    admissibility: Admissibility = field(default_factory=Admissibility)
     # hard_gates: list of single-key dicts, preserves kill-fast order
     hard_gates: list[dict[str, Any]] = field(default_factory=list)
     weights: dict[str, float] = field(default_factory=dict)
@@ -294,6 +400,13 @@ class Config:
     # blind to the same idea reworded; this catches it. At or above this, two candidates
     # are duplicates even if the char ratio is low. None disables the token signal.
     dedup_token_threshold: float = 0.34
+    # E6 (programme doc §3) — local-embedding prescreen prefilter, SHADOW MODE ONLY.
+    # `shadow_mode: false` by default: the block is inert until explicitly enabled, and
+    # even when enabled it only LOGS what it would have dropped alongside what the LLM
+    # prescreen actually decided (`prescreen_prefilter.record_shadow`). No key in this
+    # block can change a prescreen decision — acting on the prefilter is a separate,
+    # unbuilt change that E6 must earn with measured agreement first.
+    prescreen_prefilter: dict[str, Any] = field(default_factory=dict)
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
@@ -640,8 +753,9 @@ def load_config(path: str | Path | None = None) -> Config:
         model_fast=raw.get("model_fast", ""),
         model_version_tag=raw.get("model_version_tag", ""),
         artifact_operator=raw.get("artifact_operator") or ["claude_cli"],
-        retrieval=Retrieval(**(raw.get("retrieval") or {})),
+        retrieval=_validate_retrieval(raw.get("retrieval")),
         thresholds=Thresholds(**(raw.get("thresholds") or {})),
+        admissibility=_validate_admissibility(raw.get("admissibility")),
         hard_gates=raw.get("hard_gates") or [],
         weights=raw.get("weights") or {},
         lanes=raw.get("lanes") or {},
@@ -661,6 +775,7 @@ def load_config(path: str | Path | None = None) -> Config:
             None if raw.get("dedup_token_threshold", 0.34) is None
             else float(raw.get("dedup_token_threshold", 0.34))
         ),
+        prescreen_prefilter=_validate_prescreen_prefilter(raw.get("prescreen_prefilter")),
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},

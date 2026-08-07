@@ -3,9 +3,9 @@
 import tempfile
 from pathlib import Path
 
+from prospector.canary import CanaryRunner, CanaryVerdict
 from prospector.metrics_store import MetricsStore
 from prospector.self_modify import SelfModificationLog
-from prospector.canary import CanaryRunner, CanaryVerdict
 
 
 def test_canary_start_and_status():

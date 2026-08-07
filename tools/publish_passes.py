@@ -23,15 +23,21 @@ import json
 import sys
 from pathlib import Path
 
-from prospector.config import load_config
-from prospector.operator import make_operator
-from prospector.models import (
-    Candidate, CheckResult, ScoreResult, Source, Dossier, Decision, Verdict,
-)
 from prospector.artifacts import generate_artifacts, generate_marketing_content
+from prospector.config import load_config
+from prospector.models import (
+    Candidate,
+    CheckResult,
+    Decision,
+    Dossier,
+    ScoreResult,
+    Source,
+    Verdict,
+)
+from prospector.operator import make_operator
 from prospector.pack_floors import ensure_marketing_floor
 from prospector.pack_validation import validate_pack
-from prospector.run import _build_artifact_op, _NONCRITICAL_ORDER, _load_dotenv
+from prospector.run import _NONCRITICAL_ORDER, _build_artifact_op, _load_dotenv
 from publish.publish import publish
 
 # Generation flakiness budget: regenerate the whole pack this many times before giving up

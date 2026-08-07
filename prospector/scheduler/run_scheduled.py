@@ -33,6 +33,7 @@ from pathlib import Path
 from prospector.audit import run_id as audit_run_id
 from prospector.config import load_config
 from prospector.errors import GroundingInfrastructureError
+from prospector.jsonl_atomic import append_jsonl, iter_jsonl, read_jsonl
 from prospector.scheduler import paths
 from prospector.scheduler.guard import guard_from_config
 
@@ -126,8 +127,10 @@ def _append_tick(cfg, tick: dict) -> None:
     # Identity last: a tick dict assembled upstream must not be able to misattribute itself.
     row = {**tick, "pid": os.getpid(), "run_id": audit_run_id()}
     try:
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(row, default=str) + "\n")
+        # R3: one O_APPEND write + fsync. NOT tmp+rename — this file has concurrent appenders
+        # (the daemon and an out-of-repo driver, see above), and a read-modify-rename would
+        # delete every line a peer wrote between the read and the rename.
+        append_jsonl(path, row)
     except OSError as exc:
         logger.error("Failed to write tick log: %s", exc)
 
@@ -632,7 +635,7 @@ def _default_generate(cfg, batch_size: int) -> dict:
     the tick's hard deadline can force-exit mid-tick — whatever runs second is what gets dropped.
     It is bounded per tick because the spend guard evaluates once, before the tick.
     """
-    from prospector.run import run_signal, _resolve_lanes
+    from prospector.run import _resolve_lanes, run_signal
 
     resumed = _drain_pass(cfg, _resume_per_tick(cfg))
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
@@ -937,16 +940,14 @@ def _trailing_barren_count(cfg, window: int = 50) -> int:
     only how far back we look to find the ticks that count.
     """
     streak = 0
-    try:
-        with open(_ticks_path(cfg), encoding="utf-8") as f:
-            lines = f.readlines()[-_TICK_SCAN_LINES:]
-    except OSError:
-        return 0
+    # R3 tolerant reader: a torn trailing line (an append caught in flight by this very read,
+    # or truncated by a crash) is skipped, and every intact row before it is still returned.
+    # The old readlines() handed the fragment to json.loads, which is only accidentally safe —
+    # a truncated row can be valid JSON, e.g. `{"allowed": true}` is a prefix of a real tick.
+    rows = read_jsonl(_ticks_path(cfg), tail=_TICK_SCAN_LINES, warn=False)
     real = []
-    for line in lines:
-        try:
-            t = json.loads(line)
-        except json.JSONDecodeError:
+    for t in rows:
+        if not isinstance(t, dict):
             continue
         if not t.get("allowed") or t.get("dry_run"):
             continue
@@ -968,8 +969,13 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
     This is the missing nerve: the engine already KNOWS when a batch fails or stocks nothing; this
     pushes that to the founder (desktop + opt-in webhook) instead of leaving it in a log.
     """
-    from prospector.scheduler.alerts import (TICK_ALERT_KEYS, alerts_for_tick, emit_alert,
-                                             reconcile_alert_txt, resolve_alert)
+    from prospector.scheduler.alerts import (
+        TICK_ALERT_KEYS,
+        alerts_for_tick,
+        emit_alert,
+        reconcile_alert_txt,
+        resolve_alert,
+    )
 
     specs = alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg))
     for spec in specs:
@@ -1190,7 +1196,7 @@ def _tail_errors(cfg, n: int = 4) -> list[str]:
     if not path.exists():
         return []
     try:
-        lines = [l.rstrip() for l in path.read_text(encoding="utf-8", errors="replace").splitlines() if l.strip()]
+        lines = [line.rstrip() for line in path.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
     except OSError:
         return []
     return lines[-n:]
@@ -1207,13 +1213,10 @@ def _aggregate_ticks(cfg) -> dict:
            "last_pass_ts": None, "last_error": None}
     if not path.exists():
         return agg
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            t = json.loads(line)
-        except json.JSONDecodeError:
+    # R3 tolerant reader: skips a torn trailing line (this runs while the daemon is appending)
+    # and streams rather than loading an ever-growing file into memory.
+    for t in iter_jsonl(path, warn=False):
+        if not isinstance(t, dict):
             continue
         # A dry run generated nothing and cost nothing; counting it as a tick inflates the one
         # number a founder reads as "is the factory running?". Measured 2026-08-06: 133 of the
@@ -1427,7 +1430,7 @@ def _run_watchdog(cfg) -> int:
     so a dead/hung daemon is caught even though it emits no ticks. On a stale heartbeat it alerts
     AND kills the wedged pid so launchd KeepAlive relaunches it. Returns 0 if alive, 1 if not.
     """
-    from prospector.scheduler.alerts import emit_alert, resolve_alert, CRITICAL
+    from prospector.scheduler.alerts import CRITICAL, emit_alert, resolve_alert
 
     ok, reason = _liveness(cfg)
     if ok:

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import datetime
 import re
-from typing import Any
 
 import pytest
+
 from prospector.config import load_config
 from prospector.decay import run_decay_loop
-from prospector.models import Candidate, Decision, Dossier, Verdict, CheckResult, ScoreResult
+from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
 from prospector.operator import MockOperator
 from prospector.store import Store
 

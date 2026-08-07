@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Optional
 
 from .config import Config
 from .models import Candidate
 from .operator import Operator
+from .prescreen_prefilter import record_shadow
 from .prompts import render
-from .telemetry import logger, stage as telemetry_stage, track_latency
+from .telemetry import logger, track_latency
+from .telemetry import stage as telemetry_stage
 
 # Regex patterns keyed by structural violation. Each maps to a human-readable label
 # for the rejection reason. Order matters: most specific first (avoid substring false
@@ -160,6 +161,33 @@ def prescreen(
 ) -> tuple[bool, float, str, str]:
     """Ask the model whether a candidate is worth pursuing further.
 
+    Thin wrapper over `_decide` (which holds the ENTIRE gate) plus the E6
+    shadow-mode prefilter observer. The split is the guarantee: the returned
+    tuple is produced by `_decide` alone and handed back untouched, so the
+    prefilter cannot influence a decision even by accident. `record_shadow`
+    swallows every exception and its return value is discarded.
+    See `prescreen_prefilter` and programme doc §3 row E6 (shadow-mode first).
+    """
+    keep, score, reason, features, llm_called = _decide(
+        op, cfg, cand, run_structural_first=run_structural_first)
+    record_shadow(cfg, cand, llm_keep=keep, llm_score=score,
+                  llm_reason=reason, llm_called=llm_called)
+    return keep, score, reason, features
+
+
+def _decide(
+    op: Operator,
+    cfg: Config,
+    cand: Candidate,
+    *,
+    run_structural_first: bool = True,
+) -> tuple[bool, float, str, str, bool]:
+    """The prescreen gate itself. Returns the public 4-tuple plus `llm_called`.
+
+    `llm_called` is observability only (it tells E6's metric which rows a
+    prefilter could actually have saved — structural rejects never reach the
+    LLM stage) and is dropped by `prescreen` before returning.
+
     Three-stage gate (deterministic stages cost zero and run first):
       Stage 1: _FORBID_PATTERNS — hard structural failures (solo infeasible).
       Stage 2: _WEAK_PATTERNS — thin ideas that moat would kill on unverifiable.
@@ -177,28 +205,32 @@ def prescreen(
     logger.info(f"Prescreening candidate: {cand.title!r}",
                 extra={"candidate_id": cand.candidate_id})
 
+    # Set True the moment the stage-3 call is issued (a failed call still cost one).
+    llm_called = False
+
     # Stage 1 — deterministic structural filter (no LLM call, no cost).
     if run_structural_first:
         passed, reason = structural_filter(cand, cfg)
         if not passed:
             logger.info(f"PRESCREEN REJECTED (structural): {cand.title!r} — {reason}")
-            return False, 0.0, reason, ""
+            return False, 0.0, reason, "", llm_called
         logger.debug(f"Structural filter passed: {cand.title!r}")
 
     # Stage 2 — model-based triage (only for structural survivors).
     try:
         system, user = render("prescreen", candidate_json=json.dumps(cand.to_dict()))
         with telemetry_stage("prescreen"):
+            llm_called = True
             data = op.complete_json(system, user)
     except Exception as e:
         logger.warning(f"Prescreen failed for {cand.title!r}: {e}", extra={"error": str(e)})
-        return True, 0.5, "kept on uncertainty", ""
+        return True, 0.5, "kept on uncertainty", "", llm_called
 
     # Guard: non-dict response is treated as ambiguous.
     if not isinstance(data, dict):
         logger.warning(f"Prescreen returned non-dict response for {cand.title!r}",
                        extra={"response": str(data)})
-        return True, 0.5, "kept on uncertainty", ""
+        return True, 0.5, "kept on uncertainty", "", llm_called
 
     raw_keep = data.get("keep")
     score = float(data.get("score", 0.5))
@@ -209,8 +241,8 @@ def prescreen(
         reason = str(data.get("reason", "")) or "pre-screen rejected"
         logger.info(f"PRESCREEN REJECTED (model): {cand.title!r}",
                     extra={"reason": reason})
-        return False, score, reason, diversity_features
+        return False, score, reason, diversity_features, llm_called
 
     reason = str(data.get("reason", "")) or "kept"
     logger.info(f"Prescreen kept: {cand.title!r}", extra={"reason": reason})
-    return True, score, reason, diversity_features
+    return True, score, reason, diversity_features, llm_called

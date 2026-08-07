@@ -9,10 +9,11 @@ Proves that verdict_for enforces strict grounding:
 from __future__ import annotations
 
 import pytest
+
 from prospector.config import load_config
 from prospector.models import Candidate, Source, Verdict
 from prospector.operator import MockOperator
-from prospector.verify import verdict_for, adversarial
+from prospector.verify import adversarial, verdict_for
 
 
 @pytest.fixture

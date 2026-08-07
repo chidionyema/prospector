@@ -9,14 +9,12 @@ from __future__ import annotations
 import textwrap
 
 import pytest
-import yaml
 
 from prospector.config import (
     MarketConfigError,
     UnknownMarketError,
     load_config,
 )
-
 
 _BASE_CFG = """\
 operator: mock

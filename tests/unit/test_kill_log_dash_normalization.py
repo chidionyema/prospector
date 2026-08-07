@@ -14,12 +14,11 @@ fails. That is the gate.
 """
 from __future__ import annotations
 
-import json
 import importlib
+import json
 from pathlib import Path
 
 import pytest
-
 
 EM = "\u2014"
 EN = "\u2013"

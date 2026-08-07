@@ -86,7 +86,7 @@ def test_adaptation_records_changes():
             mod_log=mod_log,
             adaptation_enabled=True,
         )
-        result = harness.run_batch(n=20)
+        harness.run_batch(n=20)
 
         # Some kills should have triggered adaptations
         active = mod_log.list_active()
@@ -125,7 +125,6 @@ def test_bad_steer_detection():
 
         # Check for alerts — diversity should be collapsing
         alerts = store.alert_check(window=20)
-        alert_types = [a["type"] for a in alerts]
 
         # With very high steer on all domains, something should be wrong
         # (diversity collapse, yield decline, or gate dominance)

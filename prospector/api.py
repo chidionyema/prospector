@@ -8,14 +8,12 @@ import hmac
 import json
 import os
 import re
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from starlette.concurrency import run_in_threadpool
-from pydantic import BaseModel
 
 from .config import load_config
-from .models import Decision
 from .store import Store
 from .telemetry import get_usage_summary
 

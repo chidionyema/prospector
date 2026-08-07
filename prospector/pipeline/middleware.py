@@ -14,7 +14,6 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 from prospector.domain.primitives import CandidateJourney
 from prospector.pipeline.moat_contract import MoatVerificationContract

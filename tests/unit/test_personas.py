@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import pytest
-import json
+
 from prospector.config import load_config
-from prospector.models import Candidate, Verdict
+from prospector.models import Candidate
 from prospector.operator import MockOperator
-from prospector.retrieval import FixtureProvider
-from prospector.verify import verdict_for, adversarial
+from prospector.verify import adversarial, verdict_for
+
 
 @pytest.fixture
 def cfg():
@@ -39,7 +39,6 @@ def test_verdict_for_uses_persona_bias(cfg):
         captured_kwargs.update(kwargs)
         return "sys", "user"
     
-    import prospector.verify
     verify_mod.render = mock_render
     try:
         # Pass sources to avoid early return

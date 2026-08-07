@@ -19,7 +19,7 @@ import zipfile
 import pytest
 
 from prospector import pack_manifest
-from prospector.bridge import BUNDLE_FILES, EngineBridge, _SECTION_TITLES
+from prospector.bridge import _SECTION_TITLES, BUNDLE_FILES, EngineBridge
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict
 from prospector.verify import VERDICT_PASSAGE_TRUNCATE
 

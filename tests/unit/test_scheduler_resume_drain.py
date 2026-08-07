@@ -675,6 +675,7 @@ def test_the_documented_resume_command_can_actually_be_invoked(monkeypatch, caps
 def test_a_single_candidate_vet_without_a_title_is_still_a_usage_error(monkeypatch):
     """Relaxing argparse must not let a real vet run with no title."""
     import sys as _sys
+
     from prospector import run as run_mod
     monkeypatch.setattr(_sys, "argv", ["prospector", "vet"])
     monkeypatch.setattr(run_mod, "_cmd_vet", lambda *a, **k: pytest.fail("must not dispatch"))

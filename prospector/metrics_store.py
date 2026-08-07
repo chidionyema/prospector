@@ -8,10 +8,9 @@ Part of the production-grade self-improvement infrastructure (Priority 3).
 
 import json
 import sqlite3
-import time
 from contextlib import contextmanager
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Iterator, Optional
 
 

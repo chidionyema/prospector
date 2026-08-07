@@ -17,9 +17,9 @@ from pathlib import Path
 import pytest
 
 from prospector.bridge import (
+    _MIN_BUNDLE_ENTRY_BYTES,
     BUNDLE_FILES,
     EngineBridge,
-    _MIN_BUNDLE_ENTRY_BYTES,
     audit_bundle,
 )
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict

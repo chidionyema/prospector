@@ -15,9 +15,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from .metrics_store import MetricsStore
-from .self_modify import SelfModificationLog, STATUS_ACTIVE
 from .attribution import measure_effect
+from .metrics_store import MetricsStore
+from .self_modify import SelfModificationLog
 
 
 class CanaryVerdict(str, Enum):

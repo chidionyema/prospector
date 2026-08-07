@@ -36,8 +36,8 @@ Read-only. Zero LLM. Zero network. Writes e16_rerank_ceiling_receipts.json next 
 """
 from __future__ import annotations
 
-import json
 import glob
+import json
 import os
 import re
 import sys

@@ -22,8 +22,8 @@ from pathlib import Path
 
 from prospector.config import load_config
 from prospector.pack_validation import validate_pack
-from tools.publish_passes import reconstruct  # reconstruct preserves tags (artifacts/marketing)
 from publish.publish import publish
+from tools.publish_passes import reconstruct  # reconstruct preserves tags (artifacts/marketing)
 
 
 def main(argv: list[str]) -> int:

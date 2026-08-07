@@ -300,7 +300,6 @@ class MiniMaxOperator(Operator):
                  cheap: bool = False,
                  default_model: Optional[str] = None,
                  fast_model: Optional[str] = None):
-        import urllib.request
         key = api_key or os.environ.get("MINIMAX_API_KEY")
         if not key:
             raise RuntimeError("MINIMAX_API_KEY not set")
@@ -371,7 +370,7 @@ class MiniMaxOperator(Operator):
         inp = int(usage.get("prompt_tokens", 0) or 0)
         out = int(usage.get("completion_tokens", 0) or 0)
         total = int(usage.get("total_tokens", 0) or 0)
-        from .telemetry import record_usage, logger
+        from .telemetry import logger, record_usage
         record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
                      cached_tokens=0, web=False, provider=self.name)
 
@@ -408,7 +407,6 @@ class DeepSeekOperator(Operator):
 
     def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None,
                  default_model: Optional[str] = None):
-        import urllib.request
         key = api_key or os.environ.get("DEEPSEEK_API_KEY")
         if not key:
             raise RuntimeError("DEEPSEEK_API_KEY not set")
@@ -467,7 +465,7 @@ class DeepSeekOperator(Operator):
         inp = int(usage.get("prompt_tokens", 0) or 0)
         out = int(usage.get("completion_tokens", 0) or 0)
         total = int(usage.get("total_tokens", 0) or 0)
-        from .telemetry import record_usage, logger
+        from .telemetry import logger, record_usage
         record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
                      cached_tokens=0, web=False, provider=self.name)
 
@@ -611,7 +609,6 @@ class OpenRouterOperator(Operator):
 
     def _sorted_models(self) -> list[str]:
         """Return models sorted by health score (best first). Cached until state changes."""
-        from .telemetry import logger
         scored = []
         for model, h in self._h.items():
             total = h["successes"] + h["failures"] + h["empties"]
@@ -713,7 +710,7 @@ class OpenRouterOperator(Operator):
                     last_err = RuntimeError("empty response")
                     continue
                 # Guard against Cloudflare bot pages (200 but HTML body) before JSON parse.
-                if not raw.lstrip()[:1] in ('{', '['):
+                if raw.lstrip()[:1] not in ('{', '['):
                     self._breakers[model].record_failure()
                     self._mark(model)
                     logger.warning(f"OpenRouter {model} non-JSON response ({latency:.1f}s, starts={raw[:50]!r}), rotating")
@@ -784,7 +781,6 @@ class OllamaOperator(Operator):
 
     def __init__(self, model: Optional[str] = None, base_url: Optional[str] = None,
                  default_model: Optional[str] = None):
-        import urllib.request
         # `default_model` comes from cfg.model_defaults.ollama. An explicit
         # `model` (from cfg.model) overrides it.
         self.model = model or default_model or "qwen2.5-coder:7b"
@@ -829,7 +825,7 @@ class OllamaOperator(Operator):
 
         content = (data.get("choices", [{}])[0].get("message", {})
                    .get("content", "") or "")
-        from .telemetry import record_usage, logger
+        from .telemetry import logger, record_usage
         # Track usage
         usage = data.get("usage") or {}
         inp = int(usage.get("prompt_tokens", 0) or 0)
@@ -943,8 +939,12 @@ class FallbackOperator(Operator):
         return bool(s) and is_provisional_provider(s)
 
     def _raw(self, system: str, user: str, temperature: float) -> str:
-        from .errors import (PERMANENT, ProviderExhaustedError, classify_exhaustion,
-                             limit_window_seconds)
+        from .errors import (
+            PERMANENT,
+            ProviderExhaustedError,
+            classify_exhaustion,
+            limit_window_seconds,
+        )
         from .health import DEFAULT_EXHAUSTION_S, TRANSIENT_EXHAUSTION_S
         from .telemetry import logger
         last_err: Optional[Exception] = None

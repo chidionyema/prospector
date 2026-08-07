@@ -134,7 +134,14 @@ def test_an_unknown_md_is_rendered_at_the_end_never_dropped():
 import json  # noqa: E402
 
 from prospector import pack_manifest  # noqa: E402
-from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict  # noqa: E402
+from prospector.models import (  # noqa: E402
+    Candidate,
+    CheckResult,
+    Decision,
+    Dossier,
+    Source,
+    Verdict,
+)
 from tools.backfill_bundle_html import load_local_dossier  # noqa: E402
 
 

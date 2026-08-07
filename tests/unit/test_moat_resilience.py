@@ -28,7 +28,6 @@ import pytest
 
 from prospector import errors, health
 
-
 # ---------------------------------------------------------------- classification
 
 @pytest.mark.parametrize("text", [

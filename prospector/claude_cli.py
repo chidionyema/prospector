@@ -21,12 +21,13 @@ import threading
 import time
 from typing import Optional
 
+from .cli_auth import subscription_env
+from .cli_governor import make_governor
 from .errors import ProviderExhaustedError, looks_exhausted
 from .models import Source
 from .operator import Operator, _extract_json
 from .retrieval import SearchProvider
 from .telemetry import logger, record_usage, track_latency
-from .cli_governor import make_governor
 
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -135,10 +136,13 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
     # not a metered API key. We load ANTHROPIC_API_KEY from .env for the HTTP brains, but if it
     # is present in the env the CLI PREFERS it and bills it — and an unfunded key returns
     # api_error 400 "Credit balance is too low" (exit 1), silently killing the trusted moat.
-    # Strip the API-key vars from the child env so the CLI falls back to the subscription seat
-    # (matches CLAUDE.md: "the entire engine runs within your Claude Code subscription").
-    child_env = {k: v for k, v in os.environ.items()
-                 if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
+    # Strip the hijack vars so the CLI falls back to the subscription seat (matches CLAUDE.md:
+    # "the entire engine runs within your Claude Code subscription").
+    #
+    # The definition lives in cli_auth, NOT inline here: it also strips ANTHROPIC_BASE_URL,
+    # which is a moat-integrity control rather than a billing one (a repointed endpoint means
+    # an untrusted brain answering a call that operator.py:889 still counts as MOAT_PRIMARY).
+    child_env = subscription_env()
     # STABLE cwd per SLOT — not a fresh dir per call. Two constraints meet here, and the first
     # cut satisfied one by paying the other on every single call:
     #

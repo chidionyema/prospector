@@ -1,0 +1,179 @@
+{
+  "experiment": "E13 \u2014 proxy-framed claim reframe, offline replay over stored passages",
+  "programme_ref": "docs/COMMERCIAL_READINESS_PROGRAM.md \u00a710 (line 366), \u00a719.4",
+  "scope": "ALL PROVIDER ERAS",
+  "method": "deterministic lexical/entity proxy-evidence detector; no LLM verdict simulated",
+  "kill_criterion": "improvement factor < 2x over baseline grounded-rate => reframe wrong",
+  "run_at_utc": "2026-08-07T14:08:14+00:00",
+  "dossier_files_globbed": 1569,
+  "limitations": [
+    "Lexical/entity match is an UPPER BOUND on probativeness \u2014 a passage can carry a price and a segment term and still not evidence willingness-to-pay. See `examples`: several first-hit passages are clearly not probative on inspection.",
+    "The two detectors are not equally specific. The distribution pattern (named channel) is looser than the payer_solvency pattern (money + spend), which is why the SWAPPED control on payer_solvency passages exceeds that check's own hit rate.",
+    "store/dossiers is written by the live daemon; re-running on a later corpus will shift counts by a few checks. run_at_utc + dossier_files_globbed pin this run.",
+    "No LLM verdict is simulated. The follow-up is a live re-rule of these checks with proxy-framed claim text on the current moat."
+  ],
+  "segment_df_max": 0.05,
+  "candidates": 1069,
+  "generic_terms_removed": 97,
+  "distinct_candidate_terms": 9359,
+  "checks_analysed": 2080,
+  "passages_scored": 7746,
+  "per_check": {
+    "payer_solvency": {
+      "check": "payer_solvency",
+      "population_ruled": 263,
+      "population_unverifiable": 852,
+      "baseline_grounded_rate": 0.2359,
+      "absence_ratio": 3.24,
+      "bucketD_checks_scored": 803,
+      "bucketD_passages": 3108,
+      "bucketD_proxy_hit": 187,
+      "bucketD_proxy_hit_share": 0.2329,
+      "bucketD_proxy_hit_strict_2seg": 127,
+      "bucketD_proxy_hit_strict_share": 0.1582,
+      "control_swapped_detector_share": 0.3138,
+      "control_shuffled_segment_share": 0.1096,
+      "ruled_checks_scored": 263,
+      "calibration_ruled_hit_share": 0.3802,
+      "bucketD_no_segment_terms": 0,
+      "projected_grounded_rate_upper_bound": 0.4036,
+      "improvement_factor_upper_bound": 1.71,
+      "first_hit_already_cited": 134
+    },
+    "distribution": {
+      "check": "distribution",
+      "population_ruled": 359,
+      "population_unverifiable": 708,
+      "baseline_grounded_rate": 0.3365,
+      "absence_ratio": 1.97,
+      "bucketD_checks_scored": 655,
+      "bucketD_passages": 2559,
+      "bucketD_proxy_hit": 220,
+      "bucketD_proxy_hit_share": 0.3359,
+      "bucketD_proxy_hit_strict_2seg": 151,
+      "bucketD_proxy_hit_strict_share": 0.2305,
+      "control_swapped_detector_share": 0.1847,
+      "control_shuffled_segment_share": 0.1405,
+      "ruled_checks_scored": 359,
+      "calibration_ruled_hit_share": 0.507,
+      "bucketD_no_segment_terms": 0,
+      "projected_grounded_rate_upper_bound": 0.5426,
+      "improvement_factor_upper_bound": 1.61,
+      "first_hit_already_cited": 158
+    }
+  },
+  "combined": {
+    "bucketD_checks_scored": 1458,
+    "bucketD_proxy_hit": 407,
+    "bucketD_proxy_hit_share": 0.2791,
+    "population_ruled": 622,
+    "population_unverifiable": 1560,
+    "baseline_grounded_rate": 0.2851,
+    "projected_grounded_rate_upper_bound": 0.4716,
+    "improvement_factor_upper_bound": 1.6543,
+    "absence_ratio_measured": 2.51,
+    "max_possible_factor_if_all_unverifiable_ruled": 3.508,
+    "verdict": "KILLED",
+    "kill_criterion_note": "\u00a710 calibrated the 2x bar against an assumed 10:1 absence ratio. Measured on disk for these two checks the absence ratio is 2.51:1 and the baseline grounded-rate is 28.5%, so the ceiling \u2014 every unverifiable check becoming ruled \u2014 is only 3.51x. The literal 2x bar is therefore near-unreachable by arithmetic, not by the reframe's merit. Judge the reframe on the bucket-D recovery share instead."
+  },
+  "first_hit_rank_histogram": {
+    "payer_solvency": {
+      "0": 88,
+      "1": 54,
+      "2": 28,
+      "3": 6,
+      "4": 9,
+      "5": 2
+    },
+    "distribution": {
+      "0": 106,
+      "1": 53,
+      "2": 24,
+      "3": 19,
+      "4": 12,
+      "5": 4,
+      "8": 1,
+      "9": 1
+    }
+  },
+  "first_hit_already_cited": {
+    "payer_solvency": 134,
+    "distribution": 158
+  },
+  "followup_sizing": {
+    "unit": "one verdict call per bucket-D check, zero new retrieval calls",
+    "checks_full_replay": 1458,
+    "checks_doc_sample": 30,
+    "bucketD_passage_chars": 2469813,
+    "approx_passage_tokens_full_replay": 617453,
+    "approx_passage_tokens_per_check": 423,
+    "new_retrieval_calls": 0,
+    "note": "Passages are already on disk (store/dossiers[].checks[].sources[].text), so the replay costs verdict tokens only. Dollar cost is NOT computed here \u2014 deriving it requires the spend ledger, which this read-only probe does not touch."
+  },
+  "examples": {
+    "payer_solvency": [
+      {
+        "candidate_id": "00cad68dcfecb756",
+        "rank": 0,
+        "source_id": "ba7a1f9b158d91ed",
+        "passage": "\ud83d\udfe3\"> How to Create Digital Products That Sell in 2026 \u2014 Complete Guide | SpunkArt\n\n# How to Create Digital Products That Sell in 2026\n\nDigital products are the closest thing to a money printing machine that exists in legitimate business. You create something once, and it sells for"
+      },
+      {
+        "candidate_id": "00eaf5fddceb525f",
+        "rank": 0,
+        "source_id": "62de36e0814ed6cf",
+        "passage": "# I Spent 4 Years as My Husband's Caregiver and Now I'm Alone, With a Paid-Off House and $0 Coming In. The Bank Says I Have No Qualifying Income.\n\nAuthor: Caroline Lubinsky      Wed, June 10, 2026 at 12:46 AM GMT+9   7 min read\nPublished: 2026-06-09T15:46:06+00:00\nSource: finance"
+      },
+      {
+        "candidate_id": "029c63b9e14e6743",
+        "rank": 0,
+        "source_id": "875e7e2cb3396b3f",
+        "passage": "ULEZ Compliance for UK Courier Operators: 2026 Guide\n\n# ULEZ Compliance for UK Courier Operators: 2026 Guide\n\nWritten by Taras Zavalinii\n\nFounder, T&C Logistics \u00b7 5+ years UK logistics experience\n\n\u00b7Last updated: 19 May 2026\u00b7Companies House verified\n\nUpdated May 2026\n\nLondon's Ult"
+      },
+      {
+        "candidate_id": "02d8f86206e8cad2",
+        "rank": 1,
+        "source_id": "d6c6521772d673a5",
+        "passage": "# Scott Whatley left fearing for independence amid NDIS grievance | The Examiner | Launceston, TAS\n\nPublished: 2026-06-21T19:30:00+00:00\nSource: examiner.com.au (examiner.com.au)\nLanguage: en\n\n## Story\n\nScott Whatley left fearing for independence amid NDIS grievance | The Examine"
+      },
+      {
+        "candidate_id": "0317805edf9ad3b0",
+        "rank": 2,
+        "source_id": "8c45b6ca0cb4cca8",
+        "passage": "But since 2020, Singh says the female tenant has paid only intermittently: he produced a ledger showing Deeqa Rafle owes $41,600 in back rent and $5,249.35 in unpaid utilities. In the meantime, she\u2019s still living in Singh\u2019s 32nd-floor apartment. Global's Sean O'Shea has the detai"
+      }
+    ],
+    "distribution": [
+      {
+        "candidate_id": "02529bed1256f12d",
+        "rank": 1,
+        "source_id": "9cdb11c447bbc6df",
+        "passage": "Bereaved. Bereavement affects everyone differently.Referrals are accepted from Hospital Consultants, General Practitioners (GP\u2019s), Acute and Community Specialist Palliative Care Teams and Palliative Patient Key. Play Hospice Lottery. Applying to be a volunteer."
+      },
+      {
+        "candidate_id": "029c63b9e14e6743",
+        "rank": 2,
+        "source_id": "b07e0ba56f7f67b7",
+        "passage": "Last-Mile Delivery In London: Navigating ULEZ And Congestion Charges For Urban Fulfillment\n\n## Table of Contents\n\nLast-mile delivery in London has become a strategic challenge for logistics managers in 2026, driven by tighter vehicle regulations and rising urban charges. Business"
+      },
+      {
+        "candidate_id": "02d8f86206e8cad2",
+        "rank": 0,
+        "source_id": "51a094bad23bfb6f",
+        "passage": "LOI Template & Guide for Buying a Home Medical Equipment Business | HME Acquisition\n\nLOI Template & Guide \u00b7 Home Medical Equipment\n\n# Letter of Intent Template for Acquiring a Home Medical Equipment Business\n\nA practical LOI framework and negotiation guide built for HME and DME a"
+      },
+      {
+        "candidate_id": "04c9464eab9d78f6",
+        "rank": 0,
+        "source_id": "0d8f7cd2951e10da",
+        "passage": "# File: neighborhood-lab/folk-care/README.md\n\n- Repository: neighborhood-lab/folk-care | Folk Care - Open source home healthcare software. EVV, scheduling, care plans, and billing for community-owned agencies. AGPL-3.0. | 4 stars | TypeScript\n- Branch: develop\n\n```md\n# Folk Care\n"
+      },
+      {
+        "candidate_id": "0856b66e7f4ddce4",
+        "rank": 2,
+        "source_id": "223cfd222efad8f1",
+        "passage": "DAC7 obliges every member state's tax authority to receive and share this data with counterparts across the bloc, so a host's Portuguese platform income can, in principle, surface in conversations with tax authorities elsewhere if there's a residency question."
+      }
+    ]
+  }
+}

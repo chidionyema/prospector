@@ -53,7 +53,6 @@ Schema for event="verify_search":
 from __future__ import annotations
 
 import itertools
-import json
 import logging
 import os
 import threading
@@ -61,6 +60,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from prospector.jsonl_atomic import append_jsonl
 
 # Anchored to this file, not to the cwd. The default used to be the RELATIVE string
 # "store/scheduler/audit", so the audit trail followed whoever launched the process rather
@@ -202,10 +203,12 @@ def audit(event: str, **fields: Any) -> None:
             "pid": _PID,
             "seq": next(_seq),
         }
-        line = json.dumps(row, separators=(",", ":"), default=str)
+        # R3: a single O_APPEND write + fsync, so a row is fully present or absent even when
+        # the daemon, a backfill and a manual CLI run interleave on the same day-file. The
+        # in-process lock stays: it orders this process's own threads, while O_APPEND is what
+        # keeps OTHER processes from splitting the row.
         with _LOCK:
-            with _today_path().open("a", encoding="utf-8") as f:
-                f.write(line + "\n")
+            append_jsonl(_today_path(), row, compact=True)
     except Exception as exc:  # noqa: BLE001 — see docstring
         # Audit is observability, not a control path: still swallowed. But counted, and said
         # out loud once — an audit gap that looks exactly like an idle engine cost the 82 hours

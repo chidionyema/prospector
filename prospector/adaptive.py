@@ -6,11 +6,15 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
 from .config import Config
 from .models import Decision
+
+if TYPE_CHECKING:
+    from .operator import Operator
+    from .store import Store
 
 
 def calculate_exploration_level(store: Store, cfg: Optional[Config] = None, 
@@ -80,7 +84,6 @@ def calculate_persona_drift(store: Store, window: int = 50) -> dict[str, float]:
     """
     # This requires looking at the audit log for ADVISORY BOARD DRIFT events
     # since the SQLite store only holds the final decision.
-    drift_events = []
     jsonl_path = store._root / "prospector.jsonl"
     if not jsonl_path.exists():
         return {}

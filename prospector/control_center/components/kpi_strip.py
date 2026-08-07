@@ -36,6 +36,5 @@ def spend_progress_bar(spent: float, cap: float, label: str = "Daily spend") -> 
     if cap <= 0:
         return
     pct = min(1.0, spent / cap)
-    color = "normal" if pct < 0.8 else "inverse" if pct > 0.95 else "off"
     st.metric(label, f"${spent:.4f}", delta=f"{pct:.0%} of ${cap:.0f}")
     st.progress(pct, caption=f"{pct:.1%} of ${cap:.0f} cap")

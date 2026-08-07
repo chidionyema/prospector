@@ -1,0 +1,180 @@
+{
+  "policy_simulation": {
+    "P0_global": {
+      "total": 52,
+      "by_check": {
+        "distribution": 26,
+        "route_to_market": 8,
+        "payer_solvency": 5,
+        "pain_reality": 4,
+        "value_durability": 4,
+        "legality": 3,
+        "buyer_intent": 2
+      }
+    },
+    "P1_check_aware": {
+      "total": 12,
+      "by_check": {
+        "payer_solvency": 5,
+        "value_durability": 4,
+        "legality": 3
+      }
+    },
+    "P2_farm_only": {
+      "total": 0,
+      "by_check": {}
+    }
+  },
+  "ugc_admissible_checks": [
+    "buyer_intent",
+    "distribution",
+    "pain_reality",
+    "route_to_market"
+  ],
+  "scope": "all provider eras",
+  "dossiers": 1558,
+  "ruled_checks": 2586,
+  "ruled_uncited": 6,
+  "resolved_citation_urls": 8842,
+  "tier_counts": {
+    "government": 954,
+    "other": 6752,
+    "stats_farm": 18,
+    "media": 117,
+    "wikipedia": 42,
+    "established_org": 177,
+    "ugc_social": 708,
+    "academic": 74
+  },
+  "exposure_checks": 485,
+  "exposure_share": 0.188,
+  "blast_radius_checks": 52,
+  "blast_radius_share": 0.0202,
+  "by_check": {
+    "legality": {
+      "ruled": 312,
+      "exposed": 25,
+      "only_low": 3
+    },
+    "distribution": {
+      "ruled": 359,
+      "exposed": 136,
+      "only_low": 26
+    },
+    "pain_reality": {
+      "ruled": 336,
+      "exposed": 70,
+      "only_low": 4
+    },
+    "value_durability": {
+      "ruled": 457,
+      "exposed": 48,
+      "only_low": 4
+    },
+    "incumbency": {
+      "ruled": 325,
+      "exposed": 31,
+      "only_low": 0
+    },
+    "payer_solvency": {
+      "ruled": 263,
+      "exposed": 45,
+      "only_low": 5
+    },
+    "buyer_intent": {
+      "ruled": 200,
+      "exposed": 48,
+      "only_low": 2
+    },
+    "currency": {
+      "ruled": 148,
+      "exposed": 22,
+      "only_low": 0
+    },
+    "claims_verifiable": {
+      "ruled": 104,
+      "exposed": 15,
+      "only_low": 0
+    },
+    "route_to_market": {
+      "ruled": 82,
+      "exposed": 45,
+      "only_low": 8
+    }
+  },
+  "gate_blast": {
+    "min_composite": 24,
+    "-": 10,
+    "source_or_die": 3,
+    "moat_ungrounded": 12,
+    "legality": 1,
+    "adversarial_decisive": 1,
+    "payer_solvency": 1
+  },
+  "top_low_domains": [
+    [
+      "facebook.com",
+      301
+    ],
+    [
+      "reddit.com",
+      95
+    ],
+    [
+      "youtube.com",
+      75
+    ],
+    [
+      "tiktok.com",
+      70
+    ],
+    [
+      "linkedin.com",
+      66
+    ],
+    [
+      "instagram.com",
+      45
+    ],
+    [
+      "mumsnet.com",
+      25
+    ],
+    [
+      "pinterest.com",
+      12
+    ],
+    [
+      "quora.com",
+      9
+    ],
+    [
+      "uk.linkedin.com",
+      8
+    ],
+    [
+      "gitnux.org",
+      7
+    ],
+    [
+      "worldmetrics.org",
+      5
+    ],
+    [
+      "wifitalents.com",
+      4
+    ],
+    [
+      "zipdo.co",
+      2
+    ],
+    [
+      "nextdoor.co.uk",
+      1
+    ],
+    [
+      "x.com",
+      1
+    ]
+  ]
+}

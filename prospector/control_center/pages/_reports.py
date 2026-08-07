@@ -41,8 +41,8 @@ def render():
     st.markdown("**Throughput**")
     if cfg:
         try:
-            from prospector.store import Store
             from prospector.report import metrics_data
+            from prospector.store import Store
             m = metrics_data(Store(cfg))
             r1, r2, r3, r4 = st.columns(4)
             r1.metric("Dossiers", m.get("total", 0))
@@ -116,8 +116,8 @@ def _render_gen_quality(cfg):
         st.caption("No config.")
         return
     try:
-        from prospector.store import Store
         from prospector.report import generation_quality_data
+        from prospector.store import Store
         gq = generation_quality_data(Store(cfg))
         c1, c2 = st.columns(2)
         c1.metric("Candidates", gq.get("n_candidates", 0))
@@ -141,8 +141,8 @@ def _render_trend(cfg):
         st.caption("No config.")
         return
     try:
-        from prospector.store import Store
         from prospector.report import trend_data
+        from prospector.store import Store
         t = trend_data(Store(cfg))
         windows = t.get("windows") or {}
         if not windows:

@@ -16,7 +16,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-import pytest
 from prospector.config import load_config
 from prospector.golden import run_golden_set
 from prospector.operator import MockOperator

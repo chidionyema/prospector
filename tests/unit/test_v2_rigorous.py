@@ -14,16 +14,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from prospector.domain.primitives import CandidateJourney, CandidateSpec
-from prospector.pipeline.moat_contract import MoatVerificationContract
 from prospector.pipeline.middleware import TribunalMiddleware
+from prospector.pipeline.moat_contract import MoatVerificationContract
 from prospector.pipeline.moat_prompts import (
     _load_ledger,
     compile_generator_system_prompt,
     compile_retry_prompt,
     compile_system_prompt,
 )
-from prospector.pipeline.verifier import run_moat, _build_force_kill_contract
-
+from prospector.pipeline.verifier import _build_force_kill_contract, run_moat
 
 # ── Helper: build a valid LLM response string ────────────────────────────
 

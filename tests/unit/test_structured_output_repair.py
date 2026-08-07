@@ -6,8 +6,8 @@ complete_json raises ParseError when all repair attempts are exhausted.
 from __future__ import annotations
 
 import pytest
-from prospector.operator import MockOperator, ParseError, _extract_json
 
+from prospector.operator import MockOperator, ParseError, _extract_json
 
 # ---------------------------------------------------------------------------
 # _extract_json — input format handling

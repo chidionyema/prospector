@@ -227,8 +227,9 @@ def _is_authority(source) -> bool:
     Reads the same ContextVar the fetch timeouts use, so "authority" means exactly one
     thing across the engine rather than two definitions that can drift apart.
     """
-    from .retrieval import _HIGH_AUTHORITY_DOMAINS, _market_authority_domains
     import urllib.parse
+
+    from .retrieval import _HIGH_AUTHORITY_DOMAINS, _market_authority_domains
 
     try:
         netloc = urllib.parse.urlparse(str(getattr(source, "url", "")).lower()).netloc

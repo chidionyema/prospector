@@ -22,10 +22,10 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import Config, load_config
-from .models import Candidate, Decision, Dossier
+from .models import Candidate, Dossier
 from .operator import Operator, make_operator
 from .retrieval import SearchProvider, make_provider
 from .run import vet_candidate
@@ -68,6 +68,7 @@ def _mock_vet_candidate(cand: Candidate, *args, **kwargs) -> Dossier:
     Keep in sync with the golden set fixture expectations.
     """
     from unittest.mock import MagicMock
+
     from .models import Decision
     is_kill = "haulage" in cand.title.lower()
     d = MagicMock()

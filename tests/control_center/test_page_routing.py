@@ -10,7 +10,6 @@ from prospector.control_center import app as cc_app
 from prospector.control_center import pages as pages_mod
 from prospector.control_center.components import chrome
 
-
 # Unique markers that must appear in each page's render() source (hero titles).
 _PAGE_MARKERS = {
     "overview": "Overview",

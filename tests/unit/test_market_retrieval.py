@@ -6,18 +6,14 @@ re-fetches all of them.
 """
 from __future__ import annotations
 
-import textwrap
-
-import pytest
-
 from prospector import retrieval
 from prospector.config import load_config
 from prospector.retrieval import (
+    _HIGH_AUTHORITY_TIMEOUT,
+    _RESOLVE_TIMEOUT,
     DiskCache,
     DuckDuckGoSearchProvider,
     _get_timeout,
-    _HIGH_AUTHORITY_TIMEOUT,
-    _RESOLVE_TIMEOUT,
     make_provider,
     market_retrieval,
 )

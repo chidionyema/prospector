@@ -27,7 +27,6 @@ import pytest
 
 from prospector.artifacts import _gen_one_content
 
-
 # The one unverifiable sentence. It appears in proof_point only.
 POISON = "Guaranteed £5,000 in your first month."
 

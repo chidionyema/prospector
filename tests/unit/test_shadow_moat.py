@@ -1,13 +1,14 @@
 """Test for Shadow Moat infrastructure (run.py)."""
 from __future__ import annotations
 
-import pytest
 import logging
-from prospector.run import vet_candidate
-from prospector.operator import MockOperator
+
 from prospector.config import load_config
 from prospector.models import Candidate
+from prospector.operator import MockOperator
 from prospector.retrieval import FixtureProvider
+from prospector.run import vet_candidate
+
 
 def test_vet_candidate_logs_shadow_moat_drift(caplog):
     caplog.set_level(logging.INFO)

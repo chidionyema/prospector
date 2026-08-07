@@ -49,7 +49,10 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from prospector import facet_derive, facets  # noqa: E402
 
-DEFAULT_API_URL = "https://api.mumchimp.com"
+# Env-overridable so a backfill can be pointed at staging. This script PATCHes live
+# catalogue rows; a hardcoded production constant means there is no way to rehearse
+# one except against the real store.
+DEFAULT_API_URL = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
 HAND_RESOLVED = REPO_ROOT / "store_platform" / "data" / "facets-backfill.json"
 DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
 

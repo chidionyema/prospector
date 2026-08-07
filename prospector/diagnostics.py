@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .config import Config
+from .jsonl_atomic import append_jsonl
 from .store import Store
 
 # The six grounded checks, in kill-fast order (matches verify.py run order).
@@ -249,8 +250,10 @@ def persist_batch_diagnostics(report: dict, store: Store) -> Path:
     Lives under store/scheduler/ next to ticks.jsonl so the operator finds it in one place."""
     base = store._dossier_dir.parent / "scheduler"
     base.mkdir(parents=True, exist_ok=True)
-    with (base / "batch_diagnostics.jsonl").open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(report, default=str) + "\n")
+    # R3: single O_APPEND write + fsync (see prospector/jsonl_atomic.py). Diagnostic reports are
+    # the largest records written under store/scheduler/, so they are also the likeliest to be
+    # caught half-written by a reader running concurrently with the daemon.
+    append_jsonl(base / "batch_diagnostics.jsonl", report)
     (base / "DIAGNOSTICS_LATEST.txt").write_text(render_batch_diagnostics(report), encoding="utf-8")
     return base
 
@@ -488,7 +491,6 @@ def _lane_alarms(rows: list[dict], lane: str, cfg: Config,
     dec = Counter((r.get("decision") or "?").lower() for r in rows)
     n_pass = dec.get("pass", 0)
     n_kill = dec.get("kill", 0)
-    n_defer = dec.get("defer", 0)
     ruled = n_pass + n_kill  # defers never reached a verdict
     kill_rate = n_kill / ruled if ruled else 0.0
     lane_label = f"[{lane}] " if lane else "[all] "

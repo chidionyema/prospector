@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import pytest
-from prospector.models import Candidate, Decision, Dossier, ScoreResult, Verdict, CheckResult
+
 from prospector.config import Config
+from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
 from publish.publish import publish
 
 

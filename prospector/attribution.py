@@ -7,10 +7,8 @@ before and after each change to attribute effects with confidence.
 Part of the production-grade self-improvement infrastructure (Priority 4).
 """
 
-import json
 import math
 from pathlib import Path
-from typing import Optional
 
 from .metrics_store import MetricsStore
 from .self_modify import SelfModificationLog
@@ -224,7 +222,6 @@ def _incomplete_beta(a: float, b: float, x: float, steps: int = 100) -> float:
 
     # Use the continued fraction representation (Lentz's method)
     tiny = 1e-30
-    f = 1.0
     c = 1.0
     d = 1.0 - (a + b) * x / (a + 1)
     if abs(d) < tiny:

@@ -33,7 +33,6 @@ from prospector.config import Config
 from prospector.models import Candidate, ScoreResult
 from prospector.pricing import PriceDecision, price_for
 
-
 # --- helpers ---------------------------------------------------------------
 
 def _candidate(tier: str = "", market: str = "") -> Candidate:

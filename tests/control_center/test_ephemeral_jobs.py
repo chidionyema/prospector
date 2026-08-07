@@ -35,7 +35,6 @@ class TestEphemeralJobFilter:
         assert runner.is_ephemeral_job(job) is True
 
     def test_real_generate_job_not_ephemeral(self, tmp_path):
-        log = tmp_path / "store" / "control_center" / "runs" / "real.log"
         # Use a path under cwd/store via monkeypatch-free relative path form.
         job = {
             "job_id": "20260730T184428678",

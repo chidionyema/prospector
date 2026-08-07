@@ -13,17 +13,30 @@ import json
 import re
 from typing import Callable, Optional
 
-from .config import Config
+from .admissibility import demotion_reason
+from .admissibility import host_of as admissibility_host_of
+from .audit import audit
+from .config import Admissibility, Config
+from .entity_templates import ENTITY_SLOTS, ENTITY_TEMPLATES
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .kill_filter import is_hard_fail
-from .models import (CHECKS, DEFAULT_CHECKS, DEFER_GATE, PRICING_CHECK, AdversarialResult,
-                     Candidate, CheckResult, Source, Verdict)
+from .models import (
+    CHECKS,
+    DEFAULT_CHECKS,
+    DEFER_GATE,
+    PRICING_CHECK,
+    AdversarialResult,
+    Candidate,
+    CheckResult,
+    Source,
+    Verdict,
+)
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
-from .telemetry import logger, stage as telemetry_stage, track_latency
+from .telemetry import logger, track_latency
+from .telemetry import stage as telemetry_stage
 from .trimming import RATIONALE_MAX, clip_to_sentence
-from .audit import audit
 
 
 def _served_provider(op: Operator) -> str:
@@ -100,8 +113,11 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     for cid in citations:
         src = cited_sources_map.get(cid)
         if src:
-            from urllib.parse import urlparse
-            netloc = urlparse(src.url).netloc.replace("www.", "").lower()
+            # Shared with the admissibility tiers so "distinct domains" means the same thing
+            # in the confidence score and in the gate. The old inline expression lowercased
+            # AFTER stripping, so `WWW.x.com` and `x.com` counted as two distinct domains and
+            # inflated the diversity term.
+            netloc = admissibility_host_of(src.url)
             if netloc:
                 cited_netlocs.add(netloc)
     n_domains = len(cited_netlocs)
@@ -216,20 +232,11 @@ def _templated_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
     return out[:max(1, n)] or [f"{base} {check_name}"]
 
 
-# E1: templates that NAME the concrete entity the check turns on, slot-filled from candidate
-# fields. Generic keyword queries starve payer_solvency/distribution (programme doc §8:
-# 771 vs 145 unverifiable:supported on kills); "who actually pays / how do you reach them"
-# pages exist for NAMED entities, not for product restatements.
-_ENTITY_TEMPLATES: dict[str, list[str]] = {
-    "payer_solvency": [
-        "{payer} budget spending on {base}",
-        "how much do {payer} pay for {base}",
-    ],
-    "distribution": [
-        "how to reach {aud} marketing channels {base}",
-        "{aud} customer acquisition cost by channel",
-    ],
-}
+# E1: templates that NAME the concrete entity the check turns on. The data lives in the
+# leaf module `entity_templates` so `config.py` can validate against it at load time
+# without importing this one (see that module's docstring). Re-exported under the original
+# private name because that is what the arm's tests and this file already bind.
+_ENTITY_TEMPLATES = ENTITY_TEMPLATES
 
 
 def _entity_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
@@ -237,18 +244,30 @@ def _entity_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
 
     A template whose entity slot is blank is SKIPPED (it would degenerate to the product-shaped
     query this arm exists to replace); all-blank returns [] and the caller uses the LLM chain.
+
+    Returning [] for an unknown check is deliberate and is asserted by
+    tests/unit/test_e1_hybrid_queries.py — a missing template must never crash a verdict
+    mid-run. That is precisely why a config naming a check with no template has to be
+    rejected at LOAD time (`config._validate_hybrid_entity_checks`); caught here it would
+    be a silent no-op, and the experiment would report a null result it never ran.
     """
     tpls = _ENTITY_TEMPLATES.get(check_name, [])
     if not tpls:
         return []
-    payer = (cand.who_pays or "").strip()
-    aud = (cand.audience or "").strip().replace("_", " ")
+    values = {
+        "{payer}": (cand.who_pays or "").strip(),
+        "{aud}": (cand.audience or "").strip().replace("_", " "),
+        "{market}": (cand.market or "").strip(),
+    }
     base = _keywords(cand, k=4)
     out: list[str] = []
     for t in tpls:
-        if ("{payer}" in t and not payer) or ("{aud}" in t and not aud):
+        if any(slot in t and not values[slot] for slot in ENTITY_SLOTS):
             continue
-        out.append(t.format(payer=payer, aud=aud, base=base))
+        out.append(t.format(
+            payer=values["{payer}"], aud=values["{aud}"],
+            market=values["{market}"], base=base,
+        ))
     return out[:max(1, n)]
 
 
@@ -432,6 +451,28 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     # The deterministic formula audits the actual grounding quality objectively:
     # citation fraction + source diversity + keyword relevance.
     confidence = _calc_confidence(sources, citations, CHECKS[check_name])
+    # Q4 / programme doc §20: citation ADMISSIBILITY, applied at RULING time.
+    # A ruling stands unless EVERY one of its citations sits in a tier that cannot establish
+    # THIS check (an AI stats farm, dictionary chrome, or — for non-channel checks — a social
+    # post). One good source rescues it. This runs here, not in retrieval, because §18 measured
+    # grounding as relevance-bound: shrinking the fetched pool is the one thing that cannot
+    # help. Demotion is to UNVERIFIABLE, never `retrieval_failed` — the evidence was fetched
+    # and judged, so this is a ruling we decline to trust, not an outage to come back from.
+    # `cfg` is Optional on this signature, so the policy falls back to the dataclass default —
+    # which IS the config default, keeping ONE definition of "what we ship" (deterministic on
+    # config: a caller that passes no config gets the configured default, not a special case).
+    _policy = (cfg.admissibility.policy if cfg is not None else Admissibility().policy)
+    _cited_urls = [s.url for s in sources if s.source_id in citations]
+    if verdict in (Verdict.SUPPORTED, Verdict.REFUTED) and _cited_urls:
+        _reason = demotion_reason(check_name, _cited_urls, _policy)
+        if _reason:
+            logger.info(f"Admissibility demotion on {check_name}: {_reason}",
+                        extra={"check": check_name, "policy": cfg.admissibility.policy,
+                               "was_verdict": verdict.value})
+            verdict = Verdict.UNVERIFIABLE
+            confidence = 0.0
+            data = {**data, "rationale": _reason + " Original rationale: "
+                    + str(data.get("rationale", ""))}
     return CheckResult(
         check_name=check_name, verdict=verdict,
         confidence=confidence,
@@ -619,11 +660,8 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
         impossible_economics = bool(data.get("impossible_unit_economics", False))
         incumbent_monopoly = bool(data.get("incumbent_monopoly", False))
         risk_summary = str(data.get("risk_summary", ""))
-        
+
         # Circuit breaker: only kill on objective brick-wall risks.
-        # Count how many checks produced a real verdict (supported or refuted).
-        decided_checks = sum(1 for c in checks if c.verdict.value in ("supported", "refuted"))
-        
         decisive = False
         if critical_regulatory or impossible_economics:
             # Objective, verifiable kill conditions.

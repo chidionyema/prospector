@@ -1,19 +1,16 @@
 """V2 Pipeline Runner — wires the v2 modules to real operators."""
 from __future__ import annotations
 
-import json
-import sys
 import time
 from pathlib import Path
 
+from popdd_agent import PopddAgent  # POPDD proof trail (estate Phase 1, 2026-06-26)
 from prospector.config import load_config
-from prospector.domain.primitives import CandidateJourney, CandidateSpec
-from prospector.operator import _build_operator, make_operator
+from prospector.domain.primitives import CandidateJourney
+from prospector.operator import _build_operator
 from prospector.pipeline.generator import generate_candidates
 from prospector.pipeline.middleware import TribunalMiddleware
 from prospector.pipeline.verifier import run_moat
-
-from popdd_agent import PopddAgent  # POPDD proof trail (estate Phase 1, 2026-06-26)
 
 
 def _sign_run_receipt(results: dict, n_specs: int) -> None:
@@ -64,7 +61,7 @@ def main():
     cfg = load_config()
     print(f"Operator chain: {cfg.operator}")
     print(f"Store dir:      {cfg.store_dir}")
-    print(f"Ledger:         storage/durable_ledger.md")
+    print("Ledger:         storage/durable_ledger.md")
     print()
 
     # ── Step 1: Generate candidates with ledger amnesia cure ──────────
@@ -161,7 +158,7 @@ def main():
     # Show ledger growth
     ledger = Path("storage/durable_ledger.md")
     if ledger.exists():
-        laws = [l for l in ledger.read_text().splitlines() if l.strip().startswith("*")]
+        laws = [ln for ln in ledger.read_text().splitlines() if ln.strip().startswith("*")]
         print(f"  Ledger laws: {len(laws)}")
         for law in laws[-5:]:
             print(f"    {law.strip()[:100]}")

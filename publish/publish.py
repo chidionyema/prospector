@@ -11,8 +11,8 @@ from typing import Any, Dict, Optional
 
 # We assume this is run from the repo root so prospector is importable
 try:
-    from prospector.models import Dossier, Decision
     from prospector.bridge import EngineBridge
+    from prospector.models import Decision
 except ImportError:
     # Fallback for direct execution if needed
     pass

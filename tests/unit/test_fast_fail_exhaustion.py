@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from prospector import gemini_cli, claude_cli
+from prospector import claude_cli, gemini_cli
 from prospector.errors import ProviderExhaustedError
 
 

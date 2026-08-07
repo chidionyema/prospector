@@ -15,7 +15,6 @@ A test that only checked each number against config would pass while they diverg
 from __future__ import annotations
 
 import copy
-import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -26,8 +25,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from prospector.bridge import EngineBridge
 from prospector.config import Config
-from prospector.models import (Candidate, CheckResult, Decision, Dossier, ScoreResult,
-                               Verdict)
+from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
 from prospector.price_rationale import read_rationale
 from prospector.pricing import price_for
 

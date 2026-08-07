@@ -9,13 +9,11 @@ Proves:
 """
 from __future__ import annotations
 
-import json
-from prospector.adaptive import get_pass_traits, calculate_grid_priorities, get_exemplars
+from prospector.adaptive import calculate_grid_priorities, get_exemplars, get_pass_traits
 from prospector.config import Config, Thresholds
 from prospector.generate import generate
 from prospector.models import Candidate
-from prospector.novelty import select_diverse_candidates, _text_similarity
-
+from prospector.novelty import _text_similarity, select_diverse_candidates
 
 # ---------------------------------------------------------------------------
 # Shared: mock operator that returns valid candidates but no embeddings
@@ -78,7 +76,8 @@ def test_dpp_diversity_increases_form_spread_without_embeddings():
     ]
 
     class NoEmbedOp:
-        model_version = "stub"; name = "stub"
+        model_version = "stub"
+        name = "stub"
         def embed(self, t): return []
         def complete_json(self, s, u, t=0.7): return {}
 
@@ -116,8 +115,8 @@ def test_dpp_diversity_increases_form_spread_without_embeddings():
 
 def test_pass_traits_with_real_store_outputs_actionable_patterns():
     """get_pass_traits must return structured, injectable text from real PASS data."""
-    from prospector.store import Store
     from prospector.config import load_config
+    from prospector.store import Store
 
     cfg = load_config()
     store = Store(cfg)
@@ -221,7 +220,7 @@ def test_generate_passes_pass_patterns_to_prompts():
     assert "SURVIVOR PATTERNS" in combined
     assert "construction" in combined
     assert "local_service" in combined
-    print(f"  pass_patterns injected: PASS (found SURVIVOR PATTERNS in rendered prompt)")
+    print("  pass_patterns injected: PASS (found SURVIVOR PATTERNS in rendered prompt)")
 
 
 # ---------------------------------------------------------------------------

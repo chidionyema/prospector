@@ -11,17 +11,17 @@ import json
 import logging
 import os
 import re
-import requests
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Tuple
-from datetime import datetime
 from urllib.parse import urlparse
 
-from . import facet_derive
+import requests
+
+from . import facet_derive, indexnow
 from . import facets as facets_mod
-from . import indexnow
-from .models import Dossier, Decision, ScoreResult
+from .models import Decision, Dossier, ScoreResult
 from .pack_linter import lint_pack
 from .pack_validation import validate_pack
 from .plain_text import plain_lines, to_plain_text

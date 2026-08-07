@@ -6,9 +6,10 @@ No model calls required — composite is pure arithmetic.
 from __future__ import annotations
 
 import pytest
-from prospector.config import load_config, Config
+
+from prospector.config import Config, load_config
 from prospector.models import SCORE_AXES
-from prospector.score import composite, passes_composite, ScoreResult
+from prospector.score import ScoreResult, composite, passes_composite
 
 
 @pytest.fixture
@@ -143,8 +144,8 @@ def test_passes_composite_none_score(cfg):
 def test_score_failed_flag_set_when_scorer_raises(cfg):
     """When the scorer operator errors, the all-zero fail-safe must carry
     score_failed=True so the publish gate can tell it from a genuine low score."""
-    from prospector.score import score_candidate
     from prospector.models import Candidate
+    from prospector.score import score_candidate
 
     class _Boom:
         def complete_json(self, *a, **k):
@@ -158,8 +159,8 @@ def test_score_failed_flag_set_when_scorer_raises(cfg):
 
 def test_score_failed_flag_false_on_success(cfg):
     """A scorer that returns valid scores yields score_failed=False."""
-    from prospector.score import score_candidate
     from prospector.models import Candidate
+    from prospector.score import score_candidate
 
     class _Ok:
         def complete_json(self, *a, **k):

@@ -1,9 +1,8 @@
 """Test for Generative Alpha tracking (diagnostics.py)."""
 from __future__ import annotations
 
-import pytest
 from prospector.diagnostics import calculate_generative_alpha, calculate_yield
-from prospector.models import Decision
+
 
 class MockStore:
     def __init__(self, rows, dossiers=None, tmp_path=None):
@@ -54,8 +53,8 @@ def test_quality_decay_alarm(tmp_path):
     rows = [{"candidate_id": f"c{i}", "decision": "pass", "composite": 2.5, "created_at": "2026-01-01"} for i in range(5)]
     store = MockStore(rows, tmp_path=tmp_path / "dossiers")
     
-    from prospector.diagnostics import calibration_alarms
     from prospector.config import load_config
+    from prospector.diagnostics import calibration_alarms
     
     cfg = load_config()
     alarms = calibration_alarms(store, cfg)

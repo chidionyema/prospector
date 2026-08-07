@@ -88,13 +88,16 @@ def test_generate_canary_avoids_thundering_herd_on_dead_brain(tmp_path):
     instead of N concurrent calls each re-paying the dead brain's failover. The dead brain
     must be hit ~once, not n_calls times."""
     import json
+
     from prospector.errors import ProviderExhaustedError
     from prospector.health import ProviderHealth
     from prospector.operator import FallbackOperator, Operator
 
     class _Op(Operator):
         def __init__(self, name, behaviour):
-            self.name = name; self.behaviour = behaviour; self.calls = 0
+            self.name = name
+            self.behaviour = behaviour
+            self.calls = 0
 
         def _raw(self, system, user, temperature):
             self.calls += 1

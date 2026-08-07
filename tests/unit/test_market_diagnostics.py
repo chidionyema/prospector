@@ -5,12 +5,9 @@ healthy market averaged with one that grounds nothing at all.
 """
 from __future__ import annotations
 
-import pytest
-
 from prospector.config import load_config
 from prospector.diagnostics import (
     _market_alarms,
-    _market_breakdown,
     diagnose_batch,
     render_batch_diagnostics,
 )

@@ -5,8 +5,9 @@ All durable state lives on disk; session_state is only for ephemeral UI state
 """
 from __future__ import annotations
 
-import streamlit as st
 from typing import Any
+
+import streamlit as st
 
 
 def init_state(**defaults: Any) -> None:

@@ -8,15 +8,14 @@ Proofs:
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
+
 from prospector.api import app
 from prospector.config import load_config
-from prospector.models import Candidate, Decision, Dossier, Verdict, CheckResult, ScoreResult
+from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
 from prospector.store import Store
+
 # compose_packs was deleted — orphaned 3-tier pricing (never called in production).
 # The live commerce path uses one £30 (3000 pence) pack. The listing JSON below
 # pushes that static shape.
