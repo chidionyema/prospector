@@ -1033,3 +1033,707 @@ The reordering is driven by the rank-0 result, not by preference:
 The measurement half of §4 collapses because E13/E16/E15/E17 all replay data already on disk.
 What does NOT collapse: E2 (needs biased live batches) and E3 (needs live concurrency probing).
 Those two are genuinely wall-clock-bound and no reframing changes that.
+
+## 20. Q4 citation source quality - what our ruled verdicts actually rest on (2026-08-07, offline, zero LLM)
+
+### 20.1 The measurement
+
+Motivation to state: the founder observed `gitnux.org` (an AI-generated statistics farm) used as a kill-log citation, and a raw `youtube.com/watch` link used as evidence. The instinct is a domain denylist in the grounding path. §18 says do not act on that instinct blind: grounding already fails on RELEVANCE not availability, so deleting domains can only starve checks further. So this measures the blast radius BEFORE any policy exists.
+
+Script: `tools/experiments/q4_citation_source_quality.py` (read-only, zero LLM, zero network, runs off dossiers already on disk). Receipts: `tools/experiments/q4_citation_source_quality_receipts.json` and `tools/experiments/q4_citation_source_quality_receipts_current_moat.json`.
+
+**METHOD CORRECTION** worth recording (this is a trap that would have produced a wrong answer): `check["citations"]` holds `source_id` hashes, NOT urls. The urls live in `check["sources"]`. Counting `sources` measures what retrieval FETCHED; resolving the ids against `sources` measures what the judge actually LEANED ON. Those are different populations and only the second can justify a denylist. Fetched corpus: 46,992 urls across 10,933 distinct domains. Cited evidence behind ruled verdicts: 8,842 urls.
+
+Population: 1,558 dossiers carrying checks. 2,586 ruled (supported or refuted) checks across all provider eras, 1,234 on the current moat. 8,842 resolved citation urls all eras, 4,894 current moat. 6 ruled-but-uncited checks. 0 unresolved citation ids.
+
+| tier | all eras | share | current moat | share |
+|---|---|---|---|---|
+| other | 6,752 | 76.4% | 3,677 | 75.1% |
+| government | 954 | 10.8% | 564 | 11.5% |
+| ugc_social (LOW) | 708 | 8.0% | 402 | 8.2% |
+| established_org | 177 | 2.0% | 109 | 2.2% |
+| media | 117 | 1.3% | 71 | 1.5% |
+| academic | 74 | 0.8% | 28 | 0.6% |
+| wikipedia | 42 | 0.5% | 28 | 0.6% |
+| stats_farm (LOW) | 18 | 0.2% | 15 | 0.3% |
+
+The two policy numbers:
+
+- exposure (ruled checks citing at least one low-quality domain): 485 / 2,580 = 18.8% all eras; 276 / 1,228 = 22.5% current moat.
+- blast radius (ruled checks resting ONLY on low-quality domains - the verdicts a denylist would demote to `unverifiable`): 52 / 2,580 = 2.0% all eras; 17 / 1,228 = 1.4% current moat.
+
+**Reading.** The evidence base is materially dirtier than expected (nearly a fifth to a quarter of ruled checks touch a low-quality source) but the cost of cleaning it is small, because low-quality sources are almost always accompanied by a better one. §18's fear that a denylist would starve checks is now quantified and it is small.
+
+| domain | tier | count |
+|---|---|---|
+| facebook.com | ugc_social | 301 |
+| reddit.com | ugc_social | 95 |
+| youtube.com | ugc_social | 75 |
+| tiktok.com | ugc_social | 70 |
+| linkedin.com | ugc_social | 66 |
+| instagram.com | ugc_social | 45 |
+| mumsnet.com | ugc_social | 25 |
+| pinterest.com | ugc_social | 12 |
+| quora.com | ugc_social | 9 |
+| uk.linkedin.com | ugc_social | 8 |
+| gitnux.org | stats_farm | 7 |
+| worldmetrics.org | stats_farm | 5 |
+| wifitalents.com | stats_farm | 4 |
+| zipdo.co | stats_farm | 2 |
+| nextdoor.co.uk | ugc_social | 1 |
+| x.com | ugc_social | 1 |
+
+Two facts to call out.
+
+**(a) concentration.** facebook.com, reddit.com, youtube.com and tiktok.com together carry 541 of 708 ugc_social citations = 76.4%, so a very short list reaches most of the problem.
+
+**(b) The founder observed gitnux.org twice.** The true count is 7 citations, and the whole stats_farm tier is 18 citations = 0.20% of cited evidence - real, cheap to remove, and NOT the bulk of the problem.
+
+### 20.2 UGC is not uniformly unprobative - the finding that shapes the policy
+
+The per-check split is the point.
+
+| check | ruled | exposed | exposed share | only-low |
+|---|---|---|---|---|
+| route_to_market | 82 | 45 | 54.9% | 8 |
+| distribution | 359 | 136 | 37.9% | 26 |
+| buyer_intent | 200 | 48 | 24.0% | 2 |
+| pain_reality | 336 | 70 | 20.8% | 4 |
+| payer_solvency | 263 | 45 | 17.1% | 5 |
+| value_durability | 457 | 48 | 10.5% | 4 |
+| incumbency | 325 | 31 | 9.5% | 0 |
+| legality | 312 | 25 | 8.0% | 3 |
+| currency | 148 | 22 | - | 0 |
+| claims_verifiable | 104 | 15 | - | 0 |
+
+Argue this: exposure concentrates in the two channel checks. That is not contamination, it is the evidence being the right shape for the question. For `distribution` and `route_to_market` a Facebook group with a large membership IS the channel being evidenced. For `legality` or `payer_solvency` a TikTok cannot establish what the law says or what buyers pay. So admissibility must be scored per check, not per domain. A blanket denylist would destroy most of its evidence precisely where that evidence was valid.
+
+### 20.3 Policy simulation - three candidate policies, measured not asserted
+
+Policies simulated in the same script. UGC treated as admissible for these four checks only: distribution, route_to_market, buyer_intent, pain_reality.
+
+| policy | ruled verdicts demoted, all eras | share | current moat | share |
+|---|---|---|---|---|
+| P0_global (deny ugc_social + reference_noise + stats_farm everywhere) | 52 | 2.02% | 17 | 1.38% |
+| P1_check_aware (deny stats_farm + reference_noise everywhere; deny ugc_social only on checks where it cannot be probative) | 12 | 0.47% | 1 | 0.08% |
+| P2_farm_only (deny stats_farm + reference_noise only) | 0 | 0.00% | 0 | 0.00% |
+
+P0's damage by check: distribution 26, route_to_market 8, payer_solvency 5. P1's damage by check: payer_solvency 5, value_durability 4, legality 3.
+
+Kill gates that would be disturbed by the only-low checks, all eras: min_composite 24, moat_ungrounded 12, none-recorded 10, source_or_die 3, legality 1, adversarial_decisive 1, payer_solvency 1.
+
+**Recommendation.**
+
+1. Ship P2 immediately. It costs literally zero ruled verdicts in two months of history and removes AI-generated statistics farms and dictionary/thesaurus chrome from the evidence base. There is no argument against a free change.
+2. Then P1. It costs 12 ruled verdicts across all history (0.47%), one on the current moat, and removes the 18.8% exposure. P0 costs 4.3x more than P1 to remove evidence that was arguably valid, and it pays that cost precisely in the checks where UGC was the right source. Do not ship P0.
+3. Implement it as **ADMISSIBILITY AT RULING TIME**, not as removal from the retrieval fetch. §18 showed grounding is relevance-bound, so shrinking the fetched pool is the one thing that cannot help. Admissibility leaves retrieval untouched and only stops a low-quality domain being the SOLE basis of a ruling.
+
+**Caveat, load-bearing.** The tier lists are hand-declared and evidence-led rather than exhaustive, and the `other` tier is 76.4% of cited evidence and is unaudited. This measurement bounds the user-generated-content and statistics-farm question only. It is not a general verdict on source quality, and a domain sitting in `other` is not thereby endorsed.
+
+### 20.4 Editorial risk item - founder's call, deliberately not changed
+
+Real, sourced, sensitive content is live in the catalogue: a tattoo-trade dossier citing two suicides, and targeting language aimed at low-income carers. It is grounded and true. Silently editing it would violate the project's own source-or-die and no-overclaim ethos, and quietly removing true sourced material is the same class of error as shipping unsourced material. It is therefore flagged for an explicit editorial decision by the founder and has deliberately NOT been changed by any agent. Record that no code change is proposed here.
+
+## 21. Subscription auth precedence + Q4 SHIPPED as an admissibility gate (2026-08-07)
+
+### 21.1 The auth bug: an ambient API key outranked the claude.ai subscription
+
+Founder report: `claude -p` returned *"Credit balance is too low"* even though the claude.ai login is live.
+
+**Root cause, proven.** `~/.zshrc:54` sources `~/.config/llm/secrets.sh`, which `export`ed `ANTHROPIC_API_KEY`. The Claude CLI's credential precedence puts an ambient API key ABOVE the OAuth subscription login, so every `claude` invocation billed a dead API account instead of the subscription. Grepping the rc files for the variable name finds nothing — the rc file sources a file that sets it, which is why this survived earlier searches.
+
+**The key is valid and broke, which is why the failure reads as a login problem.** `GET /v1/models` → HTTP 200 (the key authenticates) while `POST /v1/messages` → `invalid_request_error: "Your credit balance is too low"`. A `/models` probe therefore proves the key, never the balance.
+
+**Fix (two layers).**
+
+1. **Interactive shell** — `~/.config/llm/secrets.sh:24` dropped `export` (backup: `secrets.sh.bak-2026-08-07`). The value is still readable in-shell and still opt-in per command (`ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" some-tool`), but is no longer inherited by child processes, so `claude` falls through to the subscription. The other five keys (GEMINI/DEEPSEEK/MINIMAX/OPENROUTER/EXA) and the R2 vars are still exported — blast radius was measured across prospector, Hermes and `~/.claude` first: every consumer either strips the var already or uses it as a boolean, so removing the ambient export costs no capability. The engine still gets the key from disk via `_load_dotenv()`.
+2. **The engine** — `prospector/cli_auth.py` (new) is now the single definition of the child environment for any `claude` spawn. `SUBSCRIPTION_HIJACK_VARS` (`cli_auth.py:57`) = `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, **`ANTHROPIC_BASE_URL`**. `prospector/claude_cli.py:145` calls `subscription_env()` and passes it at the spawn (`claude_cli.py:185`).
+
+`ANTHROPIC_BASE_URL` is the addition that matters beyond billing: the previous inline strip covered only the two key vars. `BASE_URL` repoints the CLI at a *different inference endpoint*, so a leak would let a non-Anthropic model rule a verdict while still reporting itself as provider `claude_cli` — i.e. it would silently defeat `MOAT_PRIMARY` (`operator.py:889`). This is precisely how the pi-bridge substitutes MiniMax for a whole process. Moat integrity, not just cost.
+
+**Matched-control proof** (same shell, same binary, only secrets.sh swapped): new file → `claude -p` = **OK**; the `.bak` sourced back in → **"Credit balance is too low"**.
+
+**Diagnostic**: `python3 -m prospector.cli_auth` prints the ambient state and exits 1 if hijacked.
+
+**Regression fence**: `tests/unit/test_cli_auth.py` (8 tests) — helper units, a behavioural test that monkeypatches `claude_cli.subprocess.run` and asserts no hijack var reaches the child while `PATH` survives, plus two AST structural guards: *no spawn of the claude binary may inherit the environment*, and *the hijack list has exactly one definition*. Both bisected non-vacuous (broken deliberately, test failed, restored).
+
+**Operational note.** A shell (or Claude Code session) started before the change still carries the old exported value in its own environment; the interactive half of the fix takes effect on relaunch. The engine-side strip is unconditional and needs no relaunch.
+
+### 21.2 Q4 shipped: P1_check_aware admissibility at ruling time
+
+§20 recommended it; this section records it as SHIPPED, per the §20.3 recommendation and NOT as a retrieval denylist.
+
+- `prospector/admissibility.py` (new) — the single home for the tier lists, `tier()`, `host_of()`, `inadmissible_tiers()`, `is_ruling_admissible()`, `demotion_reason()`. `tools/experiments/q4_citation_source_quality.py` now imports from here instead of keeping its own copy, so the measurement and the gate cannot drift about what a `stats_farm` is. **Proof the move changed nothing: re-running both arms after the move reproduced both receipts files byte-for-byte** (`diff` clean; all eras P0=52/2.02%, P1=12/0.47%, P2=0; current moat P0=17/1.38%, P1=1/0.08%, P2=0).
+- `config.yaml:201` `admissibility.policy: P1_check_aware`, typed by `config.Admissibility` (`config.py:235`) and validated by `_validate_admissibility` (`config.py:249`), which raises `ValueError` on an unknown policy name or unknown key — a silent typo would otherwise disable the gate while reading as configured.
+- `verify.py:449-452` — after the verdict is produced, a SUPPORTED/REFUTED ruling whose citations are ALL inadmissible for that check is demoted to `UNVERIFIABLE`, confidence 0.0, with the demotion reason prepended to the rationale and the original rationale preserved for the audit trail.
+
+Three properties held deliberately, each with a test:
+
+1. **A demotion is not an outage.** It must NOT set `retrieval_failed` — that flag means "come back later" and would fire the DEFER gate (`verify.py:693`). The evidence WAS fetched and judged; we are declining to let it be the sole basis of a ruling, which is a finding.
+2. **`policy: off` reproduces pre-§20 behaviour exactly**, so the change is reversible by config alone (the project's "deterministic on config" constraint). Asserted as the non-vacuity test.
+3. **It is not a pro-candidate lever** — it demotes SUPPORTED rulings on bad evidence exactly as it demotes REFUTED ones.
+
+**Bug found by the new tests, and fixed in the shipped path.** `host_of` was transcribed from `_calc_confidence`'s inline `netloc.replace("www.", "").lower()`, which strips before lowercasing (so `WWW.Reddit.com` fell through to `other` instead of `ugc_social`) and uses an unanchored `replace` (so `notwww.example.com` → `notexample.com`). Corrected to lowercase-then-strip-a-leading-prefix, and `_calc_confidence` (`verify.py:108`) now uses the shared helper — it had been inflating its own domain-diversity term. Neither defect changed the §20 numbers (the corpus is lowercase and has no such host, which is what the byte-identical receipts show), but a classifier that mis-tiers on letter case is not one to build a gate on.
+
+Tests: `tests/unit/test_admissibility.py` (26).
+
+## 22. E6 SHADOW MODE BUILT — local-embedding prescreen prefilter (2026-08-07, offline, zero LLM)
+
+E6 (§3) asks whether a local embedding prefilter can drop ≥20% of LLM prescreen calls at no PASS
+loss, and mandates **shadow-mode first (log, don't act)**. The shadow half is now built and OFF by
+default. No measurement yet — this section records the mechanism and the blocker, not a result.
+
+**Zero decisions changed, structurally.** `prescreen.prescreen` (`prescreen.py:153`) is now a thin
+wrapper: `_decide` (`prescreen.py:176`) holds the ENTIRE three-stage gate and produces the result
+tuple, which is returned untouched; `record_shadow` is called afterwards and its return value is
+discarded. The prefilter cannot influence a decision even by accident, and `record_shadow`
+(`prescreen_prefilter.py:352`) swallows every exception — an observer that can raise inside a
+keep-biased gate is a decision change by another name.
+Proof: `tests/unit/test_prescreen_prefilter.py::test_prescreen_result_identical_with_shadow_on_and_off`
+runs the same five candidates with the flag off and on and asserts `json.dumps(off) == json.dumps(on)`
+AND that the operator received the same call sequence, with a non-vacuity assertion that the
+prefilter did fire (would_drop) on that run.
+
+**BLOCKER — there is no local dense embedding model on this machine.** Measured 2026-08-07:
+`sentence_transformers`, `torch`, `transformers`, `onnxruntime`, `model2vec`, `fastembed` all absent
+from `.venv`; `ollama list` carries only chat models (qwen2.5-coder:7b, gemma3:4b/1b, gemma2:2b,
+llama3.2). nomic-embed-text-v2 (~274MB) or Qwen3-Embedding-0.6B (~1.5GB) would be a download, which
+this task's scope forbade. So the default `backend: lexical` reuses what the repo already has: the
+dedup content-word tokeniser (`dedup._content_tokens`) plus character trigrams, L2-normalised, scored
+through the ONE cosine already in the tree (`novelty.cosine_similarity`). `backend:
+sentence_transformers:<model>` is accepted and degrades to lexical with a log line if the import
+fails; every shadow row records `backend_used`, so a mixed log can never attribute lexical numbers to
+a dense model. Until a dense model is installed, E6's ≥20% figure is a test of the LEXICAL prefilter
+only — that is a floor for the bet, not a refutation of it.
+
+**The score is prequential, so the logged agreement is out-of-sample.** No labelled corpus of
+"obvious near-misses" exists on disk, so the prefilter learns from the LLM decisions it shadows: each
+candidate is scored against the exemplars accumulated so far (never itself), then its own LLM outcome
+is appended. Score = similarity-weighted keep-rate of the k nearest exemplars above `min_similarity`.
+Below `min_exemplars` it ABSTAINS — cold start never drops.
+
+Config (`config.yaml`, all defaults inert): `prescreen_prefilter.shadow_mode: false`, `backend:
+lexical`, `threshold: 0.35`, `neighbours: 5`, `min_similarity: 0.15`, `min_exemplars: 20`,
+`max_exemplars: 500`, `log_dir: ""` (→ `<store.dir>/prescreen_shadow/shadow-YYYY-MM.jsonl`, honouring
+`PROSPECTOR_STORE_DIR`; nothing is bound at import time). Unknown keys raise at startup
+(`config._validate_prescreen_prefilter`), same rule as `_validate_admissibility` — a `shadow_mod:`
+typo must stop the process, not read as configured-on while inert.
+
+Read the metric back with `prescreen_prefilter.summarise_shadow_log(path)`: `llm_calls_saved_pct` is
+computed only over rows where the LLM was ACTUALLY called (structural rejects never reach stage 3, so
+counting them would inflate the saving), and `false_drop_rate` is the "no PASS loss" side — the share
+of LLM-kept candidates the prefilter would have discarded.
+
+**Not built, deliberately:** anything that acts. Turning the prefilter into a gate is a separate
+change E6 must earn with measured agreement first.
+
+Tests: `tests/unit/test_prescreen_prefilter.py` (13).
+
+## 23. Wave 1 — R3, R4, S5, E13 (2026-08-07, offline, zero LLM, zero network)
+
+Receipt for the whole wave: `1022 passed, 2 skipped, 19 warnings in 112.20s`
+(`PYTHONPATH=<repo> .venv/bin/python -m pytest tests/unit -q`, exit status captured BEFORE any pipe).
+Prior baseline was §16's `896 passed, 2 skipped`; the working tree also carries a concurrent
+session's uncommitted tests, so the delta is not attributable to this wave alone.
+NOTHING IN THIS WAVE IS COMMITTED. `config.py`/`config.yaml` contain another session's hunks.
+
+### 23.1 Three spec claims corrected — the doc was wrong on disk
+
+1. **§2.5 (line ~160) "retrieval.py caching is breaker state, not a persistent result cache" is FALSE.**
+   `prospector/retrieval.py:1195` `DiskCache` is content-addressed (sha1 over `query|k|max_chars|market_salt`),
+   persists under `store/_cache/` (**15,631 live entries**), is TTL'd, and is wired at `retrieval.py:1428-1431`
+   in `make_provider`, gated by `retrieval.cache` / `retrieval.cache_ttl_s` (`config.py:47,52`; `config.yaml:95,96`).
+   It survives the writing process — that IS S5's cross-tick property. S5 as specified was already built.
+2. **§2.4 "dedup.py already does local embedding work" is FALSE.** `dedup.py:1-15` is stdlib difflib +
+   Jaccard. The only `embed()` in the tree is Gemini's (`operator.py:223`) — a network call, and Gemini is
+   gone from config. Measured: `sentence_transformers`, `torch`, `transformers`, `onnxruntime`, `model2vec`,
+   `fastembed` all `False` from `importlib.util.find_spec`; Ollama holds chat models only.
+   **There is no local embedding backend in this repo.** This blocks E6-calibration, V4, L1, E15, E17 on ONE
+   decision (E16 hit the same wall independently, §19.2).
+3. **§10's 2x kill criterion for E13 is mis-calibrated and should be retired.** It was set against an
+   ASSUMED 10:1 absence ratio; measured on disk the ratio is **2.51:1 all-eras, 1.13:1 current moat**.
+   With a 46.8% current-moat baseline the arithmetic ceiling — every unverifiable check ruling — is
+   **2.13x**. A literal 2x demands recovering 88% of all 236 unverifiable checks. Judge on recovery share.
+
+### 23.2 E13 RESULT — proxy-framed claim reframe
+
+Script `tools/experiments/e13_proxy_claim_reframe.py`; receipts `..._receipts.json` and
+`..._receipts_current_moat.json` (both stamp `run_at_utc` + `dossier_files_globbed=1569`, since the
+daemon writes dossiers during the run). Read-only over `store/`, `mode=ro` on the db.
+
+Population: 1,458 bucket-D checks / 5,647 passages all-eras; 236 / 901 current moat; plus a 622/208
+ruled-check calibration arm. **Recovery share: 27.9% all-eras (407/1458), 29.2% current moat (69/236)**
+(payer_solvency 22.8%, distribution 39.6%). Projected grounded-rate 28.5%→47.2% (1.65x) and
+46.8%→62.4% (1.33x): **KILLED against §10's 2x, which §23.1(3) shows is unreachable.**
+
+Controls: shuffled-segment control drops to 12.5%/13.5%, so the segment anchor earns ~half the hit rate;
+the calibration arm on checks that DID rule sits higher at 38.0%/50.7%. Recorded limitation — the
+swapped-detector control on payer_solvency (31.5%) EXCEEDS its own hit rate, so the distribution
+"named channel" pattern is the looser of the two detectors.
+
+**The finding that matters, and it corroborates §18 and E16:** the first proxy-matching passage was at
+rank 0 for ~47-56% of hits, and **71.7% of hits were passages the judge had ALREADY CITED while still
+ruling `unverifiable`.** The evidence was not buried — it was retrieved, cited, and judged non-probative
+under the direct claim framing. This is a CLAIM-FRAMING defect, not a retrieval defect. It is also why a
+lexical proxy cannot settle it: the LLM-judged replay is the decisive test.
+
+Follow-up cost, sized: **zero new retrieval calls** (passages are on disk). §10's 30-check sample = 30
+verdict calls / ~13,950 passage tokens. Full current-moat replay = 236 calls / ~109,761 tokens
+(~465/check). Full all-eras = 1,458 calls / ~617,453 tokens. Dollars deliberately not computed — that
+needs the spend ledger, which a read-only probe must not touch.
+
+### 23.3 R3 — atomic JSONL appends. tmp+rename REJECTED as destructive
+
+`prospector/jsonl_atomic.py` (new, 318 lines) + `tests/unit/test_jsonl_atomic.py` (352 lines).
+Converted: `alerts.emit_alert`/`resolve_alert`, `run_scheduled._append_tick`, `audit.audit`,
+`diagnostics.persist_batch_diagnostics`, `decay._queue_unlist`. Tolerant readers:
+`run_scheduled._trailing_barren_count`, `_aggregate_ticks`.
+
+**R3 as specified offered "tmp+rename or fsync". tmp+rename is not the weaker option here, it is
+destructive**: append-by-rename is read-whole-file → add line → `os.replace`, so every line the live
+daemon appended between the read and the rename is silently deleted, and the inode swap orphans a peer's
+open `O_APPEND` descriptor. Implemented instead: one `os.open(O_WRONLY|O_APPEND|O_CREAT)` + a SINGLE
+`os.write` of the whole payload + `fsync`. POSIX `write()` §2.9.7 requires that be performed with no
+intervening modification, so two appenders cannot interleave. A short write (ENOSPC/EINTR) raises
+`TornAppendError` and deliberately does NOT retry the remainder — a retry re-seeks to the CURRENT EOF and
+could land after a peer's line, turning one torn record into two.
+
+Two calls beyond the literal spec: the reader's tail rule is **positional, not syntactic** (bytes after
+the last `\n` are dropped unparsed, because a truncated record can still be valid JSON — `{"n": 9}` is a
+prefix of `{"n": 9, "dossiers": 4}` — so the old `json.loads`-per-line readers could return a tick that
+was never committed); and `heal=True` prefixes a newline when the last byte is not one, without which a
+single torn fragment splices the next record onto itself and poisons every subsequent append.
+
+Receipts: `18 passed in 1.26s`; affected suites `276 passed in 63.46s`. Live trails read clean —
+ticks 2253, alerts 1276, batch_diagnostics 93, audit/2026-08-07 2333 rows, all `corrupt=0 torn_tail=0`.
+Daemon pid 19735 alive after the run.
+
+### 23.4 R4 — restore drill. FOUND TWO LIVE DATA-LOSS GAPS
+
+`scripts/restore_drill.py` (497 lines) + `tests/unit/test_restore_drill.py` (297 lines). `15 passed in 1.69s`.
+
+**Gap 1 — `store/prospector.db` HAS NO SCHEDULED BACKUP.** `backup_store.py` mirrors
+`store/dossiers/*.json` + a gzipped `prospector.jsonl` to R2; `--restore` pulls only dossiers. The db
+exists in backup only as ad-hoc migration copies (`.pre-market.bak`, `.pre-tombstone-*.bak`).
+**Gap 2 — `backup_store.py:sync` uses `DOSSIER_DIR.glob("*.json")`, NON-RECURSIVE.** The 9 indexed
+dossiers under `store/dossiers/quarantine_ungrounded/` (`tombstone='quarantined_ungrounded'`) **have
+never been uploaded to R2.** Not reasoned out — the drill's FIRST live run failed with
+`[FAIL] index_vs_tree ... 9 rows with NO restored file`, and the failure was correct.
+**Neither gap is fixed.** `backup_store.py` was already dirty in the tree; the `rglob` fix and a db
+backup artifact remain OPEN and should be treated as P0 — the exposure is silent until a restore is needed.
+
+Live run against the real store, daemon writing concurrently:
+```
+RESTORE_DRILL PASS checks=12 failures=0
+  [PASS] db_integrity     PRAGMA integrity_check -> ok
+  [PASS] rows:dossiers    restored=1751 source=1751
+  [PASS] dossier_files    restored=1578 source=1578
+  [PASS] index_vs_tree    1571 live rows, 180 tombstoned, every live row has a restored file
+  orphan_files           7 restored file(s) with no index row   [*.lint.json artifacts, informational]
+```
+Design: hot `Connection.backup()` snapshot, NOT `shutil.copy` (which under WAL with a live writer can
+capture a torn page set). Source opened `file:...?mode=ro` — asserted by a test where an INSERT raises
+`OperationalError: readonly`, so the drill cannot lock out the daemon. `_guard_dest()` hard-exits if the
+destination resolves inside `store/` or `storage/`. Exit 0 pass / 1 needs-a-human / 2 setup error.
+Failure coverage: truncated db, corrupt JSON, missing dossiers, extra rows, and right-filename/
+wrong-contents all fail in tests. Deliberately NOT the R2 path: a drill that needs the network cannot
+run when the network is what broke.
+
+### 23.5 S5 — the cache existed; it was hardened instead
+
+`prospector/retrieval.py` +112/-16. (1) Atomic `tmp+rename` writes in `_write_entry` — was a bare
+`write_text`, a torn-write window with the daemon sharing the dir. NOTE this is the OPPOSITE call from
+R3 and correctly so: cache entries are whole-file replacements with a single writer per key, not
+appends. (2) Entries carry a `fetched_at` stamp in a v2 envelope; TTL uses `min(fetched_at, mtime)` so a
+`store/` restore resetting mtime cannot revive stale grounding. (3) `_read_entry` turns every malformed
+shape into a MISS. (4) `cache_dir` was bound at IMPORT (`= CACHE_DIR` in the signature) so monkeypatching
+could not redirect it — now resolved in `__init__`. This is the same defect class that polluted the
+production audit log and durable ledger. v1 bare-list entries still read; all 15,631 on-disk entries stay valid.
+
+`tests/unit/test_retrieval_cross_tick_cache.py` — 20 tests, `20 passed in 1.48s`; seven affected suites
+`70 passed in 11.99s`. **Config keys added: none** — `retrieval.cache` and `retrieval.cache_ttl_s`
+(14 days) already existed. Non-pollution PROVEN not asserted: all 15,631 entries in `store/_cache` are
+still v1 (`first_char='['`), zero v2 envelopes, so no test wrote there; zero stray `.tmp` files.
+
+**Two S5 sub-clauses deliberately NOT done, both because they cost real money:** putting `provider` in
+the key would invalidate all 15,631 entries and LOWER the hit rate (a ddg-cached query re-fetches when
+the breaker moves to exa) — the opposite of S5's goal; and normalizing query text re-keys most
+LLM-generated queries, flushing the cache, where every flushed key is a live DDG/Exa/claude_cli call.
+
+### 23.6 Defects found but NOT fixed (each is a real open item)
+
+**All six are now CLOSED — see §24 for the fixes and their receipts.** The list is kept as written
+because it is the input to §24, and because "found but not fixed" is a status a register has to be
+able to record without it becoming permanent.
+
+- `backup_store.py:sync` non-recursive glob — 9 dossiers never backed up (§23.4). **P0.** → §24.2
+- No scheduled `prospector.db` backup at all (§23.4). **P0.** → §24.2
+- `tools/unlist_killed.py:113` does `QUEUE.write_text("")` to drain `pending_unlist.jsonl` — a
+  lost-update race against `decay._queue_unlist` appending. Same defect class as R3, different file. → §24.1
+- `decay.py:65-67` binds cwd-relative `LISTINGS_DIR`/`PENDING_UNLIST` at import — the pollution hazard
+  the test fence exists for. Not made injectable; out of R3's scope. → §24.3
+- `tests/` requires `PYTHONPATH=<repo>`: `.venv/bin/pytest tests/...` alone dies at `tests/conftest.py:5`
+  with `ModuleNotFoundError: No module named 'prospector'`. The package is not installed into `.venv`. → §24.4
+- No `ruff` in `.venv` (`.venv/bin/ruff` absent) — no lint receipt is obtainable for any of this. → §24.5
+
+### 23.7 Register corrections
+
+Already DONE, wrongly carried as open: **Q2** (`9276736` + fix `b2d64da`, §16), **E12**
+(`tools/experiments/e12_grounding_yield.py` + receipts), **E16** (`e0f6991`, §19.2). With R1, R2
+(`770a5a5`), E4, V1, E11 and Q4 also landed, the real open backlog is ~33 items, not 38.
+
+## 25. Q4 on the SELLING catalogue — what the shipped gate reaches, and what it leaves (2026-08-07)
+
+§20 measured citation source quality across the whole dossier corpus; §21.2 shipped
+`P1_check_aware` admissibility. Both are corpus-wide, and the corpus is overwhelmingly kills. This
+section measures the population that decides what a customer receives: **the products currently on
+sale.** Probe: `tools/experiments/q4b_live_catalogue_exposure.py` (read-only, zero LLM, one HTTP
+GET), tiering through `prospector.admissibility` so it cannot drift from the shipped gate.
+
+### 25.1 Getting the denominator right — two traps, both of which produced a wrong answer first
+
+- **`store/listings/*.json` is not the catalogue.** It is a local receipt. `decay.py:52-56` records
+  the incident that proves it: four candidates re-vetted to KILL "kept selling live on
+  mumchimp.com because store/listings/{cid}.json and Store.Api's IsListed both outlive the kill."
+  Measured now: **21 of 77 receipt files have no live listing**, and two are mock fixtures (25.3).
+- **`store_platform/src/Store.Api/store.db` is not the catalogue either.** It is a DEV database
+  holding 13 packs including `demo-pack-001`/`demo-pack-002`. Queried in isolation it reports a
+  live, selling product as absent — which nearly produced a retraction of a correct finding in this
+  very section.
+
+The catalogue is the production API: `GET https://api.mumchimp.com/catalog` → **56 live items**, all
+56 carrying a dossier. Every figure below is against that.
+
+### 25.2 The measurement — the gate is a SOLE-BASIS gate, and the residual is most of the problem
+
+56 live items, 265 ruled checks, 1,054 cited URLs.
+
+| tier | citations | share |
+|---|---|---|
+| other | 750 | 71.2% |
+| government | 145 | 13.8% |
+| **ugc_social (LOW)** | **108** | **10.2%** |
+| established_org | 28 | 2.7% |
+| media | 14 | 1.3% |
+| academic | 5 | 0.5% |
+| wikipedia | 2 | 0.2% |
+| **stats_farm (LOW)** | **2** | **0.2%** |
+
+UGC is *higher* in what ships (10.2%) than in the corpus at large (8.0%), so this is not a problem
+concentrated in the kills.
+
+| | live catalogue |
+|---|---|
+| ruled checks touching a LOW tier | **75 of 265 (28.3%)** |
+| …demoted by `P1_check_aware` | **1** |
+| …left standing (**residual**) | **74** |
+| live items with ≥1 low-tier citation | **43 of 56 (77%)** |
+| live items where the gate demotes a check | 1 (`85bf91bd2895305c`) |
+| live items retaining residual low-tier evidence | **42 of 56 (75%)** |
+
+**This is not a defect in P1 and is not an argument against having shipped it.** P1 is by
+construction a *sole-basis* gate: it fires only when EVERY citation behind a ruling is
+inadmissible, and §20.3 chose that deliberately because the alternative (P0) destroyed 4.3× more
+evidence in the checks where UGC was the right source. The measurement here simply bounds what was
+bought: on the selling catalogue the gate reaches **1 of 75** low-tier-touching rulings, because a
+weak source almost always arrives alongside a plausible one.
+
+**The founder's original observation sits in the residual, and is live and priced.**
+`d8aa7528aa73eabb` — *"StorefrontShield — the ADA lawsuit-prevention kit for California small
+shops"*, **£49.00**, verified live via `GET /catalog/d8aa7528aa73eabb` → `200` — has two checks
+citing `gitnux.org`, and **both remain ADMISSIBLE under the shipped policy**:
+
+| check | verdict | cited tiers | P1 verdict |
+|---|---|---|---|
+| `buyer_intent` | supported | `other`×3 + **`stats_farm`** | admissible — ruling stands |
+| `pain_reality` | supported | `other`×4 + **`stats_farm`** | admissible — ruling stands |
+
+Their rationales still carry the stats-farm figures — *"92% plaintiff win rate"*, *"$35,000 per
+case"*, *"1.2 lawsuits per 100 firms vs 0.9 national"* — from a passage that self-describes as a
+"statistics snapshot… for a stable visual baseline". A sole-basis gate cannot remove a bad NUMBER
+from a rationale that also cites acceptable sources. **Source-or-die is a claim-level rule; the
+shipped gate is a ruling-level one, and this is the gap between them.**
+
+Residual low-quality domains still behind a standing ruling on the live catalogue: `facebook.com`
+45, `reddit.com` 19, `linkedin.com` 12, `youtube.com` 7, `tiktok.com` 7, `instagram.com` 6,
+`mumsnet.com` 6, `pinterest.com` 3, `gitnux.org` 2, `quora.com` 1.
+
+### 25.3 Two mock fixtures are resident in `store/listings/`
+
+`7bdca0e0cb4e0f68` and `9c4df0f3e0c5cc30` are not listings. Different schema from the other 75
+(`packs{…}` + `trust_metadata`, none of `title`/`market`/`catalog`), and every field is fixture
+data: `"trust_metadata": {"model": "mock", "grounding": "100% sourced"}`, evidence URLs
+`https://statutory-adjudication.example.com` and `https://api-economy.example.com`, every score `4`
+justified `"looks good"`, and real prices attached (£60/£180/£600). `reverify_due_at` 2026-07-13,
+overdue since before anyone noticed.
+
+**Buyer exposure is nil, measured not assumed** — both are absent from the production catalogue and
+from the Store.Api pack table. The harm is to measurement: anything globbing `store/listings/*.json`
+counts them as products, which is how the first pass at 25.1 got a 77-item denominator. Same defect
+class as `durable-ledger-was-inert-1874-fixture-laws` and `tests-polluted-the-production-audit-log`
+— fixtures resident in production state directories. A mock record asserting `"grounding": "100%
+sourced"` is the most misleading possible form of it.
+
+### 25.4 What this hands forward
+
+| # | action | note |
+|---|---|---|
+| Q4b.1 **DONE §25.5** | Claim-level tracing measured: 10.3% of figures are in no retrieved passage | this is the founder's actual complaint; larger than Q4, adjacent to §14 entailment |
+| Q4b.2 | Remediate `d8aa7528aa73eabb` (£49, live) — re-vet, annotate, or delist | money-rail, founder call, **not** an engine change |
+| Q4b.3 | Archive the two mock fixtures out of `store/listings/`; reject schema-less writes | small, deliberate |
+| Q4b.4 | Re-run Q4b after any admissibility change — it is the acceptance test for "did this reach the buyer?" | the corpus number cannot answer that |
+
+### 25.5 Q4b.1 DONE — claim-level tracing: 10.3% of the figures in ruled rationales are in no passage we retrieved
+
+§25.2 established the shape of the gap: the shipped gate is RULING-level, source-or-die is
+CLAIM-level, so a bad number survives in any rationale that also cites an acceptable source. This
+measures that gap directly. Probe: `tools/experiments/q4c_claim_level_tracing.py` — read-only, zero
+LLM, zero network except the catalogue fetch under `--live-only`.
+
+**Why the question is answerable from our own files.** `verify.py:375-376` builds the verdict prompt
+as `[source_id] s.text[:VERDICT_PASSAGE_TRUNCATE]` and `VERDICT_PASSAGE_TRUNCATE = 600`
+(`verify.py:477`); the instruction at `verify.py:338` is "Rule ONLY from the provided passages";
+and `verify.py:469` stores `[s for s in sources if s.source_id in citations] or sources`, so a
+dossier's `sources[].text` **is** the passage set. A figure absent from all of it was never
+retrieved. That is a fact about our files, not an inference about the web.
+
+**Five buckets, because "not in the cited passage" has innocent explanations and a headline that
+does not subtract them is an accusation, not a finding.** Corpus snapshot 1,572 dossiers, 2,613
+ruled+cited checks, 814 of them asserting at least one figure, 1,640 figures:
+
+| bucket | corpus | current moat | LIVE catalogue | meaning |
+|---|---|---|---|---|
+| `traceable` | 1,323 (80.7%) | 801 (84.8%) | 141 (83.9%) | inside the 600 chars the model saw |
+| `truncated` | **0** | **0** | **0** | in the stored passage but past the prompt budget |
+| `self_ref` | 134 (8.2%) | 62 (6.6%) | 13 (7.7%) | our own pitch, or a `listing.pricing.rungs` price |
+| `other_passage` | 14 (0.9%) | 2 (0.2%) | 0 | retrieved for the candidate, cited by a different check |
+| `untraceable` | **169 (10.3%)** | **80 (8.5%)** | **14 (8.3%)** | in **no** text this run retrieved |
+
+`truncated = 0` in all three scopes is a validity check, not a null result: if the model were
+somehow seeing text beyond the 600-char budget, figures would land in that bucket. None do, which
+is what confirms `s.text[:600]` is the right haystack.
+
+**Matching is deliberately lenient, so `untraceable` is a lower bound.** A figure counts as found
+if its bare digits appear anywhere in the passage with digit boundaries — `92` matches "92%",
+"92 percent" and "92 of them" alike; units, currency and wording are not required. Anything this
+test calls untraceable is untraceable under any stricter test. Sanity cases (8 extractor, 8
+matcher) run inline and pass, including the boundary case that `35000` must not match `135000`.
+
+**The exposure is concentrated in one check, and its residual is mostly a different defect.**
+
+| check | figures | untraceable | rate |
+|---|---|---|---|
+| `payer_solvency` | 629 | 107 | **17.0%** |
+| `claims_verifiable` | 100 | 16 | 16.0% |
+| `route_to_market` | 12 | 2 | 16.7% |
+| `incumbency` | 114 | 10 | 8.8% |
+| `legality` | 28 | 2 | 7.1% |
+| `value_durability` | 277 | 14 | 5.1% |
+| `distribution` | 81 | 4 | 4.9% |
+| `pain_reality` | 192 | 8 | 4.2% |
+| `currency` / `buyer_intent` | 104 / 103 | 3 / 3 | 2.9% / 2.9% |
+
+Reading the actual sentences shows `payer_solvency` is not mostly fabricating facts about the
+world — it is **inventing a price for our own product to argue affordability**, e.g.
+`8ce5270ade208070` "so a £39 audit is safely within budget", `a2c9948e0cc21cad` "so a £69 pack is
+within demonstrated budget", `9d79ec9bd617b4c0` "also fits a £4.99–£9.99 fee". The rung-aware
+`self_ref` bucket already absorbs £49/£149/£199 (`config.yaml listing.pricing.rungs` = 1900, 2900,
+4900, 7900, 9900, 14900, 19900); £39, £69 and £4.99 are **not rungs at any tier**, so the rationale
+is reasoning about a price the ladder will never mint. That is its own bug and it is not
+source-or-die.
+
+Subtracting that check gives the conservative rate for figures actually asserted **about the
+world**: **corpus 62/1,011 = 6.1%; current moat 34/629 = 5.4%; live catalogue 3/93 = 3.2%.**
+
+**On the selling catalogue: 11 of 56 live items (20%) carry at least one untraceable figure** —
+`08b22037fc2afc07`, `0cc434887c47cb9a`, `1723d378cff66ebc`, `6171136b72015134` (`10127.1` in a
+`claims_verifiable/supported`, cited to four US law firms), `65d1d898e62cf5b9` ("$1.68B across
+134373 players", cited to `esportsearnings.com` and `calculatorcollection.org` — neither passage
+contains either number), `6817348413f4658c`, `7c333417348e25ea`, `823a9920812ab3d4`,
+`939b559421982379`, `ac755ca1473e57fa`, `b66e17703d0ef7c0`. Full list and per-figure context:
+`tools/experiments/q4c_claim_level_tracing_receipts_live.json`.
+
+**What this does NOT claim.** That a `traceable` figure was used correctly — only that the model
+could see it. Whether the passage *entails* the sentence is the §14 entailment question and no
+digit-matching probe can answer it. 80.7% traceable is therefore a ceiling on grounded figures,
+not a measurement of grounded reasoning.
+
+### 25.6 What Q4c changes about the plan
+
+1. **The denylist instinct is now doubly wrong.** §18 killed it on relevance; §25.2 showed the
+   ruling-level gate cannot reach a bad number; §25.5 shows ~1 figure in 10 is in **no** retrieved
+   passage at all, so no policy over *which domains we accept* can touch it. The lever is
+   claim-level, at generation time or in a post-hoc check.
+2. **The cheapest real fix is a numeric-citation check, and it is deterministic.** `q4c`'s matcher
+   IS the check: after a verdict returns, extract figures from the rationale and confirm each
+   appears in a cited passage. It needs no model, costs microseconds, and its false-positive
+   direction is already the safe one. Open question for the founder: demote the check to
+   `unverifiable`, or keep the ruling and strip the offending sentence? **Not implemented — this
+   section measures; §15 P-items decide.**
+3. **`payer_solvency` needs its own fix and it is not a grounding fix.** The check argues
+   affordability against a price it invents, sometimes off-ladder. Feeding it the actual rung from
+   `config.yaml listing.pricing` would remove ~2/3 of the corpus untraceable count and make the
+   argument true.
+4. **`other_passage` at 0.9% is the good news** — mis-citation is rare. When a number is grounded,
+   the citation usually points at the right source.
+
+## 24. Wave 2 — §23.6 closed, and the two P0 backup gaps closed (2026-08-07)
+
+> Numbering note: the register carries **two** `## 23.` headers (Wave 1 at the R3/R4/S5/E13 entry,
+> Q4-on-the-selling-catalogue below it), landed by concurrent sessions. Left as found — renumbering a
+> section other work links to costs more than the collision does. This is 24.
+
+The brief was "fix the CLASS of defect, not the six instances". Four of the six §23.6 items are one
+class — **a path that is resolved relative to the current working directory, or bound at import** —
+so the fix is a module, not six edits.
+
+### 24.1 The lost-update drain (`unlist_killed.py`) — proved before it was fixed
+
+`QUEUE.write_text("")` empties a queue that `decay._queue_unlist` appends to concurrently, so every
+entry that arrives during the `fly ssh` round-trip is destroyed unprocessed. A pack the engine has
+KILLED then stays on sale, and there is no trace that it was ever queued. The failure is written down
+as a test first, `tests/unit/test_jsonl_consume.py`:
+
+```python
+append_jsonl(q, {"n": 1})
+entries = read_jsonl(q)              # drainer reads the queue
+append_jsonl(q, {"n": 2})            # producer appends while the drainer works
+q.write_text("", encoding="utf-8")   # the old drain
+assert read_jsonl(q) == []           # record 2 is simply gone
+```
+
+Fix: `prospector/jsonl_atomic.consume_jsonl` — an `fcntl.flock(LOCK_EX)`-serialised read-and-rewrite
+that writes back exactly the bytes appended after the read offset. `unlist_killed` retires processed
+entries to `pending_unlist.done.jsonl` and prints `N entry(s) arrived while unlisting`. A run that
+FAILS (a row still `IsListed=1` after the UPDATE) leaves the queue untouched and writes no done log —
+asserted, because a drain that retires work it did not finish is the same data loss wearing a
+different mask.
+
+The concurrency test spawns **4 subprocess producers × 150 records** against a draining parent and
+asserts conservation. It has to be subprocesses: `flock` is held per open file description, so a
+single-process test proves nothing about the lock.
+
+Receipts: `tests/unit/test_jsonl_consume.py` 13 tests, `tests/unit/test_unlist_killed_queue.py` 8 tests.
+
+### 24.2 The two P0 backup gaps — CLOSED, with live R2 receipts
+
+**Gap 2 (non-recursive glob).** `sync` now walks `rglob("*.json")` and keys objects by path relative
+to `DOSSIER_DIR`, so `quarantine_ungrounded/<id>.json` is a distinct key from `<id>.json`. Live:
+
+```
+STORE_BACKUP PASS dossiers=1588 uploaded=48 unchanged=1540 verified=8/8
+REMOTE quarantine_ungrounded=9   local=9   LOCAL FILES NOT IN BUCKET: 0
+```
+
+**Gap 1 (no db backup).** `sync` now also uploads a gzipped hot snapshot of `store/prospector.db`,
+taken with `Connection.backup()` from a `file:...?mode=ro` URI (never `shutil.copy` — under WAL with
+the daemon writing, a copy can capture a torn page set), `PRAGMA integrity_check` run on the
+**snapshot**, dated key, retention by lexicographic sort of the ISO date. No new launchd job was
+needed: the installed `com.prospector.backup.plist` already runs `scripts/backup_store.py` daily at
+03:40 with `WorkingDirectory` set, so the db rides the schedule that already existed.
+
+```
+db db/prospector-2026-08-07.db.gz 493891 bytes gz, dossiers=1760
+STORE_BACKUP RESTORE PASS files=1701
+  restored db/prospector-2026-08-07.db.gz -> prospector.db, integrity ok, dossiers=1760
+RESTORE_DRILL PASS checks=12 failures=0
+  [PASS] dossier_coverage  1588 live source file(s), all present in the restore
+  retained_history         1701 restored vs 1588 live — 113 object(s) the backup keeps that
+                           the source no longer has
+```
+
+**The drill was asserting the wrong property, and finding that cost a false FAIL.** Its first run
+against the real R2 payload failed `dossier_files restored=1701 source=1588` while `index_vs_tree`
+PASSED — every live row had a restored file. A cumulative bucket legitimately holds more than the
+live tree. **Backup coverage is MEMBERSHIP, not count**: count-equality can pass while N files are
+missing and N stale ones are present. `verify_counts` now checks that every live source file is in
+the restore and reports the surplus as a note; two tests pin the replacement, including one where an
+unindexed live source file is dropped from the payload — `dossier_coverage` fails while
+`index_vs_tree` still passes, which is exactly the hole the old check had.
+
+Receipts: `tests/unit/test_backup_store_coverage.py` 18 tests, `tests/unit/test_restore_drill.py`
+17 tests.
+
+### 24.3 The class itself — `prospector/paths.py`
+
+A cwd-relative `Path("store/...")` fails two ways, and the second is the expensive one: run the
+daemon from anywhere but the repo root and it reads and writes a *phantom* `store/`; bind it at
+import and no test fence can redirect it afterwards. That second mode is the documented cause of
+fixture rows in the production audit log and 1,874 fixture `LAW:` lines in the durable ledger.
+
+`paths.py` resolves **per call** from an `ANCHOR` derived from `__file__`, with
+`PROSPECTOR_REPO_ROOT` / `PROSPECTOR_STORE_ROOT` overrides (store wins, so a fixture can redirect
+runtime state without faking a whole repo). `tests/unit/test_paths.py` pins the property a constant
+cannot have: it imports a consumer FIRST, then moves the root, and asserts the consumer follows —
+plus subprocess inheritance, because most of this code (daemon, backfill driver, cockpit runner)
+runs as its own process.
+
+Converted: **19 call-time cwd-relative literals**, all in `prospector/control_center/` —
+`readers.py` (13), `pages/_resume.py` (3), `runner.py` (2) — plus `decay.py` and `unlist_killed.py`
+from the §23.6 list. Grep for the literal in that package now returns nothing.
+
+**Left alone, deliberately:** 9 module-level constants that are already `__file__`-anchored
+(`audit.py:134 _AUDIT_DIR`, `health.py:31/37`, `pipeline/middleware.py:26`, `prompts.py:17`,
+`retrieval.py:36`, `run.py:167`, 2 in `tools/experiments/`). They are import-bound but not
+cwd-relative, i.e. the lesser half of the defect, and `audit.py` is already fenced by
+`tests/conftest.py:37-38` patching both the env var and the module attribute. Churning the audit hot
+path to remove a hazard a fence already covers buys nothing.
+
+`runner.py:104 _production_jobs_file()` deliberately does NOT route through the `_jobs_file()`
+accessor: it is the guard that answers "is this the real production jobs file?", so it must resolve
+the anchored path even when a test has redirected the accessors. Anchoring made that guard stronger,
+not weaker — it used to be cwd-relative, which is to say it could be fooled by a `cd`.
+
+### 24.4 `PYTHONPATH` is no longer required
+
+`pytest.ini` gained `pythonpath = .`. Proof is running it with the variable actively removed, from a
+foreign cwd:
+
+```
+$ cd /tmp && env -u PYTHONPATH <repo>/.venv/bin/python -m pytest <repo>/tests/unit/test_paths.py -q
+7 passed
+```
+
+### 24.5 A lint receipt now exists
+
+`ruff 0.16.2` is in `.venv` and in `requirements.txt`; the rule set is pinned in `ruff.toml` because
+installing ruff alone would not have produced a usable receipt — unconfigured it reports **1085**
+findings on ruff 0.16 and the set drifts with the version, so two checkouts would disagree about
+whether the tree is clean. Pinned to `E4/E7/E9/F/I`, the measured baseline is **393**, itemised in
+`ruff.toml` along with both moves it has already made. Not yet wired into the commit gate; the number
+is the ratchet.
+
+The path conversion added **zero** findings — each touched file was checked against its own HEAD
+version via `git show HEAD:<f> | ruff check --stdin-filename <f> -`.
+
+### 24.6 Receipts, whole-tree
+
+```
+full suite          1875 passed, 3 skipped in 1390.08s   exit 0
+the five new/changed suites   59 passed in 24.65s        exit 0
+POPDD python lane   1877 passed                          exit 0
+ruff  prospector/ tools/ scripts/ tests/   393 findings (baseline, unchanged by this work)
+```
+
+**One test had to be fixed to get there, and it is not a defect in the code under test.**
+`tests/control_center/test_auth.py::test_unconfigured_portal_fails_closed` failed four runs in a row
+with `RuntimeError: AppTest script run timed out after 3(s)` and then BLOCKED the POPDD gate
+(`1876 passed, 1 failed`). It is not this branch: `auth.py` imports only `hmac`, `os` and
+`streamlit`, it passed inside the green full-suite run above, and *which* of the two AppTest tests
+fails changes with run order — whichever goes first. Streamlit's `AppTest` deadline is 3
+**wall-clock** seconds (`local_script_runner.require_widgets_deltas`), and the box was at
+`load averages: 210.54` with three concurrent-session pytest processes and a graphify refresh on it.
+
+A wall-clock deadline that short is a load meter, not an assertion — none of the five assertions in
+that file is about speed. Fixed at the construction site,
+`AppTest.from_function(_gated_app, default_timeout=60)`, which is inherited by the chained
+`at.button[0].click().run()` calls too. `5 passed in 1.30s` — a genuine hang still fails.
+
+### 24.7 What this hands forward
+
+| # | action | note |
+|---|---|---|
+| W2.1 | ~~Decide whether the `AppTest` deadline should be raised~~ **DONE, §24.6** — `default_timeout=60`. `test_auth.py` is the only `AppTest` user in `tests/`, so there is nothing else to raise; re-apply the same at the construction site if another one is written | a 3s wall-clock deadline is a load meter, not an assertion |
+| W2.2 | Ratchet the 393 ruff findings down; the 10 `F821` first | an undefined name is a NameError waiting for its branch |
+| W2.3 | Wire `ruff check` into the POPDD gate once the baseline is 0 | a gate whose first act is a 700-file autofix gets turned off |
+| W2.4 | Renumber the duplicate `## 23.` sections in this register | cosmetic, but it breaks cross-references |

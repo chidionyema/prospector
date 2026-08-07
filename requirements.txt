@@ -5,6 +5,10 @@ pydantic>=2.6
 requests>=2.31
 tenacity>=8.2
 pytest>=8.0
+# The linter, declared so a lint receipt is reproducible rather than a property of whichever
+# machine happens to have it. Rule set is pinned in ruff.toml; without it ruff's own defaults
+# drift between versions and two checkouts disagree about whether the tree is clean.
+ruff>=0.16
 python-json-logger>=2.0
 # Markdown -> HTML for the bundle's self-contained index.html reading experience
 # (bridge.py::_create_bundle -> pack_html.py). Imported at module top level (not lazy) since

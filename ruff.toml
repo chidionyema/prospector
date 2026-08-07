@@ -1,0 +1,64 @@
+# Lint configuration. Exists so that "run the linter" is a reproducible instruction.
+#
+# COMMERCIAL_READINESS_PROGRAM §23.6 recorded "no ruff in .venv … no lint receipt is
+# obtainable". Installing ruff alone would not have fixed that: with no config file ruff 0.16
+# selects a much wider default set and reports 1085 findings across prospector/ tools/
+# scripts/, which is not a signal anyone can act on — and the set would drift with the ruff
+# version, so two checkouts would disagree about whether the tree is clean.
+#
+# So the rule set is pinned here, deliberately narrow:
+#
+#   E4/E7/E9  pycodestyle errors that are usually real defects (bad imports, `l = 1`,
+#             statements glued onto one line, bare except)
+#   F         pyflakes — undefined names, unused imports, redefinitions
+#   I         import ordering, because unsorted imports are how a duplicate or shadowed
+#             import hides in a diff
+#
+# Explicitly NOT selected: UP/SIM/PERF/B/S. Every one of them proposes rewriting working,
+# reviewed code, and a lint gate whose first act is a 700-file autofix is a gate that gets
+# turned off. They can be adopted one rule at a time, each with its own cleanup commit.
+#
+# BASELINE, measured 2026-08-07 on this rule set:
+#     .venv/bin/ruff check prospector/ tools/ scripts/ tests/   ->  393 findings
+#     154 I001 unsorted-imports, 146 F401 unused-import, 27 F841 unused-variable,
+#     13 E402, 10 F541, 10 F821 undefined-name, 9 E702, 9 E741, 6 E701, 5 F811, 2 E722,
+#     1 E401, 1 E713
+# The 10 F821 are worth a look on their own — an undefined name is a NameError waiting for
+# the branch that reaches it, not a style opinion.
+# That is pre-existing debt, not a regression, and it is why this is not yet wired into the
+# commit gate. The number is the ratchet: it must go down, never up.
+#
+# It has already moved twice, in both directions, which is the point of writing it down:
+#   397 -> 387  the control_center E402 ignore below (23 E402 -> 13), a rule that was firing
+#               on a structural pattern rather than on a defect
+#   387 -> 393  +12 from prospector/admissibility.py, prospector/cli_auth.py and
+#               tools/experiments/q4_*.py, landed by a concurrent session, -1 from the
+#               readers.py import block fixed here
+# The path-anchoring conversion in this branch added no findings: every file it touched is
+# clean, verified file-by-file against `git show HEAD:<f> | ruff check --stdin-filename <f>`.
+line-length = 100
+target-version = "py312"
+
+exclude = [
+    ".venv",
+    "store",
+    "storage",
+    "graphify-out",
+    "store_platform",
+    "**/node_modules",
+]
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[lint.per-file-ignores]
+# Entry points that must extend sys.path before they can import the package they live beside.
+# The alternative is an editable install, which pytest.ini already explains this repo does not
+# have. Marked here rather than with a noqa on every line, so the reason is stated once.
+"tools/*.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+"tests/**/*.py" = ["E402"]
+# Same reason, one step further: streamlit executes a page module as a script, so the Control
+# Center's modules carry the same `if <root> not in sys.path: insert` preamble ahead of their
+# imports. Without this, adding an import to a cockpit page is a lint regression by construction.
+"prospector/control_center/**/*.py" = ["E402"]

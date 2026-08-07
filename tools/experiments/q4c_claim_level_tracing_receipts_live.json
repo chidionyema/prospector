@@ -1,0 +1,277 @@
+{
+  "buckets": {
+    "self_ref": 13,
+    "traceable": 141,
+    "untraceable": 14
+  },
+  "by_check": {
+    "buyer_intent": {
+      "traceable": 11
+    },
+    "claims_verifiable": {
+      "traceable": 7,
+      "untraceable": 1
+    },
+    "currency": {
+      "traceable": 14
+    },
+    "distribution": {
+      "self_ref": 1,
+      "traceable": 6
+    },
+    "incumbency": {
+      "traceable": 4
+    },
+    "legality": {
+      "traceable": 4
+    },
+    "pain_reality": {
+      "traceable": 22,
+      "untraceable": 2
+    },
+    "payer_solvency": {
+      "self_ref": 12,
+      "traceable": 52,
+      "untraceable": 11
+    },
+    "value_durability": {
+      "traceable": 21
+    }
+  },
+  "by_verdict": {
+    "refuted": {
+      "self_ref": 2,
+      "traceable": 8,
+      "untraceable": 2
+    },
+    "supported": {
+      "self_ref": 11,
+      "traceable": 133,
+      "untraceable": 12
+    }
+  },
+  "checks_all_traceable": 74,
+  "checks_with_figures": 85,
+  "checks_with_untraceable": 11,
+  "dossiers": 56,
+  "examples": [
+    {
+      "candidate": "08b22037fc2afc07",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carers.org",
+        "carersuk.org"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The passages describe the exact group this service charges \u2014 family carers who have cut or given up paid work \u2014 as financially squeezed: 62% of Carer's Allowance recipients, about half a million people, live in poverty, 26% of unpaid carers have had to borrow money, and being out",
+      "untraceable_figures": [
+        "320"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "1723d378cff66ebc",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carersuk.org",
+        "caringtogether.org",
+        "essexmagazine.co.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The only passages about the payer segment show unpaid carers are financially precarious, 'less able to cope with additional costs', driven into acute hardship on \u00a367.60 a week, and modelled as living in poverty \u2014 directly negating the claim that this payer has spare budget for a ",
+      "untraceable_figures": [
+        "95"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "6171136b72015134",
+      "check": "claims_verifiable",
+      "cited_hosts": [
+        "erisaattorneys.com",
+        "kantorlaw.net",
+        "leginfo.legislature.ca.gov",
+        "sandstonelawgroup.com",
+        "theinsuranceattorneys.com"
+      ],
+      "cited_tiers": [
+        "government",
+        "other"
+      ],
+      "rationale": "Multiple retrievable public sources confirm the candidate's central factual claim: long-term care insurance claim denials are a real and common problem for California families, leaving them with unexpected bills and pushing them toward legal help [dfce839d0add1152][30cea33832b42a",
+      "untraceable_figures": [
+        "10127.1"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "65d1d898e62cf5b9",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "calculatorcollection.org",
+        "esportsearnings.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passages establish that real, substantial prize money flows to esports players ($1.68B across 134,373 players per [46fb40c44724db26]), and that players already routinely cede a percentage cut of their winnings (10\u201330% to orgs per [93a0481a7c33c191]) \u2014 since this service is co",
+      "untraceable_figures": [
+        "1.68",
+        "134373"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "6817348413f4658c",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "fluxnote.io"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Passage [5ee4589f6ec4f5c3] confirms Twitch offers real monetization/revenue streams to streamers in 2026, establishing that the payer segment earns income they can spend and stand to lose \u2014 the ad+sub revenue the service protects. This shows motive and a plausible budget, though ",
+      "untraceable_figures": [
+        "5000"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "823a9920812ab3d4",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carmarthenshire.gov.wales",
+        "employersforcarers.org"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Passages [31e1b98e5e00fb65] and [2e4fad601f8267cf] confirm carers face real, worsening financial hardship, which \u2014 under a \u00a30-upfront contingency model paid from recovered funds \u2014 gives an acute motive to pay and no solvency barrier, since the fee comes out of money the broker re",
+      "untraceable_figures": [
+        "0"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "8ce5270ade208070",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "alltracksacademy.com",
+        "natives.co.uk",
+        "nonstopsnow.com",
+        "xtremegapyear.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The same 18-26 UK demographic demonstrably spends substantial money on ski-season entry \u2014 gap-year instructor courses are 'a lot of money' yet have sustained providers like ALLTRACKS for almost 20 years \u2014 so a \u00a339 audit is safely within budget for a segment already paying far mor",
+      "untraceable_figures": [
+        "39"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "939b559421982379",
+      "check": "pain_reality",
+      "cited_hosts": [
+        "facebook.com",
+        "local.gov.uk",
+        "netmums.com"
+      ],
+      "cited_tiers": [
+        "government",
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "One passage states directly that wraparound childcare bills and a frantic 3.15pm dash to the school gate are a daily reality for thousands of working UK parents [b7d7953863471a85], which shows families are both paying for and struggling with the exact collection problem this busi",
+      "untraceable_figures": [
+        "150",
+        "220"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "9d79ec9bd617b4c0",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "bigissue.com",
+        "moneymiles.co.uk",
+        "visionarynetwork.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "MoneyMiles sells UK gig drivers on Uber, Bolt, Deliveroo and Amazon Flex a \u00a37.99/month tool and reports 2,300+ drivers, which shows this same group already pays for software that protects earnings. Broader UK subscription spend of about \u00a372 a month also fits a \u00a34.99\u2013\u00a39.99 fee; th",
+      "untraceable_figures": [
+        "4.99",
+        "9.99"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "a2c9948e0cc21cad",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "reddit.com",
+        "tfl.gov.uk",
+        "uber.com"
+      ],
+      "cited_tiers": [
+        "government",
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "The passages show this exact payer already spends real money on licensing \u2014 \u00a3120 for a GP medical declaration, \u00a3310 for a renewal, plus council application fees \u2014 so a \u00a369 pack is within demonstrated budget, and the forum applicant actively totting up costs shows live motive to s",
+      "untraceable_figures": [
+        "69"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "ac755ca1473e57fa",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "childcarenurseries.co.uk",
+        "gov.uk",
+        "moneysavingexpert.com",
+        "nurseryadvice.co.uk",
+        "theguardian.com",
+        "ukcostguide.co.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "media",
+        "other"
+      ],
+      "rationale": "The passages establish that UK parents pay substantial nursery fees (average costs broken down by age, region and type, with full-time and part-time bills large enough to warrant guides on reducing them) and are supplemented by Tax-Free Childcare, 30 free hours, vouchers and Univ",
+      "untraceable_figures": [
+        "800"
+      ],
+      "verdict": "supported"
+    }
+  ],
+  "figures": 168,
+  "live_items": 56,
+  "live_items_dirty": [
+    "08b22037fc2afc07",
+    "1723d378cff66ebc",
+    "6171136b72015134",
+    "65d1d898e62cf5b9",
+    "6817348413f4658c",
+    "823a9920812ab3d4",
+    "8ce5270ade208070",
+    "939b559421982379",
+    "9d79ec9bd617b4c0",
+    "a2c9948e0cc21cad",
+    "ac755ca1473e57fa"
+  ],
+  "ruled_cited_checks": 268,
+  "scope": "LIVE CATALOGUE",
+  "verdict_passage_truncate": 600
+}

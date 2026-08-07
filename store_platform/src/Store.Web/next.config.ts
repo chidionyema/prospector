@@ -123,6 +123,26 @@ const nextConfig: NextConfig = {
       // any link already in an inbox keeps working. Next.js carries the query string through a
       // redirect, so ?user_id=…&token=… survives; `verify=1` / `reset=1` is what /account
       // dispatches on, so the old paths add it here.
+      // THE SHELF GETS A URL. It had none: the catalogue is a section of the home page reachable
+      // only as `/#catalog`, so the one thing this site sells could not be linked to, typed, or
+      // put in an ad without a fragment nobody guesses. `/catalogue` is the word the nav and the
+      // footer both already use for it.
+      //
+      // A redirect and NOT a second page, deliberately. `Seo` derives the canonical URL from
+      // `asPath` with no override (components/Seo.tsx:79), so a route that re-rendered the home
+      // page would self-canonicalise and put two URLs serving identical content in the index --
+      // which costs more than the missing route does. The honest separate page means lifting
+      // `CatalogBrowser` and its ~90-line `getServerSideProps` out of pages/index.tsx, which is a
+      // refactor of the highest-traffic page in the week of launch. This gets the linkable URL now
+      // and leaves that door open.
+      //
+      // `permanent: false` (307) for exactly that reason: a 308 is cached by the browser
+      // indefinitely, and promoting `/catalogue` to a real page later would then have to fight
+      // every visitor's cache.
+      { source: "/catalogue", destination: "/#catalog", permanent: false },
+      // British spelling is the canonical one (see MARKETING_NAV); the American one is what a US
+      // visitor will type.
+      { source: "/catalog", destination: "/#catalog", permanent: false },
       { source: "/login", destination: "/account", permanent: false },
       { source: "/register", destination: "/account?mode=register", permanent: false },
       { source: "/forgot-password", destination: "/account", permanent: false },

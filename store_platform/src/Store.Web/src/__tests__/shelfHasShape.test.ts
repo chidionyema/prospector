@@ -51,7 +51,16 @@ describe('the shelf has editorial shape', () => {
   it('hides the capped cards rather than dropping them from the DOM', () => {
     // The failure this catches is a "tidy-up" refactor to `.slice(0, shown).map(...)`: green on
     // every unit test, and it quietly strips the catalogue's internal links out of the HTML.
-    expect(page).toMatch(/i >= shown && 'hidden'/);
+    //
+    // Was pinned to the literal `i >= shown && 'hidden'`. The shelf was re-banded into lead / mid /
+    // row groups, so the position is no longer the map index of the element being rendered; it is
+    // looked up through a `rank` map and applied by a named `beyondFold` predicate. The literal was
+    // the old MECHANISM, not the property. What is asserted now is the property in both halves:
+    // something derives "past the cap" from `shown`, and whatever that is decides `'hidden'`.
+    expect(page, 'the cap must still be derived from `shown`').toMatch(/>= shown/);
+    expect(page, 'past-the-cap cards must be hidden, not unmounted').toMatch(
+      /beyondFold\(pack\) && 'hidden'/,
+    );
     expect(
       /tailPacks\.slice\(\s*0\s*,\s*shown/.test(page),
       'the tail must be rendered in full and hidden, never sliced away',

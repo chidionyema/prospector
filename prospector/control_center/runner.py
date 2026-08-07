@@ -33,13 +33,31 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from prospector import paths
+
 # Module-level singleton: in-memory ring buffers keyed by job_id
 _RING_BUFFERS: dict[str, list[str]] = {}
 _JOB_STATUS: dict[str, str] = {}  # job_id → canonical in-memory status
 _RING_MAX = 2000
-_JOBS_FILE = Path("store/control_center/jobs.json")
-_CC_DIR = Path("store/control_center")
-_RUNS_DIR = Path("store/control_center/runs")
+# Resolved per call, not bound at import (prospector/paths.py). The module-level names remain
+# as overrides — `None` means "resolve now" — because tests/control_center/conftest.py pins all
+# three with monkeypatch.setattr, and _runs_dir now DERIVES from _cc_dir so redirecting the
+# directory cannot leave one of its children pointing at production.
+_JOBS_FILE: Path | None = None
+_CC_DIR: Path | None = None
+_RUNS_DIR: Path | None = None
+
+
+def _cc_dir() -> Path:
+    return _CC_DIR or paths.store_path("control_center")
+
+
+def _jobs_file() -> Path:
+    return _JOBS_FILE or _cc_dir() / "jobs.json"
+
+
+def _runs_dir() -> Path:
+    return _RUNS_DIR or _cc_dir() / "runs"
 
 # Grace period between SIGTERM and SIGKILL when cancelling a job.
 _CANCEL_GRACE_SECONDS = 5
@@ -83,7 +101,7 @@ raise SystemExit(rc)
 # ---------------------------------------------------------------------------
 
 def _production_jobs_file() -> Path:
-    return Path("store/control_center/jobs.json").resolve()
+    return paths.store_path("control_center", "jobs.json").resolve()
 
 
 def is_ephemeral_job(job: dict[str, Any]) -> bool:
@@ -108,7 +126,7 @@ def is_ephemeral_job(job: dict[str, Any]) -> bool:
         try:
             p = Path(log_file)
             if p.is_absolute():
-                store_runs = Path("store/control_center/runs").resolve()
+                store_runs = paths.store_path("control_center", "runs").resolve()
                 try:
                     p.resolve().relative_to(store_runs)
                 except ValueError:
@@ -147,7 +165,7 @@ def _load_jobs_from(path: Path) -> list[dict[str, Any]]:
 
 
 def _load_jobs() -> list[dict[str, Any]]:
-    return _load_jobs_from(_JOBS_FILE)
+    return _load_jobs_from(_jobs_file())
 
 
 def _save_jobs_to(path: Path, jobs: list[dict[str, Any]]) -> None:
@@ -175,8 +193,8 @@ def _save_jobs_to(path: Path, jobs: list[dict[str, Any]]) -> None:
 
 
 def _save_jobs(jobs: list[dict[str, Any]]) -> None:
-    _CC_DIR.mkdir(parents=True, exist_ok=True)
-    _save_jobs_to(_JOBS_FILE, jobs)
+    _cc_dir().mkdir(parents=True, exist_ok=True)
+    _save_jobs_to(_jobs_file(), jobs)
 
 
 def _upsert_job(jobs_file: Path, job_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
@@ -389,9 +407,9 @@ def launch(argv: list[str]) -> str:
     running.
     """
     with _ACTUATOR_LOCK:
-        jobs_file = Path(_JOBS_FILE)
-        runs_dir = Path(_RUNS_DIR)
-        cc_dir = Path(_CC_DIR)
+        jobs_file = Path(_jobs_file())
+        runs_dir = Path(_runs_dir())
+        cc_dir = Path(_cc_dir())
 
         jobs = _load_jobs_from(jobs_file)
         try:
@@ -632,7 +650,7 @@ def _watch_job(
 
 def cancel_job(job_id: str) -> None:
     """Cancel a running job: SIGTERM process group → grace → SIGKILL."""
-    jobs_file = Path(_JOBS_FILE)
+    jobs_file = Path(_jobs_file())
     jobs = _load_jobs_from(jobs_file)
     for j in jobs:
         if j.get("job_id") != job_id:
@@ -674,7 +692,7 @@ def _resolve_log_file(job_id: str) -> Path:
             if p.exists():
                 return p
         break
-    return _RUNS_DIR / f"{job_id}.log"
+    return _runs_dir() / f"{job_id}.log"
 
 
 def get_log_lines(job_id: str, n: int = 200) -> list[str]:
@@ -701,7 +719,7 @@ def load_jobs() -> list[dict[str, Any]]:
             continue
         pid = j.get("pid")
         job_id = j.get("job_id") or ""
-        log_file = Path(j.get("log_file") or (_RUNS_DIR / f"{job_id}.log"))
+        log_file = Path(j.get("log_file") or (_runs_dir() / f"{job_id}.log"))
         exit_file = _exit_file_for(log_file)
 
         if status == "queued" and pid is None:
@@ -714,7 +732,7 @@ def load_jobs() -> list[dict[str, Any]]:
 
         if pid and _job_complete(int(pid), exit_file):
             new_status = _finalize_job(
-                Path(_JOBS_FILE), job_id,
+                Path(_jobs_file()), job_id,
                 log_file=log_file,
                 exit_file=exit_file,
                 start_ts=float(j.get("start_ts") or time.time()),
@@ -729,7 +747,7 @@ def load_jobs() -> list[dict[str, Any]]:
 
     prod = _production_jobs_file()
     try:
-        writing_prod = Path(_JOBS_FILE).resolve() == prod
+        writing_prod = Path(_jobs_file()).resolve() == prod
     except OSError:
         writing_prod = False
 
@@ -834,12 +852,12 @@ def _job_complete(pid: int | None, exit_file: Path) -> bool:
 
 def sweep_old_logs(retain_days: int = 30) -> int:
     """CC go-live task #4 — prune run logs older than `retain_days`."""
-    if not _RUNS_DIR.exists():
+    if not _runs_dir().exists():
         return 0
 
     cutoff = time.time() - (retain_days * 86400)
     removed = 0
-    for log_file in _RUNS_DIR.glob("*.log"):
+    for log_file in _runs_dir().glob("*.log"):
         try:
             if log_file.stat().st_mtime < cutoff:
                 log_file.unlink()

@@ -21,6 +21,18 @@ def _gated_app():
     st.write("PAST_GATE")
 
 
+# AppTest's default deadline is 3 WALL-CLOCK seconds (`local_script_runner.require_widgets_deltas`),
+# which on a loaded box measures the machine, not the gate. It blocked a commit at `load averages:
+# 210.54` with `RuntimeError: AppTest script run timed out after 3(s)` — and whichever of these
+# tests ran FIRST was the one that failed, which is the tell. None of the assertions below is about
+# speed, so the deadline is raised to a value that still catches a genuine hang.
+_RUN_TIMEOUT = 60
+
+
+def _app() -> AppTest:
+    return AppTest.from_function(_gated_app, default_timeout=_RUN_TIMEOUT)
+
+
 def _past_gate(at) -> bool:
     return any("PAST_GATE" in (md.value or "") for md in at.markdown)
 
@@ -35,7 +47,7 @@ def _authed(at) -> bool:
 
 def test_unconfigured_portal_fails_closed(monkeypatch):
     monkeypatch.delenv(_PASSWORD_ENV, raising=False)
-    at = AppTest.from_function(_gated_app).run()
+    at = _app().run()
     assert not _past_gate(at)
     assert len(at.error) >= 1
     assert not _authed(at)
@@ -43,7 +55,7 @@ def test_unconfigured_portal_fails_closed(monkeypatch):
 
 def test_configured_portal_requires_signin(monkeypatch):
     monkeypatch.setenv(_PASSWORD_ENV, "s3cret")
-    at = AppTest.from_function(_gated_app).run()
+    at = _app().run()
     assert not _past_gate(at)
     assert not _authed(at)
     # A sign-in field is offered.
@@ -52,7 +64,7 @@ def test_configured_portal_requires_signin(monkeypatch):
 
 def test_preauthed_session_passes_through(monkeypatch):
     monkeypatch.setenv(_PASSWORD_ENV, "s3cret")
-    at = AppTest.from_function(_gated_app)
+    at = _app()
     at.session_state[_AUTHED_KEY] = True
     at.run()
     assert _past_gate(at)
@@ -60,7 +72,7 @@ def test_preauthed_session_passes_through(monkeypatch):
 
 def test_wrong_password_blocks(monkeypatch):
     monkeypatch.setenv(_PASSWORD_ENV, "s3cret")
-    at = AppTest.from_function(_gated_app).run()
+    at = _app().run()
     at.text_input[0].set_value("nope")
     at.button[0].click().run()
     assert not _authed(at)
@@ -69,7 +81,7 @@ def test_wrong_password_blocks(monkeypatch):
 
 def test_correct_password_authenticates(monkeypatch):
     monkeypatch.setenv(_PASSWORD_ENV, "s3cret")
-    at = AppTest.from_function(_gated_app).run()
+    at = _app().run()
     at.text_input[0].set_value("s3cret")
     at.button[0].click().run()
     assert _authed(at)

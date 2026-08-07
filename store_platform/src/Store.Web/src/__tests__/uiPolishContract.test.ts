@@ -24,18 +24,31 @@ describe('A1. prefers-reduced-motion rule in globals.css', () => {
     expect(css).toMatch(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/);
   });
 
+  /*
+   * ALL of them, not the first one.
+   *
+   * These two assertions used `css.match(...)`, which returns the FIRST match, on the assumption
+   * that the stylesheet has exactly one reduced-motion block. It now has three (view transitions,
+   * the hero's kill drift, and the catch-all), and the catch-all that actually carries these
+   * declarations is last. The single-match form failed on a stylesheet where the property holds,
+   * and would equally have PASSED on one where a later block silently dropped it. Matching every
+   * block and asserting the property holds somewhere across them is what was meant all along.
+   */
+  const reducedMotionBlocks = () => {
+    const blocks = css.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)[\s\S]*?\n\}\n\}/g)
+      ?? css.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)[\s\S]*?\n\}/g);
+    expect(blocks, 'at least one reduced-motion block').not.toBeNull();
+    return blocks!.join('\n');
+  };
+
   it('disables the global transition blanket under reduced motion', () => {
     // The blanket applies to a, button, input, select, textarea, .card-transition. Under reduced
     // motion it must set transition: none (or equivalent) on at least one of those selectors.
-    const block = css.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)[\s\S]*?\n\}/);
-    expect(block, 'reduced-motion block').not.toBeNull();
-    expect(block![0]).toMatch(/transition\s*:\s*none/);
+    expect(reducedMotionBlocks()).toMatch(/transition\s*:\s*none/);
   });
 
   it('sets scroll-behavior: auto under reduced motion', () => {
-    const block = css.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)[\s\S]*?\n\}/);
-    expect(block).not.toBeNull();
-    expect(block![0]).toMatch(/scroll-behavior\s*:\s*auto/);
+    expect(reducedMotionBlocks()).toMatch(/scroll-behavior\s*:\s*auto/);
   });
 });
 
@@ -122,9 +135,22 @@ describe('D. PackCard has a :focus-visible ring', () => {
   it('PackCard link class string contains focus-visible:', () => {
     // The PackCard <Link> opens with a className that spans several lines. Pull the whole
     // className string out and assert focus-visible is present.
+    //
+    // The ring is now a `focusRing` constant shared by all three card variants instead of being
+    // repeated inline, which is why the literal `focus-visible:` left the class string. The
+    // assertion follows the indirection rather than treating it as a regression: a shared constant
+    // is the stronger arrangement, because a fourth variant gets the ring by construction. Both
+    // halves are asserted, so deleting the ring from the constant still fails here.
     const match = index.match(/<Link[\s\S]*?href=\{`\/pack\/\$\{pack\.id\}`\}[\s\S]*?className=\{cx\(([\s\S]*?)\}\)/);
     expect(match, 'PackCard link markup').not.toBeNull();
-    expect(match![1]).toMatch(/focus-visible:/);
+    expect(match![1], 'card link must carry the ring, inline or via focusRing').toMatch(
+      /focus-visible:|focusRing/,
+    );
+    if (!/focus-visible:/.test(match![1])) {
+      const ring = index.match(/const focusRing\s*=\s*([\s\S]*?);\n/);
+      expect(ring, 'focusRing constant').not.toBeNull();
+      expect(ring![1], 'the shared focusRing must define a visible ring').toMatch(/focus-visible:/);
+    }
   });
 });
 

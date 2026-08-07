@@ -124,3 +124,106 @@ def test_an_unknown_md_is_rendered_at_the_end_never_dropped():
     html = zipfile.ZipFile(io.BytesIO(out)).read("index.html").decode("utf-8")
     assert "body of 99_Bonus.md" in html
     assert html.index("body of 99_Bonus.md") > html.index("body of QA_Report.md")
+
+
+# --- manifest.jsonld backfill -------------------------------------------------------------------
+# The second generated file. index.html can be rebuilt from the zip alone; the manifest cannot,
+# because the evidence it carries (checks, verdicts, cited passages) lives only in store/dossiers.
+# That asymmetry is the whole reason these tests exist separately from the ones above.
+
+import json  # noqa: E402
+
+from prospector import pack_manifest  # noqa: E402
+from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict  # noqa: E402
+from tools.backfill_bundle_html import load_local_dossier  # noqa: E402
+
+
+def _dossier_dict():
+    cand = Candidate(candidate_id="x" * 16, title="T", one_liner="o", market="uk",
+                     who_pays="operators", why_now="new rules")
+    check = CheckResult(
+        check_name="buyer_intent", verdict=Verdict.SUPPORTED, confidence=0.8,
+        rationale="Growers search for closure guidance.",
+        citations=["s1"],
+        sources=[Source(source_id="s1", url="https://example.gov.uk/x", text="Notices are weekly.")],
+    )
+    return Dossier(candidate=cand, decision=Decision.PASS, checks=[check],
+                   created_at="2026-07-31T00:00:00Z").to_dict()
+
+
+def _dossier():
+    return pack_manifest.dossier_from_dict(_dossier_dict())
+
+
+def test_a_dossier_adds_a_manifest_whose_digests_match_the_shipped_bytes():
+    """The manifest's digests must be of the bytes IN THE ZIP, not of a decode round-trip.
+
+    The reader path decodes entries with errors="replace"; a digest taken over that string would
+    differ from the file it describes on any byte the codec could not round-trip, turning the one
+    file whose job is to be machine-checkable into the one file that fails its own check.
+    """
+    out = rebuild_zip_with_index(_full_bundle(), META, _dossier(), "x" * 16)
+    z = zipfile.ZipFile(io.BytesIO(out))
+    doc = json.loads(z.read(pack_manifest.MANIFEST_FILENAME).decode("utf-8"))
+
+    import hashlib
+    docs = [n for n in doc["@graph"] if n.get("@type") == "DigitalDocument"]
+    assert [n["contentUrl"] for n in docs if n.get("prospector:promisedDeliverable") is not False] \
+        == list(BUNDLE_FILES)
+    for node in docs:
+        body = z.read(node["contentUrl"])
+        assert node["prospector:sha256"] == hashlib.sha256(body).hexdigest(), node["contentUrl"]
+
+    # index.html is regenerated in this same call, so the manifest must digest the NEW reader.
+    reader = next(n for n in docs if n["contentUrl"] == "index.html")
+    assert reader["prospector:sha256"] == hashlib.sha256(z.read("index.html")).hexdigest()
+    assert reader["prospector:promisedDeliverable"] is False
+
+
+def test_without_a_dossier_no_manifest_is_invented():
+    """An EMPTY evidence record reads, to an agent, as a pack that was never verified — strictly
+    worse than no manifest, because absence is honest. A pack whose dossier is gone still gets its
+    reader fixed."""
+    out = rebuild_zip_with_index(_full_bundle(), META)
+    names = zipfile.ZipFile(io.BytesIO(out)).namelist()
+    assert pack_manifest.MANIFEST_FILENAME not in names
+    assert "index.html" in names
+
+
+def test_a_correct_reader_with_no_manifest_still_converts():
+    """The idempotency check is an AND. Every pack listed today has a reader and no manifest; a
+    presence test on index.html alone would skip all of them and the feature would reach nobody."""
+    once = rebuild_zip_with_index(_full_bundle(), META)
+    assert rebuild_zip_with_index(once, META) is None, "precondition: reader already correct"
+    out = rebuild_zip_with_index(once, META, _dossier(), "x" * 16)
+    assert out is not None
+    assert pack_manifest.MANIFEST_FILENAME in zipfile.ZipFile(io.BytesIO(out)).namelist()
+
+
+def test_rerunning_with_the_same_dossier_is_a_no_op():
+    once = rebuild_zip_with_index(_full_bundle(), META, _dossier(), "x" * 16)
+    assert rebuild_zip_with_index(once, META, _dossier(), "x" * 16) is None
+
+
+def test_a_shipped_manifest_is_never_dropped_because_the_dossier_went_missing():
+    """Deleting evidence a buyer already has, because a local file moved, is data loss wearing a
+    no-op's clothes."""
+    once = rebuild_zip_with_index(_full_bundle(), META, _dossier(), "x" * 16)
+    stale = zipfile.ZipFile(io.BytesIO(once))
+    kept = stale.read(pack_manifest.MANIFEST_FILENAME)
+    # Force a rebuild with no dossier by breaking the reader.
+    broken = _zip([(n, stale.read(n)) for n in stale.namelist() if n != "index.html"]
+                  + [("index.html", b"<p>stale</p>")])
+    out = rebuild_zip_with_index(broken, META)
+    z = zipfile.ZipFile(io.BytesIO(out))
+    assert z.read(pack_manifest.MANIFEST_FILENAME) == kept
+    assert z.namelist().count(pack_manifest.MANIFEST_FILENAME) == 1
+
+
+def test_load_local_dossier_is_none_when_the_record_is_absent(tmp_path, monkeypatch):
+    monkeypatch.setattr("tools.backfill_bundle_html.DOSSIER_DIR", tmp_path)
+    assert load_local_dossier("nosuchpack") is None
+    (tmp_path / "p1.pass.json").write_text(json.dumps(_dossier_dict()))
+    assert load_local_dossier("p1").candidate.title == "T"
+    (tmp_path / "p2.pass.json").write_text("{not json")
+    assert load_local_dossier("p2") is None, "a corrupt record is a skip, never a wrong manifest"

@@ -11,6 +11,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_ROOT))
 
+from prospector import paths
 from prospector.control_center import readers
 from prospector.control_center import runner as _runner
 from prospector.control_center.components.chrome import (
@@ -195,7 +196,7 @@ def _retry_pending_signal(p: dict):
 
 
 def _discard_one_pending(p: dict):
-    pending_dir = Path("signals/pending")
+    pending_dir = paths.repo_path("signals", "pending")
     name = p.get("_filename") or ""
     key = p.get("key") or ""
     targets = []
@@ -217,7 +218,7 @@ def _discard_one_pending(p: dict):
 
 def _clear_defer_queue():
     import sqlite3
-    db_path = Path("store/prospector.db")
+    db_path = paths.store_path("prospector.db")
     if not db_path.exists():
         return
     try:
@@ -232,7 +233,7 @@ def _clear_defer_queue():
 
 
 def _clear_pending_signals():
-    pending_dir = Path("signals/pending")
+    pending_dir = paths.repo_path("signals", "pending")
     if not pending_dir.exists():
         return
     count = 0

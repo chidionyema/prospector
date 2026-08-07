@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Input, Money, SegmentedControl, Skeleton, textLinkClass, useToast } from '@/components/ui';
+import Link from 'next/link';
+import { Button, buttonClasses, Card, EmptyState, Input, Money, SegmentedControl, Skeleton, textLinkClass, useToast } from '@/components/ui';
+import PackMark from '@/components/ui/PackMark';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { auth, social, AuthError, type Order, type ProfileEdit, type Session } from '@/lib/api/auth';
 import { API_BASE_URL } from '@/lib/config';
@@ -131,43 +133,112 @@ function OrdersTab() {
           'guest purchases made before you created the account. If you paid under a different ' +
           'address, use the permanent link from that order, or contact us and we will move it.'
         }
+        // The empty state used to end the conversation. This is a signed-in customer with a
+        // confirmed address and nothing bought, which is the single most qualified audience the
+        // shop ever has in front of it, and it was shown a paragraph about email addresses and no
+        // way forward. The explanation stays, because it is the answer to "where are my orders";
+        // the shelf is now also one click away.
+        action={
+          <Link href="/" className={buttonClasses({ variant: 'secondary' })}>
+            Browse the packs
+          </Link>
+        }
       />
     );
   }
 
+  /*
+    THE LIBRARY SHELF.
+
+    WHAT WAS HERE. One card per ORDER, with the packs inside it as rows of plain text. That is the
+    merchant's model of the data, not the customer's: nobody comes to this page thinking about
+    orders, they come thinking about a specific pack they bought and want to open again. With the
+    packs rendered as undifferentiated lines inside grey receipt cards, finding one meant reading.
+
+    WHAT IT IS NOW. The packs come first, as a shelf, each carrying the same generative mark the
+    catalogue and pack page draw for it -- deterministically hashed from the pack id, so the mark
+    on the shelf is pixel-identical to the one the customer saw when they bought it, and the item
+    is recognisable before its title has been read. That is what a library gives you and a receipt
+    list does not.
+
+    NOTHING WAS REMOVED. Order date, order status, amount and currency are all still rendered, in
+    the ledger below the shelf. They were the only facts the old layout carried, and they belong to
+    the order rather than to the pack; putting them in their own block is what allowed the pack to
+    stop being a line item.
+  */
+  const purchases = orders.flatMap((order) =>
+    order.items.map((item) => ({ order, item })),
+  );
+
   return (
-    <div className="space-y-4">
-      {orders.map((order) => (
-        <Card key={order.id} className="p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-caption text-muted">
-              {new Date(order.created_at).toLocaleDateString()} · {order.status}
-            </p>
-            <Money cents={order.amount_pence} currency={order.currency} />
-          </div>
-          <ul className="mt-4 space-y-3">
-            {order.items.map((item) => (
-              <li key={item.pack_id} className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-body text-text">{item.pack_title}</span>
-                {downloadHref(item.download_path) ? (
-                  // A plain anchor, not a fetch: /download/{token} answers with a 302 to a
-                  // short-lived presigned URL, and the browser must follow it as a navigation.
-                  <a
-                    href={downloadHref(item.download_path)}
-                    className={textLinkClass('font-medium')}
-                  >
-                    Download
-                  </a>
-                ) : (
-                  <span className="text-caption text-muted">
-                    {item.status === 'revoked' ? 'Refunded' : 'Unavailable'}
-                  </span>
-                )}
+    <div className="space-y-10">
+      <div>
+        <h2 className="font-mono text-caption text-subtle">
+          your library · {purchases.length} pack{purchases.length === 1 ? '' : 's'}
+        </h2>
+        <ul className="mt-4 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
+          {purchases.map(({ order, item }) => {
+            const href = downloadHref(item.download_path);
+            return (
+              // Keyed on order AND pack: the same pack bought twice (a gift, a re-purchase after a
+              // refund) is two rows, and `pack_id` alone would collide and drop one.
+              <li
+                key={`${order.id}-${item.pack_id}`}
+                className="flex flex-col overflow-hidden rounded-md bg-surface"
+              >
+                {/* `morph={false}`, which is the default and is worth not disturbing: a customer
+                    who bought the same pack twice would otherwise have two elements claiming one
+                    `view-transition-name`, and a duplicate name silently disables every view
+                    transition on the document rather than just this one (see `PackMark`). */}
+                <div className="h-16 w-full overflow-hidden bg-surface2">
+                  <PackMark id={item.pack_id} />
+                </div>
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  <div>
+                    <p className="text-meta font-semibold leading-snug text-text">
+                      {item.pack_title}
+                    </p>
+                    <p className="mt-1 font-mono text-caption text-subtle">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="mt-auto">
+                    {href ? (
+                      // A plain anchor, not a fetch: /download/{token} answers with a 302 to a
+                      // short-lived presigned URL, and the browser must follow it as a navigation.
+                      <a href={href} className={textLinkClass('font-medium')}>
+                        Download
+                      </a>
+                    ) : (
+                      <span className="font-mono text-caption text-subtle">
+                        {item.status === 'revoked' ? 'refunded' : 'unavailable'}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </li>
-            ))}
-          </ul>
-        </Card>
-      ))}
+            );
+          })}
+        </ul>
+      </div>
+
+      <div>
+        <h2 className="font-mono text-caption text-subtle">receipts</h2>
+        <ul className="mt-4 list-none p-0">
+          {orders.map((order) => (
+            <li
+              key={order.id}
+              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border/60 py-3 last:border-b-0"
+            >
+              <span className="font-mono text-caption text-muted">
+                {new Date(order.created_at).toLocaleDateString()} · {order.status} ·{' '}
+                {order.items.length} pack{order.items.length === 1 ? '' : 's'}
+              </span>
+              <Money cents={order.amount_pence} currency={order.currency} />
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

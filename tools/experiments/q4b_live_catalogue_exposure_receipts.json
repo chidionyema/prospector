@@ -1,0 +1,167 @@
+{
+  "checks_demoted": 1,
+  "checks_residual": 74,
+  "checks_touching_low": 75,
+  "cited_urls": 1054,
+  "items_demoted": [
+    "85bf91bd2895305c"
+  ],
+  "items_residual": [
+    "08b22037fc2afc07",
+    "0c6c74267f7485a3",
+    "0cc434887c47cb9a",
+    "0ce623e80658e97c",
+    "0def4cd9091581fd",
+    "1723d378cff66ebc",
+    "36f79259569ba915",
+    "397f72ef3015a833",
+    "3c346201f8a48a89",
+    "3e72d5a5f1a60068",
+    "5923c35906c3930b",
+    "5e8f3b69369be3a8",
+    "60fa04b1387f0965",
+    "6817348413f4658c",
+    "69b3aa3980b3cc81",
+    "729098fd44756d74",
+    "7a6c07535fd8a998",
+    "7c333417348e25ea",
+    "82a9c38fea398376",
+    "839afa0ef83b82be",
+    "86a2b4eb9a66df28",
+    "8ce5270ade208070",
+    "8d5e24fbe6c1f5d3",
+    "8daf1e73afadfe9e",
+    "939b559421982379",
+    "9d79ec9bd617b4c0",
+    "a2c9948e0cc21cad",
+    "a5a6aeae4ad82f3c",
+    "ac755ca1473e57fa",
+    "b1bb090fd9482af3",
+    "b66e17703d0ef7c0",
+    "c0fff95b45d53f4a",
+    "c257b6298bc2c151",
+    "c464a9ecb559d3c3",
+    "c8fbb7aa12e1bf48",
+    "d1f85d68e56da7e7",
+    "d8aa7528aa73eabb",
+    "dbe0e82deb13daa2",
+    "e6825574ab5eb495",
+    "ea68dd43fa830db9",
+    "f71ad0c4cf8b5344",
+    "f75365e48af08750"
+  ],
+  "items_with_low": [
+    "08b22037fc2afc07",
+    "0c6c74267f7485a3",
+    "0cc434887c47cb9a",
+    "0ce623e80658e97c",
+    "0def4cd9091581fd",
+    "1723d378cff66ebc",
+    "36f79259569ba915",
+    "397f72ef3015a833",
+    "3c346201f8a48a89",
+    "3e72d5a5f1a60068",
+    "5923c35906c3930b",
+    "5e8f3b69369be3a8",
+    "60fa04b1387f0965",
+    "6817348413f4658c",
+    "69b3aa3980b3cc81",
+    "729098fd44756d74",
+    "7a6c07535fd8a998",
+    "7c333417348e25ea",
+    "82a9c38fea398376",
+    "839afa0ef83b82be",
+    "85bf91bd2895305c",
+    "86a2b4eb9a66df28",
+    "8ce5270ade208070",
+    "8d5e24fbe6c1f5d3",
+    "8daf1e73afadfe9e",
+    "939b559421982379",
+    "9d79ec9bd617b4c0",
+    "a2c9948e0cc21cad",
+    "a5a6aeae4ad82f3c",
+    "ac755ca1473e57fa",
+    "b1bb090fd9482af3",
+    "b66e17703d0ef7c0",
+    "c0fff95b45d53f4a",
+    "c257b6298bc2c151",
+    "c464a9ecb559d3c3",
+    "c8fbb7aa12e1bf48",
+    "d1f85d68e56da7e7",
+    "d8aa7528aa73eabb",
+    "dbe0e82deb13daa2",
+    "e6825574ab5eb495",
+    "ea68dd43fa830db9",
+    "f71ad0c4cf8b5344",
+    "f75365e48af08750"
+  ],
+  "items_without_dossier": [],
+  "live_items": 56,
+  "low_by_check": {
+    "buyer_intent": 7,
+    "claims_verifiable": 3,
+    "currency": 4,
+    "distribution": 18,
+    "incumbency": 3,
+    "legality": 3,
+    "pain_reality": 16,
+    "payer_solvency": 6,
+    "route_to_market": 10,
+    "value_durability": 5
+  },
+  "origin": "https://api.mumchimp.com/catalog",
+  "policy": "P1_check_aware",
+  "residual_domains": [
+    [
+      "facebook.com",
+      45
+    ],
+    [
+      "reddit.com",
+      19
+    ],
+    [
+      "linkedin.com",
+      12
+    ],
+    [
+      "youtube.com",
+      7
+    ],
+    [
+      "tiktok.com",
+      7
+    ],
+    [
+      "instagram.com",
+      6
+    ],
+    [
+      "mumsnet.com",
+      6
+    ],
+    [
+      "pinterest.com",
+      3
+    ],
+    [
+      "gitnux.org",
+      2
+    ],
+    [
+      "quora.com",
+      1
+    ]
+  ],
+  "ruled_checks": 265,
+  "tiers": {
+    "academic": 5,
+    "established_org": 28,
+    "government": 145,
+    "media": 14,
+    "other": 750,
+    "stats_farm": 2,
+    "ugc_social": 108,
+    "wikipedia": 2
+  }
+}

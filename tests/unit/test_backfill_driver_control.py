@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import signal
 import subprocess
@@ -52,7 +51,7 @@ class TestStopsOnSignal:
             "Path('batches.log').open('a').write(' '.join(sys.argv[1:]) + '\\n')\n"
             "time.sleep(30)\n"  # long enough that we kill it mid-batch
         ))
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        env = {**os.environ, "PYTHONPATH": str(repo), "PROSPECTOR_REPO_ROOT": str(repo)}
         proc = subprocess.Popen(
             [sys.executable, "-u", str(ROOT / "tools" / "_backfill_driver.py")],
             cwd=repo, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -80,7 +79,7 @@ class TestStopsOnSignal:
             "Path('child.pid').write_text(str(os.getpid()))\n"
             "time.sleep(30)\n"
         ))
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        env = {**os.environ, "PYTHONPATH": str(repo), "PROSPECTOR_REPO_ROOT": str(repo)}
         proc = subprocess.Popen(
             [sys.executable, "-u", str(ROOT / "tools" / "_backfill_driver.py")],
             cwd=repo, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -117,7 +116,7 @@ class TestNonFatalFailures:
             "Path('batches.log').open('a').write(' '.join(sys.argv[1:]) + '\\n')\n"
             "sys.exit(1)\n"
         ))
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        env = {**os.environ, "PYTHONPATH": str(repo), "PROSPECTOR_REPO_ROOT": str(repo)}
         r = subprocess.run(
             [sys.executable, "-u", str(ROOT / "tools" / "_backfill_driver.py")],
             cwd=repo, env=env, capture_output=True, text=True, timeout=60,
@@ -137,7 +136,7 @@ class TestRestartSafety:
             "from pathlib import Path\n"
             "Path('batches.log').open('a').write(' '.join(sys.argv[1:]) + '\\n')\n"
         ))
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        env = {**os.environ, "PYTHONPATH": str(repo), "PROSPECTOR_REPO_ROOT": str(repo)}
         r = subprocess.run(
             [sys.executable, "-u", str(ROOT / "tools" / "_backfill_driver.py")],
             cwd=repo, env=env, capture_output=True, text=True, timeout=60,
@@ -151,7 +150,7 @@ class TestRestartSafety:
         inflight.mkdir(parents=True)
         (inflight / "deadbeefdeadbeef.json").write_text("{}")
         _install_fake_publisher(repo, "pass\n")
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        env = {**os.environ, "PYTHONPATH": str(repo), "PROSPECTOR_REPO_ROOT": str(repo)}
         r = subprocess.run(
             [sys.executable, "-u", str(ROOT / "tools" / "_backfill_driver.py")],
             cwd=repo, env=env, capture_output=True, text=True, timeout=60,
@@ -171,7 +170,7 @@ class TestSingleInstanceLock:
     def test_second_driver_refuses_to_start(self, tmp_path):
         repo = _fake_repo(tmp_path, 5)
         _install_fake_publisher(repo, "import time\ntime.sleep(20)\n")
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        env = {**os.environ, "PYTHONPATH": str(repo), "PROSPECTOR_REPO_ROOT": str(repo)}
         driver = [sys.executable, "-u", str(ROOT / "tools" / "_backfill_driver.py")]
 
         first = subprocess.Popen(driver, cwd=repo, env=env, stdout=subprocess.PIPE,
@@ -194,7 +193,7 @@ class TestSingleInstanceLock:
         """A pidfile would strand the backfill here; the kernel drops an flock on death."""
         repo = _fake_repo(tmp_path, 5)
         _install_fake_publisher(repo, "import time\ntime.sleep(20)\n")
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        env = {**os.environ, "PYTHONPATH": str(repo), "PROSPECTOR_REPO_ROOT": str(repo)}
         driver = [sys.executable, "-u", str(ROOT / "tools" / "_backfill_driver.py")]
 
         first = subprocess.Popen(driver, cwd=repo, env=env, stdout=subprocess.DEVNULL,
@@ -237,7 +236,13 @@ class TestShellWrapperStopsTheWholeTree:
         shutil.copy(ROOT / "tools" / "backfill_missing_listings.sh", sh)
         sh.chmod(0o755)
 
-        env = {**os.environ, "PYTHONPATH": str(repo)}
+        # This is the only test that COPIES the driver out of the repo, so it is the only one
+        # where `sys.path.insert(parents[1])` lands somewhere with no `prospector` package.
+        # In production the driver sits beside it; ROOT on the path restores that, while
+        # PROSPECTOR_REPO_ROOT keeps every store/ path pointed at the fake repo.
+        env = {**os.environ,
+               "PYTHONPATH": os.pathsep.join([str(repo), str(ROOT)]),
+               "PROSPECTOR_REPO_ROOT": str(repo)}
         proc = subprocess.Popen(["bash", str(sh)], cwd=repo, env=env, start_new_session=True)
         deadline = time.time() + 30
         while time.time() < deadline and not (repo / "child.pid").exists():

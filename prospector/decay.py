@@ -34,12 +34,13 @@ was — file, index row and all — and is retried on a later sweep.
 from __future__ import annotations
 
 import datetime
-import json
 from pathlib import Path
 from typing import Optional
 
+from . import paths
 from .config import Config
 from .errors import ProviderExhaustedError
+from .jsonl_atomic import append_jsonl
 from .models import Decision
 from .operator import Operator
 from .retrieval import SearchProvider
@@ -62,9 +63,21 @@ _DECISIVE = frozenset({Decision.PASS, Decision.KILL})
 # receipt and durably queues the unlist instead; `tools/unlist_killed.py` drains the queue. A
 # queue nobody drains is exactly the "no production caller" bug this module's own docstring
 # describes, so the drain script ships in the same change as the write.
-LISTINGS_DIR = Path("store/listings")
-LISTINGS_ARCHIVE_DIR = Path("store/listings_archive")
-PENDING_UNLIST = Path("store/scheduler/pending_unlist.jsonl")
+#
+# These are FUNCTIONS, not the `Path("store/listings")` constants they replace, and the reason
+# is in `prospector/paths.py`: a cwd-relative literal evaluated at import writes real listing
+# state into whatever directory the process happened to start in, and is bound before any test
+# fence can redirect it. Resolve at the point of use.
+def _listings_dir() -> Path:
+    return paths.store_path("listings")
+
+
+def _listings_archive_dir() -> Path:
+    return paths.store_path("listings_archive")
+
+
+def _pending_unlist() -> Path:
+    return paths.store_path("scheduler", "pending_unlist.jsonl")
 
 
 def _queue_unlist(cid: str, title: str, gate: str, now: datetime.datetime) -> bool:
@@ -75,21 +88,22 @@ def _queue_unlist(cid: str, title: str, gate: str, now: datetime.datetime) -> bo
     archived and the queue entry is written, so the caller can log loudly: a live pack just
     lost its ground and is still sellable until `tools/unlist_killed.py` runs.
     """
-    listing_path = LISTINGS_DIR / f"{cid}.json"
+    listing_path = _listings_dir() / f"{cid}.json"
     if not listing_path.exists():
         return False
 
-    LISTINGS_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    listing_path.rename(LISTINGS_ARCHIVE_DIR / listing_path.name)
+    archive_dir = _listings_archive_dir()
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    listing_path.rename(archive_dir / listing_path.name)
 
-    PENDING_UNLIST.parent.mkdir(parents=True, exist_ok=True)
-    with PENDING_UNLIST.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps({
-            "candidate_id": cid,
-            "title": title,
-            "gate_fired": gate,
-            "queued_at": now.isoformat(timespec="seconds"),
-        }) + "\n")
+    # R3: single O_APPEND write + fsync. This queue is drained by a SEPARATE process
+    # (`tools/unlist_killed.py`), so a torn row here is a live pack that stays sellable.
+    append_jsonl(_pending_unlist(), {
+        "candidate_id": cid,
+        "title": title,
+        "gate_fired": gate,
+        "queued_at": now.isoformat(timespec="seconds"),
+    })
     return True
 
 

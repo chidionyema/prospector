@@ -116,28 +116,76 @@ export function PackContentsSection({
       <h2 className="text-h2 font-semibold text-text">{heading}</h2>
       {lead && <p className="mt-2 max-w-[60ch] text-body text-muted">{lead}</p>}
 
-      <ul className="mt-6 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-        {PACK_CONTENTS.map((item) => (
-          <li key={item.title} className="flex gap-3 rounded-md border border-border bg-surface p-5">
-            <Icon name="document" size={16} className="mt-0.5 flex-none text-subtle" />
-            <span className="flex min-w-0 flex-col">
-              <span className="text-body font-semibold leading-snug text-text">
-                {item.title}
-                {hasCount && item.showSourceCount && (
-                  <span className="ml-1.5 font-normal text-muted">({sourceCount} sources)</span>
-                )}
-              </span>
-              {/* The real zip entry. A buyer's fear at £49 is a thin Google Doc, and a filename
-                  they can check against the download they receive is a falsifiable answer to it
-                  in a way another adjective is not. */}
-              <span className="mt-1 break-all font-mono text-caption text-subtle">
-                {item.filename}
-              </span>
-              <span className="mt-2 text-meta text-muted">{item.desc}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      {/*
+       * THE MANIFEST AS A FILE TREE, not eight bordered cards.
+       *
+       * The previous shape was a two-column grid of `rounded-md border border-border` cards, which
+       * is the same object the shelf uses for products: eight cards saying "here are eight things"
+       * read as eight things to choose between rather than as one archive with eight entries in
+       * it. The tree says the true thing structurally -- these arrive together, in this order, in
+       * one file -- and it says it before a word is read.
+       *
+       * The filenames were already here and are already pinned to `bridge.py::BUNDLE_FILES` by
+       * `__tests__/packContents.test.ts`. What changes is that they stop being a caption under a
+       * marketing title and become the primary column, which is the point: a buyer's fear at £49
+       * is a thin Google Doc, and a listing of real entries they can check against the download is
+       * a falsifiable answer to that in a way another adjective is not.
+       *
+       * The glyphs are literal box-drawing characters rather than borders or an SVG, because at
+       * `text-caption` in the mono face they align on the same grid the filenames do. They are
+       * inside an `aria-hidden` span: a screen reader announcing "box drawings light up and right"
+       * before every filename is noise, and the `<ul>`/`<li>` structure already carries "this is a
+       * list of eight items" losslessly.
+       *
+       * The root is NOT a zip filename. `bridge.py:813` writes `prospector_pack_<id8>.zip` locally
+       * while the delivery key at `:632` is `packs/<id>/<content_hash>.zip`, so which of those a
+       * buyer's browser saves is not a fact this component can state. It states the fact it has.
+       */}
+      <div className="mt-6 overflow-hidden rounded-md bg-surface">
+        <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
+          <Icon name="download" size={14} className="flex-none text-subtle" />
+          <span className="font-mono text-caption text-text">your download/</span>
+          <span className="ml-auto font-mono text-caption text-subtle">
+            {PACK_CONTENTS.length} files
+          </span>
+        </div>
+        <ul className="list-none p-0">
+          {PACK_CONTENTS.map((item, i) => {
+            const last = i === PACK_CONTENTS.length - 1;
+            return (
+              <li
+                key={item.title}
+                className="border-b border-border/60 px-5 py-4 last:border-b-0"
+              >
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span aria-hidden className="flex-none font-mono text-caption text-faint">
+                    {last ? '└──' : '├──'}
+                  </span>
+                  <span className="min-w-0 break-all font-mono text-caption text-text">
+                    {item.filename}
+                  </span>
+                  {hasCount && item.showSourceCount && (
+                    <span className="flex-none font-mono text-caption text-success">
+                      {sourceCount} sources
+                    </span>
+                  )}
+                </div>
+                {/* Indented to the width of the glyph plus its gap, so the prose hangs off the
+                    branch rather than restarting the line. `pl-[3.25rem]` is that measurement at
+                    the caption size, not a round number chosen by eye. */}
+                <div className="pl-[3.25rem]">
+                  <span className="block text-meta font-semibold leading-snug text-text">
+                    {item.title}
+                  </span>
+                  <span className="mt-1 block max-w-[70ch] text-meta leading-relaxed text-muted">
+                    {item.desc}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {/* Format ambiguity kills digital conversions, so the format still gets stated outright --
           but it no longer LEADS. This box opened "Format: one zip of plain Markdown files", which

@@ -150,6 +150,75 @@
   /* ELEVATION. Borders draw edges; shadows communicate POSITION and nothing else. */
   --shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
   --shadow-2: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.10);
+
+  /* ── v3.1 (2026-08-07): ELEVATION BY SURFACE, NOT BY BORDER ────────────────────────────────
+     v3 had exactly TWO background values (--surface #FFFFFF and --surface2 #FAFAFA) and drew
+     every edge on the site with --border. That is why the page reads as one flat plane with
+     rectangles ruled onto it: with only two steps, a panel inside a panel inside a card has no
+     way to say "I am deeper than my parent" except by adding another hairline, so depth is
+     communicated entirely by line count. Four steps let nesting be expressed by TONE, and the
+     hairline goes back to meaning "structural division" rather than "edge of a box".
+
+     The ramp is true-neutral zinc, continuous with the existing --border #E4E4E7 (step 4 sits
+     one notch above it, so a bordered element on --surface4 still shows its edge). --text
+     #171717 measures 17.93:1 on step 1 and 15.94:1 on step 4, so body copy is AAA on all four
+     and no token below needs a narrowed role. */
+  --surface3: #F4F4F5;      /* Nested panels, table bodies, the shelf gutter behind cards. */
+  --surface4: #EDEDEF;      /* Deepest: inset wells, code blocks, the ambient kill column. */
+
+  /* ── KILL / SURVIVE: the semantic pair, promoted to first-class brand tokens ────────────────
+     --success/--danger already carried exactly this meaning (the v3 comment above says so:
+     "Red and green appear only where they mean killed and survived"), but they were NAMED for a
+     generic UI vocabulary, so call sites reached for them as generic UI colours -- a warning
+     border on a cart button, a checkmark on a facet bar. A token named --success invites that;
+     a token named --kill does not.
+
+     These deliberately ALIAS the v3 values rather than introduce new hex, so every WCAG ratio
+     measured above carries over unchanged and this is a renaming, not a re-palette:
+       --kill    = --danger  #DC2626  4.83:1 on white. AA.
+       --kill-strong = --danger-strong #B91C1C  5.91:1 on --kill-bg. AA.
+       --survive = --success #047857  5.48:1 on white. AA.
+       --survive-strong = --success-strong #065F46  7.29:1 on --survive-bg. AA.
+     The rule that comes with them: --kill and --survive are the ONLY colours allowed to carry a
+     verdict, and they carry it everywhere a verdict appears -- filter chips, dossier rows, the
+     kill log, pack borders, the gauntlet. --success/--danger stay for genuine UI state (a form
+     error is not a killed idea) and must never appear beside a verdict.
+
+     BY REFERENCE, NOT BY DUPLICATED HEX, so the pair can never drift from the ratios above.
+
+     An intermediate cut of this block copied the hex literally, on the theory that Tailwind v4
+     cannot build an alpha variant through a var() that resolves to another var() and would
+     silently emit the flat colour. THAT IS FALSE, and the built stylesheet is the receipt.
+     Tailwind emits a PAIR of rules for every alpha utility -- a flat fallback, then the real one
+     guarded by @supports:
+
+       .bg-survive,.bg-survive\/40{background-color:var(--survive)}
+       @supports (color:color-mix(in lab, red, red)){
+         .bg-survive\/40{background-color:color-mix(in oklab, var(--survive) 40%, transparent)}}
+
+     Reading only the first rule is what produced the wrong diagnosis. There are 55 such @supports
+     blocks in the sheet, and `.bg-surface\/90` gets its color-mix through exactly this kind of
+     indirection (--color-surface: var(--surface)), which is the direct counter-example. Alpha
+     works; `EvidenceBar`'s `bg-survive/40` tick renders at 40% on any browser with color-mix, and
+     at full strength only on ones without it, which is the intended fallback.
+
+     Verify with:
+       grep -o '@supports (color:color-mix[^}]*bg-survive[^}]*' <the built .next css> */
+  --survive: var(--success);
+  --survive-bg: var(--success-bg);
+  --survive-strong: var(--success-strong);
+  --kill: var(--danger);
+  --kill-bg: var(--danger-bg);
+  --kill-strong: var(--danger-strong);
+
+  /* GRAIN. v3 removed the body::before grain outright and left an explicit escape hatch in the
+     comment further down this file: "a future rebrand can re-add a much subtler texture (sub-1%
+     opacity, only on the bg) if it ever earns its weight". This is that re-add, and it is held
+     to the sub-1% the escape hatch specified rather than the 2-3% that was asked for -- at 2-3%
+     over a #FFFFFF canvas the noise is visible AS noise, which is the 2020 texture trick v3
+     rejected for cause. At 0.9% it does not read as texture at all; it reads as the flat plane
+     having a surface, which is the actual goal. Tokenised so it is tunable in one place. */
+  --grain-opacity: 0.009;
 }
 
 @theme inline {
@@ -187,6 +256,19 @@
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
   --color-highlight: var(--highlight);
+
+  /* v3.1. Without these mappings the `bg-surface3` / `text-kill` / `border-survive` utilities
+     compile to NOTHING -- in Tailwind v4 an unmapped colour utility emits no rule at all, which
+     is exactly how all sixteen `ring-focus` call sites shipped dead (see --color-focus above).
+     Every token added to :root in this pass is mapped here in the same commit for that reason. */
+  --color-surface3: var(--surface3);
+  --color-surface4: var(--surface4);
+  --color-survive: var(--survive);
+  --color-survive-bg: var(--survive-bg);
+  --color-survive-strong: var(--survive-strong);
+  --color-kill: var(--kill);
+  --color-kill-bg: var(--kill-bg);
+  --color-kill-strong: var(--kill-strong);
 
   /* The category scale, exposed so the `text-cat-` and `bg-cat-` utilities compile. The badge
      tint is an alpha of the same token (a trailing slash-10 on the class) rather than twelve more
@@ -262,6 +344,26 @@
   --text-body: 1rem;        --text-body--line-height: 1.6;
   --text-meta: 0.875rem;    --text-meta--line-height: 1.5;
   --text-caption: 0.75rem;  --text-caption--line-height: 1.5;
+
+  /* A SEVENTH step, added deliberately against the six-step rule above, with the reason written
+     down so the rule survives.
+
+     The six steps top out at --text-display 3rem/48px, and the live homepage h1 wears exactly
+     that (`md:text-display`, measured in the served HTML 2026-08-07). 48px is a large paragraph,
+     not a display cut. A scale whose loudest voice is 3x its quietest reads as "one sans at
+     three sizes" -- which is the single thing that dates a page hardest, because medium-
+     everything is what a template produces. The fix is not more steps in the middle; it is one
+     step far enough out that the jump itself is the statement.
+
+     6rem/96px at -0.045em. The tracking is not optional: Geist at 96px on default tracking has
+     visible gaps at the word joints, and negative tracking is most of what separates a display
+     CUT from a headline that was simply set large. Line-height goes below 1 (0.94) because at
+     this size the ascender/descender gap already supplies the optical leading.
+
+     Raw size, no responsive step built in -- same contract as --text-display, so anything
+     wearing `text-mega` MUST pair it with a mobile size (`text-h1 md:text-mega`). 96px on a
+     390px viewport is roughly four characters per line. */
+  --text-mega: 6rem;        --text-mega--line-height: 0.94;    --text-mega--letter-spacing: -0.045em;
 
   /* THREE radii, and the third one is a circle. There were ten (`rounded-full` 49, `-lg` 32,
      `-md` 17, bare `rounded` 11, `-xl` 7, `-sm` 4, `-2xl` 3, `-[5px]` 2, `-r` 1, `-[10px]` 1),
@@ -423,12 +525,120 @@ button:active, [role="button"]:active, .card-transition:active {
 
 
 /*
-  Brand v2: the 2020-2021 "premium noise grain" was a texture trick that
-  reads as decorative noise in 2026. Clean white is the 2026 look. The
-  body::before grain is removed entirely. A future rebrand can re-add a
-  much subtler texture (sub-1% opacity, only on the bg) if it ever earns
-  its weight; for now, plain white is the strongest surface.
+  GRAIN — re-added 2026-08-07 under the sub-1% escape hatch the v2 removal note left open (its
+  text is preserved in the --grain-opacity comment in :root).
+
+  Why it earns its weight now and did not before: v3.1 introduces four surface steps, and the
+  gap between #FAFAFA and #F4F4F5 is 2 levels of luminance. On a large flat fill that small a
+  step can band on 8-bit panels -- the eye sees a soft edge where the CSS declares none. A
+  fractal-noise overlay at sub-1% dithers the boundary, so the elevation ramp reads as tone
+  rather than as banding. The texture is the mechanism; the depth is the point.
+
+  `fixed` rather than `absolute`, so the grain does not scroll with content and never tiles
+  visibly at a seam. `pointer-events: none` so it cannot eat a click. Painted at z-index 0 with
+  the page's own stacking contexts above it. The SVG is inline as a data URI because a strict
+  CSP and an offline first paint both forbid a network fetch for a texture.
 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/*
+  Print must not spend ink on a texture whose entire purpose is screen banding.
+  (The @media print block at the foot of this file zeroes backgrounds with !important, but that
+  rule targets `background`, and this is `background-image` on a pseudo-element -- close enough
+  to miss, so it is stated explicitly.)
+*/
+@media print {
+  body::before { display: none; }
+}
+
+/*
+  ── VIEW TRANSITIONS ────────────────────────────────────────────────────────────────────────
+  Cross-document view transitions for same-origin navigations. This is the single highest
+  ratio-of-perceived-quality-to-lines-of-code change available to this site: a card that MORPHS
+  into the pack page it opens reads as an application, and a card that repaints the whole
+  viewport reads as a website. Baseline in Chrome/Edge/Safari; Firefox has no support and simply
+  gets today's instant cut, so this needs no fallback branch and no JS.
+
+  The shared element is opted in per-card by an inline `view-transition-name` derived from the
+  pack id (see PackMark / the shelf), because the name must be UNIQUE in the document at the
+  moment the transition starts -- two elements sharing one name aborts the whole transition
+  silently, which is why this cannot be a static class.
+*/
+@view-transition {
+  navigation: auto;
+}
+
+/*
+  The root cross-fade is faster than the browser default 250ms. On a catalogue where the two
+  pages share a header, a footer and the morphing card, a quarter-second dissolve of everything
+  else is long enough to notice as a fade rather than as a change of page.
+*/
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.16s;
+}
+
+/*
+  Honour the user's motion preference. The catch-all in the reduced-motion block below sets
+  animation-duration to 0.01ms on `*, *::before, *::after`, and view-transition pseudo-elements
+  are NOT descendants of any element in the DOM tree -- they live in their own tree off :root --
+  so that selector cannot reach them. Without this rule a user who asked for reduced motion
+  still gets every page morph on the site.
+*/
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+
+/*
+  The hero's ambient kill column (`components/marketing/AmbientKillColumn.tsx`).
+
+  Travels exactly -50% because the component renders its list TWICE: at the wrap the second copy
+  is pixel-for-pixel where the first began, so the loop has no seam. Any other distance snaps.
+
+  The duration is deliberately absurd. 240s over ~120 rows is roughly 12px/second, which is below
+  the speed at which peripheral motion pulls the eye off the headline -- the column has to read as
+  drift, not as a ticker. A marquee beside an h1 is a competing animation; this is a slow tide.
+
+  `linear`, not `ease`: an eased infinite loop accelerates and decelerates once per cycle, which
+  is a rhythm, and a rhythm is noticeable. Constant velocity disappears.
+*/
+@keyframes killDrift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+.kill-drift {
+  animation: killDrift 240s linear infinite;
+  /* Promotes the column to its own layer so 120 rows of text are not repainted every frame while
+     the reader is trying to read the headline in front of them. */
+  will-change: transform;
+}
+
+/*
+  Reduced motion STOPS it, and does not merely shorten it. The global catch-all below sets
+  `animation-duration: 0.01ms`, which on an infinite loop means the column teleports through its
+  whole cycle 100,000 times a second -- strictly worse than the animation it was meant to
+  suppress. The column still renders, still says what it says, and simply holds still.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .kill-drift {
+    animation: none !important;
+    transform: none !important;
+  }
+}
 
 
 /* Custom Selection — high-contrast ink on white. */

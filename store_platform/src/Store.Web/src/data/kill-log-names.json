@@ -1,0 +1,242 @@
+[
+  {
+    "title": "Sound Check Rounds, the monthly noise test that keeps a small music venue's licence safe",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "MedRoom, the daily medicine chart a family carer can actually keep, and prove",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "CHC Appeal Builder",
+    "gate": "value_durability"
+  },
+  {
+    "title": "CropPlan, The Market Gardener's Planting & Revenue Optimizer",
+    "gate": "value_durability"
+  },
+  {
+    "title": "The Vet's Fee Extractor",
+    "gate": "incumbency"
+  },
+  {
+    "title": "ShiftSole, Custom Insoles by Mail for Standing Workers",
+    "gate": "incumbency"
+  },
+  {
+    "title": "FosterClaim, The Carer's Finance & Permission Slip Generator",
+    "gate": "value_durability"
+  },
+  {
+    "title": "SprayWindow, the spray-day planner that proves to Red Tractor your pesticide timing was legal",
+    "gate": "incumbency"
+  },
+  {
+    "title": "VanVault: The Trades Van Depreciation Guard",
+    "gate": "incumbency"
+  },
+  {
+    "title": "Probate Delay Atlas",
+    "gate": "value_durability"
+  },
+  {
+    "title": "SchoolFees Swap, the broker that turns unused school fee credit into cash for another family",
+    "gate": "value_durability"
+  },
+  {
+    "title": "PetGut Insight, Canine Microbiome Analysis by Post",
+    "gate": "value_durability"
+  },
+  {
+    "title": "The Solo Builder's Warranty Audit",
+    "gate": "incumbency"
+  },
+  {
+    "title": "StockFloat: The Material Inventory Booster",
+    "gate": "value_durability"
+  },
+  {
+    "title": "SwapShift, the platform where NHS and care staff sell shifts they can't work to colleagues who want them",
+    "gate": "legality"
+  },
+  {
+    "title": "The Tradesperson's Job Warrant Sticker",
+    "gate": "value_durability"
+  },
+  {
+    "title": "The Site Surplus Scout",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Padel Court Referee Booking Engine",
+    "gate": "incumbency"
+  },
+  {
+    "title": "SoilKeep, the arable farmer's field-by-field record that proves your soil work to the payer, the auditor and the buyer",
+    "gate": "incumbency"
+  },
+  {
+    "title": "FareFare Forensics, The Rideshare Driver's Earnings Audit & Claim System",
+    "gate": "incumbency"
+  },
+  {
+    "title": "HMRC Inheritance Tax Valuation Benchmark Report",
+    "gate": "incumbency"
+  },
+  {
+    "title": "LabelMatch, pre-printed allergen labels that keep up with your changing menu",
+    "gate": "route_to_market"
+  },
+  {
+    "title": "The Creative Rights Recovery Agent",
+    "gate": "value_durability"
+  },
+  {
+    "title": "HostReady Box, the baby hosting kit that arrives before your visitors do",
+    "gate": "incumbency"
+  },
+  {
+    "title": "YieldShield, The Landscaper's Perennial Performance Bond",
+    "gate": "value_durability"
+  },
+  {
+    "title": "PrepRoom Sweep, The County Science Department Chemical Amnesty Round",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "CrewShare Books, the shared VAT and tax return service for film and TV crew who work through their own company",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "The Inheritance Heat Map",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Council Parking Penalty FoI Appeal Builder",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Carer’s Assessment Negotiator",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "The Fire Safety Photo Audit for HMO Landlords",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The CHC Decision Denial Forecaster",
+    "gate": "value_durability"
+  },
+  {
+    "title": "Business Rates Overpayment Recovery Agent",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Septic Sentinel",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Mould-Proof Home Audit & Sensor Service",
+    "gate": "incumbency"
+  },
+  {
+    "title": "ChargeBreak, find and fight the overcharges in your California hospital bill, for $29",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The On-Site Media Vault",
+    "gate": "value_durability"
+  },
+  {
+    "title": "MedDebtShield, The Carer’s Medical Bill Arbitration Broker",
+    "gate": "value_durability"
+  },
+  {
+    "title": "The Street-Level Air Quality Arbitrage Sensor",
+    "gate": "value_durability"
+  },
+  {
+    "title": "The Garden Office Power Broker",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Carer’s Room‑for‑Care Exchange",
+    "gate": "value_durability"
+  },
+  {
+    "title": "The AI Tool Liability Brief",
+    "gate": "incumbency"
+  },
+  {
+    "title": "SettleShare, the family carer's fixed-fee route to sell an unwanted care home place back to the waiting list",
+    "gate": "incumbency"
+  },
+  {
+    "title": "RepayFight, the fixed-fee service that fights your Carer's Allowance repayment bill",
+    "gate": "currency"
+  },
+  {
+    "title": "TutorBrief Engine, The Independent UK Personal Tutor's Exam-Board-Aligned Parental Progress Brief Generator",
+    "gate": "incumbency"
+  },
+  {
+    "title": "AccountKey CA, we unlock your parent's digital accounts after death or incapacity, for a flat fee",
+    "gate": "incumbency"
+  },
+  {
+    "title": "Spine-Point Forensics, The Public-Sector Pay-Disc Audit",
+    "gate": "incumbency"
+  },
+  {
+    "title": "RotaRest, the day-room network that lets NHS night-shift staff sleep before driving home",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Gig Deactivation Appeal Engine",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Dead Stock Buyer for Independent Pharmacies",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "CareEstate, The Specialist Care Equipment Liquidator",
+    "gate": "incumbency"
+  },
+  {
+    "title": "The Boatyard Parts Runner",
+    "gate": "incumbency"
+  },
+  {
+    "title": "AfterInk, the tattooist's client file with the age check and healing photos your council wants",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "The Planning Objection API",
+    "gate": "incumbency"
+  },
+  {
+    "title": "DescriptorDeck, The Carer's PIP Award Defence Workbench",
+    "gate": "payer_solvency"
+  },
+  {
+    "title": "The Care Means-Test Challenge Data Pack",
+    "gate": "incumbency"
+  },
+  {
+    "title": "BreakBroker, The Carer's Unpublished Respite-Bed Desk",
+    "gate": "incumbency"
+  },
+  {
+    "title": "GigProfile Architect, The Freelancer's Platform Profile Optimization Pack",
+    "gate": "legality"
+  },
+  {
+    "title": "The Solo Scaffolder's Safety Certifier",
+    "gate": "incumbency"
+  },
+  {
+    "title": "BedBridge, the family carer's broker for the hospital bed your relative is blocking",
+    "gate": "incumbency"
+  }
+]
