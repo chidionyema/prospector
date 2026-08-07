@@ -37,9 +37,16 @@ def test_vet_candidate_logs_shadow_moat_drift(caplog):
         "citations": [source_id]
     })
 
-    # Experimental op: says KILL (refuted)
+    # Experimental op: says KILL (refuted) — and must CITE, for the same reason the primary op
+    # above does. Confidence is recomputed from citations (verify.py:70-133), so an uncited
+    # refuted lands at confidence 0.0; since confidence_floor rose to 0.4 (config.yaml, E11 /
+    # programme doc §17) such a verdict no longer hard-kills, and this test would be asserting
+    # drift that the engine correctly refuses to produce. That refusal is the fix to §11's
+    # "refuted-with-zero-citations" gap, not a regression — so the fixture cites, as the
+    # comment above insists, rather than the floor being relaxed to keep the mock's story.
     exp_op = MockOperator(router=lambda s, u: {
-        "verdict": "refuted", "confidence": 1.0, "rationale": "bad", "citations": []
+        "verdict": "refuted", "confidence": 1.0, "rationale": "bad",
+        "citations": [source_id]
     })
 
     cand = Candidate(title="Test Idea", one_liner="x", hypothesis="y", who_pays="z")

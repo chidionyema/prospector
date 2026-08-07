@@ -800,8 +800,9 @@ function CatalogBrowser({
           substantive half of the answer and renders at every width. */}
       <p className="mb-4 max-w-[68ch] text-caption text-subtle">
         <span className="hidden sm:inline">
-          Every pack contains the same {PACK_CONTENTS.length} documents. The price follows the size
-          of the opportunity the research found, never the length of the download.{' '}
+          Every pack contains the same {PACK_CONTENTS.length} documents. The price is set by how
+          big the idea could become and which market it targets, on a fixed published ladder, never
+          by the length of the download.{' '}
         </span>
         {/* A SHORT sentence, not nothing. Hiding the whole explanation below `sm` left the link
             standing on its own line under the filter chips, where "Why prices differ" answers a
@@ -1315,7 +1316,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
         title={`What you get${range ? ', at every price' : ''}`}
         intro={
           range && !range.uniform
-            ? `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. Every pack contains the same ${PACK_CONTENTS.length}, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}: the price follows the size of the opportunity the research found, never the length of the download. No subscription, no drip feed, no upsell.`
+            ? `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. Every pack contains the same ${PACK_CONTENTS.length}, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}: the price is set by how big the idea could become and which market it targets, on a fixed published ladder, never by the length of the download. No subscription, no drip feed, no upsell.`
             : `One finished opportunity, already vetted, in ${PACK_CONTENTS.length} documents you own outright. No subscription, no drip feed, no upsell.`
         }
         className="!py-14 md:!py-20"

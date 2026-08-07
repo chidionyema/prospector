@@ -75,14 +75,16 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
               Why one pack is {formatGbp(range.min)} and another is {formatGbp(range.max)}
             </h2>
             <p className="mt-3 max-w-[60ch] text-body text-muted">
-              The price follows the size of the opportunity the research found, never the size of
-              the download. A weekend side business and a venture-scale market get the same{' '}
+              Two things set the price, not a guess: how big the idea could realistically become,
+              and which market it targets (aiming at the US earns one rung over the same idea aimed
+              at the UK, because the market it could reach is bigger). A weekend side business and a
+              venture-scale one get the same{' '}
               {PACK_CONTENTS.length} documents, researched to the same standard and held to the same
               bar. What differs is how much is on the table if it works.
             </p>
             <p className="mt-3 max-w-[60ch] text-meta text-subtle">
-              The ladder is fixed and published in advance, so a pack&apos;s price is decided by
-              which rung its opportunity lands on, not by what we think you will pay for it. A
+              Both inputs land on a fixed, published ladder of prices. A pack takes whichever rung
+              its scale and market put it on, not a number picked to see what you will pay. A
               cheaper pack is not a thinner one.
             </p>
           </div>

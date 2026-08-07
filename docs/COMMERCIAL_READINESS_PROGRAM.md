@@ -769,3 +769,267 @@ doctrine at `:210-214`, and neither kill reproduces. But `:215-219` still carrie
 ending "hence legality kills on `supported`" — the code was right and the comment argued for the
 bug. Replaced with the history plus the two receipts and a "do NOT fix this back" line. Not a
 behaviour change; a change to the thing that would have caused the next regression.
+
+## 18. The grounding bottleneck is RELEVANCE, not availability (2026-08-07, offline, zero LLM)
+
+This section replaces the standing "the 19:55 tick had healthy retrieval and still killed all 15"
+lead. That framing is retired: the premise was partly wrong, and the corrected version points at a
+bigger, cheaper lever.
+
+### 18.1 The premise, corrected
+
+There is no 19:55 tick. `store/scheduler/ticks.jsonl` has 2,087 rows, 874 of them allowed and
+non-dry, and none carries a 19:55 timestamp. Reconstructing batches from `created_at` clustering
+over `store/dossiers/*.json` (gap > 20 min starts a new batch), the nearest evening batch on
+2026-08-06 is **19:38:41, n=8** — not 15 — and its kills are NOT one systemic cause:
+
+    min_composite 3, moat_ungrounded 3, source_or_die 2
+
+So 5 of 8 died on grounding-QUALITY gates. "Healthy retrieval" was true at the probe level and
+false at the passage level, and that distinction is the whole finding.
+
+Also confirmed while measuring, so nobody re-derives them:
+- The R2 grounding halt is **exactly one row** in the whole file: `2026-08-06T21:58:21`,
+  `err=GroundingInfrastructureError: ALL grounding providers dead`. The measured severity in §16
+  (1 halt / 195 real ticks / 17 min) stands.
+- The rate gate is **live and firing in production**: `2026-08-07T02:52:58` logged
+  "grounding degraded: the retrieval probe did not answer within 45s — generating now would mint
+  DEFER rows rather than verdicts, so this tick only drains". The rule works as designed.
+- Tick rows carry an EMPTY `result` object in every row measured. E4 stage telemetry landed on
+  `main` and only reached the daemon's checkout with the merge below, so tick-level outcome
+  attribution starts from now, not retroactively.
+
+### 18.2 The actual bottleneck
+
+Across 473 August dossiers, `moat_ungrounded` fired 117 times — the second-largest gate after
+`min_composite` (119), and combined with `source_or_die` (14) that is **131 of 366 August kills
+(35.8%) lost to grounding quality rather than idea quality**.
+
+The decisive measurement: those 117 dossiers carry a **mean of 21.4 citations each, and ZERO of
+them have zero citations**. Retrieval fetched documents every time. The checks still ruled
+`unverifiable` (320 unverifiable vs 218 supported vs 2 refuted across their checks). The engine is
+not starved of sources; it is starved of sources that ANSWER THE QUESTION ASKED.
+
+Per-check grounding yield, all August dossiers (`verdict` distribution, mean citations per check).
+**This table is a snapshot of a MOVING store — do not quote it, re-run it.** The daemon writes new
+dossiers continuously, so the figures drift within minutes (re-run 20 minutes later: kills
+366 -> 371, grounding share 35.8% -> 35.3%, incumbency 55.0% -> 54.8%). The authority is
+`.venv/bin/python tools/experiments/e12_grounding_yield.py`, which prints this table, the gate
+mix, the zero-citation count and the E1 eligibility check, and writes
+`e12_grounding_yield_receipts.json`. The RANKING is what is stable, not the decimals.
+
+| check | n | unverifiable | supported | refuted | mean cites | mean conf |
+|---|---|---|---|---|---|---|
+| payer_solvency | 311 | **60.5%** | 30.5% | 9.0% | 4.3 | 0.56 |
+| incumbency | 229 | **55.0%** | 17.0% | 27.9% | 4.9 | 0.62 |
+| legality | 305 | **54.8%** | 42.6% | 2.6% | 4.7 | 0.57 |
+| value_durability | 290 | 48.3% | 40.7% | 11.0% | 3.9 | 0.51 |
+| pain_reality | 237 | 40.5% | 57.8% | 1.7% | 4.2 | 0.57 |
+| distribution | 288 | 37.5% | 61.5% | 1.0% | 4.4 | 0.58 |
+| claims_verifiable | 104 | 35.6% | 55.8% | 8.7% | 4.9 | 0.61 |
+| buyer_intent | 209 | 33.0% | 67.0% | 0.0% | 4.2 | 0.56 |
+| route_to_market | 80 | 32.5% | 61.2% | 6.2% | 4.1 | 0.53 |
+| currency | 129 | 28.7% | 66.7% | 4.7% | 4.7 | 0.59 |
+
+Every check retrieves ~4-5 citations. The spread from 28.7% to 60.5% unverifiable is therefore
+NOT a retrieval-volume effect. It is query targeting.
+
+### 18.3 What this changes about E1
+
+E1's arm list is half right and cannot be fixed by config alone.
+
+- **`payer_solvency` is the correct target** — the worst check in the engine at 60.5%
+  unverifiable, and the entity template ("{payer} budget spending on {base}") attacks exactly the
+  failure mode.
+- **`distribution` is the wrong second target.** At 37.5% it is the fifth-BEST check of ten. The
+  headroom is small and the measurement will be noisy.
+- **The two checks that deserve the arm — `incumbency` (55.0%) and `legality` (54.8%) — cannot
+  receive it today.** `_ENTITY_TEMPLATES` (`prospector/verify.py:223-232`) has exactly two keys,
+  `payer_solvency` and `distribution`. `_entity_queries` returns `[]` for any other check
+  (`verify.py:241-243`) and the caller silently falls through to the LLM chain
+  (`verify.py:478-483`).
+
+  **TRAP: `retrieval.hybrid_entity_checks` looks like a general switch and is not.** Listing
+  `incumbency` or `legality` there is INERT — no error, no log, the arm simply never engages and
+  the experiment reads as "no effect". Extending `_ENTITY_TEMPLATES` is a code change, and it is
+  the natural E1 follow-on.
+
+### 18.4 A limit on E1's measurement plan
+
+The plan recorded earlier ("compute per-arm unverifiable rate offline from
+`CheckResult.query_source`") works **forward only**. `query_source` exists and is populated
+(`models.py:213`; set at `verify.py:481-493`, persisted at `:527/:534/:553/:561`), but no August
+dossier carries the field, because the code reached the daemon's checkout only with today's merge.
+There is no retroactive control arm. Both arms must be run fresh.
+
+### 18.5 Deployment — P0 is now actually live
+
+The standing blocker ("merging PR #122 to main did not make P0 live, because the daemon's launchd
+`WorkingDirectory` is the checkout on `fix/durable-ledger-fence`") is CLOSED.
+
+The "~27 conflicting source files" estimate was wrong. Measured with
+`git merge-tree --write-tree origin/main HEAD`: **exactly two files conflict**,
+`prospector/decay.py` and `prospector/scheduler/alerts.py`, and both conflicts are additive rather
+than semantic. Resolved per-hunk so each file keeps the other side's auto-merged changes:
+
+- `decay.py` kept HEAD — a strict superset: the same `logger.info` plus `_queue_unlist()` and the
+  CRITICAL "LIVE PACK KILLED ON RE-VET, still sellable" alert. Taking main's side would have
+  re-opened the money-rail gap where a re-vetted KILL keeps selling.
+- `alerts.py` kept origin/main — the superset: `TELEGRAM_KEYS` gains `moat_blind`.
+
+Receipts: merge commit `190cd00`, **920 passed / 3 skipped** on the merged tree (up from 875 on the
+branch alone), POPDD gate PASS (1725 python-lane tests). Fast-forwarded into the daemon's checkout
+and pushed. Daemon restarted onto it: pid 49515 -> 19735, cwd
+`/Users/chidionyema/Documents/code/prospector`. `hybrid_entity_checks`, `moat_blind`,
+`_queue_unlist` and `_infra_exception_action` are all present in the live checkout.
+
+### 18.6 Ranking, revised
+
+`moat_ungrounded` + `source_or_die` = 35.8% of August kills, all of them on candidates that DID
+retrieve evidence. That is a larger and cheaper lever than E11's confidence floor (§17: floor 0.4
+frees 66 of 333 hard-gate kills) because it does not loosen any gate — it makes the evidence
+actually arrive. Query targeting should outrank the floor decision in sequencing.
+
+### 18.7 Daemon-level proof that the merge is actually running
+
+Presence on disk is not deployment. The probe that settles it: re-running E12 twenty minutes after
+the restart shows `query_source present on checks: {'llm_batched': 4}`. No August dossier carries
+that field at all (§18.4) — it can only have been written by code that reached the checkout with
+today's merge. The new daemon (pid 19735) is therefore executing the merged `verify.py`, not the
+old image. That is the receipt "P0 is live" needs; the merge commit alone is not.
+
+## 19. Floor applied · the rerank ceiling measured · E1 reordered (2026-08-07, offline, zero LLM)
+
+Founder direction opening this session: *"i need this done yesterday, 2 weeks is unrealistic."*
+The §4 estimate was never a statement about the WORK — it is the wall-clock of the *measurements*.
+This section separates the two and collapses the measurement half where it can be collapsed.
+
+### 19.1 `confidence_floor` 0.0 -> 0.4 — APPLIED (founder sign-off 2026-08-07)
+
+§17 left this pending; it is now shipped. `config.yaml` global (`thresholds.confidence_floor`) and
+both lanes that were still inert (`smb`, `growth`). Note `side_hustle` and `venture` were **already
+at 0.4**, so this is harmonisation across lanes, not a novel setting — half the engine has been
+running this calibration all along.
+
+Receipt that it is live, not merely edited (`load_config()` -> `cfg.for_lane(t)`):
+
+    global 0.4 · side_hustle 0.4 · smb 0.4 · growth 0.4 · venture 0.4
+
+**Cross-validated by a second, independent method.** §17's figure came from replaying
+`kill_filter.apply_gates`. Counting the *recorded* `gate_fired` + firing-check confidence straight
+off `store/dossiers/*.kill.json` is a different path to the same population, and the gate mixes
+agree to within noise:
+
+| gate | E11 replay (freed at 0.4) | recorded-gate count (conf < 0.4) |
+|---|---|---|
+| incumbency | 31 | 32 |
+| value_durability | 16 | 16 |
+| payer_solvency | 7 | 7 |
+| legality | 6 | 4 |
+| pain_reality | 3 | 3 |
+| distribution | — | 1 |
+| **total** | **66 / 333** | **63 / 1,323 kill dossiers** |
+
+**It closes §11 hallucination gap 3, which was not the stated goal.** §11 flagged the
+"refuted-with-zero-citations edge": `verify.py:377` downgrades an *uncited supported* check to
+unverifiable, but no equivalent rail existed for *refuted*. There is now, and it falls out of the
+arithmetic rather than needing new code — confidence is recomputed from citations
+(`verify.py:70-133`), so a refutation citing nothing scores exactly 0.0 and sits below the floor.
+An uncited refutation can no longer hard-kill a candidate.
+
+This surfaced as three test failures (`test_shadow_moat.py`, `test_stochastic_full_vetting.py` x2),
+all of which were mocking `"citations": []` and asserting that the resulting kill short-circuited —
+i.e. **asserting the unsafe behaviour**. Fixed the fixtures, not the gate, per the instruction
+already written at `test_shadow_moat.py:21-31` for this exact fixture class ("make the mock's PASS
+genuinely grounded, never relax the gate so the mock's story works"). Added
+`test_an_uncited_refutation_does_not_short_circuit_at_the_confidence_floor` to pin the property the
+floor bought, with a vacuity guard asserting the floor is non-zero.
+
+**Receipts.** `922 passed, 2 skipped` (`.venv/bin/python -m pytest tests/unit -q`), up from 920 on
+the merge. **Non-vacuity bisected, not assumed**: with `config.yaml` stashed back to floor 0.0 the
+new test FAILS and the three repaired tests pass, so each one is testing the floor and not the
+weather.
+
+**Cost consequence, stated because §17 did not.** Raising the floor makes kill-fast fire less often:
+a candidate that used to die on its first refuted check now runs the rest of the order. Measured:
+63 of 1,323 historical kills (4.8%) fired a sub-0.4 refuted gate, having run a mean of 2.22 checks —
+so roughly 3.8 additional checks each, ~240 extra checks across the entire two-month kill history.
+Real, bounded, and small. Not a reason to reconsider; a number to have rather than to discover.
+
+### 19.2 E16 CEILING RESULT — the rerank has partial headroom, and the judge is the bigger half
+
+§14 registers E16 as "bge-rerank the stored passages of bucket-D checks". Running the real reranker
+needs a ~2GB local `torch`+`transformers` install (confirmed absent: no `torch`, `transformers`,
+`sentence_transformers`, or `FlagEmbedding` in `.venv`; Ollama is present with gemma3/llama3.2).
+Before buying the tool, measure whether there is anything for it to find.
+
+Script: `tools/experiments/e16_rerank_ceiling.py` (read-only, zero LLM, zero network; `--current-moat`
+restricts to `claude_cli`/`claude` per §10's provider-era confound). It scores every stored passage
+by overlap with the **candidate-specific** query vocabulary — template boilerplate from
+`_DISCONFIRM_TEMPLATES`/`_CONFIRM_TEMPLATES` is stripped first, since it is byte-identical across
+every candidate and would inflate every set equally. Then, stratified by `check_name` so no easy
+check is compared against a hard one, it asks: does a bucket-D check already hold a passage as
+query-relevant as the MEDIAN best passage of that same check's *supported* rulings?
+
+Population: **4,500 bucket-D checks** (unverifiable, passages stored, no infra failure) over 24,329
+scored passages; 738 checks / 5,673 passages on the current moat alone.
+
+| scope | checks | reachable | best passage NOT already rank 0 | junk share |
+|---|---|---|---|---|
+| all provider eras | 4,500 | **37.9%** | 45.5% | 4.8% |
+| current moat only | 738 | **40.8%** | 47.4% | 3.4% |
+
+Per-check reachability is strikingly flat (22.6%–44.8%), which is itself informative: this is not a
+property of one badly-templated check, it is uniform across the engine.
+
+**Three readings, in order of how much they change the plan.**
+
+1. **Reranking has real but partial headroom.** ~38–41% of bucket-D checks already hold a passage
+   as query-relevant as what actually sufficed to rule elsewhere. Combined with §18's 35.8% of
+   August kills lost to grounding quality, that is roughly **14% of all kills recoverable from
+   evidence already on disk and already paid for** — no new retrieval, no new tokens.
+2. **The judge is the bigger half, and this is the finding that reorders E1.** In **54.5%** of
+   bucket-D checks the most query-relevant passage was **already at rank 0** — the judge saw the
+   best available passage first and still ruled unverifiable. A reranker cannot help those. That is
+   direct support for §10's R1 ("the question class is unanswerable in principle") and for the E13
+   claim reframe over any retrieval-side fix, and it is consistent from the other direction with
+   §18's finding that grounding fails on relevance at ~4-5 citations per check.
+3. **Junk is NOT the story, and my first read of it was wrong.** A hand-inspected bucket-D sample
+   showed a UK employment-tribunal check grounded on zhihu.com homepage boilerplate in Chinese, and
+   the obvious inference was that the corpus is full of garbage. Measured: junk is **4.8%** of all
+   stored passages (1,100 stubs, 53 non-Latin, 6 nav-chrome out of 24,329). The anecdote was real
+   and the generalisation from it was false. Recorded here because that inference was one script
+   away from becoming a work item.
+
+**Caveat, load-bearing.** Lexical overlap is a PROXY for probativeness. A passage can share query
+vocabulary and still not answer the question — so 37.9% is an **upper bound** on rerank headroom,
+not a prediction of yield. The probe's job is to decide whether the 2GB install is worth making
+(it is: an upper bound of ~14% of all kills clears any reasonable bar) and to rank E13 above E16
+(it does, on the rank-0 result). It is not a substitute for running the reranker.
+
+### 19.3 `ffecc4c` — CLOSED, after three sessions of being carried as an open question
+
+It was never missing. `ffecc4c` and `a447e4f` have the **identical patch-id**
+(`2e3786251e069c66f63a0343d13f2ebe3fca3c52`) and an empty tree-diff: the commit was replayed under
+a new hash by the §16 `git rebase --onto origin/main e9d3a8b`. `a447e4f` is on `HEAD`
+(`fix/durable-ledger-fence`) and reaches main through PR #123. `ffecc4c` itself is unreachable from
+any ref, which is why it kept reading as lost.
+
+**Rule this produced: a dangling commit hash is not evidence of lost work — compare patch-ids
+before hunting for the content.** `git show <sha> | git patch-id --stable` costs nothing and
+answers it outright.
+
+### 19.4 What this does to §4's sequencing
+
+The reordering is driven by the rank-0 result, not by preference:
+
+1. **E13 claim reframe** (§10) — primary. Addresses the ~55% of bucket-D where the best passage was
+   already on top, which no retrieval-side change can touch. Replayable offline on stored passages.
+2. **E16 rerank** (§14) — secondary, ~38% upper bound, now justified enough to pay the 2GB install.
+3. **E1 entity templates** — still worth shipping (it improves the queries feeding BOTH of the
+   above), but it is no longer the head of the queue. `_ENTITY_TEMPLATES` (`verify.py:223-232`)
+   still needs extending to `incumbency`/`legality` per §18.3; that remains a code change.
+
+The measurement half of §4 collapses because E13/E16/E15/E17 all replay data already on disk.
+What does NOT collapse: E2 (needs biased live batches) and E3 (needs live concurrency probing).
+Those two are genuinely wall-clock-bound and no reframing changes that.
