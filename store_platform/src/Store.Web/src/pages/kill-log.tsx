@@ -258,12 +258,12 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             Now read one that survived all of it.
           </h2>
           <p className="mt-3 max-w-[60ch] text-body text-muted">
-            Same checks, same sourcing, opposite outcome. One full pack is free to read, no card and
+            Same checks, same sourcing, opposite outcome. One full report is free to read, no card and
             no email.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
-              Read a full pack free
+              Read a full report free
             </Link>
             {/* WAS "Browse the 145 that survived", which landed the reader on a grid of 63. The
                 button now names the number it actually delivers, read live from /catalog, and

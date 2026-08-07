@@ -68,8 +68,13 @@ function AccordionItem({
           )}
         />
       </button>
-      {open && (
-        <div className="px-5 pb-5 -mt-1">
+      {/* Native `hidden`, not a conditional unmount: a closed accordion used to remove the answer
+          from the DOM entirely, so a crawler that does not click (or does not run JS at all) saw
+          a question with no answer under it -- on the one page carrying FAQPage schema, whose
+          own rule is that the structured data must match what the page actually shows. `hidden`
+          keeps the text present and gives the same "not shown" result visually and to the
+          accessibility tree, without the SSR gap. */}
+      <div className="px-5 pb-5 -mt-1" hidden={!open}>
           <div className="text-meta leading-relaxed text-muted">
             <Answer item={item} />
           </div>
@@ -98,7 +103,6 @@ function AccordionItem({
             ))}
           </div>
         </div>
-      )}
     </div>
   );
 }

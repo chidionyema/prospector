@@ -8,7 +8,7 @@ interface LegalDocProps {
   title: string;
   /** Doc version string, defaults to the registration-recorded TOS_VERSION (L-04/L-05). */
   version?: string;
-  /** Hide the "interim, pending counsel" banner only once counsel has signed the copy off. */
+  /** Show the "interim, pending counsel" banner. Off by default; see note below. */
   interim?: boolean;
   children: React.ReactNode;
 }
@@ -18,12 +18,15 @@ interface LegalDocProps {
  * MarketingLayout so the legal pages share the same nav + footer as the rest of the store
  * (rather than the authenticated app shell, which is wrong for a public legal page).
  *
- * These are INTERIM beta-stage documents grounded in docs/legal/LEGAL-DECISIONS-LOG.md and are
- * explicitly pending final legal review (E12 / launch task #17). The banner says so honestly,
- * a clickwrap that links to clearly-marked interim terms beats a checkbox pointing at nothing.
- * Semantic tokens only (UI-STANDARDS); no raw palette, no dangerouslySetInnerHTML.
+ * Founder decision 2026-08-07 (pre-launch commercial-readiness pass): telling a paying buyer
+ * their terms are unfinished is a self-inflicted wound, not honesty; a buyer reads "pending
+ * legal counsel review" as "this contract may not hold," which is worse than no caveat at all.
+ * These documents ship as final as of this date, grounded in docs/legal/LEGAL-DECISIONS-LOG.md.
+ * `interim` stays available so a specific page can re-add the banner if a real draft goes out
+ * for review before it is finalised, but nothing sets it now. Semantic tokens only
+ * (UI-STANDARDS); no raw palette, no dangerouslySetInnerHTML.
  */
-export default function LegalDoc({ title, version = TOS_VERSION, interim = true, children }: LegalDocProps) {
+export default function LegalDoc({ title, version = TOS_VERSION, interim = false, children }: LegalDocProps) {
   return (
     <MarketingLayout>
       <Seo title={title} />
