@@ -26,10 +26,27 @@ import requests
 
 Problem = Dict[str, str]  # {"check", "severity", "where", "detail"}
 
-# Storefront currency by market prefix ("uk" and "uk-*" → £). An unmapped market lints
-# currency-free rather than guessing — unknown must never block on symbols.
-CURRENCY_BY_MARKET = {"uk": "£", "us": "$"}
-_ALL_SYMBOLS = frozenset(CURRENCY_BY_MARKET.values())
+# The one symbol table in the engine. `artifacts._render_financial_model` renders money
+# with it and this linter checks money against it, so the writer and the checker cannot
+# drift into disagreeing about what a pack's currency looks like — a drift here would
+# either unlist every pack in a market or wave through the defect this check exists for.
+SYMBOL_BY_CURRENCY = {"GBP": "£", "USD": "$", "EUR": "€"}
+
+# Storefront currency by market prefix ("uk" and "uk-*" → £). Mirrors the `currency_hint`
+# each market declares in config.yaml (tests pin the two against each other). An unmapped
+# market lints currency-free rather than guessing — unknown must never block on symbols.
+CURRENCY_BY_MARKET = {"uk": SYMBOL_BY_CURRENCY["GBP"], "us": SYMBOL_BY_CURRENCY["USD"]}
+_ALL_SYMBOLS = frozenset(SYMBOL_BY_CURRENCY.values())
+
+
+def symbol_for_currency(code: Optional[str], default: str = "£") -> str:
+    """ISO code (a market's config-declared `currency_hint`) → symbol.
+
+    Falls back to `default` for an unmapped or missing code: rendering a pack in £ is a
+    recoverable cosmetic wrong, while raising here would fail the whole artifact build.
+    The lint is the place that refuses to SELL such a pack.
+    """
+    return SYMBOL_BY_CURRENCY.get((code or "").strip().upper(), default)
 
 
 def expected_currency(market: str) -> Optional[str]:

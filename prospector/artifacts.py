@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 from . import facets
 from .models import Candidate, CheckResult, Verdict
 from .operator import Operator, ParseError, _extract_json
+from .pack_linter import symbol_for_currency
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
 from .telemetry import logger, stage as telemetry_stage
 
@@ -57,7 +58,8 @@ def _coerce_bare_markdown_artifact(text: str, t: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def _render_financial_model(assumptions: Dict[str, Any],
-                             claims: List[Dict[str, Any]]) -> str:
+                             claims: List[Dict[str, Any]],
+                             currency: str = "£") -> str:
     """Compute and render financial model from structured JSON assumptions.
 
     FIX #3: all arithmetic is done in Python. The LLM supplies only raw inputs;
@@ -66,6 +68,14 @@ def _render_financial_model(assumptions: Dict[str, Any],
 
     Displays None/missing fields gracefully — a business with no clear price or
     customer target renders a partial model with explicit gaps, not a wrong total.
+
+    `currency` is the symbol for the pack's market, resolved by the caller from that
+    market's config-declared `currency_hint` (config.yaml markets.<code>). It was a
+    hardcoded £ until the Q2 pack lint began refusing to list a pack whose money symbol
+    contradicts its market: a US pack priced in £ is wrong on the storefront whatever the
+    numbers say. The `*_gbp` assumption keys keep their legacy names and are read as
+    amounts in THIS market's currency — the artifacts prompt is already handed
+    `currency_hint` (prompts.py OPEN_MARKET_KEYS), so the model supplies local figures.
     """
     price: Optional[float] = assumptions.get("monthly_price")
     cust_m1: Optional[int] = assumptions.get("target_customers_month_1")
@@ -86,13 +96,13 @@ def _render_financial_model(assumptions: Dict[str, Any],
     lines.append("### Revenue")
     if price is not None and cust_m1 is not None:
         rev_m1 = price * cust_m1
-        lines.append(f"- **Month 1:** £{price:,.0f} × {cust_m1} customers = **£{rev_m1:,.0f}**")
+        lines.append(f"- **Month 1:** {currency}{price:,.0f} × {cust_m1} customers = **{currency}{rev_m1:,.0f}**")
     else:
         lines.append("- Month 1: _(price or customer target not specified)_")
 
     if price is not None and cust_m12 is not None:
         rev_m12 = price * cust_m12
-        lines.append(f"- **Month 12:** £{price:,.0f} × {cust_m12} customers = **£{rev_m12:,.0f}**")
+        lines.append(f"- **Month 12:** {currency}{price:,.0f} × {cust_m12} customers = **{currency}{rev_m12:,.0f}**")
         if cust_m1 and cust_m1 > 0:
             growth = rev_m12 / rev_m1
             lines.append(f"- **Growth (M1→M12):** {growth:.1f}×")
@@ -109,7 +119,7 @@ def _render_financial_model(assumptions: Dict[str, Any],
                      f"(COGS: {cog_pct:.0f}% of revenue)")
         if price is not None:
             margin_per_customer = price * gross_margin / 100
-            lines.append(f"- **Per customer/month:** £{margin_per_customer:,.2f}")
+            lines.append(f"- **Per customer/month:** {currency}{margin_per_customer:,.2f}")
         lines.append("")
     else:
         lines.append("### Gross Margin: _(COGS not specified)_")
@@ -123,12 +133,12 @@ def _render_financial_model(assumptions: Dict[str, Any],
         margin_pm = price * gross_margin / 100
         if margin_pm > 0:
             calc_payback = cac / margin_pm
-            lines.append(f"- **~{calc_payback:.1f} months** (CAC £{cac:,.0f} / "
-                         f"gross margin £{margin_pm:,.2f}/month)")
+            lines.append(f"- **~{calc_payback:.1f} months** (CAC {currency}{cac:,.0f} / "
+                         f"gross margin {currency}{margin_pm:,.2f}/month)")
         else:
             lines.append("- Cannot calculate: gross margin per customer is zero or negative")
     elif cac is not None:
-        lines.append(f"- CAC: £{cac:,.0f} _(monthly price or margin not specified — cannot compute payback)_")
+        lines.append(f"- CAC: {currency}{cac:,.0f} _(monthly price or margin not specified — cannot compute payback)_")
     else:
         lines.append("- _(not specified)_")
     lines.append("")
@@ -136,13 +146,13 @@ def _render_financial_model(assumptions: Dict[str, Any],
     # --- CLV ---
     lines.append("### Customer Lifetime Value (CLV)")
     if clv is not None:
-        lines.append(f"- **£{clv:,.0f}**")
+        lines.append(f"- **{currency}{clv:,.0f}**")
     elif churn is not None and churn > 0 and price is not None:
         # Simple CLV = ARPU / monthly churn rate
         calc_clv = price / (churn / 100)
-        lines.append(f"- ~**£{calc_clv:,.0f}** (ARPU £{price:,.0f} / {churn:.1f}% monthly churn)")
+        lines.append(f"- ~**{currency}{calc_clv:,.0f}** (ARPU {currency}{price:,.0f} / {churn:.1f}% monthly churn)")
     elif price is not None:
-        lines.append(f"- ARPU: £{price:,.0f}/month _(churn rate not specified)_")
+        lines.append(f"- ARPU: {currency}{price:,.0f}/month _(churn rate not specified)_")
     else:
         lines.append("_(not specified)_")
     lines.append("")
@@ -180,16 +190,16 @@ def _render_financial_model(assumptions: Dict[str, Any],
         else:
             gross = None
         net = (gross or rev) - overhead if gross is not None else None
-        lines.append(f"- Revenue: £{rev:,.0f}")
+        lines.append(f"- Revenue: {currency}{rev:,.0f}")
         if cog_pct is not None:
-            lines.append(f"- COGS ({cog_pct:.0f}%): £{cogs:,.0f}")
-        lines.append(f"- Overhead: £{overhead:,.0f}")
+            lines.append(f"- COGS ({cog_pct:.0f}%): {currency}{cogs:,.0f}")
+        lines.append(f"- Overhead: {currency}{overhead:,.0f}")
         if net is not None:
-            lines.append(f"- **Net: £{net:,.0f}**")
+            lines.append(f"- **Net: {currency}{net:,.0f}**")
         else:
             lines.append("- Net: _(cannot compute without COGS)_")
     elif overhead is not None:
-        lines.append(f"- Overhead: £{overhead:,.0f} _(revenue not specified)_")
+        lines.append(f"- Overhead: {currency}{overhead:,.0f} _(revenue not specified)_")
     else:
         lines.append("_(not specified)_")
     lines.append("")
@@ -257,9 +267,14 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
     # FIX #3: financial_model returns structured JSON — perform arithmetic in Python.
     if t == "financial_model" and isinstance(data, dict):
         assumptions = data
-        # Render to human-readable text
+        # Render to human-readable text, in the market's own money. The symbol comes from
+        # the same config-declared currency_hint the prompt above was given, so the figures
+        # and the symbol cannot disagree.
         claims_list = json.loads(claims_json) if claims_json else []
-        content = _render_financial_model(assumptions, claims_list)
+        content = _render_financial_model(
+            assumptions, claims_list,
+            currency=symbol_for_currency((market_vars or {}).get("currency_hint")),
+        )
         return t, content
 
     # All other types return {type, content}.

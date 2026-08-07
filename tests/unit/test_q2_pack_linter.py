@@ -14,8 +14,10 @@ import pytest
 import requests as real_requests
 
 from prospector import pack_linter
+from prospector.artifacts import _render_financial_model
 from prospector.bridge import listing_gate
 from prospector.pack_linter import (
+    CURRENCY_BY_MARKET,
     check_arithmetic,
     check_currency,
     check_sections,
@@ -23,6 +25,7 @@ from prospector.pack_linter import (
     check_urls,
     expected_currency,
     lint_pack,
+    symbol_for_currency,
 )
 
 # A financial model in exactly the renderer's format, arithmetic all correct.
@@ -78,6 +81,45 @@ def test_currency_listing_copy_wrong_only_is_error_mixed_is_warning():
 
 def test_currency_unknown_market_never_blocks():
     assert check_currency(GOOD_FIN, "$99", "de") == []
+
+
+# ---------------------------------------------------------------------------
+# Anti-drift: the renderer writes money with the same table the linter checks
+# ---------------------------------------------------------------------------
+
+def test_config_currency_hint_resolves_to_the_symbol_the_linter_expects():
+    """A market's declared currency_hint and the linter's expectation cannot drift.
+
+    _render_financial_model prints with symbol_for_currency(currency_hint); check_currency
+    rules with CURRENCY_BY_MARKET. If someone edits config.yaml's hint without the table,
+    every pack in that market silently registers UNLISTED — so pin the join here.
+    """
+    from prospector.config import load_config
+
+    cfg = load_config()
+    markets = getattr(cfg, "markets", None) or {}
+    assert markets, "config declares no markets"
+    for code, expected in CURRENCY_BY_MARKET.items():
+        hint = (markets.get(code) or {}).get("currency_hint")
+        assert hint, f"market {code!r} declares no currency_hint"
+        assert symbol_for_currency(hint) == expected, (code, hint)
+
+
+def test_a_us_render_clears_the_us_currency_check():
+    """The fail-closed state Q2 created: a $ render must lint clean in a US pack."""
+    assumptions = {
+        "monthly_price": 50.0,
+        "target_customers_month_1": 10,
+        "target_customers_month_12": 120,
+        "estimated_cac_gbp": 100.0,
+        "cost_of_goods_pct": 12.0,
+        "estimated_monthly_churn_pct": 5.0,
+    }
+    text = _render_financial_model(assumptions, [], currency=symbol_for_currency("USD"))
+    assert "$" in text and "£" not in text
+    assert check_currency(text, "Sells for $49.", "us") == []
+    assert check_sections(text) == []
+    assert check_arithmetic(text) == []
 
 
 # ---------------------------------------------------------------------------
