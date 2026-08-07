@@ -866,6 +866,11 @@ personas:
 listing:
   price_pence: 4900              # The DEFAULT rung. An unclassified pack holds here, forever.
   publish_on: pass
+  # Q2 pack linter (bridge.py publish gate). URL resolution is the linter's only networked
+  # check; off = the pure-text checks (currency, arithmetic, truncation, sections) still
+  # run. A definitive 404/410 blocks listing; a timeout is only a warning — our outage is
+  # not the citation's death (the same rule as DEFER-not-KILL on the verdict path).
+  lint_check_urls: true
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
   exclusivity: true
