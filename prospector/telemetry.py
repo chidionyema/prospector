@@ -8,6 +8,7 @@ import json
 import logging
 import threading
 import time
+from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Callable, Dict, Optional, TypeVar
 
@@ -17,6 +18,24 @@ from pythonjsonlogger import jsonlogger
 SESSION_ID = contextvars.ContextVar("session_id", default=None)
 CANDIDATE_ID = contextvars.ContextVar("candidate_id", default=None)
 PHASE = contextvars.ContextVar("phase", default="main")
+# stage = which pipeline step made the call (generate | prescreen | query_gen | verdict |
+# adversarial | score | price_comparables | artifacts | claim_check | content_gen); finer-grained
+# than phase, set by Operator.complete_json.
+STAGE = contextvars.ContextVar("stage", default="")
+
+
+@contextmanager
+def stage(name: str):
+    """Tag every record_usage() inside the block with this pipeline stage (E4).
+
+    A context manager instead of a complete_json parameter so that test doubles and
+    subclasses with strict signatures never have to know about it.
+    """
+    token = STAGE.set(name)
+    try:
+        yield
+    finally:
+        STAGE.reset(token)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -123,7 +142,7 @@ def track_latency(name: Optional[str] = None) -> Callable[[F], F]:
     return decorator
 
 
-def set_context(session_id: Optional[str] = None, candidate_id: Optional[str] = None, phase: Optional[str] = None) -> None:
+def set_context(session_id: Optional[str] = None, candidate_id: Optional[str] = None, phase: Optional[str] = None, stage: Optional[str] = None) -> None:
     """Set tracing context."""
     if session_id:
         SESSION_ID.set(session_id)
@@ -131,6 +150,8 @@ def set_context(session_id: Optional[str] = None, candidate_id: Optional[str] = 
         CANDIDATE_ID.set(candidate_id)
     if phase:
         PHASE.set(phase)
+    if stage:
+        STAGE.set(stage)
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +216,7 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
                  message: str = "", self_correction: bool = False) -> None:
     """Record one model/search call's token usage against the current phase and provider."""
     phase = PHASE.get() or "main"
+    stage = STAGE.get() or ""
     # Extract root provider (e.g. 'claude-cli/default' -> 'claude-cli')
     root_provider = provider.split("/")[0].lower() if "/" in provider else provider.lower()
     
@@ -226,12 +248,13 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
         cost = (input_tokens * price["input"] / 1_000_000) + (output_tokens * price["output"] / 1_000_000)
         if cost > 0:
             logger.info(
-                f"Spend event: {provider} cost=${cost:.6f}", 
+                f"Spend event: {provider} cost=${cost:.6f}",
                 extra={
                     "event": "spend",
                     "provider": provider,
                     "amount_usd": cost,
                     "phase": phase,
+                    "stage": stage,
                     "input": input_tokens,
                     "output": output_tokens
                 }

@@ -22,7 +22,7 @@ from . import facets
 from .models import Candidate, CheckResult, Verdict
 from .operator import Operator, ParseError, _extract_json
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
-from .telemetry import logger
+from .telemetry import logger, stage as telemetry_stage
 
 # Prose pack bodies: schema is {"type", "content"} where content is markdown.
 # cursor_cli often emits the markdown body without the JSON envelope.
@@ -249,9 +249,10 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
                           **(market_vars or {}))
     coerce = ((lambda text: _coerce_bare_markdown_artifact(text, t))
               if t in _PROSE_ARTIFACT_TYPES else None)
-    data = op.complete_json(system, user, temperature=0.3,
-                            validate=lambda d: _validate_artifact_shape(t, d),
-                            coerce=coerce)
+    with telemetry_stage("artifacts"):
+        data = op.complete_json(system, user, temperature=0.3,
+                                validate=lambda d: _validate_artifact_shape(t, d),
+                                coerce=coerce)
 
     # FIX #3: financial_model returns structured JSON — perform arithmetic in Python.
     if t == "financial_model" and isinstance(data, dict):
@@ -334,7 +335,8 @@ def verify_claims_detail(op: Operator, copy: str, claims: List[Dict[str, Any]]
     """Like verify_claims, but also returns violation rows for regeneration feedback."""
     system, user = render("claim_check", copy=copy, claims_json=json.dumps(claims))
     try:
-        data = op.complete_json(system, user, temperature=0.0)
+        with telemetry_stage("claim_check"):
+            data = op.complete_json(system, user, temperature=0.0)
         ok = bool(data.get("pass", False))
         viol = data.get("violations") if isinstance(data.get("violations"), list) else []
         return ok, [v for v in viol if isinstance(v, dict)]
@@ -537,7 +539,8 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
                               claims_json=claims_json, type=t)
         if feedback:
             user = f"{user}\n\n{feedback}"
-        data = gen_op.complete_json(system, user, temperature=0.7 if attempt == 0 else 0.3)
+        with telemetry_stage("content_gen"):
+            data = gen_op.complete_json(system, user, temperature=0.7 if attempt == 0 else 0.3)
         if t == "listing_page":
             piece = _normalize_listing(data)
             last_listing = piece

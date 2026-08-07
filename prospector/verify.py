@@ -21,7 +21,7 @@ from .models import (CHECKS, DEFAULT_CHECKS, DEFER_GATE, PRICING_CHECK, Adversar
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
-from .telemetry import logger, track_latency
+from .telemetry import logger, stage as telemetry_stage, track_latency
 from .trimming import RATIONALE_MAX, clip_to_sentence
 from .audit import audit
 
@@ -274,7 +274,8 @@ def gen_queries(op: Operator, cand: Candidate, check_name: str, n: int,
     try:
         # retries=0: query-gen already falls back to a template on failure; do not
         # burn multi-minute CLI retries on a non-verdict call.
-        data = op.complete_json(system, user, temperature=0.5, retries=0)
+        with telemetry_stage("query_gen"):
+            data = op.complete_json(system, user, temperature=0.5, retries=0)
         qs = data if isinstance(data, list) else data.get("queries", [])
         return [str(q) for q in qs][:n] or [f"{cand.title} {check_name}"]
     except Exception as e:
@@ -309,7 +310,8 @@ def gen_queries_batched(op: Operator, cand: Candidate,
                               **_market_vars(cfg))
         # retries=0: total failure → {} → every check uses its template; hanging
         # Cursor/CLI retries here wedged candidates for 6+ minutes per batch.
-        data = op.complete_json(system, user, temperature=0.5, retries=0)
+        with telemetry_stage("query_gen"):
+            data = op.complete_json(system, user, temperature=0.5, retries=0)
     except Exception as e:
         logger.warning(f"Batched query gen failed (falling back to templates): {e}")
         return {}
@@ -378,7 +380,8 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     user = user.replace("{for each: [source_id] (url, published_at) text}", passages)
     user += f"\n\nPassages:\n{passages}"
     try:
-        data = op.complete_json(system, user, temperature=0.0)
+        with telemetry_stage("verdict"):
+            data = op.complete_json(system, user, temperature=0.0)
     except ProviderExhaustedError:
         # Every brain (incl. the cheap tail) is out of quota/credit — an outage, not a
         # weak idea. Let it propagate so run_check defers the candidate (re-vet) instead
@@ -603,7 +606,8 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
                           adversarial_bias=adv_bias,
                           **_market_vars(cfg, for_moat=True))
     try:
-        data = op.complete_json(system, user, temperature=0.3)
+        with telemetry_stage("adversarial"):
+            data = op.complete_json(system, user, temperature=0.3)
         if isinstance(data, list):
             data = next((x for x in data if isinstance(x, dict)), {}) if data else {}
         if not isinstance(data, dict):
