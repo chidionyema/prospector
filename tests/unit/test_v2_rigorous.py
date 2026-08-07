@@ -246,7 +246,7 @@ class TestLedgerInjection:
             f.write("* LAW: No two-sided marketplaces.\n")
             ledger_path = f.name
         try:
-            with patch("prospector.pipeline.moat_prompts._LEDGER_PATH", Path(ledger_path)):
+            with patch.dict(os.environ, {"PROSPECTOR_LEDGER_PATH": ledger_path}):
                 spec = CandidateSpec("b1", "f", "a", "Test concept")
                 prompt = compile_system_prompt(spec)
                 assert "LAW: Never build a middleman wrapper" in prompt
@@ -260,7 +260,7 @@ class TestLedgerInjection:
             f.write("* LAW: No middleman wrappers.\n")
             ledger_path = f.name
         try:
-            with patch("prospector.pipeline.moat_prompts._LEDGER_PATH", Path(ledger_path)):
+            with patch.dict(os.environ, {"PROSPECTOR_LEDGER_PATH": ledger_path}):
                 prompt = compile_generator_system_prompt(
                     signal_text="AI for SMB",
                     structural_form="vertical_tool",
@@ -276,14 +276,14 @@ class TestLedgerInjection:
             f.write("# Just a header, no laws\n")
             ledger_path = f.name
         try:
-            with patch("prospector.pipeline.moat_prompts._LEDGER_PATH", Path(ledger_path)):
+            with patch.dict(os.environ, {"PROSPECTOR_LEDGER_PATH": ledger_path}):
                 result = _load_ledger()
                 assert "no ledger laws recorded yet" in result
         finally:
             os.unlink(ledger_path)
 
     def test_ledger_missing_file_returns_placeholder(self):
-        with patch("prospector.pipeline.moat_prompts._LEDGER_PATH", Path("/nonexistent/path.md")):
+        with patch.dict(os.environ, {"PROSPECTOR_LEDGER_PATH": "/nonexistent/path.md"}):
             result = _load_ledger()
             assert "no ledger laws recorded yet" in result
 

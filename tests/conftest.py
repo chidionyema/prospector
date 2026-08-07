@@ -50,6 +50,24 @@ def _isolate_price_rationale(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_durable_ledger(tmp_path, monkeypatch):
+    """Redirect the durable ledger (storage/durable_ledger.md) at a per-test temp file.
+
+    The Tribunal's 4th check appends a `LAW:` line on every KILL that carries one
+    (middleware.TribunalMiddleware._commit_law). Unfenced, that wrote fixture laws straight
+    into the production ledger: 1196 of them were already committed on HEAD by 2026-08-06,
+    lines like "LAW: Do not generate concepts related to abc123 after multiple failed wedge
+    pivots." This is worse than the audit-log leak it resembles, because the ledger is not a
+    log — moat_prompts._load_ledger feeds its last 15 laws into both the generator and the
+    verifier prompt as "concepts mathematically proven to fail", so test junk becomes a
+    standing ban on what the engine may propose.
+
+    setenv is sufficient here, unlike _isolate_audit_log above: middleware resolves the path
+    per call in default_ledger_path() rather than binding a module constant at import."""
+    monkeypatch.setenv("PROSPECTOR_LEDGER_PATH", str(tmp_path / "durable_ledger.md"))
+
+
+@pytest.fixture(autouse=True)
 def _no_live_grounding_probe(monkeypatch):
     """Stub the per-tick grounding probe to "healthy" unless a test says otherwise.
 

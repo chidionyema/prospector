@@ -13,7 +13,9 @@ def _cfg(tmp_path, cap=20.0, batch=3):
     return types.SimpleNamespace(
         store_dir=str(tmp_path),
         spend=types.SimpleNamespace(daily_cap_usd=cap, warn_at_usd=cap * 0.75),
-        schedule={"batch_size": batch},
+        # decay off: these are GENERATION tests, and a real decay sweep would try to build a
+        # brain from this SimpleNamespace. The decay rail has its own file, test_tick_decay.py.
+        schedule={"batch_size": batch, "decay_per_tick": 0},
     )
 
 

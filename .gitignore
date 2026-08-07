@@ -116,3 +116,9 @@ store/scheduler/launchd.*.log
 
 # local pytest CLI-slot locks (per-agent, machine-local)
 .pytest-slots/
+
+# graphify knowledge graph — GENERATED, 8.1 MB, rebuilt by a post-commit hook.
+# Tracked until 2026-08-06, which made every refresh a 318-file diff on a branch shared by
+# concurrent sessions, so the estate's stalest graph was the one nobody dared refresh.
+# Spec R8 in docs/GRAPHIFY_ENFORCEMENT_SPEC.md.
+graphify-out/
