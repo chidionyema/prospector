@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon, SourcedLine } from '@/components/ui';
+import { cx } from '@/components/ui/cx';
 import { parseCitations } from '@/lib/citations';
 import type { PackDetails } from '@/lib/api/client';
 
@@ -29,7 +30,16 @@ import type { PackDetails } from '@/lib/api/client';
  * this is the pull-quote, that is the section. What must never diverge is the source -- both
  * render through `parseCitations`, so a line's anchor is the same anchor in both places.
  */
-export default function DossierExcerptPlate({ pack }: { pack: PackDetails }) {
+export default function DossierExcerptPlate({
+  pack,
+  className,
+}: {
+  pack: PackDetails;
+  /* The plate used to open the page, so its spacing was a hardcoded `mb-8` and its position was
+     not the caller's business. It now sits under the header block on the pack page, so the
+     caller owns the gap above it. */
+  className?: string;
+}) {
   // Plain, not `React.useMemo`. The compiler refused to preserve the memo here ("Existing
   // memoization could not be preserved", eslint react-hooks/preserve-manual-memoization) because
   // of the early return inside the loop, which meant the file failed lint AND lost every other
@@ -40,7 +50,7 @@ export default function DossierExcerptPlate({ pack }: { pack: PackDetails }) {
   if (!first) return null;
 
   return (
-    <figure className="mb-8 overflow-hidden rounded-md border border-border bg-surface">
+    <figure className={cx('overflow-hidden rounded-md border border-border bg-surface', className)}>
       <figcaption className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-surface2 px-5 py-3">
         <span className="inline-flex items-center gap-2 text-caption font-medium text-muted">
           <Icon name="verified" size={13} className="text-success" />

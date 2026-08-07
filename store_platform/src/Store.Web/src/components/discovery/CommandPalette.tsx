@@ -8,6 +8,7 @@ import { type Pack } from '@/lib/api/client';
 import { useCurrency } from '@/lib/currency';
 import { formatPriceForMarket } from '@/lib/fx';
 import { matchesQuery, splitTitle, extractIntent } from '@/lib/discovery';
+import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 
 import { FacetChips } from './FacetChips';
 
@@ -48,7 +49,21 @@ export function useCommandPalette() {
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+
+    /* THE HEADER SEARCH BUTTON, decoupled.
+       Search existed and was only ever reachable by a keyboard shortcut or by scrolling to the
+       toolbar above the shelf -- i.e. invisible to a phone, which has neither a Cmd key nor the
+       patience. The header lives in `MarketingLayout`, which renders on every page and must not
+       import the catalogue's state, so it dispatches a window event instead of holding a ref to
+       this hook. On any page that is NOT the catalogue there is no listener, and the header
+       navigates to `/?search=1` instead (handled in `pages/index.tsx`). */
+    const onOpenRequest = () => setOpen(true);
+    window.addEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+    };
   }, []);
 
   const close = useCallback(() => {

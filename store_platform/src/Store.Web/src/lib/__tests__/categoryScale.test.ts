@@ -142,21 +142,62 @@ describe('the untagged pack renders no sector marker', () => {
   const page = readSource('../../pages/index.tsx');
 
   it('the sector chip is gated on `tagged`', () => {
-    expect(page, 'the chip must be behind a tagged guard').toMatch(/\{cat\.tagged &&/);
+    /*
+     * Either binding is accepted because the chip MOVED (2026-08-06). It used to be the first
+     * element of the card body, where the local was `cat`; it now sits inside `PackCoverArt`,
+     * where the same object arrives as the `category` prop. The move is the fix for a real
+     * defect: the chip renders only on a tagged pack, so in a three-up row containing one
+     * untagged card that card's title sat ~34px higher than its neighbours' and its price row
+     * was pushed down to match. What this test protects is the GUARD, not the identifier -- an
+     * ungated chip prints an empty pill on the 9-of-63 untagged packs.
+     */
+    expect(page, 'the chip must be behind a tagged guard').toMatch(/\{(?:cat|category)\.tagged &&/);
   });
 
-  it('the generated cover branches on `tagged` and draws no icon when false', () => {
+  it('the generated cover branches on `tagged` and draws no mark at all when false', () => {
     expect(page, 'the cover must branch on the flag, not on the icon being present').toMatch(
       /category\.tagged \?/,
     );
-    // The untagged branch's mark is derived from the pack's own title, which is already on the
-    // card: it distinguishes without asserting anything the pack does not say itself.
-    // From the heading the card actually prints, not from `pack.title`: the two differ whenever
-    // the engine supplied a `cardLine`, and the first cut of this drew `FK` (from "FridgePass
-    // Kit") on a card headed "Sell a fridge sensor that prints daily hygiene logs".
-    expect(page, 'the untagged cover must be built from the printed heading').toMatch(
-      /monogram[\s\S]{0,900}cardHeading\(pack\)\s*\n?\s*\.heading/,
+
+    /*
+     * THE UNTAGGED BRANCH IS EMPTY. This assertion previously required the opposite -- a
+     * `monogram` of the printed heading's initials -- and that requirement is withdrawn, not
+     * relaxed, on founder review of the deployed shelf (2026-08-06).
+     *
+     * The monogram was introduced to solve a real problem correctly identified above: the 9 of 63
+     * untagged packs were all drawing `UNLABELLED.icon`, so nine cards wore the same grey
+     * briefcase. It was rejected on what it actually rendered. Two capitals at 5.5rem, floating
+     * where a product photograph goes, decode to nothing: on the live shelf they read as `HA` and
+     * `SE`, which a buyer cannot look up, cannot match to any label on the card, and cannot tell
+     * apart from placeholder art or an internal code. The rule this file exists to enforce --
+     * "a marker with no name beside it is decoration pretending to be information" -- rules out
+     * the monogram by exactly the same argument it rules out the grey briefcase. The monogram
+     * merely made the meaningless mark unique per pack instead of shared.
+     *
+     * The counter-argument on record was that a bare tint "reads as an empty box". That was true
+     * when the cover held nothing else, and is no longer true: the cover now carries the spec
+     * strip ("8 documents · N sources"), which is information the buyer can act on, in the space
+     * the monogram occupied. So the untagged cover is a tint plus real specs, and nothing is
+     * drawn that claims a category we do not have.
+     *
+     * What is still forbidden, and is what this now asserts: drawing `UNLABELLED`'s icon or any
+     * other glyph on the untagged branch. The branch must render nothing.
+     */
+    const cover = page.slice(
+      page.indexOf('function PackCoverArt'),
+      page.indexOf('function SectorChips'),
     );
+    expect(cover.length, 'PackCoverArt must be locatable for this assertion').toBeGreaterThan(0);
+    expect(cover, 'the untagged branch must render nothing').toMatch(
+      /category\.tagged \?[\s\S]*?\) : null\}/,
+    );
+    // Comments stripped first: the cover's own docblock explains at length why the monogram was
+    // removed, and a rule that forbids naming the thing you removed forbids recording why.
+    const coverCode = cover
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')
+      .replace(/\/\/[^\n]*/g, '');
+    expect(coverCode, 'no monogram may come back to the cover').not.toMatch(/monogram/i);
   });
 
   it('UNLABELLED is still not in the rendered sector vocabulary', () => {

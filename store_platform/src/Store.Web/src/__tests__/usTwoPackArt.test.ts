@@ -102,20 +102,42 @@ describe('US-2 — Pack cards with pack art', () => {
     expect(page, 'the cover mark must be the category icon').toMatch(
       /name=\{category\.icon\}/,
     );
-    // Per-pack variation on top of the per-category tint, so two packs in the same sector are not
-    // the same picture. Deterministic in `pack.id`: a cover that changes on reload is worse than
-    // no cover, because a returning reader cannot find the card they were looking at.
-    expect(page, 'the cover must vary per pack from a seed derived from the id').toMatch(
-      /Array\.from\(pack\.id\)\.reduce/,
-    );
+    /*
+     * PER-PACK JITTER: WITHDRAWN, NOT RELAXED (2026-08-06, internal design review).
+     *
+     * Two assertions used to live here and are deleted on purpose, with the reasoning kept in
+     * place so nobody re-derives the idea from scratch:
+     *
+     *   toMatch(/Array\.from\(pack\.id\)\.reduce/)                  // seed the offset from the id
+     *   toMatch(/COVER_OFFSETS = \[[\s\S]{0,200}'left-\[\d+%\]'/)   // 5 literal offset classes
+     *
+     * They encoded a real constraint -- a cover that moves on reload is worse than no cover,
+     * because a returning reader cannot find the card they were looking at -- and the fix was
+     * sound in isolation: hash the id, index a fixed table of `left-[n%]` literals.
+     *
+     * It was rejected on what it rendered. The glyph was pushed to a per-pack horizontal offset
+     * inside a 96px-tall band, so on the seeds that landed right the mark was CLIPPED by the
+     * card edge, and down a three-up grid the eye read the row as five different components
+     * rather than five instances of one. Variation was bought at the cost of the thing a shelf
+     * needs most, which is that its cards look like a set.
+     *
+     * The replacement gets non-uniformity from something that is already true of each pack
+     * rather than from its id: the category tint and the category glyph, on a fixed four-corner
+     * layout, over one shared `COVER_WEAVE` texture. Two packs in the same sector do look alike
+     * -- that is now the intent, because they ARE alike, and the chip and title separate them.
+     *
+     * The determinism requirement is not withdrawn; it is satisfied more strongly than before,
+     * since nothing about the cover is derived from anything but the pack's own category. The
+     * `Math.random` ban below is the part of the old rule that still has teeth, so it stays.
+     */
     // Comments stripped first: the component's own header names `Math.random()` while explaining
     // why it is banned there, and a doc comment is not a call.
     const withoutComments = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(withoutComments, 'the cover must not be random').not.toMatch(/Math\.random\(/);
-    // Tailwind scans source text, so an interpolated `left-[${n}%]` compiles to nothing and every
-    // mark silently stacks at the same offset -- a green test with an invisible regression.
-    expect(page, 'the offsets must be full literal class strings').toMatch(
-      /COVER_OFFSETS = \[[\s\S]{0,200}'left-\[\d+%\]'/,
+    // Tailwind scans source text, so an interpolated `bg-[image:...${n}...]` compiles to nothing.
+    // The weave must therefore be one literal class string, not built at runtime.
+    expect(page, 'the cover texture must be a full literal class string').toMatch(
+      /COVER_WEAVE =\s*\n?\s*'bg-\[image:repeating-linear-gradient\(/,
     );
     expect(page, 'the cover must state the listing market in words').toMatch(
       /For \{marketLabel\(pack\.market\)\} rules/,
