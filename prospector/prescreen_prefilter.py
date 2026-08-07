@@ -407,13 +407,24 @@ def settings_from_config(cfg: Any) -> PrefilterSettings:
 def resolve_log_path(cfg: Any, settings: PrefilterSettings) -> Path:
     """Where the shadow log is written.
 
-    `prescreen_prefilter.log_dir` wins; otherwise `<cfg.store_dir>/prescreen_shadow`,
-    which already honours `PROSPECTOR_STORE_DIR`. Nothing here is bound at import
-    time — module-level path constants are exactly how tests have polluted
-    production state in this repo before (memory: tests-polluted-the-durable-ledger).
+    `prescreen_prefilter.log_dir` wins; then `PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR`;
+    otherwise `<cfg.store_dir>/prescreen_shadow`, which already honours
+    `PROSPECTOR_STORE_DIR`. Nothing here is bound at import time — module-level path
+    constants are exactly how tests have polluted production state in this repo before
+    (memory: tests-polluted-the-durable-ledger).
+
+    The env var is not decoration. Deferring to `cfg.store_dir` alone was NOT enough:
+    every test driving a candidate through a `load_config()` cfg resolves to the real
+    `store/`, and on 2026-08-07 that put 80 rows for the single fixture candidate
+    `tests/behavioural/test_prescreen_preserves_novelty.py:28` into
+    store/prescreen_shadow/ — the entire contents of the corpus E6 exists to decide on,
+    every row of it invented. `numeric_citation.resolve_log_path` (:551) already had
+    this escape hatch for the same reason; this is the same fix one module over.
     """
     if settings.log_dir:
         base = Path(settings.log_dir)
+    elif os.environ.get("PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR", "").strip():
+        base = Path(os.environ["PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR"].strip())
     else:
         store_dir = getattr(cfg, "store_dir", None)
         base = Path(store_dir) if store_dir else Path("store")

@@ -497,10 +497,42 @@ def test_unknown_backend_degrades_to_lexical():
         "lexical", "a dense backend appeared; update the E6 blocker note"
 
 
-def test_log_path_defaults_under_the_store_dir(tmp_path):
+def test_log_path_defaults_under_the_store_dir(tmp_path, monkeypatch):
+    """The fallback branch — asserted with the env override explicitly OFF.
+
+    `tests/conftest.py::_isolate_prescreen_shadow` now sets
+    PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR for every test, because without it every test
+    that drove a candidate through a `load_config()` cfg wrote shadow rows into the real
+    store/prescreen_shadow/ — the corpus E6's decision reads. That fixture is what makes
+    this test's own precondition (no env override) something it has to state rather than
+    assume."""
+    monkeypatch.delenv("PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR", raising=False)
+
     class C:
         store_dir = tmp_path / "store"
         prescreen_prefilter = {"shadow_mode": True}
     p = pf.resolve_log_path(C(), pf.settings_from_config(C()))
     assert p.parent == tmp_path / "store" / "prescreen_shadow"
     assert p.name.startswith("shadow-") and p.suffix == ".jsonl"
+
+
+def test_log_path_env_override_beats_the_store_dir(tmp_path, monkeypatch):
+    """The escape hatch the test fence rides on, pinned in both directions.
+
+    Without this, a future tidy-up could delete the env branch from `resolve_log_path`
+    and only the conftest fixture would break — silently, since shadow rows are log-only
+    by construction and nothing turns red when they land in the wrong file."""
+    monkeypatch.setenv("PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR", str(tmp_path / "elsewhere"))
+
+    class C:
+        store_dir = tmp_path / "store"
+        prescreen_prefilter = {"shadow_mode": True}
+    p = pf.resolve_log_path(C(), pf.settings_from_config(C()))
+    assert p.parent == tmp_path / "elsewhere"
+
+    # …and explicit config still outranks the env var.
+    class D:
+        store_dir = tmp_path / "store"
+        prescreen_prefilter = {"shadow_mode": True, "log_dir": str(tmp_path / "declared")}
+    q = pf.resolve_log_path(D(), pf.settings_from_config(D()))
+    assert q.parent == tmp_path / "declared"

@@ -88,6 +88,27 @@ def _isolate_numeric_citation_shadow(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_prescreen_shadow(tmp_path, monkeypatch):
+    """Redirect the E6 prescreen-prefilter shadow log at a per-test temp dir.
+
+    Seventh instance, and it had already happened when this fixture was written:
+    `prescreen_prefilter.shadow_mode` flipped to true (config.yaml:1036) and the only
+    rows store/prescreen_shadow/shadow-2026-08.jsonl ever held were 80 scorings of ONE
+    fixture candidate — "Novel fintech approach for micro-farmers",
+    tests/behavioural/test_prescreen_preserves_novelty.py:28. Not a biased corpus: a
+    corpus that was 100% fixture, in the file E6's ship/kill decision reads.
+
+    That the leak is invisible is the point. `prescreen.py:173` calls `record_shadow`
+    on every prescreen, shadow rows are log-only by construction, so nothing fails and
+    no test turns red — the damage lands in a measurement taken weeks later.
+
+    setenv is sufficient: resolve_log_path() resolves per call and reads the env var
+    itself (prescreen_prefilter.py:415), so nothing is bound at import."""
+    monkeypatch.setenv("PROSPECTOR_PRESCREEN_SHADOW_LOG_DIR",
+                       str(tmp_path / "prescreen_shadow"))
+
+
+@pytest.fixture(autouse=True)
 def _no_live_payment_credentials(monkeypatch):
     """Strip money-rail credentials from os.environ for every test.
 
@@ -116,10 +137,26 @@ def _no_live_payment_credentials(monkeypatch):
 
     Deleting rather than blanking: bridge.py tests truthiness, and `patch.dict` in
     tests/test_engine_bridge.py sets these keys inside the test body — i.e. after this fixture
-    runs — so the key-selection tests keep working exactly as written."""
+    runs — so the key-selection tests keep working exactly as written.
+
+    THE ENVIRONMENT WAS ONLY HALF THE DOOR (found 2026-08-07, proven by repro). Deleting these
+    keys is not sufficient on its own, because `prospector.run._load_dotenv` (:2444) reads `.env`
+    and `~/.config/llm/secrets.sh` off DISK and fills any key that is *absent* from os.environ —
+    and a key this fixture just deleted is, by construction, absent. Measured: strip both Stripe
+    keys, call `_load_dotenv()` once, and both are resident again, the live one included
+    (`sk_live`, 107 chars). Three tools call it (`tools/reprice_live_packs.py:87`,
+    `tools/publish_passes.py:115`, `tools/price_history.py:159`), and two tests had already
+    neutralised it by hand (`test_price_history_tool.py:155`,
+    `test_publish_reuse_artifacts.py:46`) — per-test patches for a hole that wanted one central
+    fence.
+
+    So the guard below closes the file route as well. It is also why "the key was resident at no
+    test boundary" was never evidence of safety: a credential read from disk at call time is
+    never at a boundary."""
     for key in ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY", "PADDLE_API_KEY",
                 "STORE_INTERNAL_API_KEY"):
         monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("PROSPECTOR_DISABLE_DOTENV", "1")
 
 
 @pytest.fixture(autouse=True)

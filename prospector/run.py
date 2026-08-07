@@ -2453,7 +2453,18 @@ def _load_dotenv() -> None:
 
     Both are simple KEY=VALUE; a leading `export ` is tolerated (so the SAME file can be
     sourced by zsh and parsed here — single source of truth). Blanks and #-comments are
-    skipped; surrounding quotes stripped. Missing/malformed files are silently ignored."""
+    skipped; surrounding quotes stripped. Missing/malformed files are silently ignored.
+
+    `PROSPECTOR_DISABLE_DOTENV` makes this a no-op, and it exists for exactly one reason.
+    "Existing env vars always win" also means *absent* env vars always lose: a test fence
+    that DELETES a credential from os.environ (tests/conftest.py
+    `_no_live_payment_credentials`) leaves a gap, and this function's whole job is filling
+    gaps. Proven by repro on 2026-08-07 — strip STRIPE_API_KEY and STRIPE_LIVE_API_KEY,
+    call this once, and both come back from `.env`, live key included. The suite reaching
+    real Stripe is the failure that fence was written for, so the fence has to cover the
+    disk read too, not just the environment."""
+    if os.environ.get("PROSPECTOR_DISABLE_DOTENV", "").strip() not in ("", "0", "false", "False"):
+        return
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     candidates = [
         os.path.join(repo_root, ".env"),

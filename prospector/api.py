@@ -15,7 +15,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .config import load_config
 from .store import Store
-from .telemetry import get_usage_summary
+from .telemetry import get_usage_summary, logger
 
 app = FastAPI(title="Prospector API", version="v1.0.0")
 cfg = load_config()
@@ -86,26 +86,60 @@ def require_admin(x_admin_key: Optional[str] = Header(None)) -> None:
 
 @app.get("/v1/listings")
 async def list_opportunities():
-    """Public teaser listings (Scout tier)."""
+    """Public teaser listings (Scout tier).
+
+    The shape served here is the receipt `publish._write_listing` actually writes.
+    Until 2026-08-07 it read `reverify_due_at`, `source_count` and `packs["scout"]` —
+    three keys NOTHING in this repo has ever written — and the bare
+    `except Exception: continue` below turned every resulting `KeyError` into a silent
+    skip. Measured over the operator's real store, every receipt and not a sample:
+    73 of 73 lacked all three, so the endpoint answered **200 with `[]` for the entire
+    live catalogue**, and had done for its whole life (programme doc §28.10).
+
+    The test suite could not see it: `tests/integration/test_api.py`'s fixture wrote a
+    receipt carrying those keys plus a three-tier `packs` block — a shape production has
+    never produced. The endpoint was only ever exercised against a shape invented to
+    exercise it.
+
+    Two properties are therefore load-bearing here, not stylistic:
+
+    * `candidate_id`/`title`/`market`/`verified_at` are REQUIRED — a receipt missing one
+      is not a teaser and is skipped. `published_via`/`catalog` are provenance, not
+      teaser content, so a receipt missing one is still served: dropping a real listing
+      over a bookkeeping key is the failure this docstring exists to describe.
+    * Skips are COUNTED AND LOGGED. A total schema divergence must never again be
+      indistinguishable, to a caller or to a log reader, from an empty catalogue.
+
+    `packs` is deliberately not restored: it is the deleted 3-tier pricing shape
+    (`test_api.py:19-21` records `compose_packs` as removed, orphaned, never called in
+    production), and reviving it would resurrect an abandoned model.
+    """
     def _load():
         listings = []
+        skipped: list[str] = []
         listings_dir = cfg.store_dir / "listings"
         if listings_dir.exists():
-            for p in listings_dir.glob("*.json"):
+            for p in sorted(listings_dir.glob("*.json")):
                 try:
                     data = json.loads(p.read_text(encoding="utf-8"))
-                    # Return only public teaser info
                     listings.append({
                         "id": data["candidate_id"],
+                        "title": data["title"],
+                        "market": data["market"],
                         "verified_at": data["verified_at"],
-                        "reverify_due_at": data["reverify_due_at"],
-                        "source_count": data["source_count"],
-                        "scout": data["packs"]["scout"]
+                        "published_via": data.get("published_via"),
+                        "catalog": data.get("catalog"),
                     })
-                except Exception:
-                    continue
+                except Exception as exc:
+                    skipped.append(f"{p.name}: {type(exc).__name__}: {exc}")
+        if skipped:
+            logger.warning(
+                "/v1/listings served %d listing(s) and SKIPPED %d unreadable receipt(s) "
+                "— first %d: %s",
+                len(listings), len(skipped), min(5, len(skipped)), "; ".join(skipped[:5]),
+            )
         return listings
-    
+
     return await run_in_threadpool(_load)
 
 

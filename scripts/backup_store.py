@@ -85,7 +85,13 @@ def _load_dotenv(path: Path) -> None:
 
     Not python-dotenv: that is not in requirements.txt, and adding a dependency to read four
     variables is how the undeclared-import problem this repo just fixed got started.
+
+    Honours `PROSPECTOR_DISABLE_DOTENV` for the same reason `prospector.run._load_dotenv`
+    (:2444) does: `setdefault` fills exactly the gap a test credential-fence creates by
+    deleting a key, so any un-guarded copy of this function re-arms live keys from disk.
     """
+    if os.environ.get("PROSPECTOR_DISABLE_DOTENV", "").strip() not in ("", "0", "false", "False"):
+        return
     if not path.is_file():
         return
     for raw in path.read_text().splitlines():

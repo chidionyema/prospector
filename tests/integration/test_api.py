@@ -127,6 +127,53 @@ def test_public_listings_no_auth(setup_store):
     assert data[0]["id"] == dossier.candidate.candidate_id
 
 
+def test_public_listings_serves_the_receipt_production_actually_writes(setup_store):
+    """Regression for §28.10 — /v1/listings answered 200 `[]` for the whole live catalogue.
+
+    The endpoint read `reverify_due_at`, `source_count` and `packs["scout"]`: keys no
+    writer in this repo has ever produced. 73 of 73 live receipts lacked all three, and
+    `api.py`'s bare `except Exception: continue` turned every KeyError into a silent
+    skip, so a total schema divergence was indistinguishable from an empty catalogue.
+
+    It survived the suite because `setup_store` above writes a receipt carrying those
+    keys — a shape invented to exercise the endpoint, which production has never
+    written. So this test deliberately does NOT use that fixture's listing. It writes
+    the SIX keys `publish.publish` really passes to `_write_listing` and nothing else.
+
+    If this test ever fails, the fix is the endpoint. Adding keys to the receipt below
+    would restore exactly the blindness it was written to remove.
+    """
+    cfg, dossier = setup_store
+    thin_id = "1111222233334444"
+    _write_listing(thin_id, {
+        "candidate_id": thin_id,
+        "title": "PanelPack — the fixed-fee pack that gets a care package restored",
+        "market": "uk",
+        "verified_at": dossier.created_at,
+        "published_via": "EngineBridge",
+        "catalog": True,
+    }, cfg)
+
+    from prospector import api
+    api.cfg = cfg
+    api.store = Store(cfg)
+
+    response = client.get("/v1/listings")
+    assert response.status_code == 200
+    data = response.json()
+
+    row = next((r for r in data if r["id"] == thin_id), None)
+    assert row is not None, (
+        f"the production receipt shape was dropped by /v1/listings; served {data!r}")
+    assert row["title"].startswith("PanelPack")
+    assert row["market"] == "uk"
+    assert row["verified_at"] == dossier.created_at
+    # The deleted 3-tier pricing stays deleted: `compose_packs` is gone (see the note at
+    # the top of this file), so reviving `packs` here would resurrect an abandoned model.
+    assert "packs" not in row
+    assert "scout" not in row
+
+
 def test_dossier_gating_negative(setup_store):
     cfg, dossier = setup_store
     from prospector import api
