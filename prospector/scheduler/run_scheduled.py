@@ -30,6 +30,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from prospector import usage_wall
 from prospector.audit import run_id as audit_run_id
 from prospector.config import load_config
 from prospector.errors import GroundingInfrastructureError
@@ -588,32 +589,103 @@ def _decay_per_tick(cfg) -> int:
         return _DECAY_PER_TICK_DEFAULT
 
 
+#: `tools/unlist_killed.py` needs Fly credentials, which is exactly why the unattended re-vet
+#: sweep does not call Store.Api itself. Running it as a bounded subprocess preserves that
+#: boundary: the sweep stays credential-free, and the drain is a separate idempotent process.
+_UNLIST_TIMEOUT_S = 180
+
+
+def _unlist_pass(cfg) -> dict | None:
+    """Drain `pending_unlist.jsonl` against Store.Api. Never raises. None if nothing is queued.
+
+    Self-gating on an empty queue keeps a normal tick free: the check is one file read, and the
+    `fly ssh console` round trip happens only when there is actually a pack to pull off sale.
+
+    Safe to run unattended in one direction only, which is the direction it runs:
+    `tools/unlist_killed.py:127` is `UPDATE Packs SET IsListed=0 ... AND IsListed=1`, verified
+    against the rows afterwards (`:133`) and re-queueing anything that arrived mid-flight
+    (`:78-81`). It can never list a pack and never charges anyone. So the cost of running it too
+    often is a wasted round trip, while the cost of not running it is a KILLed pack taking money.
+    """
+    import subprocess  # local, matching this module's existing convention
+
+    queue = Path(str(cfg.store_dir)) / "scheduler" / "pending_unlist.jsonl"
+    try:
+        if not queue.exists() or queue.stat().st_size == 0:
+            return None
+    except OSError:
+        return None
+
+    script = Path(__file__).resolve().parents[2] / "tools" / "unlist_killed.py"
+    if not script.exists():
+        logger.critical("pending_unlist.jsonl has entries but %s is missing — killed pack(s) "
+                        "may still be selling", script)
+        return {"error": f"missing {script.name}"}
+    try:
+        proc = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                              timeout=_UNLIST_TIMEOUT_S)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        out = {"error": f"{type(exc).__name__}: {exc}"}
+        logger.critical("Unlist drain FAILED — killed pack(s) may still be selling: %s",
+                        out["error"])
+        print(f"🛒 unlist drain FAILED (tick continues): {out['error']}",
+              file=sys.stderr, flush=True)
+        return out
+
+    out = {"rc": proc.returncode, "tail": (proc.stdout or proc.stderr).strip()[-300:]}
+    # CRITICAL on BOTH paths: below it never reaches launchd.err.log (verified 2026-08-05), and a
+    # shelf actuator whose success is invisible is how this loop stayed unwired for two months.
+    if proc.returncode == 0:
+        logger.critical("Unlist drain: %s", out["tail"])
+        print(f"🛒 unlist drain: {out['tail']}", file=sys.stderr, flush=True)
+    else:
+        logger.critical("Unlist drain rc=%d — killed pack(s) may still be selling: %s",
+                        proc.returncode, out["tail"])
+        print(f"🛒 unlist drain rc={proc.returncode}: {out['tail']}", file=sys.stderr, flush=True)
+    return out
+
+
 def _decay_pass(cfg, n_decay: int) -> dict | None:
-    """Re-verify up to `n_decay` SLA-expired PASSes. Never raises. None if the sweep is off.
+    """Re-verify up to `n_decay` SLA-expired PASSes, then unlist whatever that killed.
+
+    Never raises. None when the sweep is off AND nothing was queued to unlist.
 
     Callers must already have cleared the guard (spend/PAUSE) and the moat preflight — a decay
     sweep on a blind moat would only DEFER every row, which `run_decay_loop` correctly refuses
     to persist, so it would be pure cost for no state change.
+
+    THE UNLIST DRAIN RUNS LAST, AND RUNS EVEN WHEN THE SWEEP IS OFF. `decay.py::_queue_unlist`
+    (`:83-107`) appends to `pending_unlist.jsonl` the moment a re-vet turns a published PASS into
+    a KILL, but it holds no Fly credentials, so the queue is inert until something drains it —
+    and until 2026-08-07 nothing in production did. That cost real money twice: 4 packs on
+    2026-08-06 and 2 more on 2026-08-07 (`f75365e48af08750`, `839afa0ef83b82be`) stayed on sale
+    at £49 on mumchimp.com with only a `.kill.json` dossier on disk. Draining even when
+    `n_decay` is 0 matters because switching the sweep off must not strand a queue an earlier
+    tick already wrote.
     """
-    if not n_decay:
-        return None
-    # Late import, mirroring `_drain_pass`: a tick that returned early never builds brains.
-    from prospector.run import run_decay_sweep
-    try:
-        out = run_decay_sweep(cfg, limit=n_decay)
-        logger.info("Tick decay sweep: %s", out)
-        # STDERR + print for the same reason as `_drain_pass`: logging below CRITICAL never
-        # reaches launchd.err.log (verified 2026-08-05), so a sweep that only logged at INFO
-        # would be indistinguishable from the "no caller" bug this whole change fixes.
-        print(f"⟳ tick decay sweep: {out}", file=sys.stderr, flush=True)
-        return out
-    except Exception as exc:  # noqa: BLE001
-        # A decay failure must never cost the tick its generation batch. Recorded, not raised.
-        out = {"error": f"{type(exc).__name__}: {exc}"}
-        logger.warning("Tick decay sweep failed (tick continues): %s", out["error"])
-        print(f"⟳ tick decay sweep FAILED (tick continues): {out['error']}",
-              file=sys.stderr, flush=True)
-        return out
+    out: dict | None = None
+    if n_decay:
+        # Late import, mirroring `_drain_pass`: a tick that returned early never builds brains.
+        from prospector.run import run_decay_sweep
+        try:
+            out = run_decay_sweep(cfg, limit=n_decay)
+            logger.info("Tick decay sweep: %s", out)
+            # STDERR + print for the same reason as `_drain_pass`: logging below CRITICAL never
+            # reaches launchd.err.log (verified 2026-08-05), so a sweep that only logged at INFO
+            # would be indistinguishable from the "no caller" bug this whole change fixes.
+            print(f"⟳ tick decay sweep: {out}", file=sys.stderr, flush=True)
+        except Exception as exc:  # noqa: BLE001
+            # A decay failure must never cost the tick its generation batch. Recorded, not raised.
+            out = {"error": f"{type(exc).__name__}: {exc}"}
+            logger.warning("Tick decay sweep failed (tick continues): %s", out["error"])
+            print(f"⟳ tick decay sweep FAILED (tick continues): {out['error']}",
+                  file=sys.stderr, flush=True)
+
+    unlisted = _unlist_pass(cfg)
+    if unlisted is not None:
+        out = dict(out or {})
+        out["unlisted"] = unlisted
+    return out
 
 
 def _default_generate(cfg, batch_size: int) -> dict:
@@ -749,6 +821,11 @@ def _tick_unproductive(tick: dict) -> bool:
     # ninety seconds is picked up in minutes instead of hours.
     if tick.get("moat_blind"):
         return True
+    # A usage-wall skip is unproductive for exactly the same reason, and it is the case where the
+    # escalating retry pays best: the marker carries a real reset time, so polling a file every
+    # few minutes picks capacity up the moment it returns instead of up to 2h later.
+    if tick.get("usage_wall"):
+        return True
     if tick.get("allowed") and not tick.get("dry_run"):
         res = tick.get("result") or {}
         if res.get("dossiers", 0) == 0:
@@ -797,6 +874,27 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     if dry_run:
         logger.info("Dry run: guard passed (%s); would generate %d candidates", decision.reason, batch_size)
         _append_tick(cfg, tick)
+        return tick
+
+    # USAGE-WALL PREFLIGHT. Checked BEFORE the moat preflight because a live wall is the CAUSE
+    # and a dead mark is only its symptom: this reports the reset time, where "every trusted
+    # brain is dead" hands the operator a puzzle instead of an answer. Otto and this daemon draw
+    # on ONE subscription, and whichever meets the wall records when it lifts; measured
+    # 2026-08-07 23:44, Otto recorded a wall until 23:59:05 that this daemon had no way to read.
+    #
+    # Like the moat preflight it skips the WHOLE tick, drain included — the walled resource is
+    # the one subscription CLI heading both the moat and the non-critical chain, so neither half
+    # of a tick can make progress. It costs one file read and no CLI call, and `_tick_unproductive`
+    # counts it so the escalating 5m/10m/20m retry applies rather than the 2h cadence.
+    walled = usage_wall.reason()
+    if walled:
+        tick["usage_wall"] = True
+        tick["reason"] = walled
+        tick["batch_size"] = None
+        logger.critical("Tick skipped: %s", walled)  # CRITICAL for the same reason as below.
+        print(f"⏸ tick skipped — {walled}", file=sys.stderr, flush=True)
+        _append_tick(cfg, tick)
+        _emit_tick_alerts(cfg, tick)
         return tick
 
     # MOAT PREFLIGHT. Checked after the guard (spend/PAUSE still own the money rails) and

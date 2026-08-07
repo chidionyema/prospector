@@ -21,6 +21,7 @@ import threading
 import time
 from typing import Optional
 
+from . import usage_wall
 from .cli_auth import subscription_env
 from .cli_governor import make_governor
 from .errors import ProviderExhaustedError, cause_context, looks_exhausted
@@ -256,6 +257,21 @@ def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
     failure raises — ProviderExhaustedError if it looks like quota/credit exhaustion (so
     the fallback layer retires this provider), else a plain RuntimeError.
     """
+    # USAGE-WALL PREFLIGHT. Otto and this daemon share ONE subscription, and whichever of them
+    # hits the wall records when it lifts (`usage_wall`). Spawning `claude -p` into a wall we
+    # can already see costs a process, a queue slot and a CLI-usage entry to be told something
+    # the marker already says. Raising ProviderExhaustedError rather than inventing a new
+    # signal is deliberate: the DEFER/dead-mark/`vet --resume` rails already handle an
+    # exhausted brain correctly, and a wall IS exhaustion — it just happens to know its own
+    # reset time. The message carries the literal "usage limit reached" so `looks_exhausted`
+    # and `classify_exhaustion` classify it exactly as they would the CLI's own words.
+    walled = usage_wall.reason()
+    if walled:
+        logger.warning("Claude CLI skipped: usage wall is live", extra={"web": web})
+        raise ProviderExhaustedError(
+            f"claude cli not called: usage limit reached — {walled}",
+            provider=f"claude_cli/{model or 'default'}")
+
     cmd = [CLAUDE_BIN, "-p", prompt, "--output-format", "json"]
     if web:
         cmd += ["--allowedTools", "WebSearch"]
@@ -288,6 +304,11 @@ def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
     logger.error("Claude CLI failed after retries",
                  extra={"attempts": retries + 1, "web": web, "error": str(last_err)[:300]})
     if looks_exhausted(str(last_err)):
+        # RECIPROCITY. Reading the marker only fixes our half: if PROSPECTOR is the process
+        # that meets the wall first, Otto keeps hammering until it meets it too. `observe`
+        # gates on its own wall vocabulary, so a 402/credit-balance exhaustion — which is NOT
+        # a subscription wall and has no reset time — writes nothing.
+        usage_wall.observe(str(last_err), observed_by="prospector-cli")
         raise ProviderExhaustedError(
             f"claude cli exhausted after {retries + 1} attempts: {last_err}",
             provider=f"claude_cli/{model or 'default'}")
