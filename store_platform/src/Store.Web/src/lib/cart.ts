@@ -17,6 +17,18 @@ export interface CartLine {
   title: string;
   /** Display string exactly as the catalogue served it, e.g. "£49.00". */
   price: string;
+  /**
+   * The same price in pence, carried for ONE reason: `checkout_started` is the numerator of the
+   * price→checkout rate and `trackPriceEvent` (lib/analytics.ts:75) emits nothing without it.
+   *
+   * Optional, and it has to be. Baskets live in localStorage and survive deploys, so lines
+   * written before this field existed will never have it, and those lines emit no beacon rather
+   * than a guessed one. Not derived from `price` either: that string is a display snapshot the
+   * doc above calls stale by design, and pence maps one-to-one onto a pricing RUNG
+   * (`config.yaml listing.pricing.rungs`), so a re-parsed stale string would label the event
+   * with a rung the catalogue has since moved off.
+   */
+  pricePence?: number;
 }
 
 /** Mirrors StripeProvider.MaxCheckoutLines, the server refuses a longer basket. */
@@ -77,6 +89,12 @@ export function parseStoredCart(raw: string | null): CartLine[] {
         typeof (l as CartLine).id === 'string' && (l as CartLine).id.length > 0 &&
         typeof (l as CartLine).title === 'string' &&
         typeof (l as CartLine).price === 'string')
+      // `pricePence` is optional, so its ABSENCE must not drop a line (that would empty every
+      // basket written before the field existed). A present-but-junk value is stripped instead:
+      // storage is user-writable, and an analytics beacon is the one consumer.
+      .map((l) => (typeof l.pricePence === 'number' && Number.isFinite(l.pricePence)
+        ? l
+        : { id: l.id, title: l.title, price: l.price }))
       .slice(0, MAX_CART_LINES);
   } catch {
     return [];
