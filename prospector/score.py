@@ -12,6 +12,7 @@ from .config import Config
 from .models import SCORE_AXES, Candidate, CheckResult, ScoreResult
 from .operator import Operator
 from .prompts import render
+from .telemetry import stage as telemetry_stage
 from typing import Optional
 
 
@@ -33,7 +34,8 @@ def score_candidate(op: Operator, cfg: Config, cand: Candidate,
                           claims_json=json.dumps(claims))
     score_failed = False
     try:
-        data = _scorer.complete_json(system, user, temperature=0.0)
+        with telemetry_stage("score"):
+            data = _scorer.complete_json(system, user, temperature=0.0)
         raw = data.get("scores", {}) or {}
         scores = {ax: int(round(float(raw.get(ax, 0) or 0))) for ax in SCORE_AXES}
         scores = {ax: max(0, min(5, v)) for ax, v in scores.items()}

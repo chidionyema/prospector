@@ -16,7 +16,7 @@ from .config import Config
 from .models import Candidate
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
-from .telemetry import logger, track_latency
+from .telemetry import logger, stage as telemetry_stage, track_latency
 
 
 def _parse_candidates(data: Any) -> list[Candidate]:
@@ -312,7 +312,8 @@ def generate(
         # back to the moat op only if no gen chain was wired.
         _gen = gen_op or op
         try:
-            raw_response = _gen.complete_json(system, user, temperature=0.9)
+            with telemetry_stage("generate"):
+                raw_response = _gen.complete_json(system, user, temperature=0.9)
             cands = _parse_candidates(raw_response)
         except Exception as e:
             logger.error(f"Generation batch {seed} failed: {e}", extra={"error": str(e)})
@@ -370,7 +371,8 @@ def generate(
         # reworded (exact-title remap miss) and wiped the whole wave on a dict-wrapped response
         # (isinstance(list) else []) — the PROVEN zero-yield bug.
         try:
-            raw_response = _gen.complete_json(system, user, temperature=0.5)
+            with telemetry_stage("generate"):
+                raw_response = _gen.complete_json(system, user, temperature=0.5)
             # Tolerant unwrap: accept a bare list OR a wrapper dict (same shapes as
             # _parse_candidates), never collapse a wrapped array to [].
             if isinstance(raw_response, list):

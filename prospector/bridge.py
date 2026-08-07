@@ -22,6 +22,7 @@ from . import facet_derive
 from . import facets as facets_mod
 from . import indexnow
 from .models import Dossier, Decision, ScoreResult
+from .pack_linter import lint_pack
 from .pack_validation import validate_pack
 from .plain_text import plain_lines, to_plain_text
 from .price_comparables import anchors_from_tags
@@ -29,6 +30,15 @@ from .price_rationale import write_rationale
 from .pricing import price_for
 
 logger = logging.getLogger("prospector.bridge")
+
+
+def listing_gate(*, uploaded: bool, pack_complete: bool, priced: bool,
+                 bundle_complete: bool, lint_ok: bool) -> bool:
+    """The single AND that decides sellability. Each operand is an independent fence
+    computed in publish_pass (upload, completeness, price, bundle audit, content lint);
+    keeping the composition in one named function makes the seam testable without the
+    whole publish machinery."""
+    return bool(uploaded and pack_complete and priced and bundle_complete and lint_ok)
 
 
 # ---------------------------------------------------------------------------
@@ -640,7 +650,61 @@ class EngineBridge:
                 f"(missing={bundle_gaps or '-'}, stubs={bundle_stubs or '-'}); "
                 f"publishing UNLISTED — the storefront promises every file in BUNDLE_FILES."
             )
-        is_listed = uploaded and pack_complete and priced and bundle_complete
+        # Q2 LINT GATE: the deterministic quality floor on what a buyer actually SEES —
+        # currency consistent with the market, computed lines whose arithmetic re-checks,
+        # no mid-word cuts in storefront copy, citations that resolve. validate_pack proves
+        # presence and audit_bundle proves the zip reached storage; neither reads the
+        # content. The full pre-slice texts are recomputed here so the truncation check can
+        # compare each final rendered field against its source.
+        listing_cfg = self.cfg.listing if isinstance(getattr(self.cfg, "listing", None), dict) else {}
+        store_dir = getattr(self.cfg, "store_dir", None)
+        store_dir = Path(store_dir) if isinstance(store_dir, (str, Path)) else None
+        one_liner_full = to_plain_text(candidate.one_liner, collapse=True) or to_plain_text(
+            listing_copy, collapse=True
+        )
+        lint_report = lint_pack(
+            artifacts=artifacts,
+            listing_copy=listing_copy,
+            listing_texts={
+                "oneLine": (one_liner, one_liner_full),
+                "headline": (catalog_meta.get("headline", ""),
+                             to_plain_text(listing.get("headline"), collapse=True)),
+                "subhead": (catalog_meta.get("subhead", ""), subhead),
+            },
+            truncation_caps={"headline": 140, "subhead": 280},
+            market=getattr(candidate, "market", "") or "",
+            check_urls_enabled=bool(listing_cfg.get("lint_check_urls", False)),
+            url_cache_path=(store_dir / "lint_url_cache.json") if store_dir else None,
+        )
+        lint_ok = bool(lint_report.get("ok"))
+        if not lint_ok:
+            lint_errors = [p["detail"] for p in lint_report["problems"]
+                           if p["severity"] == "error"]
+            logger.error(
+                f"EngineBridge: {candidate_id} FAILED the pack lint ({lint_errors}); "
+                f"publishing UNLISTED — wrong currency or wrong arithmetic must not sell."
+            )
+        # The receipt: the full report (lint + completeness + bundle audit) lives next to
+        # the dossier, machine-readable, pass or fail.
+        if store_dir is not None:
+            report_path = store_dir / "dossiers" / f"{candidate_id}.lint.json"
+            try:
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(json.dumps({
+                    **lint_report,
+                    "pack_complete": pack_complete,
+                    "completeness_problems": pack_problems,
+                    "bundle_missing": bundle_gaps,
+                    "bundle_stubs": bundle_stubs,
+                }, indent=2, ensure_ascii=False))
+            except OSError as exc:
+                logger.warning(
+                    f"EngineBridge: could not write lint report for {candidate_id}: {exc}"
+                )
+        is_listed = listing_gate(
+            uploaded=uploaded, pack_complete=pack_complete, priced=priced,
+            bundle_complete=bundle_complete, lint_ok=lint_ok,
+        )
 
         # Determine the content version: for a new pack, start at 1. For a republish
         # (content_hash differs from existing), increment. Query the store's current

@@ -55,10 +55,41 @@ def _dossier():
                    created_at="2026-07-31T00:00:00Z")
 
 
+# The financial model is never free prose in production: _validate_artifact_shape forces a
+# dict and artifacts.py:258 renders it through _render_financial_model, so every real pack
+# carries these sections and Python-computed (arithmetically exact) figures. The fixture
+# mirrors that shape because the publish gate now lints it (pack_linter); a prose blob here
+# would assert that a pack the pipeline cannot produce is sellable.
+RENDERED_FINANCIAL_MODEL = """## Financial Model
+
+### Revenue
+- **Month 1:** £50 × 10 customers = **£500**
+- **Month 12:** £50 × 120 customers = **£6,000**
+- **Growth (M1→M12):** 12.0×
+
+### Gross Margin: **88%** (COGS: 12% of revenue)
+- **Per customer/month:** £44.00
+
+### Payback Period
+- **~2.3 months** (CAC £100 / gross margin £44.00/month)
+
+### Customer Lifetime Value (CLV)
+- ~**£1,000** (ARPU £50 / 5.0% monthly churn)
+
+### LTV:CAC Ratio
+- 10.0
+
+### Month 1 P&L
+- Revenue £500, COGS £60, gross profit £440.
+"""
+
+
 def _full_artifacts():
     body = ("## Section\n\nGrounded prose about the opportunity. " * 20)
-    return {k: f"# {k}\n\n{body}" for k in
-            ("build_spec", "gtm_plan", "ops_plan", "financial_model")}
+    out = {k: f"# {k}\n\n{body}" for k in
+           ("build_spec", "gtm_plan", "ops_plan", "financial_model")}
+    out["financial_model"] = RENDERED_FINANCIAL_MODEL
+    return out
 
 
 def _entries(zip_path):

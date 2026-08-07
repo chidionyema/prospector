@@ -261,8 +261,10 @@ _HERMES_ALERT_PATH = Path.home() / ".hermes" / "scripts" / "estate_alert.py"
 #: Alert keys that reach the founder OFF-MACHINE. The principle: Telegram is for states that will
 #: NOT clear without a human. `moat_deferred` / `moat_provisional` are self-healing by design (a
 #: DEFER is not an error) and `barren_generation` is single-tick noise — paging on those gets the
-#: channel muted, and a muted rail is an unwired rail with extra steps.
-TELEGRAM_KEYS = frozenset({"liveness", "tick_error", "zero_yield", "barren_streak"})
+#: channel muted, and a muted rail is an unwired rail with extra steps. `moat_blind` IS here:
+#: every trusted brain dead at once is dominated by permanent exhaustion (402 / spent allowance),
+#: which only a human funding an account can clear — and while it holds, nothing can be vetted.
+TELEGRAM_KEYS = frozenset({"liveness", "tick_error", "zero_yield", "barren_streak", "moat_blind"})
 
 
 def _load_hermes_sender():
@@ -362,7 +364,7 @@ def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
 # tick clears". A new condition added below without its key here would fire and then never clear —
 # `test_alert_resolution.py::test_every_key_alerts_for_tick_can_emit_is_declared_resolvable`
 # drives the real function over real tick shapes to keep the two in step.
-TICK_ALERT_KEYS = ("tick_error", "barren_generation", "barren_streak",
+TICK_ALERT_KEYS = ("tick_error", "moat_blind", "barren_generation", "barren_streak",
                    "moat_deferred", "moat_provisional", "zero_yield")
 
 
@@ -371,6 +373,11 @@ def alerts_for_tick(tick: dict, consecutive_barren: int = 0) -> list[dict]:
 
     Conditions, worst-first:
       - tick errored                       -> CRITICAL (the daemon hit an exception this cycle)
+      - moat blind (tick skipped)          -> CRITICAL (every trusted brain dead; NOTHING ran —
+                                              no generation, no drain. The engine's most severe
+                                              live state, and until 2026-08-06 it was log-only:
+                                              a blind tick has no `result` dict, so every branch
+                                              below fell through and this function returned [])
       - generation barren (0 dossiers)     -> WARNING  (produced nothing to even judge);
                                               CRITICAL once `consecutive_barren` >= 3 — a barren
                                               STREAK means the generation chain is dead (expired
@@ -392,6 +399,19 @@ def alerts_for_tick(tick: dict, consecutive_barren: int = 0) -> list[dict]:
         return [{"severity": CRITICAL, "key": "tick_error",
                  "title": "Generation tick FAILED",
                  "message": str(tick["error"])[:300], "ts_tick": tick.get("ts")}]
+
+    if tick.get("moat_blind"):
+        # Checked BEFORE the `result` gate below: the moat preflight skips the tick before any
+        # work, so a blind tick never has a `result` dict — which is exactly why this state was
+        # invisible until 2026-08-06 (`run_scheduled` already called `_emit_tick_alerts` on the
+        # blind path; this function just had no branch for it).
+        return [{"severity": CRITICAL, "key": "moat_blind",
+                 "title": "Moat BLIND: tick skipped — no trusted brain live",
+                 "message": (str(tick.get("reason") or "every trusted moat brain is marked dead")[:200]
+                             + " Neither generation nor the drain ran; the escalating 5m/10m/20m "
+                               "retry is in effect until a brain recovers. If the dead marks are "
+                               "PERMANENT (402 / spent allowance), only funding clears this."),
+                 "ts_tick": tick.get("ts")}]
 
     res = tick.get("result")
     if not isinstance(res, dict):

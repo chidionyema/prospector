@@ -307,6 +307,10 @@ def costs_report(jsonl_path: str | Path) -> str:
     
     # Per-provider call counts and spend
     provider_stats: dict[str, dict[str, Any]] = {}
+    # Per-stage call counts and spend (records without one group under "untagged" — the
+    # pre-E4 history). Parallel to provider_stats, same shape so the printed section
+    # mirrors the by-provider block below.
+    stage_stats: dict[str, dict[str, Any]] = {}
 
     with p.open() as f:
         for line in f:
@@ -347,18 +351,18 @@ def costs_report(jsonl_path: str | Path) -> str:
                 if provider:
                     root = provider.split("/")[0].lower()
                     s = provider_stats.setdefault(root, {"calls": 0, "input": 0, "output": 0, "cost_usd": 0.0, "self_corrections": 0})
-                    
+
                     s["calls"] += 1
                     s["input"] += inp
                     s["output"] += outp
                     s["self_corrections"] += 1 if d.get("self_correction") else 0
-                    
+
                     tok["input"] += inp
                     tok["output"] += outp
                     tok["total"] += int(d.get("total", 0) or (inp + outp))
                     tok["cached"] += int(d.get("cached", 0) or 0)
                     tok["self_corrections"] += 1 if d.get("self_correction") else 0
-                    
+
                     # Estimate cost for this entry
                     # (Claude CLI reports its real billed cost per call in 'cost_usd')
                     cost = float(d.get("cost_usd", 0) or 0)
@@ -368,6 +372,19 @@ def costs_report(jsonl_path: str | Path) -> str:
                         from .telemetry import get_price
                         price = get_price(root)
                         s["cost_usd"] += (inp * price["input"] / 1_000_000) + (outp * price["output"] / 1_000_000)
+
+                    # Mirror the aggregation by stage (E4). Records without a stage group
+                    # under "untagged" so the pre-E4 history stays visible instead of being
+                    # silently dropped.
+                    stage = d.get("stage") or "untagged"
+                    st = stage_stats.setdefault(stage, {"calls": 0, "input": 0, "output": 0, "cached": 0, "cost_usd": 0.0})
+                    st["calls"] += 1
+                    st["input"] += inp
+                    st["output"] += outp
+                    st["cached"] += int(d.get("cached", 0) or 0)
+                    st["cost_usd"] += cost if cost else (
+                        (inp * price["input"] / 1_000_000) + (outp * price["output"] / 1_000_000)
+                    )
 
     # COST AUTHORITY RULE:
     # 1. Total spend = max(explicit spend events, sum of per-provider costs).
@@ -397,6 +414,19 @@ def costs_report(jsonl_path: str | Path) -> str:
             rep_str = f", {rep} repairs" if rep else ""
             call_str = f"({calls:>3} calls, {inp:,} in / {outp:,} out{rep_str})" if calls else ""
             out.append(f"  {prov:<25} ${cost:7.4f}  {call_str}")
+        out.append("")
+
+    if stage_stats:
+        out.append("  SPEND BY STAGE (E4):")
+        out.append("  " + "─" * 50)
+        sorted_stage = sorted(stage_stats.items(), key=lambda x: -x[1].get("cost_usd", 0))
+        for stage, stats in sorted_stage:
+            cost = stats.get("cost_usd", 0)
+            calls = stats.get("calls", 0)
+            inp, outp = stats.get("input", 0), stats.get("output", 0)
+            cached = stats.get("cached", 0)
+            call_str = f"({calls:>3} calls, {inp:,} in / {outp:,} out, {cached:,} cached)" if calls else ""
+            out.append(f"  {stage:<25} ${cost:7.4f}  {call_str}")
         out.append("")
 
     out.extend([
