@@ -1,0 +1,541 @@
+{
+  "buckets": {
+    "other_passage": 14,
+    "self_ref": 134,
+    "traceable": 1323,
+    "untraceable": 169
+  },
+  "by_check": {
+    "buyer_intent": {
+      "other_passage": 2,
+      "self_ref": 2,
+      "traceable": 96,
+      "untraceable": 3
+    },
+    "claims_verifiable": {
+      "other_passage": 2,
+      "self_ref": 14,
+      "traceable": 68,
+      "untraceable": 16
+    },
+    "currency": {
+      "self_ref": 3,
+      "traceable": 98,
+      "untraceable": 3
+    },
+    "distribution": {
+      "other_passage": 1,
+      "self_ref": 6,
+      "traceable": 70,
+      "untraceable": 4
+    },
+    "incumbency": {
+      "other_passage": 1,
+      "self_ref": 5,
+      "traceable": 98,
+      "untraceable": 10
+    },
+    "legality": {
+      "self_ref": 5,
+      "traceable": 21,
+      "untraceable": 2
+    },
+    "pain_reality": {
+      "self_ref": 3,
+      "traceable": 181,
+      "untraceable": 8
+    },
+    "payer_solvency": {
+      "other_passage": 8,
+      "self_ref": 83,
+      "traceable": 431,
+      "untraceable": 107
+    },
+    "route_to_market": {
+      "self_ref": 2,
+      "traceable": 8,
+      "untraceable": 2
+    },
+    "value_durability": {
+      "self_ref": 11,
+      "traceable": 252,
+      "untraceable": 14
+    }
+  },
+  "by_verdict": {
+    "refuted": {
+      "other_passage": 1,
+      "self_ref": 31,
+      "traceable": 224,
+      "untraceable": 56
+    },
+    "supported": {
+      "other_passage": 13,
+      "self_ref": 103,
+      "traceable": 1099,
+      "untraceable": 113
+    }
+  },
+  "checks_all_traceable": 687,
+  "checks_with_figures": 814,
+  "checks_with_untraceable": 127,
+  "dossiers": 1572,
+  "examples": [
+    {
+      "candidate": "039b6c758aa01d5c",
+      "check": "value_durability",
+      "cited_hosts": [
+        "figma.com",
+        "marketdataforecast.com",
+        "weforum.org"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Passages confirm substantial skill disruption (39% of key skills changing by 2030) and a large, growing UK recruitment market, supporting the underlying need for forward-looking skill forecasts. The free Figma 'State of the Designer' report is described as exploring tools designe",
+      "untraceable_figures": [
+        "15"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "075ec310a41e775e",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "bmj.com",
+        "nhsemployers.org",
+        "nhstakehomepaycalculator.co.uk",
+        "sciencedirect.com",
+        "tracjobs.co.uk",
+        "ukcalculator.com"
+      ],
+      "cited_tiers": [
+        "academic",
+        "other"
+      ],
+      "rationale": "Passages confirm NHS nurses (Band 5-7, \u00a331,049-\u00a347,810) and paramedics (Band 6-7, \u00a338,682-\u00a354,710) earn salaries where \u00a3300/season is a trivially small fraction (<1.5%) of annual income, establishing clear budget capacity. Cost-of-living pressure passages [bffb6621c7d6552b], [9d3",
+      "untraceable_figures": [
+        "300",
+        "1.5"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "08b22037fc2afc07",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carers.org",
+        "carersuk.org"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The passages describe the exact group this service charges \u2014 family carers who have cut or given up paid work \u2014 as financially squeezed: 62% of Carer's Allowance recipients, about half a million people, live in poverty, 26% of unpaid carers have had to borrow money, and being out",
+      "untraceable_figures": [
+        "320"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "08dbe23f7be7af97",
+      "check": "distribution",
+      "cited_hosts": [
+        "facebook.com",
+        "newstardom.com"
+      ],
+      "cited_tiers": [
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "One passage shows 76% of Gen Z learn about personal finance from TikTok and YouTube, so a cheap, open social channel already reaches this exact audience with money-related content [0be537bbdb30be3c], and other passages confirm the target buyers exist in numbers, with Gen Z routin",
+      "untraceable_figures": [
+        "1.99"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "08dbe23f7be7af97",
+      "check": "legality",
+      "cited_hosts": [
+        "acas.org.uk",
+        "fastbull.com",
+        "fca.org.uk",
+        "legislation.gov.uk",
+        "tlwsolicitors.co.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "government",
+        "other"
+      ],
+      "rationale": "The passages show that UK regulations expressly grant irregular-hours workers paid holiday and set out how that pay is worked out \u2014 a 52-week averaging reference period, ACAS guidance on which weeks to count, and a permitted 12.07% uplift method \u2014 so helping a worker calculate an",
+      "untraceable_figures": [
+        "53601"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "08f2254173a3ae3c",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carerssupport.org.uk",
+        "carersuk.org",
+        "caretalk-business.co.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The passages consistently characterize unpaid carers as a population in financial distress: Carers UK published a dedicated report titled 'Carer poverty and financial hardship in the UK' and held a parliamentary event on carer poverty; the Carer Poverty Coalition was formed speci",
+      "untraceable_figures": [
+        "120",
+        "195"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "09908a1b9e4affd7",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carersuk.org",
+        "load2learn.org.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The passages describe the payer segment (unpaid carers) as structurally poor: carers on Carer's Allowance alone have a 33% poverty rate versus 18% for non-carers, with ~90,000 in poverty [15d2c57b0eeb99c3, c9c8b7b5e09dfb94]. The only passage touching the transport settlement itse",
+      "untraceable_figures": [
+        "180"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "0ff2ccb8ef02c21d",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "bbc.co.uk",
+        "bbc.com"
+      ],
+      "cited_tiers": [
+        "media"
+      ],
+      "rationale": "The payer is the parent on the waiting list who pays the full face value of the slot. Passages show that families already face and pay costs of over \u00a31,000 for holiday clubs (2f9ad91f984b41ba, 3af08746aba9220c), indicating budget and willingness, and the existence of a waiting li",
+      "untraceable_figures": [
+        "1000"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "1196d282c00cbf0c",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "bridebook.com",
+        "garfield.law",
+        "hitched.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Passages show UK families routinely spend \u00a317,300\u2013\u00a321,400+ on a wedding [724fa4a953735401], with venue-and-catering alone around \u00a37,076 [46705bebbfec9499], demonstrating real discretionary budget at stake, and consumer/breach-of-contract disputes up to \u00a310,000 are litigable via s",
+      "untraceable_figures": [
+        "21400"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "11cc69cb7e21c765",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carers.org",
+        "theguardian.com",
+        "usa.gov"
+      ],
+      "cited_tiers": [
+        "government",
+        "media",
+        "other"
+      ],
+      "rationale": "Passages directly indicate primary carers are disproportionately from low-income households (d11cf590c93560c0), receive only \u00a381.90/week carer's allowance (f9a86360629a3019), and qualify for free legal aid specifically targeting low-income and disabled individuals (e05191e2c64859",
+      "untraceable_figures": [
+        "795"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "13d41ccee9e96e2d",
+      "check": "claims_verifiable",
+      "cited_hosts": [
+        "dentons.com",
+        "gov.uk",
+        "hayhills.com",
+        "mills-reeve.com",
+        "ons.gov.uk"
+      ],
+      "cited_tiers": [
+        "government",
+        "other"
+      ],
+      "rationale": "The passages do confirm the basic mechanics the pitch rests on \u2014 main contractors hold retention money under standard JCT and NEC building contracts, disputes over it are common, and adjudication is a recognised way to recover it [9c7308eeea9a5d0a]. But they also contradict a cen",
+      "untraceable_figures": [
+        "7412"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "1586848a24b56bef",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "axa.co.uk",
+        "crunch.co.uk",
+        "moneysupermarket.com",
+        "premier-insurance.co.uk",
+        "starlingbank.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Passage bb790a32b59324db directly shows UK waste-removal operators already pay for specialist insurance starting at \u00a315/month from a broker established since 1983, proving both budget and willingness to pay for sector-specific risk products. The tax passages (f1425f310c72bf0b, 44",
+      "untraceable_figures": [
+        "150"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "1586848a24b56bef",
+      "check": "pain_reality",
+      "cited_hosts": [
+        "easyskip.uk",
+        "facebook.com",
+        "gov.uk"
+      ],
+      "cited_tiers": [
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "Passages confirm active regulatory enforcement against skip operators: EA stop notices under Section 33/34, fines up to \u00a350k for fly-tipping, and significant clearance costs (\u00a3100k) demonstrating the regulatory pain is real and severe. However, no passage explicitly describes sol",
+      "untraceable_figures": [
+        "100"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "1723d378cff66ebc",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carersuk.org",
+        "caringtogether.org",
+        "essexmagazine.co.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The only passages about the payer segment show unpaid carers are financially precarious, 'less able to cope with additional costs', driven into acute hardship on \u00a367.60 a week, and modelled as living in poverty \u2014 directly negating the claim that this payer has spare budget for a ",
+      "untraceable_figures": [
+        "95"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "175b6570b55b5e09",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "checkatrade.com",
+        "concretecalculate.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "[e4ab52bd543be6c0] shows sole-trader UK groundworkers earn ~\u00a356k/year and manage ~\u00a37k in annual business costs, making a \u00a38\u2013\u00a315 per-dig fee trivial against their budget. However, the passages do not directly establish the specific motive (fear of below-excess utility invoices) \u2014 ",
+      "untraceable_figures": [
+        "56",
+        "8",
+        "15"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "19d648f29949074d",
+      "check": "value_durability",
+      "cited_hosts": [
+        "abi.org.uk",
+        "drewberryinsurance.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The candidate's durable-value premise is that CI claims are denied roughly 1-in-3 times, but passage [03dcd79fe6ccbd81] states more than 89% of all Critical Illness Cover claims were successful (2024 ABI), and [88b5eda9a5fd5b4a] shows claims paid rising in value to \u00a31.3bn \u2014 i.e. ",
+      "untraceable_figures": [
+        "11"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "1b0a1ce25286214c",
+      "check": "currency",
+      "cited_hosts": [
+        "solox.icu"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passage confirms that a platform addressing the need for freelancer project management and invoicing is actively used by over 12,000 freelancers, with $4.2 million tracked in the current month, demonstrating that the need is live and current.",
+      "untraceable_figures": [
+        "12000"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "1c5bdd137920b007",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "financialreporter.co.uk",
+        "ifamagazine.com",
+        "kbbreview.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Passages [4f474f09107d0fbd] and [bcab70d84256ca41] show UK homeowners spent an average of \u00a315,788 on renovations in 2025 and median renovation spend grew 13% since 2020, confirming active and growing renovation budgets. [e56c26a3b23c54c2] further shows homeowners are taking out s",
+      "untraceable_figures": [
+        "65"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "1e1b97ce1c820dd1",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "childmindinguk.com",
+        "corampacey.org.uk",
+        "karen-gallacher.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Passages confirm childminders operate as revenue-generating businesses charging per-hour/per-child fees (e.g., \u00a34.20/hour) for 78,100 children in full-day places, indicating solvent small operators. A \u00a3150\u2013\u00a3400 pre-inspection fee is modest relative to their earnings and the high-",
+      "untraceable_figures": [
+        "150",
+        "400"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "1fc2bfa8c8029c86",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "bls.gov"
+      ],
+      "cited_tiers": [
+        "government"
+      ],
+      "rationale": "Passages show California electricians earn a mean annual wage of $72,880 (f2c6165000253db3), well above the national median of $62,350 (c17465a84a7a719b, 72ef7a040fd3f471), and the occupation is projected to grow 9% from 2024 to 2034. A worker earning over $70,000 annually can re",
+      "untraceable_figures": [
+        "70000"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "227f68713185da3b",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "californiasocialwork.org",
+        "californiasocialworkedu.org",
+        "salary.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Several passages show California social workers earn roughly $56k\u2013$93k a year, including averages near $69k\u2013$70k and higher specialty bands, so the named buyers are paid employees with ordinary consumer budgets rather than an insolvent group. Nothing in the passages shows they ar",
+      "untraceable_figures": [
+        "56"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "26c4fd2f769f72ab",
+      "check": "value_durability",
+      "cited_hosts": [
+        "gov.uk",
+        "ons.gov.uk",
+        "renovationnotes.com",
+        "sparkfinance.co.uk",
+        "trade2base.com"
+      ],
+      "cited_tiers": [
+        "government",
+        "other"
+      ],
+      "rationale": "The passages describe deferred payment for materials as a standard, widely available feature: UK builders' merchants and suppliers routinely offer trade credit accounts with 30-day terms to tradespeople, with published step-by-step guides on opening one (e9564fd2df41cedd, 43865ed",
+      "untraceable_figures": [
+        "20"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "2fdeef46fde55379",
+      "check": "claims_verifiable",
+      "cited_hosts": [
+        "rideshare.blog",
+        "rideshareguides.com",
+        "ridesharingdriver.com",
+        "therideshareguy.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The candidate's load-bearing factual claim \u2014 that Uber deactivates drivers whose rating falls below a published threshold \u2014 is directly confirmed (minimum rating around 4.6, below which deactivation follows), and 2026 coverage confirms driver deactivation is a live, actively scru",
+      "untraceable_figures": [
+        "150"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "3237584b60f9e091",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "cam.ac.uk",
+        "lomidriver.com",
+        "scienmag.com",
+        "taxi-point.co.uk"
+      ],
+      "cited_tiers": [
+        "academic",
+        "other"
+      ],
+      "rationale": "Passage 8e8b5782bdc05ef0 shows the payer segment earns \u00a3480\u2013\u00a3720/week, so a \u00a3180\u2013\u00a3290 fee is within reach of a worker whose earnings stop when deactivated, and 2d3bd493e0a04804 plus 80c15efdf9fc9f30 show acute motive \u2014 deactivation speed/evidence is a live grievance and income an",
+      "untraceable_figures": [
+        "180",
+        "290"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "338d885072533c11",
+      "check": "incumbency",
+      "cited_hosts": [
+        "geektown.co.uk",
+        "goaudits.com",
+        "rams-app.co.uk",
+        "riskassessor.net",
+        "safetyculture.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Multiple well-established incumbents already serve this exact need: SafetyCulture operates a mobile-first platform with AI, 10,000+ templates, and 50,000+ daily uses across 85+ countries including the UK, and UK-specific tools (RAMs App and others) already offer risk-assessment a",
+      "untraceable_figures": [
+        "50000"
+      ],
+      "verdict": "refuted"
+    }
+  ],
+  "figures": 1640,
+  "live_items": null,
+  "live_items_dirty": null,
+  "ruled_cited_checks": 2613,
+  "scope": "all dossiers",
+  "verdict_passage_truncate": 600
+}
