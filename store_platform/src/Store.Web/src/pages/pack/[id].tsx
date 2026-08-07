@@ -20,7 +20,7 @@ import { isTruncated, repairTruncation } from '@/lib/copy';
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
-import DossierExcerptPlate from '@/components/marketing/DossierExcerptPlate';
+import EvidenceExcerptPlate from '@/components/marketing/EvidenceExcerptPlate';
 import PackMark from '@/components/ui/PackMark';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
@@ -366,7 +366,9 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
               only a gain for someone who wants several, so it never sits in front of the direct path. */}
           <div className="mt-3">
-            <AddToCartButton line={{ id: pack.id, title: pack.title, price: pack.price }} />
+            <AddToCartButton
+              line={{ id: pack.id, title: pack.title, price: pack.price, pricePence: pack.pricePence }}
+            />
           </div>
           {/* Under the button, not above it: the address only matters once the buyer has decided,
               and putting an account-shaped sentence in front of the price is how a storefront
@@ -507,7 +509,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
              *
              * What went: a `border-l-[3px] border-l-primary` rule holding an uppercase letterspaced
              * "SURVIVED SIX CHECKS" badge, and, below the title, a four-item icon row that printed
-             * "{n} sources cited" while `DossierExcerptPlate` printed the same count immediately
+             * "{n} sources cited" while `EvidenceExcerptPlate` printed the same count immediately
              * above it. One fact, rendered once, in the data voice.
              */}
             {/*
@@ -551,7 +553,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                     mono facts already live.
                   - THE DOSSIER NUMBER was `pack.id.slice(0, 6)`, a TRUNCATED id presented as a
                     product number. The full, untruncated reference is already on this page in
-                    `DossierExcerptPlate` ("dossier:08b22037fc2afc07"), so the strip was showing a
+                    `EvidenceExcerptPlate` ("dossier:08b22037fc2afc07"), so the strip was showing a
                     worse copy of an identifier the page states properly a few inches lower. A
                     buyer quoting a reference in a support email is better served by the complete
                     one.
@@ -630,7 +632,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 screen on desktop, still the largest object on the left column, and now reading as
                 "here is a page of what you are buying" rather than as a stray quotation.
                 Renders nothing when the pack has no sourced extract. */}
-            <DossierExcerptPlate pack={pack} className="mt-8" />
+            <EvidenceExcerptPlate pack={pack} className="mt-8" />
 
             {/* US-6: the strongest case against the pack sits right under the title. The risk is
                 the buyer's first test of whether to trust the work; surfacing it above the
@@ -894,7 +896,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
                     <Icon name="briefcase" size={14} className="text-subtle" />
           <span className="text-caption font-medium text-subtle">
-                      Extract · verification dossier
+                      Extract · evidence record
                     </span>
                   </div>
                   {/* The claim, then the sources it stands on. Until this shipped these lines

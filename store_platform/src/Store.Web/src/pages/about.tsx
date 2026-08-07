@@ -3,18 +3,29 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Icon, buttonClasses, textLinkClass } from '@/components/ui';
-import { BRAND } from '@/lib/config';
-import FounderNote from '@/components/marketing/FounderNote';
+import { BRAND, FOUNDER, hasFounder } from '@/lib/config';
 import { RESEARCH_STATS } from '@/lib/stats';
-import { COMMON_CHECKS } from '@/lib/checks';
 
 /**
- * L2 - The about page.
+ * L2 - The about page: the one human page on the site.
  *
- * The audit (§6) said the store was "a single voice" with no face. The
- * about page is the human face of the brand. It explains the engine, the
- * checks, the kill log, and the "source-or-die" voice. The story is
- * the moat; the page is the moat rendered as a person.
+ * REBUILT 2026-08-07. It was the wrong page entirely. The home page links here as "Who is behind
+ * this" and the page contained zero human content: a condensed second account of the checks, a
+ * second explanation of the kill log, and a third description of what a pack is. Every one of
+ * those already had an owner (/how-it-works, /kill-log, the home page), so a reader who arrived
+ * looking for a person met the mechanism described to them for the second time in two pages.
+ *
+ * What survives from the old page is nothing but the links. The content is the founder's story,
+ * moved off the home page, where it sat as a two-line clamp in a bordered aside. The thesis is one
+ * sentence -- "So I built the part I kept losing to doubt" -- and the page is built around it.
+ *
+ * DELETED DELIBERATELY, do not bring them back here:
+ *   - the list of checks (owned by /how-it-works, which shows a real kill under each one);
+ *   - the kill-log explanation (owned by /kill-log, which IS the log);
+ *   - "what a pack actually is" (owned by the home page and /pricing);
+ *   - "The voice is source-or-die. Sourced, not sold. Refutational, not promotional." That was our
+ *     internal style guide, published. A reader is owed the practice, not the instruction we wrote
+ *     to ourselves, so the practice is stated as what the engine does instead.
  */
 export default function AboutPage() {
   // Via `RESEARCH_STATS`, not the raw JSON. This page was one of the seven that each imported
@@ -24,199 +35,115 @@ export default function AboutPage() {
   return (
     <MarketingLayout>
       <Seo
-        title={`About ${BRAND.name} - the engine behind the packs`}
-        description={`How ${BRAND.name} works: an engine that tries to kill every business idea on cited evidence. ${totals.killed} killed, ${totals.survived} survived.`}
+        title={`About ${BRAND.name} - who is behind this`}
+        description={`Why ${BRAND.name} exists, in the words of the person who built it, and where the engine that kills most of the ideas came from.`}
       />
 
       <section className="mx-auto max-w-3xl px-6 py-16 md:py-24">
-    <p className="mb-3 text-caption font-medium text-muted">
+        <p className="mb-3 text-caption font-medium text-muted">
           About
         </p>
-        {/* THE ONE PAGE THAT EARNS THE DISPLAY CUT.
-            Six words, no product beside it, no fold to protect: this is the only headline on the
-            site with the room to run at 96px, and it is also the one whose whole job is tone. The
-            step is `md`/`lg` gated because at 390px a 96px line breaks "every" across two lines.
-            Everywhere else the mega cut is either fighting a product card for the fold (the home
-            hero, see the note there) or sitting over a 90-character engine-written title. */}
-        <h1 className="text-h1 font-semibold text-text md:text-display lg:text-mega">
-          We try to kill every idea.
+        {/* The headline IS the thesis, quoted from the story below it rather than summarising it.
+            It steps to `display` at `md` and stops there: the old six-word headline ran at 96px
+            (`lg:text-mega`), and at that size a ten-word sentence takes three lines on a laptop
+            and four on a phone. */}
+        <h1 className="text-h1 font-semibold text-text md:text-display">
+          So I built the part I kept losing to doubt.
         </h1>
-        {/* The numbers came OUT of this paragraph. They were two bolded figures inside a
-            four-sentence block, which is the weakest possible place to put the single most
-            persuasive fact the business owns -- and the paragraph then had to bend around them
-            ("Right now the kill count is X and the survivors are Y"), so the prose got worse in
-            exchange for the numbers getting smaller. They are stated once, below, at the size the
-            claim deserves. */}
+
         <p className="mt-6 max-w-[60ch] text-body leading-relaxed text-muted md:text-h2">
-          {BRAND.name} is an engine that runs business ideas through a
-          gauntlet of brutal checks. The ones that die on the first front
-          where cited evidence is found against them are not listed. The
-          ones that survive are the {BRAND.name} packs.
+          I always wanted to run my own business, and the ideas were never the hard part.
         </p>
 
-        {/*
-          THE RATIO, AS EVIDENCE OF TEMPERAMENT.
-          Not a statistic about throughput. A shop that rejects 94 ideas out of every 100 it
-          researches is making a claim about what it is willing to sell, and that claim is worth
-          more than any adjective on this page -- so it is set at the largest size on it, in mono,
-          because it is a count.
+        {/* `id` is the ownership anchor, not a styling hook: §5.3 gives the founder story exactly
+            one page, and `factOwnership.test.ts` matches on this id. It was previously told twice,
+            here and from `FOUNDER.bio`. */}
+        <div
+          id="founder-story"
+          className="mt-8 max-w-[60ch] space-y-5 text-body leading-relaxed text-muted"
+        >
+          <p>
+            Launching them was. After a few attempts that never quite got off the ground, a habit
+            set in: I would talk myself out of the next idea before it went anywhere. Not because I
+            had checked it and found something wrong. Because I had not checked it at all, and
+            doubt fills that space much faster than research does.
+          </p>
+          <p>
+            What I actually enjoyed was the ideating. What I kept losing was the bit in the middle,
+            the part where you find out whether an idea holds up before you commit a year to it.
+          </p>
+          {/* The one sentence the page exists for, set apart and in the darker ink. It is the
+              hinge between the problem and the product, and it was previously buried as line four
+              of a five-sentence bio clamped to two lines on the home page. */}
+          <p className="text-body font-semibold text-text md:text-h2 md:leading-snug">
+            So I built the part I kept losing to doubt, and made it check every idea harder than I
+            ever did.
+          </p>
+          <p>
+            That is the seed {BRAND.name} grew from. It runs on ideas that are not mine now, and it
+            publishes its workings either way: the few it clears, and the many more it kills.
+          </p>
+        </div>
 
-          The kill figure is the one that gets the size. It is the unflattering number, and the
-          asymmetry is the point: any shop can print how many products it has.
-        */}
-        <div className="mt-10 flex flex-wrap items-end gap-x-12 gap-y-6 border-y border-border py-8">
-          <div>
-            <p className="font-mono text-display font-semibold leading-none tracking-tight text-text">
-              {totals.killed.toLocaleString('en-GB')}
+        {hasFounder() && (
+          <p className="mt-6 text-caption font-medium text-muted">
+            {FOUNDER.name}, who built {BRAND.name}
+          </p>
+        )}
+
+        <div className="mt-14">
+          <h2 className="text-h2 font-semibold text-text md:text-h1">
+            Where the engine came from
+          </h2>
+          <p className="mt-3 max-w-[60ch] text-body leading-relaxed text-muted">
+            It started as the questions I made myself answer before starting anything: is the pain
+            real, would anyone pay, is there any way to reach them. Those questions are the checks,
+            asked now by software that has to fetch a source before it is allowed to answer, with
+            every claim cited or the pack does not ship.
+          </p>
+        </div>
+
+        {/* Two links, not two more explanations. Each names what the page it points at holds, and
+            the kill count is read from the totals file so this page cannot restate it wrongly. */}
+        <div className="mt-10 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/how-it-works"
+            className="rounded-md border border-border bg-surface p-5 transition-colors hover:border-border-strong"
+          >
+            <p className="text-meta font-semibold text-text">How it works</p>
+            <p className="mt-1 text-meta leading-relaxed text-muted">
+              One real idea taken through the checks from start to finish, with every source it was
+              judged on.
             </p>
-            <p className="mt-2 text-caption text-kill">ideas killed</p>
-          </div>
-          <div>
-            <p className="font-mono text-h1 font-semibold leading-none tracking-tight text-text">
-              {totals.survived.toLocaleString('en-GB')}
+            <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
+              Read it <Icon name="arrowRight" size={12} />
+            </span>
+          </Link>
+          <Link
+            href="/kill-log"
+            className="rounded-md border border-border bg-surface p-5 transition-colors hover:border-border-strong"
+          >
+            <p className="text-meta font-semibold text-text">The kill log</p>
+            <p className="mt-1 text-meta leading-relaxed text-muted">
+              The {totals.killed.toLocaleString('en-GB')} ideas the engine has killed, each with the
+              argument that killed it.
             </p>
-            <p className="mt-2 text-caption text-survive">survived and listed</p>
-          </div>
-          <p className="max-w-[34ch] text-meta leading-relaxed text-muted">
-            Every one of those rejections is published, with the gate that fired and the sourced
-            argument behind it.{' '}
-            <Link href="/kill-log" className={textLinkClass('font-medium')}>
-              Read them
-            </Link>
-            .
-          </p>
-        </div>
-
-        {/* The person, directly under the claim, and before the machinery.
-            This page's own docblock has said since it was written that it is "the human face of
-            the brand" and "the moat rendered as a person", and it named nobody -- 453 words about
-            an engine. Renders nothing until `FOUNDER.name` is set in `lib/config.ts`, so the page
-            is never worse than it was, and is materially better the moment a real name exists. */}
-        <FounderNote variant="full" className="mt-10" />
-
-        <div className="mt-12">
-          <h2 className="text-h2 font-semibold text-text md:text-h1">
-            The checks
-          </h2>
-          {/* The SUMMARY, not a second account. This section used to re-explain the mechanism at
-              the same length /how-it-works does, so a visitor who read both got the filter
-              described to them twice, in two different vocabularies, with no signal about which
-              page was authoritative. /how-it-works is authoritative -- it shows a real kill under
-              every check. This names the fronts and hands off, which is what an about page owes
-              the reader. */}
-          <p className="mt-2 max-w-[60ch] text-body text-muted">
-            Every idea is attacked on the same checks, and dies on the first
-            one where cited evidence is found against it. A listed pack is one
-            where no hard gate produced that evidence.
-          </p>
-          {/* Honest about the denominator. Measured 2026-08-06 against the live /catalog detail
-              endpoint across all 63 published packs: 40 report "6/6 checks cleared", 15 "8/8",
-              4 "7/8", 3 "9/9", 1 "6/8". Copy that promised "all six" was false for 23 of them,
-              so this page names the six core fronts and then says plainly that some lanes run
-              more (config.yaml `lanes.side_hustle` adds buyer_intent, currency and
-              claims_verifiable). The per-pack truth is on the pack page, which has always
-              rendered the engine's real numerator and denominator. */}
-          <p className="mt-2 max-w-[60ch] text-body text-muted">
-            These are common to every idea. Some face more: a small
-            side-business idea is also tested on whether buyers are actively
-            searching, whether the trend is still current, and whether its
-            claims can be checked. Each pack page names the checks that idea
-            faced and how many it cleared.
-          </p>
-          {/* Two columns from `sm` up. Six numbered cards holding three words and a short question
-              each, stacked full width, ran the length of the viewport with most of every card
-              empty (desktop-about-fold.png, 2026-08-06). Numbered order still reads correctly:
-              CSS grid fills row-major, so 1-2 / 3-4 / 5-6. */}
-          <ol className="mt-6 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-            {COMMON_CHECKS.map((check, i) => (
-              <li key={check.id} className="flex items-start gap-3 rounded-md border border-border bg-surface p-4">
-        <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border bg-bg text-caption font-medium text-muted">
-                  {i + 1}
-                </span>
-                <div>
-                  <p className="text-meta font-semibold text-text">{check.name}</p>
-                  <p className="mt-0.5 text-meta leading-relaxed text-muted">
-                    {check.question}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-6 max-w-[60ch] text-body text-muted">
-            That is the short version.{' '}
-            <Link href="/how-it-works" className={textLinkClass('font-medium')}>
-              How it works
-            </Link>
-            {' '}is the long one: every check above, with a real idea it killed and the
-            sourced argument that killed it.
-          </p>
-        </div>
-
-        <div className="mt-12">
-          <h2 className="text-h2 font-semibold text-text md:text-h1">
-            The kill log
-          </h2>
-          <p className="mt-2 max-w-[60ch] text-body text-muted">
-            Most of the ideas the engine runs are killed. We do not hide
-            that. Every kill is in the{' '}
-            <Link href="/kill-log" className={textLinkClass('font-medium')}>
-              kill log
-            </Link>
-            , with the cited argument that killed it. The log is the receipt
-            behind the catalogue; the catalogue is the survivors of the log.
-          </p>
-          <p className="mt-4 max-w-[60ch] text-body text-muted">
-            The voice is <span className="font-semibold text-text">source-or-die</span>.
-            Sourced, not sold. Refutational, not promotional. If a claim
-            has no source, it is not in a pack. If an idea cannot survive
-            the checks, it is not on the shelf.
-          </p>
-          {/* Was disclosed nowhere but clause 6 of the refund policy. A shop whose whole pitch is
-              "every claim traces to a source you can open" should say plainly what does the
-              tracing, in the same place it makes that pitch, not bury it in legal fine print --
-              the gap between the two is exactly what a reader who trusts the site is trusting. */}
-          <p className="mt-4 max-w-[60ch] text-body text-muted">
-            The research is done by an AI pipeline, not a person typing an opinion. It is built to
-            argue against every idea it is given, using only passages it actually retrieves from
-            the open web: no claim ships without a link to where it came from, and an idea with no
-            evidence against it is not proof the idea is good, just that the pipeline could not
-            find the evidence yet. That is what &quot;every claim traces to a source&quot; means in
-            practice, and it is why the process is adversarial rather than generative.
-          </p>
-        </div>
-
-        <div className="mt-12">
-          <h2 className="text-h2 font-semibold text-text md:text-h1">
-            What a pack actually is
-          </h2>
-          {/* Was "Each pack is a file you own. ZIP of Markdown. Opens anywhere." -- three sentences
-              about the container before a single word about what is in it. The documents lead now;
-              the format is the last clause, where it belongs. */}
-          <p className="mt-2 max-w-[60ch] text-body text-muted">
-            A build spec, a go-to-market plan, an operations playbook and a QA report, with a
-            citation behind every claim and a date stamped at publish. Yours outright: no login, no
-            dashboard, no subscription, and plain text files you can open anywhere.
-          </p>
-          <p className="mt-4 max-w-[60ch] text-body text-muted">
-            See one for free, no card, no email, on the{' '}
-            <Link href="/sample" className={textLinkClass('font-medium')}>
-              sample page
-            </Link>
-            . The same rigour that produced the catalogue produced it.
-          </p>
+            <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
+              Read them <Icon name="arrowRight" size={12} />
+            </span>
+          </Link>
         </div>
 
         <div className="mt-14 rounded-md border border-text bg-surface p-8">
-     <p className="text-caption font-medium text-muted">
+          <p className="text-caption font-medium text-muted">
             Read before you buy
           </p>
           <h2 className="mt-2 text-h2 font-semibold text-text md:text-h1">
             See the work first.
           </h2>
           <p className="mt-2 max-w-[60ch] text-meta text-muted">
-            Read a full report, unredacted. Every check, every verdict,
-            every source link. If the rigour is what the page describes,
-            the pack will be too.
+            Read a full report, unredacted. Every check, every verdict, every source link. If the
+            rigour is what the page describes, the pack will be too.
           </p>
           <div className="mt-6">
             <Link

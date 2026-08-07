@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import report from '@/data/sample-report.json';
+import { SourceChip } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 
 /*
-  ONE REAL IDEA, RUNNING THE GAUNTLET.
+  ONE REAL IDEA, RUN THROUGH THE CHECKS IN ORDER.
 
   WHAT PROBLEM THIS SOLVES. /how-it-works described the filter in the abstract and then, separately,
   showed six unrelated ideas that each died on a different gate. Both halves are true and neither
@@ -13,17 +14,17 @@ import { cx } from '@/components/ui/cx';
 
   So this is a single subject entering at the top, each check firing on it in sequence, and the
   verdict landing on each -- including the one that lands badly. The kill examples keep their place
-  below: the gauntlet shows a run that survives, the kills show the same machinery when it does not,
+  below: this shows a run that survives, the kills show the same machinery when it does not,
   and the two together are the argument.
 
   WHERE THE DATA COMES FROM. `sample-report.json`, the same file `/sample` renders in full and the
-  home page's `HeroDossier` compresses to a glyph run. Every name, verdict, confidence, rationale
-  and source URL below is read from it. Nothing on this page is written by hand, so the gauntlet
-  cannot drift from the dossier it claims to be showing, and the reader can open /sample and find
+  home page's `HeroEvidenceStrip` compresses to a glyph run. Every name, verdict, confidence, rationale
+  and source URL below is read from it. Nothing on this page is written by hand, so this sequence
+  cannot drift from the evidence record it claims to be showing, and the reader can open /sample and find
   the identical eight rows.
 
-  WHY IT IS NOT A THIRD COPY OF THAT DOSSIER. `HeroDossier` renders the SHAPE (how many, how they
-  came out, which domains). `DossierPreview` on the home page renders the ANSWERS. This renders the
+  WHY IT IS NOT A THIRD COPY OF THAT RECORD. `HeroEvidenceStrip` renders the SHAPE (how many, how they
+  came out, which domains). `EvidenceRecordPanel` on the home page renders the ANSWERS. This renders the
   SEQUENCE: the order, the confidence the engine put on each ruling, and the fact that check eight
   reversed the run. Order and confidence appear nowhere else on the site.
 */
@@ -54,10 +55,10 @@ function domainOf(source: Source): string {
   }
 }
 
-export function Gauntlet({ className }: { className?: string }) {
+export function CheckSequence({ className }: { className?: string }) {
   return (
     <div className={cx('max-w-3xl', className)}>
-      {/* THE IDEA ENTERING. Named, in its own words, before anything is done to it -- a gauntlet
+      {/* THE IDEA ENTERING. Named, in its own words, before anything is done to it -- a run
           with an anonymous subject is a diagram, not a demonstration. */}
       <div className="rounded-md bg-surface2 p-5 sm:p-6">
         <p className="text-caption text-subtle">The idea that went in</p>
@@ -125,15 +126,12 @@ export function Gauntlet({ className }: { className?: string }) {
                     {domains.map((domain) => {
                       const source = check.sources.find((s) => domainOf(s) === domain);
                       return (
-                        <a
+                        <SourceChip
                           key={domain}
-                          href={source?.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono text-caption text-muted underline decoration-border underline-offset-2 transition-colors hover:text-text hover:decoration-text"
-                        >
-                          {domain}
-                        </a>
+                          url={source?.url ?? ''}
+                          host={domain}
+                          variant="link"
+                        />
                       );
                     })}
                   </div>
@@ -145,7 +143,7 @@ export function Gauntlet({ className }: { className?: string }) {
       </ol>
 
       {/* WHERE IT CAME OUT. The counts, and nothing about what the counts entitle the idea to.
-          This dossier is published as the free sample; whether an idea with one refuted check gets
+          This evidence record is published as the free sample; whether an idea with one refuted check gets
           listed is a decision `kill_filter.py` makes on which gate fired and whether the ruling was
           a cited kill, and this component cannot see either. Stating the outcome would be asserting
           a rule the page has not shown. The counts are the fact; /sample is the whole record. */}
@@ -160,11 +158,11 @@ export function Gauntlet({ className }: { className?: string }) {
           href="/sample"
           className="text-meta font-medium text-accent underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
         >
-          Read the whole dossier
+          Read the whole evidence record
         </Link>
       </div>
     </div>
   );
 }
 
-export default Gauntlet;
+export default CheckSequence;

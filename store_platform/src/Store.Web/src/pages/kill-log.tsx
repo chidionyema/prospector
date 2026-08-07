@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, chipClasses, Icon, SearchInput } from '@/components/ui';
+import { buttonClasses, chipClasses, Icon, SearchInput, SourceChip } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
@@ -244,13 +244,17 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
         <div className="max-w-3xl">
           <p className="text-caption font-medium text-subtle">The kill log</p>
-          {/* WAS "We killed 1,168 ideas to put 145 on the shelf." Two false claims in one line:
-              145 is the number that SURVIVED, and the shelf holds a subset of those, so the
-              sentence overstated the catalogue and sent anyone who counted straight to the
-              contradiction. The survivor count and the published count are different facts and
-              this page states both. */}
+          {/* THE SHAPE IS "we killed X to put Y on the shelf", and BOTH numbers are live.
+              It once read "We killed 1,168 ideas to put 145 on the shelf", which was false twice:
+              145 was the SURVIVOR count, not the shelf, and both figures were baked in at build
+              time. `listed` is the catalogue read at request time (see getServerSideProps), so the
+              sentence is now the true version of the same claim. When the catalogue is unreachable
+              the shelf count is unknown, and the line falls back to the two figures this page can
+              always prove rather than to a remembered one. */}
           <h1 className="mt-3 text-h1 font-semibold text-text md:text-display">
-            We killed {killed.toLocaleString('en-GB')} ideas out of {researched.toLocaleString('en-GB')}.
+            {listed
+              ? `We killed ${killed.toLocaleString('en-GB')} ideas to put ${listed.toLocaleString('en-GB')} on the shelf.`
+              : `We killed ${killed.toLocaleString('en-GB')} ideas out of ${researched.toLocaleString('en-GB')}.`}
           </h1>
           <p className="mt-5 max-w-[60ch] text-body text-muted">
             Anyone can claim their research is rigorous. This is the receipt. Every row below was
@@ -264,7 +268,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
               overclaim, the correction has to arrive before the claim it corrects. */}
           <p className="mt-4 max-w-[68ch] text-meta text-muted">
             This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
-            Rejections whose only reason was a score below the bar are left out, they are true and
+            Kills whose only reason was a score below the bar are left out. They&rsquo;re true, but
             they tell you nothing. What you see here is the kills that came with an argument,
             {` ${withSource}`} of them carrying a source you can open.
           </p>
@@ -470,17 +474,12 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                               argument recorded, no source published
                             </span>
                           )}
+                          {/* Was a byte-for-byte copy of `CitationChip`'s markup, pasted here. It
+                              is the sixth such copy the source-chip consolidation found, and the
+                              only one an agent survey of the tree missed -- `sourceChipIsTheOnlyOne`
+                              caught it on its first run. */}
                           {entry.citations.map((c, j) => (
-                            <a
-                              key={j}
-                              href={c.url}
-                              target="_blank"
-                              rel="noopener noreferrer nofollow"
-                              className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-caption text-muted transition-colors duration-[120ms] hover:border-border-strong hover:text-text"
-                            >
-                              <Icon name="arrowRight" size={10} className="-rotate-45 shrink-0" />
-                              <span className="truncate">{c.domain}</span>
-                            </a>
+                            <SourceChip key={j} url={c.url} host={c.domain} />
                           ))}
                           {/* The per-kill permalink. This is the share mechanic: the interesting
                               unit of this page is one rejection, not the page. */}

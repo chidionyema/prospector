@@ -8,6 +8,9 @@ export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 
 export { textLinkClass } from './TextLink';
 
+export { SourceChip, SourceChipRow, sourceHost } from './SourceChip';
+export type { SourceChipProps, SourceChipRowProps, SourceChipVariant } from './SourceChip';
+
 export { Input } from './Input';
 export type { InputProps } from './Input';
 

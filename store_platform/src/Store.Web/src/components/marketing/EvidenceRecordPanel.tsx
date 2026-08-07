@@ -1,15 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
-import { Icon, textLinkClass } from '@/components/ui';
+import { Icon, SourceChip, sourceHost } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import report from '@/data/sample-report.json';
 
 /*
   What the buyer is actually paying for, shown rather than described.
 
-  The list above this says a pack contains a verification dossier. That is a noun, and the
+  The list above this says a pack contains an evidence record. That is a noun, and the
   documented fear on a digital download page is paying £49 for a two-page Google Doc. So this
-  shows the dossier itself: the real check names, the real verdicts, the real source domains
+  shows the record itself: the real check names, the real verdicts, the real source domains
   from Report #00, the free sample. Nothing here is a mockup, it is the same JSON the /sample
   page renders in full, which is why one of the eight rows says the idea was pushed back.
 
@@ -22,22 +22,15 @@ type Check = { name: string; verdict: string; sources: Source[] };
 
 const checks = report.checks as Check[];
 
-function domainOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
-}
 
-export function DossierPreview() {
+export function EvidenceRecordPanel() {
   return (
     <div className="mt-10 overflow-hidden rounded-md border border-border bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface2 px-5 py-4 md:px-7">
         <div>
           <p className="text-caption font-medium text-subtle">A real page from a real pack</p>
           <p className="mt-1 text-meta font-semibold text-text">
-            {report.title}, the verification dossier
+            {report.title}, the evidence record
           </p>
         </div>
         {/* Not "{supported} of {total} survived" -- see the note on `/sample`. A fraction on a page
@@ -54,7 +47,7 @@ export function DossierPreview() {
       <ul className="list-none divide-y divide-border p-0">
         {checks.map((check, i) => {
           const supported = check.verdict === 'supported';
-          const domain = domainOf(check.sources[0]?.url ?? '');
+          const domain = sourceHost(check.sources[0]?.url ?? '');
           return (
             <li key={i} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-5 py-3 md:px-7">
               {/* The glyph alone, not a glyph in a tinted disc. Eight coloured discs down the
@@ -83,31 +76,26 @@ export function DossierPreview() {
                   Now the claim is testable in place, which is the only kind of proof this shop's
                   argument accepts.
 
-                  The `rel` and the -45deg `arrowRight` both copy `SourceChips` in `pages/sample.tsx`
-                  deliberately: this site has one way of drawing "a source you can open", and a
-                  second one invented here would make the same object look like two different kinds
-                  of thing on two pages the reader visits back to back. There is no external-link
-                  glyph in `ICON_MAP`; the rotated arrow IS the idiom.
+                  This used to say the markup "copies `SourceChips` in `pages/sample.tsx`
+                  deliberately: this site has one way of drawing 'a source you can open'". It did
+                  not copy it -- it was a fourth private implementation, in a different colour --
+                  and the claim went unchecked because nothing in the tree named the primitive.
+                  It is `SourceChip` now, so the sentence is finally true.
 
-                  `textLinkClass` rather than a hand-rolled hover rule: a phone never fires the
-                  hover event, so an underline that is only drawn on hover leaves the one clickable
+                  Two properties the old markup had are kept by the `link` variant rather than by
+                  this call site: the underline is drawn ALWAYS, not on hover, because a phone
+                  never fires the hover event and a hover-only underline leaves the one clickable
                   proof on this panel looking like printed text on exactly the devices that cannot
-                  test it. */}
+                  test it; and the colour is the evidence voice, not the accent. `Citation.tsx`
+                  states that rule -- the accent means "you can act here" (buy), a source is
+                  evidence -- and this surface was the one that never followed it. */}
               {domain && (
-                <a
-                  href={check.sources[0].url}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className={textLinkClass(
-                    cx(
-                      'inline-flex w-full items-center gap-1.5 font-mono text-caption',
-                      'md:w-auto md:min-w-[13rem] md:justify-end',
-                    ),
-                  )}
-                >
-                  <Icon name="arrowRight" size={11} className="-rotate-45 shrink-0" />
-                  {domain}
-                </a>
+                <SourceChip
+                  url={check.sources[0].url}
+                  host={domain}
+                  variant="link"
+                  className={cx('w-full', 'md:w-auto md:min-w-[13rem] md:text-right')}
+                />
               )}
             </li>
           );
@@ -125,7 +113,7 @@ export function DossierPreview() {
           href="/sample"
           className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
         >
-          Read a full dossier free
+          Read a full evidence record free
           <Icon name="arrowRight" size={14} />
         </Link>
       </div>
