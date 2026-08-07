@@ -6,7 +6,14 @@ import { Seo } from '@/components/Seo';
 import { buttonClasses, Icon } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
-import killLog from '@/data/kill-log.json';
+import Gauntlet from '@/components/marketing/Gauntlet';
+/* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
+   check and needs the whole record (reason, citations), so the names file is not enough. The
+   examples file is `entries[:60]` with every field intact -- byte-for-byte what `kill-log.json`
+   held before the log was raised from 60 to 400 records for the /kill-log instrument -- so which
+   example each check picks is unchanged, while the 452 KB full log stays out of this bundle. A
+   static JSON import is one value and cannot be tree-shaken. */
+import killLog from '@/data/kill-log-examples.json';
 import killTotals from '@/data/kill-log-totals.json';
 
 /** One entry from the kill log picked to illustrate a specific gate. */
@@ -97,9 +104,31 @@ export default function HowItWorks() {
         lead={variant.howItWorksLead}
       />
 
-      {/* A. The checks, as a stepped timeline */}
+      {/*
+       * A. THE GAUNTLET, and it goes first.
+       *
+       * The page opened on an abstract description of the filter and then showed six unrelated
+       * ideas dying on six different gates. Nothing on it showed a single idea going through the
+       * checks in order, which is the one thing the page is named after. A reader could finish it
+       * knowing the gates exist and still not know what a run looks like.
+       *
+       * So a real dossier runs first, then the gate-by-gate kills. The order is the argument:
+       * here is the machine working on one subject you can audit; here is the same machine when
+       * the subject does not survive. Reversing them puts six disconnected failures in front of
+       * the reader before they have seen a single complete run.
+       */}
       <Section
         bg="white"
+        width="6xl"
+        title="One idea, all the way through"
+        intro="Every pack on the shelf carries a dossier like this. The one below is real, it is the free sample, and every source in it opens."
+      >
+        <Gauntlet />
+      </Section>
+
+      {/* B. The checks, as a stepped timeline */}
+      <Section
+        bg="bg"
         width="6xl"
         title={variant.sixChecksTitle}
         // `intro`, not a first child. `Section` puts the heading in a `mb-10` wrapper, which is the
@@ -186,9 +215,9 @@ export default function HowItWorks() {
         </div>
       </Section>
 
-      {/* B. The adversarial pass */}
+      {/* C. The adversarial pass */}
       <Section
-        bg="bg"
+        bg="white"
         width="6xl"
         title="The adversarial pass"
       >
@@ -208,9 +237,9 @@ export default function HowItWorks() {
         </div>
       </Section>
 
-      {/* C. The graveyard */}
+      {/* D. The graveyard */}
       <Section
-        bg="white"
+        bg="bg"
         width="6xl"
         title="Why most ideas die"
       >
@@ -237,9 +266,9 @@ export default function HowItWorks() {
         </div>
       </Section>
 
-      {/* D. Honest limits, preserved verbatim */}
+      {/* E. Honest limits, preserved verbatim */}
       <Section
-        bg="bg"
+        bg="white"
         width="6xl"
         title="The honest limits"
       >

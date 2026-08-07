@@ -32,19 +32,60 @@ export default function AboutPage() {
     <p className="mb-3 text-caption font-medium text-muted">
           About
         </p>
-        <h1 className="text-h1 font-semibold text-text md:text-display">
+        {/* THE ONE PAGE THAT EARNS THE DISPLAY CUT.
+            Six words, no product beside it, no fold to protect: this is the only headline on the
+            site with the room to run at 96px, and it is also the one whose whole job is tone. The
+            step is `md`/`lg` gated because at 390px a 96px line breaks "every" across two lines.
+            Everywhere else the mega cut is either fighting a product card for the fold (the home
+            hero, see the note there) or sitting over a 90-character engine-written title. */}
+        <h1 className="text-h1 font-semibold text-text md:text-display lg:text-mega">
           We try to kill every idea.
         </h1>
-        <p className="mt-4 max-w-[60ch] text-body leading-relaxed text-muted md:text-h2">
+        {/* The numbers came OUT of this paragraph. They were two bolded figures inside a
+            four-sentence block, which is the weakest possible place to put the single most
+            persuasive fact the business owns -- and the paragraph then had to bend around them
+            ("Right now the kill count is X and the survivors are Y"), so the prose got worse in
+            exchange for the numbers getting smaller. They are stated once, below, at the size the
+            claim deserves. */}
+        <p className="mt-6 max-w-[60ch] text-body leading-relaxed text-muted md:text-h2">
           {BRAND.name} is an engine that runs business ideas through a
           gauntlet of brutal checks. The ones that die on the first front
           where cited evidence is found against them are not listed. The
-          ones that survive are the {BRAND.name} packs. Right now the kill
-          count is{' '}
-          <span className="font-semibold text-text">{totals.killed.toLocaleString('en-GB')}</span>
-          {' '}and the survivors are{' '}
-          <span className="font-semibold text-text">{totals.survived}</span>.
+          ones that survive are the {BRAND.name} packs.
         </p>
+
+        {/*
+          THE RATIO, AS EVIDENCE OF TEMPERAMENT.
+          Not a statistic about throughput. A shop that rejects 94 ideas out of every 100 it
+          researches is making a claim about what it is willing to sell, and that claim is worth
+          more than any adjective on this page -- so it is set at the largest size on it, in mono,
+          because it is a count.
+
+          The kill figure is the one that gets the size. It is the unflattering number, and the
+          asymmetry is the point: any shop can print how many products it has.
+        */}
+        <div className="mt-10 flex flex-wrap items-end gap-x-12 gap-y-6 border-y border-border py-8">
+          <div>
+            <p className="font-mono text-display font-semibold leading-none tracking-tight text-text">
+              {totals.killed.toLocaleString('en-GB')}
+            </p>
+            <p className="mt-2 text-caption text-kill">ideas killed</p>
+          </div>
+          <div>
+            <p className="font-mono text-h1 font-semibold leading-none tracking-tight text-text">
+              {totals.survived.toLocaleString('en-GB')}
+            </p>
+            <p className="mt-2 text-caption text-survive">survived and listed</p>
+          </div>
+          <p className="max-w-[34ch] text-meta leading-relaxed text-muted">
+            Every one of those rejections is published, with the gate that fired and the sourced
+            argument behind it.{' '}
+            <Link href="/kill-log" className={textLinkClass('font-medium')}>
+              Read them
+            </Link>
+            .
+          </p>
+        </div>
 
         {/* The person, directly under the claim, and before the machinery.
             This page's own docblock has said since it was written that it is "the human face of

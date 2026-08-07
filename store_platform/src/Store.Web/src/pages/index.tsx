@@ -10,12 +10,16 @@ import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { DossierPreview } from '@/components/marketing/DossierPreview';
 import LiveKillCard from '@/components/marketing/LiveKillCard';
+import { HeroDossier } from '@/components/marketing/HeroDossier';
+import AmbientKillColumn from '@/components/marketing/AmbientKillColumn';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import FounderNote from '@/components/marketing/FounderNote';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, StepFlow } from '@/components/discovery/FacetBar';
+import PackMark from '@/components/ui/PackMark';
+import { EvidenceBar } from '@/components/ui/EvidenceBar';
 
 
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
@@ -154,14 +158,83 @@ interface HomeProps {
  * The sector name renders whenever `cat.tagged`, and NOTHING renders when it is false -- see the
  * rule in `lib/category.ts`: hue is decoration, the label identifies.
  */
+/**
+ * ── EDITORIAL WEIGHT (2026-08-07) ────────────────────────────────────────────────────────────
+ *
+ * THE MEASUREMENT THAT FORCED THIS. On the served homepage, all 57 pack anchors rendered with a
+ * byte-identical class string: `group flex flex-col overflow-hidden rounded-md border
+ * border-border bg-surface ...`. One card treatment, 57 times, in a uniform `lg:grid-cols-3`.
+ * A grid where every cell has the same weight gives the eye nothing to land on, so the reader
+ * either scans all 57 titles or none of them -- and 57 is well past the number anyone reads.
+ * Every other fix on this page is downstream of that: the type scale, the marks and the evidence
+ * bar all need somewhere to be LOUD, and a uniform grid has no loud position.
+ *
+ * WEIGHT FOLLOWS PRICE, and that is a factual mapping rather than a design flourish. The price
+ * ladder is set by how big the opportunity is (`config.yaml listing.pricing`, rungs 1900-19900),
+ * so price already encodes "how much is at stake here". Rendering a £149 pack at six times the
+ * area of a £29 one makes the shelf's layout agree with the shelf's own pricing argument. The
+ * thresholds sit ON ladder rungs, not between them, so a pack cannot drift weight without an
+ * actual repricing.
+ *
+ * Measured distribution over the live shelf (2026-08-07): £149 x5, £99 x1, £79 x7, £49 x40,
+ * £39 x3, £29 x16. So `lead` selects a handful, `mid` a handful, and the long tail becomes rows
+ * -- which is also why the tail is rows and not cards. 44 more cards is 44 more things claiming
+ * to be a poster; 44 rows is a list you can actually run your eye down, and it is roughly a third
+ * of the page height.
+ */
+export type PackWeight = 'lead' | 'mid' | 'row';
+
+/**
+ * Price in pence -> weight tier.
+ *
+ * `pricePence` is optional on `Pack`, and the fallback is `row` rather than a guess parsed out of
+ * the formatted `price` string: a missing price is a fact we do not have, and promoting an
+ * unknown to the loudest position on the shelf is exactly the kind of invented emphasis this site
+ * is not allowed to make.
+ */
+export function packWeight(pack: Pack): PackWeight {
+  const pence = pack.pricePence ?? 0;
+  if (pence >= 9900) return 'lead'; // £99 and £149 rungs
+  if (pence >= 7900) return 'mid';  // £79 rung
+  return 'row';
+}
+
+/**
+ * The card's one-line description, hard-capped.
+ *
+ * `repairTruncation` already repairs the publish path's character-150 cut, but repairing a cut is
+ * not the same as not making one: measured in the served HTML on 2026-08-07, 32 card descriptions
+ * still ended mid-clause on a lowercase word followed by an ellipsis ("...fixes the knee, neck
+ * and wrist pain…", "...and the approved contractor booking, so a…"). A sentence that stops in
+ * the middle of a clause reads as a broken string, not as a summary, and it is the LAST thing the
+ * eye sees before the price.
+ *
+ * So the card gets its own line, cut at a WORD boundary at 20 words, independent of whatever
+ * length the full description happens to be. No ellipsis is appended: at a clean word boundary
+ * the line reads as a complete short summary, and an ellipsis would reintroduce the "there is
+ * more and you are missing it" signal this exists to remove.
+ */
+function cardLine(text: string | null | undefined, maxWords = 20): string {
+  if (!text) return '';
+  const clean = text.replace(/\s*[…]\s*$/, '').replace(/\s*\.\.\.\s*$/, '').trim();
+  const words = clean.split(/\s+/);
+  if (words.length <= maxWords) return clean;
+  // Drop a trailing comma/semicolon left dangling by the cut -- "the knee, neck and wrist," is a
+  // worse ending than "the knee, neck and wrist".
+  return words.slice(0, maxWords).join(' ').replace(/[,;:]$/, '');
+}
+
 function PackCard({
   pack,
   currency,
   viewerMarket,
   viewed = false,
+  weight = 'mid',
 }: {
   pack: Pack;
   currency: Currency;
+  /** Editorial weight. See `packWeight`. */
+  weight?: PackWeight;
   /* The market this reader is browsing. Used ONLY to suppress the cover's market chip when it
      would be true of every card on screen -- see `PackCoverArt`. Optional so a caller with no
      market context (the hero's featured slot renders before any grouping) simply gets the chip. */
@@ -174,10 +247,151 @@ function PackCard({
 }) {
   const cat = categoryFor(pack);
   const { heading, sub } = cardHeading(pack);
-  // `repairTruncation` because 34 of the 63 live packs carry a description the publish path cut
-  // at character 150, several of them inside a word. See `lib/copy.ts`.
-  const line = repairTruncation(pack.oneLine) || sub;
+  // `repairTruncation` repairs the publish path's character-150 cut; `cardLine` then caps at a
+  // word boundary so the card never shows a clause that stops mid-thought. See `cardLine`.
+  const line = cardLine(repairTruncation(pack.oneLine) || sub);
+  const price = formatPriceForMarket(pack.price, currency);
+  const focusRing =
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
+  /* ── ROW ────────────────────────────────────────────────────────────────────────────────────
+     The long tail. Full width, hairline-divided, no card chrome at all.
+
+     This is not a smaller card, it is a different object, and that is the point: a card says
+     "consider me", a row says "here is the list". Forty-four more cards would be forty-four more
+     posters competing with the lead, which is how the shelf got flat in the first place. As rows
+     the same forty-four packs occupy roughly a third of the height and can actually be scanned
+     down a column -- the price and the evidence bar land on the same x on every row, so
+     comparing them is a vertical eye movement rather than a hunt.
+
+     No border on the row itself. The divider comes from the parent `divide-y`, which is the
+     "hairline dividers only where structural" rule: the line between two rows is structural, a
+     box drawn around each row is not. */
+  if (weight === 'row') {
+    return (
+      <Link
+        href={`/pack/${pack.id}`}
+        className={cx(
+          'group flex items-center gap-4 px-3 py-4 sm:gap-5 sm:px-4',
+          'transition-colors hover:bg-surface3',
+          focusRing,
+        )}
+      >
+        {/* The mark as a SPINE. At row scale a cover is impossible (there is no vertical room for
+            one) but an identity is still needed, so the stratigraphy runs as a narrow vertical
+            core sample -- which is the orientation the form was drawn for anyway. */}
+        <span
+          className={cx(
+            'relative h-12 w-7 flex-none overflow-hidden rounded-sm sm:w-8',
+            cat.tint,
+            cat.ink,
+          )}
+        >
+          <PackMark id={pack.id} />
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-body font-semibold text-text">{heading}</span>
+            {viewed && (
+              <span className="flex-none font-mono text-caption text-faint">seen</span>
+            )}
+          </span>
+          {line && <span className="mt-0.5 block truncate text-meta text-muted">{line}</span>}
+          <span className="mt-1.5 flex items-center gap-3">
+            {cat.tagged && (
+              <span className={cx('flex-none font-mono text-caption', cat.ink)}>{cat.label}</span>
+            )}
+            {/* Label off: the row already prints a sector in mono beside it, and two mono
+                fragments on one line read as a single run-on string. The bar alone still says
+                "more evidence than its neighbour", which is the comparison the shelf is for. */}
+            <EvidenceBar count={pack.sourceCount} label={false} />
+            {pack.market && pack.market !== viewerMarket && (
+              <span className="flex-none font-mono text-caption text-warning">
+                {marketLabel(pack.market)} rules
+              </span>
+            )}
+          </span>
+        </span>
+
+        <span className="flex flex-none items-center gap-3 sm:gap-4">
+          <span className="font-mono text-body font-semibold tabular-nums text-text">{price}</span>
+          <Icon
+            name="arrowRight"
+            size={15}
+            className="text-subtle transition-transform group-hover:translate-x-0.5"
+          />
+        </span>
+      </Link>
+    );
+  }
+
+  /* ── LEAD ───────────────────────────────────────────────────────────────────────────────────
+     Full-bleed, horizontal, and the only pack on the shelf allowed to look like a poster.
+
+     It carries `morph` on its mark: this is the card most likely to be clicked, so it is the one
+     worth spending the shared-element transition on. Exactly one element per document may claim
+     a given `view-transition-name`, and the lead is rendered once, which is what makes it the
+     safe place to put it -- see the note on `PackMark`'s `morph` prop. */
+  if (weight === 'lead') {
+    return (
+      <Link
+        href={`/pack/${pack.id}`}
+        className={cx(
+          'group flex flex-col overflow-hidden rounded-md border border-border bg-surface lg:flex-row',
+          'transition-[border-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
+          'hover:border-border-strong hover:shadow-1',
+          focusRing,
+        )}
+      >
+        <span
+          className={cx(
+            'relative h-36 w-full flex-none overflow-hidden sm:h-44 lg:h-auto lg:w-[34%]',
+            cat.tint,
+            cat.ink,
+          )}
+        >
+          <PackMark id={pack.id} morph />
+          {cat.tagged && (
+            <span
+              className={cx(
+                'absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full',
+                'bg-surface/90 px-2.5 py-1 text-caption font-medium',
+                cat.ink,
+              )}
+            >
+              <Icon name={cat.icon} size={12} className="flex-none" />
+              {cat.label}
+            </span>
+          )}
+        </span>
+
+        <span className="flex flex-1 flex-col p-6 sm:p-8">
+          <span className="block text-h2 font-semibold text-text">{heading}</span>
+          {line && <span className="mt-2 block max-w-[58ch] text-body text-muted">{line}</span>}
+          <EvidenceBar className="mt-4" count={pack.sourceCount} />
+          <span className="mt-auto flex items-end justify-between gap-4 pt-6">
+            <span className="font-mono text-h1 font-semibold tabular-nums text-text">{price}</span>
+            <span
+              className={cx(
+                'inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2.5',
+                'text-meta font-medium text-on-primary transition-colors group-hover:bg-primary-hover',
+              )}
+            >
+              View pack
+              <Icon name="arrowRight" size={14} />
+            </span>
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
+  /* ── MID ────────────────────────────────────────────────────────────────────────────────────
+     The vertical card, kept close to what shipped, because at half-width it still works. What
+     changed: the cover's `8 documents · N sources` chip is gone (the document half was a
+     constant printed 57 times -- see `EvidenceBar`), and the evidence bar now sits in the body
+     where it can be compared against the card beside it rather than floating on the artwork. */
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -185,7 +399,7 @@ function PackCard({
         'group flex flex-col overflow-hidden rounded-md border border-border bg-surface',
         'transition-[border-color,box-shadow,transform] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
         'hover:-translate-y-px hover:border-border-strong hover:shadow-1',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+        focusRing,
       )}
     >
       <PackCoverArt pack={pack} category={cat} viewerMarket={viewerMarket} viewed={viewed} />
@@ -211,11 +425,24 @@ function PackCard({
             and nothing else. */}
         {line && <p className="mt-1.5 line-clamp-3 text-meta text-muted">{line}</p>}
 
+        {/* The evidence bar, in the BODY rather than on the artwork. It replaces the cover's
+            `8 documents · N sources` chip: the document half was a constant (`PACK_CONTENTS.length`
+            is the same 8 on every pack), so it was the first thing the eye read on all 57 cards
+            and it distinguished none of them. Here it sits at a fixed y in the text column, which
+            is what makes two adjacent cards' source counts comparable at a glance. */}
+        <EvidenceBar className="mt-3" count={pack.sourceCount} />
+
         {/* `mt-auto` is what equalises card heights in the grid: the price row sits at the same y
             on every card in a row regardless of how long the title ran. */}
         <div className="mt-auto flex items-end justify-between gap-3 pt-5">
-          <span className="text-h4 font-semibold tracking-tight text-text">
-            {formatPriceForMarket(pack.price, currency)}
+          {/* `font-mono`, and it was `text-h4` -- a token this stylesheet does not declare. The
+              scale is six steps (display/h1/h2/body/meta/caption) plus the new `mega`; in Tailwind
+              v4 an unmapped utility emits NO rule, so every price on the shelf was rendering at
+              inherited body size with only `font-semibold` distinguishing it. Mono because a price
+              is a checkable quantity, which is exactly the rule the house style already states,
+              and `tabular-nums` so £49 and £149 align on the decimal down a column. */}
+          <span className="font-mono text-h2 font-semibold tabular-nums tracking-tight text-text">
+            {price}
           </span>
           <span
             className={cx(
@@ -348,11 +575,18 @@ function PackCoverArt({
           fixed document count it stops being a ranking and becomes the spec of the thing in the
           box, which is the question the card was previously leaving entirely unanswered. Mono
           because both halves are quantities, the same voice as the toolbar caption. */}
-      <span className="absolute bottom-2.5 left-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 truncate rounded-full bg-surface/90 px-2.5 py-1 font-mono text-caption text-muted">
-        <Icon name="document" size={11} className="flex-none" />
-        {PACK_CONTENTS.length} documents
-        {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && ` · ${pack.sourceCount} sources`}
-      </span>
+      {/* THE SPEC STRIP IS GONE, and the document count with it.
+          Measured in the served HTML on 2026-08-07: `8 documents` appeared 61 times on one page,
+          once per card plus the prose. `PACK_CONTENTS.length` is a constant, so that half of the
+          chip carried identical information on every card while occupying the first position the
+          eye reaches -- the definition of dead ink. The half that DID vary, `sourceCount`, was
+          printed second, in the same size and colour as the constant beside it, which is why the
+          shelf read as 57 copies of one label.
+
+          The argument the old chip made ("a £49 download with no spec is bought blind") is
+          sound and is preserved, in two better places: the fixed document count now appears
+          ONCE per page as prose, and `EvidenceBar` renders the varying number in the card body
+          as a physical bar you can compare across cards without reading a digit. */}
 
       {/* FOUR CORNERS, one fact each, and each corner always holds the same KIND of fact:
           top-left what it is about, top-right whose rules it is written for, bottom-left what is
@@ -912,28 +1146,113 @@ function CatalogBrowser({
                    It also pays for the "What survived" heading added above: measured at 360x780
                    on the built page, the first card had moved to y=779 against a bar of 740, and
                    dropping this pair puts it back at 740. */
+                /* The heading names the ACTUAL order after the editorial banding, which is by
+                   price tier and then by recency inside each tier. It used to say "newest first",
+                   which was true of the uniform grid and is not true of this one -- and a heading
+                   that misdescribes the list under it is the same class of error as an unsourced
+                   number. */
                 <h3 className="mb-3 hidden text-body font-semibold text-text sm:block">
-                  More survivors, newest first
+                  More survivors, biggest opportunities first
                 </h3>
               )}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {tailPacks.map((pack, i) => (
-                  <div
-                    key={pack.id}
-                    /* `hidden`, not unmounted. Dropping the nodes would strip 37 internal links
-                       out of the server HTML to win a scroll bar. */
-                    className={cx('flex animate-rise', i >= shown && 'hidden')}
-                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                  >
-                    <PackCard
-                      pack={pack}
-                      currency={currency}
-                      viewerMarket={market}
-                      viewed={viewedSet.has(pack.id)}
-                    />
-                  </div>
-                ))}
-              </div>
+              {/* ── THE EDITORIAL SHELF ──────────────────────────────────────────────────────
+                  Three treatments instead of one, chosen by price tier (`packWeight`).
+
+                  The uniform `lg:grid-cols-3` this replaces gave all 57 packs identical weight,
+                  so nothing on the shelf was a focal point and the reader's eye had no entry.
+                  Now the £99/£149 packs run full-bleed, the £79s run half-width, and the £29-£49
+                  long tail runs as hairline-divided rows.
+
+                  ORDER IS PRESERVED WITHIN EACH BAND but the bands themselves reorder the shelf,
+                  which is a real trade and worth naming: the section is headed "newest first" and
+                  after this pass that is true within a band rather than across the whole list. It
+                  is the honest reading of what an editorial grid IS -- a claim that some items
+                  deserve more space -- and the price ladder is the basis for the claim, so the
+                  heading below says so rather than promising a strict recency order it no longer
+                  keeps.
+
+                  `shown` still gates by the pack's position in the ORIGINAL tail order, not by
+                  its position after banding, so "Show the other N packs" reveals exactly the same
+                  set it did before and the count under the button stays correct. */}
+              {(() => {
+                const rank = new Map(tailPacks.map((p, i) => [p.id, i]));
+                const beyondFold = (p: Pack) => (rank.get(p.id) ?? 0) >= shown;
+                const leads = tailPacks.filter((p) => packWeight(p) === 'lead');
+                const mids = tailPacks.filter((p) => packWeight(p) === 'mid');
+                const rows = tailPacks.filter((p) => packWeight(p) === 'row');
+
+                return (
+                  <>
+                    {leads.length > 0 && (
+                      <div className="flex flex-col gap-6">
+                        {leads.map((pack) => (
+                          <div
+                            key={pack.id}
+                            /* `hidden`, not unmounted. Dropping the nodes would strip internal
+                               links out of the server HTML to win a scroll bar. */
+                            className={cx('flex animate-rise', beyondFold(pack) && 'hidden')}
+                          >
+                            <PackCard
+                              pack={pack}
+                              weight="lead"
+                              currency={currency}
+                              viewerMarket={market}
+                              viewed={viewedSet.has(pack.id)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {mids.length > 0 && (
+                      <div
+                        className={cx(
+                          'grid grid-cols-1 gap-6 lg:grid-cols-2',
+                          leads.length > 0 && 'mt-6',
+                        )}
+                      >
+                        {mids.map((pack) => (
+                          <div
+                            key={pack.id}
+                            className={cx('flex animate-rise', beyondFold(pack) && 'hidden')}
+                          >
+                            <PackCard
+                              pack={pack}
+                              weight="mid"
+                              currency={currency}
+                              viewerMarket={market}
+                              viewed={viewedSet.has(pack.id)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {rows.length > 0 && (
+                      /* `divide-y` on the parent, no border on the child. The line between two
+                         rows is structural; a box drawn around each row is not. */
+                      <div
+                        className={cx(
+                          'divide-y divide-border border-y border-border',
+                          (leads.length > 0 || mids.length > 0) && 'mt-8',
+                        )}
+                      >
+                        {rows.map((pack) => (
+                          <div key={pack.id} className={cx(beyondFold(pack) && 'hidden')}>
+                            <PackCard
+                              pack={pack}
+                              weight="row"
+                              currency={currency}
+                              viewerMarket={market}
+                              viewed={viewedSet.has(pack.id)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {shown < tailPacks.length && (
                 <div className="mt-8 flex flex-col items-center gap-2">
                   <Button variant="secondary" size="lg" onClick={() => setShowAll(true)}>
@@ -976,11 +1295,18 @@ function CatalogBrowser({
                     The research, the buyers and the regulations in these are {group.label}. Worth
                     reading anywhere, but the numbers and the legal steps will not transfer.
                   </p>
-                  <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Rows, not cards. This group is explicitly secondary -- the copy directly
+                      above says the numbers and legal steps will not transfer -- so giving it the
+                      same card treatment as the on-market shelf contradicted the sentence
+                      introducing it. Rows keep every pack fully present and linkable while
+                      reading as an appendix, which is what it is. Each row still prints its
+                      "<market> rules" flag, since `viewerMarket` is deliberately not passed. */}
+                  <div className="mt-4 divide-y divide-border border-y border-border">
                     {group.packs.map((pack) => (
                       <PackCard
                         key={pack.id}
                         pack={pack}
+                        weight="row"
                         currency={currency}
                         viewed={viewedSet.has(pack.id)}
                       />
@@ -1069,10 +1395,10 @@ export default function Home({ packs, stats, initialState, market, currency, per
      the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
      card in the grid. */
   const featured = packs[0];
-  /* Read from the same JSON the filter-log panel reads, so the demoted one-liner in the hero and
-     the panel below the shelf can never state different totals -- which is the specific way a
-     "1,168 killed" figure repeated in two components goes stale in one of them. */
-  const killedTotal = (killTotals as { killed: number; passed: number }).killed;
+  /* The hero's kill total moved into `HeroDossier`, which reads the SAME `kill-log-totals.json`
+     this page still reads for the panel below the shelf. That shared source is the point: a
+     "1,168 killed" figure repeated across components is exactly how one of them goes stale, so no
+     component is allowed to hold its own copy of the number. */
   return (
     // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
     // above the header, and so a card anywhere on the page can reach it without prop threading.
@@ -1134,7 +1460,13 @@ export default function Home({ packs, stats, initialState, market, currency, per
         {/* Two columns on lg+: the claim on the left, the evidence for it on the right. The
             filter-log card is the argument -- it is the only thing above the fold that a
             sceptical stranger can check. */}
-        <div className="flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-start lg:gap-12">
+        {/* `relative` so the ambient kill column can be positioned against the hero rather than
+            the viewport, and `z-10` on the content so the drifting names stay behind the headline
+            at every scroll position. The column is desktop-only and `pointer-events-none`, so it
+            cannot touch the measured phone fold budget or intercept a tap on the CTA. */}
+        <div className="relative">
+        <AmbientKillColumn />
+        <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-start lg:gap-12">
           <div className="w-full min-w-0">
             {/* Mono because both halves are quantities. This replaces an uppercase
                 `tracking-[0.2em]` eyebrow -- letterspaced small caps is the single most dated
@@ -1158,7 +1490,20 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 and CI Linux on 3, putting the first card 1.5px above the fold. 56rem clears every
                 measured fallback. Geist is loaded and applied now, so the platform no longer gets
                 a vote, but the absolute cap stays and stays the thing under test. */}
-            <h1 className="w-full min-w-0 max-w-full text-h1 font-semibold text-text md:max-w-[56rem] md:text-balance md:text-display">
+            {/* THE DISPLAY CUT IS `lg:` ONLY, and that is a fold decision, not a taste one.
+                Up to `md` this page is ONE column: the headline sits directly above the shelf, so
+                every pixel the type grows pushes the first product down, which is the budget the
+                comments above were written to protect. At `lg` the layout becomes two columns and
+                the product moves into the right-hand slot BESIDE the headline, so its y-position
+                stops depending on the headline's height entirely. The 48px-to-96px step therefore
+                costs the measured 1280x720 fold nothing, because at that width the thing being
+                protected is no longer underneath.
+
+                The measure tightens to 44rem at the same breakpoint. At 96px an 812px column fits
+                about 17 characters, so leaving the cap at 56rem would produce ragged three-line
+                text set at display size, which reads as an accident. A deliberately narrower
+                measure makes it a block. */}
+            <h1 className="w-full min-w-0 max-w-full text-h1 font-semibold text-text md:max-w-[56rem] md:text-balance md:text-display lg:max-w-[44rem] lg:text-mega">
               {variant.globalHookLead}
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
@@ -1208,19 +1553,20 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 screen spent restating something the reader meets again 800px later, and it was the
                 last thing standing between the fold and a product. Kept on desktop, where the hero
                 is two columns and the line costs nothing that a card wanted. */}
-            <p className="mt-5 hidden flex-wrap items-center gap-x-2 gap-y-1 text-caption text-subtle md:mt-6 md:flex">
-              <Icon name="verified" size={13} className="text-success" />
-              <span>
-                {killedTotal.toLocaleString('en-GB')} ideas tested and rejected before these
-                {` ${packs.length.toLocaleString('en-GB')}`} made the shelf.
-              </span>
-              <Link
-                href="/kill-log"
-                className="font-medium text-accent underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
-              >
-                See what we rejected
-              </Link>
-            </p>
+            {/* THE DOSSIER, PROMOTED. What stood here was a single line restating the kill total
+                and linking to /kill-log -- an assertion about how much checking happens, made
+                entirely in adjectives, on the one screen that had room to prove it instead. The
+                full dossier panel was 80% down the page, below the whole shelf.
+
+                `HeroDossier` replaces the sentence with the artefact: eight real verdicts from
+                `sample-report.json`, one of them a failure, and four live source domains a
+                stranger can click before they trust a single word on this page. The kill total is
+                not lost, it moved INSIDE that component, where it sits next to the failed check
+                it is evidence for.
+
+                `hidden md:block` is kept from the line it replaces, for the same reason: on a
+                phone this is the last object between the fold and a product. */}
+            <HeroDossier className="mt-5 hidden md:mt-6 md:block" />
           </div>
           {/* THE PRODUCT, not the filter log.
               What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline
@@ -1255,6 +1601,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             </div>
           )}
         </div>
+        </div>
       </SectionBand>
 
       <div id="catalog" className="scroll-mt-20" />
@@ -1271,7 +1618,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
             names the section; the paragraph is ~60px and repeats what the panel below the shelf
             already says at every width. */}
         <div className="mb-4 sm:mb-6">
-          <h2 className="text-h4 font-semibold text-text sm:text-h2">What survived</h2>
+          {/* Was `text-h4 ... sm:text-h2`. `text-h4` is not a token this stylesheet declares (the
+              scale is display/h1/h2/body/meta/caption/mega), and in Tailwind v4 an unmapped
+              utility emits NO RULE AT ALL rather than falling back -- so the shelf's own heading
+              rendered at inherited body size on every phone, distinguishable from the paragraph
+              under it only by its weight. Same defect class as the card price. */}
+          <h2 className="text-h2 font-semibold text-text">What survived</h2>
           <p className="mt-1.5 hidden max-w-[60ch] text-meta text-muted sm:block">
             A pack is listed only once it clears every check, with a clickable source behind every
             claim. Most ideas never make it.

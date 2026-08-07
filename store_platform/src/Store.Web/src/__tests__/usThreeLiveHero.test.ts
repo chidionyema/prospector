@@ -55,8 +55,14 @@ describe('US-3 - Hero with a demonstration of the moat', () => {
     // filename "LiveKillCard" satisfied on its own. It passed while the component rendered three
     // invented pass rows, so it proved nothing. Both figures must now trace to the same JSON the
     // /kill-log page renders.
-    expect(source, 'kill rows must come from data/kill-log.json').toMatch(
-      /from ['"]@\/data\/kill-log\.json['"]/,
+    // Accepts `kill-log-names.json` as well as the full `kill-log.json`. Both are written by the
+    // same generator from the same dossiers (tools/make_kill_log.py: OUT at :48, OUT_NAMES at :62,
+    // both projections of one build() payload), so provenance is identical -- and the full log is
+    // ~507KB of un-tree-shakeable static import, which is why drawing three lines of hero text from
+    // it was itself the defect. The property here is PROVENANCE; pinning the 507KB filename turned
+    // it into a bundle-size regression the moment the split landed.
+    expect(source, 'kill rows must come from the generated kill log').toMatch(
+      /from ['"]@\/data\/kill-log(-names)?\.json['"]/,
     );
     expect(source, 'the totals must come from data/kill-log-totals.json').toMatch(
       /from ['"]@\/data\/kill-log-totals\.json['"]/,

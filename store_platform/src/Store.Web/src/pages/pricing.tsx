@@ -7,7 +7,8 @@ import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { BRAND, LEGAL } from '@/lib/config';
 import { GetServerSideProps } from 'next';
 import { fetchCatalog } from '@/lib/api/client';
-import { priceRange, priceSentence, formatGbp, type PriceRange } from '@/lib/priceRange';
+import { priceRange, priceLadder, priceSentence, formatGbp, type PriceRange, type LadderRung } from '@/lib/priceRange';
+import PriceLadder from '@/components/marketing/PriceLadder';
 import { ComparisonBlock, MethodCostAnchor } from '@/components/marketing/PriceArgument';
 import killTotals from '@/data/kill-log-totals.json';
 
@@ -34,7 +35,7 @@ import killTotals from '@/data/kill-log-totals.json';
  * renders its structure with NO price claim rather than a remembered one. A pricing page that
  * quotes a number it could not verify is worse than a pricing page that says "see the pack".
  */
-export default function PricingPage({ range }: { range: PriceRange | null }) {
+export default function PricingPage({ range, ladder }: { range: PriceRange | null; ladder: LadderRung[] }) {
   return (
     <MarketingLayout>
       <Seo
@@ -70,22 +71,26 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
             appended to a sentence about the contents list. The pricing page's single job is this
             question. It gets a heading. */}
         {range && !range.uniform && (
-          <div className="mt-12 rounded-md border border-border bg-surface2 p-6 md:p-8">
-            <h2 className="text-h2 font-semibold text-text">
+          <div className="mt-12">
+            <h2 className="text-h2 font-semibold text-text md:text-h1">
               Why one pack is {formatGbp(range.min)} and another is {formatGbp(range.max)}
             </h2>
-            <p className="mt-3 max-w-[60ch] text-body text-muted">
-              Two things set the price, not a guess: how big the idea could realistically become,
+            {/* The drawing goes ABOVE the explanation, and the explanation shrank to fit under it.
+                This block used to be two paragraphs inside a bordered panel and no picture, which
+                asked the reader to build the comparison in their head; the ladder now states the
+                shape and the prose only has to name the two inputs. The third paragraph ("both
+                inputs land on a fixed, published ladder") was deleted outright: the figure is that
+                sentence, and keeping both is the site telling the reader the same thing twice, in
+                the weaker medium first. */}
+            <PriceLadder rungs={ladder} className="mt-6" />
+            <p className="mt-8 max-w-[60ch] text-body text-muted">
+              Two things set the rung, not a guess: how big the idea could realistically become,
               and which market it targets (aiming at the US earns one rung over the same idea aimed
               at the UK, because the market it could reach is bigger). A weekend side business and a
               venture-scale one get the same{' '}
               {PACK_CONTENTS.length} documents, researched to the same standard and held to the same
-              bar. What differs is how much is on the table if it works.
-            </p>
-            <p className="mt-3 max-w-[60ch] text-meta text-subtle">
-              Both inputs land on a fixed, published ladder of prices. A pack takes whichever rung
-              its scale and market put it on, not a number picked to see what you will pay. A
-              cheaper pack is not a thinner one.
+              bar. What differs is how much is on the table if it works, so a cheaper pack is not a
+              thinner one.
             </p>
           </div>
         )}
@@ -233,7 +238,13 @@ export default function PricingPage({ range }: { range: PriceRange | null }) {
  * A failed fetch is not an error page: `range` is null, and every price claim above simply does
  * not render. The page still answers what is in a pack, what is not, and the refund terms.
  */
-export const getServerSideProps: GetServerSideProps<{ range: PriceRange | null }> = async () => {
-  const packs = await fetchCatalog().catch(() => []);
-  return { props: { range: priceRange(packs ?? []) } };
+export const getServerSideProps: GetServerSideProps<{
+  range: PriceRange | null;
+  ladder: LadderRung[];
+}> = async () => {
+  const packs = (await fetchCatalog().catch(() => [])) ?? [];
+  // Same fetch, two derivations. `ladder` is `[]` on a failed fetch, and `PriceLadder` renders
+  // nothing below two rungs, so the drawing disappears with the rest of the price claims rather
+  // than drawing a shelf nobody could read.
+  return { props: { range: priceRange(packs), ladder: priceLadder(packs) } };
 };

@@ -7,15 +7,42 @@ import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { SearchInput, buttonClasses, textLinkClass } from '@/components/ui';
 import { fetchCatalog } from '@/lib/api/client';
-import { eligibleLandings } from '@/lib/seo/landings';
+import { eligibleLandings, packMatchesLanding } from '@/lib/seo/landings';
+import { priceRange, formatGbp } from '@/lib/priceRange';
+import { cx } from '@/components/ui/cx';
 import CategoryGraph, { type CategoryNode } from '@/components/discovery/CategoryGraph';
 import BespokeIcon from '@/components/marketing/BespokeIcon';
 import { resolveVariant } from '@/lib/getCopyVariant';
 import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
 
+/**
+ * One tile of the taxonomy map.
+ *
+ * `low`/`high` are the real GBP bounds of the packs that actually match this landing, computed on
+ * the server from the live catalogue by the same `packMatchesLanding` predicate the landing page
+ * itself uses -- so the range on the tile and the packs behind the link can never disagree. They
+ * are nullable because `priceRange` returns null when no matching pack carries a parseable price,
+ * and a tile with no price says nothing about price rather than guessing at one.
+ *
+ * There is deliberately NO survival rate and NO representative kill per category, both of which
+ * would be the natural third and fourth facts here. Neither is derivable: the kill log records a
+ * `gate`, a `reason` and a date per rejected idea and carries no facet at all (see the entry shape
+ * in `data/kill-log-examples.json`), so a per-category kill count would have to be invented and a
+ * "representative kill" would have to be assigned by hand. On this storefront that is the one
+ * thing a page may not do. The kill log stays whole, at /kill-log, where every record is real.
+ */
+interface Category {
+  slug: string;
+  h1: string;
+  description: string;
+  count: number;
+  low: number | null;
+  high: number | null;
+}
+
 interface Props {
-  categories: { slug: string; h1: string; description: string; count: number }[];
+  categories: Category[];
   total: number;
   variant: VariantKey;
 }
@@ -32,12 +59,20 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
     return {
       props: {
         total: packs.length,
-        categories: eligibleLandings(packs).map(({ landing, count }) => ({
-          slug: landing.slug,
-          h1: landing.h1,
-          description: landing.metaDescription,
-          count,
-        })),
+        categories: eligibleLandings(packs).map(({ landing, count }) => {
+          // Same predicate the landing page filters on, so the range describes exactly the shelf
+          // the tile links to. `priceRange` reads `pack.price` (a formatted string) and returns
+          // null when nothing parses, which is why both bounds are nullable downstream.
+          const range = priceRange(packs.filter((p) => packMatchesLanding(p, landing)));
+          return {
+            slug: landing.slug,
+            h1: landing.h1,
+            description: landing.metaDescription,
+            count,
+            low: range ? range.min : null,
+            high: range ? range.max : null,
+          };
+        }),
         variant,
       },
     };
@@ -51,7 +86,14 @@ export default function IdeasHub({ categories, total, variant }: Props) {
   const [search, setSearch] = React.useState('');
 
   const filtered = React.useMemo(() => {
-    if (!search.trim()) return categories;
+    // Biggest shelf first. The mosaic's two lead tiles are the two largest categories, so the
+    // ordering IS the hierarchy -- without this the "lead" slot would go to whichever landing
+    // `LANDINGS` happens to declare first, and the tile sizes would state a ranking that is not
+    // one. Ties fall back to the name so the layout is stable across catalogue refreshes rather
+    // than reshuffling every time the daemon publishes.
+    if (!search.trim()) {
+      return [...categories].sort((a, b) => b.count - a.count || a.h1.localeCompare(b.h1));
+    }
     const q = search.toLowerCase();
     return categories.filter(
       (c) =>
@@ -121,30 +163,91 @@ export default function IdeasHub({ categories, total, variant }: Props) {
           </div>
         )}
 
-        {/* All categories grid */}
+        {/*
+         * THE MOSAIC, not a link list.
+         *
+         * What was here: `grid gap-4 sm:grid-cols-2` of identical bordered cards, every category
+         * the same size whether it held 5 packs or 30. That is the catalogue's own object rendered
+         * with category names in it, which made this page indistinguishable from the shelf at a
+         * glance and gave a visitor no reason to be on it. A taxonomy page's job is to show the
+         * SHAPE of the catalogue, and shape means some things are bigger than others.
+         *
+         * Weight is assigned by rank, not by a continuous function of count. Three reasons:
+         * a 30-pack category is not six times more interesting than a 5-pack one, so area
+         * proportional to count would hand almost the whole page to one tile; ranks give a stable
+         * layout that cannot collapse when the daemon publishes overnight and the counts shift;
+         * and a two-step ladder (wide, then standard) is legible as a hierarchy, where five
+         * gradations read as noise. `rank < 2` takes the full row on `sm`, everything else pairs.
+         *
+         * Every tile carries three real facts and no adjectives: the count, the actual price range
+         * of the packs behind the link, and the description written for that facet. The count and
+         * the range are set in mono because they are quantities; the name is the only prose.
+         *
+         * Search collapses the hierarchy on purpose. Once a query is typed the ranking that
+         * produced the mosaic is no longer the thing being looked at, and a result set where the
+         * first two hits are twice the size of the rest reads as relevance ranking, which it is
+         * not -- it is still catalogue size. Filtered results are therefore uniform.
+         */}
         {filtered.length > 0 ? (
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {filtered.map((cat) => (
-              <li key={cat.slug}>
-                <Link
-                  href={`/ideas/${cat.slug}`}
-                  className="group flex h-full items-start gap-4 rounded-md border border-border bg-surface p-5 transition-colors hover:bg-surface2 hover:border-text/20"
-                >
-                  <span className="flex h-10 w-10 flex-none items-center justify-center mt-0.5 bg-surface2">
-                    <BespokeIcon kind={cat.slug} size={18} className="text-muted" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-body font-semibold text-text group-hover:text-primary transition-colors leading-snug">
-                      {VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1}
-                    </h2>
-                    <p className="mt-1 text-meta leading-relaxed text-muted line-clamp-2">{cat.description}</p>
-                    <span className="mt-2 inline-flex text-caption font-semibold text-muted">
-                      {cat.count} pack{cat.count !== 1 ? 's' : ''}
+          <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
+            {filtered.map((cat, i) => {
+              const lead = !search && i < 2;
+              return (
+                <li key={cat.slug} className={cx(lead && 'sm:col-span-2')}>
+                  <Link
+                    href={`/ideas/${cat.slug}`}
+                    className={cx(
+                      'group flex h-full flex-col justify-between gap-4 rounded-md bg-surface p-5',
+                      'transition-[background-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
+                      'hover:bg-surface2 hover:shadow-1',
+                      lead && 'sm:flex-row sm:items-end sm:p-7',
+                    )}
+                  >
+                    <span className="flex min-w-0 items-start gap-4">
+                      <span
+                        className={cx(
+                          'flex flex-none items-center justify-center rounded-sm bg-surface2',
+                          lead ? 'h-12 w-12' : 'h-10 w-10',
+                        )}
+                      >
+                        <BespokeIcon kind={cat.slug} size={lead ? 22 : 18} className="text-muted" />
+                      </span>
+                      <span className="min-w-0">
+                        {/* The one place on this page where type size carries meaning. A lead
+                            tile's name is a step up because its shelf is bigger, which is the
+                            fact the mosaic exists to communicate. */}
+                        <h2
+                          className={cx(
+                            'font-semibold leading-snug text-text',
+                            lead ? 'text-h2' : 'text-body',
+                          )}
+                        >
+                          {VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1}
+                        </h2>
+                        <p className="mt-1.5 max-w-[62ch] text-meta leading-relaxed text-muted">
+                          {cat.description}
+                        </p>
+                      </span>
                     </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
+
+                    {/* Count and range, in the data voice. `low === high` prints one figure
+                        rather than "£49 to £49", which reads as a bug in a price ladder. */}
+                    <span className="flex flex-none items-baseline gap-2 font-mono text-caption text-subtle sm:flex-col sm:items-end sm:gap-1">
+                      <span className="text-text">
+                        {cat.count} pack{cat.count !== 1 ? 's' : ''}
+                      </span>
+                      {cat.low !== null && cat.high !== null && (
+                        <span>
+                          {cat.low === cat.high
+                            ? formatGbp(cat.low)
+                            : `${formatGbp(cat.low)} to ${formatGbp(cat.high)}`}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <div className="py-12 text-center">

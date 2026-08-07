@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import killTotals from '@/data/kill-log-totals.json';
-import killLog from '@/data/kill-log.json';
+import killNames from '@/data/kill-log-names.json';
 
 /**
  * US-3 - The hero's demonstration of the moat.
@@ -23,15 +23,18 @@ import killLog from '@/data/kill-log.json';
  * already fetches the catalogue in getServerSideProps.
  */
 
+/* Reads `kill-log-names.json`, NOT the full `kill-log.json`.
+   This component renders three names and three gate labels. The full log is now ~507 KB (400
+   entries with reasons and citations, for the `/kill-log` instrument), and a static JSON import
+   is one value that cannot be tree-shaken -- importing it here would have shipped every reason
+   and every citation in the HOME PAGE bundle to draw three lines of text. The names file carries
+   `title` and `gate` for the newest 60 kills and nothing else. */
 type KillEntry = {
   title: string;
-  oneLiner: string;
   gate: string;
-  reason: string;
-  date: string;
 };
 
-const ENTRIES: KillEntry[] = (killLog.entries as KillEntry[]).slice(0, 60);
+const ENTRIES: KillEntry[] = killNames as KillEntry[];
 
 function pickRandom<T>(arr: T[], n: number): T[] {
   // Deterministic pick by hashing the array length. Real "live" would hit

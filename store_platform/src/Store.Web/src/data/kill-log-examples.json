@@ -1,0 +1,1287 @@
+{
+  "generatedAt": "2026-08-07T13:56:16+00:00",
+  "totals": {
+    "killed": 1331,
+    "passed": 81,
+    "shown": 400,
+    "byGate": {
+      "min_composite": 615,
+      "incumbency": 197,
+      "moat_ungrounded": 179,
+      "adversarial_decisive": 142,
+      "value_durability": 80,
+      "payer_solvency": 47,
+      "source_or_die": 25,
+      "legality": 16,
+      "route_to_market": 8,
+      "pain_reality": 7,
+      "currency": 7,
+      "distribution": 5,
+      "buyer_intent": 3
+    }
+  },
+  "entries": [
+    {
+      "title": "Sound Check Rounds, the monthly noise test that keeps a small music venue's licence safe",
+      "oneLiner": "A local round of independent noise readings for grassroots music venues, pubs and studios, giving each one a dated report that answers council complaints before the licence review starts.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The one passage that speaks to these venues' finances says grassroots music venues run on average profit margins of just 2.5%, and the only other relevant note describes UK hospitality businesses as struggling, with an insolvency expert warning that a temporary spending lift offers just brief respite; on that evidence the buyer is financially squeezed rather than able to absorb a new recurring bill.",
+      "citations": [
+        {
+          "url": "https://www.musicvenuetrust.com/2026/01/music-venue-trust-annual-report-2025/",
+          "domain": "musicvenuetrust.com"
+        },
+        {
+          "url": "https://www.oxfordmail.co.uk/news/26259311.insolvency-boss-issues-closure-warning-uk-pubs/",
+          "domain": "oxfordmail.co.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "MedRoom, the daily medicine chart a family carer can actually keep, and prove",
+      "oneLiner": "A phone tool that turns a relative's messy prescription list into a printed daily chart, a refill countdown, and a change log carers can show any professional.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages describe the buyer group as financially strained: Carer's Allowance is roughly £82, £86 a week and described as one of the lowest benefits of its kind, and Carers UK survey data show 28% of carers using credit cards, 22% using overdrafts, 14% in debt because of caring, and carers skipping meals to survive. Nothing here shows unpaid carers buying tools of this kind, and the picture given is of people cutting back on essentials, which cuts against them taking on a new monthly subscription.",
+      "citations": [
+        {
+          "url": "https://www.facebook.com/DWP/posts/unpaid-carers-give-so-much-but-the-system-there-to-support-them-has-not-always-w/1352028287106553/",
+          "domain": "facebook.com"
+        },
+        {
+          "url": "https://www.carersuk.org/help-and-advice/financial-support/carers-allowance/",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://www.carersuk.org/press-releases/unpaid-carers-under-huge-financial-pressure-are-forced-to-cut-back-on-essentials-heating-and-food/",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://www.yourmoney.com/household-bills/unpaid-carers-forced-to-cut-back-on-essentials/",
+          "domain": "yourmoney.com"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "CHC Appeal Builder",
+      "oneLiner": "A web app for family carers of dementia patients that transforms an NHS Continuing Healthcare funding rejection into a winning appeal, using AI-analyzed evidence and a proprietary rule engine built from hundreds of anonymized case outcomes, for a one-time £99 fee.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "Beacon runs the NHS-funded national Free Information & Advice Service for Continuing Healthcare in England, giving families unlimited free front-line advice plus up to 90 minutes of free personalised advice from a specialist adviser, including how to challenge an eligibility decision, and it was reconfirmed as the national provider.",
+      "citations": [
+        {
+          "url": "https://beaconchc.co.uk/how-we-can-help/free-information-and-advice-on-nhs-continuing-healthcare/",
+          "domain": "beaconchc.co.uk"
+        },
+        {
+          "url": "https://beaconchc.co.uk/faqs/free_information_advice_service/",
+          "domain": "beaconchc.co.uk"
+        },
+        {
+          "url": "https://beaconchc.co.uk/",
+          "domain": "beaconchc.co.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "CropPlan, The Market Gardener's Planting & Revenue Optimizer",
+      "oneLiner": "A planning engine for market gardeners that turns a list of seeds and land plots into an optimized week-by-week planting calendar with profit projections.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show the same job is already covered by free products: a 2026 roundup of free garden planning and crop tracking apps aimed specifically at market gardeners and small farms, and a free Excel workbook built for market gardeners and CSA farmers to plan operations, including yield, planting, seeding and seed-order data. That is the exact planning output CropPlan proposes to sell, already available at no cost to the same buyers, which leaves no obvious margin for a paid version.",
+      "citations": [
+        {
+          "url": "https://cropsbook.app/blog/",
+          "domain": "cropsbook.app"
+        },
+        {
+          "url": "https://github.com/gtoleary5/MarketGardenCropPlanner",
+          "domain": "github.com"
+        },
+        {
+          "url": "https://permies.com/t/147797/Excel-Crop-Planner-Market-Gardeners",
+          "domain": "permies.com"
+        },
+        {
+          "url": "https://growingformarket.com/crop-planning-spreadsheets/",
+          "domain": "growingformarket.com"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "The Vet's Fee Extractor",
+      "oneLiner": "A solo operator provides a 'last resort' payment recovery service for veterinary clinics by filing small claims court cases on behalf of the clinic against non-paying pet owners, taking a 30% cut of recovered fees, targeting the gap where clinics are too busy or conflict-averse to pursue unpaid bills themselves.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "One passage advertises a veterinary-specific debt collection agency inviting practices to partner with it to recover outstanding fees, and several UK firms already offer the exact commercial proposition here, no-win-no-fee recovery where the fee is a share of what is collected, including one claiming £6 billion recovered for UK businesses.",
+      "citations": [
+        {
+          "url": "https://www.federalmanagement.co.uk/debt-collection/veterinary-collection-agency/",
+          "domain": "federalmanagement.co.uk"
+        },
+        {
+          "url": "https://www.hiltonbairdcollections.co.uk/debt-collection-services/commercial-debt-recovery/single-debt-recovery/our-fees/",
+          "domain": "hiltonbairdcollections.co.uk"
+        },
+        {
+          "url": "https://www.kerseys.co.uk/debt-recovery-service/",
+          "domain": "kerseys.co.uk"
+        },
+        {
+          "url": "https://www.bierensgroup.com/en-gb/no-win-no-fee/",
+          "domain": "bierensgroup.com"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "ShiftSole, Custom Insoles by Mail for Standing Workers",
+      "oneLiner": "A physical moulding kit mailed to nurses, teachers, and other standing workers to create a foot impression, then 3D‑printed into bespoke orthotic insoles, fueled by a compounding dataset of foot‑shape‑to‑pain‑relief outcomes.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Multiple UK sellers already offer 3D-printed custom orthotic insoles for arch support, plantar fasciitis and heel pain (,,), and budget/branded alternatives are readily available via mainstream retail and eBay from £2.99 (,,). This shows the exact custom-3D-printed-insole niche is already served by existing providers, so the space is not open.",
+      "citations": [
+        {
+          "url": "https://www.piocreat3d.com/application-insole-customization/",
+          "domain": "piocreat3d.com"
+        },
+        {
+          "url": "https://www.shapecrunch.com/custom-insoles",
+          "domain": "shapecrunch.com"
+        },
+        {
+          "url": "https://www.linkedin.com/pulse/3d-printing-insole-customization-smarter-approach-orthotic-tw2xc",
+          "domain": "linkedin.com"
+        },
+        {
+          "url": "http://www.shoeinsoles.co.uk/?msclkid=9a2ca5cf72c01c9931eacfbaafd16e48",
+          "domain": "shoeinsoles.co.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "FosterClaim, The Carer's Finance & Permission Slip Generator",
+      "oneLiner": "A done-for-you admin engine for foster carers that auto-generates mileage claims, activity permission slips, and expense reports in the exact format social workers demand.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show that foster carers using HMRC's qualifying care relief are tax-free up to a set amount and, unlike other self-employed people, only need to keep simple records rather than detailed expense records and receipts, so the detailed mileage and expense tracking the product automates is not required of most carers.",
+      "citations": [
+        {
+          "url": "https://simplyfostering.co.uk/fostering-allowances-pay/foster-carers-tax-and-allowances/",
+          "domain": "simplyfostering.co.uk"
+        },
+        {
+          "url": "https://www.gov.uk/government/publications/qualifying-care-relief-foster-carers-adult-placement-carers-kinship-carers-and-staying-put-carers-hs236-self-assessment-helpsheet/hs236-qualifying-care-relief-foster-carers-adult-placement-carers-kinship-carers-and-staying-put-carers-2026",
+          "domain": "gov.uk"
+        },
+        {
+          "url": "https://www.litrg.org.uk/working/self-employment/foster-carers-and-shared-lives-carers/qualifying-care-relief",
+          "domain": "litrg.org.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "SprayWindow, the spray-day planner that proves to Red Tractor your pesticide timing was legal",
+      "oneLiner": "A phone tool for UK arable and horticulture growers that turns the label rules and the weather into a go/no-go spray decision, and files the record an auditor will accept.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show established UK players already serving this exact grower-agronomist workflow: Contour describes itself as the UK's leading agronomy company with 300+ independent consultants advising on daily crop management per field, Gatekeeper is a crop recording system already in routine use between growers and their agronomists, another product already records spray inputs against a farm map, and venture-backed KisanHub stores exactly the joined series the candidate claims is proprietary, weather, variety, planting dates and……",
+      "citations": [
+        {
+          "url": "https://www.agrii.co.uk/our-services/tools-resources/contour/",
+          "domain": "agrii.co.uk"
+        },
+        {
+          "url": "https://farmplan.co.uk/support/gatekeeper/",
+          "domain": "farmplan.co.uk"
+        },
+        {
+          "url": "https://www.fieldmargin.com/",
+          "domain": "fieldmargin.com"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "VanVault: The Trades Van Depreciation Guard",
+      "oneLiner": "Pay a small upfront fee and lock in a guaranteed resale price for your work van in 3 years, transferring depreciation risk to a solo financier who hedges with proprietary value models.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages describe Guaranteed Future Value as a standard, established feature of UK PCP car finance, in which a finance company guarantees what the vehicle will be worth at the end of the term regardless of its actual depreciation, precisely the guaranteed-buyback protection VanVault proposes to sell, and it is widely marketed and explained to buyers by mainstream finance brokers.",
+      "citations": [
+        {
+          "url": "https://customer.vwfs.co.uk/car-finance-options/helping-you-choose/gfv-explained.html",
+          "domain": "customer.vwfs.co.uk"
+        },
+        {
+          "url": "https://www.carfinance247.co.uk/guide/guaranteed-future-value-gfv-explained",
+          "domain": "carfinance247.co.uk"
+        },
+        {
+          "url": "https://www.octanefinance.co.uk/blog/guaranteed-future-value-explained",
+          "domain": "octanefinance.co.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "Probate Delay Atlas",
+      "oneLiner": "A proprietary, continuously updated intelligence report predicting the specific probate timeline and obstacles for an estate by jurisdiction and complexity, helping retirees or their executors plan the financial and emotional timeline.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show UK grant-of-probate waits are now short and publicly reported, roughly 5-12 weeks in July 2026, about 4-16 weeks depending on inheritance tax forms, and down to just over four weeks in December 2024 after HMCTS cut delays, with overall timelines and statutory waiting periods already published by GOV.UK and HMCTS.",
+      "citations": [
+        {
+          "url": "https://withfarra.co.uk/guides/probate-waiting-times-uk-2026",
+          "domain": "withfarra.co.uk"
+        },
+        {
+          "url": "https://www.probatebureau.com/blog/124/how-long-does-probate-take-in-the-uk-with-typical-timelines-for-england-and-wales/",
+          "domain": "probatebureau.com"
+        },
+        {
+          "url": "https://www.gov.uk/government/news/probate-waiting-times-halved-thanks-to-government-push",
+          "domain": "gov.uk"
+        },
+        {
+          "url": "https://withfarra.co.uk/guides/probate-waiting-times-uk-2026",
+          "domain": "withfarra.co.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "SchoolFees Swap, the broker that turns unused school fee credit into cash for another family",
+      "oneLiner": "A broker that matches parents leaving an independent school early with parents joining it, so unused advance fee payments transfer between them instead of being forfeited.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages describe how prepaid fees actually work at these schools: one states that once notice has expired, any prepaid and unused terms are refunded back to the parent, and another describes the advance scheme as money held on deposit that is drawn down term by term. If the parent simply gets the money back when they give notice, there is no stranded, forfeited credit for a broker to rescue and no share of a recovery to charge for.",
+      "citations": [
+        {
+          "url": "https://johnwhitgiftfoundation.org/",
+          "domain": "johnwhitgiftfoundation.org"
+        },
+        {
+          "url": "https://taxpolicy.org.uk/2024/05/09/private_school_vat_risk/",
+          "domain": "taxpolicy.org.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "PetGut Insight, Canine Microbiome Analysis by Post",
+      "oneLiner": "A mail‑in stool‑sampling service for dogs that sequences the gut microbiome, delivers a personalised raw‑feeding or supplement plan, and builds a proprietary veterinary‑nutrition dataset over time.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show dog gut microbiome test kits are already being sold in the UK by established sellers, Innovative Pet Lab on Amazon UK and Pooch and Mutt / BIOME9 offering both the test kit and matching 'precision supplements', so the mail-in-kit-plus-diet-plan offer is already a shelf product rather than a new one. On top of that, research cited here says home microbiome test results may tell you very little about what is actually in the gut and that these direct-to-consumer services have open questions about whether their results……",
+      "citations": [
+        {
+          "url": "https://www.amazon.co.uk/Innovative-Pet-Lab-Comprehensive-at-Home-Test/dp/B0CL5G285X",
+          "domain": "amazon.co.uk"
+        },
+        {
+          "url": "https://biome9.com/",
+          "domain": "biome9.com"
+        },
+        {
+          "url": "https://www.parsemus.org/2026/06/gut-microbiome-tests-popular-pricey-and-surprisingly-unreliable/",
+          "domain": "parsemus.org"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "The Solo Builder's Warranty Audit",
+      "oneLiner": "A solo operator in the UK offers a fixed-price, pre-completion inspection and snagging service specifically for self-build homeowners, using a proprietary checklist and thermal camera to identify defects before the builder's warranty expires, charging per property.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show established UK snagging-inspection firms already selling exactly this service to new-build owners, including one claiming over 20,000 surveys and 20+ years as the country's leading independent provider, another claiming to be the only RICS-regulated nationwide snagging company, plus a directory and a postcode matching service quoting prices from £249.",
+      "citations": [
+        {
+          "url": "https://www.newbuildinspections.com/",
+          "domain": "newbuildinspections.com"
+        },
+        {
+          "url": "https://www.snaggingcompany.com/",
+          "domain": "snaggingcompany.com"
+        },
+        {
+          "url": "https://homesnag.co.uk/",
+          "domain": "homesnag.co.uk"
+        },
+        {
+          "url": "https://www.snagginginspectors.co.uk/",
+          "domain": "snagginginspectors.co.uk"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "StockFloat: The Material Inventory Booster",
+      "oneLiner": "We buy the materials you need for a job upfront from your supplier, deliver them to site, and you pay us only when the project pays off, no loan, just a credit sale with the risk on us.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages describe deferred payment for materials as a standard, widely available feature: UK builders' merchants and suppliers routinely offer trade credit accounts with 30-day terms to tradespeople, with published step-by-step guides on opening one. Since the core offer here is exactly that, get materials now, pay later, and suppliers already give it away as part of selling the goods (often with trade discounts rather than a 10-20% markup), the passages show the value this candidate charges for is already a free, standard part of……",
+      "citations": [
+        {
+          "url": "https://www.sparkfinance.co.uk/blog/how-do-building-merchants-and-suppliers-offer-trade-credit-accounts-in-the-uk",
+          "domain": "sparkfinance.co.uk"
+        },
+        {
+          "url": "https://www.trade2base.com/blog/trade-business-supplier-accounts-uk",
+          "domain": "trade2base.com"
+        },
+        {
+          "url": "https://renovationnotes.com/articles/how-to-open-a-builders-merchant-trade-account/",
+          "domain": "renovationnotes.com"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "SwapShift, the platform where NHS and care staff sell shifts they can't work to colleagues who want them",
+      "oneLiner": "A booking platform for family carers working in health and social care: list a shift you can no longer cover, and a verified colleague at the same employer takes it, with pay transferred automatically.",
+      "gate": "legality",
+      "gateLabel": "There is a legal landmine",
+      "reason": "The passages state that UK law bars a business that finds people work from charging those workers a fee for it, with an exception only for entertainment and modelling, and the candidate's stated income is a percentage taken from the health and care workers on each shift it matches. Taking a cut of the worker's own pay for placing them into a shift is the conduct these rules prohibit, so that part of the income cannot be earned as described, even though the separate fee charged to employers is untouched by these passages.",
+      "citations": [
+        {
+          "url": "https://www.gov.uk/government/publications/conduct-regulations-2003-guidance-for-employment-agencies-and-employment-businesses/overview-of-the-conduct-regulations-2003",
+          "domain": "gov.uk"
+        },
+        {
+          "url": "https://grokipedia.com/page/employment_agencies_act_1973",
+          "domain": "grokipedia.com"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Employment_Agencies_Act_1973",
+          "domain": "en.wikipedia.org"
+        }
+      ],
+      "date": "2026-08-07"
+    },
+    {
+      "title": "The Tradesperson's Job Warrant Sticker",
+      "oneLiner": "A solo operator sells per-job digital warranty stickers to UK plumbers and electricians, backing a £250 guarantee on work with an AI claims bot trained on 10,000+ trade disputes, converting more quotes by removing review risk.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show the same trust cover is already available at no charge on the exact platform this product targets: Checkatrade gives homeowners a free guarantee when a tradesperson's work falls short of standards, alongside a vetting badge built on up to 12 identity, financial and qualification checks. Tradespeople are also already advised to issue their own written workmanship guarantee at no cost, and plumbers and electricians hand over Part P or Gas Safe certificates as a matter of course, so the paid sticker sells……",
+      "citations": [
+        {
+          "url": "https://www.checkatrade.com/guarantee-terms",
+          "domain": "checkatrade.com"
+        },
+        {
+          "url": "https://join.checkatrade.com/pricing/",
+          "domain": "join.checkatrade.com"
+        },
+        {
+          "url": "https://www.trade2base.com/blog/trade-business-workmanship-guarantee-uk",
+          "domain": "trade2base.com"
+        },
+        {
+          "url": "https://www.mastertradesmen.co.uk/what-guarantees-and-warranties-should-a-builder-offer/",
+          "domain": "mastertradesmen.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Site Surplus Scout",
+      "oneLiner": "A solo operator uses a predictive inventory model to alert local tradespeople to surplus building materials from major construction sites, pocketing the margin with zero site disruption.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages name several existing services doing exactly this: Globechain, described as the world's largest marketplace for reusing surplus materials and already engaged by a major UK developer (British Land), plus the Excess Materials Exchange ($5M funded) and CMEx for business-to-business trading of leftover construction materials, and Gumtree, which already runs a UK second-hand building materials and supplies category.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Padel Court Referee Booking Engine",
+      "oneLiner": "A vertical SaaS for padel clubs that replaces the ad-hoc, manual process of booking referees for tournaments and league matches with an automated scheduling, payment, and dispute resolution system.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show that padel club software in the UK is already concentrated: Playtomic is described as the dominant choice used by most UK clubs, with its rating system the de facto national standard, and four to five platforms cover virtually every UK padel court. The passages also state that referee assignment and payment software already exists as a product category for leagues, clubs and tournaments, and that tournament software already covers padel, so this is not an empty space…",
+      "citations": [
+        {
+          "url": "https://ukpadelguide.co.uk/blog/padel-court-booking-apps-uk-2026/",
+          "domain": "ukpadelguide.co.uk"
+        },
+        {
+          "url": "https://padelunderground.co.uk/culture/padel-court-booking-uk/",
+          "domain": "padelunderground.co.uk"
+        },
+        {
+          "url": "https://www.playskan.com/blog/best-padel-booking-systems-in-the-uk",
+          "domain": "playskan.com"
+        },
+        {
+          "url": "https://gitnux.org/best/referee-assigning-software/",
+          "domain": "gitnux.org"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "SoilKeep, the arable farmer's field-by-field record that proves your soil work to the payer, the auditor and the buyer",
+      "oneLiner": "A phone-and-desktop record for English arable and mixed farms that logs each field's soil work as it happens, so payment claims, inspections and grain-buyer audits all draw on one evidence file.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages describe Gatekeeper as the long-standing dominant player in UK arable farm management software with Muddy Boots alongside it, both called market-leading, and say the market has consolidated further over the past two years. Red Tractor also already runs its own portal where members upload the records that prove compliance, and a whole category of software exists for that assurance paperwork, so the record-keeping need this product targets is already held by established, leading providers rat…",
+      "citations": [
+        {
+          "url": "https://www.hutchinsons.co.uk/farm-management-software-gets-an-easyplan-tech-farmer/",
+          "domain": "hutchinsons.co.uk"
+        },
+        {
+          "url": "https://www.fwi.co.uk/arable/crop-management/how-the-market-leading-farm-management-system-is-changing",
+          "domain": "fwi.co.uk"
+        },
+        {
+          "url": "https://esremedia.co.uk/blog/farm-management-software-uk-comparison",
+          "domain": "esremedia.co.uk"
+        },
+        {
+          "url": "https://redtractor.org.uk/member-portal/",
+          "domain": "redtractor.org.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "FareFare Forensics, The Rideshare Driver's Earnings Audit & Claim System",
+      "oneLiner": "A done-for-you audit of your Uber/Lyft trip history that identifies fare miscalculations, missing bonuses, and payment errors, and files a claim for a share of recovered earnings.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Worker Info Exchange International is already running algorithmic audits of driver trip data (1.5 million trips across 258 drivers) and using that analysis to send Uber a legal Letter Before Action on behalf of UK and European drivers, plus pursuing funded litigation against Uber and Ola in Amsterdam. That is the same core activity the candidate proposes, trip-data audit plus claim pursuit against the platform, already operating at scale with legal and grant backing, so the space is not open.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "HMRC Inheritance Tax Valuation Benchmark Report",
+      "oneLiner": "A solo‑operated data‑intelligence query‑tool that uses FOI‑derived datasets on settled probate cases to show executors the real HMRC settlement values for unique assets (classic cars, fine art, antiques), providing an evidence‑backed negotiating range to challenge aggressive estate valuations.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show established firms already selling exactly this to UK executors: nationwide HMRC-compliant probate valuations for classic cars from £25, and Gurr Johns, a 100-year-old appraiser with 160 specialists worldwide covering art, antiques, jewellery, watches, collectibles and automobiles for fiduciaries, with further referral routes to specialist art valuers. A £199 report competes against an entrenched, deep-specialist valuation industry pricing the same asset classes as low as £25, so the need is already wel…",
+      "citations": [
+        {
+          "url": "https://swiftvalues.co.uk/valuations/cars-motorbikes/",
+          "domain": "swiftvalues.co.uk"
+        },
+        {
+          "url": "https://www.gurrjohns.com/",
+          "domain": "gurrjohns.com"
+        },
+        {
+          "url": "https://www.linkedin.com/company/gurr-johns",
+          "domain": "linkedin.com"
+        },
+        {
+          "url": "https://www.clearancesolutionsltd.co.uk/probate-valuation/",
+          "domain": "clearancesolutionsltd.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "LabelMatch, pre-printed allergen labels that keep up with your changing menu",
+      "oneLiner": "A weekly pack of ready-to-stick allergen labels for small food shops, generated automatically every time their recipe or ingredients change.",
+      "gate": "route_to_market",
+      "gateLabel": "There is no route to reach buyers",
+      "reason": "The passages show bread/bakery distribution dominated by a few large manufacturers and retail/foodservice supply chains (,), with the only 'beginner' channels being generic social-media marketing tips and hobbyist Facebook-style support groups for home bakers (,,), none of these describe a channel through which a novice can reach and sell a compliance/labelling service to bakery owners.",
+      "citations": [
+        {
+          "url": "https://finsburyfoods.co.uk/our-sites/",
+          "domain": "finsburyfoods.co.uk"
+        },
+        {
+          "url": "https://www.fob.uk.com/about-the-bread-industry/",
+          "domain": "fob.uk.com"
+        },
+        {
+          "url": "https://www.facebook.com/groups/506175481225240/",
+          "domain": "facebook.com"
+        },
+        {
+          "url": "https://www.facebook.com/groups/400756503612984/",
+          "domain": "facebook.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Creative Rights Recovery Agent",
+      "oneLiner": "A solo bureau that hunts unauthorised use of freelance visual artists' work online, invoices infringers, and negotiates settlements on a pure contingency fee, armed with a proprietary infringer-tactics database and settlement benchmarks no automated tool can replicate.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show detection/reverse-image-search is a commoditised, largely free capability (multiple free multi-engine reverse image tools, plus ranked lists of interchangeable copyright-detection software including Pixsy/Copytrack/Copyleaks), which undercuts the claim that this specific value is durable and not already commoditised.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "HostReady Box, the baby hosting kit that arrives before your visitors do",
+      "oneLiner": "A subscription rental of sanitised kits of premium baby gear (travel cot, high chair, monitor, stair gate) delivered to UK households before visiting family arrives, with collection after.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "One UK operator already hires out exactly this gear, prams, travel cots, car seats, with nationwide delivery, same-day delivery in London, free returns and over 20,000 UK customers served, and BabyQuip, which turned down a $500,000 investment offer, runs over 1,300 local providers who deliver and set up baby gear at private residences as well as hotels and rentals. That means established, funded operators already serve short-notice home delivery of the same kit in the UK, so the claim that the need is unserved does not…",
+      "citations": [
+        {
+          "url": "https://baboodle.co.uk/?srsltid=AfmBOoq2XzBRB9GRt10p0aKlWYOW4dcXmWAkfxDGZgq9tLh8ILrPM6SC",
+          "domain": "baboodle.co.uk"
+        },
+        {
+          "url": "https://www.sharktankblog.com/business/babyquip/",
+          "domain": "sharktankblog.com"
+        },
+        {
+          "url": "https://tinybeans.com/babyquip-baby-gear-rental/",
+          "domain": "tinybeans.com"
+        },
+        {
+          "url": "https://kingscrowd.com/podcasts/inside-startup-investing/inside-startup-investing-episode-153/",
+          "domain": "kingscrowd.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "YieldShield, The Landscaper's Perennial Performance Bond",
+      "oneLiner": "A per‑project warranty bond sold to independent landscapers: if newly‑planted trees or shrubs die within 90 days from disease, frost, or drought, YieldShield pays to replace them, replacing the landscaper's out‑of‑pocket risk with a predictable fixed cost.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "Three passages show garden centres and nurseries already give free 12‑month replacement or refund guarantees on hardy plants that die, a live, free first-party mechanism for the exact 'dead plant' event the bond is meant to cover, contradicting the candidate's own framing of this as a 'dying breed.' The RHS/drought passages confirm plant loss is a real, ongoing weather risk, but that only proves the pain exists, not that the paid-bond value is undercut by these existing free guarantees.",
+      "citations": [
+        {
+          "url": "https://gca.org.uk/plant-guarantee/",
+          "domain": "gca.org.uk"
+        },
+        {
+          "url": "https://www.dobbies.com/lifetime-plant-guarantee",
+          "domain": "dobbies.com"
+        },
+        {
+          "url": "https://www.ashridgetrees.co.uk/pages/bareroot-plant-guarantee",
+          "domain": "ashridgetrees.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "PrepRoom Sweep, The County Science Department Chemical Amnesty Round",
+      "oneLiner": "A solo-run annual physical service that inventories, photographs and hazard-classifies the decades-old chemical stock in secondary-school science prep rooms, then consolidates 15-20 schools onto a single licensed-contractor disposal day so each department pays a fraction of the haz-waste minimum call-out, sold as a fixed-fee 'amnesty round' to heads of science.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages show English schools are financially squeezed rather than able to fund discretionary spending: research cited for January 2025 found 94% of secondary schools would not be able to afford their costs the following year, and FOI data from 71 councils showed average in-year deficits at maintained primary schools roughly doubling to £6,360 in 2024-25. Cash-terms per-pupil funding has risen but was broadly flat in real terms over the period described, so nothing here shows a school department with spare budget for a paid chemical…",
+      "citations": [
+        {
+          "url": "https://neu.org.uk/latest/press-releases/vast-majority-schools-face-funding-cuts-next-year",
+          "domain": "neu.org.uk"
+        },
+        {
+          "url": "https://schoolsweek.co.uk/school-budgets-slide-further-into-the-red/",
+          "domain": "schoolsweek.co.uk"
+        },
+        {
+          "url": "https://explore-education-statistics.service.gov.uk/find-statistics/school-funding-statistics/2025-26",
+          "domain": "explore-education-statistics.service.gov.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "CrewShare Books, the shared VAT and tax return service for film and TV crew who work through their own company",
+      "oneLiner": "For under-27s working as runners, camera assistants and art department crew in UK film and TV, this handles the whole company year, payroll, VAT, and the CT600, for £59 a month.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "Two 2025 union surveys of this exact workforce report roughly half of UK film and TV crew are out of work, 52% in film, 51% in TV drama, and 45% in TV drama by a second count, with low pay named as a defining problem, so a large share of the intended customers currently have no production income to pay a monthly fee from. The only passages showing money flowing to crew are negotiated pay scales for those actually hired, and nothing here shows crew buying accountancy help or being able to fund it durin…",
+      "citations": [
+        {
+          "url": "https://www.linkedin.com/posts/ross-olivey_survive-to-25-if-you-work-in-the-advertising-activity-7243899403625725952-sLh1",
+          "domain": "linkedin.com"
+        },
+        {
+          "url": "https://msnbctv.news/uk-tv-industry-workforce-half-are-unemployed-bectu-research-finds/",
+          "domain": "msnbctv.news"
+        },
+        {
+          "url": "https://bectu.org.uk/news/theatres-skills-shortage-worsening-since-pandemic-bectu-survey",
+          "domain": "bectu.org.uk"
+        },
+        {
+          "url": "https://bectu.org.uk/get-involved-in-the-union/ratecards/",
+          "domain": "bectu.org.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Inheritance Heat Map",
+      "oneLiner": "A solo-operated data intelligence service that maps and scores UK residential properties by their inheritance tax (IHT) exposure risk, sold to regional estate agents and solicitors as a prospecting tool for probate and downsizing instructions.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Two passages describe Sprift, a live commercial service selling UK property data, EPC ratings and property reports specifically to estate agents and conveyancers, pitched as improving valuations and client relationships, and a third passage advertises estate-agent market-data products explicitly sold as a way to generate more leads and convert more appraisals, that is the same buyer and the same job the candidate proposes to sell.",
+      "citations": [
+        {
+          "url": "https://sprift.com/Home",
+          "domain": "sprift.com"
+        },
+        {
+          "url": "https://sprift.com/sprift-for-estate-letting-agents",
+          "domain": "sprift.com"
+        },
+        {
+          "url": "https://www.twentyea.co.uk/",
+          "domain": "twentyea.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Council Parking Penalty FoI Appeal Builder",
+      "oneLiner": "A service that generates a bespoke, council-aware parking ticket appeal letter by querying a live, FOI-sourced database of every UK council's formal and informal appeal success rates, combined with the specific grounds for the contravention.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "and show existing operators already generate council-referenced appeal letters from uploaded PCNs, and/ show a large volunteer community (Pepipoo/MSE) has long supplied free, experience-based per-council guidance, none proves a dominant single leader, but they show the exact niche (automated + community appeal guidance) is already served by multiple players, so it is not open and unserved.",
+      "citations": [
+        {
+          "url": "https://parkingmateuk.com/",
+          "domain": "parkingmateuk.com"
+        },
+        {
+          "url": "https://parkingticketappeals.app/",
+          "domain": "parkingticketappeals.app"
+        },
+        {
+          "url": "https://www.parkingwin.co.uk/blog/popla-appeal-guide.html",
+          "domain": "parkingwin.co.uk"
+        },
+        {
+          "url": "https://forums.digitalspy.com/discussion/2400738/asda-parking-ticket",
+          "domain": "forums.digitalspy.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Carer’s Assessment Negotiator",
+      "oneLiner": "A conversational AI tool that interviews an unpaid carer about their daily realities and instantly produces a standardised, evidence‑dense Carer’s Assessment submission document that mirrors successful social services support packages, forcing the Local Authority to offer meaningful respite and direct payments.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages describe unpaid carers as a low-income group: the main benefit for them is £81.90 a week, described as one of the lowest of its kind, and around 44% of the roughly one million carers claiming it are in poverty, with half a million of them living in poverty. The passages also show free alternatives already aimed at this group, Carers UK's free self-advocacy and rights guides, and council-funded advice and guidance from Carers First, which weakens the case that these carers will pay £39, £79 out of pocket……",
+      "citations": [
+        {
+          "url": "https://www.carersuk.org/press-releases/12-million-unpaid-carers-across-the-uk-are-living-in-poverty-with-1-in-10-of-all-carers-in-deep-poverty/",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://www.theguardian.com/society/2024/apr/07/unpaid-carers-allowance-payment-prosecution-earnings-rules",
+          "domain": "theguardian.com"
+        },
+        {
+          "url": "https://carers.org/news-and-media/news/post/169-over-90-of-adult-unpaid-carers-feel-ignored-by-the-government",
+          "domain": "carers.org"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Fire Safety Photo Audit for HMO Landlords",
+      "oneLiner": "A solo operator provides a legally-defensible, photo-evidenced fire safety audit for Houses in Multiple Occupation (HMO) landlords, using a proprietary checklist and a smartphone camera, delivered as a PDF report with a fixed price per property, to preempt council enforcement and insurance claim rejections.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show an established, crowded market of fire risk assessment providers already serving UK landlords and property managers, including London-focused firms, a nationwide bookable service promising fast delivery and a best-price guarantee, and specialists selling clear, user-friendly reports, plus Rocket Lawyer offering a free-trial, legally-reviewed fire risk assessment document at the cheap end.",
+      "citations": [
+        {
+          "url": "https://landlordsafetycertification.co.uk/fire-risk-assessment-london/",
+          "domain": "landlordsafetycertification.co.uk"
+        },
+        {
+          "url": "https://www.safelincs.co.uk/product/safelincs-fire-risk-assessments?ppcServicing&msclkid=a4394bd4cf49105e3ab721a0c828d4e6&utm_source=bing&utm_medium=cpc&utm_campaign=Services%20Text%3A%20Fire%20Risk%20Assessments&utm_term=fire%20risk%20assessment%20for%20communal%20areas&utm_content=Fire%20Risk%20Assessments",
+          "domain": "safelincs.co.uk"
+        },
+        {
+          "url": "https://ukfireconsultants.co.uk/our-services/fire-risk-assessment/?utm_source=bing&utm_medium=PPC&utm_campaign=FRA+24%27&utm_term=fire+risk+assessment&msclkid=20c40c3e96ab110ca164664a91ca6666&utm_content=Fire%20Risk%20Assessments%2024'",
+          "domain": "ukfireconsultants.co.uk"
+        },
+        {
+          "url": "https://landlordschecks.co.uk/londonfire-risk-assessment-companies-near-you/",
+          "domain": "landlordschecks.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The CHC Decision Denial Forecaster",
+      "oneLiner": "A data intelligence subscription that benchmarks local ICB CHC funding decision patterns, arming families with the statistics to contest refusal of long‑term care costs.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "shows a free, already-live public tool that looks up ICB-level CHC approval rates by postcode with no tracking or data stored, which is the exact 'local approval-rate intelligence' product the candidate proposes to sell. A free first-party alternative already covering the core value (postcode-based local approval-rate comparison) undercuts the claim that this data asset is a durable, monetisable wedge.",
+      "citations": [
+        {
+          "url": "https://chcfunding.uk/",
+          "domain": "chcfunding.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "Business Rates Overpayment Recovery Agent",
+      "oneLiner": "A solo bureau that audits small business premises rateable values, identifies overcharges, and manages the entire appeal process for a success fee, using a proprietary database of winning comparables.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Two established UK firms already sell exactly this service, one advertising business rates advice, valuations, appeals and historic audits over 65 years, and another claiming £2bn saved for clients since 2010, and a 'No Win No Fee Business Rates' offer already exists, which is the same success-fee model the candidate proposes. The passages therefore show entrenched, long-running providers occupying this need rather than an open space, though they do not state how much of the small single-premises segment those firms hold.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Septic Sentinel",
+      "oneLiner": "A solo-operated mobile septic tank health MOT service using proprietary IoT probes to deliver predictive maintenance reports and Environmental Agency compliance for time-poor rural public sector workers.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages describe established UK firms already selling exactly this bundle to property owners, engineers who advise on and maintain septic tanks and treatment plants, and specialists with 'decades of combined experience' working across the UK for property owners, management companies and insurers, including impartial condition assessment for insurance claims.",
+      "citations": [
+        {
+          "url": "https://www.draindoctor.co.uk/drainage/off-mains",
+          "domain": "draindoctor.co.uk"
+        },
+        {
+          "url": "https://ukdpsolutions.co.uk/",
+          "domain": "ukdpsolutions.co.uk"
+        },
+        {
+          "url": "https://www.offmainssolutions.co.uk/",
+          "domain": "offmainssolutions.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Mould-Proof Home Audit & Sensor Service",
+      "oneLiner": "A solo operator conducts a physical damp-proofing audit and installs a proprietary multi-sensor array in homes of time-poor public sector workers, coupled with a predictive AI that forecasts mould growth 2-3 weeks in advance, plus automated dehumidifier dispatch, on a subscription model, building a hyperlocal data moat that no off-the-shelf sensor can match.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages name three funded technology providers already delivering exactly this service in the UK, Aico's HomeLINK, which pairs connected sensors with a purpose-built damp-and-mould case management platform for landlords and councils, and Switchee, which works with social housing providers across the country on the same problem, alongside an established paid market of independent damp surveyors charging £150, £400 for the physical inspection half of the offer.",
+      "citations": [
+        {
+          "url": "https://www.aico.co.uk/homelink/solutions/damp-mould/",
+          "domain": "aico.co.uk"
+        },
+        {
+          "url": "https://www.aico.co.uk/homelink/products/case-management/",
+          "domain": "aico.co.uk"
+        },
+        {
+          "url": "https://switchee.com/mould/",
+          "domain": "switchee.com"
+        },
+        {
+          "url": "https://www.homebuyercheck.co.uk/blog/damp-survey-cost-uk",
+          "domain": "homebuyercheck.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "ChargeBreak, find and fight the overcharges in your California hospital bill, for $29",
+      "oneLiner": "A web app that uses hospital price transparency data to slash your out-of-pocket medical costs.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show several services already doing this work for patients: one venture-backed company, Goodbill, raised $3.4M specifically to tackle medical billing, another advertises finding errors in hospital bills and negotiating them down, and Dollar For, a charity-rated nonprofit, gets hospital bills reduced or wiped for free and says it has cleared tens of millions of dollars, alongside other free bill-forgiveness helpers.",
+      "citations": [
+        {
+          "url": "https://www.geekwire.com/2022/the-darkest-most-bottomless-pit-in-healthcare-goodbill-raises-3-4m-to-tackle-medical-billing/",
+          "domain": "geekwire.com"
+        },
+        {
+          "url": "https://www.goodbill.com/patients",
+          "domain": "goodbill.com"
+        },
+        {
+          "url": "https://www.claimsmaximizer.com/blog/dollar-for-review",
+          "domain": "claimsmaximizer.com"
+        },
+        {
+          "url": "https://dollarfor.org/",
+          "domain": "dollarfor.org"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The On-Site Media Vault",
+      "oneLiner": "A solo operator arrives at weddings and events with a rugged mobile rig, ingests footage cards, creates redundant backups, runs AI-assisted culling and cloud upload, and delivers same-night preview galleries, freeing the creative to keep shooting.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show that AI culling is already a crowded, competitively priced software market, Aftershoot, Narrative Select, FilterPixel and ImagenAI are compared head-to-head on speed, accuracy and price for wedding photographers, and this has been the fastest-moving part of the plugin market from 2024 to 2026, and that for high-volume shooters like wedding photographers the cloud, not on-site hardware, is described as the clear winner for the heaviest AI work.",
+      "citations": [
+        {
+          "url": "https://tovstudiophoto.com/ai-culling-tools-aftershoot-narrative-filterpixel-2026/",
+          "domain": "tovstudiophoto.com"
+        },
+        {
+          "url": "https://tovstudiophoto.com/lightroom-plugin-economy-photographer-guide-2026/",
+          "domain": "tovstudiophoto.com"
+        },
+        {
+          "url": "https://findme.photo/blog/aftershoot-vs-narrative-vs-imageai-culling-comparison-2026",
+          "domain": "findme.photo"
+        },
+        {
+          "url": "https://imagen-ai.com/valuable-tips/photography-workflow-automation/",
+          "domain": "imagen-ai.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "MedDebtShield, The Carer’s Medical Bill Arbitration Broker",
+      "oneLiner": "A contingency‑based service that negotiates down excessive out‑of‑pocket medical bills and disputed charges for carers facing large invoices after a relative’s treatment, taking a percentage only of the amount saved, using AI‑trained on billing‑code errors and hospital contract loopholes.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show general billing-error rates and a paid AI bill-checker, but for the UK they show only free NHS channels (PALS, NHS Complaints Advocacy) already offering advice and dispute support on hospital bills at no cost, which is exactly the kind of free alternative that erodes a 30%-of-savings paid broker's value.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Street-Level Air Quality Arbitrage Sensor",
+      "oneLiner": "A solo operator deploys a proprietary network of low-cost, calibrated air quality sensors on private residential windows in UK cities, selling the resulting hyperlocal data to local councils for compliance monitoring and to property developers for planning applications, funded by a combination of sensor placement fees and data subscription.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "The passages show councils already running their own dense monitoring themselves, Cambridge has 5 automatic monitors plus more than 35 diffusion tubes, far more than the handful of sites this idea assumes, and North East Lincolnshire runs its own real-time stations. They also show the compliance pressure that would drive buying receding: Cambridge revoked its pollution management area in January 2026 after five compliant years and Leeds removed five hotspots from its action list, so the statutory review duty continues but the acute need to prove a breach i…",
+      "citations": [
+        {
+          "url": "https://cleanairuk.co/air-quality-cambridge",
+          "domain": "cleanairuk.co"
+        },
+        {
+          "url": "https://www.nelincs.gov.uk/grimsby-air-quality-management-area-revoked-following-improvement-in-air-quality/",
+          "domain": "nelincs.gov.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Garden Office Power Broker",
+      "oneLiner": "A solo operator who sources, negotiates, and project-manages the installation of pre-fabricated garden offices for cash-strapped professional couples, taking a fixed fee from the installer rather than the buyer.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show that matching UK buyers to garden-room installers is already an established service: one site runs a vetted network of approved garden-room retailers and installers that collects a buyer's requirements and returns quotes from local professionals, two independent portals already publish buying advice plus directories of garden-room and annexe companies, and a UK trades directory lists 34 businesses supplying garden rooms/annexes with reviews and booking.",
+      "citations": [
+        {
+          "url": "https://www.installerscomparegardenroomsuk.com/",
+          "domain": "installerscomparegardenroomsuk.com"
+        },
+        {
+          "url": "https://www.comparegardenroomsuk.co.uk/",
+          "domain": "comparegardenroomsuk.co.uk"
+        },
+        {
+          "url": "https://www.thegardenroomguide.co.uk/",
+          "domain": "thegardenroomguide.co.uk"
+        },
+        {
+          "url": "https://www.checkatrade.com/Search/Summerhouse-Installers/in/United-Kingdom",
+          "domain": "checkatrade.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Carer’s Room‑for‑Care Exchange",
+      "oneLiner": "A solo broker who matches primary carers needing affordable in‑home help with live‑in caregivers seeking zero‑rent accommodation in exchange for reduced hourly rates, collecting a placement fee from the carer or the care agency.",
+      "gate": "value_durability",
+      "gateLabel": "The value would not last",
+      "reason": "One passage states that when a carer lives with the person they support, accommodation is usually already included in the employment package, with a private bedroom provided, so a free room is the normal baseline for live-in care in this market, not an extra the family can trade for a steeply reduced hourly rate, which removes the discount the whole model depends on.",
+      "citations": [
+        {
+          "url": "https://www.homeinstead.co.uk/south-lanarkshire/blog/does-a-live-in-carer-have-to-pay-rent-the-important-facts-you-need-to-know/",
+          "domain": "homeinstead.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The AI Tool Liability Brief",
+      "oneLiner": "A paid weekly briefing for billable creative freelancers that translates active AI copyright lawsuits, vendor TOS shifts and brand AI-procurement clauses into a tool-by-tool, deliverable-by-deliverable liability score, paired with a reverse-engineered clause library freelancers can deploy to push back on unfair AI terms.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages describe Mishcon de Reya, a law firm, running an AI resource centre and a generative AI & copyright case tracker that is explicitly promoted as keeping pace with fast-moving AI litigation, and being actively marketed to sign-ups, which is the same weekly AI-lawsuit tracking the briefing proposes to sell, already published by an established firm. A free AI contract generator producing ready-made independent contractor and service agreements also already covers the clause-template half of the offer, leaving t…",
+      "citations": [
+        {
+          "url": "https://www.mishcon.com/ai-resource-centre",
+          "domain": "mishcon.com"
+        },
+        {
+          "url": "https://www.linkedin.com/posts/cassandra-hill-3313484a_generative-ai-ip-cases-and-policy-tracker-activity-7389941763991293952-r3Fo",
+          "domain": "linkedin.com"
+        },
+        {
+          "url": "https://www.linkedin.com/posts/garethdickson_generative-ai-ip-cases-and-policy-tracker-activity-7378415621488668673-S_Vq",
+          "domain": "linkedin.com"
+        },
+        {
+          "url": "https://contractable.ai/",
+          "domain": "contractable.ai"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "SettleShare, the family carer's fixed-fee route to sell an unwanted care home place back to the waiting list",
+      "oneLiner": "When your parent's care home contract locks you into weeks of notice you cannot use, we find the family waiting for that exact bed and broker a paid handover of the room.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show several established UK services already occupying the care-home placement space at no cost to families: a directory covering over 16,500 UK care homes that calls itself the UK's number one site for finding a care home, plus free comparison and advice services with provider networks. Free, well-established players already match families to care home beds, so the matching side of this idea is crowded rather than open; the passages say nothing about anyone brokering an early end to notice fees, so that narrower angle remain…",
+      "citations": [
+        {
+          "url": "https://www.carehome.co.uk/",
+          "domain": "carehome.co.uk"
+        },
+        {
+          "url": "https://lottie.org/",
+          "domain": "lottie.org"
+        },
+        {
+          "url": "https://www.carehomeplacement.co.uk/",
+          "domain": "carehomeplacement.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "RepayFight, the fixed-fee service that fights your Carer's Allowance repayment bill",
+      "oneLiner": "A fixed-fee, done-for-you service for family carers who got a DWP letter demanding thousands back in Carer's Allowance, that builds the case to cut or clear the bill.",
+      "gate": "currency",
+      "gateLabel": "No real money is flowing here today",
+      "reason": "The threshold rose to £196/week from April 2025 and again to £204/week from April 2026, meaning the specific old, lower cliff-edge that generated the historical overpayment cases has already been superseded, not something currently active. The debt-pile figure is dated 'last year' with no year given, so it cannot establish that the enforcement wave is happening right now rather than being a stale prior-year statistic.",
+      "citations": [
+        {
+          "url": "https://thefutureofwork.pro/carers-allowance-earnings-limit-to-increase-this-april/",
+          "domain": "thefutureofwork.pro"
+        },
+        {
+          "url": "https://www.taxrebateservices.co.uk/carers-allowance-overpayment/",
+          "domain": "taxrebateservices.co.uk"
+        },
+        {
+          "url": "https://www.cornwalllive.com/news/cost-of-living/dwp-carers-allowance-overpayments-skyrocket-9783622",
+          "domain": "cornwalllive.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "TutorBrief Engine, The Independent UK Personal Tutor's Exam-Board-Aligned Parental Progress Brief Generator",
+      "oneLiner": "A vertical SaaS that ingests an independent UK GCSE/A-level tutor's weekly session notes and outputs a defensible, exam-board-specific parental progress brief with per-paper content-gap mapping (across AQA, OCR A/B, Edexcel, WJEC, CCEA and SQA specs) plus diplomatically-worded suspected-need flags (dyslexia / ADHD / visual stress / anxiety) aligned to NHS / GP referral language the tutor can review in under ten minutes per pupil.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show several established products already generating student progress reports in this market: TutorCruncher's AI tutoring-management platform tracks lessons, monitors student progress and produces insights for tutoring businesses, while Twinkl and TeachMateAI both ship AI report writers that turn pupil details into personalised written reports, and one round-up lists ten tutor-tracking tools that already join scheduling to measurable progress.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "AccountKey CA, we unlock your parent's digital accounts after death or incapacity, for a flat fee",
+      "oneLiner": "For a flat fee per account, we send the legal requests and follow up until you get into your parent's online accounts.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show a crowded field of funded companies already handling a deceased person's online accounts for families, Empathy raised a Series B led by Index Ventures and automates closing digital accounts, while Sunset, GoodTrust, Trustworthy, Everplans and Trust & Will are compared side by side on inheritance support, with one option listed at $0 cost. That is a well-funded rival plus a free alternative already serving bereaved families on the same post-death account task, so the space does not rea…",
+      "citations": [
+        {
+          "url": "https://digitalmarketreports.com/news/12033/empathy/",
+          "domain": "digitalmarketreports.com"
+        },
+        {
+          "url": "https://learn.hellosunset.com/sunset-vs-empathy-vs-goodtrust-closing-accounts",
+          "domain": "learn.hellosunset.com"
+        },
+        {
+          "url": "https://safekeep.co/everplans-vs-goodtrust-vs-trustworthy-review-2026/",
+          "domain": "safekeep.co"
+        },
+        {
+          "url": "https://pitchbook.com/profiles/company/459370-00",
+          "domain": "pitchbook.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "Spine-Point Forensics, The Public-Sector Pay-Disc Audit",
+      "oneLiner": "A solo operator who visits NHS, council and school staff at home to audit 12-24 months of payslips against Agenda for Change, NJC and Teachers' Pay Scale spine points, building a per-employer error dossier used to recover systematic underpayments via grievance then tribunal.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show the exact worker groups this business targets are already covered by their own unions: the Royal College of Nursing publishes a guide for members who have been underpaid, walking them through payroll errors, unlawful deductions and miscalculations, and the National Education Union runs an in-house legal service plus a free 'Legal Plus' scheme with the firm Thompsons for any work-related matter, with Unison, GMB and Unite named as the recognised unions for council staff; law firms separately offer fixed-fee and no-win-no…",
+      "citations": [
+        {
+          "url": "https://www.rcn.org.uk/get-help/rcn-advice/underpayment-of-wages",
+          "domain": "rcn.org.uk"
+        },
+        {
+          "url": "https://www.thompsonstradeunion.law/trade-unions/neu",
+          "domain": "thompsonstradeunion.law"
+        },
+        {
+          "url": "https://neu.org.uk/latest/library/neu-and-njc-unions",
+          "domain": "neu.org.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "RotaRest, the day-room network that lets NHS night-shift staff sleep before driving home",
+      "oneLiner": "Vetted hotel day-rooms near major NHS trusts, booked and paid through staff payroll deduction, so night-shift nurses, paramedics and doctors can sleep safely before driving.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show the core need is already being met by the hospitals themselves: an NHS trust spent £300,000 refurbishing 34 on-call overnight rooms at The Royal London, Whipps Cross and Newham so staff can rest between shifts, and a healthcare health, safety and wellbeing group has issued formal guidance on staff welfare facilities. On top of that, Dayuse and HotelsByDay already run UK-wide daytime hotel booking platforms with discounts of up to 75%, free cancellation and no card required, so a staff member wanting a day room after a night shift can alrea…",
+      "citations": [
+        {
+          "url": "https://www.bartscharity.org.uk/our-news/two-years-on-upgraded-staff-facilities-for-our-nhs-heroes/",
+          "domain": "bartscharity.org.uk"
+        },
+        {
+          "url": "https://www.nhsemployers.org/publications/welfare-facilities-healthcare-staff",
+          "domain": "nhsemployers.org"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Gig Deactivation Appeal Engine",
+      "oneLiner": "A web service that turns a gig worker's deactivation notice into a tailored, legally-structured appeal dossier using a proprietary dataset of 10,000+ successful arguments, with a machine learning model predicting the optimal evidence package and likelihood of reinstatement.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Two passages show the App Drivers & Couriers Union already offers exactly this service to UK drivers and couriers, 'expert support to challenge the decision and restore your livelihood' when an account is unfairly deactivated, and a second organisation, Worker Info Exchange, exists specifically to help Uber drivers and Deliveroo riders extract the platform data that an appeal would rest on. The platforms themselves also run structured appeal processes with published guidance on what evidence to gather and a 3-working-day decision [db029…",
+      "citations": [
+        {
+          "url": "https://adcu.org.uk/",
+          "domain": "adcu.org.uk"
+        },
+        {
+          "url": "https://adcu.org.uk/portal",
+          "domain": "adcu.org.uk"
+        },
+        {
+          "url": "https://www.workerinfoexchange.org/",
+          "domain": "workerinfoexchange.org"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Dead Stock Buyer for Independent Pharmacies",
+      "oneLiner": "A solo operator purchases expiring or slow-moving over-the-counter inventory from independent pharmacies at a steep discount, then repackages and sells it to veterinary clinics and nursing homes at a margin, solving the pharmacist's cash-flow and waste problem.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The passages describe UK community pharmacy as financially squeezed rather than able to fund new spending: over 1,000 English pharmacies closed between 2016 and 2026 and there has been a net loss of 865 sites (8%) since 2021, with commentary on cash-flow problems, financial distress feeding cash-flow instability, and a price-taker relationship with a dominant customer squeezing margins.",
+      "citations": [
+        {
+          "url": "https://commonslibrary.parliament.uk/research-briefings/cbp-9854/",
+          "domain": "commonslibrary.parliament.uk"
+        },
+        {
+          "url": "https://www.sandoz.com/uk-en/pressures-facing-community-pharmacy-and-their-implications-nhs-10-year-plan/",
+          "domain": "sandoz.com"
+        },
+        {
+          "url": "https://www.facebook.com/thedailystar/posts/breaking-newsbritish-pharmacy-chain-goes-into-administration-after-5m-loss-and-s/1353875973447985/",
+          "domain": "facebook.com"
+        },
+        {
+          "url": "https://papers.ssrn.com/sol3/Delivery.cfm/6441420.pdf?abstractid=6441420&mirid=1",
+          "domain": "papers.ssrn.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "CareEstate, The Specialist Care Equipment Liquidator",
+      "oneLiner": "A transaction broker that takes consigned specialist disability and care equipment (hoists, profiling beds, riser-recliner chairs, bath lifts, mobility scooters) from bereaved or transitioning families, coordinates inspection and valuation, and routes it to vetted B2B/B2C buyers, recovering £3,000-£15,000 per estate for time-poor primary carers.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Two passages describe Mobility Buyers as an existing UK service doing exactly this job, buying used or unwanted disability and mobility equipment from sellers, with photo-based submission and arranged collection, and Gumtree is described as the UK's #1 classifieds site carrying this same equipment category, so the proposed 'no one does specialist care-equipment resale' position is not open. The passages do not show any single firm holding most of this market, and one passage notes many mobility retailers refuse buy-backs…",
+      "citations": [
+        {
+          "url": "https://ms-uk.org/blog/return-sell-or-donate-your-mobility-aids/",
+          "domain": "ms-uk.org"
+        },
+        {
+          "url": "https://www.scope.org.uk/advice-and-support/selling-used-disability-equipment",
+          "domain": "scope.org.uk"
+        },
+        {
+          "url": "https://www.gumtree.com/for-sale/uk/srpsearch+riser-recliner-chair",
+          "domain": "gumtree.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Boatyard Parts Runner",
+      "oneLiner": "A solo operator provides same-day, on-demand delivery of marine engine and rigging parts from central suppliers to boatyards and repair yards within a 50-mile radius, charging a flat fee per run plus a percentage of the part cost.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show at least two firms already selling the exact service on the same stretch of coast: a Southampton marine parts courier offering same-day delivery of engine parts and sail hardware to boatyards and chandleries, and Swift Sameday, a specialist maritime courier handling urgent ship spares and chandlery supplies across the South Coast, alongside several general same-day operators in Southampton and Portsmouth.",
+      "citations": [
+        {
+          "url": "https://tclogistics.uk/services/yacht-marine-parts/southampton",
+          "domain": "tclogistics.uk"
+        },
+        {
+          "url": "https://swiftsameday.co.uk/industries/maritime-courier/",
+          "domain": "swiftsameday.co.uk"
+        },
+        {
+          "url": "https://faluxcourier.co.uk/same-day-courier/southampton",
+          "domain": "faluxcourier.co.uk"
+        },
+        {
+          "url": "https://www.dispatchit-couriers.co.uk/",
+          "domain": "dispatchit-couriers.co.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "AfterInk, the tattooist's client file with the age check and healing photos your council wants",
+      "oneLiner": "A pocket app for UK tattooists: photo-ID age check before every tattoo, then 1-week, 1-month and 3-month healing pings so you book the touch-up in time.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The only passages about UK tattoo businesses describe the trade in acute financial distress, a GMB official saying the situation was 'desperate', with operators losing their businesses and homes and two suicides reported; nothing here shows these operators holding spare budget for software. The remaining passages concern a film listing, a hotel-booking company's revenue, a music performance, and a global count of tattoo studios, none of which say what UK tattooists earn or spend.",
+      "citations": [
+        {
+          "url": "https://uk.finance.yahoo.com/news/tattoo-industry-approaching-breaking-point-124940160.html",
+          "domain": "uk.finance.yahoo.com"
+        },
+        {
+          "url": "https://www.gov.uk/government/collections/company-insolvency-statistics-releases",
+          "domain": "gov.uk"
+        },
+        {
+          "url": "https://companydata.com/blog/rexit-aftermath-uk-tattoo-studio-expansion-stalls/",
+          "domain": "companydata.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Planning Objection API",
+      "oneLiner": "An API that ingests a UK planning application's PDF (location, drawings, covering letter) and auto-generates a legally-formatted, hyper-local objection letter that cites specific policies from the Local Plan, ready for the objector to submit.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "One passage advertises an existing UK service that already does this exact job, a free planning objection scan that tells you which concerns carry planning weight and produces a downloadable editable draft objection letter for any UK council, and another offers free sample objection wording and a table of valid grounds. A free product already delivering the paid output leaves no evidence the space is open, though the passages do not say how large or well-funded that provider is.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "DescriptorDeck, The Carer's PIP Award Defence Workbench",
+      "oneLiner": "A vertical tool for primary carers that converts the DWP PIP2 form into a descriptor-by-descriptor evidence-builder, scoring each response against a proprietary database of HMCTS tribunal decisions and exporting a tribunal-ready bundle the carer submits themselves.",
+      "gate": "payer_solvency",
+      "gateLabel": "The payer cannot actually pay",
+      "reason": "The only passages about carers' finances say Carer's Allowance is £86.45 a week from April 2026 and that nearly two-thirds of recipients live in poverty, with most saying it falls short of their financial needs. On this evidence the carer buyer is a low-income, poverty-heavy group, and the passages also show free help already covers benefit form completion and tribunal representation, which undercuts both ability and reason to pay £39, £79 out of pocket.",
+      "citations": [
+        {
+          "url": "https://govexplained.co.uk/money-and-benefits/carers-allowance/",
+          "domain": "govexplained.co.uk"
+        },
+        {
+          "url": "https://www.carersuk.org/press-releases/government-confirms-benefit-increases-for-2026-27-including-rise-in-carer-s-allowance-and-earnings-threshold/",
+          "domain": "carersuk.org"
+        },
+        {
+          "url": "https://wecareyoucare.info/articles/changes-to-carers-allowance-from-april-2026",
+          "domain": "wecareyoucare.info"
+        },
+        {
+          "url": "https://www.sandwell.gov.uk/benefits-support/benefits-advice",
+          "domain": "sandwell.gov.uk"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Care Means-Test Challenge Data Pack",
+      "oneLiner": "A personalised intelligence report for retirees facing care funding assessments, exposing local authority thresholds, hidden criteria, and appeal success rates built from FOI-sourced data.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Multiple established players already occupy this space: Martin Searle Solicitors specialise in Community Care Law and financial-assessment challenges, other advisers negotiate the 'complicated rules' on families' behalf, and specialist deputies/advisers already challenge NHS Continuing Healthcare funding decisions and guide people through the CHC process.",
+      "citations": [
+        {
+          "url": "https://www.ms-solicitors.co.uk/community-care-law/planning-and-paying-for-care/",
+          "domain": "ms-solicitors.co.uk"
+        },
+        {
+          "url": "https://www.ashtonslegal.co.uk/your-life/care-home-funding/",
+          "domain": "ashtonslegal.co.uk"
+        },
+        {
+          "url": "https://www.boyesturner.com/personal/community-care",
+          "domain": "boyesturner.com"
+        },
+        {
+          "url": "https://www.expat.com/en/expat-mag/12902-caring-for-ageing-parents-in-the-uk-while-living-abroad.html",
+          "domain": "expat.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "BreakBroker, The Carer's Unpublished Respite-Bed Desk",
+      "oneLiner": "A transaction broker that fills care homes' empty (void) beds with self-funding family carers needing short respite stays, at private off-rate prices homes will never publish, taking a per-night commission on every matched stay.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages show two established free services already occupying the job of matching families to respite beds at national scale: Autumna, described as the UK's largest and most comprehensive elderly care directory, listing 10,917 respite care homes with real-time availability search and its own team of advisors, and carehome.co.uk, described as the UK's number one website for finding a care home with over 16,500 homes; Lottie offers free comparison and expert advice on top of that.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "GigProfile Architect, The Freelancer's Platform Profile Optimization Pack",
+      "oneLiner": "A data-driven profile overhaul for gig platforms like TaskRabbit, Fiverr, or Upwork that uses scraped competitor insights and AI-generated copy to boost visibility and conversion, sold as a one-off done-for-you service.",
+      "gate": "legality",
+      "gateLabel": "There is a legal landmine",
+      "reason": "The business model depends on scraping competitor profile data from gig platforms, but Upwork's terms explicitly prohibit scraping its site, and UK guidance notes the Computer Misuse Act 1990 can apply where scraping exceeds a site's authorised access.",
+      "citations": [],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "The Solo Scaffolder's Safety Certifier",
+      "oneLiner": "A mobile app that scaffolds a self-employed scaffolder through the entire TG20:21 compliance process, from wind-load calculation to digital handover, generating a site-specific, legally admissible safety report in under 15 minutes, sold as a per-job micro-transaction.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "The passages describe an existing TG20 eGuide with a built-in compliance sheet generator, and state that most scaffolding contractors already subscribe to it as a normal cost of doing business, that is the same job the candidate proposes to do, already bought by nearly everyone in the trade. Separately, commercial scaffold design software with paid monthly plans is also on sale, so the compliance-document need is already served rather than open.",
+      "citations": [
+        {
+          "url": "https://www.complys.co.uk/blog/tg20-scaffolding-compliance-explained",
+          "domain": "complys.co.uk"
+        },
+        {
+          "url": "https://safetyaccess.co.uk/news/understanding-tg2021/",
+          "domain": "safetyaccess.co.uk"
+        },
+        {
+          "url": "https://www.linkedin.com/pulse/understanding-tg2021-why-matters-every-scaffolder-safety-access-ltd-lha1e",
+          "domain": "linkedin.com"
+        },
+        {
+          "url": "https://www.avontus.com/designer/",
+          "domain": "avontus.com"
+        }
+      ],
+      "date": "2026-08-06"
+    },
+    {
+      "title": "BedBridge, the family carer's broker for the hospital bed your relative is blocking",
+      "oneLiner": "When a hospital wants your relative out, BedBridge sells that discharge slot to the care provider who gains most, and pays the family a share.",
+      "gate": "incumbency",
+      "gateLabel": "Incumbents already own the space",
+      "reason": "Lottie is a well-funded incumbent in the exact space of helping families find and compare care homes, having raised $21 million in a Series A from top-tier VCs Accel and General Catalyst, and offers cost filtering and expert advice. Autumna is described as the UK's largest later-life directory, and at least one other 'leading UK social care referral platform' also competes. A well-funded rival already serving this segment, even without running an auction specifically, shows the space is not open for a new entrant to claim incumbency.",
+      "citations": [],
+      "date": "2026-08-06"
+    }
+  ]
+}

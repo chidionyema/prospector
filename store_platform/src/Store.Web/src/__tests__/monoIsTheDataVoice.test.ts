@@ -81,10 +81,29 @@ describe('mono is the data voice', () => {
      * value), and `PriceArgument.tsx`'s "<amount> one time, yours forever" (mono now wraps the
      * amount only).
      *
+     *   90  after the structural design pass (2026-08-07), audited below
+     *
+     * WHY IT GREW TO 90. The pass added five data-dense surfaces that did not exist before: the
+     * hero dossier and the Gauntlet (a check-by-check verdict strip: ordinals, verdict tags,
+     * source hostnames, the survived/pushed-back tally), the ambient kill column (idea names and
+     * the gate that killed each), the price ladder (amounts and per-rung pack counts), the doc
+     * rail (section ordinals), and a killed/survived tally in the footer and on /about. Every one
+     * of those is a quantity, an identifier, a hostname or a verdict tag, which is the declared
+     * scope. The count rose because there are more places showing evidence, not because prose
+     * crept back into the mono.
+     *
+     * NINE FAILED THE AUDIT AND WERE CHANGED RATHER THAN COUNTED, all of them the eyebrow
+     * copy-paste this file exists to stop: `DocRail`'s eyebrow, `Gauntlet`'s "The idea that went
+     * in", `PriceLadder`'s two figcaption lines and its "N documents, every source cited" (a
+     * sentence with a number in it, not a value), and the four `killed` / `survived` /
+     * "ideas killed" / "survived and listed" LABELS under the tallies in `MarketingLayout` and
+     * `about.tsx` -- the figures above them stay mono, the words below them do not. Without those
+     * nine the total would read 99.
+     *
      * Raising this number still means claiming a new kind of DATA exists. Say which kind.
      */
     const total = TSX.reduce((n, f) => n + (f.src.match(/\bfont-mono\b/g)?.length ?? 0), 0);
-    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(53);
+    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(90);
   });
 
   it('the caption size utility is not secretly a typeface', () => {

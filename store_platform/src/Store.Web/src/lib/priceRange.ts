@@ -94,6 +94,39 @@ export function priceRange(packs: { price?: string | null }[]): PriceRange | nul
   };
 }
 
+/** One occupied rung of the ladder: a price, and how many packs sit on it. */
+export interface LadderRung {
+  amount: number;
+  count: number;
+}
+
+/**
+ * The rungs the shelf ACTUALLY occupies, cheapest first.
+ *
+ * The engine's ladder is declared in `config.yaml:925`
+ * (`rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]`, with `tier_rung_index` at `:943` mapping
+ * side_hustle/smb/growth/venture onto it and `market_rung_offset` at `:955` adding one rung for a
+ * US-market opportunity). That list is NOT what this returns, for the reason this whole module
+ * exists: config.yaml is not deployed with the storefront, and a page drawing seven rungs when the
+ * catalogue only sells on four would be illustrating a hypothesis while claiming to show a shelf.
+ * Config declares what prices are POSSIBLE; the catalogue is what is true.
+ *
+ * So an empty rung is simply absent. A visitor comparing this drawing against the catalogue finds
+ * every rung on it, at the count stated, which is the only property that matters on a page whose
+ * subject is "why does this cost what it costs".
+ */
+export function priceLadder(packs: { price?: string | null }[]): LadderRung[] {
+  const counts = new Map<number, number>();
+  for (const pack of packs) {
+    const amount = gbp(pack.price ?? '');
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    counts.set(amount, (counts.get(amount) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([amount, count]) => ({ amount, count }))
+    .sort((a, b) => a.amount - b.amount);
+}
+
 /**
  * The one-sentence honest description of the ladder, e.g.
  * "Most packs are £49. They run £29 to £199, priced per pack -- the price is on every pack page."

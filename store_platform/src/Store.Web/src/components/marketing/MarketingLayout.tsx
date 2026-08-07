@@ -5,6 +5,7 @@ import { Button, Logo, Icon } from '@/components/ui';
 import { CartButton } from '@/components/cart/CartButton';
 import { LEGAL, BRAND } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
+import { RESEARCH_STATS } from '@/lib/stats';
 import { useDisclosure } from '@/lib/useDisclosure';
 
 /**
@@ -33,6 +34,30 @@ export const MARKETING_NAV = [
   { href: '/kill-log', label: 'Kill log' },
   { href: '/faq', label: 'FAQ' },
 ] as const;
+
+/**
+ * Is `href` the section the visitor is currently in?
+ *
+ * WHY THIS EXISTS. Every nav item rendered `text-muted` on every page, so the chrome never told
+ * anyone where they were. On a site with five destinations and a lot of cross-linking between them
+ * (`/pack` sends people to `/how-it-works`, `/how-it-works` to `/kill-log`, `/kill-log` back to
+ * the shelf) that is the single cheapest orientation cue available, and it was absent.
+ *
+ * PREFIX MATCH, EXCEPT FOR `/`. `/ideas/<slug>` has to light up `Categories`, because a landing
+ * page IS the categories section -- an exact match would leave a visitor on the busiest branch of
+ * the site with no item lit at all. `/` is special-cased to an exact comparison for the opposite
+ * reason: every path on the site starts with a slash, so a prefix rule would mark `Catalogue`
+ * active on all five pages and the state would carry no information.
+ *
+ * Compared against `router.pathname`, the ROUTE pattern (`/ideas/[slug]`), not `asPath`: `asPath`
+ * carries the query string, so `/?search=1` -- which the header's own search button navigates to
+ * from every other page -- would stop matching `/` and the item would go dark at the exact moment
+ * the visitor arrived at the catalogue.
+ */
+function isActivePath(pathname: string, href: string): boolean {
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 interface MarketingLayoutProps {
   children: React.ReactNode;
@@ -105,9 +130,29 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
             </Link>
 
             <nav className="hidden items-center gap-7 md:flex">
-              {MARKETING_NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="text-meta font-medium text-muted transition-colors hover:text-text">{item.label}</Link>
-              ))}
+              {MARKETING_NAV.map((item) => {
+                const active = isActivePath(router.pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    /* `aria-current="page"` is the state; the ink and the rule are how it is
+                       drawn. Weight is deliberately NOT the signal -- the items are already
+                       `font-medium` and bumping the active one to semibold reflows the whole nav
+                       by a pixel or two on every navigation. Full-strength text against muted,
+                       plus a 2px rule sitting on the header's own bottom border, changes nothing
+                       about the box. */
+                    aria-current={active ? 'page' : undefined}
+                    className={`relative flex h-16 items-center text-meta font-medium transition-colors ${
+                      active
+                        ? 'text-text after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-text'
+                        : 'text-muted hover:text-text'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
 
@@ -166,16 +211,25 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           <div id="marketing-menu" className="animate-rise border-t border-border bg-surface shadow-2 md:hidden">
             <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-4 sm:px-6">
               <div className="py-2">
-                {MARKETING_NAV.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMenuOpen(false)}
-                    className="block py-3 text-body font-medium text-text"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {/* Same state, drawn differently, because the drawer has no bottom border for a
+                    rule to sit on and every item in it is already full-strength text. A left rule
+                    in the same ink is the equivalent mark on a stacked list. */}
+                {MARKETING_NAV.map((item) => {
+                  const active = isActivePath(router.pathname, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMenuOpen(false)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`block py-3 text-body font-medium ${
+                        active ? 'border-l-2 border-l-text pl-3 text-text' : 'text-muted'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
                 {/* The desktop Account link is hidden below md, so the mobile menu carries it. */}
                 <Link
                   href="/account"
@@ -216,14 +270,46 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
       <footer className="border-t border-border bg-surface2 pt-16 pb-[calc(3rem+env(safe-area-inset-bottom))]">
         <div className={SHELL}>
 
-          <div className="mb-12 max-w-md">
-            <Logo className="mb-3 text-h2" />
-            <p className="text-meta text-muted">
-              {/* "£49 each" removed: the footer renders on every page including ones with no
-                  catalogue loaded, and the shelf has not been one price since the segment
-                  ladder shipped. The live figures live on /pricing, which reads them. */}
-              Business ideas that survived the filter. Fully sourced, ready to build.
-            </p>
+          {/* THE FOOTER SAYS SOMETHING NO OTHER FOOTER SAYS.
+              It was a logo, a one-line blurb, three columns of links and a copyright, which is the
+              same footer every storefront on the internet ships and carries no signal that this
+              particular shop is different from any of them. The tally fixes that for the price of
+              two numbers we already hold: a reader who has scrolled to the bottom of any page on
+              the site ends on the ratio the whole business is built on, in the kill colour and the
+              survive colour, in mono.
+
+              The kill figure is set larger than the survivor figure, deliberately and for the same
+              reason it is on /about: any shop can print how many products it has, and only this one
+              can print how many it threw away.
+
+              `RESEARCH_STATS`, not the raw JSON, and NOT the number of packs on the shelf. These
+              are historical totals over every dossier the engine ever wrote, so a build-time
+              snapshot is correct for them; `published` moves with no redeploy and is why
+              `lib/stats.ts` refuses to carry it. */}
+          <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-md">
+              <Logo className="mb-3 text-h2" />
+              <p className="text-meta text-muted">
+                {/* "£49 each" removed: the footer renders on every page including ones with no
+                    catalogue loaded, and the shelf has not been one price since the segment
+                    ladder shipped. The live figures live on /pricing, which reads them. */}
+                Business ideas that survived the filter. Fully sourced, ready to build.
+              </p>
+            </div>
+            <dl className="m-0 flex flex-none items-end gap-10">
+              <div>
+                <dt className="text-caption text-kill">killed</dt>
+                <dd className="m-0 mt-1 font-mono text-h1 font-semibold leading-none tracking-tight text-text">
+                  {RESEARCH_STATS.killed.toLocaleString('en-GB')}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-caption text-survive">survived</dt>
+                <dd className="m-0 mt-1 font-mono text-h2 font-semibold leading-none tracking-tight text-text">
+                  {RESEARCH_STATS.survived.toLocaleString('en-GB')}
+                </dd>
+              </div>
+            </dl>
           </div>
 
           <div className="grid grid-cols-2 gap-8 border-t border-border pt-10 md:grid-cols-3">

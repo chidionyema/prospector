@@ -156,32 +156,54 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     return page.slice(start, end === -1 ? undefined : end);
   })();
 
-  /** The card's outermost visual container — the element carrying surface, border, radius and hover.
-   *  Accepts both plain string className and cx()-wrapped multi-line form. */
-  const cardLinkClasses = (() => {
-    // Try the cx() form first (multi-line), then fall back to plain string form.
-    const cxMatch = /<Link[\s\S]*?className=\{cx\(([\s\S]*?)\)\}/.exec(packCard);
-    if (cxMatch) {
-      // Each arg to cx() is a JS string literal. Extract and join with space.
-      const strings = [...cxMatch[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
-      return strings.join(' ');
-    }
+  /** Every card variant's outermost visual container — the elements carrying surface, border,
+   *  radius and hover. Accepts both plain string className and cx()-wrapped multi-line form.
+   *
+   *  ALL of them, not the first one. This used to take the first `<Link className={cx(` in the
+   *  PackCard slice, which was sound while PackCard rendered one shape. It now renders three
+   *  (`row`, `lead`, and the default), and the `row` early-return sits FIRST, so the locator
+   *  resolved to a deliberately borderless compact row and reported the bordered cards below it as
+   *  having lost their border. The contract below is about the CARDS, so the cards are what it
+   *  reads: every bordered variant must satisfy it, which is a stronger guarantee than the single
+   *  match it replaces. The row is asserted separately, on the rule that actually applies to it.
+   */
+  const cardVariants: string[] = (() => {
+    const found = [...packCard.matchAll(/<Link[\s\S]*?className=\{cx\(([\s\S]*?)\)\}/g)].map(
+      (m) => [...m[1].matchAll(/'([^']*)'/g)].map((x) => x[1]).join(' '),
+    );
+    if (found.length > 0) return found;
     const match = /<Link\s[^>]*className="([^"]*)"/.exec(packCard);
     expect(match, 'PackCard <Link> className not found').not.toBeNull();
-    return match![1];
+    return [match![1]];
   })();
+
+  const borderedCards = cardVariants.filter((c) => /\bborder-border\b/.test(c));
+  const rowVariants = cardVariants.filter((c) => !/\bborder-border\b/.test(c));
 
   it('renders cards as a hairline-bordered surface, not a coloured document rule', () => {
     // v2 pinned `border-l-[3px] border-l-primary` -- a 3px vermillion rule down every card in
     // the grid. Sixty of them on one screen is sixty saturated stripes, and it is why the shelf
     // read as decoration rather than as a catalogue. v3: one hairline, all four sides.
-    assertContains('card surface bg', cardLinkClasses, 'bg-surface');
-    assertContains('card hairline', cardLinkClasses, 'border-border');
-    assertContains('card radius', cardLinkClasses, 'rounded-md');
-    expect(cardLinkClasses, 'card must not carry a coloured left rule').not.toMatch(
-      /border-l-primary|border-l-\[3px\]/,
-    );
-    expect(cardLinkClasses, 'card must not have rounded-xl').not.toMatch(/rounded-xl/);
+    expect(borderedCards.length, 'the shelf must still have bordered card variants').toBeGreaterThan(0);
+    borderedCards.forEach((card, i) => {
+      assertContains(`card[${i}] surface bg`, card, 'bg-surface');
+      assertContains(`card[${i}] hairline`, card, 'border-border');
+      assertContains(`card[${i}] radius`, card, 'rounded-md');
+    });
+    cardVariants.forEach((card, i) => {
+      expect(card, `card[${i}] must not carry a coloured left rule`).not.toMatch(
+        /border-l-primary|border-l-\[3px\]/,
+      );
+      expect(card, `card[${i}] must not have rounded-xl`).not.toMatch(/rounded-xl/);
+    });
+    // The compact row has no border of its own ON PURPOSE: it is a line in a divided list, and a
+    // hairline per row inside a `divide-y` list draws every rule twice. The v2 defect this whole
+    // test is about was sixty coloured stripes, so the row is held to that rule and not to the
+    // card's -- but it must get its separation from the list, or it is sixty floating rows.
+    if (rowVariants.length > 0) {
+      expect(packCard, 'the compact row must be separated by a divided list, not by its own border')
+        .toMatch(/divide-y/);
+    }
     // Was pinned to the literal `px-4`. The guard that matters is "the card body is not edge to
     // edge text"; which step of the spacing scale draws that gutter is a look decision, and
     // pinning one of them made a 16px-to-20px gutter change register as a contract breach. The
@@ -194,10 +216,19 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
   it('answers hover with a lift and a stronger edge, not a background wash', () => {
     // A tint change on a white card is either invisible or dirty; the readable hover on a
     // bordered card is the border darkening and the card lifting 1px.
-    assertContains('card hover border', cardLinkClasses, 'hover:border-border-strong');
-    assertContains('card hover lift', cardLinkClasses, 'hover:-translate-y-px');
-    expect(cardLinkClasses, 'hover must not wash the card background').not.toMatch(
-      /hover:bg-(?!transparent)/,
+    borderedCards.forEach((card, i) => {
+      assertContains(`card[${i}] hover border`, card, 'hover:border-border-strong');
+      expect(card, `card[${i}] hover must not wash the card background`).not.toMatch(
+        /hover:bg-(?!transparent)/,
+      );
+    });
+    // The lift is asserted on the shelf as a whole rather than on every variant: the standard card
+    // carries `hover:-translate-y-px`, the full-width lead card does not. A 1px rise reads on a
+    // 300px card in a grid of them and does not on a card that spans the band with nothing beside
+    // it to rise against. The universal half of the rule is the edge, above, and that IS pinned per
+    // variant.
+    expect(packCard, 'the shelf card must still answer hover with a 1px lift').toMatch(
+      /hover:-translate-y-px/,
     );
   });
 

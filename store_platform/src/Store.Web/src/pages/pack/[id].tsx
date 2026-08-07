@@ -22,6 +22,7 @@ import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPan
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import DossierExcerptPlate from '@/components/marketing/DossierExcerptPlate';
 import PackCover from '@/components/marketing/PackCover';
+import PackMark from '@/components/ui/PackMark';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
@@ -282,6 +283,33 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
         <p className="mt-1 text-caption text-subtle">{formatApproxNote(currency)}</p>
       )}
 
+      {/*
+       * WHY THIS NUMBER, against the number.
+       *
+       * The rail printed a price and then eight lines of reassurance about refunds and downloads,
+       * which answers "is it safe to pay" and never answers "why is it this". A buyer looking at
+       * £29 beside a £199 pack on the same shelf asks the second question first, and the page that
+       * answers it was /pricing -- a click away, from a rail that gave no reason to go.
+       *
+       * The claim is the engine's actual rule, not a sales line: `pricing.py` picks a rung on a
+       * ladder declared in `config.yaml listing.pricing` from (ambition_tier x market), so the
+       * price genuinely tracks how big the idea could get and which market it targets, and
+       * genuinely does not track document count -- every pack ships the same eight files. It is
+       * one sentence and a link because the rail is the wrong place to argue it at length; the
+       * full argument, with the ladder, is on /pricing where the reader chose to read it.
+       *
+       * Deliberately NOT stated as this pack's own tier: `PackDetails` carries no ambition tier
+       * (lib/api/client.ts), so naming a rung here would be a number the page cannot source.
+       */}
+      <p className="mt-2 text-caption leading-relaxed text-subtle">
+        Set by how big this idea could get and the market it targets, never by the size of the
+        download.{' '}
+        <Link href="/pricing" className="text-accent underline underline-offset-2 hover:text-accent-hover">
+          See the ladder
+        </Link>
+        .
+      </p>
+
       {/* The three terms of the sale, as three plain lines. Only the tick is coloured, and only
           because the survival line is the one claim here that IS a check result -- so it states
           this pack's real count (`parseCheckCounts`), not the flat "all 6" it used to claim.
@@ -479,6 +507,34 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
              * "{n} sources cited" while `DossierExcerptPlate` printed the same count immediately
              * above it. One fact, rendered once, in the data voice.
              */}
+            {/*
+             * THE MORPH TARGET.
+             *
+             * The shelf's lead card renders `<PackMark morph />` (pages/index.tsx:354) and until
+             * now nothing on this page claimed the same `view-transition-name`, so the shared
+             * element had a source and no destination: the browser cross-faded the whole root and
+             * the one animation worth paying for never ran. This strip is the other half.
+             *
+             * 96px, not 550px. The full-bleed sector cover was deleted for a measured reason
+             * (see the note in `PackCover`): it pushed the h1, the price and the buy button below
+             * the fold on a 1280x720 viewport. A strip this tall is a masthead, not a hero -- it
+             * gives the transition somewhere to land and gives the page the pack's own mark,
+             * without spending the fold on decoration.
+             *
+             * `cat.tint`/`cat.ink` and NOT a hash-derived hue: the mark draws in `currentColor`,
+             * so form means this pack and colour still means sector. The chip and the dossier
+             * number stay in `PackCover` below rather than being overlaid here, because a label
+             * sitting on top of the mark is the thing that turns a masthead back into a cover.
+             */}
+            <div
+              className={cx(
+                'relative mb-3 h-20 w-full overflow-hidden rounded-md sm:h-24',
+                cat.tint,
+                cat.ink,
+              )}
+            >
+              <PackMark id={pack.id} morph />
+            </div>
             <PackCover pack={pack} className="mb-6" />
 
             {/* No `md:text-display` (48px). Titles here average ~90 characters, so at 48px the

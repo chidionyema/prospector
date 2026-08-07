@@ -6,6 +6,7 @@ import { buttonClasses, Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
+import DocRail, { type DocSectionRef } from '@/components/marketing/DocRail';
 import { freshnessLabel } from '@/lib/api/client';
 import report from '@/data/sample-report.json';
 
@@ -43,6 +44,53 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     </span>
   );
 }
+
+/*
+  THE DOCUMENT MODEL, HOISTED TO MODULE SCOPE.
+
+  `sample-report.json` is a static import, so every derived fact below is knowable before render and
+  none of it can change between renders. That is not a micro-optimisation here, it is a correctness
+  requirement: `DocRail` observes the document in a `useEffect` keyed on the `sections` array, and
+  an array rebuilt on every render would tear down and re-create the IntersectionObserver each time
+  the rail set its own active-section state. Hoisting makes the identity stable by construction
+  rather than by remembering to memoise.
+*/
+const CHECKS = report.checks as Check[];
+const SCORES = report.scores as Record<string, number>;
+const AXES = Object.entries(AXIS_LABELS).filter(([k]) => k in SCORES);
+/* Counted from the checks themselves, never from `report.total - report.supported`. The JSON's
+   `total` is what produced the "7 of 8" fraction this page no longer states, and a derived count
+   that disagrees with the rendered rows is exactly the kind of drift the fraction caused. */
+const PUSHED_BACK = CHECKS.filter((c) => c.verdict !== 'supported').length;
+const FIRST_PUSHBACK = CHECKS.findIndex((c) => c.verdict !== 'supported');
+const HAS_COUNTER = Boolean(report.premortem.strongestAlternative || report.adversarial.killCase);
+
+/* The first pushed-back check keeps the `pushback` id, because the hero has linked to `#pushback`
+   since before the rail existed and that anchor is the most valuable link on the page. An element
+   has one id, so the rest are keyed by the engine's own check key. */
+function checkAnchor(index: number): string {
+  return index === FIRST_PUSHBACK ? 'pushback' : `check-${CHECKS[index].key}`;
+}
+
+/* Every check is listed individually rather than as one "Every check" entry. The rail is where the
+   reader learns the document's shape, and the shape of this document is eight named attacks with
+   one of them pushing back. Collapsing them to a single line hides both the count and the
+   objection, which are the two facts most worth finding. */
+const SECTIONS: DocSectionRef[] = [
+  { id: 'opportunity', label: 'The opportunity' },
+  ...(AXES.length > 0 ? [{ id: 'scored', label: 'The stress test, scored' }] : []),
+  { id: 'checks', label: `Every check (${CHECKS.length})` },
+  ...CHECKS.map((check, i): DocSectionRef => ({
+    id: checkAnchor(i),
+    label: check.name,
+    nested: true,
+    ...(check.verdict === 'supported'
+      ? { note: 'ok' }
+      : { note: 'pushed back', tone: 'kill' as const }),
+  })),
+  ...(HAS_COUNTER ? [{ id: 'counter', label: 'The case against it' }] : []),
+  { id: 'buy', label: 'Every pack is built like this' },
+];
 
 /**
  * The row of openable sources under a block of the report.
@@ -83,13 +131,6 @@ function SourceChips({ sources }: { sources: Source[] }) {
 }
 
 export default function SamplePage() {
-  const checks = report.checks as Check[];
-  const scores = report.scores as Record<string, number>;
-  const axes = Object.entries(AXIS_LABELS).filter(([k]) => k in scores);
-  /* Counted from the checks themselves, never from `report.total - report.supported`. The JSON's
-     `total` is what produced the "7 of 8" fraction this page no longer states, and a derived count
-     that disagrees with the rendered rows is exactly the kind of drift the fraction caused. */
-  const pushedBack = checks.filter((c) => c.verdict !== 'supported').length;
 
   return (
     <MarketingLayout>
@@ -110,7 +151,16 @@ export default function SamplePage() {
           desktop-about-fold.png, 2026-08-06). `PageHero` had already recorded why that is wrong
           (blocks.tsx:61): a centred ragged-both-edges paragraph starts every line at a different x.
           The rule existed; this page just was not using the component that carried it. */}
-      <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
+      {/* `7xl` and the rail grid, matching the report band below, so this page has ONE left edge.
+          It was `6xl` with no grid: the headline then started at the 6xl margin while every line of
+          the report started at the 7xl margin plus the 14rem rail, which is the two-left-margins
+          defect `storefrontDesignContract` was written to catch. Widening the band alone does not
+          fix it (the report is still inset by the rail), so the hero takes the same grid with an
+          empty rail column and the two columns line up. */}
+      <SectionBand bg="white" width="7xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
+        <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-14">
+          <div aria-hidden />
+          <div className="min-w-0">
         <p className="mb-4 text-caption font-medium text-muted">
           Report #00 · The free sample
         </p>
@@ -148,13 +198,13 @@ export default function SamplePage() {
             <Icon name="check" size={14} className="text-success" />
             {report.supported} checks cleared
           </span>
-          {pushedBack > 0 && (
+          {PUSHED_BACK > 0 && (
             <a
               href="#pushback"
               className="inline-flex items-center gap-2 text-warning underline-offset-2 hover:underline"
             >
               <Icon name="shield" size={14} />
-              {pushedBack === 1 ? '1 objection we could not dismiss' : `${pushedBack} objections we could not dismiss`}
+              {PUSHED_BACK === 1 ? '1 objection we could not dismiss' : `${PUSHED_BACK} objections we could not dismiss`}
             </a>
           )}
           <span className="inline-flex items-center gap-2">
@@ -168,11 +218,28 @@ export default function SamplePage() {
             </span>
           )}
         </div>
+          </div>
+        </div>
       </SectionBand>
 
-      <Section bg="bg" width="6xl" className="!pt-6 !pb-24">
+      {/*
+        THE READING APPLICATION.
+
+        `7xl`, the same band the hero above declares. The rail is new width, and taking it out of
+        the old measure would have narrowed the document itself; the band grew by roughly the width
+        of the rail so the report column keeps the measure it already had, and every paragraph
+        inside it keeps its own `max-w-[68ch]` cap regardless.
+
+        `lg:` and above only. Below that the rail does not render at all (see `DocRail`) and the
+        grid collapses to the single column this page has always been, so nothing about the mobile
+        reading experience changes.
+      */}
+      <Section bg="bg" width="7xl" className="!pt-6 !pb-24">
+        <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-14">
+          <DocRail sections={SECTIONS} eyebrow="Report #00 · contents" />
+          <div className="min-w-0">
         {/* The idea */}
-        <div className="rounded-md border border-border bg-surface p-7 md:p-9">
+        <div id="opportunity" className="scroll-mt-24 rounded-md border border-border bg-surface p-7 md:p-9">
      <span className="text-caption font-medium text-muted">
             The opportunity
           </span>
@@ -193,15 +260,15 @@ export default function SamplePage() {
         </div>
 
         {/* Scorecard */}
-        {axes.length > 0 && (
-          <div className="mt-10">
+        {AXES.length > 0 && (
+          <div id="scored" className="mt-10 scroll-mt-24">
             <h2 className="text-h2 font-semibold text-text">The stress test, scored</h2>
             <p className="mt-2 max-w-[60ch] text-meta text-muted">
               Scored on six axes out of five. The weak bars are shown too. That is the point.
             </p>
             <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-              {axes.map(([key, label]) => {
-                const v = scores[key];
+              {AXES.map(([key, label]) => {
+                const v = SCORES[key];
                 const tone = v >= 4 ? 'bg-success' : v === 3 ? 'bg-text/40' : 'bg-warning';
                 return (
                   <div key={key} className="flex flex-col gap-1.5">
@@ -225,7 +292,7 @@ export default function SamplePage() {
         )}
 
         {/* The checks */}
-        <div className="mt-10">
+        <div id="checks" className="mt-10 scroll-mt-24">
           <h2 className="text-h2 font-semibold text-text">Every check, every source</h2>
           {/* The second sentence exists to answer the question the amber row below provokes and
               previously left hanging: "one of these failed, so why are you selling it?" The answer
@@ -240,7 +307,7 @@ export default function SamplePage() {
             yourself. None of this is our opinion; it is what the pages actually said.
           </p>
           <ul className="mt-6 list-none space-y-4 p-0">
-            {checks.map((ch, i) => (
+            {CHECKS.map((ch, i) => (
               <li
                 key={i}
                 /* The FIRST pushed-back check carries the `#pushback` anchor the hero links to,
@@ -248,7 +315,7 @@ export default function SamplePage() {
                    "1 objection we could not dismiss" has to land on something that looks like the
                    thing they clicked; scrolling them to a row identical to the seven above it
                    makes the link feel broken. `scroll-mt-24` clears the sticky header. */
-                id={ch.verdict !== 'supported' && checks.findIndex((c) => c.verdict !== 'supported') === i ? 'pushback' : undefined}
+                id={checkAnchor(i)}
                 className={cx(
                   'rounded-md border p-5 md:p-6 scroll-mt-24',
                   ch.verdict === 'supported'
@@ -269,7 +336,7 @@ export default function SamplePage() {
 
         {/* The strongest argument against it */}
         {(report.premortem.strongestAlternative || report.adversarial.killCase) && (
-          <div className="mt-10 rounded-md border border-warning/30 bg-warning/5 p-7 md:p-9">
+          <div id="counter" className="mt-10 scroll-mt-24 rounded-md border border-warning/30 bg-warning/5 p-7 md:p-9">
             <div className="flex items-center gap-2">
               <Icon name="shield" size={16} className="text-warning" />
               {/* Sans. This is a section heading in English, not a verdict tag: it names the
@@ -298,7 +365,7 @@ export default function SamplePage() {
         )}
 
         {/* CTA */}
-        <div className="mt-12 rounded-md border border-border bg-surface p-8 text-center md:p-10">
+        <div id="buy" className="mt-12 scroll-mt-24 rounded-md border border-border bg-surface p-8 text-center md:p-10">
           <h2 className="mx-auto max-w-[24ch] text-balance text-h2 font-semibold text-text md:text-h1">
             That was free. Every pack on the shelf is built like this.
           </h2>
@@ -318,6 +385,8 @@ export default function SamplePage() {
         {/* Second position, under the buy CTA: a reader who wants a pack should buy one, and the
             address is only the fallback when nothing on the shelf fits them yet. */}
         <WaitlistCallout />
+          </div>
+        </div>
       </Section>
     </MarketingLayout>
   );

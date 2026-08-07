@@ -23,7 +23,9 @@ import { priceRange, formatGbp } from '@/lib/priceRange';
  * and a stale list is worse than none because it teaches a model URLs that 404.
  *
  * Deliberately NOT here: anything from inside a pack. The bundle is the product; this file
- * advertises the shelf.
+ * advertises the shelf. The manifest.jsonld paragraph is not an exception to that: it describes the
+ * SHAPE of what a buyer receives, which is the one thing an agent evaluating the purchase needs and
+ * cannot get any other way, and quotes none of the content.
  */
 
 // Keep the file small enough to be read in full. The catalogue is newest-first, so a cap keeps the
@@ -94,6 +96,15 @@ A pack is a zip of plain Markdown (5,000+ words), eight documents: an executive 
 spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing
 assets, and a QA report with a source behind every claim. It is delivered instantly on payment and
 carries a 14-day, no-questions refund.
+
+Every pack also ships manifest.jsonld, a JSON-LD document written for the agent rather than the
+reader. It lists every file with its sha256 and its reading position, and it carries the
+verification record as schema.org ClaimReview nodes, one per check, each with the verdict, the
+confidence, the rationale, and the sources it cites. Every source node carries the URL, the fetch
+date, and the exact passage the model was shown when it ruled. That last part is the point: an agent
+can re-check a ruling against the same text the ruling was formed from, offline, without refetching
+a page that may since have changed. Verdicts are supported, refuted, or unverifiable, and
+unverifiable is a finding (retrieval ran and no passage settled it), not a missing value.
 
 What a pack is NOT, stated so it is not inferred wrongly: it is not financial, legal, or investment
 advice, and it is not a guarantee that the business will succeed. The guarantee is that the
