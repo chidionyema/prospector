@@ -1,0 +1,1201 @@
+{
+  "headline": {
+    "levels": [
+      8,
+      6,
+      4,
+      1
+    ],
+    "knee_n": 8,
+    "cross_talk_calls": 0,
+    "bad_calls": 50,
+    "total_calls": 132,
+    "daemon_quiet": true,
+    "foreign_cli_peak": 2,
+    "foreign_cli_kinds": [
+      "hermes_executor"
+    ],
+    "single_tenant": false,
+    "order_effect_material": true
+  },
+  "quiet_state": {
+    "PAUSE": true,
+    "PAUSE_GENERATION": true
+  },
+  "foreign_cli_peak_by_level": {
+    "8": 2,
+    "6": 2,
+    "4": 2,
+    "1": 2
+  },
+  "table": [
+    {
+      "n": 8,
+      "reps": 2,
+      "calls": 32,
+      "governor_max": 8,
+      "ok": 32,
+      "cross_talk": 0,
+      "malformed": 0,
+      "error": 0,
+      "p50_s": 13.79,
+      "p90_s": 16.88,
+      "max_s": 18.67,
+      "wall_s_per_rep": [
+        25.84,
+        35.12
+      ],
+      "calls_per_s": 0.525,
+      "throughput_x": 2.78
+    },
+    {
+      "n": 6,
+      "reps": 2,
+      "calls": 36,
+      "governor_max": 6,
+      "ok": 18,
+      "cross_talk": 0,
+      "malformed": 0,
+      "error": 18,
+      "p50_s": 11.92,
+      "p90_s": 13.27,
+      "max_s": 13.61,
+      "wall_s_per_rep": [
+        39.72,
+        33.83
+      ],
+      "calls_per_s": 0.489,
+      "throughput_x": 2.59
+    },
+    {
+      "n": 4,
+      "reps": 2,
+      "calls": 32,
+      "governor_max": 4,
+      "ok": 16,
+      "cross_talk": 0,
+      "malformed": 0,
+      "error": 16,
+      "p50_s": 8.23,
+      "p90_s": 11.66,
+      "max_s": 12.19,
+      "wall_s_per_rep": [
+        46.99,
+        22.8
+      ],
+      "calls_per_s": 0.458,
+      "throughput_x": 2.43
+    },
+    {
+      "n": 1,
+      "reps": 2,
+      "calls": 32,
+      "governor_max": 1,
+      "ok": 16,
+      "cross_talk": 0,
+      "malformed": 0,
+      "error": 16,
+      "p50_s": 4.88,
+      "p90_s": 7.19,
+      "max_s": 9.57,
+      "wall_s_per_rep": [
+        105.38,
+        64.07
+      ],
+      "calls_per_s": 0.189,
+      "throughput_x": 1.0
+    }
+  ],
+  "gains": [
+    {
+      "n": 8,
+      "gain_over_prev": null
+    },
+    {
+      "n": 6,
+      "gain_over_prev": -0.069
+    },
+    {
+      "n": 4,
+      "gain_over_prev": -0.063
+    },
+    {
+      "n": 1,
+      "gain_over_prev": -0.587
+    }
+  ],
+  "ordering_control": {
+    "n": 8,
+    "p50_pooled_s": 13.79,
+    "p50_last_s": 8.54,
+    "drift_frac": 0.381,
+    "order_effect_material": true
+  },
+  "raw": {
+    "8": [
+      {
+        "n": 8,
+        "governor_max": 8,
+        "wall_s": 25.839,
+        "waves": 2,
+        "warm_waves": 1,
+        "warm_wall_s": 13.507,
+        "warm_outcomes": {
+          "ok": 8
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 12.136,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 12.28,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 12.066,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 12.701,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 4,
+            "latency_s": 12.709,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 5,
+            "latency_s": 12.365,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 6,
+            "latency_s": 11.804,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 7,
+            "latency_s": 12.333,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 12.432,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 12.508,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 12.554,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 12.963,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 4,
+            "latency_s": 13.093,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 5,
+            "latency_s": 12.406,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 6,
+            "latency_s": 12.95,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 7,
+            "latency_s": 12.459,
+            "error": null,
+            "outcome": "ok"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 2,
+          "procs": [
+            {
+              "pid": 48628,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            },
+            {
+              "pid": 49138,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            }
+          ],
+          "kinds": [
+            "hermes_executor"
+          ]
+        }
+      },
+      {
+        "n": 8,
+        "governor_max": 8,
+        "wall_s": 35.122,
+        "waves": 2,
+        "warm_waves": 1,
+        "warm_wall_s": 18.796,
+        "warm_outcomes": {
+          "ok": 8
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 14.765,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 14.487,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 16.018,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 14.664,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 4,
+            "latency_s": 16.448,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 5,
+            "latency_s": 15.218,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 6,
+            "latency_s": 15.555,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 7,
+            "latency_s": 14.872,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 18.666,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 16.167,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 15.901,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 17.492,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 4,
+            "latency_s": 17.016,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 5,
+            "latency_s": 17.102,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 6,
+            "latency_s": 16.426,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 7,
+            "latency_s": 16.882,
+            "error": null,
+            "outcome": "ok"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 2,
+          "procs": [
+            {
+              "pid": 48628,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            },
+            {
+              "pid": 49138,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            }
+          ],
+          "kinds": [
+            "hermes_executor"
+          ]
+        }
+      }
+    ],
+    "6": [
+      {
+        "n": 6,
+        "governor_max": 6,
+        "wall_s": 39.716,
+        "waves": 3,
+        "warm_waves": 1,
+        "warm_wall_s": 13.716,
+        "warm_outcomes": {
+          "ok": 6
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 12.045,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 13.613,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 12.917,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 13.273,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 4,
+            "latency_s": 13.421,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 5,
+            "latency_s": 12.84,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 12.524,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 11.312,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 11.603,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 11.619,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 4,
+            "latency_s": 11.308,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 5,
+            "latency_s": 11.86,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 13.573,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 10.628,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 11.316,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 11.401,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 4,
+            "latency_s": 12.268,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 5,
+            "latency_s": 12.071,
+            "error": null,
+            "outcome": "ok"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 2,
+          "procs": [
+            {
+              "pid": 48628,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            },
+            {
+              "pid": 49138,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            }
+          ],
+          "kinds": [
+            "hermes_executor"
+          ]
+        }
+      },
+      {
+        "n": 6,
+        "governor_max": 6,
+        "wall_s": 33.834,
+        "waves": 3,
+        "warm_waves": 1,
+        "warm_wall_s": 13.367,
+        "warm_outcomes": {
+          "error": 6
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 11.318,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1327,\"uuid\":\"842b889a-add6-4404-8d6b-fb5d5de539a3\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 1,
+            "latency_s": 11.965,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1276,\"uuid\":\"cb44f396-7c93-448d-93b5-b69f6044d450\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 2,
+            "latency_s": 11.874,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1492,\"uuid\":\"baf707c7-8441-47d8-ac09-e580caea7527\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 3,
+            "latency_s": 11.257,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1279,\"uuid\":\"71054a84-4732-4698-8632-391fda4e49d6\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 4,
+            "latency_s": 11.264,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1128,\"uuid\":\"d7775d7f-3b2f-4d83-8018-79126d366a8b\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 5,
+            "latency_s": 13.234,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":3082,\"uuid\":\"177e862c-a868-401a-ab24-b9e0e24c64fc\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 12.558,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1080,\"uuid\":\"a7b0d95a-2f56-441f-8aeb-292bb51b2472\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 1,
+            "latency_s": 12.754,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":954,\"uuid\":\"93ffc483-af97-46c8-85e9-e48dc40e961c\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 2,
+            "latency_s": 12.487,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":759,\"uuid\":\"70b87585-4c72-4b6f-a271-2d40be729a7a\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 3,
+            "latency_s": 13.365,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1075,\"uuid\":\"6909540a-ffe9-48cc-bdca-fbfc01be2664\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 4,
+            "latency_s": 12.953,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":743,\"uuid\":\"4c9c7426-e84b-475c-8619-cc2c17d9e06e\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 5,
+            "latency_s": 12.617,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1510,\"uuid\":\"3ee21f57-8552-4418-8bf6-e6a5aea43d5e\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 6.508,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":879,\"uuid\":\"67bf152e-d93b-4355-9b3f-8c7fda9ec01c\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 1,
+            "latency_s": 6.462,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1098,\"uuid\":\"2cc2f1c4-0319-4b2f-b38b-a681cf554748\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 2,
+            "latency_s": 7.218,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1176,\"uuid\":\"b0240317-460d-4a2e-b13d-59fa4eef8a67\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 3,
+            "latency_s": 6.822,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":913,\"uuid\":\"c32cb2db-77cb-4b86-9d76-3b5ea6217e53\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 4,
+            "latency_s": 6.495,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1067,\"uuid\":\"48a83b14-5a7c-4a9b-8846-fcf146536d68\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 5,
+            "latency_s": 6.748,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":740,\"uuid\":\"623b3162-9929-4f70-a41c-8106cf6a16fc\"}",
+            "outcome": "error"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 2,
+          "procs": [
+            {
+              "pid": 48628,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            },
+            {
+              "pid": 49138,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            }
+          ],
+          "kinds": [
+            "hermes_executor"
+          ]
+        }
+      }
+    ],
+    "4": [
+      {
+        "n": 4,
+        "governor_max": 4,
+        "wall_s": 46.992,
+        "waves": 4,
+        "warm_waves": 1,
+        "warm_wall_s": 11.281,
+        "warm_outcomes": {
+          "ok": 4
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 11.623,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 12.192,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 11.698,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 12.057,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 11.56,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 11.177,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 11.554,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 11.874,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 11.664,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 11.371,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 11.241,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 11.514,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 10.362,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 1,
+            "latency_s": 10.298,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 2,
+            "latency_s": 10.18,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 3,
+            "latency_s": 11.249,
+            "error": null,
+            "outcome": "ok"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 2,
+          "procs": [
+            {
+              "pid": 48628,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            },
+            {
+              "pid": 49138,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            }
+          ],
+          "kinds": [
+            "hermes_executor"
+          ]
+        }
+      },
+      {
+        "n": 4,
+        "governor_max": 4,
+        "wall_s": 22.801,
+        "waves": 4,
+        "warm_waves": 1,
+        "warm_wall_s": 6.35,
+        "warm_outcomes": {
+          "error": 4
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 5.056,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":667,\"uuid\":\"b5c02e62-cd7d-4bf8-95eb-fab9bc32aaf3\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 1,
+            "latency_s": 5.076,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":711,\"uuid\":\"cf8017ea-fdd2-4ffc-8f98-684f5a7d1c79\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 2,
+            "latency_s": 5.074,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":715,\"uuid\":\"291801ef-b3f8-44ae-a2ff-aee7ab3554ea\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 3,
+            "latency_s": 5.182,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":642,\"uuid\":\"3477fac6-47bd-4527-8ca7-3caa0b687e01\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.084,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":699,\"uuid\":\"60b30a56-6323-4e90-bbb8-014264a20bca\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 1,
+            "latency_s": 5.831,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1604,\"uuid\":\"ee6ea0e0-400e-4f12-a42c-2a7dac403270\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 2,
+            "latency_s": 5.086,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":743,\"uuid\":\"d9272d27-6231-49b1-a9bb-ceee456ecdc5\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 3,
+            "latency_s": 5.087,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":678,\"uuid\":\"dbad7e73-f6db-4425-a514-4f02ba44261e\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.188,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":819,\"uuid\":\"06c96f46-c57c-4f80-9774-d51e049e1525\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 1,
+            "latency_s": 5.207,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":714,\"uuid\":\"96d205d3-7483-4e12-8d97-3b8afbd1c471\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 2,
+            "latency_s": 5.154,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":658,\"uuid\":\"46185129-83c3-441b-9971-08c2536f54e2\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 3,
+            "latency_s": 6.289,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1964,\"uuid\":\"4f60caad-c6d7-42d0-a7e0-15bc4eabc818\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.002,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":696,\"uuid\":\"55a8ea89-f904-4360-8f93-8d1cd722adb6\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 1,
+            "latency_s": 5.492,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":867,\"uuid\":\"524e3193-f4b3-4508-bc53-0beec97a603d\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 2,
+            "latency_s": 5.055,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":729,\"uuid\":\"ab1eb6d4-e49a-4c8b-b0c9-bdb67f2b4a8c\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 3,
+            "latency_s": 5.048,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":672,\"uuid\":\"5ee7f1c5-2029-4fde-9694-3f6ba1538d70\"}",
+            "outcome": "error"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 0,
+          "procs": [],
+          "kinds": []
+        }
+      }
+    ],
+    "1": [
+      {
+        "n": 1,
+        "governor_max": 1,
+        "wall_s": 105.378,
+        "waves": 16,
+        "warm_waves": 1,
+        "warm_wall_s": 7.501,
+        "warm_outcomes": {
+          "ok": 1
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 8.819,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 7.984,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 6.192,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.724,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.98,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.3,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.459,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 7.208,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.014,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.927,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 5.373,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 7.19,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 9.566,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 6.452,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 7.181,
+            "error": null,
+            "outcome": "ok"
+          },
+          {
+            "i": 0,
+            "latency_s": 6.993,
+            "error": null,
+            "outcome": "ok"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 2,
+          "procs": [
+            {
+              "pid": 48628,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            },
+            {
+              "pid": 49138,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            }
+          ],
+          "kinds": [
+            "hermes_executor"
+          ]
+        }
+      },
+      {
+        "n": 1,
+        "governor_max": 1,
+        "wall_s": 64.074,
+        "waves": 16,
+        "warm_waves": 1,
+        "warm_wall_s": 3.778,
+        "warm_outcomes": {
+          "error": 1
+        },
+        "calls": [
+          {
+            "i": 0,
+            "latency_s": 3.595,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":726,\"uuid\":\"ed1de9c0-3335-4aa5-a684-d150f55c0286\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.16,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":809,\"uuid\":\"bdfa80bc-9552-44f5-93ac-020167abde82\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.801,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":659,\"uuid\":\"16223d63-d14e-43df-90c2-5f509a8864b3\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.5,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":779,\"uuid\":\"5046c425-bdb2-4a4f-bd66-b1a9240d28b4\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.309,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":916,\"uuid\":\"366612be-bba2-4e04-8ec6-32cdb71bfad9\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.684,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":586,\"uuid\":\"dae3df51-61f1-45ac-ad62-8845bd088826\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.003,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":582,\"uuid\":\"983add9e-ab8f-4c40-9d6f-d01da9e02e00\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.002,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":634,\"uuid\":\"98b6feac-60ce-4133-8f3e-fbb89a3a04ed\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.367,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1343,\"uuid\":\"3d4a7ff4-d201-473e-b2c1-00110bef49b4\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.888,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":948,\"uuid\":\"6ef85457-1be2-40a8-bdb2-6b0ddf2385dc\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.734,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1439,\"uuid\":\"6c4134bd-8505-4684-80a4-e24ee8aa7d85\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.553,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":686,\"uuid\":\"286be479-97d3-4330-9170-1d88a7da1246\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.726,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":677,\"uuid\":\"5535587b-9f12-4666-91b3-11684ce7a697\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 4.841,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: _state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":1877,\"uuid\":\"6e4f21cf-f0ef-4e85-898f-50fdd0ed6ce9\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.991,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":626,\"uuid\":\"a986b552-80a6-4c1b-97cf-b2b340589eee\"}",
+            "outcome": "error"
+          },
+          {
+            "i": 0,
+            "latency_s": 3.906,
+            "error": "ProviderExhaustedError: claude cli exhausted after 1 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit \u00b7 raise it at claude.ai/settings/usage?from=cc_cli_limit_message\",\"type\":\"result\",\"duration_ms\":721,\"uuid\":\"f5bd49bb-3b51-420f-a097-05303e552b90\"}",
+            "outcome": "error"
+          }
+        ],
+        "foreign_cli_peak": {
+          "count": 1,
+          "procs": [
+            {
+              "pid": 58663,
+              "ppid": 46096,
+              "kind": "hermes_executor"
+            }
+          ],
+          "kinds": [
+            "hermes_executor"
+          ]
+        }
+      }
+    ]
+  },
+  "method": {
+    "knob": "PROSPECTOR_CLAUDE_CONCURRENCY (claude_cli.py:46), one subprocess per level",
+    "reps_per_level": 2,
+    "calls_per_level_per_rep": 16,
+    "warm_waves_discarded_per_level": 1,
+    "level_order": "interleaved across reps",
+    "knee_rule": "largest N with zero bad calls that still added >= 15% throughput over the previous level; latency inflation reported, never used to veto",
+    "collision_detector": "unique per-call token echoed back; a foreign token is cross_talk",
+    "retries": 0,
+    "call_timeout_s": 180,
+    "prior_2026_07_31": {
+      "1": {
+        "p50": 8.9
+      },
+      "8": {
+        "p50": 9.2,
+        "max": 15.5
+      },
+      "14": {
+        "p50": 13.1,
+        "max": 34.7
+      }
+    }
+  },
+  "_meta": {
+    "experiment": "E3",
+    "module": "e3_concurrency_knee.py",
+    "run_at_utc": "2026-08-07T22:13:00+00:00",
+    "argv": [
+      "--levels",
+      "8,6,4,1"
+    ],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

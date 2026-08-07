@@ -1,0 +1,102 @@
+{
+  "headline": {
+    "verdict": "DO NOT BUILD",
+    "strict_hit_at_kmax": 0.1191,
+    "k_max": 5,
+    "bar": 0.2,
+    "exact_key_repeat_rate": 0.0001,
+    "prior_28_4_query_level": 0.0012,
+    "entries": 16167
+  },
+  "skipped": {},
+  "ordering_clock": {
+    "mtime": 15968,
+    "stamped": 199
+  },
+  "result": {
+    "entries_replayed": 16167,
+    "queries_against_non_empty_index": 16166,
+    "passages_indexed": 46585,
+    "hit_at_k": {
+      "1": 0.0528,
+      "3": 0.0967,
+      "5": 0.1191
+    },
+    "strict_hit_at_k_excl_exact_key": {
+      "1": 0.0528,
+      "3": 0.0967,
+      "5": 0.1191
+    },
+    "exact_key_repeat_rate": 0.0001,
+    "min_score": 0.0,
+    "examples": [
+      {
+        "query": "NFT marketplace generic obsolete OR commoditised OR replaced by free alternative",
+        "served_url": "https://golden.example/nft-vd",
+        "top_score": 1.21,
+        "exact_key_too": false
+      },
+      {
+        "query": "pre-packaged end-to-end handles PFAS sampling logistics customer acquisition channel saturated OR expensive",
+        "served_url": "https://store.safety-kleen.com/pfas-wastewater-test-kit.html",
+        "top_score": 12.529,
+        "exact_key_too": false
+      },
+      {
+        "query": "monthly subscription ships pre-tested pfas-removing filter budget cuts OR cannot afford OR insolvency",
+        "served_url": "https://cyclopure.com/product/purefast-countertop-pfas-filter/",
+        "top_score": 10.753,
+        "exact_key_too": false
+      },
+      {
+        "query": "monthly subscription ships pre-tested pfas-removing filter customer acquisition channel saturated OR expensive",
+        "served_url": "https://cyclopure.com/product/purefast-countertop-pfas-filter/",
+        "top_score": 10.127,
+        "exact_key_too": false
+      },
+      {
+        "query": "monthly subscription ships pre-tested pfas-removing filter not a real problem OR existing workaround",
+        "served_url": "https://cyclopure.com/product/purefast-countertop-pfas-filter/",
+        "top_score": 9.634,
+        "exact_key_too": false
+      },
+      {
+        "query": "productized converts methane compliance risk tradable customer acquisition channel saturated OR expensive",
+        "served_url": "https://www.envana.com/the-methane-opportunity-turning-oil-and-gas-emissions-compliance-into-business-value/",
+        "top_score": 12.765,
+        "exact_key_too": false
+      },
+      {
+        "query": "solo operator builds hyperlocal identifies executes no marketing channel OR hard to reach customers OR ads banned",
+        "served_url": "https://glenrhodes.com/solo-operator-runs-7-agent-claude-pipeline-earning-18800-month-selling-websites-to-local-business",
+        "top_score": 13.26,
+        "exact_key_too": false
+      },
+      {
+        "query": "solo operator builds hyperlocal identifies executes false OR debunked OR no evidence OR contradicted",
+        "served_url": "https://glenrhodes.com/solo-operator-runs-7-agent-claude-pipeline-earning-18800-month-selling-websites-to-local-business",
+        "top_score": 8.544,
+        "exact_key_too": false
+      }
+    ]
+  },
+  "method": {
+    "holdout": "temporal \u2014 index contains only entries fetched strictly earlier",
+    "index": "BM25 over passage text, incremental, no embeddings (weakest shippable index, so the number is a FLOOR for a stronger one)",
+    "hit_definition": "top-k contains a URL the live search actually returned",
+    "proxy_limits": [
+      "a different URL carrying the same fact scores as a miss",
+      "a matching URL does not prove the verdict would have held"
+    ],
+    "llm_calls": 0,
+    "network_calls": 0
+  },
+  "_meta": {
+    "experiment": "L1",
+    "module": "l1_presearch_index.py",
+    "run_at_utc": "2026-08-07T22:17:45+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

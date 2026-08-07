@@ -23,7 +23,7 @@ from typing import Optional
 
 from .cli_auth import subscription_env
 from .cli_governor import make_governor
-from .errors import ProviderExhaustedError, looks_exhausted
+from .errors import ProviderExhaustedError, cause_context, looks_exhausted
 from .models import Source
 from .operator import Operator, _extract_json
 from .retrieval import SearchProvider
@@ -197,7 +197,20 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
         # low" and "usage limit" ARE in _EXHAUSTION_MARKERS (errors.py:66); they just never
         # reached the classifier. Same shape as the 402 miss (CLAUDE.md: a dead brain must
         # leave a trace).
-        detail = " | ".join(s for s in (proc.stderr.strip()[-300:],
+        # The TAIL is the right slice for prose and the wrong one for `--output-format json`,
+        # where trailing metadata pushes the cause out of the window. Measured 2026-08-07: the
+        # payload that ended E3 run #6 reached the classifier as
+        # `…"fast_mode_disabled_reason":"sdk_opt_in_required","subtype":"success","api_error_st`
+        # and classified as NOT_EXHAUSTION, so the monthly-spend-limit outage left no dead mark
+        # and nothing failed over — 50 further calls were spent into a provider already known
+        # to be dead. `cause_context` scans the WHOLE payload for the marker vocabulary
+        # `classify_exhaustion` already rules on, so the cause survives whatever the shape is;
+        # the tail is kept alongside it because it is still the best summary when there is no
+        # marker at all.
+        cause = " | ".join(s for s in (cause_context(proc.stderr), cause_context(proc.stdout))
+                           if s)
+        detail = " | ".join(s for s in (cause,
+                                        proc.stderr.strip()[-300:],
                                         proc.stdout.strip()[-300:]) if s)
         # Best-effort: a non-zero exit usually prints prose, not JSON, so there is normally
         # nothing to bank here. But an exit code is not a promise about the payload, and a

@@ -2271,3 +2271,201 @@ storefront reads `api.mumchimp.com` (the C# Store platform), not this FastAPI, s
 
 The bare `except Exception: continue` is the reusable lesson: it converted a total schema divergence
 into an empty list and a 200. Cross-reference `built-and-unreachable-is-the-cockpit-defect-class`.
+
+## 29. The live-measurement session — E3 measured, L1 killed on its own number, E1 unblocked (2026-08-07)
+
+### 29.1 E3 — the concurrency knee, and the two design defects that had to be fixed to see it
+
+The first sweep produced an **impossible** table: throughput 8.64x / 34.87x / 50.59x against a
+governor ceiling of 8, and four supposedly identical N=1 measurements reading 5.26s, 44.33s, 207.32s
+and 211.02s — a 40x spread on the baseline. Two defects, both in the harness, neither in the engine:
+
+1. **Unequal call budget per level.** The probe ran `N` calls at level `N`: one call at N=1, eight at
+   N=8. A per-level fixed cost (subprocess start, cold CLI session, governor acquisition) spread over
+   one call and then over eight makes `calls_per_s` a measure of *overhead amortisation*, not of
+   concurrency. Fixed: **16 measured calls at every level**, run in waves of `N`, with the first wave
+   of each level discarded so each level absorbs its own cold start.
+2. **No per-level warm-up.** A sweep-wide warm-up warms the sweep, not the level; each level is a new
+   subprocess with a new governor binding and a new cold CLI.
+
+`PAUSE_GENERATION` was also being trusted as proof of a quiet machine. It is a **half stop** — it
+leaves the re-vet drain running — and, more importantly, *no prospector pause file is a statement
+about the machine* while the governor is machine-wide. Observed live, mid-sweep, with
+`store/scheduler/PAUSE` present:
+
+```
+49184 ppid 11795  claude -p "You are a ruthless, evidence-bound analyst..."   <- the PAUSED daemon
+48628 ppid 46096  claude -p --settings ~/.hermes/executor-settings.json       <- the HERMES estate
+49138 ppid 46096  claude -p --settings ~/.hermes/executor-settings.json
+```
+
+PAUSE is read at tick *start*, so an in-flight tick walks straight through it; and the Hermes
+executor is a different estate that no prospector file can reach. The probe now samples `ps` every
+5s during every level and reports a **foreign-CLI census** per level, so a contaminated table says so
+on its face. Both sweeps below ran with a peak of **2 foreign `claude -p` processes (hermes_executor)
+at every level**, so what follows is the knee **on a shared machine** — which is the condition the
+daemon actually runs in — and not a single-tenant ceiling.
+
+**Two sweeps, opposite level orders**, 16 calls/level/rep, first wave discarded per level:
+
+| N | run #5 forward (1,4,6,8), 2 reps pooled | run #6 reversed (8,6,4,1), rep 1 |
+|---|---|---|
+| 1 | 0.207 call/s · p50 4.58s | 0.152 call/s · p50 6.32s |
+| 4 | 0.311 (+50%) · p50 6.94s | 0.340 (+124%) · p50 11.53s |
+| 6 | **0.539 (+73%)** · p50 9.49s | 0.453 (+33%) · p50 12.06s |
+| 8 | 0.495 (**−8%**) · p50 13.22s | **0.619 (+37%)** · p50 12.45s |
+
+**What survives both orderings, and what does not.**
+
+- **1 → 4 is unambiguous** (+50% forward, +124% reversed). **4 → 6 is positive in both** (+73%, +33%).
+- **6 → 8 flips sign with sweep position** (−8% forward where N=8 ran last, +37% reversed where it ran
+  first). The two orderings cannot separate 6 from 8; the defensible setting is **N=6**.
+- The sign flip is itself the finding: **position in the sweep dominates N at the top of the range.**
+  Both runs' ordering controls fired (27% and 38% drift on a repeat of the same level), so the honest
+  reading is that the machine degrades across a sweep and the 6-vs-8 gap is smaller than that drift.
+- **Zero cross-talk on 264 calls across every level of both runs.** The per-slot stable cwd
+  (`claude_cli.py:150-176`) holds to N=8 — the collision the knee was originally feared for is not the
+  binding constraint.
+- Latency is paid as expected: p50 inflates ~2.4–2.8x from N=1 to the knee.
+
+**NOT changed here.** `_MAX_CLI` still defaults to **2** (`claude_cli.py:46`). Raising it to 6 is a
+~2.6x throughput change and therefore a ~2.6x *spend-rate* change, and the account's monthly spend
+limit was hit during run #6 — every failure in that run is `ProviderExhaustedError` and every one is
+in rep 2, which is why the run-#6 column above is rep 1 only. Spending the cap faster is a founder
+decision, not a harness conclusion.
+
+### 29.2 L1 — the pre-search index fails its own bar. Measured, not argued.
+
+§28.4 left L1 as a founder question and the founder authorised the build. The build did not start,
+because the entire L1 history is a history of *sizing on the wrong key*: 21.74% (§26.7) and 21.84%
+(§28.4) are **URL-level**, the shipped `DiskCache` is **query-keyed**, and query-level reuse is
+**0.12%**. `tools/experiments/l1_presearch_index.py` measures the thing the index would actually have
+to do, before anything is built on a fourth key.
+
+**Method.** Temporal-holdout replay over all 16,167 entries in `store/_cache/`. Entries are replayed
+in fetch order and each query is answered from a BM25 index containing **only entries fetched strictly
+earlier** — production's real question, and structurally leak-proof. A hit is: the top-k contains a URL
+the live search actually returned for that query. Zero LLM calls, zero network.
+
+**Two corpus decisions that had to be made explicit.** The `fetched_at` stamp is v2 and only started
+being written on 2026-08-07: **15,968 of 16,167 entries are v1 and carry no stamp**, so requiring it
+left a 199-entry sample spanning a single day. mtime is used for ORDER only. It is forgeable — a
+restore flattens it, which is why `_age_s` (`retrieval.py:1243-1250`) refuses it for freshness — but
+that forgery is checkable, and these mtimes span **34 distinct days, 2026-06-15 to 2026-08-07**
+(p10 06-22, p50 07-29, p90 08-06). Nothing flattened them. The clock split is reported in the receipt.
+
+**Result — 46,585 passages indexed, 16,166 queries scored:**
+
+| k | hit@k | strict (excl. exact-key) |
+|---|---|---|
+| 1 | 5.28% | 5.28% |
+| 3 | 9.67% | 9.67% |
+| 5 | **11.91%** | **11.91%** |
+
+Exact-key repeat rate recomputed on this corpus: **0.01%** (§28.4's comparator, 0.12%).
+
+**Verdict: DO NOT BUILD on this number.** 11.91% against §13's 20% bar. The gap is 8.1pp, and the
+near-miss reuse the index exists to exploit is real (11.91% vs 0.01% exact-key is a ~1,000x lift over
+the shipped cache) but **not large enough to clear the bar**. BM25 is deliberately the weakest index
+anyone would ship, so 11.91% is a **floor**: an embedding index is the only remaining path and would
+have to add 8.1pp. That is a measurement someone can now run cheaply against this same harness — it is
+no longer a founder question, it is a number.
+
+**Read the number for what it is.** A URL match is a **ceiling on call savings**, not a claim the
+verdict would have held: a different URL carrying the same fact scores as a miss (conservative), and a
+matching URL does not prove the moat would rule the same way (optimistic). Grounding quality is
+E1/E12's question.
+
+### 29.3 E1 — the flagship arm was measuring the defect it was built to fix
+
+E1's harness (`tools/experiments/e1_hybrid_query_arms.py`) preflights with **zero LLM calls**, per
+`paid-ab-harness-must-be-fixture-tested-first`. The preflight found a defect worth more than the
+experiment: `_entity_queries` slotted `who_pays` **verbatim** into the payer template.
+
+Measured offline on 1,600 dossiers: `who_pays` has a median of **29 words**, so `payer_solvency`
+rendered search queries with a median of **38 words, p90 68, max 145 — and 100% of 3,148 of them over
+12 words**, against 8–10 for the other three checks. A 38-word query *is* the product restatement the
+entity arm exists to replace, so the flagship arm was quietly measuring the thing it was built to fix.
+
+`entity_phrase` (`prospector/entity_templates.py:41`) reduces a field to a searchable entity — first
+clause, leading article stripped, capped at 8 words, with an unclosed-bracket cleanup because the cap
+otherwise cut inside a parenthetical (`"Gen Z gig workers (rideshare"` was a real rendered query).
+Payer queries fall to **median 15 / max 17 words** with the template-skip count unchanged at 26.
+
+Four new tests pin it (`tests/unit/test_e1_hybrid_queries.py`), and all four were **mutation-proved**:
+with `entity_phrase` reverted to the identity it replaced, exactly those four fail and the other ten
+pass. Whether the shorter query *grounds better* is E1's live question and is deliberately not claimed
+anywhere in the code or here.
+
+**E1's live A/B did not run.** The monthly spend limit was hit during E3 run #6; a paid A/B launched
+into a just-raised cap is how a measurement session becomes a billing incident. The harness is green
+and the preflight is free.
+
+### 29.4 Register after this session
+
+| # | item | state |
+|---|---|---|
+| 1 | **E3** | **MEASURED (§29.1).** Knee is N=6 on a shared machine; 6 vs 8 unresolvable. `_MAX_CLI` left at 2 — raising it is a spend-rate decision |
+| 2 | **L1 pre-search index** | **MEASURED AND FAILED ITS BAR (§29.2).** 11.91% vs 20%. Embedding variant is the only path, and is now a cheap follow-up not a founder question |
+| 3 | **E1** | harness green, defect found and fixed (§29.3); **live A/B still owed** |
+| 4 | **E2 / E5** | harnesses exist; setup only, per founder |
+| 5 | **L2 demand telemetry** | instrumented and shipped (`34b2f1f`); still **traffic-blocked** — 172 price views / 90 days against 1 purchase is too wide an interval to judge a ladder change |
+| 6 | **E6** | CLOSED as KILL |
+
+**Doc drift corrected:** §18.3 says the entity arm has "exactly two keys". It has **four** —
+`payer_solvency`, `distribution`, `incumbency`, `legality` (`entity_templates.py:69-90`, added in
+`d01ae78`).
+
+**Left for the next session, deliberately unscoped:** `_keywords(cand, k=4)` produces mangled `{base}`
+tails — `"productized uses proprietary employment"`, `"paralegal drafts court-ready witness"` are real
+rendered fragments. Same defect class as the `who_pays` one above, in the slot E1 does not vary.
+
+### 29.5 The spend limit was invisible to the classifier — the outage that could not self-heal
+
+Run #6 did not merely die on the monthly spend limit. It died **without the engine ever learning
+that is what happened**, which is why nothing fell back and why 50 further calls were spent into a
+provider already known to be dead. The chain of custody, each link measured:
+
+```
+classify_exhaustion('claude cli exit 1: e_state":"off","fast_mode_disabled_reason":
+                     "sdk_opt_in_required","subtype":"success","api_error_st')
+  ->  ''          # NOT_EXHAUSTION
+```
+
+`claude_cli.py:200` built its error detail from `proc.stdout.strip()[-300:]`. The tail is the right
+slice for prose — a CLI that dies printing an error prints it last — and the **wrong** slice for
+`--output-format json`, where the last 300 chars are trailing metadata (`fast_mode_disabled_reason`,
+`subtype`, `api_error_status`) and the causal message sits in a `result`/`error` field further back.
+On the reproduced payload the phrase naming the cause is **494 characters from the end**, against a
+300-character window. So:
+
+`looks_exhausted` False → no `ProviderExhaustedError` carrying PERMANENT → no dead mark in
+`health.py` → no failover to the non-critical chain's next tier → every subsequent call re-probes a
+provider whose allowance is gone. Exactly the defect class CLAUDE.md names as "a dead brain must
+leave a trace", and the third instance of it after the 402 miss and the word-boundary HTTP miss.
+
+**Fix — scan for the marker, do not bet on an offset.** `errors.cause_context()` searches the WHOLE
+payload for the same marker vocabulary `classify_exhaustion` already rules on, and prepends any hit
+to the detail; the tail slice is kept after it, because it remains the best summary when there is no
+marker at all. It is shape-agnostic by construction — prose, JSON, or a truncated fragment of either
+— and it reuses the single classifier, so the two can never disagree about what counts as a cause.
+Before/after on the reproduced payload: `''` → `'permanent'`. Four tests in
+`tests/unit/test_errors_limits.py`, including one that asserts the tail slice **still** loses the
+cause, so the test cannot quietly go vacuous if the padding stops reproducing the real shape.
+
+**Fix — the harness stops spending.** `_worker` now aborts a level the moment a call returns a
+PERMANENT exhaustion, and the sweep aborts with it; the partial level is **dropped, not pooled**,
+because a level that stopped early is an unmeasured level, not a slow one — pooling it is precisely
+how run #6 rendered a billing outage as a property of N. TRANSIENT backpressure deliberately does
+not abort: a call that is merely slow or 429'd under load is the signal E3 exists to capture. Eight
+tests in `tests/unit/test_e3_abort_on_exhaustion.py`, CLI stubbed, zero spend; the parametrised case
+pins the rule to `errors.classify_exhaustion` rather than a private string list.
+
+**What MiniMax can and cannot heal.** `MINIMAX_API_KEY` is present and `_NONCRITICAL_ORDER =
+("claude_cli", "minimax")` (`run.py:285`) already fails generation/prescreen/score over — and that
+path now actually fires, because the cause finally reaches the classifier. It does **not** heal
+verdicts: `config.yaml:36` is `operator: [claude_cli]`, MiniMax having been removed from the verdict
+chain by founder decision on 2026-08-06 on the recorded ground that a provisional ruling costs a full
+verdict run now plus a full re-vet later. That fence is intact and was not touched. It also means E1
+and E3 genuinely cannot fall back: E1 measures verdicts, and E3 measures the Claude CLI's transport
+specifically, so a MiniMax arm would be a different measurement wearing the same name.

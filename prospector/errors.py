@@ -156,6 +156,63 @@ def classify_exhaustion(text: str) -> str:
     return NOT_EXHAUSTION
 
 
+def cause_context(text: str, width: int = 140, limit: int = 3) -> str:
+    """Every exhaustion marker found ANYWHERE in `text`, with surrounding context.
+
+    Why this exists, and why it lives next to the markers rather than in an adapter.
+
+    An adapter that must shorten a payload before logging it has to choose a slice, and every
+    fixed slice is a bet about where the cause sits. `claude_cli.py` bet on the TAIL
+    (`proc.stdout.strip()[-300:]`), which is right for prose — a CLI that dies printing an
+    error prints it last — and wrong for `--output-format json`, where the tail is trailing
+    metadata and the cause is a `result`/`error` field in the middle. Measured 2026-08-07, on
+    the real payload that ended E3 run #6 after 50 calls:
+
+        classify_exhaustion('claude cli exit 1: e_state":"off","fast_mode_disabled_reason":'
+                            '"sdk_opt_in_required","subtype":"success","api_error_st')
+        -> ''            i.e. NOT_EXHAUSTION
+
+    The account had hit its monthly spend limit. The phrase saying so was in the payload and
+    the slice threw it away, so `looks_exhausted` was False, no `ProviderExhaustedError`
+    carried a permanent classification, no dead mark was written, and nothing could fail over
+    to the non-critical chain's next tier. That is the same defect class as the 402 miss and
+    the word-boundary HTTP miss: a dead brain that leaves no trace.
+
+    Scanning for the MARKER instead of guessing at an offset is shape-agnostic — it works on
+    prose, on JSON, on a truncated fragment of either — and it reuses the single marker
+    vocabulary that `classify_exhaustion` already rules on, so the two can never disagree
+    about what counts as a cause.
+    """
+    t = (text or "")
+    low = t.lower()
+    hits: list[str] = []
+    seen: set[int] = set()
+    for marker in (*_PERMANENT_MARKERS, *_TRANSIENT_MARKERS):
+        i = low.find(marker)
+        if i < 0:
+            continue
+        start = max(0, i - width // 2)
+        # Collapse overlapping windows so three markers in one sentence do not print it thrice.
+        if any(abs(start - s) < width // 2 for s in seen):
+            continue
+        seen.add(start)
+        hits.append(t[start:start + width].strip())
+        if len(hits) >= limit:
+            break
+    for rx in (_HTTP_PERMANENT_RE, _BILLING_RE, _ALLOWANCE_LIMIT_RE, _HTTP_TRANSIENT_RE):
+        if len(hits) >= limit:
+            break
+        m = rx.search(low)
+        if not m:
+            continue
+        start = max(0, m.start() - width // 2)
+        if any(abs(start - s) < width // 2 for s in seen):
+            continue
+        seen.add(start)
+        hits.append(t[start:start + width].strip())
+    return " ⋯ ".join(hits)
+
+
 def looks_exhausted(text: str) -> bool:
     """True if an error string indicates quota/credit exhaustion OR backpressure (-> failover).
 
