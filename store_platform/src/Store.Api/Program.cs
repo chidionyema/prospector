@@ -704,6 +704,23 @@ app.MapPatch("/internal/catalog/{id}/copy", async (
         return incoming.Length == 0 ? null : incoming;
     }
 
+    // OneLine does not follow that rule, because it is not a nullable column with a fallback
+    // behind it. It is `required` on Pack and it is what the catalogue card, the pack page lead
+    // paragraph, the basket line and llms.txt all print; "cleared" would render as blank space
+    // directly above a buy button. So blank is refused rather than written. Withdrawing a pack
+    // whose description is wrong is PATCH /internal/catalog/{id}/listing, not this.
+    if (request.OneLine is not null && string.IsNullOrWhiteSpace(request.OneLine))
+    {
+        return Results.Problem(
+            "oneLine cannot be cleared: it is required on every pack and has no fallback. "
+            + "Omit the field to leave it unchanged, or withdraw the pack via PATCH /internal/catalog/{id}/listing.",
+            statusCode: StatusCodes.Status400BadRequest);
+    }
+    if (request.OneLine is not null)
+    {
+        pack.OneLine = request.OneLine;
+    }
+
     pack.CardLine = Applied(request.CardLine, pack.CardLine);
     pack.Headline = Applied(request.Headline, pack.Headline);
     pack.Subhead = Applied(request.Subhead, pack.Subhead);
@@ -730,6 +747,7 @@ app.MapPatch("/internal/catalog/{id}/copy", async (
     {
         pack.Id,
         pack.CardLine,
+        pack.OneLine,
         pack.Headline,
         pack.Subhead,
         pack.ProofPoint,

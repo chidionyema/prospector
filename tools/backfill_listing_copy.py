@@ -43,8 +43,22 @@ USAGE
 
 Generation costs roughly 8 minutes per pack against the Claude CLI while the daemon is running,
 so a full 45-pack run is a multi-hour job. `--limit` and `--only` exist to make it resumable:
-a pack whose dossier already carries a listing_page is skipped, so re-running continues rather
+a pack whose stored listing is already complete is skipped, so re-running continues rather
 than regenerating.
+
+WHY "COMPLETE" IS NOT "PRESENT"
+------------------------------
+The skip condition was `listing_of(dossier) is not None` until 2026-08-06. `card_line` was added
+to the listing_page artifact after some listings had already been written, so 10 live packs
+carried a listing with no card line and were skipped forever: the tool reported success, its
+summary never counted them as targets, and re-running it changed nothing. Presence of the
+artifact is therefore not the completion test — presence of the FIELD is.
+
+Those packs are patched card-line-only. Their headline/subhead/proof point are live, generated
+copy that survived claim-check; regenerating a whole listing to reach one missing field would
+put that copy back through a non-deterministic operator and a fresh claim-check for no reason,
+and every field salvage then dropped would be re-sent as a different sentence. Omitting a field
+from the PATCH is already how this tool says "leave it alone" (see prune_empty).
 """
 from __future__ import annotations
 
@@ -107,6 +121,18 @@ def listing_of(dossier: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if isinstance(piece, dict) and piece.get("type") == "listing_page":
             return piece
     return None
+
+
+def has_card_line(listing: Optional[Dict[str, Any]]) -> bool:
+    """Whether a stored listing already carries the field this backfill exists to fill.
+
+    A listing is "done" when its card_line is non-empty, not when the artifact exists. Empty
+    string and whitespace count as missing: `_card_line` DROPS an over-long line rather than
+    truncating it, so "generated but rejected" lands here as falsy, exactly like "never written".
+    """
+    if not isinstance(listing, dict):
+        return False
+    return bool(str(listing.get("card_line") or "").strip())
 
 
 def catalog_payload(listing: Dict[str, Any]) -> Dict[str, Any]:
@@ -282,6 +308,8 @@ def main() -> int:
     parser.add_argument("--only", action="append", default=[],
                         help="restrict to these pack ids (repeatable)")
     parser.add_argument("--limit", type=int, default=0, help="stop after N packs (0 = no limit)")
+    parser.add_argument("--plan-only", action="store_true",
+                        help="print the selected packs and exit; calls no operator, writes nothing")
     args = parser.parse_args()
 
     apply = args.apply
@@ -296,7 +324,7 @@ def main() -> int:
     print(f"live packs: {len(live)}")
 
     index = load_dossier_index()
-    targets: List[Tuple[str, str, Dict[str, Any]]] = []
+    targets: List[Tuple[str, str, Dict[str, Any], Optional[Dict[str, Any]]]] = []
     no_dossier: List[str] = []
     too_few: List[str] = []
     for pack_id in live:
@@ -308,7 +336,8 @@ def main() -> int:
             continue
         with open(path) as handle:
             dossier = json.load(handle)
-        if listing_of(dossier) is not None:
+        existing = listing_of(dossier)
+        if has_card_line(existing):
             continue
         # Decided here rather than inside the run loop so that --limit N means "N packs the
         # operator will actually be asked about". Counting a skip against the limit is how a
@@ -316,7 +345,7 @@ def main() -> int:
         if len(supported_claims(dossier)) < MIN_SUPPORTED_CLAIMS:
             too_few.append(pack_id)
             continue
-        targets.append((pack_id, path, dossier))
+        targets.append((pack_id, path, dossier, existing))
 
     if no_dossier:
         print(f"WARNING: {len(no_dossier)} live pack(s) have no dossier on disk: "
@@ -327,9 +356,19 @@ def main() -> int:
     if args.limit:
         targets = targets[: args.limit]
 
-    print(f"packs to attempt: {len(targets)}")
+    full_mode = sum(1 for t in targets if t[3] is None)
+    print(f"packs to attempt: {len(targets)} "
+          f"({full_mode} full listing, {len(targets) - full_mode} card-line-only)")
     print(f"mode: {'APPLY (writes dossiers and the live catalogue)' if apply else 'DRY RUN'}\n")
     if not targets:
+        return 0
+
+    if args.plan_only:
+        # Selection is the part of this tool that has been wrong before, and it used to cost a
+        # multi-hour generation run to observe. Answering "what would you touch?" must not
+        # require paying an operator for the answer.
+        for pack_id, _path, _dossier, existing in targets:
+            print(f"  {pack_id}  {'full' if existing is None else 'card-line-only'}")
         return 0
 
     cfg = load_config()
@@ -337,10 +376,11 @@ def main() -> int:
     checker = make_operator(cfg, fast=False)
 
     generated = patched = skipped = 0
-    for n, (pack_id, path, dossier) in enumerate(targets, 1):
+    for n, (pack_id, path, dossier, existing) in enumerate(targets, 1):
         started = time.time()
         title = str((dossier.get("candidate") or {}).get("title") or "")[:70]
-        print(f"[{n}/{len(targets)}] {pack_id}  {title}")
+        label = "full" if existing is None else "card-line-only"
+        print(f"[{n}/{len(targets)}] {pack_id}  [{label}]  {title}")
 
         try:
             listing = generate_listing(quality, checker, dossier)
@@ -355,14 +395,32 @@ def main() -> int:
             continue
 
         generated += 1
-        listing = fill_from_floor(listing, dossier)
-        payload = prune_empty(catalog_payload(listing))
+        if existing is None:
+            listing = fill_from_floor(listing, dossier)
+            payload = prune_empty(catalog_payload(listing))
+        else:
+            # Keep every field the live listing already has; take ONLY the card line from this
+            # generation. catalog_payload runs on the merged listing so the card line goes
+            # through the same to_plain_text boundary the publish path applies to it.
+            listing = dict(existing, card_line=listing.get("card_line"))
+            payload = prune_empty({"cardLine": catalog_payload(listing)["cardLine"]})
+
         dropped = [field for field in COPY_FIELDS if field not in payload]
         print(f"    generated in {time.time() - started:.0f}s; sending {sorted(payload)}")
-        if dropped:
+        if dropped and existing is None:
             print(f"    left as-is (claim-check dropped them): {dropped}")
         print(f"    cardLine: {payload.get('cardLine') or '(not sent)'}")
-        print(f"    headline: {payload.get('headline') or '(not sent)'}")
+        if existing is None:
+            print(f"    headline: {payload.get('headline') or '(not sent)'}")
+
+        if not payload:
+            # Nothing to send means nothing to store either: persisting here would write a
+            # listing whose card_line is still empty and, on the next run, that listing would
+            # look no different from the one this run just failed to improve.
+            print("    no field survived claim-check — nothing sent, dossier left alone")
+            generated -= 1
+            skipped += 1
+            continue
 
         if not apply:
             continue
@@ -379,7 +437,7 @@ def main() -> int:
         print("    patched; price and provider ids unchanged")
 
     print(f"\n{'=' * 62}")
-    print(f"attempted             {len(targets)}")
+    print(f"attempted             {len(targets)}  ({full_mode} full, {len(targets) - full_mode} card-line-only)")
     print(f"generated             {generated}")
     print(f"unsalvageable/errored {skipped}")
     print(f"patched               {patched}" if apply else "patched               0 (dry run)")

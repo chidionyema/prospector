@@ -36,9 +36,26 @@ namespace Store.Api.Contracts;
 /// Length is enforced by the engine, which discards an over-length line rather than truncating
 /// it, exactly as on publish — a server-side limit added here would 400 on copy that publish
 /// itself would have accepted.
+///
+/// <see cref="OneLine"/> is the one exception to the clearing rule, and it is an exception
+/// because the column is not like the others. Every other field here is <c>string?</c> on
+/// <c>Pack</c> with a designed fallback behind it — a null CardLine means "head the card with the
+/// title", which is a rendering decision. <c>Pack.OneLine</c> is <c>required</c>, is read by the
+/// catalogue projection, the pack page, the basket and llms.txt, and has no fallback that is
+/// anything other than blank space above the buy button. So null still means "leave alone", but
+/// blank is refused with a 400 rather than written: this endpoint may improve a description and
+/// may not delete one. Withdrawing a pack whose description is wrong is what
+/// <c>PATCH /internal/catalog/{id}/listing</c> is for.
+///
+/// It is reachable at all because the publish path truncated it at a character index until
+/// 2026-08-06 (<c>bridge.py</c>: <c>one_liner[:150] + "..."</c>), which cut 34 of the 63 listed
+/// packs at exactly 153 characters and left 32 of those ending part-way through a word — "for a
+/// flat fee per applicat...". Those rows are repaired by rewriting one column, and the only route
+/// that reached that column was the upsert this whole file exists to keep copy jobs away from.
 /// </summary>
 public record CopyPatchRequest(
     string? CardLine = null,
+    string? OneLine = null,
     string? Headline = null,
     string? Subhead = null,
     string? ProofPoint = null,

@@ -149,3 +149,75 @@ class TestSampleExtractIsPlain:
     def test_proof_point_backstop_is_sanitized(self):
         lines = _sample_excerpts("", "**buyer intent:** growers are searching now")
         assert lines == ["buyer intent: growers are searching now"]
+
+
+class TestMarkdownConstructsAreStripped:
+    """Eight constructs that survived into plain text before the boundary was tightened.
+    Each one is a corruption of buyer-facing copy — a stray `*` or a literal `[id]` makes
+    the pack look unfinished; a `<br>` or a `\\` is straight-up broken."""
+
+    def test_setext_h1_underline_is_dropped(self):
+        out = to_plain_text("Buyer intent\n============\ntext", collapse=True)
+        assert "=" not in out
+        assert out == "Buyer intent text"
+
+    def test_setext_h2_underline_is_dropped(self):
+        out = to_plain_text("Buyer intent\n---\ntext", collapse=True)
+        assert "-" not in out
+        assert out == "Buyer intent text"
+
+    def test_standalone_thematic_break_stars_is_dropped(self):
+        """Without the line pre-pass, the emphasis loop eats the first two `*` and leaves
+        a stray third one in the output."""
+        out = to_plain_text("line one\n***\nline two", collapse=True)
+        assert "*" not in out
+        assert out == "line one line two"
+
+    def test_standalone_thematic_break_underscores_is_dropped(self):
+        out = to_plain_text("line one\n___\nline two", collapse=True)
+        assert "_" not in out
+        assert out == "line one line two"
+
+    def test_full_reference_link_collapses_to_label(self):
+        out = to_plain_text("see [the study][s1] for detail", collapse=True)
+        assert "[" not in out and "]" not in out
+        assert out == "see the study for detail"
+
+    def test_reference_definition_line_is_dropped(self):
+        out = to_plain_text(
+            "intro\n[s1]: https://example.com/study\nafter", collapse=True
+        )
+        assert "https" not in out
+        assert "[s1]" not in out
+        assert out == "intro after"
+
+    def test_br_tag_becomes_a_newline(self):
+        out = to_plain_text("line one<br>line two")
+        assert "<br>" not in out
+        assert "line one" in out and "line two" in out
+        # The plan says `<br>` becomes a newline (so the two halves stay on separate lines).
+        assert out == "line one\nline two"
+
+    def test_escaped_asterisks_round_trip(self):
+        out = to_plain_text(r"costs \*only\* GBP5", collapse=True)
+        # Backslashes must not survive; asterisks must.
+        assert "\\" not in out
+        assert "*" in out
+        assert out == "costs *only* GBP5"
+
+
+class TestRegressionGuards:
+    """Behaviours the new pass MUST NOT change."""
+
+    def test_inline_strong_still_strips_bold(self):
+        assert to_plain_text("**buyer intent:** growers", collapse=True) == (
+            "buyer intent: growers"
+        )
+
+    def test_snake_case_tokens_still_survive(self):
+        s = "buyer_intent and who_pays are real words here"
+        assert to_plain_text(s, collapse=True) == s
+
+    def test_keep_link_urls_still_appends_target(self):
+        out = to_plain_text("[t](u)", collapse=True, keep_link_urls=True)
+        assert out == "t (u)"

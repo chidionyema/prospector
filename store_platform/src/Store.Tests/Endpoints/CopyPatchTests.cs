@@ -138,6 +138,82 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
         Assert.Equal(0, doc.RootElement.GetProperty("whatYouGet").GetArrayLength());
     }
 
+    /// <summary>
+    /// The repair this field was added for.
+    ///
+    /// <c>bridge.py</c> cut <c>oneLine</c> at a character index (<c>one_liner[:150] + "..."</c>)
+    /// until 2026-08-06. Measured against the live catalogue that day: 34 of the 63 listed packs
+    /// were exactly 153 characters and 32 of those ended part-way through a word — "for a flat fee
+    /// per applicat...". That string is the card description AND the lead paragraph above the buy
+    /// button. Fixing the engine stops the 35th; it does not touch the 34 already in the database,
+    /// and the only endpoint that could reach that column was the upsert whose update path nulls
+    /// the provider ids (see <see cref="Republishing_to_change_copy_nulls_the_provider_ids"/>).
+    /// </summary>
+    [Fact]
+    public async Task Replaces_a_truncated_one_line_without_touching_the_money_rail()
+    {
+        await PublishAsync("copy-oneline");
+
+        var response = await Client().PatchAsJsonAsync("/internal/catalog/copy-oneline/copy", new
+        {
+            oneLine = "Files the council tax band challenge, with the comparables that decide it…",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = doc.RootElement;
+
+        Assert.Equal("Files the council tax band challenge, with the comparables that decide it…",
+            root.GetProperty("oneLine").GetString());
+
+        Assert.Equal(4900L, root.GetProperty("pricePence").GetInt64());
+        Assert.Equal(4900L, root.GetProperty("minBillablePence").GetInt64());
+        Assert.Equal("price_real", root.GetProperty("providerPriceId").GetString());
+        Assert.Equal("prod_real", root.GetProperty("providerProductId").GetString());
+        Assert.True(root.GetProperty("isListed").GetBoolean());
+        Assert.Equal("packs/copy-oneline/oldhash.zip", root.GetProperty("contentKey").GetString());
+    }
+
+    [Fact]
+    public async Task Omitted_one_line_is_left_alone()
+    {
+        await PublishAsync("copy-oneline-omitted");
+
+        var response = await Client().PatchAsJsonAsync("/internal/catalog/copy-oneline-omitted/copy",
+            new { cardLine = "Only the card line is being set here." });
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("One line.", doc.RootElement.GetProperty("oneLine").GetString());
+    }
+
+    /// <summary>
+    /// oneLine breaks the "" == clear rule the rest of this endpoint follows, on purpose.
+    ///
+    /// Pack.OneLine is <c>required</c> and is printed by the catalogue card, the pack page lead
+    /// paragraph, the basket line and llms.txt. There is no fallback behind it, so a cleared value
+    /// is blank space directly above the buy button — and a repair job that sends the empty string
+    /// by accident (a dossier read that returned nothing, say) would silently blank a live listing
+    /// rather than fail. The endpoint may improve a description; it may not delete one.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Refuses_to_clear_one_line(string blank)
+    {
+        await PublishAsync("copy-oneline-blank");
+
+        var response = await Client().PatchAsJsonAsync("/internal/catalog/copy-oneline-blank/copy",
+            new { oneLine = blank });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // And the live description is still there — the refusal is not merely a status code.
+        var readback = await Client().PatchAsJsonAsync("/internal/catalog/copy-oneline-blank/copy",
+            new { cardLine = "unrelated" });
+        using var doc = JsonDocument.Parse(await readback.Content.ReadAsStringAsync());
+        Assert.Equal("One line.", doc.RootElement.GetProperty("oneLine").GetString());
+    }
+
     [Fact]
     public async Task Rejects_a_request_without_the_internal_key()
     {
