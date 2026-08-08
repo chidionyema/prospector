@@ -458,3 +458,104 @@ def test_summarise_shadow_log_weights_by_figures(tmp_path):
 
 def test_summarise_missing_log_is_empty_not_an_error(tmp_path):
     assert nc.summarise_shadow_log(tmp_path / "nope.jsonl")["rows"] == 0
+
+
+# --------------------------------------------------------------------------- #
+# 8. The self-reference split (2026-08-08)
+#
+# The shipped shadow counted OUR OWN list price as an ungrounded claim. That is not
+# noise: `verify._check_question` began stating the actual rung to `payer_solvency`
+# on 2026-08-06 (§28.3) so the check would stop inventing one, and a checker with no
+# self_ref bucket scores that obedience as a fabrication. An enforcement threshold
+# calibrated on the lumped rate would therefore tighten every time we told the model
+# MORE truth. Measured on the live log the same day: lumped 30.2%, self_ref 18.9%,
+# genuinely untraceable 11.3% — which is what q4c's corpus-wide 10.1% is comparable to.
+# --------------------------------------------------------------------------- #
+
+_NO_PRICE = "This passage discusses adoption and mentions no monetary figure whatsoever."
+
+
+def test_our_own_rung_is_self_ref_not_untraceable():
+    r = nc.audit_rationale("Buyers at this size clear a £49 report without a purchase order.",
+                           _srcs(_NO_PRICE), self_text="landlord compliance pack 4900 49")
+    assert r.unsupported_n == 1, "the rung really is in no retrieved passage"
+    assert r.self_ref_n == 1
+    assert r.untraceable_n == 0, "our own price is not a fabricated claim about the world"
+    assert r.supports[0].reason == "self_reference_own_offer_or_rung"
+
+
+def test_the_split_is_not_vacuous_without_the_haystack():
+    """Same rationale, no self_text: the figure must still count as untraceable.
+
+    Without this the test above would pass on a build that classifies EVERYTHING as
+    self-referential.
+    """
+    r = nc.audit_rationale("Buyers at this size clear a £49 report without a purchase order.",
+                           _srcs(_NO_PRICE))
+    assert (r.self_ref_n, r.untraceable_n) == (0, 1)
+
+
+def test_a_world_claim_is_never_absorbed_into_self_reference():
+    """A number the candidate never states stays untraceable even with a haystack present."""
+    r = nc.audit_rationale("The UK has 5.6 million small businesses.", _srcs(_NO_PRICE),
+                           self_text="landlord compliance pack 4900 49")
+    assert (r.self_ref_n, r.untraceable_n) == (0, 1)
+
+
+def test_untraceable_rate_keeps_its_old_lumped_meaning():
+    """Rows written before the split carry only `untraceable_rate`; it must not move."""
+    r = nc.audit_rationale("A £49 report versus the UK's 5.6 million small businesses.",
+                           _srcs(_NO_PRICE), self_text="4900 49")
+    assert r.untraceable_rate == pytest.approx(2 / 2), "lumped rate is unsupported/figures"
+    d = r.to_dict()
+    assert d["untraceable_rate_excl_self"] == pytest.approx(1 / 2)
+    assert (d["self_ref_n"], d["untraceable_n"]) == (1, 1)
+
+
+def test_record_shadow_splits_the_rung_the_pipeline_itself_handed_the_model(tmp_path):
+    """End to end through the real config: `listing.pricing.rungs` must reach the checker."""
+    from types import SimpleNamespace
+
+    cfg = _cfg(tmp_path, enabled=True)
+    rung = int((cfg.listing or {})["pricing"]["rungs"][2])          # 4900 pence == £49
+    assert rung % 100 == 0, f"this test assumes whole-pound rungs, got {rung}"
+    spoken = rung // 100
+    result = SimpleNamespace(
+        check_name="payer_solvency",
+        rationale=f"A £{spoken} report is inside a discretionary budget.",
+        sources=_srcs(_NO_PRICE), verdict="supported", provider="claude_cli")
+    row = nc.record_shadow(cfg, Candidate(title="t"), result)
+
+    assert row is not None and row["figures_n"] == 1
+    assert row["self_ref_n"] == 1, f"the configured rung {rung} never reached the checker"
+    assert row["untraceable_n"] == 0
+    assert row["untraceable_rate_excl_self"] == 0.0
+
+
+def test_summarise_counts_pre_split_rows_separately_instead_of_assuming_zero(tmp_path):
+    """A legacy row must not be read as "0 self-references" — that blends two statistics.
+
+    Assuming zero is exactly what made the live lumped 38.0% look like it contradicted
+    q4c's 10.1% when the two were never the same measurement.
+    """
+    log = tmp_path / "mixed.jsonl"
+    log.write_text(
+        json.dumps({"check": "a", "figures_n": 4, "unsupported_n": 2}) + "\n" +
+        json.dumps({"check": "b", "figures_n": 6, "unsupported_n": 3,
+                    "self_ref_n": 2, "untraceable_n": 1}) + "\n",
+        encoding="utf-8")
+    s = nc.summarise_shadow_log(log)
+
+    assert s["figures"] == 10 and s["unsupported"] == 5
+    assert s["untraceable_rate"] == pytest.approx(5 / 10), "lumped rate spans every row"
+    assert s["split_figures"] == 6 and s["unsplit_figures"] == 4
+    assert (s["self_ref"], s["untraceable"]) == (2, 1)
+    assert s["untraceable_rate_excl_self"] == pytest.approx(1 / 6), "split rate, split rows only"
+
+
+def test_summarise_reports_no_split_rate_rather_than_a_fake_zero(tmp_path):
+    log = tmp_path / "legacy.jsonl"
+    log.write_text(json.dumps({"check": "a", "figures_n": 3, "unsupported_n": 1}) + "\n",
+                   encoding="utf-8")
+    s = nc.summarise_shadow_log(log)
+    assert s["untraceable_rate_excl_self"] is None, "None means unmeasured, 0.0 means clean"
