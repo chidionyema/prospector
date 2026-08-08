@@ -37,6 +37,7 @@ from prospector.config import load_config
 from prospector.errors import GroundingInfrastructureError
 from prospector.jsonl_atomic import append_jsonl, iter_jsonl, read_jsonl
 from prospector.scheduler import paths
+from prospector.scheduler.alerts import _load_hermes_sender
 from prospector.scheduler.guard import guard_from_config
 
 logger = logging.getLogger(__name__)
@@ -827,6 +828,7 @@ def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None,
                              f"{phase} (batch={batch_size}); force-exited for relaunch")
             _append_tick(cfg, tick)
             _emit_tick_alerts(cfg, tick)
+            _emit_tick_digest(cfg, tick)
         except Exception:  # noqa: BLE001 — bookkeeping must never block the force-exit
             logger.exception("Deadline bookkeeping failed; force-exiting anyway")
     os._exit(2)
@@ -915,6 +917,7 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         print(f"⏸ tick skipped — {walled}", file=sys.stderr, flush=True)
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
+        _emit_tick_digest(cfg, tick)
         return tick
 
     # MOAT PREFLIGHT. Checked after the guard (spend/PAUSE still own the money rails) and
@@ -938,6 +941,7 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         print(f"⏸ tick skipped — {blind}", file=sys.stderr, flush=True)
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
+        _emit_tick_digest(cfg, tick)
         return tick
 
     # GENERATION BRAKE — skip generation, but keep draining.
@@ -987,6 +991,7 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed}
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
+        _emit_tick_digest(cfg, tick)
         _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=None)
         return tick
 
@@ -1025,6 +1030,7 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
 
     _append_tick(cfg, tick)
     _emit_tick_alerts(cfg, tick)
+    _emit_tick_digest(cfg, tick)
     _write_heartbeat(cfg, phase="idle", last_result=tick["result"], last_error=tick["error"])
     if halt:
         # launchd KeepAlive relaunches the exited daemon; _startup_grounding_check (run at
@@ -1136,6 +1142,42 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
         reconcile_alert_txt(cfg)
     except Exception:  # noqa: BLE001 — see above
         logger.exception("Failed to reconcile ALERT.txt")
+
+
+def _emit_tick_digest(cfg, tick: dict) -> None:
+    """Push a one-line status digest to Telegram after each tick (debounced 2h).
+
+    Mirrors `_telegram_push` discipline: best-effort, never raises, honored under
+    PYTEST_CURRENT_TEST. The debounce lives in send_operator_alert (its debounce_s window),
+    keyed by `prospector:tick_digest` so a fresh tick ALERT path still pages immediately.
+
+    The digest is the `🎛 Now` data: heartbeat + last tick + spend + providers + alerts +
+    backlog, formatted into one Telegram-ready line by `prospector.scheduler.status`. Wired
+    at the same six sites as `_emit_tick_alerts` so the founder sees the same digest on
+    every branch — a skipped, errored, moat-blind or healthy tick all push one.
+    """
+    try:
+        from prospector.scheduler.status import format_status_snapshot, status_snapshot
+    except Exception as exc:  # noqa: BLE001 — a missing module must never break the daemon
+        logger.warning("status digest unavailable (modules not importable): %s", exc)
+        return
+    try:
+        snap = status_snapshot(cfg)
+        text = format_status_snapshot(snap)
+    except Exception as exc:  # noqa: BLE001 — a snapshot failure must never break the daemon
+        logger.warning("status_snapshot() failed; tick digest skipped: %s", exc)
+        return
+    send = _load_hermes_sender()
+    if send is None:
+        logger.info("Tick digest sink unavailable (no %s); digest stayed local",
+                    "estate_alert.py")
+        return
+    try:
+        sent = send(text, debounce_key="prospector:tick_digest", debounce_s=7200.0,
+                    dry_run="PYTEST_CURRENT_TEST" in os.environ)
+        logger.info("Tick digest sent=%s (len=%d)", sent, len(text))
+    except Exception as exc:  # noqa: BLE001 — documented never-raises, but trust nothing here
+        logger.warning("Tick digest push failed: %s", exc)
 
 
 class _StopFlag:
