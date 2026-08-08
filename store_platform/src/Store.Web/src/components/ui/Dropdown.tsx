@@ -138,7 +138,7 @@ export function Dropdown<T extends string>({
           aria-activedescendant={`${labelId}-opt-${active}`}
           tabIndex={-1}
           onKeyDown={onListKeyDown}
-          className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-surface p-1 shadow-2 focus:outline-none"
+          className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-surface p-1 focus:outline-none"
         >
           {options.map((opt, i) => {
             const selected = opt.value === value;

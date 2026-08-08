@@ -44,10 +44,10 @@ export default function AboutPage() {
           About
         </p>
         {/* The headline IS the thesis, quoted from the story below it rather than summarising it.
-            It steps to `display` at `md` and stops there: the old six-word headline ran at 96px
-            (`lg:text-mega`), and at that size a ten-word sentence takes three lines on a laptop
-            and four on a phone. */}
-        <h1 className="text-h1 font-semibold text-text md:text-display">
+            It runs at `display`, the top of the six-step scale, which now carries its own mobile
+            size. (The 96px `text-mega` this note used to contrast against was deleted from
+            tokens.css on 2026-08-08 -- §3.2 has six sizes and that was a seventh.) */}
+        <h1 className="text-display font-semibold text-text">
           So I built the part I kept losing to doubt.
         </h1>
 

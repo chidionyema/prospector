@@ -2,8 +2,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from './helpers/stylesheet';
+
 function readSource(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
+  const path = fileURLToPath(new URL(relativePath, import.meta.url));
+  // A stylesheet is read with its local `@import`s inlined, so this file's assertions follow the
+  // tokens when they move between files instead of failing as if they had been deleted. See
+  // `helpers/stylesheet.ts` for the 21-failure incident that added it.
+  return path.endsWith('.css') ? readStylesheet(path) : readFileSync(path, 'utf8');
 }
 
 /**
@@ -64,10 +70,19 @@ describe('Brand v3 — palette, motion, surfaces', () => {
       expect(stripped, '#FF5A1F must not appear anywhere in globals.css').not.toMatch(/#FF5A1F/i);
     });
 
-    it('declares exactly one chromatic accent, for links', () => {
-      expect(stripped, '--accent must be the link blue #2563EB').toMatch(
-        /--accent\s*:\s*#2563EB/i,
+    it('declares NO chromatic accent: links are ink plus a hairline underline', () => {
+      // SUPERSEDED, not deleted. This required `--accent: #2563EB`. Spec §3 (docs/
+      // SITE_SPEC_PROGRAM.md:223-224) replaced the blue with ink and made an inline link's whole
+      // affordance a hairline underline, and the §3 row records the browser-computed proof:
+      // `--accent` = #171717 on all five sampled pages, `2563EB` x0 in the built sheet.
+      //
+      // The assertion is INVERTED rather than dropped, because "no chromatic accent" is the rule
+      // that is easy to undo one component at a time. Asserting the blue is absent is what stops
+      // the next `text-accent` from quietly reintroducing a hue.
+      expect(stripped, '--accent must resolve to ink, via the text token').toMatch(
+        /--accent\s*:\s*var\(\s*--text\s*\)/i,
       );
+      expect(stripped, 'the v2 link blue must not be declared anywhere').not.toMatch(/#2563EB/i);
     });
   });
 
@@ -84,12 +99,21 @@ describe('Brand v3 — palette, motion, surfaces', () => {
     });
 
     it('declares a heading step that dominates body copy', () => {
-      const display = /--text-display\s*:\s*([\d.]+)rem/i.exec(stripped);
-      const body = /--text-body\s*:\s*([\d.]+)rem/i.exec(stripped);
+      // The top two steps are `clamp(min, preferred, max)` now (spec §3.2 gives display and h1
+      // their own mobile sizes), so a bare `([\d.]+)rem` matched nothing and this read as "the
+      // token is not declared". The ratio this test is about is the DESKTOP one, which is the
+      // clamp's maximum: the last rem value in the declaration.
+      const largestRem = (declaration: string | undefined): number | null => {
+        if (declaration === undefined) return null;
+        const rems = [...declaration.matchAll(/([\d.]+)rem/g)].map((m) => Number(m[1]));
+        return rems.length > 0 ? Math.max(...rems) : null;
+      };
+      const display = /--text-display\s*:\s*([^;]+);/i.exec(stripped);
+      const body = /--text-body\s*:\s*([^;]+);/i.exec(stripped);
       expect(display, 'globals.css must declare --text-display').not.toBeNull();
       expect(body, 'globals.css must declare --text-body').not.toBeNull();
       expect(
-        Number(display![1]) / Number(body![1]),
+        largestRem(display?.[1])! / largestRem(body?.[1])!,
         'the largest heading step must be at least 2.5x body',
       ).toBeGreaterThanOrEqual(2.5);
     });

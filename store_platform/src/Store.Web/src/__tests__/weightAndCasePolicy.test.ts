@@ -3,18 +3,35 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from './helpers/stylesheet';
+
 /**
  * Weight and case policy (brand v3, 2026-08-06).
  *
  * THREE RULES, AND THE FAILURE EACH ONE PREVENTS
  *
- * 1. NO WEIGHT ABOVE 600. `_app.tsx` loads Geist at 400/500/600 and Geist Mono at 400/500 — no
- *    700 cut is downloaded. A `font-bold` class does not therefore fail loudly; the browser
- *    SYNTHESISES the weight by smearing the 600, which renders heavier and wider than a real cut
- *    and differs between engines. That is invisible in a diff, invisible in a unit test, and
- *    visible on the page. So the class is banned rather than the weight being added: 600 is the
- *    heaviest anything on this site gets, and if that ever changes the font request has to change
- *    with it, in the same commit.
+ * 1. NO WEIGHT ABOVE 600. RE-ARGUED 2026-08-08, because §3 destroyed the original argument and
+ *    this test's own note said that would mean re-arguing the file rather than editing it.
+ *
+ *    The original ban rested on SYNTHESIS: `_app.tsx` loaded Geist via next/font at 400/500/600,
+ *    no 700 cut was downloaded, so `font-bold` did not fail loudly, it made the browser smear the
+ *    600 into a fake bold that differed between engines. §3 deleted next/font entirely and
+ *    self-hosts Switzer as a VARIABLE face declaring `font-weight: 100 900` (tokens.css:45-48).
+ *    A variable axis renders 700 as a true 700. The synthesis argument is therefore dead, and a
+ *    guard that kept citing it would have been a false comment defending a real face.
+ *
+ *    The ban survives on the stronger basis it should have had all along, which is the type scale
+ *    itself: SITE_SPEC_PROGRAM.md's table tops out at 560 (`--type-display`, `--type-h1`), with
+ *    h2 at 520 and body at 400. Nothing in the design asks for 700. So the rule is now anchored
+ *    to the SCALE rather than to the font request: no `--text-*--font-weight` token may declare
+ *    above 600, and no class may ask for a weight the scale never declares.
+ *
+ *    This also fixes a way the old test could pass while checking nothing. It counted matches of
+ *    `weight: [...]` in `_app.tsx` and asserted the COUNT was greater than zero, which is the
+ *    right instinct, but when next/font went away the count went to zero and the guard failed
+ *    rather than adapting. Its sibling assertion, the one that actually banned weights above 600,
+ *    would have passed vacuously on an empty list. The non-vacuity check is kept below and now
+ *    points at a pattern that exists.
  *
  * 2. NO `uppercase` OUTSIDE MONO. All-caps set in a proportional face is a shouting device, and
  *    it is the one this redesign was called in to remove — the rejected v2 had the signature
@@ -62,7 +79,10 @@ const FILES = walk(SRC).map((path) => ({
   src: stripComments(readFileSync(path, 'utf8')),
 }));
 
-const CSS = readFileSync(join(SRC, 'styles', 'globals.css'), 'utf8').replace(
+// With local `@import`s inlined. Read as the entry file alone, the `text-transform: uppercase`
+// ban below would go GREEN over a violation that had moved into `styles/tokens.css` -- a file
+// boundary is not a policy boundary. See `helpers/stylesheet.ts`.
+const CSS = readStylesheet(join(SRC, 'styles', 'globals.css')).replace(
   /\/\*[\s\S]*?\*\//g,
   '',
 );
@@ -78,19 +98,26 @@ function offenders(pattern: RegExp): string[] {
 }
 
 describe('weight and case policy', () => {
-  it('loads no weight above 600, so no class may ask for one', () => {
-    const app = readFileSync(join(SRC, 'pages', '_app.tsx'), 'utf8');
-    // The ban is only honest while the font request backs it. If a 700 is ever loaded, the
-    // synthesis argument evaporates and this whole file needs re-arguing rather than editing.
-    const weights = [...app.matchAll(/weight:\s*\[([^\]]*)\]/g)].flatMap((m) =>
-      m[1].split(',').map((w) => Number(w.replace(/["'\s]/g, ''))),
+  it('declares no scale weight above 600, so no class may ask for one', () => {
+    // The ban is only honest while the type scale backs it. Read the scale, not the font request:
+    // §3 self-hosts a variable face, so the request no longer names discrete weights at all.
+    const weights = [...CSS.matchAll(/--text-[a-z0-9-]+--font-weight:\s*(\d{3})/g)].map((m) =>
+      Number(m[1]),
     );
-    expect(weights.length, 'no next/font weight arrays found; the pattern stopped matching')
-      .toBeGreaterThan(0);
+    expect(
+      weights.length,
+      'no --text-*--font-weight tokens found; the pattern stopped matching, so the assertion '
+        + 'below would pass on an empty list. Fix the pattern, do not delete the test.',
+    ).toBeGreaterThan(0);
     expect(
       weights.filter((w) => w > 600),
-      `no weight above 600 may be requested, found: ${weights.join(', ')}`,
+      `no weight above 600 may be declared, found: ${weights.join(', ')}`,
     ).toEqual([]);
+    // And the face that renders them must still be the variable one; a static 400-only face
+    // would make every 520/560 in the scale a synthesised weight again.
+    expect(CSS, 'the sans face must declare a variable weight axis').toMatch(
+      /font-weight:\s*100\s+900/,
+    );
   });
 
   it('uses no synthesised bold weight', () => {

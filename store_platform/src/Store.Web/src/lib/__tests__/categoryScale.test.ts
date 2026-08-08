@@ -2,11 +2,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from '../../__tests__/helpers/stylesheet';
+
 import { allCategories, UNLABELLED } from '../category';
 import { SECTOR } from '../facets';
 
 function readSource(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
+  const path = fileURLToPath(new URL(relativePath, import.meta.url));
+  // A stylesheet is read with its local `@import`s inlined; the category tokens moved to
+  // `styles/tokens.css` and this guard has to follow them. See `__tests__/helpers/stylesheet.ts`.
+  return path.endsWith('.css') ? readStylesheet(path) : readFileSync(path, 'utf8');
 }
 
 /**
@@ -36,10 +41,27 @@ function readSource(relativePath: string): string {
 
 const CSS = readSource('../../styles/globals.css');
 
-function token(name: string): string {
-  const match = CSS.match(new RegExp(`--${name}:\\s*(#[0-9A-Fa-f]{6})`));
-  if (!match) throw new Error(`--${name} is not declared in globals.css`);
-  return match[1].toUpperCase();
+/**
+ * Resolve a token to its literal hex, following `var(--other)` aliases.
+ *
+ * §3 retuned `--accent` from a literal to `var(--text)` (tokens.css:131, "Ink"). This function
+ * matched only `#rrggbb`, so it threw "--accent is not declared" on a token that IS declared, and
+ * the failure named the wrong file too. The dangerous version of the same bug is the silent one:
+ * had this returned a default instead of throwing, the collision check below would have compared
+ * every sector hue against a colour nothing uses, gone green, and stopped guarding `--accent`
+ * altogether the day it became an alias. A guard must resolve what the browser resolves.
+ */
+function token(name: string, seen = new Set<string>()): string {
+  if (seen.has(name)) throw new Error(`--${name} is a circular alias`);
+  seen.add(name);
+  const decl = CSS.match(new RegExp(`--${name}:\\s*([^;]+);`));
+  if (!decl) throw new Error(`--${name} is not declared in globals.css or its @imports`);
+  const value = decl[1].trim();
+  const alias = value.match(/^var\(\s*--([a-z0-9-]+)\s*\)$/);
+  if (alias) return token(alias[1], seen);
+  const hex = value.match(/^#[0-9A-Fa-f]{6}$/);
+  if (!hex) throw new Error(`--${name} resolves to "${value}", which is not a 6-digit hex`);
+  return value.toUpperCase();
 }
 
 function channels(hex: string): [number, number, number] {

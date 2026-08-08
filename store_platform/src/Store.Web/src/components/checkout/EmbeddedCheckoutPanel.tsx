@@ -131,7 +131,7 @@ export function EmbeddedCheckoutPanel({
       aria-label={`Checkout for ${title}`}
       className="fixed inset-0 z-70 flex items-start justify-center overflow-y-auto bg-text/40 p-4 backdrop-blur-sm sm:p-8"
     >
-      <div className="w-full max-w-2xl rounded-md border border-border bg-surface shadow-2">
+      <div className="w-full max-w-2xl rounded-md border border-border bg-surface">
         <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
       <span className="text-caption font-medium text-muted">

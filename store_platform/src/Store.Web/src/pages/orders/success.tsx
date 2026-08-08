@@ -170,7 +170,7 @@ export default function OrderSuccess() {
         <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-md border border-border bg-surface2">
           <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_12%_-10%,rgba(255,255,255,0.25),transparent_55%)]" />
           <div className="absolute inset-0 flex items-end p-8">
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-caption font-medium text-text">
+            <span className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-1.5 text-caption font-medium text-text">
               <Icon name="check" size={14} className="text-success" />
               Order confirmed
             </span>
@@ -334,7 +334,7 @@ export default function OrderSuccess() {
               'Pick your first customer, the persona dossier inside the pack',
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3 rounded-md border border-border bg-surface p-4">
-                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-text text-caption font-medium text-bg">
+                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-sm bg-text text-caption font-medium text-bg">
                   {i + 1}
                 </span>
                 <span className="text-meta leading-relaxed text-muted">{step}</span>
@@ -393,7 +393,7 @@ function ResolutionFallback({
     <main id="main" className="min-h-dvh bg-bg">
       <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-bg px-6 py-16">
         <div className="flex w-full max-w-2xl flex-col items-center text-center gap-8">
-          <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-sm bg-success/10 flex items-center justify-center">
             <Icon name="check" size={32} className="text-success" />
           </div>
 
@@ -414,9 +414,9 @@ function ResolutionFallback({
 
           {phase === 'resolving' && (
             <div className="bg-surface rounded-md border border-border p-6 max-w-sm w-full text-left space-y-5">
-              <div className="h-1 w-full bg-border overflow-hidden rounded-full">
+              <div className="h-1 w-full bg-border overflow-hidden rounded-sm">
                 <div
-                  className="h-full bg-text transition-all rounded-full"
+                  className="h-full bg-text transition-all rounded-sm"
                   style={{ width: `${(pollAttempt / MAX_POLL_ATTEMPTS) * 100}%` }}
                 />
               </div>
@@ -434,9 +434,9 @@ function ResolutionFallback({
             phase === 'revoked') && (
             <div className="bg-surface rounded-md border border-border p-6 max-w-sm w-full text-left space-y-4">
               {phase === 'timed-out' && (
-                <div className="h-1 w-full bg-border overflow-hidden rounded-full">
+                <div className="h-1 w-full bg-border overflow-hidden rounded-sm">
                   <div
-                    className="h-full bg-danger transition-all rounded-full"
+                    className="h-full bg-danger transition-all rounded-sm"
                     style={{ width: '100%' }}
                   />
                 </div>

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from './helpers/stylesheet';
+
 /**
  * Source-level contract test for the 2026-08-01 UI polish PR.
  *
@@ -13,7 +15,10 @@ import { describe, expect, it } from 'vitest';
  */
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
-const read = (rel: string) => readFileSync(`${SRC}/${rel}`, 'utf8');
+// A `.css` entry is read with its local `@import`s inlined, so a guard keeps measuring the rule
+// it names after the tokens move between files. See `helpers/stylesheet.ts`.
+const read = (rel: string) =>
+  rel.endsWith('.css') ? readStylesheet(`${SRC}/${rel}`) : readFileSync(`${SRC}/${rel}`, 'utf8');
 
 // ── A. Accessibility primitives ──────────────────────────────────────────────────────────────
 
