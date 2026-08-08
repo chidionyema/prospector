@@ -679,13 +679,18 @@ describe('Design contract — favicon (public/icon.svg)', () => {
       new RegExp(`viewBox="0 0 ${logoBox![1]} ${logoBox![2]}"`),
     );
 
-    // `{ y: 24, w: 64 }, ...` in the component, `y="24" width="64"` in the file.
-    const logoBands = [...logo.matchAll(/\{\s*y:\s*(\d+),\s*w:\s*(\d+)\s*\}/g)].map(
-      (m) => `${m[1]}/${m[2]}`,
+    // `{ y: 19, x: 10, w: 80 }, ...` in the component, `x="10" y="19" width="80"` in the file.
+    // `x` is compared too, and that is the point of the 2026-08-08 revision: the bands used to
+    // share one hardcoded `x`, so a parser reading only y/w could not see a horizontal shift at
+    // all. The mark is now centred -- x carries the whole difference between a funnel and the
+    // left-aligned list glyph it was mistaken for -- so a favicon that drifted in x only would
+    // have passed the old comparison while showing a visibly different mark in the tab strip.
+    const logoBands = [...logo.matchAll(/\{\s*y:\s*(\d+),\s*x:\s*(\d+),\s*w:\s*(\d+)\s*\}/g)].map(
+      (m) => `${m[1]}/${m[2]}/${m[3]}`,
     );
-    const svgBands = [...svg.matchAll(/<rect[^>]*y="(\d+)"[^>]*width="(\d+)"[^>]*\/>/g)].map(
-      (m) => `${m[1]}/${m[2]}`,
-    );
+    const svgBands = [
+      ...svg.matchAll(/<rect[^>]*x="(\d+)"[^>]*y="(\d+)"[^>]*width="(\d+)"[^>]*\/>/g),
+    ].map((m) => `${m[2]}/${m[1]}/${m[3]}`);
     expect(logoBands.length, 'BrandMark band list must be readable').toBe(3);
     expect(svgBands).toEqual(logoBands);
   });

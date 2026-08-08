@@ -136,8 +136,10 @@ export default function HowItWorks() {
         had not met the single fact the page exists to prove.
 
         `RESEARCH_STATS` is the same source the home page proof strip uses, so the two pages
-        cannot disagree. `rejectRate` is computed once, in `lib/stats.ts`, and never re-rounded
-        on this page.
+        cannot disagree. The rates are computed once, in `lib/stats.ts`, and never re-rounded on
+        this page. Read `passRate` for a sentence about survival and `rejectRate` for one about
+        kills: this line said "{rejectRate}% survive", which printed 94% directly under "1,444
+        ideas in. 80 out." and claimed the filter passes almost everything.
       */}
       <Section
         bg="bg"
@@ -149,7 +151,7 @@ export default function HowItWorks() {
             {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in. {RESEARCH_STATS.survived.toLocaleString('en-GB')} out.
           </p>
           <p className="mt-2 max-w-[60ch] text-meta leading-relaxed text-muted">
-            {RESEARCH_STATS.rejectRate}% survive. Every kill is published with the evidence that
+            {RESEARCH_STATS.passRate}% survive. Every kill is published with the evidence that
             made it.
           </p>
         </div>

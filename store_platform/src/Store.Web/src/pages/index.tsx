@@ -1755,8 +1755,13 @@ export default function Home({ packs, stats, initialState, market, currency, per
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="max-w-3xl">
             <p className="text-body font-semibold text-text">
+              {/* "That's X%" has to name the rate it means. It used to print `rejectRate` directly
+                  after the survivor count, so the sentence read "80 survived. That's 94%." -- the
+                  percentage lands on the nearest number, which is the survivors, and 94% of 1,444
+                  is not 80. Naming it "pass rate" fixes the antecedent and the figure at once. */}
               {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
-              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s {RESEARCH_STATS.rejectRate}%.
+              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s a{' '}
+              {RESEARCH_STATS.passRate}% pass rate.
             </p>
             {/* The full stop is HERE and not inside `survivorsSummary`, and that is deliberate.
                 Without it the home page ran two sentences together -- confirmed live on

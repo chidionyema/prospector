@@ -43,6 +43,20 @@ export const RESEARCH_STATS = {
   publishedKills: totals.shown,
   /** Whole percent, rounded once, here. Pages that re-rounded this drifted by a point. */
   rejectRate: Math.round((totals.killed / (totals.killed + totals.passed)) * 100),
+  /**
+   * The share that CLEARED every gate, as a whole percent, rounded once for the same reason.
+   *
+   * It exists because there was no survival figure to read, so pages filling a sentence about
+   * survival reached for `rejectRate` and printed its inverse. On 2026-08-08 `how-it-works.tsx`
+   * rendered "94% survive" two lines under "1,444 ideas in. 80 out.", and the home page rendered
+   * "80 survived. That's 94%.", which attaches the kill rate to the survivor count. Both read as
+   * the filter passing almost everything, when it kills almost everything.
+   *
+   * Kept as its own rounded figure rather than `100 - rejectRate`: the two are derived from the
+   * same totals, so they sum to 100 here, but subtracting a rounded number is how a page ends up
+   * a point out the first time the totals move.
+   */
+  passRate: Math.round((totals.passed / (totals.killed + totals.passed)) * 100),
 } as const;
 
 /**
