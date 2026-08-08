@@ -352,7 +352,17 @@ function PackCard({
             cat.ink,
           )}
         >
-          <PackMark id={pack.id} morph />
+          {/* `axis="down"` for the same reason the detail masthead uses it, and the reason is
+              MEASURED, not inferred from the class list: this box is never tall. `h-36 w-full` is
+              ~2.4:1 on a phone, `sm:h-44 w-full` ~2.0:1, and `lg:h-auto lg:w-[34%]` measures
+              305x305 -- exactly 1.00:1, which is why an "is it wide?" check written as `ratio > 1`
+              skips it while the eye does not. Drawn `across` at any of those, the bands are
+              ragged-width horizontal lines: the text-skeleton idiom, in the largest single graphic
+              on the homepage. It is worst on an UNTAGGED pack, where the ink is zinc #71717A and
+              the result is a grey bar stack indistinguishable from a card that has not loaded.
+              Matching the masthead also makes the shared-element morph a clean scale instead of a
+              transpose, since both ends of the transition now run the same way. */}
+          <PackMark id={pack.id} morph axis="down" />
           {cat.tagged && (
             <span
               className={cx(
