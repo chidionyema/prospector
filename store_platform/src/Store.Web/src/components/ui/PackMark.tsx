@@ -47,13 +47,17 @@ export function PackMark({
    * Which way the strata run. THE RULE: bands run PERPENDICULAR TO THE BOX'S LONG AXIS.
    *
    * WHY THIS EXISTS. The mark is a 0-1 viewBox with `preserveAspectRatio="none"`, so one geometry
-   * is stretched into every box it lands in. Two of the three call sites are TALL -- the row
-   * card's spine is 48x28 (`pages/index.tsx:284-292`, whose own comment says the form was drawn
-   * for that orientation) and the lead card's panel is `h-36 sm:h-44 lg:w-[34%]`. There `across`
-   * is correct and the mark reads as a core sample.
+   * is stretched into every box it lands in. Exactly ONE of the three call sites is TALL: the row
+   * card's spine, measured 32x48 (`pages/index.tsx:284-292`, whose own comment says the form was
+   * drawn for that orientation). There `across` is correct and the mark reads as a core sample.
    *
-   * The detail masthead is not: `h-20 w-full sm:h-24` measures 704x96 on desktop, a 7.3:1 box.
-   * Stretched into it, the bands become wide flat lines of RAGGED WIDTH with varying left insets
+   * The other two are not, and the aspect ratios were MEASURED in the browser rather than read off
+   * the class list -- an earlier revision of this comment claimed the lead card was tall on the
+   * strength of `h-36 sm:h-44 lg:w-[34%]`, and it is not: 2.4:1 on a phone, 2.0:1 at `sm`, and
+   * 305x305 at `lg` where `h-auto` lets a flex row stretch it square. The detail masthead is
+   * `h-20 w-full sm:h-24`, which measures 704x96 -- a 7.3:1 box.
+   *
+   * Stretched into either, the bands become flat lines of RAGGED WIDTH with varying left insets
    * -- which is, precisely, the geometry of a text-line loading placeholder.
    * `components/ui/Skeleton.tsx` is that idiom in this same kit (`bg-border/60`, rounded, bar
    * shaped), so what a buyer meets above the fold on a paid product page is a ragged bar stack:
