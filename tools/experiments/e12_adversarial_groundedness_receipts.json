@@ -1,0 +1,631 @@
+{
+  "title": "adversarial groundedness \u2014 do decisive kills cite a passage we hold?",
+  "programme_ref": "docs/COMMERCIAL_READINESS_PROGRAM.md \u00a79 (line ~323)",
+  "corpus_fingerprint": {
+    "n_dossiers": 1597,
+    "newest_mtime_utc": "2026-08-07T20:16:23.253488+00:00",
+    "sha256": "d97829ed7ea0bae0",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat."
+  },
+  "population": "every dossier json with gate_fired == 'adversarial_decisive' (142 of 1597 parsed dossiers); no sampling, the whole population is audited",
+  "dossier_files_globbed": 1597,
+  "dossiers_parsed": 1597,
+  "register_claimed_count": 142,
+  "measured_gate_count_json": 142,
+  "measured_gate_count_sqlite": 156,
+  "gate_population": {
+    "population_label": "gate_fired == 'adversarial_decisive'",
+    "population_n": 142,
+    "classes": {
+      "cited": 120,
+      "uncited": 14,
+      "dangling": 8
+    },
+    "class_shares": {
+      "cited": 0.8451,
+      "uncited": 0.0986,
+      "dangling": 0.0563
+    },
+    "points_at_a_passage_we_hold": 120,
+    "points_at_a_passage_share": 0.8451,
+    "points_at_a_passage_wilson95": [
+      0.7766,
+      0.8954
+    ],
+    "citation_totals": {
+      "citations": 401,
+      "resolved": 385,
+      "dangling": 16,
+      "dangling_share": 0.0399
+    },
+    "citations_per_kill_histogram": {
+      "0": 14,
+      "1": 27,
+      "2": 33,
+      "3": 29,
+      "4": 15,
+      "5": 10,
+      "6": 6,
+      "7": 2,
+      "8": 1,
+      "9": 2,
+      "10": 1,
+      "12": 1,
+      "13": 1
+    },
+    "inline_id_prose": {
+      "kill_case names no id inline": 45,
+      "kill_case names >=1 id inline": 97
+    },
+    "resolved_source_owner_check_verdicts": {
+      "supported": 59,
+      "unverifiable": 102,
+      "refuted": 8
+    },
+    "adversarial_providers": {
+      "gemini_cli": 60,
+      "deepseek": 30,
+      "claude_cli": 28,
+      "fallback(gemini_cli+claude_cli)": 22,
+      "gemini": 1,
+      "minimax": 1
+    },
+    "by_class_dates": {
+      "cited": {
+        "first": "2026-06-15",
+        "last": "2026-06-24",
+        "n": 120
+      },
+      "uncited": {
+        "first": "2026-06-15",
+        "last": "2026-06-16",
+        "n": 14
+      },
+      "dangling": {
+        "first": "2026-06-15",
+        "last": "2026-06-16",
+        "n": 8
+      }
+    },
+    "by_class_providers": {
+      "cited": {
+        "gemini_cli": 57,
+        "deepseek": 30,
+        "claude_cli": 28,
+        "gemini": 1,
+        "fallback(gemini_cli+claude_cli)": 3,
+        "minimax": 1
+      },
+      "uncited": {
+        "fallback(gemini_cli+claude_cli)": 12,
+        "gemini_cli": 2
+      },
+      "dangling": {
+        "fallback(gemini_cli+claude_cli)": 7,
+        "gemini_cli": 1
+      }
+    },
+    "examples": {
+      "cited": [
+        {
+          "dossier": "00cad68dcfecb756.kill.json",
+          "candidate_id": "00cad68dcfecb756",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 1,
+          "n_resolved": 1,
+          "n_dangling": 0,
+          "n_with_text": 1,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [
+            "supported"
+          ],
+          "kill_case": "The core hypothesis hinges on selling a 'standardized tune-up protocol' to professional heating engineers. However, professional demand for this product is non-existent because this target audience is already required by warranty, insurance, and regulatory standards to follow manufacturer-specific technical documentation and certified training programs. Equipment manufacturers (e.g., Vaillant, Worcester Bosch) provide this necessary technical guidance and troubleshooting documentation free of charge to their authorized installers. A generic, third-party info-product not only lacks the technical specificity required for professional warranty compliance but effectively attempts to sell a 'proprietary method' for a process where the authorized, mandatory method is already available free, forcing tradespeople to choose between professional compliance (free) and a redundant, non-compliant third-party guide (paid).",
+          "provider": "gemini_cli",
+          "confidence": 0.7999999999999999,
+          "urls": [
+            "https://support.google.com/youtube/answer/9229611?hl=en"
+          ],
+          "cited_passages_verbatim": [
+            "Illegal or regulated goods or services policies - YouTube Help\n\n# Illegal or regulated goods or services policies\n\nThe safety of our creators, viewers, and partners is our highest priority. We look to each of you to help us protect this unique and vibrant community. It\u2019s important you understand our Community Guidelines, and the role they play in our shared responsibility to keep YouTube safe. Tak"
+          ]
+        },
+        {
+          "dossier": "00eaf5fddceb525f.kill.json",
+          "candidate_id": "00eaf5fddceb525f",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 2,
+          "n_resolved": 2,
+          "n_dangling": 0,
+          "n_with_text": 2,
+          "dangling_ids": [],
+          "ids_in_prose": [
+            "12a9e940b49122a3",
+            "3ecc8fb0d123e84f"
+          ],
+          "resolved_owner_verdicts": [
+            "supported",
+            "unverifiable"
+          ],
+          "kill_case": "The business model is fundamentally flawed and high-risk. While the pain point is real (3ecc8fb0d123e84f), the proposed solution\u2014a solo-operated broker facilitating intergenerational guarantor arrangements\u2014is operationally infeasible and regulatorily radioactive. Arrangements involving vulnerable retirees, home-equity-as-collateral, and third-party intermediaries mirror the 'sale and rent back' schemes that have triggered massive regulatory crackdowns and financial bans (12a9e940b49122a3). Executing this safely would require institutional-level legal infrastructure, compliance monitoring, and complex financial licensing, rendering the 'solo operator' hypothesis impossible.",
+          "provider": "gemini_cli",
+          "confidence": 0.8999999999999999,
+          "urls": [
+            "https://www.brickunderground.com/rent/ask-an-expert-how-much-rent-retirees-qualify-new-rental-lease-nyc",
+            "https://www.fca.org.uk/news/press-releases/fca-bans-and-issues-largest-ever-fine-nearly-%C2%A31-million-retail-sole-trader"
+          ],
+          "cited_passages_verbatim": [
+            "I\u2019m a retiree with $360,000 in my IRA. Why won\u2019t rental agents call me back?\n\n# I\u2019m a retiree with $360,000 in my IRA. Why won\u2019t rental agents call me back?\n\n- NYC landlords prefer renters who earn an annual salary of 40 times the monthly rent\n- Most owners won't qualify you for an apartment based on cash assets like an IRA\n- Getting a personal or institutional lease guarantor can help you land a ",
+            "FCA bans and issues largest ever fine of nearly \u00a31 million on a retail sole trader for deliberately misleading vulnerable customers for personal gain | FCA\n\nPrint Page\n\nLinkedin\n\nTwitter\n\nThe Financial Conduct Authority (FCA) has fined sale and rent back arranger Gurpreet Singh Chadda \u00a3945,277 and banned him from working in the financial services industry for significant failings when conducting s"
+          ]
+        },
+        {
+          "dossier": "02d76e3ab2206233.kill.json",
+          "candidate_id": "02d76e3ab2206233",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 2,
+          "n_resolved": 2,
+          "n_dangling": 0,
+          "n_with_text": 2,
+          "dangling_ids": [],
+          "ids_in_prose": [
+            "c515ace4d0dfac7a",
+            "e6f29f6c148a9a4a"
+          ],
+          "resolved_owner_verdicts": [
+            "unverifiable"
+          ],
+          "kill_case": "The idea is a deliverability failure. While public land registry data is available (c515ace4d0dfac7a), the proposed method of filing successful statutory leasehold valuation tribunal claims is highly technical and prone to failure. HM Land Registry explicitly warns that applications for lease determination require strict attention to technical detail and that incorrect applications result in significant delays and time costs for all parties (e6f29f6c148a9a4a). The assumption that a solo operator without legal license can reliably navigate these complex statutory processes for third parties is unsupported and fundamentally risks high rejection rates, rendering the service undeliverable as modeled. Furthermore, there is no evidence of consumer demand or a proven route to market for this specific niche.",
+          "provider": "gemini_cli",
+          "confidence": 0.8999999999999999,
+          "urls": [
+            "https://use-land-property-data.service.gov.uk/datasets/leases",
+            "https://hmlandregistry.blog.gov.uk/2017/02/14/cancellation-of-leases/"
+          ],
+          "cited_passages_verbatim": [
+            "Registered Leases - Use land and property data Skip to main content\n\nbeta This is a new service \u2013 your feedback will help us to improve it.\n\nRegistered Leases\n\nDataset\n\n# Registered Leases\n\nContents\n\n- The dataset\n- Get example data\n- Access the data\n- Contact us\n\n## The dataset\n\nThis data shows registered leasehold land and property in England and Wales. It shows the date of the lease and how lon",
+            "Cancellation of leases \u2013 HM Land Registry Skip to main content\n\nhttps://hmlandregistry.blog.gov.uk/2017/02/14/cancellation-of-leases/\n\nAssistant Land Registrar Tim Smithers summarises HM Land Registry's practice on cancellation of leases\n\nPhoto: \u00a9 Mimadeo/Shutterstock.com\n\nThere are many circumstances in which leases may be determined, each requiring different evidence in order to close a leasehol"
+          ]
+        }
+      ],
+      "uncited": [
+        {
+          "dossier": "15e1dd10474af58e.kill.json",
+          "candidate_id": "15e1dd10474af58e",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 0,
+          "n_resolved": 0,
+          "n_dangling": 0,
+          "n_with_text": 0,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The core hypothesis is fundamentally flawed: professional equipment rental providers mitigate risk through Certificates of Insurance (COI) and security deposits, not applicant 'portfolios'. A project history dossier does not address the liability risk (equipment damage, loss, or theft) that prevents rental approval, making it irrelevant to the provider's underwriting process. Because the service does not solve the rental roadblock, demand is not real, and the high Customer Acquisition Cost (CAC) to target this niche will inevitably exceed any marginal, one-off fees, preventing the business from clearing a sustainable owner income.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "371911b0cf1d53da.kill.json",
+          "candidate_id": "371911b0cf1d53da",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 0,
+          "n_resolved": 0,
+          "n_dangling": 0,
+          "n_with_text": 0,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The idea is not viable for a growth-stage startup. The hypothesis relies on hyper-local event signals for inventory replenishment, which necessitates a bespoke model for every individual coffee shop. This fundamental structural barrier prohibits a repeatable and scalable product-led growth (PLG) motion, ensuring the acquisition process remains manual and high-touch rather than compoundable.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "3f073381568d6fe3.kill.json",
+          "candidate_id": "3f073381568d6fe3",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 0,
+          "n_resolved": 0,
+          "n_dangling": 0,
+          "n_with_text": 0,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The idea is unviable due to structural and operational impossibilities. First, the proposal assumes the ability to deploy universal, proprietary IoT telemetry across a highly fragmented, aging, and diverse legacy elevator infrastructure\u2014an R&D and implementation hurdle that defies scalability for a venture-backed startup. Second, the elevator maintenance industry is dominated by massive OEMs who exert monopolistic control over the spare parts supply chain, making it structurally impossible for independent technicians to shift the risk profile of maintenance contracts toward this proposed financing model. Third, the legal and regulatory burden regarding elevator uptime and building safety is extreme; shifting financial liability based on 'performance-linked' parts is incompatible with established, strict liability frameworks in commercial real estate, rendering the hypothesis non-functional in a real-world legal context.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        }
+      ],
+      "dangling": [
+        {
+          "dossier": "380ed7dd7925abcd.kill.json",
+          "candidate_id": "380ed7dd7925abcd",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 2,
+          "n_resolved": 0,
+          "n_dangling": 2,
+          "n_with_text": 0,
+          "dangling_ids": [
+            "prospector-master-spec.md",
+            "fixtures/golden_set.json"
+          ],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The proposed service relies on the assumption that persuasive narratives can overturn government care-support denials. However, local government councils are chronically under-funded, creating a structural inability to increase support regardless of the persuasiveness of an appeal. As evidenced in 'prospector-master-spec.md' (line 485) and 'fixtures/golden_set.json' (line 5) regarding 'Care-home council fee arbitrage', the fundamental constraint is council insolvency, rendering the appeals process ineffective as a mechanism for securing additional funding. This constitutes a deliverability failure, as the promised outcome\u2014overturning the denial decision to secure more funding\u2014is not achievable due to the budgetary constraints of the decision-making entity.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "56421ae8377bb157.kill.json",
+          "candidate_id": "56421ae8377bb157",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 1,
+          "n_resolved": 0,
+          "n_dangling": 1,
+          "n_with_text": 0,
+          "dangling_ids": [
+            "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFwPBshRNTnRw82Ot5Wv6a-0mSm2IaVnuwUYCkWPdjqlzUxkxw5QmLCOJ6lxUkslt3sy_m-4ZvFl_n_nU234MypLALF-qVSg4sU7jK9xg2e9sOyqlKMpYXgqRcoJEbjmXd0Eve5y4QvJG3EaSwODp1pgI8LdXlazwQB3cAH-4QxvxfhBsAChqhbJ39kg7tzTOynt9mbOB660I9tu3d64bUD7-g8XJ4zPFnxUNABdEwP902bRUafODDcTpg80D1l8A=="
+          ],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The core hypothesis is fundamentally flawed: independent butcher shops already rely on established commercial refrigeration specialists\u2014not general HVAC technicians\u2014for cold storage maintenance. These existing specialists are trained in the precise temperature, high-humidity requirements, and food safety compliance (sanitization, PT charts) necessary for meat preservation. There is no 'gap' in the market for a new specialist entrant, as these needs are already met by an established industry, making the business non-viable due to lack of a unique value proposition and high barriers to entry in a mature, competition-saturated service sector.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "57fa9ee660b87a59.kill.json",
+          "candidate_id": "57fa9ee660b87a59",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 3,
+          "n_resolved": 0,
+          "n_dangling": 3,
+          "n_with_text": 0,
+          "dangling_ids": [
+            "[1] nih.gov",
+            "[2] youtube.com",
+            "[3] fastercapital.com"
+          ],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "CareChronicle fails as a sustainable SMB due to critical flaws in product-market fit and unit economics. The \"digital burden\" of managing complex geriatric care creates high user friction, and the target demographic is already cognitively overloaded, leading to low retention [1]. Furthermore, a fundamental \"payment gap\" exists; caregivers are reluctant to pay for utility apps, and high customer acquisition costs (CAC) for this niche segment prevent a viable direct-to-consumer business model. The absence of insurance reimbursement and the extreme technical challenges of integrating fragmented healthcare data (EHR/pharmacy silos) mean the tool cannot achieve the necessary scale for profitability [2, 3]. The business erroneously attempts to solve a problem requiring human-centric care with software, failing to clear the margin required to provide a living income for the owner.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        }
+      ]
+    }
+  },
+  "decisive_population": {
+    "population_label": "adversarial.decisive is true (any gate)",
+    "population_n": 147,
+    "classes": {
+      "cited": 125,
+      "uncited": 14,
+      "dangling": 8
+    },
+    "class_shares": {
+      "cited": 0.8503,
+      "uncited": 0.0952,
+      "dangling": 0.0544
+    },
+    "points_at_a_passage_we_hold": 125,
+    "points_at_a_passage_share": 0.8503,
+    "points_at_a_passage_wilson95": [
+      0.7838,
+      0.899
+    ],
+    "citation_totals": {
+      "citations": 420,
+      "resolved": 404,
+      "dangling": 16,
+      "dangling_share": 0.0381
+    },
+    "citations_per_kill_histogram": {
+      "0": 14,
+      "1": 27,
+      "2": 33,
+      "3": 31,
+      "4": 17,
+      "5": 11,
+      "6": 6,
+      "7": 2,
+      "8": 1,
+      "9": 2,
+      "10": 1,
+      "12": 1,
+      "13": 1
+    },
+    "inline_id_prose": {
+      "kill_case names no id inline": 48,
+      "kill_case names >=1 id inline": 99
+    },
+    "resolved_source_owner_check_verdicts": {
+      "supported": 61,
+      "unverifiable": 103,
+      "refuted": 12
+    },
+    "adversarial_providers": {
+      "gemini_cli": 60,
+      "deepseek": 33,
+      "claude_cli": 28,
+      "fallback(gemini_cli+claude_cli)": 22,
+      "gemini": 1,
+      "minimax": 3
+    },
+    "by_class_dates": {
+      "cited": {
+        "first": "2026-06-15",
+        "last": "2026-08-01",
+        "n": 125
+      },
+      "uncited": {
+        "first": "2026-06-15",
+        "last": "2026-06-16",
+        "n": 14
+      },
+      "dangling": {
+        "first": "2026-06-15",
+        "last": "2026-06-16",
+        "n": 8
+      }
+    },
+    "by_class_providers": {
+      "cited": {
+        "gemini_cli": 57,
+        "deepseek": 33,
+        "claude_cli": 28,
+        "gemini": 1,
+        "fallback(gemini_cli+claude_cli)": 3,
+        "minimax": 3
+      },
+      "uncited": {
+        "fallback(gemini_cli+claude_cli)": 12,
+        "gemini_cli": 2
+      },
+      "dangling": {
+        "fallback(gemini_cli+claude_cli)": 7,
+        "gemini_cli": 1
+      }
+    },
+    "examples": {
+      "cited": [
+        {
+          "dossier": "00cad68dcfecb756.kill.json",
+          "candidate_id": "00cad68dcfecb756",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 1,
+          "n_resolved": 1,
+          "n_dangling": 0,
+          "n_with_text": 1,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [
+            "supported"
+          ],
+          "kill_case": "The core hypothesis hinges on selling a 'standardized tune-up protocol' to professional heating engineers. However, professional demand for this product is non-existent because this target audience is already required by warranty, insurance, and regulatory standards to follow manufacturer-specific technical documentation and certified training programs. Equipment manufacturers (e.g., Vaillant, Worcester Bosch) provide this necessary technical guidance and troubleshooting documentation free of charge to their authorized installers. A generic, third-party info-product not only lacks the technical specificity required for professional warranty compliance but effectively attempts to sell a 'proprietary method' for a process where the authorized, mandatory method is already available free, forcing tradespeople to choose between professional compliance (free) and a redundant, non-compliant third-party guide (paid).",
+          "provider": "gemini_cli",
+          "confidence": 0.7999999999999999,
+          "urls": [
+            "https://support.google.com/youtube/answer/9229611?hl=en"
+          ],
+          "cited_passages_verbatim": [
+            "Illegal or regulated goods or services policies - YouTube Help\n\n# Illegal or regulated goods or services policies\n\nThe safety of our creators, viewers, and partners is our highest priority. We look to each of you to help us protect this unique and vibrant community. It\u2019s important you understand our Community Guidelines, and the role they play in our shared responsibility to keep YouTube safe. Tak"
+          ]
+        },
+        {
+          "dossier": "00eaf5fddceb525f.kill.json",
+          "candidate_id": "00eaf5fddceb525f",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 2,
+          "n_resolved": 2,
+          "n_dangling": 0,
+          "n_with_text": 2,
+          "dangling_ids": [],
+          "ids_in_prose": [
+            "12a9e940b49122a3",
+            "3ecc8fb0d123e84f"
+          ],
+          "resolved_owner_verdicts": [
+            "supported",
+            "unverifiable"
+          ],
+          "kill_case": "The business model is fundamentally flawed and high-risk. While the pain point is real (3ecc8fb0d123e84f), the proposed solution\u2014a solo-operated broker facilitating intergenerational guarantor arrangements\u2014is operationally infeasible and regulatorily radioactive. Arrangements involving vulnerable retirees, home-equity-as-collateral, and third-party intermediaries mirror the 'sale and rent back' schemes that have triggered massive regulatory crackdowns and financial bans (12a9e940b49122a3). Executing this safely would require institutional-level legal infrastructure, compliance monitoring, and complex financial licensing, rendering the 'solo operator' hypothesis impossible.",
+          "provider": "gemini_cli",
+          "confidence": 0.8999999999999999,
+          "urls": [
+            "https://www.brickunderground.com/rent/ask-an-expert-how-much-rent-retirees-qualify-new-rental-lease-nyc",
+            "https://www.fca.org.uk/news/press-releases/fca-bans-and-issues-largest-ever-fine-nearly-%C2%A31-million-retail-sole-trader"
+          ],
+          "cited_passages_verbatim": [
+            "I\u2019m a retiree with $360,000 in my IRA. Why won\u2019t rental agents call me back?\n\n# I\u2019m a retiree with $360,000 in my IRA. Why won\u2019t rental agents call me back?\n\n- NYC landlords prefer renters who earn an annual salary of 40 times the monthly rent\n- Most owners won't qualify you for an apartment based on cash assets like an IRA\n- Getting a personal or institutional lease guarantor can help you land a ",
+            "FCA bans and issues largest ever fine of nearly \u00a31 million on a retail sole trader for deliberately misleading vulnerable customers for personal gain | FCA\n\nPrint Page\n\nLinkedin\n\nTwitter\n\nThe Financial Conduct Authority (FCA) has fined sale and rent back arranger Gurpreet Singh Chadda \u00a3945,277 and banned him from working in the financial services industry for significant failings when conducting s"
+          ]
+        },
+        {
+          "dossier": "02d76e3ab2206233.kill.json",
+          "candidate_id": "02d76e3ab2206233",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 2,
+          "n_resolved": 2,
+          "n_dangling": 0,
+          "n_with_text": 2,
+          "dangling_ids": [],
+          "ids_in_prose": [
+            "c515ace4d0dfac7a",
+            "e6f29f6c148a9a4a"
+          ],
+          "resolved_owner_verdicts": [
+            "unverifiable"
+          ],
+          "kill_case": "The idea is a deliverability failure. While public land registry data is available (c515ace4d0dfac7a), the proposed method of filing successful statutory leasehold valuation tribunal claims is highly technical and prone to failure. HM Land Registry explicitly warns that applications for lease determination require strict attention to technical detail and that incorrect applications result in significant delays and time costs for all parties (e6f29f6c148a9a4a). The assumption that a solo operator without legal license can reliably navigate these complex statutory processes for third parties is unsupported and fundamentally risks high rejection rates, rendering the service undeliverable as modeled. Furthermore, there is no evidence of consumer demand or a proven route to market for this specific niche.",
+          "provider": "gemini_cli",
+          "confidence": 0.8999999999999999,
+          "urls": [
+            "https://use-land-property-data.service.gov.uk/datasets/leases",
+            "https://hmlandregistry.blog.gov.uk/2017/02/14/cancellation-of-leases/"
+          ],
+          "cited_passages_verbatim": [
+            "Registered Leases - Use land and property data Skip to main content\n\nbeta This is a new service \u2013 your feedback will help us to improve it.\n\nRegistered Leases\n\nDataset\n\n# Registered Leases\n\nContents\n\n- The dataset\n- Get example data\n- Access the data\n- Contact us\n\n## The dataset\n\nThis data shows registered leasehold land and property in England and Wales. It shows the date of the lease and how lon",
+            "Cancellation of leases \u2013 HM Land Registry Skip to main content\n\nhttps://hmlandregistry.blog.gov.uk/2017/02/14/cancellation-of-leases/\n\nAssistant Land Registrar Tim Smithers summarises HM Land Registry's practice on cancellation of leases\n\nPhoto: \u00a9 Mimadeo/Shutterstock.com\n\nThere are many circumstances in which leases may be determined, each requiring different evidence in order to close a leasehol"
+          ]
+        }
+      ],
+      "uncited": [
+        {
+          "dossier": "15e1dd10474af58e.kill.json",
+          "candidate_id": "15e1dd10474af58e",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 0,
+          "n_resolved": 0,
+          "n_dangling": 0,
+          "n_with_text": 0,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The core hypothesis is fundamentally flawed: professional equipment rental providers mitigate risk through Certificates of Insurance (COI) and security deposits, not applicant 'portfolios'. A project history dossier does not address the liability risk (equipment damage, loss, or theft) that prevents rental approval, making it irrelevant to the provider's underwriting process. Because the service does not solve the rental roadblock, demand is not real, and the high Customer Acquisition Cost (CAC) to target this niche will inevitably exceed any marginal, one-off fees, preventing the business from clearing a sustainable owner income.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "371911b0cf1d53da.kill.json",
+          "candidate_id": "371911b0cf1d53da",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 0,
+          "n_resolved": 0,
+          "n_dangling": 0,
+          "n_with_text": 0,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The idea is not viable for a growth-stage startup. The hypothesis relies on hyper-local event signals for inventory replenishment, which necessitates a bespoke model for every individual coffee shop. This fundamental structural barrier prohibits a repeatable and scalable product-led growth (PLG) motion, ensuring the acquisition process remains manual and high-touch rather than compoundable.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "3f073381568d6fe3.kill.json",
+          "candidate_id": "3f073381568d6fe3",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 0,
+          "n_resolved": 0,
+          "n_dangling": 0,
+          "n_with_text": 0,
+          "dangling_ids": [],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The idea is unviable due to structural and operational impossibilities. First, the proposal assumes the ability to deploy universal, proprietary IoT telemetry across a highly fragmented, aging, and diverse legacy elevator infrastructure\u2014an R&D and implementation hurdle that defies scalability for a venture-backed startup. Second, the elevator maintenance industry is dominated by massive OEMs who exert monopolistic control over the spare parts supply chain, making it structurally impossible for independent technicians to shift the risk profile of maintenance contracts toward this proposed financing model. Third, the legal and regulatory burden regarding elevator uptime and building safety is extreme; shifting financial liability based on 'performance-linked' parts is incompatible with established, strict liability frameworks in commercial real estate, rendering the hypothesis non-functional in a real-world legal context.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        }
+      ],
+      "dangling": [
+        {
+          "dossier": "380ed7dd7925abcd.kill.json",
+          "candidate_id": "380ed7dd7925abcd",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 2,
+          "n_resolved": 0,
+          "n_dangling": 2,
+          "n_with_text": 0,
+          "dangling_ids": [
+            "prospector-master-spec.md",
+            "fixtures/golden_set.json"
+          ],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The proposed service relies on the assumption that persuasive narratives can overturn government care-support denials. However, local government councils are chronically under-funded, creating a structural inability to increase support regardless of the persuasiveness of an appeal. As evidenced in 'prospector-master-spec.md' (line 485) and 'fixtures/golden_set.json' (line 5) regarding 'Care-home council fee arbitrage', the fundamental constraint is council insolvency, rendering the appeals process ineffective as a mechanism for securing additional funding. This constitutes a deliverability failure, as the promised outcome\u2014overturning the denial decision to secure more funding\u2014is not achievable due to the budgetary constraints of the decision-making entity.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "56421ae8377bb157.kill.json",
+          "candidate_id": "56421ae8377bb157",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 1,
+          "n_resolved": 0,
+          "n_dangling": 1,
+          "n_with_text": 0,
+          "dangling_ids": [
+            "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFwPBshRNTnRw82Ot5Wv6a-0mSm2IaVnuwUYCkWPdjqlzUxkxw5QmLCOJ6lxUkslt3sy_m-4ZvFl_n_nU234MypLALF-qVSg4sU7jK9xg2e9sOyqlKMpYXgqRcoJEbjmXd0Eve5y4QvJG3EaSwODp1pgI8LdXlazwQB3cAH-4QxvxfhBsAChqhbJ39kg7tzTOynt9mbOB660I9tu3d64bUD7-g8XJ4zPFnxUNABdEwP902bRUafODDcTpg80D1l8A=="
+          ],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "The core hypothesis is fundamentally flawed: independent butcher shops already rely on established commercial refrigeration specialists\u2014not general HVAC technicians\u2014for cold storage maintenance. These existing specialists are trained in the precise temperature, high-humidity requirements, and food safety compliance (sanitization, PT charts) necessary for meat preservation. There is no 'gap' in the market for a new specialist entrant, as these needs are already met by an established industry, making the business non-viable due to lack of a unique value proposition and high barriers to entry in a mature, competition-saturated service sector.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        },
+        {
+          "dossier": "57fa9ee660b87a59.kill.json",
+          "candidate_id": "57fa9ee660b87a59",
+          "gate_fired": "adversarial_decisive",
+          "n_citations": 3,
+          "n_resolved": 0,
+          "n_dangling": 3,
+          "n_with_text": 0,
+          "dangling_ids": [
+            "[1] nih.gov",
+            "[2] youtube.com",
+            "[3] fastercapital.com"
+          ],
+          "ids_in_prose": [],
+          "resolved_owner_verdicts": [],
+          "kill_case": "CareChronicle fails as a sustainable SMB due to critical flaws in product-market fit and unit economics. The \"digital burden\" of managing complex geriatric care creates high user friction, and the target demographic is already cognitively overloaded, leading to low retention [1]. Furthermore, a fundamental \"payment gap\" exists; caregivers are reluctant to pay for utility apps, and high customer acquisition costs (CAC) for this niche segment prevent a viable direct-to-consumer business model. The absence of insurance reimbursement and the extreme technical challenges of integrating fragmented healthcare data (EHR/pharmacy silos) mean the tool cannot achieve the necessary scale for profitability [2, 3]. The business erroneously attempts to solve a problem requiring human-centric care with software, failing to clear the margin required to provide a living income for the owner.",
+          "provider": "fallback(gemini_cli+claude_cli)",
+          "confidence": null,
+          "urls": [],
+          "cited_passages_verbatim": []
+        }
+      ]
+    }
+  },
+  "gate_pop_check_verdict_mix": {
+    "not_ruled": 797,
+    "ruled": 200
+  },
+  "verdict": "22 of 142 adversarial_decisive kills (15.5%) rest on NO passage we hold. Every one of them falls in 2026-06-15..2026-06-16, inside a population spanning 2026-06-15..2026-06-24 \u2014 so this is a PRE-GUARD artefact, not a live defect: `verify.py:672-674` now downgrades decisive-with-no-citations, and the `dangling` class (an id that resolves to nothing) is the hole that guard still does not close.",
+  "headline": {
+    "adversarial_decisive kills audited (json)": 142,
+    "same, per store/prospector.db": 156,
+    "cited \u2014 every id resolves to a passage with text": 120,
+    "partial \u2014 some ids resolve": 0,
+    "dangling \u2014 NO id resolves (invented receipts)": 8,
+    "uncited \u2014 empty citations (pure opinion)": 14,
+    "unparseable": 0,
+    "points at a passage we hold": "120/142 = 84.5% (95% CI 77.7%\u201389.5%)",
+    "dangling citation ids / all citation ids": "16/401 = 4.0%",
+    "era of the ungrounded kills vs the whole population": "2026-06-15..2026-06-16 within 2026-06-15..2026-06-24"
+  },
+  "limitations": [
+    "Resolution is POINTING, not support. A citation that resolves proves we hold the passage, not that the passage carries the kill case. E15 scores exactly these kill_case/passage pairs with HHEM; read the two together.",
+    "`verify.py:672-674` already blocks decisive-with-zero-citations, so the `uncited` count is expected near zero. `dangling` is the class that guard does not catch.",
+    "The json glob and the sqlite index disagree on the population size by design (the index outlives rotated json files); both counts are reported, neither is preferred.",
+    "store/dossiers is written by the live daemon, so a later re-run shifts counts by a few dossiers. _meta.run_at_utc and dossier_files_globbed pin this run."
+  ],
+  "_meta": {
+    "experiment": "E12",
+    "module": "e12_adversarial_groundedness.py",
+    "run_at_utc": "2026-08-07T20:23:50+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}
