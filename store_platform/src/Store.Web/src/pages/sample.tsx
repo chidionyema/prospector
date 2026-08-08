@@ -36,7 +36,11 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     <span
       className={cx(
         'inline-flex flex-none items-center gap-1.5 rounded-sm px-2.5 py-1 text-caption font-medium',
-        supported ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning',
+        // `bg-<tone>/10` is a 10% tint of the hue over the surface, and the base tone was never
+        // measured against it: axe flagged the amber badge as a real contrast failure. tokens.css
+        // already declares the pair built for exactly this -- the `-bg` tint with the `-strong`
+        // ink (7.29:1 for success, 6.84:1 for warning) -- so use it instead of an ad-hoc alpha.
+        supported ? 'bg-success-bg text-success-strong' : 'bg-warning-bg text-warning-strong',
       )}
     >
       {/* §3.3: a check's ruling is drawn by the verdict set, never by the lucide sheet. The two
@@ -272,19 +276,30 @@ export default function SamplePage() {
                 const v = SCORES[key];
                 const tone = v >= 4 ? 'bg-success' : v === 3 ? 'bg-text/40' : 'bg-warning';
                 return (
-                  <div key={key} className="flex flex-col gap-1.5">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <dt className="text-meta font-semibold text-text">{label}</dt>
-                      <dd className="font-mono text-caption font-medium text-muted">{v} / 5</dd>
-                    </div>
-                    <div className="flex gap-1" aria-hidden>
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <span
-                          key={i}
-                          className={cx('h-1.5 flex-1 rounded-sm', i < v ? tone : 'bg-border')}
-                        />
-                      ))}
-                    </div>
+                  // A <dl> may wrap each term/value pair in ONE <div> -- the HTML Living Standard
+                  // allows it and axe-core 4.12 agrees. What it may not do is nest a SECOND <div>
+                  // inside that wrapper, or hang a non-dt/dd sibling off it. Both were here, which
+                  // is why axe reported `dlitem` and `definition-list` on all six axes. The card
+                  // keeps its wrapper (the 2-up grid depends on it) and the bar moves INSIDE <dd>,
+                  // absolutely positioned so it still spans the whole card rather than just the
+                  // value column. `pb-3` reserves exactly what `gap-1.5` + `h-1.5` occupied before,
+                  // so card height and the grid's rhythm are unchanged.
+                  <div
+                    key={key}
+                    className="relative grid grid-cols-[1fr_auto] items-baseline gap-x-2 pb-3"
+                  >
+                    <dt className="text-meta font-semibold text-text">{label}</dt>
+                    <dd className="font-mono text-caption font-medium text-muted">
+                      {v} / 5
+                      <span className="absolute inset-x-0 bottom-0 flex gap-1" aria-hidden>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={cx('h-1.5 flex-1 rounded-sm', i < v ? tone : 'bg-border')}
+                          />
+                        ))}
+                      </span>
+                    </dd>
                   </div>
                 );
               })}

@@ -91,7 +91,13 @@ export function CheckSequence({ className }: { className?: string }) {
                 <span
                   className={cx(
                     'flex h-7 w-7 items-center justify-center rounded-sm font-mono text-caption',
-                    supported ? 'bg-survive text-bg' : 'border border-kill bg-kill-bg text-kill',
+                    // tokens.css:143 states it outright -- --kill on --kill-bg measures 4.41:1,
+                    // under the AA floor -- and this pairing did exactly that. --kill-strong exists
+                    // because of it and measures 5.91:1 on the same tint. The BORDER stays --kill:
+                    // an edge is a UI boundary held to 3:1, not text.
+                    supported
+                      ? 'bg-survive text-bg'
+                      : 'border border-kill bg-kill-bg text-kill-strong',
                   )}
                 >
                   {String(i + 1).padStart(2, '0')}

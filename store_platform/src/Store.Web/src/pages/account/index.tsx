@@ -71,7 +71,21 @@ export default function AccountPage() {
           }
         />
 
-        <div className="mt-8">
+        {/* min-h-[400px]: CLS fix (measured 0.184 at 360px, first of two shift entries, ~710ms
+            after navigation, GET /auth/me resolving in AuthContext.tsx). The three-line skeleton
+            below is ~96px (h-8 + 2*h-4 + 2*16px space-y-4 gaps); either real branch that replaces
+            it is taller, so the swap was a pure growth shift with nothing above it to absorb.
+            400px is derived from the signed-out branch specifically (AuthPanel in its default
+            'signin' mode, no notice/error banner), which is the branch a typical /account visit
+            hits: Card padding 24+24 (mobile p-6) + 2px border + SocialSignIn's own now-reserved
+            74px + the two-field form (2 * (label 25.6 + gap-1 4 + input h-10 40) + two 16px
+            space-y-4 gaps = 211.2) + the "forgot / create account" row (mt-5 20 + h-10 40) =
+            ~395px, rounded up. This is a computed derivation from the Tailwind tokens in
+            globals.css, not a live Playwright measurement -- re-verify with the audit if the
+            tokens change. It does NOT match the signed-in branch (AccountPanel, taller once an
+            order or two renders), which still gets a smaller but non-zero residual shift; a
+            min-height only ever raises a floor, it cannot force the taller branch to shrink. */}
+        <div className="mt-8 min-h-[400px]">
           {/* Nothing renders until the session question is answered. The alternative shows every
               returning customer a sign-in form for one frame before their account replaces it. */}
           {status === 'loading' && (
