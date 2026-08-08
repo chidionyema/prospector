@@ -86,7 +86,12 @@ def test_pusher_called_after_emit_tick_alerts(tmp_path, monkeypatch):
     (run_scheduled.py lines 822, 910, 933, 982, 1007, 1020). A grep proves the wiring."""
     import re
     from pathlib import Path
-    rs = Path("/Users/chidionyema/Documents/code/prospector/.worktrees/feat-now-telegram-status-digest/prospector/scheduler/run_scheduled.py")
+    from prospector.scheduler import run_scheduled as RS
+    # Ask the imported module where it lives. A hardcoded absolute path here passed on
+    # the machine that wrote it and failed everywhere else -- CI read it as
+    # FileNotFoundError on /Users/.../.worktrees/..., which is not a defect in the code
+    # under test.
+    rs = Path(RS.__file__)
     src = rs.read_text()
     # Both must be called together
     pair = re.findall(r"_emit_tick_alerts\([^)]*\)", src)
