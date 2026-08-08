@@ -69,31 +69,27 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           .
         </p>
 
-        {/* WHY ONE PACK COSTS MORE THAN ANOTHER, stated as its own block.
-            This was a trailing subclause on the paragraph below ("...whether it is £29 or £199. The
-            price reflects the size of the opportunity, never the size of the download"), which is
-            the correct answer given in the one position where nobody looking for it would find it:
-            appended to a sentence about the contents list. The pricing page's single job is this
-            question. It gets a heading. */}
+        {/*
+          COST ANCHOR, PROMOTED TO POSITION 2 (email §5).
+          It used to render at the bottom of the page, far below the ladder. The page a buyer
+          opens to answer "what does it cost" was the one page that did not say so until the
+          reader had scrolled past the contents list and the limits list. The anchor is the only
+          argument here that does not move with the catalogue: a research firm publishes a price
+          and the price is the price.
+        */}
+        <div className="mt-12">
+          <MethodCostAnchor range={range} />
+        </div>
+
+        {/* WHY ONE PACK COSTS MORE THAN ANOTHER, stated as its own block. */}
         {range && !range.uniform && (
           <div className="mt-12">
             <h2 className="text-h2 font-semibold text-text md:text-h1">
-              Why one pack is {formatGbp(range.min)} and another is {formatGbp(range.max)}
+              What changes is the size of the opportunity. The pack doesn’t.
             </h2>
-            {/* The drawing goes ABOVE the explanation, and the explanation shrank to fit under it.
-                This block used to be two paragraphs inside a bordered panel and no picture, which
-                asked the reader to build the comparison in their head; the ladder now states the
-                shape and the prose only has to name the two inputs. The third paragraph ("both
-                inputs land on a fixed, published ladder") was deleted outright: the figure is that
-                sentence, and keeping both is the site telling the reader the same thing twice, in
-                the weaker medium first. */}
             <PriceLadder rungs={ladder} className="mt-6" />
-            {/* "aiming at the US earns one rung over the same idea aimed at the UK" was our own
-                internal vocabulary published: a "rung" is a row of `config.yaml listing.pricing`,
-                and nothing on the page tells a buyer that, so the sentence explaining why one pack
-                costs more than another was written in the one register a buyer cannot read. */}
             <p className="mt-8 max-w-[60ch] text-body text-muted">
-              Two things set the price, not a guess: how big the idea could realistically become,
+              Two things set the rung, not a guess: how big the idea could realistically become,
               and which market it targets. US-market packs sit one price step higher, because the
               market they address is bigger. A weekend side business and a
               venture-scale one get the same{' '}
@@ -206,24 +202,30 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           </div>
         </div>
 
-        {/* The two price arguments, moved off the home page on 2026-08-06. This is the page a
-            buyer opens when the question is "why does this cost what it costs", so this is where
-            the sourced answers belong. */}
-        <div className="mt-14">
-          <MethodCostAnchor range={range} />
-        </div>
+        {/* The subscription comparison, once (email §5).
+            The previous two-up grid (feed vs pack) was five rows long. The email cuts it to
+            three rows -- the three facts a buyer actually compares on: cost cadence, what
+            arrives, and what happens on cancel. The other two are restatements of those three. */}
         <div className="mt-14">
           <ComparisonBlock range={range} />
         </div>
 
-        {/* Buy CTA */}
+        {/* Buy CTA -- email §5 closing.
+            The price spread is COMPUTED from the catalogue this render has, never typed
+            (`noHardcodedPrice.test.ts` is the guard: a £29/£149 hardcoded headline drifts the
+            moment a rung moves; a `range.min`/`range.max` headline moves with it). On a catalogue
+            the page cannot read, the spread is omitted and the line falls back to a single
+            statement that is true at any price. */}
         <div className="mt-14 rounded-md border border-border bg-surface2 p-8">
           <p className="text-caption font-medium text-subtle">{BRAND.name}</p>
           <h2 className="mt-2 text-h2 font-semibold text-text">
-            {range ? `${range.label}. Yours forever.` : 'Yours forever.'}
+            {range && !range.uniform
+              ? `${formatGbp(range.min)} to ${formatGbp(range.max)}. Yours forever.`
+              : 'One payment. Yours forever.'}
           </h2>
           <p className="mt-3 max-w-[60ch] text-body text-muted">
-            Pick one pack. One payment, and the price is on the pack&apos;s own page.
+            One payment per pack, no subscription. Read a free sample first if you’d like to see
+            the rigour before you buy.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Link href="/#catalog">

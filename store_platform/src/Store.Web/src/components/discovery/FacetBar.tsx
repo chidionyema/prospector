@@ -48,8 +48,17 @@ const GROUPS: FacetKind[] = ['advantage', 'commitment', 'payer', 'effort', 'mech
 const PRIMARY_GROUPS: FacetKind[] = ['advantage', 'commitment', 'payer'];
 const ADVANCED_GROUPS: FacetKind[] = ['effort', 'mechanism', 'sector'];
 
+/*
+  SKILLS QUIZ COPY (email §1). The first step now opens with an outcome promise rather than a
+  neutral question. "Show me packs I could actually run" is the buyer's actual test, and the
+  filter that follows is a means to it; saying the means first ("What skills do you bring?")
+  leaves the outcome implicit, so a reader who only read the question was not told what they
+  were doing. The follow-ups stay as is -- they ask the next-best question once the first is
+  answered -- and the subtitle ("Pick as many as you like") is the one instruction the buyer
+  still needs to read.
+*/
 const QUESTION_COPY: Record<FacetKind, { question: string; subtitle: string }> = {
-  advantage: { question: 'What skills do you bring?', subtitle: 'Pick as many as you like' },
+  advantage: { question: 'Show me packs I could actually run.', subtitle: 'Tick what you’re good at. We’ll hide the rest.' },
   commitment: { question: 'How much time can you commit?', subtitle: 'Choose the one that fits best' },
   payer: { question: 'Who do you want to sell to?', subtitle: 'Pick your target market' },
   effort: { question: '', subtitle: '' },
@@ -515,7 +524,7 @@ export function FacetBar({
         <Modal
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
-          title="Tell us what fits your life"
+          title="Show me packs I could actually run"
           footer={
             <button
               type="button"
