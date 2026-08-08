@@ -147,32 +147,19 @@ describe('the methodology surfaces hedge the count where they enumerate it', () 
     );
   });
 
-  it('the homepage method band qualifies its list of check verdicts', () => {
+  it('the homepage method band has no fixed-count claim to hedge', () => {
+    /*
+     * UPDATED 2026-08-07 per the sitewide copy rewrite (email §1). The previous version of this
+     * test required the homepage "Every idea is checked" band to render `checkVerdicts()` with
+     * an adjacent hedge; the email deletes the list entirely from the homepage on the grounds
+     * that the six-machine-identifier row is "unearned vocabulary" for a first-time visitor, and
+     * the same list lives once on /how-it-works with plain-English glosses. The band is now two
+     * sentences; there is no count to qualify, and the sweep test above (`carries no fixed-count
+     * claim in any of them`) is what guarantees the page stays free of the defect the deleted
+     * list was the only place it could reappear in.
+     */
     const page = stripComments(readFileSync(join(SRC, 'pages', 'index.tsx'), 'utf8'));
-    // The list is DERIVED from `COMMON_CHECKS` (lib/checks.ts) rather than typed out, which is
-    // itself the fix for how this row was missed last time: the earlier sweep updated about.tsx
-    // and faqContent.ts and left this literal behind. So the guard anchors on the call site, and
-    // separately asserts what the call actually produces.
-    //
-    // The band listed `engineGateIds()` until 2026-08-07 ("pain reality · value durability · ..."),
-    // six machine identifiers naming the subject of each check and never its conclusion. It lists
-    // `checkVerdicts()` now, which is the kill log's own wording. The count claim this test exists
-    // to police is unchanged: six items, and a hedge beside them.
-    expect(checkVerdicts(), 'the derived list no longer carries the kill log verdicts').toContain(
-      'The pain was not real',
-    );
-    expect(checkVerdicts().length, 'the list must be the full common set').toBe(COMMON_CHECKS.length);
     const enumeration = page.indexOf('checkVerdicts()');
-    expect(enumeration, 'the verdict list is gone or renamed').toBeGreaterThan(-1);
-    // Adjacent to the row, not merely somewhere on a 1,700-line page. The window is the
-    // enumeration plus the element that follows it, and it is deliberately narrow: the first cut
-    // required the hedge in the SAME <p>, which was the wrong shape -- the mono row is set in the
-    // engine's own gate identifiers, so the site's own sentence has to be a separate element or it
-    // reads as a seventh gate. 320 characters is the qualifying paragraph and nothing beyond it.
-    const window = page.slice(enumeration, enumeration + 320);
-    expect(
-      HEDGE.test(window),
-      'the six gate names must be qualified immediately beside where they are listed',
-    ).toBe(true);
+    expect(enumeration, 'the homepage no longer lists the check verdicts').toBe(-1);
   });
 });
