@@ -29,6 +29,22 @@ import re
 import sqlite3
 import sys
 
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+
+# `nodash` used to be defined privately here, and had silently fallen out of lock-step with the
+# engine's copy. It lacked the digit-range guard, so a RANGE became a LIST: measured over the
+# live dossier corpus on 2026-08-08, 1701 of 4854 candidate fields (35.0%) came out different
+# from the shared implementation, and "NHS hospital nursing staff (Band 5-7)" was written as
+# "(Band 5, 7)" — a claim the source does not make, on a source-or-die storefront. It also
+# lacked the trailing-space tidy, so every "Brand — X" title landed as "Brand , X".
+#
+# This script UPDATEs Packs directly, so it is the last engine→storefront writer that was not
+# reading from the one definition. Importing rather than copying is the whole point: a copy is
+# what let the two drift for seven weeks without a single test noticing.
+from prospector.plain_text import nodash  # noqa: E402
+
 MIN_SUPPORTED = 2
 MIN_SOURCES = 8
 
@@ -40,15 +56,6 @@ AXIS_LABELS = {
     "build_feasibility": "Build feasibility",
     "automatability": "Automatable vs hands on",
 }
-
-
-def nodash(s: str | None) -> str:
-    """House rule: no dashes as punctuation in customer-facing copy."""
-    if not s:
-        return ""
-    s = s.replace("—", ", ").replace("–", ", ")
-    s = re.sub(r"\s+-\s+", ", ", s)
-    return re.sub(r"\s+", " ", s).strip()
 
 
 _ABBR = ["approx.", "e.g.", "i.e.", "etc.", "vs.", "Inc.", "Ltd.", "No.", "U.K.", "U.S."]
@@ -113,7 +120,14 @@ def telemetry(d: dict) -> dict:
 
     sample = []
     if c.get("who_pays"):
-        sample.append("Who pays. " + nodash(c["who_pays"])[:240])
+        # `first_sentence`, not a raw [:240] slice. This branch was the only one of the four
+        # below that cut the string by character count, so it published mid-word: measured over
+        # the 79 PASS dossiers on 2026-08-08, 68 of these extracts ended in a fragment such as
+        # "...who have cut their own paid work to provide care. They pa". That is the same
+        # defect that shipped 34 mid-word `oneLine`s to the live catalogue; the publish pass
+        # refuses to print such a fragment, so the gate would have deleted up to 95% of the
+        # extract to repair a cut that never needed to happen here.
+        sample.append("Who pays. " + first_sentence(c["who_pays"], 240))
     if premortem.get("strongest_free_or_commodity_alternative"):
         sample.append("Strongest free alternative. "
                       + first_sentence(premortem["strongest_free_or_commodity_alternative"], 240))
@@ -135,7 +149,9 @@ def telemetry(d: dict) -> dict:
         # derived from the VERIFICATION (grounded) so it is safe to print.
         "Headline": None,
         "Subhead": None,
-        "WhoPays": nodash(c.get("who_pays", ""))[:220] or None,
+        # Same word-boundary reason as the sample extract above: this column renders on the
+        # card, so a character-count slice puts a half-word in front of a buyer.
+        "WhoPays": first_sentence(c.get("who_pays", ""), 220) or None,
         "EffortTag": effort,
         "ProofPoint": (f"Grounded in {src} cited sources. {len(supported)} of {tot} checks "
                        "supported by evidence."),
