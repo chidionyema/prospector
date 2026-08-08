@@ -40,10 +40,22 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import os
 import re
+import sys
 from collections import Counter
 from datetime import datetime, timezone
 from urllib.parse import urlparse
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# The publish pass — the ONE gate every engine-authored string crosses before a stranger can
+# read it. It lives in the engine (prospector/plain_text.py) rather than here, because the
+# same five defect classes reach the pack `.md` files a buyer opens offline from a zip, where
+# a fix on this side of the fence would never arrive. `_clean_reason` used to own a private
+# half of this logic; that is now `plain_text.clean_reason` so the kill log and the pack
+# generator cannot drift apart on what "publishable" means.
+from prospector.plain_text import clean_reason, nodash, publish_pass  # noqa: E402
 
 OUT = "store_platform/src/Store.Web/src/data/kill-log.json"
 # The home page wants only the headline count. Importing the full log there would ship every
@@ -128,35 +140,11 @@ def citation_ids(text: str) -> list[str]:
     return list(dict.fromkeys(out))
 
 
-def nodash(s: str | None) -> str:
-    """Strip em-dashes and en-dashes — the universal AI writing tell.
-
-    Replaces them with `, ` (the most natural English substitution) and collapses
-    any leftover whitespace. Compound words like "out-of-hours" and "slip-resistance"
-    are preserved because the regex only matches dashes surrounded by whitespace.
-
-    Mirrors the same pattern in tools/make_sample_report.py so the published voice
-    is consistent across the kill-log and the free sample report. The post-processor
-    runs at publish time, here, so the underlying dossiers and the engine's verdicts
-    are untouched — no moat change, only cosmetic normalisation.
-
-    A dash BETWEEN DIGITS is a range, and a comma changes what it means. Measured against the
-    live catalogue on 2026-08-06, 13 fields depend on that: "Mothers 25-45", "Gen Z gig workers
-    (18-27)", "for 2025-2026". Rewriting those as "Mothers 25, 45" states something the source
-    did not, which on a source-or-die storefront is the worse of the two defects. Those become a
-    hyphen, which drops the tell and keeps the range.
-
-    Kept in lock-step with the TypeScript `nodash()` in
-    `store_platform/src/Store.Web/src/lib/text.ts`.
-    """
-    if not s:
-        return ""
-    s = re.sub(r"(\d)\s*[\u2014\u2013]\s*(\d)", r"\1-\2", s)
-    s = s.replace("\u2014", ", ").replace("\u2013", ", ")
-    s = re.sub(r"\s+-\s+", ", ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    # Tidy up the spaces the dash substitution leaves behind: "Brand , X" → "Brand, X".
-    return re.sub(r"\s+([.,;])", r"\1", s)
+# `nodash` now lives in prospector/plain_text.py next to the publish pass, and is imported
+# above. It is re-exported here because the storefront's TypeScript twin
+# (`store_platform/src/Store.Web/src/lib/text.ts`) and this module's tests both refer to it by
+# this name; the behaviour is unchanged, only the home.
+__all__ = ["nodash", "citation_ids", "build", "main"]
 
 
 def _sources_by_id(dossier: dict) -> dict[str, str]:
@@ -170,53 +158,29 @@ def _sources_by_id(dossier: dict) -> dict[str, str]:
     return index
 
 
-# The engine's own `reason` field is frequently cut mid-sentence: 67 of the 636 kill dossiers with
-# a substantive reason end without terminal punctuation (11%, measured 2026-08-06), e.g.
+# The engine's own `reason` field is frequently cut mid-sentence: 67 of the 636 kill dossiers
+# with a substantive reason end without terminal punctuation (11%, measured 2026-08-06), e.g.
 # "...so they do not offset the sol". Published raw, that put 26 of the 60 entries on the public
-# page ending mid-WORD, with no ellipsis and no expand control -- on the one page whose entire job
-# is to look rigorous, where it reads as broken rather than concise.
+# page ending mid-WORD, on the one page whose entire job is to look rigorous.
 #
-# Trimming to the last complete sentence is the honest repair at publish time. Fixing whatever
-# truncates the verdict upstream in the engine is the real one; this only stops the storefront
-# shipping the damage.
-_SENTENCE_END = re.compile(r"[.!?][\"')\]]?(?=\s|$)")
-
-# Below this share of the text, the last full stop is too early to trim to: a reason whose first
-# sentence ends at 20% would lose four fifths of its argument to a cosmetic fix. Those keep their
-# text and get an explicit ellipsis, which says "cut" rather than pretending to be finished.
-_TRIM_KEEP_RATIO = 0.75
-
-
-def _whole_sentences(text: str) -> str:
-    """End on a sentence boundary, or say plainly that the text was cut."""
-    stripped = text.rstrip()
-    if not stripped:
-        return stripped
-    ends = list(_SENTENCE_END.finditer(stripped))
-    if ends:
-        cut = ends[-1].end()
-        # A reason that already ends in punctuation hits this with cut == len and is returned whole.
-        if cut >= len(stripped) * _TRIM_KEEP_RATIO:
-            return stripped[:cut]
-    return stripped.rstrip(",;:-") + "…"
+# The repair is now `plain_text.publish_pass(sentences=True)`, and it is stricter than the rule
+# it replaces: the old `_whole_sentences` kept a long fragment and appended an ellipsis when the
+# last full stop fell before 75% of the text. An ellipsis is still a sentence that stops mid
+# thought, so the rule is now absolute — trim to the last COMPLETE sentence, and if none
+# survives return "" and DROP the entry (see `build` below) rather than print a fragment.
+#
+# Fixing whatever truncates the verdict upstream in the engine is still the real repair; this
+# only stops the storefront and the pack shipping the damage.
 
 
 def _clean_reason(reason: str) -> str:
-    """Strip the engine's internal prefix and inline hashes, keeping only the argument.
+    """Strip the engine's internal prefix, then run the shared publish pass.
 
-    Two prefix formats are in the corpus — the older `Gate 'incumbency' fired — ...` and the
-    newer `It failed on: Do incumbents already own this? (`incumbency`) — ...`. Both restate
-    the gate, which the page renders separately, so both go. `nodash()` is applied last to
-    sweep the em/en-dashes the LLM verdict uses for parenthetical clauses.
+    Kept as a module-level name because it is the seam this module's tests bind to, but it now
+    holds no logic of its own: `plain_text.clean_reason` is the single implementation shared
+    with pack generation.
     """
-    text = re.sub(r"^Gate '[^']+' fired\s*[—–-]\s*", "", reason).strip()
-    text = re.sub(r"^It failed on:.*?\(`[^`]+`\)\s*[—–-]\s*", "", text).strip()
-    text = re.sub(r"^refuted \(conf [\d.]+\):\s*", "", text).strip()
-    text = CITATION_REF.sub("", text)
-    text = re.sub(r"\s{2,}", " ", text).strip()
-    # Last, after the citation hashes are stripped: removing a trailing "(a1b2…)" can itself leave
-    # the sentence looking finished when it is not, so the boundary check has to see the final text.
-    return _whole_sentences(nodash(re.sub(r"\s+([.,;])", r"\1", text)))
+    return clean_reason(reason)
 
 
 def build(limit: int) -> dict:
@@ -250,12 +214,21 @@ def build(limit: int) -> dict:
             citations.append({"url": url, "domain": urlparse(url).netloc.removeprefix("www.")})
 
         candidate = dossier.get("candidate") or {}
+        # Every published string goes through the publish pass. `title` and `oneLiner` are
+        # headline-shaped, so `sentences=False`: they legitimately end on a noun and must not
+        # be emptied for it. `reason` is prose and gets the strict form via `_clean_reason`.
+        clean = _clean_reason(reason)
+        if not clean:
+            # No complete sentence survived — the reason was a fragment all the way down.
+            # Dropping the entry is the honest outcome; the log has ~512 eligible kills and
+            # publishes 400, so this costs nothing but a swap for the next-newest kill.
+            continue
         entries.append({
-            "title": nodash(candidate.get("title")),
-            "oneLiner": nodash(candidate.get("one_liner")),
+            "title": publish_pass(nodash(candidate.get("title"))),
+            "oneLiner": publish_pass(nodash(candidate.get("one_liner"))),
             "gate": gate,
-            "gateLabel": GATE_LABELS.get(gate, "It failed a check"),
-            "reason": _clean_reason(reason),
+            "gateLabel": publish_pass(GATE_LABELS.get(gate, "It failed a check")),
+            "reason": clean,
             "citations": citations[:4],
             "date": str(dossier.get("created_at") or "")[:10],
         })
