@@ -1472,11 +1472,15 @@ class FallbackSearchProvider(SearchProvider):
                     from .errors import PERMANENT, classify_exhaustion, limit_window_seconds
                     from .health import TRANSIENT_EXHAUSTION_S
                     kind = classify_exhaustion(str(e))
-                    # See the twin call site in `operator.py::FallbackOperator._raw`:
-                    # `limit_window_seconds` keeps the stated-reset precedence and adds absolute
-                    # reset times plus per-class defaults. This chain shares the MOAT's health
-                    # store, so getting the window right here protects the verdict brain too.
-                    dead_for = (limit_window_seconds(str(e))
+                    # See the twin call site in `operator.py::FallbackOperator._raw`, and keep
+                    # the precedence IDENTICAL to it. A window the raiser knows exactly
+                    # (`retry_after_s`, set by the usage-wall preflight) beats any window read
+                    # back out of the rendered message; `limit_window_seconds` keeps the
+                    # stated-reset precedence and adds absolute resets plus per-class defaults.
+                    # This chain shares the MOAT's health store, so an over-long window here
+                    # benches the verdict brain — which is exactly what happened on 2026-08-08.
+                    dead_for = (getattr(e, "retry_after_s", None)
+                                or limit_window_seconds(str(e))
                                 or (DEFAULT_EXHAUSTION_S if kind == PERMANENT
                                     else TRANSIENT_EXHAUSTION_S))
                     self._health.mark_exhausted(name, dead_for, error=str(e))

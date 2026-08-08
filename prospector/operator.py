@@ -1090,7 +1090,14 @@ class FallbackOperator(Operator):
                     # stated. Before 2026-08-06 an absolute reset parsed to nothing, so Claude
                     # Code's weekly limit took the 1h default and was re-probed hourly for a week.
                     kind = classify_exhaustion(str(e))
-                    dead_for = (limit_window_seconds(str(e))
+                    # A window the RAISER knows outranks anything read back out of its own
+                    # message: `ProviderExhaustedError.retry_after_s` is set by the usage-wall
+                    # preflight, which holds the exact reset epoch. Parsing it back from the
+                    # rendered prose returned None and cost the moat 46 benched minutes on
+                    # 2026-08-08. Text parsing stays as the fallback for adapters that only ever
+                    # see a provider's words.
+                    dead_for = (getattr(e, "retry_after_s", None)
+                                or limit_window_seconds(str(e))
                                 or (DEFAULT_EXHAUSTION_S if kind == PERMANENT
                                     else TRANSIENT_EXHAUSTION_S))
                     self._health.mark_exhausted(name, dead_for, error=str(e))
