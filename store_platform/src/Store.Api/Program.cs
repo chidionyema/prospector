@@ -456,6 +456,7 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     }
 
     var pack = await db.Packs.FindAsync(request.Id).ConfigureAwait(false);
+    var isNewPack = pack == null;
     if (pack == null)
     {
         var initialPrice = request.PricePence ?? Money.DefaultPackPricePence;
@@ -483,13 +484,43 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
 
     // PaymentProvider defaults to "paddle" for backward compatibility with
     // engine publishes that only send the legacy PaddleProductId/PaddlePriceId.
+    // An EXISTING pack keeps the provider that minted its ids: since those ids are no longer
+    // nulled by an omission (below), defaulting to "paddle" here would leave a live Stripe
+    // pack labelled paddle while holding price_* ids — a mismatch no reader could resolve.
     pack.PaymentProvider = request.PaymentProvider
         ?? (request.PaddleProductId is not null ? "paddle" : null)
+        ?? pack.PaymentProvider
         ?? "paddle";
-    pack.ProviderProductId = request.ProviderProductId ?? request.PaddleProductId;
-    pack.ProviderPriceId = request.ProviderPriceId ?? request.PaddlePriceId;
+
+    // Only overwrite when the publish actually CARRIED an id. Omitting them used to null them,
+    // and no GET projection returns them, so a copy job routed through this endpoint could not
+    // echo back what it must not disturb. A null ProviderProductId breaks FulfilmentService's
+    // product lookup (p.ProviderProductId == item.ProductId): charged, never delivered.
+    // Sending a different id still moves it — this guards omission, not change.
+    var sentProductId = request.ProviderProductId ?? request.PaddleProductId;
+    if (sentProductId is not null)
+    {
+        pack.ProviderProductId = sentProductId;
+    }
+    var sentPriceId = request.ProviderPriceId ?? request.PaddlePriceId;
+    if (sentPriceId is not null)
+    {
+        pack.ProviderPriceId = sentPriceId;
+    }
 
     // Content metadata (set by the engine after it uploads the deliverable to R2).
+    //
+    // ContentVersion is owned by the SERVER, not by the publisher. No GET projection returns it,
+    // so a republishing engine cannot read the current value in order to increment it: it
+    // computed (missing ?? 0) + 1 and sent 1, knocking a pack on its fourth revision back to its
+    // first. FulfilmentService stamps this number onto the buyer's record, so after a reset the
+    // same version describes two different bundles. A CHANGED ContentHash is the signal, and the
+    // increment happens here — exactly as the content PATCH already does it. A BRAND NEW pack is
+    // excluded: Pack.ContentVersion already defaults to 1 (Pack.cs:87), so its first content is
+    // version 1, not 2.
+    var contentChanged = !isNewPack
+        && request.ContentHash is not null
+        && !string.Equals(request.ContentHash, pack.ContentHash, StringComparison.Ordinal);
     if (request.ContentKey is not null)
     {
         pack.ContentKey = request.ContentKey;
@@ -500,7 +531,12 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     }
     if (request.ContentVersion is { } version)
     {
+        // An explicit version still wins: a restore or a migration has to be able to state one.
         pack.ContentVersion = version;
+    }
+    else if (contentChanged)
+    {
+        pack.ContentVersion += 1;
     }
 
     // Storefront conversion metadata (optional, additive). Only overwrite when the engine

@@ -14,13 +14,14 @@ import re
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Protocol, Tuple
 from urllib.parse import urlparse
 
 import requests
 
 from . import facet_derive, indexnow
 from . import facets as facets_mod
+from .copy_lint import buyer_readable, is_prose_artifact
 from .models import Decision, Dossier, ScoreResult
 from .pack_linter import lint_pack
 from .pack_validation import validate_pack
@@ -28,7 +29,7 @@ from .pack_validation import validate_pack
 # Aliased on import: `EngineBridge.publish_pass` below is the whole publish ROUTINE (upload,
 # price, list), and two unrelated things called `publish_pass` in one file is how a reader ends
 # up misreading both. `prose_pass` is the text gate; `publish_pass` is the money rail.
-from .plain_text import plain_lines, to_plain_text
+from .plain_text import nodash, plain_lines, to_plain_text
 from .plain_text import publish_pass as prose_pass
 from .plain_text import publish_pass_document as prose_pass_document
 from .price_comparables import anchors_from_tags
@@ -66,6 +67,52 @@ def _card_field(raw: Any) -> str:
     returns "" when nothing publishable survives so the caller can omit it and fall back.
     """
     return prose_pass(to_plain_text(raw, collapse=True))
+
+
+# Catalogue keys that are IDENTIFIERS, ENUMS or NUMBERS rather than prose. They pass
+# through the choke point untouched.
+#
+# `nodash` would in fact leave most of them unchanged — it only rewrites em/en-dashes,
+# digit ranges and space-surrounded hyphens, none of which occur in a Stripe price id or a
+# hex hash. But the money rail is the wrong place to depend on "in fact": `providerPriceId`
+# and `contentHash` are read by the fulfilment fence, and a normaliser that ever altered
+# one would charge a buyer and then refuse delivery (see `_update_catalog`'s docstring).
+# Excluding them by name makes that impossible rather than merely unlikely.
+_NON_PROSE_CATALOG_KEYS = frozenset({
+    "id", "dossierRef", "paymentProvider", "providerProductId", "providerPriceId",
+    "isListed", "pricePence", "contentKey", "contentHash", "contentVersion",
+    "verifiedAt", "market", "effortTag", "automatability", "segment", "rung",
+    "priceRung", "priceSegment", "sourceUrl", "url",
+})
+
+
+def _normalise_catalog_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply the house copy rule to every engine-authored string in the catalogue payload.
+
+    THIS IS A CHOKE POINT, AND THAT IS THE WHOLE POINT. The defect it closes was not a
+    missing `nodash()` call — it was that normalisation lived at each call site, so the one
+    buyer-facing field that didn't come through `_card_field` (`title`) silently carried
+    71 em/en-dashes into 68 of 72 live listings against a standing rule that the catalogue
+    carries none. Measured control: 15 raw one_liners contained a dash and 0 published ones
+    did, proving the normaliser works; 73 raw titles contained one and 71 published ones
+    did, proving title never reached it.
+
+    A per-field rule is correct only while every future contributor remembers it. A choke
+    point is correct by construction: a field added to `payload` or to `metadata` tomorrow
+    is covered without anyone deciding to cover it.
+    """
+    def norm(value: Any) -> Any:
+        if isinstance(value, str):
+            return nodash(value)
+        if isinstance(value, list):
+            return [norm(v) for v in value]
+        if isinstance(value, dict):
+            return {k: (v if k in _NON_PROSE_CATALOG_KEYS else norm(v))
+                    for k, v in value.items()}
+        return value
+
+    return {k: (v if k in _NON_PROSE_CATALOG_KEYS else norm(v))
+            for k, v in payload.items()}
 
 
 # A line is "cited" if it carries a source marker or a year alongside a number — safe to show
@@ -237,6 +284,17 @@ class ProvisioningError(Exception):
     failure to handle."""
 
 
+class ExistingPrice(NamedTuple):
+    """A price object that already exists at the provider, as the PROVIDER reports it.
+
+    Not as the catalogue remembers it: the whole point of looking it up is that the two can
+    disagree, and the provider is the one that actually charges the card.
+    """
+    product_id: str
+    amount_pence: int
+    currency: str
+
+
 class ProductProvisioner(Protocol):
     """Provider-agnostic product provisioning. Implementations: PaddleClient, StripeProvisioner."""
     def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
@@ -245,6 +303,15 @@ class ProductProvisioner(Protocol):
 
     def create_price(self, product_id: str, amount_pence: int, currency: str) -> str:
         """Returns the provider's price ID."""
+        ...
+
+    def describe_price(self, price_id: str) -> Optional[ExistingPrice]:
+        """Resolve an already-minted price. None when it cannot be established.
+
+        This is what makes a republish safe. `create_*` is idempotent only inside the
+        provider's idempotency window (Stripe: 24 hours), so a pack republished weeks after
+        it first went live mints a BRAND NEW product and price — see `_resolve_money_rail`.
+        """
         ...
 
 class EngineBridge:
@@ -392,7 +459,18 @@ class EngineBridge:
         logger.info(f"EngineBridge: Publishing {candidate_id} ({candidate.title})")
 
         # 1. Prepare pack files
-        artifacts = candidate.tags.get("artifacts", {})
+        # THE CHOKE POINT for schema identifiers in prose. `_render_financial_model` also
+        # normalises at generation time, but that only reaches packs generated after today;
+        # 30 live packs already hold rendered markdown naming `estimated_cac_gbp` in the
+        # sentences a buyer pays for. Normalising HERE covers both, because everything
+        # downstream — the zip (`_create_bundle`), the catalogue row and the lint gate —
+        # reads this dict. Data artifacts (.csv/.json/.svg) are passed through untouched:
+        # their snake_case IS the format, which is the same reason the linter excludes them.
+        artifacts = {
+            k: (buyer_readable(v) if isinstance(v, str) and is_prose_artifact(k, v) else v)
+            for k, v in (candidate.tags.get("artifacts", {}) or {}).items()
+        }
+        candidate.tags["artifacts"] = artifacts
         marketing = candidate.tags.get("marketing", [])
         # Epic C lite: claim-safe listing floor so catalog metadata is never an empty stub
         # when content_gen dropped marketing. validate_pack still requires real artifacts.
@@ -605,8 +683,35 @@ class EngineBridge:
         provider_price_id = f"price_stub_{candidate_id[:8]}"
         payment_provider = self.active_provider
 
+        # The row we are about to overwrite. Read once, used for both the money rail and the
+        # content version below.
+        existing_row = self._existing_listing(candidate_id)
+
         prov = self.provisioner
-        if prov:
+
+        # A pack that is already on sale keeps the exact product and price it is sold with.
+        # Minting on every publish is what a provider idempotency key only appears to
+        # prevent: Stripe's expires after 24h, so a republish a day later repoints checkout
+        # at a new price while the catalogue's fulfilment floor keeps the old number. See
+        # _resolve_money_rail.
+        try:
+            reused = self._resolve_money_rail(
+                candidate_id, existing_row, price.price_pence, prov)
+        except ProvisioningError as e:
+            logger.error(f"EngineBridge: {e}")
+            return False
+
+        applied_price_pence = price.price_pence
+        if reused is not None:
+            provider_product_id, provider_price_id, applied_price_pence = reused
+            if applied_price_pence != price.price_pence:
+                # The decision record must not read as though the new rung was applied.
+                candidate.tags["price_decision"]["applied"] = False
+                candidate.tags["price_decision"]["live_price_pence"] = applied_price_pence
+
+        if reused is not None:
+            pass  # already provisioned; minting anything here is the defect itself
+        elif prov:
             try:
                 logger.info(f"EngineBridge: Creating {payment_provider} product for {candidate_id}")
                 metadata = {
@@ -720,6 +825,14 @@ class EngineBridge:
             market=getattr(candidate, "market", "") or "",
             check_urls_enabled=bool(listing_cfg.get("lint_check_urls", False)),
             url_cache_path=(store_dir / "lint_url_cache.json") if store_dir else None,
+            # `title` lints the value that ACTUALLY SHIPS — i.e. after the catalogue choke
+            # point. That makes this a regression guard on the choke point itself: if the
+            # normalisation is ever bypassed again, this errors instead of going quiet, and
+            # a quiet bypass is exactly how 71 dashes reached 68 of 72 live listings.
+            house_fields={"title": nodash(to_plain_text(candidate.title, collapse=True))},
+            grammar_enabled=bool(listing_cfg.get("lint_grammar", False)),
+            max_grammar_defects_per_1k=float(
+                listing_cfg.get("max_grammar_defects_per_1k", 0.0) or 0.0),
         )
         lint_ok = bool(lint_report.get("ok"))
         if not lint_ok:
@@ -751,18 +864,18 @@ class EngineBridge:
             bundle_complete=bundle_complete, lint_ok=lint_ok,
         )
 
-        # Determine the content version: for a new pack, start at 1. For a republish
-        # (content_hash differs from existing), increment. Query the store's current
-        # version by checking if the pack already exists with any content version.
-        content_version = 1
-        try:
-            check_url = f"{self.store_api_url}/catalog/{candidate_id}"
-            existing = requests.get(check_url, timeout=5)
-            if existing.status_code == 200:
-                data = existing.json()
-                content_version = (data.get("contentVersion") or 0) + 1
-        except Exception:
-            pass  # new pack — default to version 1
+        # The content version is the STORE's counter, and we send one only when we can actually
+        # read the current value. No GET projection returns contentVersion, so computing
+        # `(existing_row.get("contentVersion") or 0) + 1` sent 1 on every republish and knocked a
+        # pack on its fourth revision back to its first — a number FulfilmentService stamps onto
+        # the buyer's record, so the same version would then describe two different bundles.
+        # Omitting it is a no-op at the Store, which increments its own counter when the content
+        # hash actually changed. If a future projection does expose the field, this reads it from
+        # the same snapshot the money rail was resolved from (_existing_listing) rather than a
+        # second GET: two reads of one row can straddle a concurrent write, and the version would
+        # then describe a row the price decision was never made against.
+        known_version = existing_row.get("contentVersion")
+        content_version = (known_version + 1) if isinstance(known_version, int) else None
 
         return self._update_catalog(
             id=candidate_id,
@@ -776,9 +889,105 @@ class EngineBridge:
             content_key=content_key if is_listed else None,
             content_hash=content_hash if is_listed else None,
             content_version=content_version,
-            price_pence=price.price_pence,
+            # The amount the price object the buyer is charged against ACTUALLY charges —
+            # which is the ladder's decision on a first publish, and the live price on a
+            # republish. Sending the decided number while reusing a live price at a
+            # different amount is the exact disagreement the fulfilment fence turns into a
+            # charged-but-undelivered order.
+            price_pence=applied_price_pence,
             metadata=catalog_meta,
         )
+
+    # ---- money-rail reuse (2026-08-08) -------------------------------------------------
+    _STUB_PREFIXES = ("prov_stub_", "price_stub_")
+
+    def _existing_listing(self, candidate_id: str) -> Dict[str, Any]:
+        """The catalogue row this publish is about to overwrite; {} when there is none.
+
+        Fetched ONCE per publish and used for both the money-rail decision and the content
+        version, so those two can never be read from different snapshots of the same row.
+        """
+        try:
+            resp = requests.get(f"{self.store_api_url}/catalog/{candidate_id}", timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, dict):
+                    return data
+        except Exception as e:
+            logger.warning(
+                f"EngineBridge: could not read the existing catalogue row for "
+                f"{candidate_id}: {e}"
+            )
+        return {}
+
+    def _resolve_money_rail(
+        self, candidate_id: str, existing: Dict[str, Any], decided_pence: int,
+        prov: Optional[ProductProvisioner],
+    ) -> Optional[Tuple[str, str, int]]:
+        """Reuse the provider objects this pack is ALREADY sold with, or None to mint fresh.
+
+        Returns (product_id, price_id, amount_pence_to_record), or None meaning "no live
+        money rail exists for this pack — mint one". Raises ProvisioningError when a live
+        rail exists but cannot be established, because the only alternatives at that point
+        are minting a duplicate or writing an id we did not verify.
+
+        THE DEFECT THIS CLOSES. `publish_pass` minted a new provider Product and Price on
+        EVERY publish, relying on the provider's idempotency key to deduplicate. Stripe's
+        idempotency keys expire after 24 hours, so a pack republished a day or more after it
+        first went live gets genuinely new objects. The catalogue upsert then assigns
+        ProviderPriceId unconditionally on the update path (Store.Api Program.cs:490) while
+        that same path never reassigns PricePence (Program.cs:477-482, which sets only
+        Title/OneLine/DossierRef). So checkout starts minting sessions against the NEW price
+        while the fulfilment floor keeps the OLD number, and FulfilmentService.cs:88
+        (`item.AmountPence < pack.PricePence`) refuses delivery to anything paying under the
+        floor: on any republish that lowers the rung, the buyer is charged and gets nothing.
+
+        The Store already treats a published price as immutable. This makes the engine
+        honour the same invariant rather than silently contradicting it. A genuine reprice
+        has its own audited door — PATCH /internal/catalog/{id}/price (Program.cs:924), which
+        re-checks billability and writes price history — and that door is the only way a live
+        pack's price may move.
+        """
+        price_id = str(existing.get("providerPriceId") or "")
+        if not price_id or price_id.startswith(self._STUB_PREFIXES):
+            # First publish, or a pack that never had a billable rail. Nothing to preserve.
+            return None
+
+        if prov is None:
+            raise ProvisioningError(
+                f"{candidate_id} is already sold with provider price {price_id}, but no "
+                f"provisioner is configured to verify it. Refusing to republish: writing "
+                f"a stub id here would overwrite a LIVE pack's money rail and unlist it."
+            )
+
+        found = prov.describe_price(price_id)
+        if found is None:
+            raise ProvisioningError(
+                f"{candidate_id} is already sold with provider price {price_id}, but the "
+                f"provider could not confirm it. Refusing to republish: minting a "
+                f"replacement would repoint checkout at a price the fulfilment floor does "
+                f"not match."
+            )
+
+        if found.amount_pence != decided_pence:
+            # The ladder moved under a pack that is already on sale. Reusing the live price
+            # is the ONLY safe answer here: repointing charges the new amount while the
+            # floor stays at the old one. Recording the live amount (not the decided one)
+            # keeps the catalogue's number equal to what the price object actually charges.
+            logger.error(
+                f"EngineBridge: REPRICE REQUIRED for {candidate_id} — the ladder decided "
+                f"{decided_pence}p but the live price {price_id} charges "
+                f"{found.amount_pence}p. Keeping the live price; the new rung is NOT "
+                f"applied. Move it through PATCH /internal/catalog/{candidate_id}/price, "
+                f"the audited door that re-checks billability and writes price history."
+            )
+        else:
+            logger.info(
+                f"EngineBridge: reusing the live money rail for {candidate_id} "
+                f"(product {found.product_id}, price {price_id} at {found.amount_pence}p) "
+                f"— republish mints nothing."
+            )
+        return found.product_id, price_id, found.amount_pence
 
     @staticmethod
     def _sha256(path: Path) -> str:
@@ -1107,13 +1316,19 @@ class EngineBridge:
             payload["contentKey"] = content_key
         if content_hash is not None:
             payload["contentHash"] = content_hash
+        # ---- house-copy choke point (2026-08-08) --------------------------------------
+        # Applied after the metadata merge below, so it covers EVERY string reaching the
+        # catalogue. See _normalise_catalog_payload for why this is a choke point and not
+        # another call site.
         # Per-pack storefront/trust metadata (headline, sampleExtract, financialSnapshot, ...).
         # Optional and additive: the Store API ignores any field it doesn't yet model, so a
         # partial pack still publishes. Reserved keys above are never overwritten.
         if metadata:
             for k, v in metadata.items():
                 payload.setdefault(k, v)
-        
+
+        payload = _normalise_catalog_payload(payload)
+
         # Fail closed: never publish without a configured key. The Store also 503s when its
         # key is unset; refusing here removes any reliance on a default credential and avoids
         # a pointless unauthenticated round-trip.
@@ -1259,6 +1474,26 @@ class PaddleClient:
         resp.raise_for_status()
         return resp.json()["data"]["id"]
 
+    def describe_price(self, price_id: str) -> Optional[ExistingPrice]:
+        """Resolve a live Paddle price to its product, amount and currency.
+
+        Paddle has no idempotency keys on these endpoints at all, so it does not even have
+        Stripe's 24-hour grace: EVERY republish would mint a duplicate without this lookup.
+        Returns None on any failure — the caller reads that as "cannot verify" and reuses the
+        catalogue's ids rather than minting.
+        """
+        try:
+            resp = requests.get(f"{self.base_url}/prices/{price_id}",
+                                headers=self.headers, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()["data"]
+            unit = data["unit_price"]
+            return ExistingPrice(str(data["product_id"]), int(unit["amount"]),
+                                 str(unit.get("currency_code", "GBP")))
+        except Exception as e:
+            logger.error(f"PaddleClient: could not retrieve price {price_id}: {e}")
+            return None
+
 
 class StripeProvisioner:
     """Stripe Product + Price provisioning for the publish path.
@@ -1306,6 +1541,39 @@ class StripeProvisioner:
             raise self._provisioning_error("price", e) from e
         logger.info(f"StripeProvisioner: Created price {price.id} for product {product_id}")
         return price.id
+
+    def describe_price(self, price_id: str) -> Optional[ExistingPrice]:
+        """Resolve a live Stripe Price to its product, amount and currency.
+
+        `Price.retrieve` rather than a metadata search on purpose: retrieve is immediately
+        consistent and exact, where Stripe's search index lags object creation by up to a
+        minute — and a lag here reads as "no existing price", which is precisely the answer
+        that mints a duplicate.
+
+        Returns None on any Stripe error rather than raising: a failed LOOKUP must not fail a
+        publish. The caller treats None as "cannot verify" and reuses the catalogue's ids
+        untouched, which is strictly safer than minting.
+        """
+        try:
+            price = self._stripe.Price.retrieve(price_id)
+        except self._stripe.error.StripeError as e:
+            logger.error(f"StripeProvisioner: could not retrieve price {price_id}: {e}")
+            return None
+        product = price.get("product") if hasattr(price, "get") else getattr(price, "product", None)
+        # An expanded price carries the Product object; an unexpanded one carries its id.
+        if isinstance(product, dict):
+            product = product.get("id")
+        elif product is not None and not isinstance(product, str):
+            product = getattr(product, "id", None)
+        amount = price.get("unit_amount") if hasattr(price, "get") else getattr(price, "unit_amount", None)
+        currency = price.get("currency") if hasattr(price, "get") else getattr(price, "currency", None)
+        if not product or amount is None:
+            logger.error(
+                f"StripeProvisioner: price {price_id} has no product/unit_amount "
+                f"(product={product!r}, unit_amount={amount!r}); cannot verify."
+            )
+            return None
+        return ExistingPrice(str(product), int(amount), str(currency or "gbp"))
 
     @staticmethod
     def _provisioning_error(what: str, e: Exception) -> "ProvisioningError":
