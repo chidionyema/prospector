@@ -162,6 +162,29 @@ class Candidate:
         tags = self.tags if isinstance(self.tags, dict) else {}
         return str(tags.get("audience") or "").strip().lower()
 
+    @property
+    def seed_kind(self) -> str:
+        """How this candidate's generation was seeded: "signal", "blue_sky", or "".
+
+        Same tag-plus-property shape as `audience` above, and for the same reason: a
+        free-form stamp generation already writes, given exactly ONE reader so the SQLite
+        answer cannot drift from anyone else's.
+
+        The distinction it records is not cosmetic. `run_signal("")` from the scheduler
+        (`scheduler/run_scheduled.py:723-724`) is blue-sky — the model invents the SPACE as
+        well as the idea. An operator's `vet "<signal>"` is signal-seeded — the space is
+        given and only the idea is invented. Those are different generation problems, and
+        the store has been mixing them into one number, so nothing downstream could say
+        which of the two actually produces the catalogue's value.
+        `tools/generation_survival.py` is the reader that asks.
+
+        Only those two values are ever written. Anything else — including "" on a candidate
+        that never went through `generate()`, such as a hand-vetted one — is left exactly as
+        found rather than guessed at: an unknown provenance is a fact, not a default.
+        """
+        tags = self.tags if isinstance(self.tags, dict) else {}
+        return str(tags.get("seed_kind") or "").strip().lower()
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 

@@ -779,6 +779,73 @@ generation:
     startup:
       binding: "STARTUP FOUNDER (binding — an idea failing these is INVALID, do not propose it): ambitious venture-scale opportunity for a founding team that CAN raise capital and hire; must name a SPECIFIC wedge + a plausible path to a repeatable growth motion; distribution may be paid, partner, or product-led; the moat can be built over time (data, network effects, switching cost) but the idea must NOT require already BEING a large incumbent."
       forbid: "FORBIDDEN SHAPES (even a funded startup cannot be these at birth — proposing one is an automatic miss): a licensed rating agency or central registry/authority that only works once you are already the standard, a regulator or standards body, or a play that presupposes an existing national balance sheet / charter you do not have."
+  # G1: per-batch distinct-k receipts -> store/generation_metrics.jsonl (zero LLM)
+  diversity_meter: true
+  # G3: standing exhausted-family denial list mined from the full kill corpus (zero LLM)
+  denylist:
+    enabled: true
+    min_family_size: 3
+    refresh_every_kills: 25
+    max_families: 12
+  # G2: one bounded, cached live search per (topic, market), injected as generation CONTEXT.
+  # It is never a Source, never cited, never scored and can never kill — it exists so ideas are
+  # designed against the incumbents that currently kill them at the `incumbency` gate.
+  # `providers` deliberately EXCLUDES claude_cli: the moat's grounding queue runs on it, and a
+  # generation-side query must never queue ahead of a verdict (job 20260730T212901866 died at
+  # 1731s on exactly that saturation). Empty signal AND empty sector => no brief, no call.
+  incumbent_seed:
+    enabled: true
+    providers: [ddg, exa]
+    max_queries: 2
+    results_per_query: 3
+    max_chars: 700
+    max_entries: 8
+    cache_ttl_s: 604800          # 7 days
+    query_templates:
+      - "{topic} existing providers"
+      - "{topic} software vendors pricing"
+  # G4: Verbalized Sampling (arXiv:2510.01171) — ask the model for its distribution instead of
+  # k samples from its mode. The self-reported typicality is observability only; nothing is
+  # filtered, reordered or down-weighted by it.
+  verbalized_sampling:
+    enabled: true
+    atypical_threshold: 0.3
+    min_atypical_fraction: 0.4
+  # G9 lane quota mode. `static` uses the hand-tuned `lane_quota` block above verbatim.
+  # `measured` replaces it with a split derived from realised value per lane
+  # (prospector/lane_yield.py) that sums to the SAME total, so the mode changes where
+  # candidates land and never how many are generated.
+  #
+  # Left OFF deliberately. This is the one item in the generation-quality programme that
+  # points a lever at the kill stats, and the founder rule is that those are a report card,
+  # not a lever. The guardrails are in lane_yield.py's docstring: it weights on realised
+  # composite rather than pass COUNT, it touches no gate, and the exploration reserve below
+  # is uniform and unconditional. Turn it on only with a survival report in hand
+  # (`python -m tools.generation_survival --by ambition_tier`) — venture is at 0 PASS in 35
+  # and an unreserved value-weighting would starve it into never producing the evidence
+  # that would revive it.
+  lane_quota_mode: static          # static | measured
+  lane_exploration_reserve: 0.2    # share of the batch split uniformly regardless of value
+  # G8 critique -> revise. REPLACES the single refine pass with two calls: one that writes a
+  # critique naming the weakest COMPOSITE AXIS per idea, one that rewrites the idea to remove
+  # that named weakness. The rationale is measured, not assumed: `min_composite` is the modal
+  # kill gate in 8 of 9 persona cells (tools/generation_survival.py, 2026-08-08) — these ideas
+  # clear the hard gates and then score too low — while the refine prompt never mentioned the
+  # scoring axes at all. The axes and their weights are rendered from `weights` below, so the
+  # critic cannot drift from the scorer.
+  #
+  # COST: one extra generation call per wave (1 -> 2). Nothing else changes; no verdict, no
+  # retrieval and no gate is touched, and the pass stays non-lossy in CODE (prospector/
+  # critique.py asserts len(out) == len(in) and falls back per-index to the original).
+  #
+  # ONE round, deliberately: arXiv:2507.08350 finds the gain is in the first critique-revise
+  # round and that further rounds regress toward the model's own priors.
+  #
+  # OFF by default: it doubles the generation call count per wave, and nothing on this branch
+  # has a daemon receipt yet. Turn it on with a distinct-k A/B in hand, not on the strength of
+  # the argument above.
+  critique_revise:
+    enabled: false
   controller:
     killrate_window: 50
     exploration_min: 0.2
@@ -1092,6 +1159,27 @@ coverage_sampler:
   recent_window: 200         # rows of recent-candidate history that count as "recent"
   min_coverage: 0.25         # an axis below this fraction populated cannot drive sampling
   seed: 0                    # a sampler you cannot replay is not a measurement
+  # G7 illumination weight. 0.0 = V2 exactly: elites are measured and appear in the receipt,
+  # but they do not steer, and the plan is byte-identical including the seed. Above 0 a
+  # value's rows are discounted by how good its BEST ruled composite is, so a cell attempted
+  # a hundred times that never produced anything good stops counting as covered.
+  #
+  # Read the polarity before turning this up: it steers generation TOWARD the cells with the
+  # worst results, which is the opposite direction to G9 and costs pass rate in the short
+  # run. That is the point. A barren cell and a badly-attempted cell are indistinguishable in
+  # a row count, and this repo has already been wrong about one (chunk C read `smb` as weak
+  # generation when its modal kill gate was `moat_ungrounded`, a retrieval outcome).
+  quality_weight: 0.0        # [0,1]; clamped, never raises — a typo must not stop generation
+  # Which per-cell statistic the weight acts on. `mean` is the default even though `elite`
+  # (the max) is the QD-canonical choice, because the elite was MEASURED on the live index
+  # (1,789 rows, 2026-08-08, cells with n>=30) and barely discriminates:
+  #     ambition_tier   max spread 1.16x   mean spread 2.56x
+  #     audience        max spread 1.20x   mean spread 1.71x
+  # The maximum is an extreme order statistic and over 40-110 samples per cell it has already
+  # converged to the same value everywhere. `elite` stays selectable because it is right for
+  # the regime MAP-Elites assumes — an archive keeping only a cell's best occupant — which is
+  # not this pipeline, where every candidate is verified and scored.
+  quality_stat: mean         # mean | elite
 
 # V4 — meta-shape monitor. Embeds catalogue one-liners with the LOCAL ollama model and
 # alerts when one cluster exceeds a share of the catalogue. This is what turns "78 niches,

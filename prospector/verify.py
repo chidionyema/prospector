@@ -17,7 +17,7 @@ from .admissibility import demotion_reason
 from .admissibility import host_of as admissibility_host_of
 from .audit import audit
 from .config import Admissibility, Config
-from .entity_templates import ENTITY_SLOTS, ENTITY_TEMPLATES
+from .entity_templates import ENTITY_SLOTS, ENTITY_TEMPLATES, entity_phrase
 from .errors import GroundingInfrastructureError, ProviderExhaustedError
 from .kill_filter import is_hard_fail
 from .models import (
@@ -256,10 +256,13 @@ def _entity_queries(cand: Candidate, check_name: str, n: int) -> list[str]:
     tpls = _ENTITY_TEMPLATES.get(check_name, [])
     if not tpls:
         return []
+    # `entity_phrase` (entity_templates.py), not the raw field. `who_pays` is prose with a
+    # median of 29 words, and interpolating it verbatim rendered payer_solvency queries with a
+    # median of 38 words, 100% of them over 12 - the product restatement this arm replaces.
     values = {
-        "{payer}": (cand.who_pays or "").strip(),
-        "{aud}": (cand.audience or "").strip().replace("_", " "),
-        "{market}": (cand.market or "").strip(),
+        "{payer}": entity_phrase(cand.who_pays or ""),
+        "{aud}": entity_phrase((cand.audience or "").replace("_", " ")),
+        "{market}": entity_phrase(cand.market or ""),
     }
     base = _keywords(cand, k=4)
     out: list[str] = []
