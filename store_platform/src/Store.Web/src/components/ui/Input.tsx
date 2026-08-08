@@ -37,7 +37,7 @@ const controlClass = (invalid: boolean, padding = 'px-3') =>
     'h-10 w-full rounded-md border bg-surface text-meta text-text',
     padding,
     'transition-[border-color,outline-color] duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
-    'placeholder:font-normal placeholder:text-faint',
+    'placeholder:font-normal placeholder:text-subtle',
     'hover:border-text',
     'focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent/25',
     'disabled:cursor-not-allowed disabled:bg-surface2 disabled:opacity-40',

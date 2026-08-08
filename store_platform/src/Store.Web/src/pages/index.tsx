@@ -294,7 +294,7 @@ function PackCard({
           <span className="flex min-w-0 items-center gap-2">
             <span className="truncate text-body font-semibold text-text">{heading}</span>
             {viewed && (
-              <span className="flex-none font-mono text-caption text-faint">seen</span>
+              <span className="flex-none font-mono text-caption text-subtle">seen</span>
             )}
           </span>
           {line && <span className="mt-0.5 block truncate text-meta text-muted">{line}</span>}

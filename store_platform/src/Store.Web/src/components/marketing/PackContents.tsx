@@ -158,7 +158,7 @@ export function PackContentsSection({
                 className="border-b border-border/60 px-5 py-4 last:border-b-0"
               >
                 <div className="flex min-w-0 items-baseline gap-2">
-                  <span aria-hidden className="flex-none font-mono text-caption text-faint">
+                  <span aria-hidden className="flex-none font-mono text-caption text-subtle">
                     {last ? '└──' : '├──'}
                   </span>
                   <span className="min-w-0 break-all font-mono text-caption text-text">

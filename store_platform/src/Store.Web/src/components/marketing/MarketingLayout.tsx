@@ -170,7 +170,11 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               type="button"
               onClick={openSearch}
               aria-label="Search the catalogue"
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              /* min-h/min-w 44px: measured 34x30 in the audit, which fails the 44px tap target.
+                 The magnifier is 18px and the label is hidden below lg, so padding alone could
+                 never reach the bar -- the minimum has to be stated. justify-center keeps the
+                 glyph optically centred once the box is wider than its contents. */
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Icon name="search" size={18} />
               <span className="hidden lg:inline">Search</span>
