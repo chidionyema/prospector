@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 import { buttonClasses, chipClasses, Icon } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -486,58 +487,139 @@ export function StepFlow({
   );
 }
 
-// ── FacetBar: wraps StepFlow for mobile modal usage ──
+// ── Reaching the filter: the sheet, and the pinned trigger that opens it ──
 
-export function FacetBar({
+/*
+ * WHY THIS EXISTS. Measured on the live page with Playwright, 2026-08-08:
+ *
+ *   desktop 1280x800   page 8362px (10.5 screens)   phone 390x844   page 10477px (12.4 screens)
+ *     first pack card      y=  129                     first pack card      y=    0
+ *     "Narrow it down"     y= 1256  (1.6 screens)      "Narrow it down"     y= 2010  (2.4 screens)
+ *     the router           y= 4054  (5.1 screens)      the router           y= 4882  (5.8 screens)
+ *
+ * The router sat after the LAST of 53 cards, so narrowing the shelf cost a scroll past the entire
+ * catalogue -- on a page whose reason to exist is that the catalogue is already narrow.
+ *
+ * Product-before-controls is RIGHT and is not being undone here; #149 measured that and it stands.
+ * The defect is that reachability was expressed as a POSITION, and a position can only ever be
+ * correct for the reader who happens to be standing at it. Every previous fix moved the block --
+ * up when it hid the product, down when it interrupted the scan -- and each move traded one
+ * reader's problem for another's, because a single position cannot serve both.
+ *
+ * So the block stops moving, and reaching it stops depending on where the reader is: the trigger
+ * below pins itself the moment the controls scroll off the top, and opens them as a sheet. It
+ * costs zero above-the-fold pixels, which is what made the position argument hard in the first
+ * place.
+ *
+ * This REPLACES a dead `FacetBar` export that already wrapped `StepFlow` in this exact Modal with
+ * this exact footer, and that no page ever rendered (`grep -rn "<FacetBar"` -> no matches,
+ * 2026-08-08). It was also `lg:hidden` -- mobile only -- and mobile is where the scroll cost is
+ * worst but not where it is exclusive: 5.1 screens on a 1280px desktop is not a phone problem.
+ */
+
+export function FilterSheet({
   packs,
   state,
   onChange,
-  className,
+  open,
+  onClose,
 }: {
   packs: Pack[];
   state: DiscoveryState;
   onChange: (next: DiscoveryState) => void;
-  className?: string;
+  open: boolean;
+  onClose: () => void;
 }) {
-  const [sheetOpen, setSheetOpen] = React.useState(false);
-  const activeCount = activeFacetSelectionCount(state);
   const matching = filterPacks(packs, state).length;
 
   return (
-    <div className={className}>
-      <div className="lg:hidden">
+    <Modal
+      open={open}
+      onClose={onClose}
+      placement="right"
+      /* The sheet and the inline block carry the SAME name. They are one control with two ways in,
+         and giving them two names would make them read as two different filters -- which is the
+         confusion this change exists to remove, not one to add. */
+      title="Narrow it down"
+      footer={
         <button
           type="button"
-          onClick={() => setSheetOpen(true)}
-          aria-expanded={sheetOpen}
-          aria-haspopup="dialog"
-          className="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border-strong bg-surface px-4 text-meta font-medium text-text transition-colors hover:border-text hover:bg-surface2"
+          onClick={onClose}
+          className={buttonClasses({ size: 'lg', fullWidth: true })}
         >
-          Filter
-          {activeCount > 0 && (
-            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-sm bg-primary px-1.5 font-mono text-caption text-on-primary">
-              {activeCount}
-            </span>
-          )}
+          Show {matching} {matching === 1 ? 'pack' : 'packs'}
         </button>
+      }
+    >
+      <StepFlow packs={packs} state={state} onChange={onChange} />
+    </Modal>
+  );
+}
 
-        <Modal
-          open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
-          title="Show me packs I could actually run"
-          footer={
-            <button
-              type="button"
-              onClick={() => setSheetOpen(false)}
-              className={buttonClasses({ size: 'lg', fullWidth: true })}
-            >
-              Show {matching} {matching === 1 ? 'pack' : 'packs'}
-            </button>
-          }
-        >
-          <StepFlow packs={packs} state={state} onChange={onChange} />
-        </Modal>
-      </div>
-    </div>
+export function FilterFab({
+  anchorRef,
+  state,
+  open,
+  onOpen,
+}: {
+  /** The inline controls block. The trigger appears only once this has scrolled off the top. */
+  anchorRef: React.RefObject<HTMLElement | null>;
+  state: DiscoveryState;
+  /** The sheet's open state: the trigger hides while the thing it opens is already open. */
+  open: boolean;
+  onOpen: () => void;
+}) {
+  const [scrolledPast, setScrolledPast] = React.useState(false);
+  const activeCount = activeFacetSelectionCount(state);
+
+  /* There is deliberately no `mounted` flag here, though portalling to <body> is normally a reason
+     to want one. `scrolledPast` starts false, and the ONLY thing that sets it is the observer
+     below, which cannot run on the server -- so the server and the first client render both return
+     null for the same reason, and hydration cannot mismatch. A `useState(false)` +
+     `useEffect(() => setMounted(true))` pair would add a second render pass to prove a fact the
+     first one already guarantees, and eslint rejects the synchronous setState besides. */
+  React.useEffect(() => {
+    const el = anchorRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    /* `!isIntersecting` alone is true BOTH above and below the viewport, so on first paint -- when
+       the controls are still far below the fold -- it would pin a "narrow it down" button to a
+       reader who has not yet seen a single product. The `top < 0` half is what makes it mean
+       "scrolled PAST" rather than "not currently on screen". */
+    const io = new IntersectionObserver(
+      ([entry]) => setScrolledPast(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [anchorRef]);
+
+  if (!scrolledPast || open) return null;
+
+  return createPortal(
+    /* z-40: above the shelf, below `Modal`'s z-50, so the sheet it opens covers it rather than
+       fighting it. Portalled for the same reason `Modal` is -- a `fixed` child of a transformed or
+       blurred ancestor is positioned against that ancestor, not the viewport, and which ancestors
+       those are is invisible from here. */
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-haspopup="dialog"
+        data-testid="filter-fab"
+        className="pointer-events-auto inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-sm border border-border-strong bg-surface px-4 text-meta font-medium text-text transition-colors hover:border-text hover:bg-surface2"
+      >
+        <Icon name="search" size={14} />
+        Narrow it down
+        {activeCount > 0 && (
+          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-sm bg-primary px-1.5 font-mono text-caption text-on-primary">
+            {activeCount}
+          </span>
+        )}
+      </button>
+    </div>,
+    document.body,
   );
 }

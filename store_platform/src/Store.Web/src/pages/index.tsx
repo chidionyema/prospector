@@ -20,7 +20,7 @@ import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
-import { AppliedFilterChips, StepFlow } from '@/components/discovery/FacetBar';
+import { AppliedFilterChips, FilterFab, FilterSheet, StepFlow } from '@/components/discovery/FacetBar';
 import PackMark from '@/components/ui/PackMark';
 import { EvidenceBar } from '@/components/ui/EvidenceBar';
 
@@ -843,6 +843,13 @@ function CatalogBrowser({
     [router],
   );
 
+  /* The filter sheet, and the block it is a second way into. The open state lives HERE rather than
+     inside the trigger because two things open it -- the pinned trigger, and (when the shelf came
+     back empty) nothing else can -- and because the inline router unmounts while it is open. See
+     `shelfControls`. */
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const shelfControlsRef = React.useRef<HTMLDivElement>(null);
+
   const visible = React.useMemo(() => {
     const filtered = filterPacks(packs, state);
     if (sort === 'newest') return filtered; // server already returns newest-first
@@ -960,7 +967,7 @@ function CatalogBrowser({
    * branches, never an either/or that can both be true.
    */
   const shelfControls = (
-    <div className="mb-8 border-t border-border pt-6">
+    <div ref={shelfControlsRef} className="mb-8 border-t border-border pt-6">
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
@@ -989,6 +996,25 @@ function CatalogBrowser({
       <SectorChips packs={packs} state={state} onChange={apply} />
 
       <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
+
+      {/* The three-question router, CONSOLIDATED here from the foot of the shelf.
+          It used to render after the last of 53 cards -- y=4054 on desktop, 5.1 screens down --
+          on the reasoning that the only reader a router helps is one who scanned the shelf and
+          picked nothing. That is true of who it helps and false about what it costs: a reader who
+          decided at card three that the shelf was too big had to scroll the whole thing to reach
+          the control that would have made it smaller. It belongs with the other controls, and the
+          controls already sit after the first product row, so it no longer pushes product down.
+
+          Unmounted while the sheet is open, because the sheet renders the same component and this
+          file's rule is that these controls exist EXACTLY ONCE per page (see the note above the
+          block). Two mounted routers would mean two wizard positions for one filter state, and
+          would double every selector an e2e test matches on. The remount costs the step position,
+          which is the right thing to lose: opening the sheet is starting the narrowing again. */}
+      {!filtersOpen && (
+        <div className="mt-6 border-t border-border pt-6">
+          <StepFlow packs={packs} state={state} onChange={apply} />
+        </div>
+      )}
     </div>
   );
 
@@ -1358,16 +1384,14 @@ function CatalogBrowser({
                 </div>
               ))}
 
-              {/* The three-question router, AFTER the whole shelf.
-                  It sat between the newest row and the tail grid: a quiz wedged between row 1 and
-                  row 2 of a product grid, which a reader mid-scan has to step over. Twice now the
-                  fix has been to move it one block down and twice the DOM has put it back in the
-                  middle of the shelf, so the rule is stated as a position, not an intention: it
-                  renders after the LAST card, where the only reader who reaches it is one who
-                  scanned the shelf and did not pick anything -- the only reader a router helps. */}
-              <div className="mt-10 border-t border-border pt-8">
-                <StepFlow packs={packs} state={state} onChange={apply} />
-              </div>
+              {/* The three-question router USED TO RENDER HERE, after the whole shelf, and the
+                  note that put it here argued the only reader it helps is one who scanned every
+                  card and picked nothing. That is right about who it helps and silent about what
+                  it cost everyone else: measured on prod it sat at y=4054, 5.1 screens down, past
+                  all 53 cards. It now renders inside `shelfControls` with the other controls, and
+                  is reachable from anywhere on the page via `FilterFab` -- so the reader this
+                  block was written for still meets it at the end of their scan, without it being
+                  the only place anyone else can find it. */}
               {/* The "Every pack carries a 14-day money back guarantee" line that closed the shelf
                   is gone: appearance 2 of 4 of the same promise on one page. `TrustGuaranteesRow`
                   states it once, below. */}
@@ -1408,6 +1432,23 @@ function CatalogBrowser({
         open={open}
         onClose={close}
         onSeeAll={(q) => apply({ ...state, q })}
+      />
+
+      {/* Both portal to <body>, so they sit here at the page root rather than inside the shelf --
+          their position in this tree does not decide where they paint, and putting them next to
+          the palette keeps every page-level overlay in one place. */}
+      <FilterFab
+        anchorRef={shelfControlsRef}
+        state={state}
+        open={filtersOpen}
+        onOpen={() => setFiltersOpen(true)}
+      />
+      <FilterSheet
+        packs={packs}
+        state={state}
+        onChange={apply}
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
       />
     </>
   );
