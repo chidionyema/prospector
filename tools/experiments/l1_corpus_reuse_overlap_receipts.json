@@ -1,0 +1,154 @@
+{
+  "title": "L1 corpus-reuse sizing against \u00a713's 20% bar (measurement only)",
+  "programme_ref": "docs/COMMERCIAL_READINESS_PROGRAM.md \u00a713 (line ~452)",
+  "corpus_fingerprint": {
+    "n_dossiers": 1597,
+    "newest_mtime_utc": "2026-08-07T20:16:23.253488+00:00",
+    "sha256": "d97829ed7ea0bae0",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat."
+  },
+  "population": "every check in every parseable dossier json: 7774 checks across 1587 dossiers. No sampling. Replay is created_at-ascending with a path tiebreak; same-candidate reuse excluded by construction.",
+  "bar": 0.2,
+  "jaccard_min": 0.6,
+  "dossier_files_globbed": 1597,
+  "dossiers_with_checks": 1587,
+  "dossiers_without_created_at": 0,
+  "checks_total": 7774,
+  "checks_with_urls": 7293,
+  "urls_retrieved_total": 26805,
+  "distinct_urls_banked": 21649,
+  "url_refetch_events": 2618,
+  "measures": {
+    "M1_url": {
+      "hits": 1698,
+      "share": 0.2184
+    },
+    "M2_exact_query": {
+      "hits": 9,
+      "share": 0.0012
+    },
+    "M3_topic_stripped": {
+      "hits": 194,
+      "share": 0.025
+    },
+    "M3_topic_raw": {
+      "hits": 209,
+      "share": 0.0269
+    }
+  },
+  "freshness_windows_days": {
+    "30": {
+      "hits": 1532,
+      "share": 0.1971
+    },
+    "90": {
+      "hits": 1698,
+      "share": 0.2184
+    },
+    "365": {
+      "hits": 1698,
+      "share": 0.2184
+    }
+  },
+  "age_gap_days": {
+    "n": 1698,
+    "p50": 1.35,
+    "p90": 29.94,
+    "max": 51.87
+  },
+  "by_check": {
+    "route_to_market": {
+      "M1_url": 28,
+      "M3_topic_raw": 8,
+      "M3_topic_stripped": 7
+    },
+    "pain_reality": {
+      "M1_url": 186,
+      "M3_topic_stripped": 11,
+      "M3_topic_raw": 13,
+      "M2_exact_query": 1
+    },
+    "claims_verifiable": {
+      "M1_url": 39,
+      "M3_topic_stripped": 2,
+      "M3_topic_raw": 2
+    },
+    "buyer_intent": {
+      "M1_url": 58,
+      "M3_topic_stripped": 12,
+      "M3_topic_raw": 10
+    },
+    "currency": {
+      "M1_url": 34,
+      "M3_topic_stripped": 8,
+      "M3_topic_raw": 8
+    },
+    "distribution": {
+      "M1_url": 253,
+      "M3_topic_stripped": 17,
+      "M3_topic_raw": 18,
+      "M2_exact_query": 1
+    },
+    "legality": {
+      "M1_url": 329,
+      "M3_topic_stripped": 52,
+      "M3_topic_raw": 61,
+      "M2_exact_query": 1
+    },
+    "incumbency": {
+      "M1_url": 246,
+      "M3_topic_stripped": 9,
+      "M3_topic_raw": 8,
+      "M2_exact_query": 2
+    },
+    "value_durability": {
+      "M1_url": 231,
+      "M3_topic_stripped": 17,
+      "M3_topic_raw": 19,
+      "M2_exact_query": 2
+    },
+    "payer_solvency": {
+      "M1_url": 294,
+      "M3_topic_stripped": 59,
+      "M3_topic_raw": 62,
+      "M2_exact_query": 2
+    }
+  },
+  "decisive_measure": "M1_url",
+  "decisive_share": 0.2184,
+  "build": true,
+  "verdict": "BUILD \u2014 1698/7774 = 21.84% of checks refetched a url an earlier candidate had already retrieved, clearing \u00a713's 20% bar by +1.84pp. CONDITIONAL: the margin does not survive a freshness policy \u2014 with a 30-day TTL the rate is 19.71%, BELOW the bar. \u00a713 specifies 'serve from corpus when fresh-enough', so the build decision is a decision about the TTL, not about the corpus.",
+  "headline": {
+    "checks measured": 7774,
+    "M1 url hit (decisive)": "1698/7774 = 21.84%",
+    "M2 exact query hit": "9/7774 = 0.12%",
+    "M3 topic hit, template stripped (upper bound)": "194/7774 = 2.50%",
+    "M3 topic hit, RAW (confounded)": "209/7774 = 2.69%",
+    "\u00a713 bar": "20%",
+    "margin against the bar": "+1.84pp",
+    "same rate under a 30-day freshness TTL": "19.71%",
+    "decision": "BUILD (CONDITIONAL \u2014 a 30-day TTL puts it below the bar)",
+    "what to build": "url/passage-keyed store \u2014 reuse is document-level; the query-keyed and query-embedding forms both miss the bar"
+  },
+  "ttl_sensitivity": {
+    "bar": 0.2,
+    "no_ttl": 0.2184,
+    "ttl_30d": 0.1971,
+    "flips_verdict": true
+  },
+  "limitations": [
+    "M1 counts an OBSERVED refetch of the same url. It is a lower bound on corpus value: a corpus could also serve a DIFFERENT url that answers the same question, which M1 cannot see and M3 only proxies lexically.",
+    "M3 is a lexical Jaccard over query tokens, not an embedding similarity. It is reported as the ceiling for the embedding-index version, not as its prediction.",
+    "M3_topic_raw is confounded by verify.py's fixed query template tails, which are byte-identical across candidates. Only M3_topic_stripped answers the question; the raw figure is published so the size of the confound is visible.",
+    "Replay order uses dossier `created_at`. Dossiers missing it sort first and can only under-count hits, never inflate them.",
+    "Nothing was built. This module writes no passage store, no index and no cache."
+  ],
+  "_meta": {
+    "experiment": "L1",
+    "module": "l1_corpus_reuse_overlap.py",
+    "run_at_utc": "2026-08-07T20:23:54+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

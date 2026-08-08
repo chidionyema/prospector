@@ -1,54 +1,54 @@
 {
   "buckets": {
     "other_passage": 14,
-    "self_ref": 134,
-    "traceable": 1323,
-    "untraceable": 169
+    "self_ref": 144,
+    "traceable": 1362,
+    "untraceable": 171
   },
   "by_check": {
     "buyer_intent": {
       "other_passage": 2,
       "self_ref": 2,
-      "traceable": 96,
+      "traceable": 97,
       "untraceable": 3
     },
     "claims_verifiable": {
       "other_passage": 2,
       "self_ref": 14,
-      "traceable": 68,
+      "traceable": 73,
       "untraceable": 16
     },
     "currency": {
       "self_ref": 3,
-      "traceable": 98,
+      "traceable": 102,
       "untraceable": 3
     },
     "distribution": {
       "other_passage": 1,
       "self_ref": 6,
-      "traceable": 70,
+      "traceable": 69,
       "untraceable": 4
     },
     "incumbency": {
       "other_passage": 1,
       "self_ref": 5,
-      "traceable": 98,
+      "traceable": 101,
       "untraceable": 10
     },
     "legality": {
       "self_ref": 5,
-      "traceable": 21,
+      "traceable": 22,
       "untraceable": 2
     },
     "pain_reality": {
       "self_ref": 3,
-      "traceable": 181,
+      "traceable": 186,
       "untraceable": 8
     },
     "payer_solvency": {
       "other_passage": 8,
-      "self_ref": 83,
-      "traceable": 431,
+      "self_ref": 93,
+      "traceable": 450,
       "untraceable": 107
     },
     "route_to_market": {
@@ -58,28 +58,28 @@
     },
     "value_durability": {
       "self_ref": 11,
-      "traceable": 252,
-      "untraceable": 14
+      "traceable": 254,
+      "untraceable": 16
     }
   },
   "by_verdict": {
     "refuted": {
       "other_passage": 1,
-      "self_ref": 31,
-      "traceable": 224,
-      "untraceable": 56
+      "self_ref": 36,
+      "traceable": 239,
+      "untraceable": 58
     },
     "supported": {
       "other_passage": 13,
-      "self_ref": 103,
-      "traceable": 1099,
+      "self_ref": 108,
+      "traceable": 1123,
       "untraceable": 113
     }
   },
-  "checks_all_traceable": 687,
-  "checks_with_figures": 814,
-  "checks_with_untraceable": 127,
-  "dossiers": 1572,
+  "checks_all_traceable": 706,
+  "checks_with_figures": 835,
+  "checks_with_untraceable": 129,
+  "dossiers": 1600,
   "examples": [
     {
       "candidate": "039b6c758aa01d5c",
@@ -532,10 +532,10 @@
       "verdict": "refuted"
     }
   ],
-  "figures": 1640,
+  "figures": 1691,
   "live_items": null,
   "live_items_dirty": null,
-  "ruled_cited_checks": 2613,
+  "ruled_cited_checks": 2684,
   "scope": "all dossiers",
   "verdict_passage_truncate": 600
 }

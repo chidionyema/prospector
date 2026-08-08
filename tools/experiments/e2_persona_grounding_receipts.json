@@ -431,14 +431,14 @@
   },
   "corpus_fingerprint": {
     "n_dossiers": 1611,
-    "newest_mtime_utc": "2026-08-07T23:10:32.186972+00:00",
-    "sha256": "45bc80305fe1f995",
+    "newest_mtime_utc": "2026-08-08T00:26:38.650756+00:00",
+    "sha256": "00fc2c965e68d1d3",
     "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat."
   },
   "_meta": {
     "experiment": "E2",
     "module": "e2_persona_grounding.py",
-    "run_at_utc": "2026-08-07T23:25:17+00:00",
+    "run_at_utc": "2026-08-08T00:38:31+00:00",
     "argv": [],
     "runner": "tools/experiments/runner.py",
     "python": "3.14.6"

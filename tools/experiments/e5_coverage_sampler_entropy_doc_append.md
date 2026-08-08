@@ -1,6 +1,6 @@
 ### E5 — E5 setup: prove the coverage sampler engages, and size the batch count its entropy lift would need (offline, zero spend, never flips the flag)
 
-_Run 2026-08-07T23:28:41+00:00 · `e5_coverage_sampler_entropy.py` · registered COMMERCIAL_READINESS_PROGRAM.md §4 (experiment table)_
+_Run 2026-08-08T00:38:35+00:00 · `e5_coverage_sampler_entropy.py` · registered COMMERCIAL_READINESS_PROGRAM.md §4 (experiment table)_
 
 - **enabled_on_disk**: 0
 - **flag_untouched**: 1
