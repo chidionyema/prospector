@@ -331,7 +331,8 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
        * The claim is the engine's actual rule, not a sales line: `pricing.py` picks a rung on a
        * ladder declared in `config.yaml listing.pricing` from (ambition_tier x market), so the
        * price genuinely tracks how big the idea could get and which market it targets, and
-       * genuinely does not track document count -- every pack ships the same eight files. It is
+       * genuinely does not track document count -- every pack ships the same eight documents. It
+       * is
        * one sentence and a link because the rail is the wrong place to argue it at length; the
        * full argument, with the ladder, is on /pricing where the reader chose to read it.
        *
