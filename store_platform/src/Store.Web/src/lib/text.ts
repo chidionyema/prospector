@@ -36,6 +36,12 @@ const NUMERIC_RANGE = new RegExp(`(\\d)\\s*[${EM_DASH}${EN_DASH}]\\s*(\\d)`, "g"
 export function nodash(s: string | null | undefined): string {
   if (!s) return "";
   let out = s
+    // U+2011 NON-BREAKING HYPHEN joins compound words ("O‑licence", "zero‑hour"), so it
+    // becomes a plain hyphen and NOT ", " -- a comma would split the word itself. It renders
+    // as a dash the buyer sees while surviving every check written against U+002D, which is
+    // how 3 of them reached live titles undetected before 2026-08-08. Kept in lock-step with
+    // the Python `nodash()` in `prospector/plain_text.py:507`.
+    .replaceAll("‑", "-")
     .replace(NUMERIC_RANGE, "$1-$2")
     .replaceAll(EM_DASH, ", ")
     .replaceAll(EN_DASH, ", ")
