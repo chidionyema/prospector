@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from './helpers/stylesheet';
+
 /**
  * Weight and case policy (brand v3, 2026-08-06).
  *
@@ -62,7 +64,10 @@ const FILES = walk(SRC).map((path) => ({
   src: stripComments(readFileSync(path, 'utf8')),
 }));
 
-const CSS = readFileSync(join(SRC, 'styles', 'globals.css'), 'utf8').replace(
+// With local `@import`s inlined. Read as the entry file alone, the `text-transform: uppercase`
+// ban below would go GREEN over a violation that had moved into `styles/tokens.css` -- a file
+// boundary is not a policy boundary. See `helpers/stylesheet.ts`.
+const CSS = readStylesheet(join(SRC, 'styles', 'globals.css')).replace(
   /\/\*[\s\S]*?\*\//g,
   '',
 );

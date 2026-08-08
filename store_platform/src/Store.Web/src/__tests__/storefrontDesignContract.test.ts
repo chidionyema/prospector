@@ -3,8 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from './helpers/stylesheet';
+
 function readSource(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
+  const path = fileURLToPath(new URL(relativePath, import.meta.url));
+  // A stylesheet is read with its local `@import`s inlined, so a token that moves between files
+  // does not read here as a token that was deleted. See `helpers/stylesheet.ts`.
+  return path.endsWith('.css') ? readStylesheet(path) : readFileSync(path, 'utf8');
 }
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
@@ -97,17 +102,23 @@ describe('Design contract — global tokens (globals.css)', () => {
     }
   });
 
-  it('sets H1 at 32px / line-height 1.2 / tracking -0.02em', () => {
-    // Was 36px/1.1/-0.025em under v2. Measured on the live pack pages, titles average ~90
-    // characters: at 36px with 1.1 leading the h1 alone ran past the fold and the lines
-    // collided. 32px at 1.2 is the step that fits the real content.
-    expect(css).toMatch(/--text-h1:\s*2rem/); // 32px
-    expect(css).toMatch(/--text-h1--line-height:\s*1\.2/);
+  it('sets H1 at 36px desktop with its own mobile size, tracking -0.02em', () => {
+    // SUPERSEDED by spec §3.2 (docs/SITE_SPEC_PROGRAM.md:409): h1 is 2.25/1.1, and it CLAMPS so
+    // the mobile size is the token's responsibility rather than the caller's. The v2 numbers this
+    // asserted (2rem / 1.2) were a fix for pack titles running past the fold at 36px/1.1; the
+    // clamp is a better answer to the same problem, because it drops to 1.75rem on a phone
+    // instead of holding one size everywhere. The clamp reaches its maximum at 1000px, so every
+    // desktop measurement taken at 1280 is unchanged.
+    expect(css).toMatch(/--text-h1:\s*clamp\([^)]*1\.75rem[^)]*2\.25rem\s*\)/);
+    expect(css).toMatch(/--text-h1--line-height:\s*1\.1/);
     expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.02em/);
   });
 
-  it('sets display at 48px, the largest step there is', () => {
-    expect(css).toMatch(/--text-display:\s*3rem/); // 48px
+  it('sets display at 48px desktop, the largest step there is', () => {
+    // Clamped for the same reason as h1 (spec §3.2: display "mobile: 2.25"). 3rem is still the
+    // ceiling, and `--text-mega` (6rem) is deleted rather than unused -- see tokens.css.
+    expect(css).toMatch(/--text-display:\s*clamp\([^)]*3rem\s*\)/); // 48px at >=1000px
+    expect(css).not.toMatch(/--text-mega:/);
     // A seventh step cannot be reached for: --text-hero/-h3/-small are deleted, not unused.
     expect(css).not.toMatch(/--text-hero:/);
     expect(css).not.toMatch(/--text-h3:/);

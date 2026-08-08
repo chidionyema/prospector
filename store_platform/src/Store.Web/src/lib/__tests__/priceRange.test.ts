@@ -44,7 +44,10 @@ describe('priceRange', () => {
     const r = priceRange(Array(12).fill({ price: '£49.00' }))!;
     expect(r.uniform).toBe(true);
     expect(r.headline).toBe('£49 a pack.');
-    expect(priceSentence(r)).toBe('Every pack is £49. One payment, no subscription, no upsell.');
+    // "no upsell" was cut sitewide on 2026-08-07 (§6.4): /pricing's "What you do not get" is the
+    // sole owner of the honest-limits list, and the headline block restating one of its items is
+    // the say-it-once defect. The assertion moved with the copy; it was not weakened.
+    expect(priceSentence(r)).toBe('Every pack is £49. One payment, no subscription.');
   });
 
   it('returns null rather than a guess when the shelf cannot be read', () => {

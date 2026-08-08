@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, Icon, SourceChipRow } from '@/components/ui';
+import { buttonClasses, Glyph, Icon, SourceChipRow } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
@@ -35,11 +35,15 @@ function VerdictBadge({ verdict }: { verdict: string }) {
   return (
     <span
       className={cx(
-        'inline-flex flex-none items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-medium',
+        'inline-flex flex-none items-center gap-1.5 rounded-sm px-2.5 py-1 text-caption font-medium',
         supported ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning',
       )}
     >
-      <Icon name={supported ? 'check' : 'shield'} size={12} />
+      {/* §3.3: a check's ruling is drawn by the verdict set, never by the lucide sheet. The two
+          marks differ by SHAPE (filled square vs. left-half filled), so the badge still says
+          which way the check went when the colour is stripped -- printed, or read by someone who
+          cannot separate the green from the amber. */}
+      <Glyph name={supported ? 'survived' : 'pushed-back'} />
       {supported ? 'Survived' : 'Pushed back'}
     </span>
   );
@@ -186,8 +190,14 @@ export default function SamplePage() {
             Stated as two facts rather than one fraction, and the second one is a link, because the
             objection is the most persuasive thing on this page. */}
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-meta font-semibold text-muted">
+          {/* §3.3 (2026-08-08): four lucide glyphs used to sit on this strip -- a tick, a shield,
+              a badge-check and a calendar -- and all four were labelling ENGINE OUTPUT. Three are
+              now the verdict marks. The fourth, the calendar beside the freshness date, has no
+              equivalent among the six and is simply gone: the date is engine output, so it reads
+              in the mono face, and a decorative calendar next to a date says nothing the date has
+              not already said. */}
           <span className="inline-flex items-center gap-2">
-            <Icon name="check" size={14} className="text-success" />
+            <Glyph name="survived" className="text-success" />
             {report.supported} checks cleared
           </span>
           {PUSHED_BACK > 0 && (
@@ -195,17 +205,16 @@ export default function SamplePage() {
               href="#pushback"
               className="inline-flex items-center gap-2 text-warning underline-offset-2 hover:underline"
             >
-              <Icon name="shield" size={14} />
+              <Glyph name="pushed-back" />
               {PUSHED_BACK === 1 ? '1 objection we could not dismiss' : `${PUSHED_BACK} objections we could not dismiss`}
             </a>
           )}
           <span className="inline-flex items-center gap-2">
-            <Icon name="verified" size={14} className="text-success" />
+            <Glyph name="source" className="text-success" />
             {report.sourceCount} cited sources
           </span>
           {freshnessLabel(report.verifiedAt) && (
             <span className="inline-flex items-center gap-2">
-              <Icon name="scheduled" size={14} />
               {freshnessLabel(report.verifiedAt)}
             </span>
           )}
@@ -272,7 +281,7 @@ export default function SamplePage() {
                       {Array.from({ length: 5 }).map((_, i) => (
                         <span
                           key={i}
-                          className={cx('h-1.5 flex-1 rounded-full', i < v ? tone : 'bg-border')}
+                          className={cx('h-1.5 flex-1 rounded-sm', i < v ? tone : 'bg-border')}
                         />
                       ))}
                     </div>
@@ -330,7 +339,7 @@ export default function SamplePage() {
         {(report.premortem.strongestAlternative || report.adversarial.killCase) && (
           <div id="counter" className="mt-10 scroll-mt-24 rounded-md border border-warning/30 bg-warning/5 p-7 md:p-9">
             <div className="flex items-center gap-2">
-              <Icon name="shield" size={16} className="text-warning" />
+              <Glyph name="pushed-back" className="text-warning" />
               {/* Sans. This is a section heading in English, not a verdict tag: it names the
                   block, it is not a value the reader would transcribe or compare. */}
               <span className="text-caption font-medium text-warning">

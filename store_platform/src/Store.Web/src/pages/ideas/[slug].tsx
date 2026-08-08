@@ -170,7 +170,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
                 <li key={sibling.slug}>
                   <Link
                     href={`/ideas/${sibling.slug}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-meta font-semibold text-text transition-colors hover:border-text/30 hover:bg-bg"
+                    className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 text-meta font-semibold text-text transition-colors hover:border-text/30 hover:bg-bg"
                   >
                     {sibling.h1}
                     <span className="text-muted">{sibling.count}</span>

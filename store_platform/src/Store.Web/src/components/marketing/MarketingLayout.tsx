@@ -97,7 +97,11 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const SHELL = 'mx-auto max-w-7xl px-4 sm:px-6 lg:px-8';
+  // §3.4: 1200px max, 24px gutters. Was `max-w-7xl px-4 sm:px-6 lg:px-8` -- 1280px with a gutter
+  // that stepped 16 -> 24 -> 32px across breakpoints. The step was the problem, not the width: a
+  // three-value gutter means the grid's outer margin is a different size on almost every device,
+  // so nothing on the page can be aligned to it reliably. One value, at every width.
+  const SHELL = 'mx-auto max-w-[1200px] px-6';
 
   return (
     <div className="min-h-dvh bg-bg font-sans text-text antialiased">
@@ -114,12 +118,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         it needed inverted text tokens (--on-band, --on-band-muted, --on-band-faint) and its own
         button variants, and the wordmark needed an `onDark` mode. Removing it deletes all three.
 
-        `shadow-1` appears only once scrolled, so the shadow means "there is content underneath
+        `` appears only once scrolled, so the shadow means "there is content underneath
         this" rather than being decoration -- the elevation rule in §5.3.
       */}
       <header
         className={`sticky top-0 z-30 w-full border-b border-border bg-bg/90 backdrop-blur-md pt-[env(safe-area-inset-top)] transition-shadow duration-200 ${
-          scrolled ? 'shadow-1' : ''
+          scrolled ? '' : ''
         }`}
       >
         <div className={`${SHELL} flex h-16 items-center justify-between gap-4`}>
@@ -208,7 +212,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         </div>
 
         {menuOpen && (
-          <div id="marketing-menu" className="animate-rise border-t border-border bg-surface shadow-2 md:hidden">
+          <div id="marketing-menu" className="animate-rise border-t border-border bg-surface md:hidden">
             <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-4 sm:px-6">
               <div className="py-2">
                 {/* Same state, drawn differently, because the drawer has no bottom border for a

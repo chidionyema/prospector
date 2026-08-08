@@ -2,11 +2,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from '../../__tests__/helpers/stylesheet';
+
 import { allCategories, UNLABELLED } from '../category';
 import { SECTOR } from '../facets';
 
 function readSource(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
+  const path = fileURLToPath(new URL(relativePath, import.meta.url));
+  // A stylesheet is read with its local `@import`s inlined; the category tokens moved to
+  // `styles/tokens.css` and this guard has to follow them. See `__tests__/helpers/stylesheet.ts`.
+  return path.endsWith('.css') ? readStylesheet(path) : readFileSync(path, 'utf8');
 }
 
 /**

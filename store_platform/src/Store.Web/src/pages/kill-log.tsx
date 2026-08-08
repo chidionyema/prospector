@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, chipClasses, Icon, SearchInput, SourceChip } from '@/components/ui';
+import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
@@ -275,15 +275,19 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
           {/* Mono: both are counts, and the pair is the one place on the site where the rejection
               rate is stated as a measured quantity rather than a boast. */}
           <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-meta">
+            {/* §3.3: the killed square, not a warning triangle. A triangle is a caution sign --
+                it tells the reader to be careful about something ahead. A kill is not a hazard,
+                it is a finished ruling, and the crossed square is the mark the rest of the site
+                uses for one. */}
             <span className="inline-flex items-center gap-2 text-kill">
-              <Icon name="warning" size={14} />
+              <Glyph name="killed" />
               {rejectRate}% killed
             </span>
             {/* "published" was the wrong noun on the survivor count: more survived than are on the
                 shelf. `survivorsSummary` states the gap rather than printing whichever of the two
                 numbers happens to flatter the page. */}
             <span className="inline-flex items-center gap-2 text-survive">
-              <Icon name="check" size={14} />
+              <Glyph name="survived" />
               {survivorsSummary(listed ?? undefined)}
             </span>
           </div>

@@ -36,13 +36,13 @@ owns each fact; every other page links to it.
 
 ---
 
-## Status ledger — last verified 2026-08-07
+## Status ledger — last verified 2026-08-08
 
 | § | Work | Priority | Status | Proof |
 |---|---|---|---|---|
 | 1 | Data integrity (one source of truth per number) | P0 | ✅ done | `kill-log-totals.json` + `lib/stats.ts` (`RESEARCH_STATS`); pack counts fetched live from `/catalog`. Grep for `1285\|1331\|1412\|1168\|78\|81\|145\|56\|57` in `*.tsx`/`*.ts` returns only code comments and unrelated pixel values (`Logo.tsx:78` `w: 56`, `CategoryGraph.tsx:96` radius). |
 | 2 | Engine-output publish pass | P0 | ✅ done | `prospector/plain_text.py` (`publish_pass`, `publish_pass_document`). Scan of all 400 `kill-log.json` entries across `title`/`oneLiner`/`gateLabel`/`reason`: hex ids 0, empty citations 0, truncation 0, **confidence floats 0**, denylist 0; 0 reasons ending without terminal punctuation. `pytest tests/unit/test_publish_pass.py tests/unit/test_bundle_index_html.py` → **86 passed**. |
-| 3 | Design system (`tokens.css`) | P2 | ❌ not started | No `src/styles/tokens.css`; only `globals.css`. **§3.1/§3.2 contradict the shipped brand — see "The spec contradicts the live brand" below; do not implement them without founder sign-off.** |
+| 3 | Design system (`tokens.css`) | P2 | ✅ done, **bar the dark palette** | Founder scoped it 2026-08-08: "apart from the dark we need all the other design requirement fulfilled." `src/styles/tokens.css` now exists (the token layer split out of `globals.css`, which drops 775 → 363 lines) and is the single declaration site for every token. Proved at the **computed value** in a real browser, not by grepping the sheet — Playwright over `/`, `/sample`, `/kill-log`, `/pricing`, `/how-it-works`: `getComputedStyle(body).fontFamily[0]` = **Switzer**; `--shadow-1` = **none** and elements with a non-`none` `boxShadow` = **0** on all five; the only non-zero `borderRadius` anywhere = **2px**; `--accent` = **#171717** (ink, not blue). Built sheet: `2563EB` × 0, `Geist` × 0, `text-mega` × 0, `--text-display: clamp(2.25rem, 1.5rem + 2.4vw, 3rem)`. `npx tsc --noEmit` **exit 0**; `npm run build` **exit 0** ("Compiled successfully in 5.7s"). Two documented exceptions, both deliberate — the 12 `--cat-*` category hues (they carry discovery meaning) and `lucide-react` for UI **chrome** only. See "§3 landed — what was implemented and what was knowingly not" below. |
 | 3.5 | Motion — easing + reduced-motion floor | P2 | 🟡 partial | `site_spec_probe.py --section 3.5`. §3.5's easing curve already ships **verbatim** — `cubic-bezier(0.2, 0, 0, 1)` (`globals.css:52-54`) — and `--transition-fast: all 0.12s` is §3.5's `--t-micro` under another name. The floor §3.5 calls non-negotiable is enforced by a catch-all (`globals.css:730`, `*, *::before, *::after`) plus a separate rule reaching the view-transition pseudo-tree (`:596`), which the catch-all cannot (those elements are not DOM descendants). **Not built:** the signature resolve sequence, and therefore no `--t-state`/`--t-resolve`. Those tokens are deliberately NOT added ahead of the animation — a token with nothing behind it is dead weight that reads as done. |
 | 4a | Core components — **source chip** | P2 | ✅ done | `components/ui/SourceChip.tsx` is the sitewide primitive; `sourceChipIsTheOnlyOne.test.ts` (6 tests) forbids a seventh. It replaced **six** private copies in two visual languages — `Citation.tsx`, `sample.tsx:112`, `HeroDossier.tsx:104`, `Gauntlet.tsx:123`, `DossierPreview.tsx:96`, `kill-log.tsx:477` — plus three separate `domainOf` helpers. Two of the six omitted `rel="nofollow"`. `site_spec_probe.py --section 4a`. |
 | 4b | Core components — QA row, glyph strip | P2 | ❌ not started | Five QA-row shapes (`CheckSequence.tsx:81`, `EvidenceRecordPanel.tsx:49`, `sample.tsx:310`, `pack/[id].tsx:712`, `how-it-works.tsx:179`) and two glyph strips (`HeroEvidenceStrip.tsx:65`, `EvidenceBar.tsx:24`). Unlike the chip these differ **by design** (confidence score, rationale, methodology-only). §4 wants one; that is a visual decision, not a refactor — see the note below. |
@@ -190,7 +190,7 @@ on **no page**. `grep -rn "<FounderNote"` over `src` returns nothing — /about 
 So the duplication was latent, not live. It is still the right fix; a dormant second copy is a second
 copy with a longer fuse.
 
-### The spec contradicts the live brand — §3.1/§3.2 unresolved
+### The spec contradicted the live brand — §3.1/§3.2 RESOLVED 2026-08-08
 
 §3 was written against a **dark** palette; the site shipped **light** ("brand v3", 2026-08-06) and
 is pinned there by ~30 assertions. This is not a to-do, it is a conflict, and implementing §3 as
@@ -203,17 +203,108 @@ written would turn a green suite red:
 | Switzer / Commit Mono | Geist | — |
 | `--verdict-*` tokens | `--survive*` / `--kill*` | `globals.css:23-222` |
 
-**Status: proposed superseded, awaiting founder sign-off.** Nothing has been deleted from §3 and no
-code has moved. The safe reading — the one being worked to — is that brand v3 wins because it is
-shipped and tested, so §3.1/§3.2 are retired and only the parts of §3 that do **not** contradict it
-(e.g. §3.5 motion tokens, which the tree genuinely lacks) get built. Confirm or overturn before
-anyone acts on §3.1/§3.2.
+**Status: RESOLVED 2026-08-08 — the founder overturned the safe reading.** The ruling: *"apart from
+the dark we need all the other design requirement fulfilled."* So the conflict was never §3 vs. brand
+v3 wholesale — only ONE row of the table above is a real contradiction (the palette's lightness), and
+it was being used to hold up the other three. **The dark palette is retired; every other §3
+requirement is implemented on the light palette.** Radius went to 2px, the pills were squared, Geist
+was replaced by Switzer + Commit Mono, and the verdict marks were built. What that cost, row by row,
+is below.
+
+The lesson worth keeping: "the spec contradicts the tree" was true of a single cell and stated of a
+whole section, and that framing froze §3.1–§3.4 for two days. When a spec conflicts, resolve it at the
+grain of the individual requirement, not the heading.
+
+### §3 landed — what was implemented and what was knowingly not
+
+Three decisions were the founder's, taken 2026-08-08, and each is a deliberate exception rather than
+an oversight:
+
+1. **Colour — "verdicts only, keep the category hues."** `--accent` was `#2563EB` blue; it now
+   resolves to `var(--text)` (ink) and an inline link's entire affordance is a hairline underline.
+   `--focus`, `--info` and `--highlight` were de-blued the same way. The **12 `--cat-*` hues stay**,
+   against §3.1's letter, because on the catalogue they carry discovery meaning rather than
+   decoration. `1D4ED8` still appears once in the built sheet: that is `--cat-housing-rental`.
+2. **Icons — "six glyphs, keep lucide for chrome."** `components/ui/Glyph.tsx` implements all six
+   marks (14×14, 1.5px, `currentColor`, the survived tick knocked out with an SVG **mask** so it is
+   correct on any surface, not a `--bg`-coloured stroke). Wired into every surface that draws a
+   RULING: `sample.tsx` (verdict badge, the stat strip, the pushback plate), `kill-log.tsx`,
+   `pack/[id].tsx` (×5), `DossierCard.tsx`, `EvidenceExcerptPlate.tsx`. `lucide-react` still draws
+   chrome (menu, search, chevrons) and a few non-rulings that were checked one by one and left
+   alone on purpose — the 14-day refund shield (`pack/[id].tsx:323`) is a commercial policy we
+   chose, and `FacetBar.tsx:380`'s tick counts filter matches. **§3.3's "no icon libraries" is
+   therefore formally unmet, by design.** The rule actually enforced is the sharper one: a verdict
+   is never drawn by a general-purpose icon set.
+3. **Typefaces — Switzer + Commit Mono, self-hosted.** `public/fonts/Switzer-Variable.woff2`
+   (43,220 B) + `CommitMono-400.woff2` (48,128 B) = **91,348 B** against §3.2's "≈60–90KB" budget,
+   `font-display: swap`. The `next/font/google` Geist import had to be **deleted** from `_app.tsx`,
+   not merely left unused: a `next/font` `variable` class sets the property on an ELEMENT, which
+   beats a `:root` declaration on every descendant, so leaving it would have kept rendering Geist
+   while `tokens.css` sat there declaring Switzer — two files that each look correct alone.
+
+Two things were changed that reverse earlier deliberate decisions, recorded here because silently
+reversing them is how a ledger stops being trustworthy:
+
+- **`--text-mega` (6rem) is deleted and the homepage hero dropped 96px → 48px.** It was a seventh
+  step on a six-step scale, argued for on the grounds that 48px "is a large paragraph, not a display
+  cut". §3.2 answers that directly: display is 3.0rem, "Homepage hero only". The measurement that
+  justified the step is not invalidated — `index.tsx` argued the 48→96 jump "costs the measured
+  1280×720 fold nothing" because at `lg` the hero sits beside the product, and going back down can
+  only give the fold more room. Measured after: the hero is 2 lines at 1280px, was 4.
+- **`--text-h1` went 2rem → 2.25rem**, reversing a v3 drop made because the pack-detail h1 wrapped to
+  four lines under Geist. Switzer's x-height differs again. The two top steps are now `clamp()`s
+  carrying their own mobile size (spec: display mobile 2.25, h1 mobile 1.75), so the "caller must
+  add its own mobile size" contract — a rule enforced by nobody — is gone. **Both clamps reach their
+  maximum at 1000px, so every measurement previously taken at 1280 still holds.**
+
+**Not done, and not claimed:** the dark palette (`--ink-0` / `--paper`), and the `--verdict-*` token
+rename (the tree's `--survive*` / `--kill*` carry the same meanings; renaming ~200 call sites buys
+nothing a reader can see). §3.5's resolve sequence is still unbuilt — its own row covers it, and the
+six marks it needs now exist.
+
+### Appearance tests are SUSPENDED while the UI moves — founder directive 2026-08-08
+
+> "tests on a ui that is ever changing is stupid and waste of resources, suspend copy and design
+> tests and basic tests until stable."
+
+Ten files are excluded in `store_platform/src/Store.Web/vitest.config.ts` via the named constant
+`SUSPENDED_UNTIL_UI_STABLE`: `brandV3`, `storefrontDesignContract`, `weightAndCasePolicy`,
+`threeRadiiTwoShadows`, `monoIsTheDataVoice`, `uiPolishContract`, `noArbitraryHex`, `oneColourRule`,
+`dashFree`, `categoryScale`. To lift a suspension, delete its line. There is deliberately no flag
+and no env var: a suspension that can be toggled invisibly is one nobody ever ends.
+
+**The evidence for the directive, since the suspension is itself a claim.** §3 moved the tokens out
+of `globals.css` into `styles/tokens.css` and re-pointed `--accent` at ink. That one change turned
+**21 assertions across 6 files red**, and not one of them had found a defect — every failure read
+as a deleted token ("`--bg` must be clean white", "`--primary` must be ink") over tokens that were
+present, correct and one file to the left. Cost to make them green again: a stylesheet-inlining
+test helper plus a rewrite of every superseded number. That is the tax being suspended.
+
+**What stays ON, and the line is not arbitrary.** Guards on what the site *tells a buyer* —
+`fixedCheckCount`, `checkLexicon`, `packContents`, `priceRange`, `stats` — assert that a rendered
+number matches its source. The copy rewrite (PR 133) shipped "This one survived all 9." onto the
+pack page above the buy button, false for 60 of the 63 published packs, and that class of test is
+the only thing that catches it. Appearance drifts; a false claim to a buyer does not become true
+because the design changed.
+
+Measured after suspending: `npx vitest run` **46 files / 500 tests passed, exit 0**;
+`npx tsc --noEmit` **exit 0**; `npm run build` **exit 0** (exit captured before any pipe).
+
+`src/__tests__/helpers/stylesheet.ts` is kept even though its consumers are suspended: it reads a
+stylesheet with local `@import`s inlined, so when these guards come back they measure the token
+wherever it lives. Without it the failure mode reverses and gets worse — a guard asserting a
+property is ABSENT goes green over a violation that moved into the imported file.
 
 ### Known open items
 
-- **§6.1 Home** — delete "What you get, at every price" (`index.tsx:1668`); email-capture block full
-  replacement; sample CTA line; "Newest on the shelf" → "New this week"; US-packs note; checks strip
-  → question-form verdict phrases; closing CTA sub-line.
+- ~~**§6.1 Home** — delete "What you get, at every price" (`index.tsx:1668`); "Newest on the shelf"
+  → "New this week"; checks strip → question-form verdict phrases~~ **done; bullet was stale, retired
+  2026-08-08.** It contradicted its own ledger row (§6.1 ✅) for a session. Checked rather than
+  assumed, because a grep says the opposite at first glance: `"What you get, at every price"` returns
+  1 hit in `index.tsx` and `engineGateIds` returns 1 — and **both are inside comments recording their
+  own removal** (`:1665`, `:1737`). `"Newest on the shelf"` → 0, `"New this week"` → 1,
+  `checkVerdicts` → 3. The lesson is the one §5.2 already paid for: a raw grep cannot tell code from
+  prose, and here it would have kept a finished item open instead of closing a live one.
 - ~~`lib/config.ts:46` — `FOUNDER.bio` duplicates the /about story~~ **done 2026-08-07**, removed
   outright rather than shortened; see "the founder was introduced twice" below.
 - ~~`components/marketing/Gauntlet.tsx` — component name carries retired vocabulary~~ **done
@@ -352,7 +443,15 @@ Scale (1rem = 16px):
 | `--type-h2` | 1.5/1.2 | 520 | Section heads |
 | `--type-body` | 1.0/1.55 | 400 | Prose; max measure 68ch |
 | `--type-data` | 0.875/1.4 | mono 400 | Engine output |
-| `--type-label` | 0.75/1.3 | mono 400, +6% tracking, uppercase | Eyebrows, counts, category tags |
+| `--type-label` | 0.75/1.3 | mono 400, +6% tracking, caps in the VALUE | Eyebrows, counts, category tags |
+
+`--type-label` carries NO `text-transform`. `src/__tests__/weightAndCasePolicy.test.ts:104-113`
+forbids the property outright in `globals.css` and says why in its own failure message: uppercase
+the value with `.toUpperCase()` if caps are the voice. The two are not in conflict once the
+distinction is kept — the caps this token is for are the data's own casing (`UK`, `US`, gate tags),
+which arrives already uppercase, so `text-transform` would only add the power to shout at a
+sentence that was never meant to be one. The +6% tracking stays: it is what makes mono caps at 12px
+legible, and it applies whether the caps came from the data or from CSS.
 
 ### 3.3 Glyph system (the entire icon set — six marks)
 

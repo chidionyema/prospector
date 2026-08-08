@@ -85,7 +85,7 @@ export function PriceLadder({ rungs, className }: { rungs: LadderRung[]; classNa
                   invite the reader to believe something was measured at 70 percent. */}
               <span aria-hidden className="flex min-w-[6rem] flex-1 items-center">
                 <span
-                  className="h-1.5 rounded-full bg-text/80"
+                  className="h-1.5 rounded-sm bg-text/80"
                   style={{ width: `${width}%` }}
                 />
               </span>

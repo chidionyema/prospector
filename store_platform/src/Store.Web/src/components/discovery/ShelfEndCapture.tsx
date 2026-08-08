@@ -29,17 +29,35 @@ export function ShelfEndCapture({ className }: { className?: string }) {
       <div className="rounded-md border border-border bg-surface px-6 py-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
           <div className="max-w-md">
+            {/* THE PROMISE, ONCE. This block stated it four times over three elements: the
+                heading ("the next survivor can come to you"), the first half of the body ("most
+                ideas die on the checks"), the second half ("one email per survivor, nothing
+                else") and the submit label ("tell me when one survives"). Four restatements of
+                one offer read as persuasion, which is the register this whole pass is removing.
+
+                The unsubscribe line is deliberately NOT repeated here. `WaitlistForm` renders
+                `WAITLIST_CONSENT_TEXT` directly under the field and `WaitlistService` hashes that
+                exact string as the evidence of what the subscriber agreed to, so a second
+                promise written here would be a fifth telling AND a second hash for one consent.
+
+                §6.1 of docs/SITE_SPEC_PROGRAM.md asks for the microcopy "Unsubscribe any time."
+                That promise IS rendered, once, as the last clause of `WAITLIST_CONSENT_TEXT`
+                ("Unsubscribe in one click"). Rewording it is not a copy edit: the string is
+                SHA-256'd into every stored signup and its `WAITLIST_CONSENT_VERSION` is pinned to
+                `WaitlistService.CurrentConsentVersion` in the API, so changing the words needs a
+                version bump deployed on both sides, not an edit here. Adding the shorter sentence
+                on top of it would restore exactly the duplicate-promise defect this block was
+                rewritten to remove. */}
             <h2 className="text-body font-semibold text-text">
-              Seen the whole shelf? The next survivor can come to you.
+              Get the next survivor.
             </h2>
             <p className="mt-1 text-meta leading-relaxed text-muted">
-              Most ideas the engine vets die on the checks. When one survives, we can send it,
-              one email per survivor, nothing else.
+              Most ideas die in vetting. When one survives, we email you. Nothing else.
             </p>
           </div>
 
           <div className="w-full max-w-md">
-            <WaitlistForm source="homepage-shelf-end" submitLabel="Tell me when one survives" />
+            <WaitlistForm source="homepage-shelf-end" submitLabel="Email me survivors" />
           </div>
         </div>
       </div>

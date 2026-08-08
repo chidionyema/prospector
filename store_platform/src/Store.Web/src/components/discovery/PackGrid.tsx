@@ -18,7 +18,12 @@ import { DossierCard } from './DossierCard';
  */
 export function PackGrid({ packs }: { packs: Pack[] }) {
   return (
-    <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    // §3.4: `minmax(300px, 1fr)`, not a breakpoint ladder. The ladder pinned the card count to the
+    // VIEWPORT (1 / 2 / 3 at sm and lg) rather than to the space a card actually needs, so at
+    // 1024px three cards were squeezed to 320px each while at 1023px two sat at 480px -- the same
+    // card, two sizes, decided by a number unrelated to its content. auto-fill lets the row take
+    // as many 300px-or-wider columns as fit, which is the same rule at every width.
+    <ul className="mt-10 grid gap-4 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
       {packs.map((pack) => (
         <li key={pack.id}>
           <DossierCard pack={pack} />

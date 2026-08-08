@@ -1,417 +1,5 @@
 @import "tailwindcss";
-
-/*
-  Brand v3 — "clean modern product" (2026-08-06).
-
-  Rebuilt from the ground up after the v2 look was rejected outright: "designed by a teenager on
-  drugs ... highly unprofessional ... the colour scheme is also questionable". v2's failure was
-  not any single value, it was that four separate loudness signals stacked on the same elements:
-  a saturated vermillion fill, a hard black offset shadow, a Didone serif, and wide-tracked
-  uppercase labels -- on a store whose entire proposition is sober, sourced evidence.
-
-  v3's thesis: this shop sells RIGOUR, so the design's one job is to make evidence look
-  load-bearing. One sans (Geist) in three weights on white, hairline borders, and Geist Mono
-  reserved strictly for checkable facts -- prices, IDs, source counts, gate tags -- so the eye
-  learns that monospace means "you can verify this". Actions are ink. One blue accent carries
-  links and focus and is never a fill. Red and green appear only where they mean killed and
-  survived. Reference points: Linear, Vercel, Mercury.
-
-  Every colour pair shipped here has a measured WCAG ratio recorded beside it. Where a pair
-  fails, the token carries a narrowed role rather than a comment excusing it.
-*/
-
-:root {
-  /* What we fall back to when the webfont has not arrived (or was never wired). ONE family now:
-     the serif is gone (v3 is sans-only), so there is no --font-fallback-serif. Mono falls back to
-     ui-monospace -- the system mono is good enough for data markers. */
-  --font-fallback-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-fallback-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-  /* NEUTRALS. A true-neutral zinc ramp, not the warm greys of v2 (#F7F7F5 / #6B6B6B / #B5B5B5).
-     The warm cast was chosen to harmonise with a warm accent; with the accent gone to ink it had
-     nothing to sit against and read as "white gone slightly yellow". */
-  --bg: #FFFFFF;            /* Page canvas. */
-  --surface: #FFFFFF;       /* Cards and raised surfaces. The EDGE is drawn by a border, never by
-                                a tint -- that is what makes the shelf read as a document. */
-  --surface2: #FAFAFA;      /* Sunken/tinted panels: plate headers, table heads, footer, code. */
-  --border: #E4E4E7;        /* Hairline. The default border everywhere. */
-  --border-strong: #D4D4D8; /* Input borders, hover borders, dividers that must actually read. */
-  --text: #171717;          /* Primary text. 17.93:1 on --bg, 17.18:1 on --surface2. */
-  --muted: #52525B;         /* Secondary text: descriptions, nav. 7.73:1 on --bg. AA. */
-  --subtle: #71717A;        /* Tertiary text: meta rows, counts, timestamps. 4.83:1 on --bg. AA.
-                                This is the smallest text that is allowed to carry information. */
-  /* Placeholders, disabled labels, purely decorative rules. 2.56:1 -- it FAILS AA, and that is
-     why its role is written down here: --faint may never carry information. Anything a buyer
-     needs to read uses --subtle. v2 used #B5B5B5 for market codes and the FX disclaimer, which
-     is exactly the misuse this narrowed role now forbids. */
-  --faint: #A1A1AA;
-
-  /* MOTION. The v2 "0.3s cinematic" standard is rejected. On a transactional store a 300ms
-     response to every hover reads as lag, not confidence -- the cursor arrives before the colour
-     does. These are tuned so hover feels instant and only real overlays take perceptible time. */
-  --transition-fast: all 0.12s cubic-bezier(0.2, 0, 0, 1);      /* colour, border, opacity */
-  --transition-standard: all 0.18s cubic-bezier(0.2, 0, 0, 1);  /* transform + shadow */
-  --transition-slow: all 0.2s cubic-bezier(0.2, 0, 0, 1);       /* overlay enter */
-
-  /* ACTION. The primary action is INK, not a brand colour.
-     Vermillion #FF5A1F is deleted outright rather than demoted, for three concrete reasons:
-       (a) it fails AA on white (3.12:1), which is why v2 was forced into BLACK text on orange --
-           and black-on-safety-orange is hazard livery. It reads as a warning, not an invitation.
-       (b) it was simultaneously the brand, the CTA fill, the category eyebrow, the card's left
-           border and the hover colour. A colour that means five things means nothing.
-       (c) 61 identical orange buy buttons tiled down the shelf was the single loudest thing on
-           the site, and the shelf is the site.
-     Nothing here needs a "brand colour": the brand is the ink/mono/evidence system itself. */
-  --primary: #171717;       /* Buy/primary action fill. */
-  --on-primary: #FFFFFF;    /* 17.93:1 on --primary. AAA. */
-  --primary-hover: #2E2E33; /* White on it is 13.51:1. AAA. */
-
-  /* The ONE accent, and it is never a fill: links, selected state, active tab underline, focus.
-     Confining it to things you can click is what makes it informative -- if it is blue, it does
-     something. */
-  --accent: #2563EB;        /* 5.17:1 on --bg, 4.95:1 on --surface2. AA. */
-  --accent-hover: #1D4ED8;  /* 6.70:1. AA. */
-  --focus: #2563EB;         /* Focus ring. 5.17:1 vs white, over the 3:1 required for UI. */
-
-  /* SEMANTICS. Red and green are reserved for exactly one meaning on this site: killed and
-     survived. They are never decoration and never a brand colour.
-     Each pair ships a `-bg` tint and a `-strong` text colour, because the base hue does not
-     survive being put on its own tint: --danger #DC2626 on --danger-bg #FEF2F2 measures 4.41:1
-     and FAILS AA. That single measurement is why the -strong variants exist at all. */
-  --success: #047857;         /* Verified/survived on white. 5.48:1. AA. */
-  --success-bg: #ECFDF5;
-  --success-strong: #065F46;  /* On --success-bg. 7.29:1. AA. */
-  --danger: #DC2626;          /* Killed/destructive on white. 4.83:1. AA. */
-  --danger-bg: #FEF2F2;
-  --danger-strong: #B91C1C;   /* On --danger-bg. 5.91:1. AA. */
-  /* v2 set --warning to #DC2626, i.e. identical to --danger, so "caution" and "destructive" were
-     the same colour and the distinction was unrenderable. */
-  --warning: #B45309;         /* 5.02:1 on white. AA. */
-  --warning-bg: #FFFBEB;
-  --warning-strong: #92400E;  /* On --warning-bg. 6.84:1. AA. */
-  --info: #0369A1;            /* 5.93:1 on white. AA. */
-  --info-bg: #F0F9FF;         /* --info on it: 5.57:1. AA. */
-
-  /* Search-match highlight, the <mark> in the command palette. A tint of --accent rather than a
-     neutral grey, because a grey wash on a hovered row (which is itself --surface2) disappears.
-     --text on it measures 14.14:1. */
-  --highlight: #DBEAFE;
-
-  /* The dark band tokens (--band, --on-band, --on-band-muted/-faint/-success/-danger) are DELETED.
-     v3 has no dark chrome: the header is white with a hairline, the footer is --surface2, and the
-     black "filter log" slab in the hero -- which read as a crypto terminal -- is now a light
-     ledger card. Six tokens existed solely to make text legible on a surface that no longer
-     exists. --gold was already an alias of --success and is deleted too. */
-
-  /* CATEGORY SCALE. One hue per sector, restored 2026-08-06 after the shelf was measured as
-     visually inert -- zero images and no colour on a page selling 63 products, so it read as
-     documentation rather than a shop.
-
-     This is NOT the eight-hue set that was deleted earlier the same day. That set collided four
-     ways across twelve sectors and was defended as a "discovery affordance" it could not deliver.
-     The rule that replaces the defence, and the reason all twelve values may exist at once:
-
-       HUE IS DECORATION. THE LABEL IDENTIFIES.
-
-     That is a measured conclusion, not a preference. Twelve values excluding the reserved red
-     (killed) and green (survived) families cannot be held apart by eye: after tuning, the
-     tightest pair is trades #7A4A0B / retail #854D0E at TWO degrees of hue separation. Nobody
-     can name a sector from that. So the sector name renders beside the marker always, and an
-     UNTAGGED pack renders no marker at all rather than a mute dot that says nothing.
-
-     Every value below is measured at >= 4.5:1 against the surface it is actually PRINTED on,
-     which is neither --bg nor --surface2: the sector name and the cover mark both sit on
-     `bg-cat-X/10`, i.e. 10% of the hue itself composited over --surface (#FFFFFF). The ratio
-     annotated beside each token is that composite. An earlier revision annotated them against a
-     flat #F4F4F5, which is not a token this stylesheet declares and not a surface any element on
-     the page paints -- and four of the twelve did not even hold on that basis (licensing was
-     annotated 6.44 where #F4F4F5 gives 7.17, trades 5.53 where it gives 6.79, retail 5.24 where it
-     gives 6.23, energy 6.79 where it gives 6.88). On the real composite the tightest is
-     care_benefits at 4.75:1, which still clears AA. None is byte-equal to
-     --danger/--danger-strong/--success/--success-strong/--accent/--warning/--warning-strong/
-     --info. Both properties are asserted by lib/__tests__/categoryScale.test.ts, which recomputes
-     the composite from these tokens rather than trusting the annotations.
-
-     Names are the engine's `sector` keys verbatim (`lib/facets.ts`), not colour names, so a
-     renamed sector fails the build instead of silently keeping a stale hue. */
-  --cat-licensing-admin: #9D174D;        /* 6.63:1 on its own badge tint */
-  --cat-employment-pay: #6D28D9;         /* 6.04:1 on its own badge tint */
-  --cat-housing-rental: #1D4ED8;         /* 5.72:1 on its own badge tint */
-  --cat-care-benefits: #0F766E;          /* 4.75:1 on its own badge tint */
-  --cat-trades-construction: #7A4A0B;    /* 6.42:1 on its own badge tint */
-  --cat-pets-animals: #155E75;           /* 6.25:1 on its own badge tint */
-  --cat-creative-rights: #A21CAF;        /* 5.36:1 on its own badge tint */
-  --cat-property-probate: #4338CA;       /* 6.71:1 on its own badge tint */
-  --cat-energy-planning: #075985;        /* 6.44:1 on its own badge tint */
-  --cat-retail-inventory: #854D0E;       /* 5.90:1 on its own badge tint */
-  --cat-professional-services: #374151;  /* 8.72:1 on its own badge tint */
-  --cat-other: #4B5563;                  /* 6.51:1 on its own badge tint */
-
-  /* ELEVATION. Borders draw edges; shadows communicate POSITION and nothing else. */
-  --shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
-  --shadow-2: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.10);
-
-  /* ── v3.1 (2026-08-07): ELEVATION BY SURFACE, NOT BY BORDER ────────────────────────────────
-     v3 had exactly TWO background values (--surface #FFFFFF and --surface2 #FAFAFA) and drew
-     every edge on the site with --border. That is why the page reads as one flat plane with
-     rectangles ruled onto it: with only two steps, a panel inside a panel inside a card has no
-     way to say "I am deeper than my parent" except by adding another hairline, so depth is
-     communicated entirely by line count. Four steps let nesting be expressed by TONE, and the
-     hairline goes back to meaning "structural division" rather than "edge of a box".
-
-     The ramp is true-neutral zinc, continuous with the existing --border #E4E4E7 (step 4 sits
-     one notch above it, so a bordered element on --surface4 still shows its edge). --text
-     #171717 measures 17.93:1 on step 1 and 15.94:1 on step 4, so body copy is AAA on all four
-     and no token below needs a narrowed role. */
-  --surface3: #F4F4F5;      /* Nested panels, table bodies, the shelf gutter behind cards. */
-  --surface4: #EDEDEF;      /* Deepest: inset wells, code blocks, the ambient kill column. */
-
-  /* ── KILL / SURVIVE: the semantic pair, promoted to first-class brand tokens ────────────────
-     --success/--danger already carried exactly this meaning (the v3 comment above says so:
-     "Red and green appear only where they mean killed and survived"), but they were NAMED for a
-     generic UI vocabulary, so call sites reached for them as generic UI colours -- a warning
-     border on a cart button, a checkmark on a facet bar. A token named --success invites that;
-     a token named --kill does not.
-
-     These deliberately ALIAS the v3 values rather than introduce new hex, so every WCAG ratio
-     measured above carries over unchanged and this is a renaming, not a re-palette:
-       --kill    = --danger  #DC2626  4.83:1 on white. AA.
-       --kill-strong = --danger-strong #B91C1C  5.91:1 on --kill-bg. AA.
-       --survive = --success #047857  5.48:1 on white. AA.
-       --survive-strong = --success-strong #065F46  7.29:1 on --survive-bg. AA.
-     The rule that comes with them: --kill and --survive are the ONLY colours allowed to carry a
-     verdict, and they carry it everywhere a verdict appears -- filter chips, dossier rows, the
-     kill log, pack borders, the gauntlet. --success/--danger stay for genuine UI state (a form
-     error is not a killed idea) and must never appear beside a verdict.
-
-     BY REFERENCE, NOT BY DUPLICATED HEX, so the pair can never drift from the ratios above.
-
-     An intermediate cut of this block copied the hex literally, on the theory that Tailwind v4
-     cannot build an alpha variant through a var() that resolves to another var() and would
-     silently emit the flat colour. THAT IS FALSE, and the built stylesheet is the receipt.
-     Tailwind emits a PAIR of rules for every alpha utility -- a flat fallback, then the real one
-     guarded by @supports:
-
-       .bg-survive,.bg-survive\/40{background-color:var(--survive)}
-       @supports (color:color-mix(in lab, red, red)){
-         .bg-survive\/40{background-color:color-mix(in oklab, var(--survive) 40%, transparent)}}
-
-     Reading only the first rule is what produced the wrong diagnosis. There are 55 such @supports
-     blocks in the sheet, and `.bg-surface\/90` gets its color-mix through exactly this kind of
-     indirection (--color-surface: var(--surface)), which is the direct counter-example. Alpha
-     works; `EvidenceBar`'s `bg-survive/40` tick renders at 40% on any browser with color-mix, and
-     at full strength only on ones without it, which is the intended fallback.
-
-     Verify with:
-       grep -o '@supports (color:color-mix[^}]*bg-survive[^}]*' <the built .next css> */
-  --survive: var(--success);
-  --survive-bg: var(--success-bg);
-  --survive-strong: var(--success-strong);
-  --kill: var(--danger);
-  --kill-bg: var(--danger-bg);
-  --kill-strong: var(--danger-strong);
-
-  /* GRAIN. v3 removed the body::before grain outright and left an explicit escape hatch in the
-     comment further down this file: "a future rebrand can re-add a much subtler texture (sub-1%
-     opacity, only on the bg) if it ever earns its weight". This is that re-add, and it is held
-     to the sub-1% the escape hatch specified rather than the 2-3% that was asked for -- at 2-3%
-     over a #FFFFFF canvas the noise is visible AS noise, which is the 2020 texture trick v3
-     rejected for cause. At 0.9% it does not read as texture at all; it reads as the flat plane
-     having a surface, which is the actual goal. Tokenised so it is tunable in one place. */
-  --grain-opacity: 0.009;
-}
-
-@theme inline {
-  --z-index-60: 60;
-  --z-index-70: 70;
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface2: var(--surface2);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-text: var(--text);
-  --color-muted: var(--muted);
-  --color-subtle: var(--subtle);
-  --color-faint: var(--faint);
-  --color-primary: var(--primary);
-  --color-primary-hover: var(--primary-hover);
-  --color-on-primary: var(--on-primary);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  /* NOT decorative, and it was missing. `--focus` has existed since brand v2 but was never mapped
-     into @theme, so the sixteen `ring-focus` / `border-focus` call sites across src/ compiled to
-     NOTHING -- in Tailwind v4 an unmapped colour utility emits no rule at all. Every one of those
-     focus rings was dead, which is a keyboard-accessibility failure that no visual review would
-     ever have caught. Found 2026-08-06 while rewiring this block. */
-  --color-focus: var(--focus);
-  --color-success: var(--success);
-  --color-success-bg: var(--success-bg);
-  --color-success-strong: var(--success-strong);
-  --color-warning: var(--warning);
-  --color-warning-bg: var(--warning-bg);
-  --color-warning-strong: var(--warning-strong);
-  --color-danger: var(--danger);
-  --color-danger-bg: var(--danger-bg);
-  --color-danger-strong: var(--danger-strong);
-  --color-info: var(--info);
-  --color-info-bg: var(--info-bg);
-  --color-highlight: var(--highlight);
-
-  /* v3.1. Without these mappings the `bg-surface3` / `text-kill` / `border-survive` utilities
-     compile to NOTHING -- in Tailwind v4 an unmapped colour utility emits no rule at all, which
-     is exactly how all sixteen `ring-focus` call sites shipped dead (see --color-focus above).
-     Every token added to :root in this pass is mapped here in the same commit for that reason. */
-  --color-surface3: var(--surface3);
-  --color-surface4: var(--surface4);
-  --color-survive: var(--survive);
-  --color-survive-bg: var(--survive-bg);
-  --color-survive-strong: var(--survive-strong);
-  --color-kill: var(--kill);
-  --color-kill-bg: var(--kill-bg);
-  --color-kill-strong: var(--kill-strong);
-
-  /* The category scale, exposed so the `text-cat-` and `bg-cat-` utilities compile. The badge
-     tint is an alpha of the same token (a trailing slash-10 on the class) rather than twelve more
-     `-bg` values: one source per hue means a tint can never drift from the ink sitting on it.
-
-     Do not write that alpha class literally in a CSS comment -- the slash-star it contains closes
-     the comment early, which is exactly how this block first shipped a 500. */
-  --color-cat-licensing-admin: var(--cat-licensing-admin);
-  --color-cat-employment-pay: var(--cat-employment-pay);
-  --color-cat-housing-rental: var(--cat-housing-rental);
-  --color-cat-care-benefits: var(--cat-care-benefits);
-  --color-cat-trades-construction: var(--cat-trades-construction);
-  --color-cat-pets-animals: var(--cat-pets-animals);
-  --color-cat-creative-rights: var(--cat-creative-rights);
-  --color-cat-property-probate: var(--cat-property-probate);
-  --color-cat-energy-planning: var(--cat-energy-planning);
-  --color-cat-retail-inventory: var(--cat-retail-inventory);
-  --color-cat-professional-services: var(--cat-professional-services);
-  --color-cat-other: var(--cat-other);
-
-  /* Typography Overhaul - Exclusively Sans. These name the family _app.tsx actually downloads.
-     The list used to start with "Inter", which nothing ever loaded, so the real typeface was
-     whatever each OS picked out of the system stack — which is how a headline's line count
-     became platform-dependent (see the h1 in pages/index.tsx).
-
-     The `var(…, fallback)` form is load-bearing twice over. Because this is `@theme inline`,
-     Tailwind bakes these values into the `font-sans` / `font-mono` UTILITIES rather than emitting
-     a var() reference — so written this way the utility re-resolves --font-*-pref at whatever
-     element wears it, which is what makes `font-sans` on MarketingLayout pick up the webfont.
-     And the fallback argument is what keeps the same declaration valid at :root (for `body`),
-     where --font-*-pref does not exist and a bare var() would void the whole list.
-
-     This is NOT sufficient on its own: the rules that read var(--font-serif) / var(--font-mono)
-     directly (h1/h2/h3, .text-eyebrow) get the value already substituted at :root. `.fonts-wired`
-     below is the other half. */
-  /* TWO families. The serif is gone: v3 is sans-only, so --font-serif, --font-serif-pref and
-     --font-fallback-serif are all deleted rather than aliased onto the sans (an alias leaves a
-     `font-serif` utility that silently does nothing, and the next person to reach for it gets
-     no feedback). Newsreader is no longer downloaded -- see _app.tsx. */
-  --font-sans: var(--font-sans-pref, ui-sans-serif), var(--font-fallback-sans);
-  --font-mono: var(--font-mono-pref, ui-monospace), var(--font-fallback-mono);
-
-  /* Explicit Mathematical Leading & Tracking.
-     --text-hero and --text-display were each declared TWICE here, with different values. The
-     first of each pair was dead (last declaration wins), so `text-hero` shipped at 7rem while
-     _app.tsx's comment still described it as 5.5rem. One declaration each now.
-     These are raw sizes with no responsive step built in — anything wearing `text-display` or
-     `text-hero` must add its own mobile size, see ui/PageHeader.tsx. */
-  /* SIX steps. There were seventeen in use (`text-sm` 173, `-xs` 97, `-base` 39, `-xl` 25,
-     `-lg` 25, `-body` 24, `-caption` 21, `-2xl` 20, `-3xl` 19, `-4xl` 15, `-h2` 5, `-5xl` 5,
-     `-display` 4, `-6xl` 3, `-h1` 3, `-hero` 2, `-h3` 1) plus twelve arbitrary pixel sizes
-     (`text-[8px]` through `text-[15px]`), which is not a scale but a set of one-off decisions:
-     10px and 11px and 12px appeared 85 times between them for the same kind of label.
-
-     The two heaviest tiers were made to land on their existing pixel value on purpose, so this
-     consolidation is not also a silent restyle of the whole site: --text-meta is 0.875rem, which
-     is exactly the `text-sm` it replaces on 173 elements, and --text-body stays 1rem, exactly the
-     `text-base` it replaces on 39. --text-meta--font-weight was dropped for the same reason -- a
-     size token that also sets weight would have bolded all 173.
-
-     --text-hero (7rem), --text-h3 and --text-small are deleted, not left unused, so nothing can
-     reach for a seventh step without editing this block. The old --text-h1 was 4.5rem/72px and
-     --text-display 5.5rem/88px, sizes no page actually used at those values.
-
-     v3 retunes four of the six. --text-h1 drops 2.25rem -> 2rem with line-height 1.1 -> 1.2,
-     because 32px of Geist reads LARGER than 36px of Newsreader did (a grotesque has a much
-     bigger x-height than a Didone at the same nominal size) and the pack-detail h1 was wrapping
-     to four lines. The other three are small corrections. --text-body and --text-meta are
-     deliberately untouched so the 39 and 173 call sites wearing them do not restyle. */
-  --text-display: 3rem;     --text-display--line-height: 1.08; --text-display--letter-spacing: -0.025em;
-  --text-h1: 2rem;          --text-h1--line-height: 1.2;       --text-h1--letter-spacing: -0.02em;
-  --text-h2: 1.5rem;        --text-h2--line-height: 1.3;       --text-h2--letter-spacing: -0.015em;
-  --text-body: 1rem;        --text-body--line-height: 1.6;
-  --text-meta: 0.875rem;    --text-meta--line-height: 1.5;
-  --text-caption: 0.75rem;  --text-caption--line-height: 1.5;
-
-  /* A SEVENTH step, added deliberately against the six-step rule above, with the reason written
-     down so the rule survives.
-
-     The six steps top out at --text-display 3rem/48px, and the live homepage h1 wears exactly
-     that (`md:text-display`, measured in the served HTML 2026-08-07). 48px is a large paragraph,
-     not a display cut. A scale whose loudest voice is 3x its quietest reads as "one sans at
-     three sizes" -- which is the single thing that dates a page hardest, because medium-
-     everything is what a template produces. The fix is not more steps in the middle; it is one
-     step far enough out that the jump itself is the statement.
-
-     6rem/96px at -0.045em. The tracking is not optional: Geist at 96px on default tracking has
-     visible gaps at the word joints, and negative tracking is most of what separates a display
-     CUT from a headline that was simply set large. Line-height goes below 1 (0.94) because at
-     this size the ascender/descender gap already supplies the optical leading.
-
-     Raw size, no responsive step built in -- same contract as --text-display, so anything
-     wearing `text-mega` MUST pair it with a mobile size (`text-h1 md:text-mega`). 96px on a
-     390px viewport is roughly four characters per line. */
-  --text-mega: 6rem;        --text-mega--line-height: 0.94;    --text-mega--letter-spacing: -0.045em;
-
-  /* THREE radii, and the third one is a circle. There were ten (`rounded-full` 49, `-lg` 32,
-     `-md` 17, bare `rounded` 11, `-xl` 7, `-sm` 4, `-2xl` 3, `-[5px]` 2, `-r` 1, `-[10px]` 1),
-     which is not a scale: 4px and 5px and 6px are the same corner at card size, so the variation
-     read as inconsistency rather than as hierarchy.
-
-     `--radius-sm` is back, deliberately, after v2 deleted it. The v2 rule ("one rectangle radius")
-     produced `rounded-md` on a 20px checkbox and a 26px segmented-control pill, where 8px on a
-     20px box is 40% of the height and reads as a lozenge, not a square with soft corners. Radius
-     has to scale with the box or it stops meaning the same thing. The rule is by SIZE, not by
-     taste: 8px for anything card-sized or larger, 4px for controls under ~28px, full for pills. */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-
-  /* TWO shadows, and NEITHER is decoration.
-     `--shadow-hard` (a 3px ink offset block, no blur) is DELETED. v2 called it "the brand device"
-     and canonised it as one of only two legal shadows; on screen it is a sticker drop-shadow, and
-     stacked under a saturated orange fill it is a large part of why the storefront read as
-     amateur. Deleted rather than left unused so nothing can reach for it again.
-     Borders draw edges here. A shadow only ever says "this element is physically above the page":
-       shadow-1 -- a card lifting under the cursor, or the sticky header once it has scrolled.
-       shadow-2 -- things that genuinely float: modal, drawer, command palette, mobile menu. */
-  --shadow-1: var(--shadow-1);
-  --shadow-2: var(--shadow-2);
-
-  /* Global Transitions */
-  --transition-fast: var(--transition-fast);
-  --transition-standard: var(--transition-standard);
-  --transition-slow: var(--transition-slow);
-
-  /* `fade-in-up` (20px of travel over 800ms) is deleted: at that distance and duration it is a
-     slide, and on a shelf of 61 cards it made the page feel like it was still loading after it
-     had loaded. `rise` keeps the idea at 6px/240ms, which registers as settling rather than
-     travelling. */
-  --animate-fade-in: fadeIn 0.24s ease-out forwards;
-  --animate-rise: rise 0.24s cubic-bezier(0.2, 0, 0, 1) forwards;
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-}
+@import "./tokens.css";
 
 html {
   color-scheme: light;
@@ -665,7 +253,11 @@ body::before {
    leaves a class that silently does nothing. */
 h1, h2, h3 {
   font-family: var(--font-sans);
-  font-weight: 600;
+  /* 560, not 600, to match the weights the §3.2 scale tokens now carry (display/h1 560, h2 520).
+     A heading wearing no scale token used to render 600 while one wearing `text-h1` rendered
+     whatever the token said, so the same heading level had two weights depending on how it was
+     classed. 560 is only reachable because Switzer is a variable face -- see tokens.css. */
+  font-weight: 560;
   /* The per-size --text-*--letter-spacing values in the theme block are the finer control; this
      is the floor for headings that do not wear a scale token. */
   letter-spacing: -0.01em;
@@ -696,6 +288,43 @@ h1, h2, h3 {
 */
 .font-mono {
   font-family: var(--font-mono);
+}
+
+/*
+  ── §3.2 THE TWO ENGINE VOICES ────────────────────────────────────────────────────────────────
+  The scale tokens in tokens.css carry SIZE. These two carry the rest of what §3.2 specifies for
+  the engine's own output, and they exist as classes rather than as more size tokens for a reason
+  this file already learned the hard way: the previous revision coupled `text-caption` (a SIZE
+  utility) to monospace + uppercase, which silently shouted every field hint and every
+  `role="alert"` validation error on the site in caps. A size token must never also decide casing.
+
+    .text-data   engine output inside prose -- prices, counts, scores, dates, filenames.
+    .text-label  eyebrows, category tags, counts-as-labels. Uppercase is the DATA's own casing
+                 here (market codes, gate tags), not a decorative shout at a sentence.
+
+  Tracking on .text-label is +6% as specified: uppercase mono at 12px sets too tight for the
+  letterforms to separate, and this is the one place on the site where uppercase is legitimate,
+  so it gets the tracking that makes it readable rather than being left to fend for itself.
+*/
+.text-data {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.text-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  line-height: 1.3;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  /* No `text-transform`. The comment above is the reason: the caps this class is for are the
+     DATA's own casing (`UK`, `US`, gate tags), which arrives uppercase already, so the property
+     adds nothing except the ability to shout at a sentence. `weightAndCasePolicy.test.ts:110`
+     bans it in this file for exactly that reason and names the alternative in its own failure
+     message -- uppercase the value. The +6% tracking stays: mono caps at 12px need it however
+     the caps got there. */
 }
 
 /*

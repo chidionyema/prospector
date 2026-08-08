@@ -124,8 +124,14 @@ describe('the check vocabulary is defined once', () => {
       [join('lib', 'faqContent.ts'), 'checksSentence()'],
       [join('pages', 'llms.txt.tsx'), 'checksSentence()'],
       [join('pages', 'ideas', '[slug].tsx'), 'checksSentence()'],
-      [join('pages', 'index.tsx'), 'engineGateIds()'],
-      [join('pages', 'about.tsx'), 'COMMON_CHECKS.map'],
+      // Was `engineGateIds()` until 2026-08-07. The homepage method band now lists what each check
+      // CONCLUDES rather than the machine's name for its subject, so the call site moved; the rule
+      // it is pinned to has not changed at all.
+      [join('pages', 'index.tsx'), 'checkVerdicts()'],
+      // `pages/about.tsx` was here until 2026-08-07. It no longer enumerates the checks at all
+      // (it was a condensed second copy of /how-it-works and is now the founder's story), so a pin
+      // on a call site the page no longer has would fail forever while proving nothing. The guard
+      // it provided is replaced, in the shape that page can still break, by the test below.
       [join('pages', 'how-it-works.tsx'), 'COMMON_CHECKS.map'],
       [join('pages', 'pack', '[id].tsx'), 'COMMON_CHECKS.map'],
     ];
@@ -137,7 +143,26 @@ describe('the check vocabulary is defined once', () => {
     }
   });
 
-  it('every check carries all three registers, none of them empty', () => {
+  /*
+   * The other half of the rule, for a surface that stopped deriving the set.
+   *
+   * "Derives it or does not spell it out" is the actual contract; the list above only pins the
+   * first half. /about is the one page that took the second branch, so it is held to it: it must
+   * hand-type NONE of the canonical names. That is strictly tighter than the row it replaces,
+   * which a page could satisfy by mapping `COMMON_CHECKS` and re-typing three of them beside it.
+   */
+  it('a surface that no longer derives the set does not re-type it either', () => {
+    const text = stripComments(readFileSync(join(SRC, 'pages', 'about.tsx'), 'utf8'));
+    const typed = COMMON_CHECKS.filter(
+      (c) => text.includes(c.name) || text.includes(c.refutation) || text.includes(c.question),
+    ).map((c) => c.id);
+    expect(
+      typed,
+      'pages/about.tsx names checks by hand; derive them from lib/checks.ts or do not list them',
+    ).toEqual([]);
+  });
+
+  it('every check carries all four registers, none of them empty', () => {
     for (const check of COMMON_CHECKS) {
       expect(check.id, 'gate id must be the engine spelling').toMatch(/^[a-z_]+$/);
       expect(check.name.length, `${check.id} name`).toBeGreaterThan(0);
@@ -146,7 +171,44 @@ describe('the check vocabulary is defined once', () => {
       expect(check.prose, `${check.id} prose is for use mid-sentence`).toBe(
         check.prose.toLowerCase(),
       );
+      expect(check.verdict.length, `${check.id} verdict`).toBeGreaterThan(0);
     }
+  });
+
+  /*
+   * The verdict register is the one that is not ours to word.
+   *
+   * The other three are the site's voice. `verdict` is the engine's: /kill-log prints these exact
+   * strings as its filter chips and on every row, and the homepage shows them so a reader who
+   * follows the link meets the sentence they just read on records they can open. If the two drift,
+   * the homepage is describing a receipt that does not exist, which is the same defect class as a
+   * pack claiming a source it never fetched.
+   *
+   * Gates absent from the current log are skipped rather than failed: the log is a rolling window
+   * of the newest kills, so "no idea has died on legality lately" is a fact about the engine, not
+   * a copy defect.
+   */
+  it('each verdict is the kill log verbatim', () => {
+    const log = JSON.parse(
+      readFileSync(join(SRC, 'data', 'kill-log.json'), 'utf8'),
+    ) as { entries: { gate: string; gateLabel: string }[] };
+    const labelForGate = new Map<string, string>();
+    for (const entry of log.entries) labelForGate.set(entry.gate, entry.gateLabel);
+    // Guards the guard: an empty or reshaped log would make every assertion below vacuous.
+    expect(labelForGate.size, 'kill-log.json carried no gate labels to compare against').toBeGreaterThan(0);
+
+    const drifted: string[] = [];
+    let compared = 0;
+    for (const check of COMMON_CHECKS) {
+      for (const id of idsFor(check)) {
+        const label = labelForGate.get(id);
+        if (!label) continue;
+        compared += 1;
+        if (label !== check.verdict) drifted.push(`${id}: log "${label}" vs checks.ts "${check.verdict}"`);
+      }
+    }
+    expect(compared, 'no common gate appears in the kill log; the comparison read nothing').toBeGreaterThan(0);
+    expect(drifted, 'the homepage would print a verdict the kill log never uses').toEqual([]);
   });
 
   it('ids and aliases are unique across the set', () => {

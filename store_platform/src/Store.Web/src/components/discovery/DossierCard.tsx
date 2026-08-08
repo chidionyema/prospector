@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import React from 'react';
 
-import { Icon } from '@/components/ui';
+import { Glyph } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { freshnessLabel, type Pack } from '@/lib/api/client';
 import { useCurrency } from '@/lib/currency';
@@ -49,7 +49,7 @@ export function DossierCard({ pack }: { pack: Pack }) {
       className={cx(
         'group flex h-full flex-col rounded-md border border-border bg-surface p-5',
         'transition-[border-color,box-shadow,transform] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
-        'hover:-translate-y-px hover:border-border-strong hover:shadow-1',
+        'hover:-translate-y-px hover:border-border-strong',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
       )}
     >
@@ -60,7 +60,7 @@ export function DossierCard({ pack }: { pack: Pack }) {
 
       {(sources !== null || fresh) && (
         <p className="mt-3 flex flex-wrap items-center gap-x-1.5 font-mono text-caption text-subtle">
-          <Icon name="verified" size={12} className="text-success" />
+          <Glyph name="source" className="text-success" />
           {sources !== null && (
             <>
               <span>{sources} sources</span>

@@ -88,7 +88,7 @@ export function CartButton() {
       >
         <Icon name="cart" size={18} />
         <span className="hidden sm:inline">Basket</span>
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-medium text-on-primary">
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-primary px-1.5 text-caption font-medium text-on-primary">
           {justAdded ? <span className="animate-rise" data-just-added>{cart.count}</span> : cart.count}
         </span>
       </button>
