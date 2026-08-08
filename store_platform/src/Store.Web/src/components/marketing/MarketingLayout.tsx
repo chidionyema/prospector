@@ -118,12 +118,22 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         it needed inverted text tokens (--on-band, --on-band-muted, --on-band-faint) and its own
         button variants, and the wordmark needed an `onDark` mode. Removing it deletes all three.
 
-        `` appears only once scrolled, so the shadow means "there is content underneath
-        this" rather than being decoration -- the elevation rule in §5.3.
+        The hairline appears only once scrolled, so the rule means "there is content passing under
+        this" rather than being decoration.
+
+        It was a shadow, and then for a while it was nothing at all. §3.4 (tokens.css, 2026-08-08)
+        retired box-shadows sitewide -- `--shadow-1`/`--shadow-2` are `none` and depth is a surface
+        step plus a hairline -- and the sweep that stripped the class from this call site left
+        `scrolled ? '' : ''` behind: a live scroll listener (see `onScroll` above) feeding a pair
+        of empty strings, plus a border drawn identically at every scroll position. The header had
+        no scroll feedback of any kind, and nothing failed, because a dead ternary renders.
+
+        Only the border COLOUR changes, never whether the border is there. Adding and removing the
+        1px box would move the whole page by a pixel on the first scroll of every visit.
       */}
       <header
-        className={`sticky top-0 z-30 w-full border-b border-border bg-bg/90 backdrop-blur-md pt-[env(safe-area-inset-top)] transition-shadow duration-200 ${
-          scrolled ? '' : ''
+        className={`sticky top-0 z-30 w-full border-b bg-bg/90 backdrop-blur-md pt-[env(safe-area-inset-top)] transition-colors duration-200 ${
+          scrolled ? 'border-border' : 'border-transparent'
         }`}
       >
         <div className={`${SHELL} flex h-16 items-center justify-between gap-4`}>
