@@ -1,6 +1,6 @@
 ### E2 — E2 baseline: PASS rate and grounding by audience persona, with intervals and the batch size the live arm needs (offline, zero spend)
 
-_Run 2026-08-07T23:25:17+00:00 · `e2_persona_grounding.py` · registered COMMERCIAL_READINESS_PROGRAM.md §4 (table), §8 (baseline)_
+_Run 2026-08-08T00:38:31+00:00 · `e2_persona_grounding.py` · registered COMMERCIAL_READINESS_PROGRAM.md §4 (table), §8 (baseline)_
 
 - **dossiers**: 1,611
 - **tagged_with_decision**: 1,574
