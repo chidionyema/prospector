@@ -75,6 +75,11 @@ export type { SkeletonProps } from './Skeleton';
 
 export { Icon } from './Icon';
 export type { IconName } from './Icon';
+// The verdict marks (§3.3). Exported beside Icon on purpose, so the choice between them is made
+// at the import line: Icon draws CHROME, Glyph draws a RULING. Nothing the engine decided should
+// arrive from a general-purpose icon set.
+export { Glyph, KillCauseGlyph, KILL_CAUSE_CODES } from './Glyph';
+export type { GlyphName, KillCause } from './Glyph';
 
 export { ToastProvider, useToast } from './Toast';
 

@@ -295,7 +295,7 @@ function PaletteDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Search the catalogue"
-        className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface shadow-2"
+        className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface"
       >
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <Icon name="search" size={16} className="flex-none text-subtle" />

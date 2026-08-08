@@ -212,7 +212,7 @@ export default function Faq() {
       <SectionBand bg="bg" width="4xl" className="!py-12">
         <div className="mx-auto max-w-md rounded-md border border-border bg-surface p-6">
           <div className="flex items-center gap-3 mb-4">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
+            <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-success/10 text-success">
               <Icon name="mail" size={14} />
             </span>
             <h4 className="font-semibold text-meta text-text">A human reads every email</h4>

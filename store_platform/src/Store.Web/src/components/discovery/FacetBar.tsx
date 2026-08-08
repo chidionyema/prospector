@@ -177,7 +177,7 @@ export function AppliedFilterChips({
           className={chipClasses({ selected: true, removable: true, className: 'group/chip' })}
         >
           {chip.text}
-          <span className="flex h-4 w-4 items-center justify-center rounded-full text-white/70 transition-colors group-hover/chip:text-white">
+          <span className="flex h-4 w-4 items-center justify-center rounded-sm text-white/70 transition-colors group-hover/chip:text-white">
             <Icon name="close" size={10} />
           </span>
         </button>
@@ -269,7 +269,7 @@ export function StepFlow({
               <div
                 key={i}
                 className={cx(
-                  'h-1.5 flex-1 rounded-full transition-colors',
+                  'h-1.5 flex-1 rounded-sm transition-colors',
                   i <= step ? 'bg-text' : 'bg-border',
                 )}
               />
@@ -515,7 +515,7 @@ export function FacetBar({
         >
           Filter
           {activeCount > 0 && (
-            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 font-mono text-caption text-on-primary">
+            <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-sm bg-primary px-1.5 font-mono text-caption text-on-primary">
               {activeCount}
             </span>
           )}

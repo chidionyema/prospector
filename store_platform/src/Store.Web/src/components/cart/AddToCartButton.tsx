@@ -54,7 +54,7 @@ export function AddToCartButton({ line, size = 'full', className }: AddToCartBut
         aria-label={inCart ? `Remove ${line.title} from basket` : `Add ${line.title} to basket`}
         aria-pressed={inCart}
         className={cx(
-          'inline-flex h-8 w-8 flex-none items-center justify-center rounded-full border transition-all',
+          'inline-flex h-8 w-8 flex-none items-center justify-center rounded-sm border transition-all',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
           inCart
             ? 'border-primary bg-primary text-on-primary'

@@ -130,7 +130,7 @@ export function chipClasses({
   className,
 }: { selected?: boolean; removable?: boolean; className?: string } = {}) {
   return cx(
-    'inline-flex h-8 items-center rounded-full border text-meta font-medium',
+    'inline-flex h-8 items-center rounded-sm border text-meta font-medium',
     removable ? 'gap-1.5 pl-3 pr-2' : 'px-3',
     'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',

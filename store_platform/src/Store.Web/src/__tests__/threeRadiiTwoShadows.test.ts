@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from './helpers/stylesheet';
+
 /**
  * Three radii, two shadows (brand v3, 2026-08-06).
  *
@@ -54,7 +56,9 @@ const TSX = walk(SRC).map((path) => ({
   src: stripComments(readFileSync(path, 'utf8')),
 }));
 // Comments stripped: this file's siblings document the banned classes by name in prose.
-const CSS = readFileSync(join(SRC, 'styles', 'globals.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+// With local `@import`s inlined -- the radius and shadow tokens live in `styles/tokens.css` now.
+// See `helpers/stylesheet.ts`.
+const CSS = readStylesheet(join(SRC, 'styles', 'globals.css')).replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** Every radius utility, including the bare `rounded` and arbitrary `rounded-[5px]`. */
 const RADIUS = /\brounded(?:-(?:[trbl]{1,2}-)?[a-z0-9[\]#%.]+)?\b/g;
