@@ -36,15 +36,27 @@ export function SectionBand({
   bg = 'surface',
   width = '3xl',
   className,
+  outerClassName,
   children,
 }: {
   bg?: BandBg;
   width?: keyof typeof BAND_WIDTH;
   className?: string;
+  /**
+   * Classes for the `<section>` itself, as opposed to the centred measure inside it.
+   *
+   * This exists because `className` goes to the INNER div, which is not obvious from a call
+   * site and is silent when you get it wrong: a layout class that only means something to a
+   * parent -- `order`, `col-span`, a flex-child `basis` -- lands on a node that is not the
+   * parent's child, so it applies cleanly, cascades nothing, and the page measures exactly
+   * as it did before. That is the worst kind of bug to chase, because the class IS in the
+   * DOM. F-001's fold fix needs `order` on the band, so the band gets its own channel.
+   */
+  outerClassName?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className={cx(BAND_BG[bg], "border-b border-border last:border-b-0")}>
+    <section className={cx(BAND_BG[bg], "border-b border-border last:border-b-0", outerClassName)}>
       <div className={`mx-auto ${BAND_WIDTH[width]} overflow-hidden px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
         {children}
       </div>
@@ -94,8 +106,12 @@ export function PageHero({
   secondary?: { href: string; label: string; variant?: ButtonVariant };
   children?: React.ReactNode;
 }) {
+  // `animate-settle`, not `animate-rise`. A page hero is by definition the largest thing above
+  // the fold, so it is the LCP element on every route that uses this component, and `rise`
+  // fades in from opacity 0 -- which is not LCP-eligible. Measured: /how-it-works 1824ms and
+  // /ideas 1860ms LCP against 164ms and 208ms first paint (F-005).
   return (
-    <SectionBand bg={bg} width={width} className="pt-10 pb-12 md:pt-14 md:pb-16 animate-rise">
+    <SectionBand bg={bg} width={width} className="pt-10 pb-12 md:pt-14 md:pb-16 animate-settle">
       <div className="max-w-[46rem]">
         {eyebrow && (
           <p className="mb-3 text-caption font-medium text-subtle">{eyebrow}</p>
@@ -134,6 +150,7 @@ export function Section({
   intro,
   children,
   className,
+  outerClassName,
 }: {
   bg?: BandBg;
   width?: keyof typeof BAND_WIDTH;
@@ -141,9 +158,11 @@ export function Section({
   intro?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Classes for the `<section>` element -- see the note on `SectionBand`. */
+  outerClassName?: string;
 }) {
   return (
-    <SectionBand bg={bg} width={width} className={`py-16 md:py-24 scroll-mt-16 ${className ?? ''}`}>
+    <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-16 md:py-24 scroll-mt-16 ${className ?? ''}`}>
       {(title || intro) && (
         <div className="mb-10">
           {title && <h2 className="text-h2 font-semibold text-text md:text-h1">{title}</h2>}

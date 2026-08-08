@@ -527,6 +527,10 @@
      travelling. */
   --animate-fade-in: fadeIn 0.24s ease-out forwards;
   --animate-rise: rise 0.24s cubic-bezier(0.2, 0, 0, 1) forwards;
+  /* Same curve and duration as `rise`; see the note on the `settle` keyframes below for why a
+     hero must not fade. Use `animate-settle` on anything that can be a route's LCP element --
+     in practice, any band above the fold -- and `animate-rise` everywhere else. */
+  --animate-settle: settle 0.24s cubic-bezier(0.2, 0, 0, 1) forwards;
 
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -536,6 +540,28 @@
   @keyframes rise {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* `settle` is `rise` WITHOUT the opacity leg, and it exists for one measured reason (F-005).
+     An element at `opacity: 0` is not eligible to be the Largest Contentful Paint, so putting
+     `animate-rise` on a hero band means the biggest thing on the page cannot win LCP until it
+     has faded in. Measured on the built tree with `scripts/design-audit/measure-lcp.mjs`:
+
+       route            FCP     LCP    candidates
+       /               328ms  1940ms   p @328ms (9,696) then the h1 @1940ms (33,796)
+       /how-it-works   164ms  1824ms   lead @164ms then the hero lead @1824ms
+       /ideas          208ms  1860ms   caption @208ms then the h1 @1860ms
+       /pricing        180ms   180ms   ONE candidate -- no PageHero, no animate-rise
+       /about          136ms   136ms   ONE candidate
+       /kill-log       316ms   316ms   ONE candidate
+
+     The three slow routes are exactly the three with an animated hero, and each shows a
+     SECOND, larger candidate ~1.7s after a perfectly fast first paint. The pages were never
+     slow; the metric was waiting on a fade. Translation alone reads the same at 6px and keeps
+     the element paintable from the first frame. */
+  @keyframes settle {
+    from { transform: translateY(6px); }
+    to { transform: translateY(0); }
   }
 
 }

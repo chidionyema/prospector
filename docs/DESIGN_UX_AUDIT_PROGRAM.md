@@ -137,7 +137,45 @@ sees after money moves, and they are the least looked at.
 > the evidence path, and the proposed change — with S3 items stating explicitly that they need
 > sign-off before any code is written.
 
-### F-001 — Home, mobile: the first product is below the fold on every phone (S1, fix in flight)
+### F-001 — Home, mobile: the first product is below the fold on every phone (S1) — **FIXED 2026-08-08**
+
+**Outcome, measured on a built tree at `3be12ca` by `scripts/design-audit/measure-fold.mjs`:**
+
+| viewport | before | after |
+|---|---|---|
+| 360×780 | card at y=937, **−157px** (FAIL) | y=704, **+76px** (PASS) |
+| 390×844 | y=937, **−93px** (FAIL) | y=704, **+140px** (PASS) |
+| 430×932 | y=875, +57px (thin pass) | y=666, **+266px** (PASS) |
+| 1280×720 | y=129, +591px | y=129, +591px (unchanged) |
+
+**Two things in the original finding below are wrong, and only re-measuring the current tree
+caught either:**
+
+1. **"proof strip 240px" does not name `HeroEvidenceStrip`.** That component is `hidden md:block`
+   (`src/pages/index.tsx:1579`) and contributes zero height on a phone. The 233px block is the
+   *stats* band — "1,444 ideas researched. 80 survived." — a different element entirely.
+   `e2e/discovery.spec.ts:56` had the culprit right where this finding had it wrong.
+2. **The numbers had drifted.** The card was at y=937, not y=958, because four merges landed
+   between the audit and the fix. A finding not re-measured before it is fixed is a finding
+   about a tree that no longer exists.
+
+**The fix contained a silent no-op that measurement caught before it shipped.** `SectionBand`
+applies `className` to the INNER div, not the `<section>` (`blocks.tsx:47-48`). `order` only
+means something to a flex *parent*, so it would have landed on a node that is not the wrapper's
+child: present in the DOM, applied cleanly, cascading nothing, fold unchanged. `SectionBand` and
+`Section` now take an explicit `outerClassName`. Wrapping the shelf also made it `:last-child`
+for the first time, which `last:border-b-0` would have used to delete the divider under the
+shelf at every width — pinned with `outerClassName="!border-b"`.
+
+The probe itself had to be corrected twice, and both defects would have produced confident wrong
+attributions: it read `textContent` (which serialises `display:none` subtrees, so the hero
+reported the hidden kill column's text), and it listed DOM-preceding siblings rather than
+visually-above ones (which would have reported this very fix as having changed nothing, since
+`order` moves the band without moving it in the document).
+
+---
+
+**Original finding, as written:**
 
 `e2e/discovery.spec.ts:70` red against production, run 31231400949. Measured on live at 360×780:
 header 65px, hero 385px, **proof strip 240px**, first pack card at **y=958** on a 780px screen —
@@ -223,7 +261,56 @@ Two other routes shift, both trivially: `/orders/success` max **0.008** and `/pa
 **0 images sitewide lack a reserved box** — so `/account` is one localised bug, not a systemic CLS
 problem. S1, objectively fixable: reserve the block's height while auth resolves.
 
-### F-005 — LCP 2.3–3.8s on four routes, against a 1.2s bar and a 2.5s floor (S1)
+### F-005 — LCP 2.3–3.8s on four routes, against a 1.2s bar and a 2.5s floor (S1) — **FIXED 2026-08-08**
+
+**The stated hypothesis was wrong, and so were the two I formed after it.** The finding below
+proposed that the slow set was "the routes doing client-side data fetching after hydration". It
+is not: under throttling, **1/1 over-floor routes and 5/5 under-floor routes** have a post-load
+`xhr`/`fetch`, so the property does not discriminate at all. I then proposed the `animate-rise`
+entrance animation (0.24s — far too short to explain a 1.7s delta) and a production-API round
+trip in `getServerSideProps` (TTFB measured **6–150ms** on every route). Both dead.
+
+**What it actually was**, from the check the finding itself specified — capture the LCP
+*element* — implemented in `scripts/design-audit/measure-lcp.mjs` by serialising `entry.element`
+**inside** the observer callback, where it is still live, instead of reading it afterwards when
+React has re-rendered the node and the field is null:
+
+```
+route            FCP     LCP    LCP candidates
+/               328ms  1940ms   p @328ms (9,696) then the h1 @1940ms (33,796)
+/how-it-works   164ms  1824ms   lead @164ms then the hero lead @1824ms
+/ideas          208ms  1860ms   caption @208ms then the h1 @1860ms
+/pricing        180ms   180ms   ONE candidate
+/about          136ms   136ms   ONE candidate
+/kill-log       316ms   316ms   ONE candidate
+```
+
+Every page painted in **136–328ms**. The three slow routes emitted a *second, larger* candidate
+~1.7s later — the hero headline. `@keyframes rise` starts at `opacity: 0` (`tokens.css:537`),
+and **an element at opacity 0 is not eligible to be the Largest Contentful Paint**. The slow set
+is exactly the set with an animated hero: `/` (`index.tsx:1461`) and the two routes using
+`PageHero` (`blocks.tsx:98`). The pages were never slow — the metric was waiting on a fade.
+
+Fix: `animate-settle`, the same curve and duration with the opacity leg removed, on hero bands
+only. `animate-rise` is unchanged everywhere else.
+
+| route | before (unthrottled) | after | before (LH-mobile) | after |
+|---|---|---|---|---|
+| `/` | 1972ms | **436ms** | 2632ms | **1304ms** |
+| `/how-it-works` | 1800ms | **188ms** | 2012ms | **1064ms** |
+| `/ideas` | 1872ms | **228ms** | 2064ms | **1124ms** |
+| `/kill-log` (control) | 1452ms | 1456ms | 1452ms | 1456ms |
+
+Routes over the 2500ms floor under Lighthouse-mobile throttling: **4 → 0**. `/kill-log` is the
+control and is unchanged, which is what makes the other three attributable to the change rather
+than to the lab.
+
+**Still over the 1.2s bar under throttling:** `/` at 1304ms and `/kill-log` at 1456ms. Those are
+real and unfixed; the floor is cleared, the bar is not.
+
+---
+
+**Original finding, as written:**
 
 `/` measured 2584–3544ms across the six viewports. Because a single slow load proves nothing, it
 was **re-measured five times at 360 with a fresh context**: 3292, 3180, 3768, 3260, 3152ms —
@@ -410,8 +497,17 @@ of this. It exits non-zero on any surviving node.
 
 ### Still open after this pass
 
-- **F-001** (first product below the fold on mobile) and **F-005** (LCP 2.3–3.8s on four routes)
-  are untouched. Both are S1 and neither is an axe rule.
+- ~~**F-001** (first product below the fold on mobile) and **F-005** (LCP 2.3–3.8s on four
+  routes) are untouched.~~ **Both fixed 2026-08-08** — see the outcome blocks on each finding.
+  Two new probes assert them: `scripts/design-audit/measure-fold.mjs` and
+  `scripts/design-audit/measure-lcp.mjs`, both exiting non-zero on regression.
+- **What remains on F-005:** the 2500ms floor is cleared on every route, but `/` (1304ms) and
+  `/kill-log` (1456ms) are still over the 1200ms bar under Lighthouse-mobile throttling.
+- **`e2e/discovery.spec.ts` still runs at one viewport in CI.** `playwright.config.ts:18` has
+  only `devices['Desktop Chrome']` (1280×720), which is why F-001 lived on a phone for a day
+  while a desktop fold test stayed green. The mobile assertion in that file sets its own
+  viewport, so it works — but nothing stops the next block from being added above the shelf and
+  measured only at 1280 wide.
 - **F-003** (`--muted` at 4.63:1 against the self-imposed 7:1 bar), **F-007** to **F-010** are S2/S3
   and unaddressed.
 - §5.1's coverage gaps are unchanged: the checkout overlay, component states, `/orders/[token]`,
