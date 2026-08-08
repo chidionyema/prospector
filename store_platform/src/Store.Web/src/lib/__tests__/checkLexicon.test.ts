@@ -120,18 +120,19 @@ describe('the check vocabulary is defined once', () => {
     // The absence scan above only catches a regression written in the OLD words. A page that
     // hand-types the CURRENT six is just as broken -- it is the next divergence, already written,
     // waiting for one of the six to be reworded. So each surface is pinned to its call site.
+    //
+    // The rule is "derives OR does not spell it out". A surface whose answer no longer names
+    // the set at all (e.g. the FAQ's "grounded" answer was cut to 28 words per the email, no
+    // checks in it) is held to the second half by the "names none by hand" assertion in the
+    // next test. Pinning a call site the page no longer has would fail forever while proving
+    // nothing.
     const derived: [string, string][] = [
-      [join('lib', 'faqContent.ts'), 'checksSentence()'],
       [join('pages', 'llms.txt.tsx'), 'checksSentence()'],
       [join('pages', 'ideas', '[slug].tsx'), 'checksSentence()'],
-      // Was `engineGateIds()` until 2026-08-07. The homepage method band now lists what each check
-      // CONCLUDES rather than the machine's name for its subject, so the call site moved; the rule
-      // it is pinned to has not changed at all.
-      [join('pages', 'index.tsx'), 'checkVerdicts()'],
-      // `pages/about.tsx` was here until 2026-08-07. It no longer enumerates the checks at all
-      // (it was a condensed second copy of /how-it-works and is now the founder's story), so a pin
-      // on a call site the page no longer has would fail forever while proving nothing. The guard
-      // it provided is replaced, in the shape that page can still break, by the test below.
+      // Was `engineGateIds()` until 2026-08-07. The homepage method band no longer lists the
+      // checks at all (the email deletes the jargon strip from the homepage entirely), so the
+      // pin moves to a negative: the page must not enumerate the set. The pin for /how-it-works
+      // and /pack covers the surfaces that DO spell the set out.
       [join('pages', 'how-it-works.tsx'), 'COMMON_CHECKS.map'],
       [join('pages', 'pack', '[id].tsx'), 'COMMON_CHECKS.map'],
     ];

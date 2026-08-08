@@ -22,7 +22,10 @@ PROMPTS_DIR = Path(prompts.PROMPTS_DIR)
 STYLE_PLACEHOLDER = re.compile(r"\{(style_guide|rationale_style)\}")
 
 # The prompts that write prose a human reads in a dossier or a listing.
-PROSE_PROMPTS = {"generate_system", "refine_system", "verdict", "adversarial",
+# `revise_system` is here and `critique_system` deliberately is not: the reviser rewrites the
+# title/one_liner/hypothesis a buyer reads, so it must carry the house voice; the critic writes
+# only an internal note consumed by the reviser and never reaches a human.
+PROSE_PROMPTS = {"generate_system", "refine_system", "revise_system", "verdict", "adversarial",
                  "artifacts", "content_gen", "score"}
 
 # Ruled by the moat: these get the fenced rationale style, never the buyer voice.

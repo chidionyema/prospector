@@ -244,22 +244,17 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
         <div className="max-w-3xl">
           <p className="text-caption font-medium text-subtle">The kill log</p>
-          {/* THE SHAPE IS "we killed X to put Y on the shelf", and BOTH numbers are live.
-              It once read "We killed 1,168 ideas to put 145 on the shelf", which was false twice:
-              145 was the SURVIVOR count, not the shelf, and both figures were baked in at build
-              time. `listed` is the catalogue read at request time (see getServerSideProps), so the
-              sentence is now the true version of the same claim. When the catalogue is unreachable
-              the shelf count is unknown, and the line falls back to the two figures this page can
-              always prove rather than to a remembered one. */}
+          {/* THE HERO, TOKENISED (email §7).
+              The previous headline restated the survivors-vs-listed gap in prose, and the
+              long paragraph under it duplicated what the proof strip on the home page now says.
+              The email's form is two counts and one short claim, all from `RESEARCH_STATS`. */}
           <h1 className="mt-3 text-h1 font-semibold text-text md:text-display">
-            {listed
-              ? `We killed ${killed.toLocaleString('en-GB')} ideas to put ${listed.toLocaleString('en-GB')} on the shelf.`
-              : `We killed ${killed.toLocaleString('en-GB')} ideas out of ${researched.toLocaleString('en-GB')}.`}
+            {killed.toLocaleString('en-GB')} killed.{' '}
+            {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived.
           </h1>
           <p className="mt-5 max-w-[60ch] text-body text-muted">
-            Anyone can claim their research is rigorous. This is the receipt. Every row below was
-            generated, researched against live sources, and then killed, with the argument that killed
-            it and, where a page was cited, a link so you can check it yourself.
+            Anyone can claim rigour. This is the receipt: every rejected idea, the argument that
+            killed it, and the sources so you can check it yourself.
           </p>
           {/* THE CAVEAT, AT THE TOP.
               It used to sit below all the entries, under a homepage line promising the log "has
@@ -508,6 +503,19 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             Nothing matches that. Clear the search or pick a different cause of death.
           </p>
         )}
+
+        {/*
+          FOOTER NOTE (email §7). The page used to put a "X of N" caveat in the hero and
+          another, longer one at the foot. The hero carries the headline and the counts; this
+          note carries the honest qualifier about what the table is a sample OF. The two-line
+          form is what the email asks for, and it sits between the last row and the closing
+          CTA so a reader who reaches the end still meets it.
+        */}
+        <p className="mt-10 max-w-[68ch] text-meta text-muted">
+          This is a sample of the log, not all {killed.toLocaleString('en-GB')}. Kills whose only
+          reason was a low score are left out, true, but they tell you nothing. Every kill here
+          came with an argument.
+        </p>
 
         <div className="mt-10 rounded-md border border-border bg-surface2 p-8 md:p-10">
           <h2 className="max-w-[26ch] text-h2 font-semibold text-text">

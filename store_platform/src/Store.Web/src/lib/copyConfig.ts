@@ -124,9 +124,9 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksSeoDescription:
       'How Mumchimp works: every pack is a sourced business opportunity, vetted against checks built to kill it and sourced to retrievable evidence before it can be listed.',
 
-    sixChecksTitle: 'The checks, one kill, and it stops',
+    sixChecksTitle: 'Six checks, in order. One hard fail and it stops.',
     sixChecksDescription:
-      'Every candidate faces the same checks, in this order. The checks kill fast at the first hard fail. Which checks run depends on the idea, and the pack page names the ones it faced. Only ideas that clear every hard gate and survive an adversarial cross‑examination become a pack, and every kill is logged with its reason, so the checks are auditable, not a black box.',
+      'Some ideas face more checks; each pack page names its own. Every kill is logged with its reason, so the filter is auditable, not a black box.',
 
     automatedIdeasIntro:
       'Code does the heavy lifting. These ideas scale on software, not your time. The core delivery (gathering data, generating docs, running checks) is automated rather than billed by the hour. We will tell you exactly where you still need a human in the loop.',

@@ -49,15 +49,16 @@ export function ShelfEndCapture({ className }: { className?: string }) {
                 on top of it would restore exactly the duplicate-promise defect this block was
                 rewritten to remove. */}
             <h2 className="text-body font-semibold text-text">
-              Get the next survivor.
+              The next survivor can come to you.
             </h2>
             <p className="mt-1 text-meta leading-relaxed text-muted">
-              Most ideas die in vetting. When one survives, we email you. Nothing else.
+              Most ideas die in the filter. When one survives, you get one email. That’s the whole
+              list.
             </p>
           </div>
 
           <div className="w-full max-w-md">
-            <WaitlistForm source="homepage-shelf-end" submitLabel="Email me survivors" />
+            <WaitlistForm source="homepage-shelf-end" submitLabel="Tell me when one survives" />
           </div>
         </div>
       </div>

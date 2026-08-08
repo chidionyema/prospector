@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS dossiers (
     persona         TEXT,
     retrieval_degraded INTEGER DEFAULT 0,
     market          TEXT,
-    audience         TEXT
+    audience         TEXT,
+    seed_kind        TEXT
 );
 """
 
@@ -50,6 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_dense_reward ON dossiers(dense_reward);
 CREATE INDEX IF NOT EXISTS idx_persona ON dossiers(persona);
 CREATE INDEX IF NOT EXISTS idx_market ON dossiers(market);
 CREATE INDEX IF NOT EXISTS idx_audience ON dossiers(audience);
+CREATE INDEX IF NOT EXISTS idx_seed_kind ON dossiers(seed_kind);
 """
 
 _UPSERT = """
@@ -57,8 +59,8 @@ INSERT OR REPLACE INTO dossiers
     (candidate_id, title, one_liner, decision, gate_fired, composite,
      created_at, reverify_due_at, path, ambition_tier, structural_form,
      provisional, dense_reward, adversarial_confidence, persona, retrieval_degraded,
-     market, audience)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     market, audience, seed_kind)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 
@@ -148,7 +150,15 @@ class Store:
                                # re-skips every tick forever. They are not deletable — the ruling
                                # happened and the audit trail should say so — but they are not
                                # workable either. A tombstone records both facts.
-                               ("tombstone", "TEXT")]:
+                               ("tombstone", "TEXT"),
+                               # G5 seed provenance: "signal" | "blue_sky" | "". Backfill is
+                               # deliberately NOT attempted — the 1789 pre-existing rows were
+                               # written before generation stamped this, and inferring their
+                               # provenance from created_at or from which command probably ran
+                               # would manufacture data. They stay '' and the survival report
+                               # counts them as an explicit `unknown` bucket rather than
+                               # silently folding them into whichever kind is more convenient.
+                               ("seed_kind", "TEXT")]:
                 if col not in cols:
                     conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
             
@@ -218,6 +228,10 @@ class Store:
                 # `market` and `persona` — a mix of '' and NULL in one column silently splits
                 # every GROUP BY into two buckets that mean the same thing.
                 getattr(dossier.candidate, "audience", "") or "",
+                # Same shape as `audience` directly above, including the ''-never-NULL rule:
+                # a mix of '' and NULL in one column splits every GROUP BY into two buckets
+                # that mean the same thing.
+                getattr(dossier.candidate, "seed_kind", "") or "",
             ))
         return path
 
