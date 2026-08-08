@@ -142,7 +142,7 @@ export default function Faq() {
       <PageHero
         eyebrow="FAQ"
         title="Common questions."
-        lead="What you're buying, how it's delivered, and what we do and don't promise."
+        lead="What you’re buying, how it arrives, what we do and don’t promise."
       />
 
       {/* Search, filters and the answers they filter, in ONE band.

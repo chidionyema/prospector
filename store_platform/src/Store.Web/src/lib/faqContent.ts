@@ -1,5 +1,4 @@
 import { LEGAL } from '@/lib/config';
-import { checksSentence } from '@/lib/checks';
 /* The document count is COUNTED, never typed. `PACK_CONTENTS` is pinned to the engine's own
    `BUNDLE_FILES` by `__tests__/packContents.test.ts`, and this is the answer a buyer reads before
    paying: the last time the number was written out by hand it said four while the bundle had
@@ -55,45 +54,61 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What am I actually buying?',
     answer: [
-      `A pack is one vetted business opportunity in ${PACK_CONTENTS.length} documents: a build spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing assets, an executive summary, and a QA report with a source behind every claim. It is delivered as a zip of plain-text files the moment payment clears, and runs to at least 5,000 words. One payment, no subscription, and the price is shown on each pack’s own page.`,
+      // ANSWER-FIRST (email §6). State the 8 documents in one sentence, in the order the bundle
+      // ships them, so a reader who only reads the first sentence has the answer. The previous
+      // version opened "A pack is one vetted business opportunity in N documents" and listed them
+      // across the same sentence, so a buyer who skimmed could not count to eight. Eight it is,
+      // one sentence.
+      `One vetted business opportunity, as ${PACK_CONTENTS.length} plain-text documents: a build spec, go-to-market plan, operations plan, financial model, first-week checklist, marketing assets, an executive summary, and a QA report with a source behind every claim. One zip, one payment, instant download.`,
     ],
   },
   { category: 'packs',
-    question: 'What makes a pack "evidence-backed"?',
+    question: 'What makes a pack evidence-backed?',
     answer: [
-      `Every claim and every number in it cites a source you can open, or it is not in the pack. To be listed at all, the idea had to clear every check built to kill it and then survive an adversarial review: the checks common to every idea are ${checksSentence()}. Some ideas face more, and each pack page names the checks that idea faced and how many it cleared.`,
+      // Per email §6: short, plain. The previous answer named the engine check list and the
+      // adversarial review, which the buyer has not earned the vocabulary for yet on the FAQ.
+      'Every claim links to a source you can open. Anything the engine couldn’t verify is marked absent, never invented. The QA report inside the pack is the audit trail.',
     ],
   },
   { category: 'payment',
     question: 'How do I get the pack after I pay?',
     answer: [
-      'Your download link appears on screen as soon as payment succeeds, so the pack is in your hands within seconds. Checkout runs through Stripe. The link is permanent: bookmark it and you can re-download whenever you need to.',
+      // Per email §6: answer in the first sentence.
+      'A download link, the moment payment clears. Also emailed to you. No account needed.',
     ],
   },
   { category: 'payment',
     question: 'Can I get a refund?',
     answer: [
-      'Yes: every pack comes with a 14 day money back guarantee, no questions asked. If it is not what you expected, email us within 14 days of purchase and we refund you. The full terms are on the ',
+      'Yes. 14 days, full refund, no questions. Email ',
+      { text: LEGAL.supportEmail, href: `mailto:${LEGAL.supportEmail}` },
+      // The route to the policy is not decoration. This is the answer a buyer reads BEFORE paying,
+      // and the rewrite that shortened it removed the only link from it to the terms that actually
+      // bind the refund. Brevity is the register; deleting the consumer's route to the terms is a
+      // different thing, and the segment list exists precisely so a link costs one line.
+      ', or read the full ',
       { text: 'refund policy', href: '/refund' },
-      ' page.',
+      '.',
     ],
   },
   { category: 'process',
     question: 'Is a pack financial or investment advice?',
     answer: [
-      'No. A pack is research and information only, not financial, legal, or investment advice. It’s an evidence backed starting point, and what you do with it is your decision.',
+      'No. It’s research, sold for information. Nothing in a pack is advice about your money.',
     ],
   },
   { category: 'process',
     question: 'Are the opportunities guaranteed to work?',
     answer: [
-      'No, and we won’t pretend otherwise. We guarantee the analysis is evidence-backed and sourced, not that the business will succeed. Execution is yours.',
+      'No. The research is done and sourced; the execution is yours. No one can promise a business outcome, and we don’t.',
     ],
   },
   { category: 'packs',
     question: 'Can I share or resell a pack?',
     answer: [
-      'No. A pack is licensed for your own personal use, with no redistribution, resale, or use as training data. The details are in the ',
+      // Same reason as the refund answer: the licence question is answered in plain words, and the
+      // words are a summary of a document the reader is entitled to reach from here.
+      'It’s licensed to you. Build from it, edit it, quote it. Don’t republish or resell the pack itself. The full licence terms are in the ',
       { text: 'Terms of Service', href: '/terms' },
       '.',
     ],
@@ -115,29 +130,25 @@ export const FAQS: FaqItem[] = [
     ],
   },
   { category: 'packs',
-    question: 'What format is the pack delivered in?',
+    question: 'What format is it delivered in?',
     answer: [
-      'Every pack arrives as a zip of plain Markdown files you can open with any text editor. See the ',
-      { text: 'free sample', href: '/sample' },
-      ' for a complete unredacted example, or visit any ',
-      { text: 'pack page', href: '/pack/<id>#table-of-contents' },
-      ' to preview the per-pack table of contents and the blurred evidence record behind it. No proprietary software, no platform lock-in.',
+      // Per email §6: lead with the format, list open-in tools, link to the sample.
+      'Plain Markdown files in a zip. They open anywhere: Notion, Obsidian, a text editor, your AI tool.',
     ],
   },
   { category: 'packs',
-    question: 'If 500 other people buy the same pack, aren\'t 500 people copying my idea?',
+    question: 'If 500 people buy the same pack, aren’t 500 people copying my idea?',
     answer: [
-      'Yes, other people can buy the same pack: it is not sold exclusively, and we will not promise you are the only person holding it. What you are buying is the research, not a claim on the idea. Each pack is sized to a specific niche, with a named buyer and a concrete route to market, so two people working from the same one are competing on execution, on who they can reach and what they build, rather than on who found the opportunity first. If exclusivity is what you need, this is the wrong product and we would rather say so now. If you want to see how many ideas are killed before one reaches the store, the ',
-      { text: 'kill log', href: '/kill-log' },
-      ' shows every one that did not make it.',
+      // Per email §6: 50 words, the only question that gets a longer answer because the answer
+      // is the whole product.
+      'In practice, almost nobody executes. And most packs win on a local patch (one school, one council, one trade) where the first mover in your area is the only one who matters. The research is shared; the ground isn’t.',
     ],
   },
   { category: 'process',
-    question: 'What happens to the ideas that don\'t survive the checks?',
+    question: 'What happens to ideas that don’t survive?',
     answer: [
-      'Every one of them is published in the ',
-      { text: 'kill log', href: '/kill-log' },
-      ', with the check that killed it and the sourced argument behind that. Nothing is quietly dropped: you can read exactly why each idea was killed and, where a page was cited, open the source and check it yourself.',
+      // Per email §6: short, link to the log.
+      'They go in the kill log, in public, with the evidence that killed them.',
     ],
   },
 ];

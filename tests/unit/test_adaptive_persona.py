@@ -74,7 +74,25 @@ def test_calculate_persona_drift(tmp_path):
     
     store = StoreWithRoot(tmp_path)
     drift = calculate_persona_drift(store)
-    
+
     # 2 differences out of 4 board vets = 50% drift for minimalist
     assert drift["minimalist"] == 0.5
     assert "shark" not in drift or drift["shark"] == 0.0
+
+
+def test_all_configured_audiences_have_descriptions():
+    """Every operator/buyer persona listed in config.yaml under
+    `audience_forms` must have a non-trivial description in
+    _AUDIENCE_DESCRIPTIONS, otherwise the prompt falls back to the raw slug
+    and the model receives no persona guidance. Read the dict from the module
+    (not config.yaml) so the test is independent of the config file layout."""
+    from prospector.generate import _AUDIENCE_DESCRIPTIONS
+
+    keys = ["startup_operator", "software_developer", "agency_owner",
+            "ops_manager", "ecommerce_seller"]
+    for k in keys:
+        assert k in _AUDIENCE_DESCRIPTIONS, f"missing audience description: {k}"
+        desc = _AUDIENCE_DESCRIPTIONS[k]
+        assert isinstance(desc, str) and len(desc.strip()) >= 40, (
+            f"audience {k!r} description is too short or not a string: {desc!r}"
+        )

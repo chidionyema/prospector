@@ -28,7 +28,6 @@ import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopened
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { LEGAL } from '@/lib/config';
-import { paybackEquation } from '@/lib/payback';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 
 const subscribeToNothing = () => () => {};
@@ -220,22 +219,17 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
 
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
   const priceLabel = formatPriceForMarket(pack.price, currency);
-  const payback = paybackEquation(pack.price, pack.financialSnapshot);
 
   const notifyHref =
     `mailto:${LEGAL.supportEmail}` +
     `?subject=${encodeURIComponent(`Notify me when "${pack.title}" opens`)}` +
     `&body=${encodeURIComponent(`Please email me the moment this pack is available to buy: ${pack.title} (${pack.id}).`)}`;
 
-  // The engine's modelled figures, collected once. Rendered inside the collapsed <details> in
-  // the buy box; an absent field is omitted rather than rendered blank.
-  const economicsRows: { label: string; value: string }[] = (
-    [
-      { label: 'Month 1 revenue', value: pack.financialSnapshot?.month1Revenue },
-      { label: 'Lifetime value to cost', value: pack.financialSnapshot?.ltvCac },
-      { label: 'Payback', value: pack.financialSnapshot?.paybackMonths },
-    ] as { label: string; value?: string | null }[]
-  ).flatMap((row) => (row.value ? [{ label: row.label, value: row.value }] : []));
+  // The buy box no longer renders modelled economics (email §4, Option A -- recommended).
+  // The financial model is a document inside the pack (`04_Financial_Model.md`), and showing a
+  // buyer one set of "if these inputs hold" numbers next to a £79 button contradicts the
+  // "no invented revenue" promise the page leads with. The fields still arrive on the wire and
+  // are still rendered inside the pack; what is gone is the buy-box presentation of them.
 
   // The survival line in the guarantee list. Four of the 61 packs listed on 2026-08-06 are at
   // 7/8 or 6/8, so "Survived all N checks" is not a safe phrasing to apply unconditionally: on
@@ -246,6 +240,20 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
     : panelChecks.cleared === panelChecks.total
       ? `Survived all ${panelChecks.total} checks`
       : `${panelChecks.cleared} of ${panelChecks.total} checks cleared`;
+
+  // The same fact as `checksLine`, as a sentence, for the methodology disclosure further down.
+  //
+  // That disclosure shipped the literal "This one survived all 9." The denominator is
+  // lane-dependent, so a fixed 9 was false for 60 of the 63 packs measured on 2026-08-06
+  // (6/6 x40, 8/8 x15, 7/8 x4, 9/9 x3, 6/8 x1 -- see `__tests__/fixedCheckCount.test.ts`), and on
+  // the five 7/8 and 6/8 packs it claimed a clean sweep their own dossier refutes, on the page
+  // that asks for the money. Derived here for the reason `checksLine` above is derived: this page
+  // cannot know the denominator until it has read the pack.
+  const outcomeSentence = !panelChecks
+    ? 'This one cleared every check it faced.'
+    : panelChecks.cleared === panelChecks.total
+      ? `This one survived all ${panelChecks.total}.`
+      : `This one cleared ${panelChecks.cleared} of ${panelChecks.total}.`;
 
   // Shared checkout body, rendered in the desktop sticky card and the mobile purchase bar.
   // Deliberately an element VALUE, not a component defined during render: a component declared
@@ -265,7 +273,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
        * green, before the buyer reached anything they could click.
        *
        * Both economics boxes said the same thing from the same fields, so they collapse into one
-       * collapsed <details>: a buyer weighing £79 wants the price and the guarantee in the fold,
+       * collapsed details: a buyer weighing £79 wants the price and the guarantee in the fold,
        * and the model when they go looking for it. Nothing sourced was deleted -- the caveat
        * travels with the figures, as it must.
        */}
@@ -393,49 +401,20 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
       )}
 
       {/*
-       * The engine's model, collapsed.
+       * THE NUMBERS LIVE IN THE PACK (email §4, Option A -- recommended).
        *
-       * `paybackEquation` returns null (renders nothing) whenever the comparison would not be
-       * honest, including when the modelled revenue fails to clear the price: this must never be
-       * a widget that appears only when it flatters the sale. That rule is unchanged; what changed
-       * is that the ratio now renders as one more row of the same table rather than as a second
-       * bordered box repeating the three figures above it in prose.
+       * The buy box previously rendered modelled economics -- Month 1 revenue, LTV:CAC, payback --
+       * as either an open set of figures or a collapsed disclosure. The email's analysis was that
+       * a modelled LTV:CAC of 30.7× and a Month 1 revenue of £1,152 contradict the homepage's "no
+       * invented revenue" promise, and read as fantasy to anyone who has operated. The financial
+       * model is a document inside the pack -- `04_Financial_Model.md` -- and selling its existence
+       * is the right level of detail for the buy box. Numbers shown here are computed from cited
+       * inputs; a value the page cannot source is not rendered.
        */}
-      {(payback || economicsRows.length > 0) && (
-        <details className="group mt-6 border-t border-border pt-5">
-          <summary className="flex cursor-pointer list-none items-center gap-2 text-meta font-medium text-text">
-            <Icon
-              name="arrowRight"
-              size={14}
-              className="text-subtle transition-transform group-open:rotate-90"
-            />
-            Modelled economics
-          </summary>
-          <dl className="mt-3 space-y-2">
-            {economicsRows.map((row) => (
-              <div key={row.label} className="flex items-baseline justify-between gap-3">
-                <dt className="text-caption text-subtle">{row.label}</dt>
-                <dd className="font-mono text-caption text-text">{row.value}</dd>
-              </div>
-            ))}
-            {payback && (
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-caption text-subtle">Month 1 covers the pack</dt>
-                <dd className="font-mono text-caption text-text">{payback.multiple}&times;</dd>
-              </div>
-            )}
-          </dl>
-          {payback && (
-            <p className="mt-3 font-mono text-caption leading-relaxed text-subtle">
-              {payback.revenueLabel} &divide; {payback.priceLabel} = {payback.multiple}&times;
-            </p>
-          )}
-          {/* The hedge travels with the numbers wherever the numbers go. */}
-          <p className="mt-3 text-caption leading-relaxed text-subtle">
-            Computed by the engine from the pack&apos;s verified inputs. Your own results will differ.
-          </p>
-        </details>
-      )}
+      <p className="mt-6 text-caption leading-relaxed text-subtle">
+        The numbers are in the pack. Pricing mechanics and unit economics, every input sourced.
+        What couldn’t be verified is marked absent, never invented.
+      </p>
 
       <p className="mt-6 text-caption leading-relaxed text-subtle">
         {/* Secure checkout named where it is relevant, in a sentence, instead of as a third
@@ -678,7 +657,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               />
             </div>
 
-            {/* US-4: the six-check methodology collapses behind a <details> disclosure.
+            {/* US-4: the six-check methodology collapses behind a details disclosure.
                 On mobile (the primary surface), the buyer is not forced to read 200px
                 of methodology before the deliverables. They can tap to expand if
                 they care. The disclosure is open by default on lg+ where the page
@@ -692,13 +671,18 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               </summary>
               <div className="mt-4">
                 <p className="text-meta text-muted">
-                  Each one is an attack, not a rubber stamp. An idea dies on the first front where we find
-                  cited evidence against it, and a listing means no hard gate produced that evidence.
-                  Finding nothing is not the same as finding a green light.
+                  Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
+                  <Link
+                    href="/how-it-works"
+                    className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover"
+                  >
+                    /how-it-works
+                  </Link>
+                  .
                 </p>
                 {/* WAS "...so the scores below show where this pack's case is strong and where it is
                     thin", directly above the six UNSCORED bullets that follow. The scored axes are
-                    real and this page does render them, but in a different, collapsed <details>
+                    real and this page does render them, but in a different, collapsed details
                     further down, so the sentence pointed the reader at the one list on the page that
                     carries no scores at all and read as a promise the page then broke.
 
@@ -738,7 +722,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               </div>
             </details>
 
-            {/* US-4: the scored axes collapse behind a <details> disclosure. The
+            {/* US-4: the scored axes collapse behind a details disclosure. The
                 methodology is opt-in; the buyer who only cares about the
                 result sees the buy button first, the methodology on demand. */}
             {(axes.length > 0 || verdict.risk) && (
@@ -925,16 +909,25 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               </div>
             )}
 
-            {/* The receipts */}
+            {/* The receipts (email §4). The previous copy ended on "No hand waving, no vibes."
+                which tried too hard for a voice that wins by understatement. The new copy is the
+                same content in the same shape -- a count and a list of openable sources -- without
+                the boast. */}
             <div className="mt-12 rounded-md border border-border bg-surface p-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <Glyph name="source" className="text-success" />
         <span className="text-caption font-medium text-subtle">The receipts</span>
               </div>
+              {/* The count is GUARDED, and the "open these" instruction belongs to the block below
+                  that actually renders the list. Unguarded, a pack with no `sourceCount` rendered
+                  " sources, each cited..."; and the instruction sat OUTSIDE the
+                  `openSources.length > 0` test below, so a pack with nothing openable printed
+                  "Open any of these 0 now." followed by nothing at all. The block below already
+                  gives the instruction once, against a list that exists. */}
               <p className="max-w-[60ch] text-meta leading-relaxed text-muted">
-                Every figure and claim in this pack is traced to external evidence you can open and check.
-                No hand waving, no vibes. Audit reference{' '}
-                <span className="font-mono text-caption text-muted">{pack.dossierRef}</span>.
+                {typeof pack.sourceCount === 'number' && pack.sourceCount > 0
+                  ? `${pack.sourceCount} sources, each cited against the claim it supports.`
+                  : 'Every claim in this pack is cited against the source it rests on.'}
               </p>
 
               {/* The proof, not the promise. The paragraph above is a claim; these are the actual

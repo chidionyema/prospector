@@ -119,17 +119,24 @@ export default function AboutPage() {
               Read it <Icon name="arrowRight" size={12} />
             </span>
           </Link>
+          {/*
+            KILL-LOG PARAGRAPH (email §8). The two-card link grid used to be both a link and a
+            description; the description repeated the count the link's destination already names,
+            and the card was a 1/3 of the page that said "click here". One paragraph naming the
+            point of the log, one link, no second card. The log is the receipt behind the
+            catalogue; the catalogue is what's left.
+          */}
           <Link
             href="/kill-log"
             className="rounded-md border border-border bg-surface p-5 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">The kill log</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
-              The {totals.killed.toLocaleString('en-GB')} ideas the engine has killed, each with the
-              argument that killed it.
+              Most ideas die. Every kill is public, with the argument that made it. The log is
+              the receipt behind the catalogue; the catalogue is what’s left.
             </p>
             <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
-              Read them <Icon name="arrowRight" size={12} />
+              Read it <Icon name="arrowRight" size={12} />
             </span>
           </Link>
         </div>

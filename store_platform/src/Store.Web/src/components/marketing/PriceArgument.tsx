@@ -79,15 +79,17 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
 
 /** Why one payment rather than a subscription, with both sides' prices cited. */
 export function ComparisonBlock({ range }: { range: PriceRange | null }) {
+  /*
+    COMPARISON TABLE, CUT TO THREE ROWS (email §5).
+    The table was five rows and every additional row was a restatement of the three facts a
+    buyer actually compares on: how often you pay, what arrives, and what happens on cancel.
+    Cutting it makes the comparison read in a single glance, which is what the buyer came for
+    on a pricing page.
+  */
   const rows: { label: string; feed: string; pack: string }[] = [
-    { label: 'What you pay', feed: 'Every year, for as long as you want access', pack: 'Once. No renewal, no seat fees' },
-    // Counted, never typed. This row said "four documents" while the bundle had grown to eight,
-    // the same drift `PACK_CONTENTS` was made the single source of truth to end, surviving in a
-    // table two hundred lines away from it.
-    { label: 'What arrives', feed: 'A stream of raw leads and trend signals', pack: `One finished opportunity, ${PACK_CONTENTS.length} documents` },
-    { label: 'Who does the vetting', feed: 'You do, on every idea in the feed', pack: 'Already done: the full filter, every claim sourced' },
-    { label: 'Launch assets', feed: 'None. The idea is the product', pack: 'Build spec, GTM plan, ops, unit economics and launch copy' },
-    { label: 'If you cancel', feed: 'Access ends, you keep nothing', pack: 'Yours forever, plus 14 day money back' },
+    { label: 'You pay', feed: 'every year, forever', pack: 'once' },
+    { label: 'You get', feed: 'raw leads to vet yourself', pack: `one vetted opportunity, ${PACK_CONTENTS.length} documents` },
+    { label: 'If you cancel', feed: 'you keep nothing', pack: 'it was never a subscription' },
   ];
   return (
     <div>

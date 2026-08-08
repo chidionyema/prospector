@@ -163,8 +163,19 @@ def get_recent_failure_modes(store: Store, cfg: Optional[Config] = None,
 
     target_rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     recent = target_rows[:window]
+
+    # The windowed summary and the standing denylist directive are combined at a
+    # single exit point at the bottom of this function. The two early `return ""`
+    # branches (no kills / no gates) used to short-circuit; refactored to leave
+    # `summary` empty so the directive can still be appended. When the denylist
+    # gate is OFF, `directive == ""` and the byte-identical returns are preserved.
+    summary = ""
     if not recent:
-        return ""
+        from .denylist import denial_directive
+        directive = denial_directive(store, cfg)
+        if directive:
+            summary = directive
+        return summary
 
     # Gate histogram — cheap, straight from the index.
     counts: dict[str, int] = {}
@@ -173,7 +184,11 @@ def get_recent_failure_modes(store: Store, cfg: Optional[Config] = None,
         if g:
             counts[g] = counts.get(g, 0) + 1
     if not counts:
-        return ""
+        from .denylist import denial_directive
+        directive = denial_directive(store, cfg)
+        if directive:
+            summary = directive
+        return summary
     sorted_gates = sorted(counts.items(), key=lambda x: x[1], reverse=True)
     gate_summary = ", ".join(f"{g} ({c})" for g, c in sorted_gates[:3])
 
@@ -249,7 +264,17 @@ def get_recent_failure_modes(store: Store, cfg: Optional[Config] = None,
         if examples:
             parts.append("Why they died: " + " | ".join(examples) + ".")
 
-    return " ".join(parts)
+    summary = " ".join(parts)
+
+    # Standing denylist (G3): a hard directive of exhausted families mined from
+    # the full kill corpus. Imported inside the function to avoid a circular
+    # dependency with the rest of prospector.* at module-load time. When the
+    # gate is off, directive == "" and summary is returned byte-identical.
+    from .denylist import denial_directive
+    directive = denial_directive(store, cfg)
+    if directive:
+        summary = (summary + "\n\n" + directive) if summary else directive
+    return summary
 
 
 def blue_sky_failure_steer(fails: str) -> str:

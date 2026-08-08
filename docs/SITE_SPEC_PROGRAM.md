@@ -295,6 +295,44 @@ stylesheet with local `@import`s inlined, so when these guards come back they me
 wherever it lives. Without it the failure mode reverses and gets worse — a guard asserting a
 property is ABSENT goes green over a violation that moved into the imported file.
 
+### SUSPENSION LIFTED 2026-08-08 — all ten files are back on, and green
+
+Lifted to ship §3 to production. The directive suspended these "until stable"; §3 IS the change the
+suspension was protecting against, and it has landed, so the condition is met.
+`SUSPENDED_UNTIL_UI_STABLE` is now an empty array rather than a deleted constant, on purpose: the
+next UI push re-suspends by adding lines back, and the rationale above it stays attached to the
+mechanism instead of being rediscovered.
+
+Un-suspending turned **5 tests red across 3 files, and not one was a §3 defect.** All five were
+guards still measuring the pre-§3 mechanism. That is this section's own lesson in a second and
+nastier form: the first wave failed because the token MOVED, these failed because the thing they
+measured no longer EXISTS, and two of them would have gone green while checking nothing.
+
+| Guard | Asserted | Reality | Fix |
+|---|---|---|---|
+| `storefrontDesignContract` | `--text-h2--line-height: 1.3`, weight 600 | §3's own type table above declares **1.2 / 520** | assertion updated to the table, with a trailing `;` so `1.2` cannot also match a future `1.25` |
+| `storefrontDesignContract` | `--text-body--line-height: 1.6` | table declares **1.55** | same |
+| `storefrontDesignContract` | `const SHELL = …max-w-(6xl\|7xl\|\[1200px\])\b` | `MarketingLayout.tsx:104` ships `max-w-[1200px]` | **the regex was unsatisfiable**: `\b` needs a word char, and the class ends `]` before a space, so the branch written to permit the shipped value could never fire. Now a `(?![\w-])` lookahead |
+| `weightAndCasePolicy` | reads `weight: [...]` arrays out of `_app.tsx` | §3 deleted next/font; Switzer is self-hosted **variable, axis 100-900** | re-argued, see below |
+| `categoryScale` | `--accent` matches `#rrggbb` | §3 retuned it to `var(--text)` | `token()` now follows `var()` aliases the way the browser does |
+
+**`weightAndCasePolicy` rule 1 was re-argued, not edited**, because its own comment said that is what
+a 700 being loaded would require. The ban on `font-bold` rested on SYNTHESIS: no 700 cut was
+downloaded, so the browser smeared the 600 into a fake bold. A variable face with a declared 100-900
+axis renders a true 700, so that argument is dead and a guard still citing it would have been a
+false comment defending a real face. The rule survives on the stronger basis it should always have
+had, the type scale itself, which tops out at 560: no `--text-*--font-weight` may declare above 600.
+The old test also carried a live vacuity hazard worth naming, since it is the general case — it
+asserted "weights above 600 is empty" over a list built by a regex, and when next/font went away
+that list became empty, at which point the ban would have passed by having nothing to check. Its
+non-vacuity guard is kept and now points at a pattern that exists.
+
+Measured after lifting, in worktree `prospector-ship` at the merge of `origin/main`:
+`npx vitest run` **56 files / 820 tests passed, exit 0**; `npx tsc --noEmit` **exit 0**;
+`npm run lint` **exit 0** (one pre-existing `react/no-unescaped-entities` error on `index.tsx`,
+present identically on `origin/main`, fixed in the same commit); `npm run build` **exit 0**, every
+exit code captured before any pipe.
+
 ### Known open items
 
 - ~~**§6.1 Home** — delete "What you get, at every price" (`index.tsx:1668`); "Newest on the shelf"

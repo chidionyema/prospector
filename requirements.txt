@@ -48,6 +48,14 @@ exa_py>=2.14
 # unlike torch/onnxruntime/matplotlib it HAS a wheel for this venv's python 3.14 x86_64 —
 # that constraint is why F2's radar chart is hand-written SVG instead of matplotlib.
 openpyxl>=3.1
+# tools/meta_shape_monitor.py imports numpy at module top level, and
+# tests/unit/test_meta_shape_monitor.py is in the CI suite. It resolves today only because
+# streamlit happens to pull numpy in transitively, which is precisely the accident this file
+# exists to stop: the machine-independence gate
+# (tests/test_suite_is_machine_independent.py:179) parametrizes over prospector/**/*.py ONLY,
+# so a direct import under tools/ is invisible to it and would break the day streamlit drops
+# the transitive edge.
+numpy>=1.26
 # NOTE: the LUX packages (lux-popdd / lux-spec / lux-spec-cli) are NOT listed here.
 # They were pinned to absolute file:/// paths on one developer's machine, which made this
 # file uninstallable anywhere else — including CI and any deploy host. Nothing in

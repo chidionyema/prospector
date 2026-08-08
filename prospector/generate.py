@@ -14,9 +14,12 @@ from typing import Any, Optional
 
 from .config import Config
 from .coverage import plan_cells
+from .critique import critique_revise
+from .landscape import incumbent_brief
 from .models import Candidate
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
+from .sampling import typicality_directive, typicality_score
 from .telemetry import logger, track_latency
 from .telemetry import stage as telemetry_stage
 
@@ -44,9 +47,18 @@ def _parse_candidates(data: Any) -> list[Candidate]:
         if not isinstance(item, dict) or not item.get("title"):
             continue
         try:
-            out.append(Candidate.from_dict(item))
+            cand = Candidate.from_dict(item)
         except Exception:
             continue
+        # G4: carry the model's self-reported typicality into tags so the diversity meter
+        # (prospector/diversity.py) can measure whether the Verbalized Sampling directive
+        # actually moved the batch off its mode. setdefault, never overwrite: a value the
+        # model already put in its own `tags` dict wins. This is observability only — no
+        # candidate is ever dropped, reordered or down-weighted for its typicality.
+        t = typicality_score(item.get("typicality"))
+        if t is not None and isinstance(cand.tags, dict):
+            cand.tags.setdefault("typicality", t)
+        out.append(cand)
     return out
 
 
@@ -88,6 +100,70 @@ def _automatability_score(val: Any) -> Optional[float]:
             if word in s:
                 return score
         return None
+
+
+# Audience persona descriptions injected into generate.md. Each description names a
+# SPECIFIC person (age range, life situation, daily pains, spend profile, budget
+# authority) so the model produces ideas aimed at a real buyer rather than a
+# generic "B2B" frame. Module-level so the dict is importable for the persona-
+# completeness regression test; contents are static (no runtime deps).
+_AUDIENCE_DESCRIPTIONS: dict[str, str] = {
+    "retiree_cohort":
+        "A person aged 60-75, recently retired or approaching retirement. Has accumulated "
+        "assets (pension pot, property) but irregular income. Feels: health anxiety, "
+        "loneliness, desire to pass wealth on, digital exclusion. Spends on: healthcare, "
+        "leisure, gifting, inheritance planning. Has budget authority over their own finances "
+        "and often adult children's finances too.",
+    "gen_z_worker":
+        "A person aged 18-27, in casualised or gig work (rideshare, delivery, freelance). "
+        "No pension, no savings buffer, income volatile week-to-week. Feels: instability, "
+        "exclusion from mainstream financial products, time-poverty. Spends on: transport, "
+        "housing, food. Has budget authority over a very tight monthly balance.",
+    "smb_owner":
+        "A person running a business with 1-20 employees, often themselves as the primary "
+        "worker. Handles finance, sales, operations, HR simultaneously. Feels: cash-flow "
+        "stress, admin overwhelm, competitive pressure. Spends on: software subscriptions, "
+        "staff, supplies. Has budget authority but every pound is scrutinised.",
+    "primary_carer":
+        "A person (any age) who is the main carer for young children, elderly parents, or "
+        "disabled relatives. Has fragmented work history and reduced earning capacity. Feels: "
+        "time-poverty, guilt, isolation, financial precarity. Spends on: childcare, care "
+        "products, respite services. Budget is constrained but decisions are high-stakes.",
+    "manual_tradesperson":
+        "A person aged 25-55 working in construction, plumbing, electrical, logistics, or "
+        "hospitality. Physically skilled, time-poor, digitally underserved. Feels: "
+        "admin burden eating into earning time, unfair tax treatment, physical risk. "
+        "Spends on: tools, transport, training, insurance. Budget authority over "
+        "business purchases, personal spending is disciplined.",
+    "public_sector_worker":
+        "A person aged 30-60 employed in the NHS, a school, local government, or the "
+        "civil service. Stable income, defined pension, but pay is capped and conditions "
+        "are tightening. Feels: workload pressure, frustration with under-resourcing, "
+        "desire for side income. Spends on: housing, childcare, transport. Has budget "
+        "authority within a constrained household.",
+    "freelancer_creative":
+        "A person aged 25-45 working as a designer, writer, developer, consultant, or "
+        "creative professional. Income is project-based and lumpy. Feels: client "
+        "management burden, feast-or-famine anxiety, desire for predictability. Spends on: "
+        "software, subscriptions, professional development. Has budget authority over "
+        "discretionary spend but is price-sensitive on subscriptions.",
+    "squeezed_middle":
+        "A person aged 35-55 with a professional career, mortgage, and children. "
+        "Appears affluent on paper (property, pension) but cash-poor in the short term. "
+        "Feels: the pinch between fixed costs and aspirational spending, complexity of "
+        "financial decisions. Spends on: mortgage, school fees, healthcare, elder care. "
+        "Budget authority is shared with a partner; decisions are deliberated.",
+    "startup_operator":
+        "an early-stage startup founder-operator wearing every hat, who pays for anything that removes a bottleneck to revenue, compliance or fundraising without hiring",
+    "software_developer":
+        "a professional software developer or indie hacker who buys tools, data and infrastructure that save engineering time or unlock a paid capability, and is allergic to fluff",
+    "agency_owner":
+        "the owner of a small client-services agency (marketing, dev, design) who buys leverage: anything that raises billable margin, wins retainers or de-risks client delivery",
+    "ops_manager":
+        "an operations manager inside a small or mid-sized firm who owns messy cross-system processes and has budget for tools that kill manual work, errors and audit risk",
+    "ecommerce_seller":
+        "an online-store operator (Shopify, Amazon, eBay) who pays for anything that raises conversion, cuts fulfilment or returns cost, or defends against platform policy shifts",
+}
 
 
 @track_latency(name="generate")
@@ -172,53 +248,6 @@ def generate(
     # distinct form x audience cell. Descriptions are specific: named person, age range,
     # pain felt daily, budget authority.
     audience_forms = [str(a).strip() for a in (gen_cfg.get("audience_forms") or []) if str(a).strip()]
-    _AUDIENCE_DESCRIPTIONS: dict[str, str] = {
-        "retiree_cohort":
-            "A person aged 60-75, recently retired or approaching retirement. Has accumulated "
-            "assets (pension pot, property) but irregular income. Feels: health anxiety, "
-            "loneliness, desire to pass wealth on, digital exclusion. Spends on: healthcare, "
-            "leisure, gifting, inheritance planning. Has budget authority over their own finances "
-            "and often adult children's finances too.",
-        "gen_z_worker":
-            "A person aged 18-27, in casualised or gig work (rideshare, delivery, freelance). "
-            "No pension, no savings buffer, income volatile week-to-week. Feels: instability, "
-            "exclusion from mainstream financial products, time-poverty. Spends on: transport, "
-            "housing, food. Has budget authority over a very tight monthly balance.",
-        "smb_owner":
-            "A person running a business with 1-20 employees, often themselves as the primary "
-            "worker. Handles finance, sales, operations, HR simultaneously. Feels: cash-flow "
-            "stress, admin overwhelm, competitive pressure. Spends on: software subscriptions, "
-            "staff, supplies. Has budget authority but every pound is scrutinised.",
-        "primary_carer":
-            "A person (any age) who is the main carer for young children, elderly parents, or "
-            "disabled relatives. Has fragmented work history and reduced earning capacity. Feels: "
-            "time-poverty, guilt, isolation, financial precarity. Spends on: childcare, care "
-            "products, respite services. Budget is constrained but decisions are high-stakes.",
-        "manual_tradesperson":
-            "A person aged 25-55 working in construction, plumbing, electrical, logistics, or "
-            "hospitality. Physically skilled, time-poor, digitally underserved. Feels: "
-            "admin burden eating into earning time, unfair tax treatment, physical risk. "
-            "Spends on: tools, transport, training, insurance. Budget authority over "
-            "business purchases, personal spending is disciplined.",
-        "public_sector_worker":
-            "A person aged 30-60 employed in the NHS, a school, local government, or the "
-            "civil service. Stable income, defined pension, but pay is capped and conditions "
-            "are tightening. Feels: workload pressure, frustration with under-resourcing, "
-            "desire for side income. Spends on: housing, childcare, transport. Has budget "
-            "authority within a constrained household.",
-        "freelancer_creative":
-            "A person aged 25-45 working as a designer, writer, developer, consultant, or "
-            "creative professional. Income is project-based and lumpy. Feels: client "
-            "management burden, feast-or-famine anxiety, desire for predictability. Spends on: "
-            "software, subscriptions, professional development. Has budget authority over "
-            "discretionary spend but is price-sensitive on subscriptions.",
-        "squeezed_middle":
-            "A person aged 35-55 with a professional career, mortgage, and children. "
-            "Appears affluent on paper (property, pension) but cash-poor in the short term. "
-            "Feels: the pinch between fixed costs and aspirational spending, complexity of "
-            "financial decisions. Spends on: mortgage, school fees, healthcare, elder care. "
-            "Budget authority is shared with a partner; decisions are deliberated.",
-    }
 
     arche = str(gen_cfg.get("operator_archetype", "")).strip()
     arche_cfg = (gen_cfg.get("archetypes") or {}).get(arche, {}) if arche else {}
@@ -261,6 +290,25 @@ def generate(
     except AttributeError:  # a Config built before Epic D (e.g. a stubbed test double)
         run_market = ""
         market_vars = {k: "" for k in ALL_MARKET_KEYS}
+
+    # G2 + G4 are appended to the RENDERED user prompt rather than added as {placeholders} in
+    # prompts/generate.md, and that is deliberate: prompts.render() does not raise on an
+    # unsubstituted token (prompts.py:194 only logs, and only for `{market_`), so a new
+    # placeholder would be shipped to the model VERBATIM by the two call sites that do not pass
+    # it — run.py:2039 and tests/unit/test_moat_discipline.py:44. Appending in Python is
+    # golden-safe by construction: both helpers return "" when their gate is off, and an empty
+    # suffix leaves the prompt byte-identical to today. Same pattern as the OUTPUT CONTRACT
+    # prefix below.
+    #
+    # The sampling directive is a pure function of (cfg, k), so it is resolved once here. The
+    # landscape brief is NOT, and that is the whole reason it moved: on the blue-sky path the
+    # AUDIENCE PERSONA is the only topic available, and `_assign` rotates it call by call. The
+    # daemon is that path — `scheduler/run_scheduled.py:724` calls `run_signal("", cfg=cfg,
+    # k=batch_size, publish=True, lanes=lanes)` with an empty signal — so resolving the brief
+    # once per generate() would have left the feature inert on the majority of all generation.
+    # It costs nothing extra when a signal or sector IS present: every call then derives the
+    # same topic and hits the same cache entry after the first fetch.
+    sampling_directive = typicality_directive(cfg, k)
 
     # V2 COVERAGE SAMPLER (default OFF — `coverage_sampler.enabled: false`). When enabled it
     # replaces the round-robin form x audience rotation below with cells chosen from the
@@ -322,6 +370,17 @@ def generate(
             "prompt. Return ONLY the JSON specified by the task — no preamble, no prose, no "
             "meta-discussion, no code fences.\n\n" + system
         )
+        # Resolved per call so the blue-sky path can fall back to this cell's audience persona
+        # as the topic (landscape._topic rung 3). Cached on (topic, market), so the repeated
+        # calls that share a topic pay one fetch between them, not one each.
+        landscape_directive = incumbent_brief(
+            cfg, signal_text=signal_text, sector=sector, market=run_market,
+            audience=audience)
+        # Order matters: the landscape is context the model should read before it is told HOW
+        # to sample, so it lands first.
+        for _extra in (landscape_directive, sampling_directive):
+            if _extra:
+                user = f"{user}\n\n{_extra}"
         # gen_op is the non-critical generation chain (claude_cli primary → minimax tail); falls
         # back to the moat op only if no gen chain was wired.
         _gen = gen_op or op
@@ -353,7 +412,34 @@ def generate(
         Skips structurally-thin candidates (title+one_liner < 50 chars) —
         refinement won't help them survive the moat.
         """
-        if not candidates or not gen_cfg.get("refinement_enabled", True):
+        if not candidates:
+            return candidates
+
+        # G8: when critique->revise is on it REPLACES this pass rather than running beside it.
+        # Two reasons it must replace and not stack. The refine prompt still instructs the
+        # model to "Drop the weak/obvious ones" (prompts/refine.md) and carries a "KILL LIST
+        # (Ideas to drop)" section, which the code's non-lossy guarantee below converts into
+        # "the weakest ideas are the ones that receive no improvement" — running it before a
+        # critique pass would re-introduce exactly the anti-targeting G8 exists to remove. And
+        # arXiv:2507.08350 finds the gain is in ONE critique-revise round; stacking two
+        # rewrite passes regresses toward the model's own priors.
+        # It is given the FULL wave, thin candidates included: "too short to be worth
+        # refining" was a heuristic for a pass that could drop things, and a two-line
+        # candidate is precisely one whose ceiling a critique can raise.
+        #
+        # It is checked BEFORE `refinement_enabled`, and that ordering is load-bearing.
+        # `config.yaml:730` ships `refinement_enabled: false`, so behind that switch this
+        # gate was unreachable — G8 was a dead lever on the only configuration that runs.
+        # The two flags name different mechanisms: `refinement_enabled` turns off the
+        # lossy refine pass, which is a judgement about THAT pass, not a standing ban on
+        # ever improving a draft. `critique_revise.enabled` is its own explicit opt-in and
+        # defaults off, so nothing turns on by surprise. Found by the A/B fixture
+        # (`tools/experiments/g_generation_ab.py`), which measured the G8 arm costing
+        # exactly what baseline cost.
+        if (gen_cfg.get("critique_revise", {}) or {}).get("enabled", False):
+            return critique_revise(candidates, _gen, cfg, lane_directive)
+
+        if not gen_cfg.get("refinement_enabled", True):
             return candidates
 
         # Split: thin candidates return unchanged (refinement can't help them),
@@ -573,6 +659,16 @@ def generate(
                     # Persist audience persona into the candidate's tags for audit.
                     if aud:
                         c.tags["audience"] = aud
+                    # G5 seed provenance. Stamped HERE, at the one place every accepted
+                    # candidate passes through, rather than in _one_call: refinement and the
+                    # dedup/diversity passes above rebuild candidate objects, and a stamp
+                    # applied earlier would survive on some paths and not others — a
+                    # provenance field that is silently missing on a subset is worse than
+                    # none, because the survival report would read the gap as a real
+                    # population difference. `signal_text` is the enclosing generate()
+                    # argument, so this is the run's own truth, not an inference.
+                    c.tags.setdefault(
+                        "seed_kind", "signal" if str(signal_text or "").strip() else "blue_sky")
                     candidates.append(c)
                     added += 1
                     if len(candidates) >= target:

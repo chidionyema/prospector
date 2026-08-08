@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Button, Icon, Dropdown, chipClasses, textLinkClass } from '@/components/ui';
+import { Button, Icon, Dropdown, chipClasses, textLinkClass, buttonClasses } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
 // The home page OWNS the pack manifest (§5.3 of docs/SITE_SPEC_PROGRAM.md, founder-confirmed
@@ -53,6 +53,7 @@ import {
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
 import { useCopyVariant } from '@/lib/useCopyVariant';
+import { RESEARCH_STATS, survivorsSummary } from '@/lib/stats';
 
 interface HomeProps {
   packs: Pack[];
@@ -1286,12 +1287,16 @@ function CatalogBrowser({
                   the on-market cards no longer waste space on. */}
               {grouped.others.map((group) => (
                 <div key={group.market} className="mt-10 border-t border-border pt-8">
+                  {/* US PACKS DIVIDER (email §1). The label is now "Built for US rules" -- the
+                      divider is about what the buyer would be BUILDING, not what the page has
+                      written, and the subtitle states the consequence plainly: the research is
+                      American, and the package cannot be transplanted. */}
                   <h3 className="text-meta font-semibold text-text">
-                    Written for {group.label} rules
+                    Built for {group.label} rules
                   </h3>
                   <p className="mt-1 max-w-[60ch] text-caption text-subtle">
-                    {group.label} research, {group.label} law, {group.label} buyers. The method
-                    transfers; the numbers won’t.
+                    The buyers, numbers and legal steps in these are {group.label}. Read them
+                    anywhere; build them there.
                   </p>
                   {/* Rows, not cards. This group is explicitly secondary -- the copy directly
                       above says the numbers and legal steps will not transfer -- so giving it the
@@ -1609,6 +1614,47 @@ export default function Home({ packs, stats, initialState, market, currency, per
         </div>
       </SectionBand>
 
+      {/*
+        PROOF STRIP, POSITION 2.
+
+        The email's spec puts the kill total here, right under the hero, so the strongest stat
+        the shop owns -- the survival rate -- is on the first screen rather than buried at the
+        bottom of /how-it-works (where it lived until this pass). Every number is read from
+        `RESEARCH_STATS`; nothing here is typed, so a future batch that changes the totals
+        updates the page with it.
+
+        `survivorsSummary(listed)` reconciles the surviving-vs-listed gap on the SAME line as
+        the kill total, so a reader who only reads the proof strip still meets the explanation
+        the home page would otherwise need a second card to state.
+
+        The link is the action the strip earns: the kill log is the receipt behind the strip,
+        and a curious reader is one click from it. The "Every idea is checked" section below
+        used to do this work too; it now stops repeating the same total and just describes the
+        method.
+      */}
+      <Section bg="bg" width="7xl" className="!py-10 md:!py-12">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="max-w-3xl">
+            <p className="text-body font-semibold text-text">
+              {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
+              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s {RESEARCH_STATS.rejectRate}%.
+            </p>
+            <p className="mt-2 max-w-[64ch] text-meta text-muted">
+              {survivorsSummary(stats?.listed)} The other{' '}
+              {RESEARCH_STATS.killed.toLocaleString('en-GB')} are published, each with the evidence
+              that killed it.
+            </p>
+          </div>
+          <Link
+            href="/kill-log"
+            className="inline-flex flex-none items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+          >
+            Read the kill log
+            <Icon name="arrowRight" size={14} />
+          </Link>
+        </div>
+      </Section>
+
       <div id="catalog" className="scroll-mt-20" />
       <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
         {/* THE SHELF HAS A NAME AT EVERY WIDTH NOW.
@@ -1621,17 +1667,38 @@ export default function Home({ packs, stats, initialState, market, currency, per
             The trade is taken at the level of the PARAGRAPH, not the heading: mobile gets the
             heading, desktop additionally gets the two sentences under it. A heading is ~30px and
             names the section; the paragraph is ~60px and repeats what the panel below the shelf
-            already says at every width. */}
+            already says at every width.
+
+            The copy rewrite cut the paragraph from 67 words to 22 and dropped `hidden sm:block`
+            with it, which reversed the split above while leaving this comment standing -- the code
+            and its stated reason disagreed. Restored, because shortening the sentence does not
+            answer the reason it is hidden: the redundancy against the panel below survives the
+            cut, and the measurement that set the split is on record while nothing measures the
+            new state. If mobile should get the paragraph, that is a fold measurement to take, not
+            a side effect of an edit to the wording. */}
         <div className="mb-4 sm:mb-6">
-          {/* Was `text-h4 ... sm:text-h2`. `text-h4` is not a token this stylesheet declares (the
-              scale is display/h1/h2/body/meta/caption/mega), and in Tailwind v4 an unmapped
-              utility emits NO RULE AT ALL rather than falling back -- so the shelf's own heading
-              rendered at inherited body size on every phone, distinguishable from the paragraph
-              under it only by its weight. Same defect class as the card price. */}
+          {/* THE CATALOGUE INTRO (email §1).
+              The email replaces the 67-word version with a 22-word line that does the whole job:
+              it states what every pack is (same `PACK_CONTENTS.length` documents, COUNTED not
+              typed -- see below), why prices differ (opportunity size,
+              not download size), and where to read the longer version (/pricing). The kill-rate
+              line is not here because the proof strip above the shelf already carries it -- this
+              sentence is the SHOP intro, not the FILTER intro. */}
           <h2 className="text-h2 font-semibold text-text">What survived</h2>
           <p className="mt-1.5 hidden max-w-[60ch] text-meta text-muted sm:block">
-            A pack is listed only once it clears every check, with a clickable source behind every
-            claim. Most ideas never make it.
+            {/* COUNTED, never typed. This line shipped a hand-written "8" while the same file
+                renders `{PACK_CONTENTS.length}` for the identical fact ~640 lines up, and
+                `PACK_CONTENTS` is pinned to the engine's own `BUNDLE_FILES` by
+                `components/marketing/__tests__/packContents.test.ts`. The two would diverge the
+                day the bundle changes, and one page would print both numbers -- which is exactly
+                the drift recorded in `lib/faqContent.ts` ("it said four while the bundle had
+                grown to eight"). */}
+            Every pack is the same {PACK_CONTENTS.length} documents. Price follows the size of the
+            opportunity, not the size of the download.{' '}
+            <Link href="/pricing" className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover">
+              Why prices differ
+            </Link>
+            .
           </p>
         </div>
 
@@ -1713,78 +1780,39 @@ export default function Home({ packs, stats, initialState, market, currency, per
              six checks in mono. Light, bordered, one column of argument. */}
       <SectionBand bg="surface2" width="7xl" className="border-y border-border py-16 md:py-24">
         <div className="max-w-[46rem]">
+          {/*
+            "STRESS TESTED" SECTION, email §1.
+            The previous four-sentence / six-label / two-link version argued for the filter at
+            length, on the same page that already printed the kill total twice (proof strip + the
+            LiveKillCard panel above the shelf). Three peer CTAs and an unfiltered jargon strip
+            (pain reality / value durability / ...) were the load. The email cuts it to two
+            sentences and one primary + one text link; the six verdict labels move to /how-it-
+            works with plain-English glosses (that page owns the check list, per §5.3).
+
+            The kill total is no longer here because the proof strip above the shelf already
+            carries it. Repeating the figure a third time on one scroll would put the
+            "sceptic who counts our numbers" exactly back where they started.
+          */}
           <h2 className="text-h1 font-semibold text-text">
-            Every idea is checked the way a sceptical investor would check it.
+            Every idea walks into a room built to destroy it.
           </h2>
-          {/* Two sentences, was three, and neither of them is an adjective. The old pair opened
-              "Every opportunity walks into the engine", which spends a line describing a queue,
-              and closed on "what you see is everything that survived" -- the only load-bearing
-              claim in the paragraph. The rule that produces it is four words long. */}
           <p className="mt-4 max-w-[60ch] text-body text-muted">
-            No source, no listing. What’s here is what survived.
+            A claim without a source dies before it reaches this shelf. What you’re browsing is
+            everything that survived.
           </p>
-          {/* The common gates, named. Mono because these are the engine's own gate identifiers --
-              the same strings the kill log prints beside each rejection, so a reader can match
-              a claim here to a receipt there.
-
-              The trailing clause is not padding, it is the correction. Six names in a row with
-              nothing after them assert that six IS the set, which is false for 23 of the 63 live
-              packs: `qaVerdictSummary` across /catalog reports 6/6 forty times but also 8/8 (15),
-              7/8 (4), 9/9 (3) and 6/8 (1), because `config.yaml lanes.side_hustle` adds
-              buyer_intent, currency and claims_verifiable. about.tsx and faqContent.ts were fixed
-              on 2026-08-06; this line was missed because the regression test read about.tsx only.
-              `fixedCheckCount.test.ts` now reads every rendered copy surface. */}
-          {/* THE VERDICTS, not the gate ids. This row printed `engineGateIds()` --
-              "pain reality · value durability · incumbency ..." -- six machine identifiers naming
-              the SUBJECT of each check while saying nothing about what it decides. A stranger
-              cannot tell from the word "incumbency" whether that check passed an idea or killed
-              it, which makes the row decoration on the one band whose job is to explain the
-              method.
-
-              `checkVerdicts()` returns the kill log's own `gateLabel` strings, so these are
-              literally the sentences printed on the receipts a reader meets one click away. Still
-              derived, never typed out: this row was hand-written once and was missed by the
-              regression sweep that fixed about.tsx and faqContent.ts, because that test read
-              about.tsx only. */}
-          <ul className="mt-6 grid list-none grid-cols-1 gap-x-10 gap-y-1.5 p-0 text-caption text-subtle sm:grid-cols-2">
-            {checkVerdicts().map((v) => (
-              <li key={v}>{v}</li>
-            ))}
-          </ul>
-          {/* Its own element, not a trailing clause on the list: six verdicts with nothing after
-              them assert that six IS the set, which is false for 23 of the 63 live packs, and a
-              seventh line inside the same list would read as a seventh verdict. A dash would have
-              separated them visually; `dashFree.test.ts` forbids em/en-dashes in source, and the
-              rule is right here anyway, since the break is structural. */}
-          <p className="mt-4 max-w-[46ch] text-caption text-subtle">
-            Those are the checks common to every idea. Some face more, and each pack page names the
-            checks that idea faced.
-          </p>
-          {/* The kill-log link that stood first here is GONE, and the kill total with it. The
-              card directly above this band IS the kill log: it prints the running total, three
-              real kills, and its own "Read the kill log" link. Repeating both one screen later
-              made the total the third number on the page pointing at the same thing. Two links
-              remain, and each answers a different question: how the process works, and who is
-              behind it. */}
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
             <Link
               href="/how-it-works"
-              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+              className={buttonClasses({ size: 'lg' })}
             >
-              See exactly how it works
+              See how the filter works
               <Icon name="arrowRight" size={14} />
             </Link>
-            {/* THE THIRD LINK IS THE POINT. This band spends four sentences and six gate names on
-                "an engine did the work", and until now the page never once suggested a person was
-                attached to any of it -- while `/about`, the page that answers exactly that, had no
-                inbound link from anywhere on the site. "We" appears throughout the copy with
-                nothing behind it. This link is the minimum honest fix and works whether or not
-                `FOUNDER` is filled in; the block below is the better one, and needs a real name. */}
             <Link
-              href="/about"
+              href="/kill-log"
               className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
             >
-              Who is behind this
+              See the {RESEARCH_STATS.killed.toLocaleString('en-GB')} it rejected
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>

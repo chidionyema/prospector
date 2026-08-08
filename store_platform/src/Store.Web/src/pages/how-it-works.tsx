@@ -6,6 +6,7 @@ import { Seo } from '@/components/Seo';
 import { buttonClasses, Icon, textLinkClass } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
+import { RESEARCH_STATS } from '@/lib/stats';
 import CheckSequence from '@/components/marketing/CheckSequence';
 /* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
    check and needs the whole record (reason, citations), so the names file is not enough. The
@@ -128,6 +129,33 @@ export default function HowItWorks() {
       />
 
       {/*
+        THE STAT, PROMOTED TO POSITION 2 (email §2).
+        The page's thesis in one line: of every idea that entered, this many survived, and the
+        rejects are public. The number used to be buried at the bottom of the page under "Why
+        most ideas die", so a reader who scrolled the methodology and the worked example still
+        had not met the single fact the page exists to prove.
+
+        `RESEARCH_STATS` is the same source the home page proof strip uses, so the two pages
+        cannot disagree. `rejectRate` is computed once, in `lib/stats.ts`, and never re-rounded
+        on this page.
+      */}
+      <Section
+        bg="bg"
+        width="6xl"
+        className="!py-10 md:!py-12"
+      >
+        <div className="max-w-3xl">
+          <p className="text-body font-semibold leading-relaxed text-text">
+            {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in. {RESEARCH_STATS.survived.toLocaleString('en-GB')} out.
+          </p>
+          <p className="mt-2 max-w-[60ch] text-meta leading-relaxed text-muted">
+            {RESEARCH_STATS.rejectRate}% survive. Every kill is published with the evidence that
+            made it.
+          </p>
+        </div>
+      </Section>
+
+      {/*
        * A. THE CHECK SEQUENCE, and it goes first.
        *
        * The page opened on an abstract description of the filter and then showed six unrelated
@@ -149,16 +177,17 @@ export default function HowItWorks() {
         <CheckSequence />
       </Section>
 
-      {/* B. The checks, as a stepped timeline */}
+      {/* B. The checks, as a stepped timeline.
+
+          Through the copy dictionary, NOT literals. Hardcoding the email's wording here orphaned
+          `sixChecksTitle` / `sixChecksDescription` in all three variants of `lib/copyConfig.ts`:
+          the A/B mechanism went dead for this section without the change saying so, and
+          `fixedCheckCount.test.ts`'s "every copy variant intros the timeline with a hedge" kept
+          passing over strings no page rendered any more. Variant a carries the email's wording. */}
       <Section
         bg="bg"
         width="6xl"
         title={variant.sixChecksTitle}
-        // `intro`, not a first child. `Section` puts the heading in a `mb-10` wrapper, which is the
-        // gap between a heading and its CONTENT; a lede passed as a child inherits it. Measured at
-        // 1440px: 40px between this heading and its own lede, against 12px on /pricing and 8px on
-        // /about (2026-08-06). At that distance the sentence reads as detached from the heading it
-        // belongs to. The `intro` slot exists for exactly this and sits at `mt-3`.
         intro={variant.sixChecksDescription}
       >
         {/* THE AI DISCLOSURE, AND THIS PAGE OWNS IT.
@@ -254,48 +283,34 @@ export default function HowItWorks() {
       <Section
         bg="white"
         width="6xl"
-        title="The adversarial pass"
+        title="Then a second agent attacks the survivor."
       >
         <div className="max-w-3xl space-y-4">
           <p className="text-body font-normal leading-relaxed text-muted">
-            After the checks clear, a second agent attacks the surviving claim. It hunts for
-            contradictions, weak citations, and gaps the first pass missed. The record survives
-            only if every objection can be answered with the evidence already on file, no new
-            research, no hand‑waving.
+            It hunts for contradictions, weak citations, and gaps the first pass missed. The
+            evidence record survives only if every objection is answered by evidence already on file.
+            No new research, no hand-waving.
           </p>
           <p className="text-meta leading-relaxed text-muted">
-            This is why silence in the evidence record means &ldquo;unverifiable,&rdquo; not
-            &ldquo;false.&rdquo; The agent rules only on passages it actually fetched. If it
-            cannot find the evidence, it cannot mount the kill, so the bar is high, and the
-            records that survive are the ones that cleared it honestly.
+            Silence in the record means <em>unverifiable</em>, never <em>false</em>. The agent only
+            rules on pages it actually fetched.
           </p>
         </div>
       </Section>
 
-      {/* D. The graveyard */}
+      {/* D. The graveyard -- now collapsed: the stat already lives at position 2 of this
+          page, so what stood here is a duplicate of the page's thesis, and the "auditable, not
+          a black box" line above already says what the kill-log link is for. A single link to
+          the log is the only thing missing. */}
       <Section
         bg="bg"
         width="6xl"
-        title="Why most ideas die"
+        title="The kill log"
       >
         <div className="max-w-3xl space-y-6">
-          {/* Read from the totals file, not typed in. These were hardcoded at "960 / 103" while
-              the engine's own count had moved to 1,080 / 129, so this page and the homepage --
-              which already read the file -- told a visitor two different survivorship stories
-              about the same catalogue. The number is the argument; a stale one is a refund. */}
-          <p className="text-body font-semibold leading-relaxed text-text">
-            Of {(totals.killed + totals.passed).toLocaleString()} ideas researched,{' '}
-            {totals.passed.toLocaleString()} survived.
-          </p>
-          {/* "The checks are auditable, not a black box" was on this page TWICE: here, and in the
-              section intro directly above the six steps (`sixChecksDescription`, lib/copyConfig.ts,
-              in all three variants). A claim about our own transparency, made twice on one page,
-              is the one kind of repetition a sceptic reads as insistence. The copy dictionary keeps
-              it, because that is where it sits beside the checks it describes; this copy drops it
-              and says what is actually published instead. */}
           <p className="text-body leading-relaxed text-muted">
-            Every kill is published in full, with the check that fired and the sourced argument that
-            killed it.
+            Every kill is published in full, with the check that fired and the sourced argument
+            that killed it.
           </p>
           <Link
             href="/kill-log"
@@ -319,13 +334,8 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl">
           <p className="text-body font-normal leading-relaxed text-muted">
-            A pack is evidence-backed research, not a guarantee: the finding, the vetting and the
-            sourcing are done for you, the execution is still yours, and no analysis can promise a
-            business outcome. Everything a pack does not include is listed on the{' '}
-            <Link href="/pricing#what-you-do-not-get" className={textLinkClass('font-medium')}>
-              pricing page
-            </Link>
-            .
+            A pack is evidence-backed research, not a guarantee. The finding, vetting and sourcing
+            is done. The execution is yours. No analysis can promise a business outcome.
           </p>
         </div>
       </Section>
@@ -335,6 +345,7 @@ export default function HowItWorks() {
         title="See what made it through."
         lead=""
         primary={{ href: '/', label: 'Browse the packs' }}
+        secondary={{ href: '/sample', label: 'Read the free sample first' }}
       />
     </MarketingLayout>
   );

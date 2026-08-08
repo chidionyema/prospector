@@ -58,18 +58,7 @@ const maxWorkers = Number(process.env.VITEST_MAX_FORKS)
  * TO LIFT: delete an entry. There is no flag and no env var on purpose -- a suspension that can be
  * toggled invisibly is a suspension nobody ever ends. Status lives in `docs/SITE_SPEC_PROGRAM.md`.
  */
-const SUSPENDED_UNTIL_UI_STABLE = [
-  'src/__tests__/brandV3.test.ts',
-  'src/__tests__/storefrontDesignContract.test.ts',
-  'src/__tests__/weightAndCasePolicy.test.ts',
-  'src/__tests__/threeRadiiTwoShadows.test.ts',
-  'src/__tests__/monoIsTheDataVoice.test.ts',
-  'src/__tests__/uiPolishContract.test.ts',
-  'src/__tests__/noArbitraryHex.test.ts',
-  'src/__tests__/oneColourRule.test.ts',
-  'src/__tests__/dashFree.test.ts',
-  'src/lib/__tests__/categoryScale.test.ts',
-];
+const SUSPENDED_UNTIL_UI_STABLE: string[] = [];
 
 export default defineConfig({
   resolve: {
