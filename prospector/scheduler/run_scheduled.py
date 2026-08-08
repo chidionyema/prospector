@@ -472,15 +472,28 @@ def _moat_blind_reason(cfg) -> str:
     running to clear exactly that backlog, and the two competed for the same subscription CLI.
     The system was manufacturing its own backlog faster than it could pay it down.
 
-    A tick that cannot verify has nothing worth doing: generation is only useful if the moat
-    can then rule on it, and the drain needs the same brains. So skip the whole tick.
+    A tick that cannot verify has nothing worth doing: generation is only useful if some brain
+    can then rule on it. So skip the whole tick.
+
+    `trusted_only=False` (founder directive 2026-08-08, which re-added minimax to `operator:`):
+    a tick is blind only when EVERY configured verdict brain is dead, not merely every TRUSTED
+    one. With a provisional tail alive the moat CAN rule — provisionally now, finally on the
+    re-vet — and that is the trade the founder accepted. Leaving this trusted-only would have
+    made the whole re-add inert, because the daemon would still have skipped every tick in
+    exactly the situation the fallback exists for: claude_cli down.
+
+    This does NOT wave the drain through. `run.py::_cmd_resume` runs its own preflight at the
+    default `trusted_only=True`, so a drain-only tick still refuses to re-vet into a chain that
+    can only re-stamp `provisional` — the row would not move, and the drain's CLI load is part
+    of what keeps the trusted brain benched. The two callers deliberately disagree; they share
+    the one classifier so that they cannot disagree by ACCIDENT.
 
     Uses `dead_until()`, NOT `is_dead()`: `is_dead` can CLAIM the half-open probe slot
     (health.py), and a bookkeeping check must never consume the one call whose job is to
     measure recovery. This reads the mark; it does not spend the probe.
     """
     from prospector.health import moat_blind_reason
-    return moat_blind_reason(cfg)
+    return moat_blind_reason(cfg, trusted_only=False)
 
 
 def _drain_pass(cfg, n_resume: int) -> dict | None:

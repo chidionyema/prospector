@@ -3,18 +3,35 @@
 # When it cannot answer, verification raises ProviderExhaustedError and the candidate DEFERS,
 # to be finished by `vet --resume` when the moat is back.
 #
-# minimax REMOVED from this chain 2026-08-06 (founder decision). It was the "guardrailed
-# emergency tail": a ruling it served was stamped `provisional`, never published on PASS, and
-# was auto re-vetted later. That is safe but strictly more expensive than deferring, and the
-# arithmetic is the whole argument:
+# minimax RE-ADDED 2026-08-08 (founder directive: "veridt should also have fallback", after
+# being shown the 2026-08-06 arithmetic below and reaffirming). It is the "guardrailed
+# emergency tail": a ruling it serves is stamped `provisional` by `is_provisional_provider`
+# (operator.py:888), is refused by the publish gate (`run.py:528`, `not dossier.provisional`),
+# and is auto re-vetted by the drain. Nothing untrusted can ever reach a customer.
+#
+# The 2026-08-06 arithmetic that removed it is UNCHANGED and still true — it is now an
+# accepted cost, not a refuted claim:
 #     provisional = one full verdict run now (minimax) + one full re-vet later (moat) = 2x
 #     defer       = nothing now                        + one vet later (moat)         = 1x
 # Both reach the SAME final answer, because a provisional ruling can never publish. Measured
 # 2026-08-06: 38 provisional passes were queued behind a `vet --resume` drain, and the drain's
-# own CLI load was implicated in the moat flapping that minted them. Paying twice to arrive at
-# the same verdict, while the paying is what breaks the moat, is the loop this closes.
-# `is_provisional_provider` (operator.py) and the `provisional` field stay — historical rows
-# still carry it, and it remains the fence if a cheap brain is ever re-added here.
+# own CLI load was implicated in the moat flapping that minted them.
+#
+# What the re-add buys, and it is the thing the arithmetic does not price: a DEFER stops the
+# line. On 2026-08-08 claude_cli hit a monthly spend limit and every candidate in flight
+# deferred, so the daemon produced nothing rulable for the duration. A 2x answer that arrives
+# today beats a 1x answer that arrives whenever the subscription resets.
+#
+# The rails that keep this safe, all pre-existing and now under test:
+#   * publish gate         run.py:528          — a provisional PASS never publishes
+#   * drain preflight      run.py:1533         — TRUSTED-only; the drain refuses to re-vet into
+#                                                a chain that can only re-stamp provisional
+#   * generation preflight health.py           — un-blinded for the provisional tail (see
+#                                                `trusted_only`), which is what makes the
+#                                                fallback reach the daemon at all
+# Known cost, stated as such: minimax is NON-DETERMINISTIC on structured routing at
+# temperature 0 (4 of 6 candidates changed tier across 3 repeat runs; claude_cli 18/18
+# identical). A provisional ruling it serves is a placeholder, not a second opinion.
 #
 # cursor_cli REMOVED 2026-08-06 (founder directive: "we need to get rid of cursor_cli"). It led
 # this chain from 2026-07-30 and was measured DEAD on 2026-08-06 — a live probe of every
@@ -33,7 +50,7 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [claude_cli]
+operator: [claude_cli, minimax]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
