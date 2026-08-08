@@ -1326,7 +1326,8 @@ dedup_token_threshold: 0.34
 # nothing to reset by hand. Fail-closed on generation, because a probe that did not complete is
 # not evidence that retrieval works. The drain runs either way.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
-            revet_provisional_kills: false, gate_generation_on_grounding: true }
+            revet_provisional_kills: false, gate_generation_on_grounding: true,
+            reload_on_code_change: true }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

@@ -20,6 +20,7 @@ Under launchd the job is KeepAlive, so a crash restarts the daemon automatically
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -159,6 +160,12 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
     """
     beat = {"ts": datetime.now(timezone.utc).isoformat(), "mono": time.monotonic(),
             "pid": os.getpid(), "phase": phase, **extra}
+    if _RUNNING_CODE_FP:
+        # What this process is RUNNING, so a monitor can diff it against `code_fingerprint()` on
+        # disk. The previous freshness check compared the daemon's start time to the newest commit
+        # — a heuristic that is wrong in both directions (an uncommitted edit is invisible; a
+        # commit touching only tests reads as a stale daemon).
+        beat.setdefault("code", _RUNNING_CODE_FP[:12])
     try:
         _heartbeat_path(cfg).write_text(json.dumps(beat, default=str), encoding="utf-8")
     except OSError as exc:
@@ -1197,21 +1204,106 @@ def _startup_grounding_check(cfg) -> None:
     logger.info("Grounding layer healthy — daemon starting")
 
 
+_DAEMON_MODULE = "prospector.scheduler.run_scheduled"
+_CODE_RELOAD_DEFAULT = True
+#: The fingerprint this process is actually RUNNING. Set once at daemon start and stamped on every
+#: heartbeat, so a monitor can compare "what is loaded" against "what is on disk" by equality rather
+#: than by guessing from timestamps.
+_RUNNING_CODE_FP: str | None = None
+
+
+def code_fingerprint(config_path=None) -> str | None:
+    """SHA-256 over the BYTES of every module in the `prospector` package, plus config.yaml.
+
+    This is the identity of the code a process LOADED. The daemon imports the engine in-process
+    (`from prospector.run import run_signal`, below) and `load_config` runs once in `main`, so
+    every module and the config are frozen at start: editing a file on disk changes nothing about
+    a daemon that is already up. On 2026-08-08 that meant a daemon started 11:50 was still serving
+    the pre-fix `bridge.py` — the money rail — hours after the fix was written and committed.
+
+    Bytes, not mtimes, and deliberately so. An mtime moves for reasons that are not a code change:
+    a `touch`, a branch switch that restores identical content, an NTP step, a worktree copy. Each
+    would force a re-exec, and a re-exec that lands mid-cadence costs a real batch. Content is the
+    property we actually care about, and hashing ~1MB once per 2h tick is free next to one LLM call.
+
+    Returns None if the tree cannot be read; callers treat that as "cannot tell", never as "changed",
+    because the failure mode of guessing wrong here is killing a running batch.
+    """
+    package_dir = Path(__file__).resolve().parents[1]
+    digest = hashlib.sha256()
+    try:
+        paths = sorted(p for p in package_dir.rglob("*.py") if "__pycache__" not in p.parts)
+        if config_path:
+            resolved = Path(config_path).resolve()
+            if resolved.is_file():
+                paths.append(resolved)   # appended last: order stays deterministic
+        for path in paths:
+            digest.update(str(path).encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(path.read_bytes())
+            digest.update(b"\0")
+    except OSError as exc:
+        logger.warning("Code fingerprint failed (%s) — treating code as unchanged this cycle", exc)
+        return None
+    return digest.hexdigest()
+
+
+def _reload_on_code_change(cfg) -> bool:
+    """`schedule.reload_on_code_change` — default ON. A rail that ships off is an inert rail."""
+    return bool(_sched(cfg, "reload_on_code_change", _CODE_RELOAD_DEFAULT))
+
+
+def _redeploy(exec_fn=os.execv) -> None:
+    """Replace this process with a fresh one running the code now on disk, preserving the pid.
+
+    `os.execv`, not `sys.exit`: exec keeps the pid, so launchd sees no exit at all and neither
+    `KeepAlive` nor `ThrottleInterval` is involved. That makes the reload work identically when the
+    daemon is run by hand outside launchd, and it cannot interact with the watchdog's kill path.
+    The argv is rebuilt in the `-m` form the plist uses, so the relaunch is the same command line.
+    """
+    cmd = [sys.executable, "-m", _DAEMON_MODULE, *sys.argv[1:]]
+    logger.warning("Code changed on disk — re-executing at the tick boundary to deploy it: %s",
+                   " ".join(cmd))
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except (ValueError, OSError):  # a closed stream must not block the redeploy
+            pass
+    exec_fn(sys.executable, cmd)
+
+
 def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn=None,
-               max_cycles: int | None = None, sleep_fn=time.sleep) -> int:
+               max_cycles: int | None = None, sleep_fn=time.sleep, config_path=None,
+               exec_fn=os.execv) -> int:
     """Loop forever (or `max_cycles` times in tests): tick, then sleep `interval` seconds.
 
     The guard is re-evaluated every cycle, so PAUSE and the daily cap take effect without a
-    restart. Returns the number of cycles executed.
+    restart. Code is NOT: see `code_fingerprint`. So the loop also re-execs itself when the code on
+    disk stops matching the code it started with. Returns the number of cycles executed.
     """
     flag = _StopFlag()
     signal.signal(signal.SIGTERM, flag.request)
     signal.signal(signal.SIGINT, flag.request)
 
     logger.info("Daemon starting: interval=%ds, store=%s", interval, _store_dir(cfg))
+    global _RUNNING_CODE_FP
+    startup_fp = code_fingerprint(config_path)
+    _RUNNING_CODE_FP = startup_fp
+    logger.info("Running code fingerprint: %s", (startup_fp or "unknown")[:12])
     cycles = 0
     consecutive_unproductive = 0
     while not flag.stop:
+        # The ONE safe point to swap code: a tick has finished and the next has not begun, so no
+        # batch, no drain and no publish is in flight. Compared against the fingerprint taken at
+        # STARTUP (not the previous cycle's), which is what makes this self-limiting: the process
+        # that replaces us re-reads disk on the way in, so a stream of edits costs at most one
+        # re-exec per cadence and can never become an exec loop.
+        if startup_fp and _reload_on_code_change(cfg):
+            current_fp = code_fingerprint(config_path)
+            if current_fp and current_fp != startup_fp:
+                _write_heartbeat(cfg, phase="redeploying", cycles=cycles)
+                _redeploy(exec_fn)
+                return cycles  # unreachable after a real execv; reached only with a test double
         tick = None
         try:
             tick = run_tick(cfg, candidates=candidates, generate_fn=generate_fn)
@@ -1657,7 +1749,8 @@ def main(argv: list[str] | None = None) -> None:
         # GroundingInfrastructureError halt in run_tick — exit + KeepAlive relaunch lands
         # here, so the crash loop costs one probe, not one batch.
         _startup_grounding_check(cfg)
-        run_daemon(cfg, interval=args.interval, candidates=args.candidates)
+        run_daemon(cfg, interval=args.interval, candidates=args.candidates,
+                   config_path=args.config)
         return
 
     tick = run_tick(cfg, dry_run=args.dry_run, candidates=args.candidates)

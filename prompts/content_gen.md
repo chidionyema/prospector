@@ -32,6 +32,8 @@ self-reported figure, confidence near 0.4). So:
       never project a named competitor's scale onto the reader's outcome.
 Describe what the buyer GETS (the plan, the method, the deliverables) rather than
 asserting the venture's success; deliverables need no market-proof to be true.
+
+{currency_rule}
 USER: Opportunity: {candidate_json}   Verified claims/benchmarks: {claims_json}
 Type: {one of: listing_page | teaser_social | seo_preview | launch_email}
 

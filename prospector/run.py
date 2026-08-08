@@ -516,7 +516,8 @@ def vet_candidate(
                 op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg,
                 score=score)
             cand.tags["marketing"] = generate_marketing_content(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op)
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op,
+                cfg=cfg)
 
     now = datetime.datetime.now(datetime.timezone.utc)
 
