@@ -136,7 +136,17 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           scrolled ? 'border-border' : 'border-transparent'
         }`}
       >
-        <div className={`${SHELL} flex h-16 items-center justify-between gap-4`}>
+        {/* COMPACT ON SCROLL. `h-16` (64px) is the resting height; past the same `scrolled`
+            threshold that turns the hairline on (4px, above), it steps to `h-14` (56px) -- an
+            8px reclaim, not a redesign. The logo and nav sizes are untouched: shrinking the row
+            instead of the content keeps every tap target's own 44px floor intact rather than
+            scaling toward it. `transition-[height]` rides the same 200ms as the border so the
+            two reads as one event, not two. */}
+        <div
+          className={`${SHELL} flex items-center justify-between gap-4 transition-[height] duration-200 ${
+            scrolled ? 'h-14' : 'h-16'
+          }`}
+        >
           {/* Left: Brand & Main Nav */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
@@ -157,7 +167,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                        plus a 2px rule sitting on the header's own bottom border, changes nothing
                        about the box. */
                     aria-current={active ? 'page' : undefined}
-                    className={`relative flex h-16 items-center text-meta font-medium transition-colors ${
+                    /* `h-full`, not a hardcoded `h-16`: the active-state underline is pinned to
+                       `-bottom-px` of THIS box, so it has to track the header row's real height
+                       rather than assume one -- the row now steps to `h-14` once `scrolled`
+                       (compact-on-scroll, above), and a fixed h-16 here would overflow it and
+                       throw the underline off the header's own bottom edge. */
+                    className={`relative flex h-full items-center text-meta font-medium transition-colors ${
                       active
                         ? 'text-text after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-text'
                         : 'text-muted hover:text-text'
@@ -171,7 +186,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           </div>
 
           {/* Right: Actions */}
-          <div className="flex h-full items-center gap-1">
+          <div className="flex h-full items-center gap-2">
             {/* At every width, including mobile -- see `openSearch` above for why it is a
                 dispatcher and not the palette. The word is hidden below lg because the header
                 also carries five nav items at that width; the magnifier alone is the one icon
@@ -215,13 +230,27 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               <button
                 ref={menuButtonRef}
                 type="button"
-                className="inline-flex items-center justify-center rounded-md p-2 text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                /* Matches the 44px WCAG 2.5.8 floor the search button states explicitly above --
+                   `p-2` (8px) + the default 20px glyph only reaches ~36px, under the same floor
+                   this header already enforces for its neighbour.
+
+                   VISIBLE "Menu"/"Close" LABEL, not icon-alone. This button only ever renders
+                   below `md`, next to four other header controls (search glyph, cart, account
+                   link) that either carry their own text or are unambiguous at a glance -- the
+                   hamburger glyph is the one shape on the row a first-time visitor cannot be
+                   assumed to already know. `aria-label` is gone rather than kept alongside the
+                   text: with the text always visible here (unlike the Search button's, which
+                   hides below `lg`), keeping both would give the control two different
+                   accessible names and fail WCAG 2.5.3 Label in Name. `Icon.tsx:128` always sets
+                   `aria-hidden="true"` on the glyph, so the accessible name here is just the
+                   word. */
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 aria-expanded={menuOpen}
                 aria-controls="marketing-menu"
                 onClick={() => setMenuOpen((o) => !o)}
               >
-                <Icon name={menuOpen ? 'close' : 'menu'} />
+                <Icon name={menuOpen ? 'close' : 'menu'} size={18} />
+                {menuOpen ? 'Close' : 'Menu'}
               </button>
             </div>
           </div>

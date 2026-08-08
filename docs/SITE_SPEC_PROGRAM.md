@@ -333,6 +333,81 @@ Measured after lifting, in worktree `prospector-ship` at the merge of `origin/ma
 present identically on `origin/main`, fixed in the same commit); `npm run build` **exit 0**, every
 exit code captured before any pipe.
 
+### §3.1 partially re-overridden 2026-08-08 — brand colour on the logo mark, tap targets, filter jump
+
+Three fixes, all in `store_platform/src/Store.Web`, all verified: `npx tsc --noEmit` exit 0;
+`npx vitest run` 57 files / 832 tests passed; `npm run lint` 0 errors (12 pre-existing warnings,
+none touched by this pass); `npm run build` exit 0, Turbopack, 13/13 pages.
+
+1. **Logo mark gets brand colour — explicit founder override, this session, of the 2026-08-08
+   "no brand colour" ruling above.** Scope is narrow and deliberate: only `BrandMark` in
+   `Logo.tsx` (the header/footer tile), not CTAs, links, or any other chrome — those stay ink.
+   `tokens.css` gains `--brand-mark: #0F766E` (= `--cat-care-benefits`, the existing "muted
+   teal/green" already on category tags — reused rather than a 13th invented hex) plus its
+   `--color-brand-mark` `@theme` mapping; `Logo.tsx`'s `BrandMark` svg takes `text-brand-mark`.
+   **Flagged, not resolved:** at Lab hue ~175°, this sits only ~12° from `--success`/`--focus`
+   (#047857, "survived", ~163°) — under the ≥25°-from-verdict separation this sheet's own
+   category-hue methodology requires everywhere else (see the `--cat-professional-services`
+   comment). Every teal/green slot on the wheel is already reserved by `--success` or a category
+   hue; there was no clean unoccupied one. The header logo now sits in the same colour family as
+   the "survived" verdict mark — full reasoning and hex math in the `tokens.css` comment beside
+   `--brand-mark`. Revisit if that reads as false verification signal in practice.
+2. **Mobile header tap targets** (`MarketingLayout.tsx`): the hamburger button was ~36px
+   (`p-2` + default 20px glyph) beside a search button explicitly sized to the 44px WCAG 2.5.8
+   floor two lines above it — now matches (`min-h-11 min-w-11`). Right-side action gap
+   `gap-1` (4px) → `gap-2` (8px).
+3. **Filter-sheet open caused an unrequested scroll jump** (`pages/index.tsx`). Root cause,
+   confirmed by reading the code (not asserted): `shelfControls`' inline `StepFlow` block
+   unmounts to zero height the instant `filtersOpen` flips true (by design, to reset wizard step
+   — see the comment above it), and that block sits above the fold for exactly the readers who
+   can trigger this, since the pinned `FilterFab` trigger only renders once they've scrolled past
+   it (`FacetBar.tsx`'s `scrolledPast` gate). Collapsing 300–400px of page height above their
+   current scroll position shifts everything below it up by that amount while `scrollY` stays
+   fixed — reads as landing on a random section, because the shift size varies with step/answer
+   state. Fix: a `ResizeObserver` tracks the block's live height into `stepFlowHeight`; while the
+   sheet is open, a same-height `aria-hidden` spacer stands in for it instead of nothing, so page
+   height — and therefore what's under the reader's scroll position — doesn't move. The unmount
+   itself, and the "exactly one mounted wizard" invariant it exists for, are untouched.
+
+Not investigated further, lower confidence, not fixed: the second Explore agent also flagged
+`Modal.tsx:37`'s `body.style.overflow = 'hidden'` as a possible secondary few-pixel shift via
+scrollbar-gutter interaction, and a `.focus()` call on the panel — no reproduction, no code
+change made for either.
+
+### Header follow-up, same session, same day — compact-on-scroll, a visible Menu label
+
+Three more from the same critique pass, `MarketingLayout.tsx` only. Re-verified: `tsc` exit 0,
+832/832 tests, lint 0 errors (same 12 pre-existing warnings), build exit 0, 13/13 pages.
+
+1. **Compact header on scroll.** The row was a fixed `h-16` (64px) at every scroll position. Now
+   steps to `h-14` (56px) past the same `scrolled` threshold (4px) that already turns the hairline
+   on, on the same 200ms transition. Logo and control sizes are untouched — the row shrinks, not
+   its contents — so every 44px tap target stays 44px rather than scaling toward the floor.
+   Knock-on fix required: the desktop nav links' active-state underline is pinned to
+   `-bottom-px` of the link's own box, which was a hardcoded `h-16` — with the row now sometimes
+   56px, that overflowed and threw the underline off the header's real bottom edge. Changed to
+   `h-full` so it tracks whatever the row's actual height is; this was a latent bug (a
+   `h-16` inside a `h-16` parent worked by coincidence) that the compact header exposed.
+2. **Visible "Menu"/"Close" label on the mobile hamburger**, replacing icon-only +
+   `aria-label`. `aria-label` was removed rather than kept alongside the new visible text:
+   this button only renders below `md`, so the label is always visible there (unlike the header's
+   Search button, whose text hides below `lg`) — keeping both would give the control two
+   different accessible names, which fails WCAG 2.5.3 Label in Name. `Icon.tsx:128` sets
+   `aria-hidden="true"` unconditionally on every glyph, so the accessible name is just the word.
+3. **Icon shape itself — checked, not re-touched.** The pasted critique's "reads as a generic
+   document/hamburger icon" complaint describes the OLD `BrandMark` (three left-aligned bars,
+   ragged widths). `git log` shows that was already fixed: commit `91c26ae`, message "...the
+   brand mark read as a list icon", replaced it with the centred, descending-width funnel
+   currently in `Logo.tsx`, specifically to kill that exact read (see the file's own comment on
+   why left-aligned bars in a dark tile is the universal list/document glyph). That commit is
+   already on `main` (`git branch --contains 91c26ae` includes `main`; `git show
+   origin/main:.../Logo.tsx` has the same centred bands as this branch) — the complaint is stale
+   against what's shipped, not a live defect. No redesign attempted on top of an already-settled,
+   three-times-iterated (2026-08-06/07/08) shape with no new evidence of a problem.
+
+Also asked and answered "something else — I'll describe it" via multiple-choice, but no
+detail was supplied in the response — nothing to act on there; open if the user specifies later.
+
 ### Known open items
 
 - ~~**§6.1 Home** — delete "What you get, at every price" (`index.tsx:1668`); "Newest on the shelf"

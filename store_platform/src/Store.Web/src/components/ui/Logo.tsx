@@ -86,6 +86,11 @@ function BrandMark({ className, standalone = false }: { className?: string; stan
       className={cx(
         standalone ? 'h-[1em] w-[1em]' : 'h-[0.82em] w-[0.82em]',
         'flex-none',
+        /* Founder override, 2026-08-08 (see --brand-mark in tokens.css for the collision this
+           carries): the mark alone breaks the ONE colour / no-brand-colour rule the rest of the
+           lockup still holds. The wordmark next to it stays ink -- only the tile takes the
+           accent, which is why this class sits here and not on the parent `<span>`. */
+        'text-brand-mark',
         className,
       )}
     >
