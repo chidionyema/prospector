@@ -33,6 +33,39 @@ Determinism
 A sampler you cannot replay is not measurable. Every selection is a pure function of
 (distribution, domains, n, seed). With `seed` unset the seed is derived from a stable hash of
 the measured distribution, so replaying against the same DB reproduces the same plan.
+
+V2.1 — illumination: a cell is covered to the degree its ideas are good (G7)
+-----------------------------------------------------------------------------
+V2 counts rows. MAP-Elites/QDAIF (arXiv:2310.13032) count QUALITY: a grid square holds the
+best solution found there, and the search keeps pushing on squares whose occupant is weak.
+Row count alone cannot tell those apart — a cell with 100 rows whose ideas all score 1.0
+reads as thoroughly covered when what it actually is, is thoroughly *failed*.
+
+`quality_weight` (0.0 by default, which is byte-identical to V2 including the seed) discounts
+a value's occupancy credit by how good its ideas are:
+
+    credit(v) = count(v) * ((1 - qw) + qw * illum(v)),  illum(v) = stat(v) / best stat
+
+so at qw=1 a cell scoring zero gets zero credit for its rows and is targeted hardest.
+
+`quality_stat` picks the statistic, and the default is `mean`, NOT the QD-canonical `elite`.
+The elite was measured on the live index and found to have almost no discriminating power
+(1.16x-1.20x spread against 1.71x-2.56x for the mean) — `_illumination` carries the numbers
+and the reason. Shipping the canonical choice would have been a lever with no authority.
+
+**Note the polarity, because it is the opposite of G9's and that is deliberate.** This steers
+generation TOWARD the cells that have produced the worst ideas, not away from them. It is not
+a pass-rate lever and cannot be used as one: it moves no gate, and the direction it pushes is
+the direction that costs pass rate in the short run. The justification is that a barren cell
+and a badly-attempted cell look identical in a row count, and the only way to tell them apart
+is to attempt the cell again with better generation behind it. If a cell is genuinely barren,
+that is a finding — and it is one this repo has been wrong about before (chunk C's `smb` cell
+looked like weak generation and its modal kill gate was `moat_ungrounded`, a RETRIEVAL
+outcome).
+
+Both statistics are computed over rows that were actually RULED and not provisional: a
+provisional composite comes from a brain that may not rule (`operator.py:892`), and a DEFER
+has no composite to speak for the cell.
 """
 
 from __future__ import annotations
@@ -56,6 +89,7 @@ UNKNOWN = "unknown"
 
 _METHODS = ("quota", "entropy")
 _UNKNOWN_POLICIES = ("include", "exclude")
+_QUALITY_STATS = ("mean", "elite")
 
 
 # --------------------------------------------------------------------------- config
@@ -72,6 +106,14 @@ class SamplerConfig:
     recent_window: int = 200
     min_coverage: float = 0.25
     seed: Optional[int] = None
+    #: G7. 0.0 = V2 exactly (elites are still MEASURED and reported, they just do not steer).
+    #: Clamped to [0,1] rather than validated-and-raised: an out-of-range weight is a typo in
+    #: a steering knob, and refusing to generate over a typo is a worse failure than clamping
+    #: it and saying so in the receipt.
+    quality_weight: float = 0.0
+    #: Which per-cell statistic the weight acts on. See `_illumination` for the measurement
+    #: that made `mean` the default instead of the QD-canonical `elite`.
+    quality_stat: str = "mean"
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any] | None) -> "SamplerConfig":
@@ -93,6 +135,11 @@ class SamplerConfig:
             raise ValueError(
                 f"coverage_sampler.unknown_policy={policy!r} unknown; "
                 f"allowed: {list(_UNKNOWN_POLICIES)}")
+        stat = str(raw.get("quality_stat", "mean") or "mean").strip().lower()
+        if stat not in _QUALITY_STATS:
+            raise ValueError(
+                f"coverage_sampler.quality_stat={stat!r} unknown; "
+                f"allowed: {list(_QUALITY_STATS)}")
         seed_raw = raw.get("seed")
         return cls(
             enabled=bool(raw.get("enabled", False)),
@@ -102,6 +149,8 @@ class SamplerConfig:
             recent_window=max(0, int(raw.get("recent_window", 200) or 0)),
             min_coverage=float(raw.get("min_coverage", 0.25) or 0.0),
             seed=None if seed_raw is None else int(seed_raw),
+            quality_weight=min(1.0, max(0.0, float(raw.get("quality_weight", 0.0) or 0.0))),
+            quality_stat=stat,
         )
 
     @classmethod
@@ -122,6 +171,17 @@ class AxisCoverage:
     blank: int = 0                                               # rows with no value here
     counts: dict[str, int] = field(default_factory=dict)         # UNKNOWN iff policy=include
     recent_counts: dict[str, int] = field(default_factory=dict)
+    #: G7. Best composite ever RULED in this cell (non-provisional, composite not null).
+    #: A value absent here has never produced a ruled row — which is not the same as having
+    #: produced a bad one, so `_illumination` treats the two differently.
+    elite: dict[str, float] = field(default_factory=dict)
+    #: Ruled, non-provisional rows per value — the denominator that says whether an absent
+    #: elite means "never tried" or "tried and every attempt is still unfinished".
+    ruled: dict[str, int] = field(default_factory=dict)
+    #: G7. MEAN composite over the same ruled rows. Measured because the elite turned out
+    #: not to discriminate (see `_illumination`); reported always, steers only when
+    #: `quality_stat: mean`.
+    mean_composite: dict[str, float] = field(default_factory=dict)
 
     @property
     def unknown(self) -> int:
@@ -171,13 +231,22 @@ class CoverageReport:
                     "coverage": round(c.coverage, 4),
                     "counts": dict(c.counts),
                     "recent_counts": dict(c.recent_counts),
+                    "elite": {k: round(v, 4) for k, v in c.elite.items()},
+                    "mean_composite": {k: round(v, 4) for k, v in c.mean_composite.items()},
+                    "ruled": dict(c.ruled),
                 }
                 for a, c in self.axes.items()
             },
         }
 
     def fingerprint(self) -> str:
-        """Stable hash of the distribution — the default seed source."""
+        """Stable hash of the distribution — the default seed source.
+
+        Counts only, deliberately: the elites are NOT hashed in. The seed decides tie-breaks
+        and rotation offsets, so folding a new signal into it would change the plan on a DB
+        where nothing about the distribution moved, and `quality_weight: 0.0` would stop
+        being byte-identical to V2 the moment a single verdict landed.
+        """
         h = hashlib.sha256()
         for axis in sorted(self.axes):
             c = self.axes[axis]
@@ -195,6 +264,21 @@ def _norm(value: Any) -> str:
 def _connect_ro(db_path: Path | str) -> sqlite3.Connection:
     """Open the production index READ-ONLY. The DB is production state."""
     return sqlite3.connect(f"file:{Path(db_path).as_posix()}?mode=ro", uri=True)
+
+
+def _table_columns(conn: sqlite3.Connection) -> set[str]:
+    """Column names on `dossiers`, so a DB predating a column is measured, not refused.
+
+    The elite query (G7) reads `composite`, `provisional` and `decision`. Those arrived by
+    migration at different times and an older index legitimately lacks them. Coverage is the
+    load-bearing measurement here and elites are an enrichment, so a missing column costs
+    the enrichment and nothing else — asking sqlite is one PRAGMA, and the alternative is an
+    OperationalError thrown from inside a read-only measurement.
+    """
+    try:
+        return {str(r[1]) for r in conn.execute("PRAGMA table_info(dossiers)").fetchall()}
+    except sqlite3.Error:
+        return set()
 
 
 def measure(
@@ -222,6 +306,7 @@ def measure(
     try:
         total = int(conn.execute(
             f"SELECT count(*) FROM dossiers WHERE 1=1{where}", params).fetchone()[0])
+        have_elite_cols = {"composite", "provisional", "decision"} <= _table_columns(conn)
         for axis in scfg.axes:
             if axis not in AXES:  # defence in depth; from_mapping already validated
                 raise ValueError(f"unknown axis {axis!r}")
@@ -240,12 +325,38 @@ def measure(
                 for (v,) in rrows:
                     key = _norm(v)
                     recent[key] = recent.get(key, 0) + 1
+            # G7 elites. Restricted to rows that were actually RULED and not provisional:
+            # a provisional composite comes from a brain that may not rule
+            # (`operator.py:892`) and would let a non-ruling model steer generation, and a
+            # DEFER has no composite that speaks for the cell at all.
+            elite: dict[str, float] = {}
+            ruled: dict[str, int] = {}
+            mean_c: dict[str, float] = {}
+            if have_elite_cols:
+                erows = conn.execute(
+                    f"SELECT lower(trim(coalesce({axis},''))) AS v, max(composite), "
+                    f"count(*), sum(composite) "
+                    f"FROM dossiers WHERE composite IS NOT NULL "
+                    f"AND coalesce(provisional,0) = 0 "
+                    f"AND lower(coalesce(decision,'')) IN ('pass','kill'){where} "
+                    f"GROUP BY v", params).fetchall()
+                totals: dict[str, float] = {}
+                for v, best, cnt, ssum in erows:
+                    key = _norm(v)
+                    elite[key] = max(elite.get(key, float(best or 0.0)), float(best or 0.0))
+                    ruled[key] = ruled.get(key, 0) + int(cnt)
+                    totals[key] = totals.get(key, 0.0) + float(ssum or 0.0)
+                mean_c = {k: totals[k] / ruled[k] for k in totals if ruled.get(k)}
             blank = int(counts.get(UNKNOWN, 0))
             if scfg.unknown_policy == "exclude":
                 counts.pop(UNKNOWN, None)
                 recent.pop(UNKNOWN, None)
+                elite.pop(UNKNOWN, None)
+                ruled.pop(UNKNOWN, None)
+                mean_c.pop(UNKNOWN, None)
             cov = AxisCoverage(
-                axis=axis, rows=total, blank=blank, counts=counts, recent_counts=recent)
+                axis=axis, rows=total, blank=blank, counts=counts, recent_counts=recent,
+                elite=elite, ruled=ruled, mean_composite=mean_c)
             axes[axis] = cov
             if cov.coverage < scfg.min_coverage:
                 suppressed[axis] = (
@@ -266,15 +377,67 @@ def _stable_key(seed: int, axis: str, value: str) -> str:
     return hashlib.sha256(f"{seed}|{axis}|{value}".encode()).hexdigest()
 
 
-def _blended_share(cov: AxisCoverage, domain: Sequence[str]) -> dict[str, float]:
+def _illumination(cov: AxisCoverage, domain: Sequence[str],
+                  stat: str = "mean") -> dict[str, float]:
+    """How well-illuminated each value is, in [0,1], relative to the best cell on the axis.
+
+    Three cases, and the difference between the last two is the whole point:
+
+      * a value with a ruled statistic  -> stat(v) / best stat on this axis
+      * a value never ruled at all      -> 1.0, i.e. NO quality discount. We know nothing
+                                           about it, and inventing a penalty from silence
+                                           would let an axis with one lucky ruled value
+                                           stampede every other value in the domain.
+      * every statistic <= 0            -> 1.0 for all. There is no scale to normalise
+                                           against, so the quality term is inert and the
+                                           result is exactly the count-based V2 ranking.
+
+    WHY `mean` IS THE DEFAULT AND NOT THE QD-CANONICAL `elite`. Measured on the live index
+    (1,789 rows, 2026-08-08), over cells with n >= 30 ruled rows:
+
+        ambition_tier   max: 3.050-3.550 = 1.16x spread   mean: 0.852-2.179 = 2.56x
+        audience        max: 2.950-3.550 = 1.20x spread   mean: 0.842-1.437 = 1.71x
+
+    The elite has almost no discriminating power here, and the reason is structural rather
+    than incidental: the maximum is an extreme order statistic, and over 40-110 samples per
+    cell it has already converged to roughly the same value everywhere. Steering on it would
+    be a lever with no authority — the failure mode of memory `rsi-tuned-a-lever-with-no-
+    authority.md`, where a knob was tuned for months while reaching 0.9% of what it aimed at.
+
+    `elite` is kept selectable because it is the right statistic for the regime MAP-Elites
+    assumes — an archive where only the best occupant of a cell survives. This pipeline is
+    not that regime: every generated candidate is verified and scored, so what a cell is
+    worth is what it produces on average, not what it produced once.
+    """
+    source = cov.elite if stat == "elite" else cov.mean_composite
+    scored = {v: source[v] for v in domain if v in source}
+    best = max(scored.values(), default=0.0)
+    if best <= 0:
+        return {v: 1.0 for v in domain}
+    return {v: max(0.0, min(1.0, scored[v] / best)) if v in scored else 1.0 for v in domain}
+
+
+def _blended_share(
+    cov: AxisCoverage, domain: Sequence[str], quality_weight: float = 0.0,
+    stat: str = "mean",
+) -> dict[str, float]:
     """Share per domain value over catalogue + recent counts (recent counted twice).
 
     Double-counting the recent window is the recency weight: a value the catalogue is full
     of but which has not been generated lately still reads as partially recovered.
+
+    G7: with `quality_weight` above 0 the rows a value owns are discounted by how good its
+    elite is, so a cell that has been attempted a hundred times and never produced anything
+    good stops reading as "covered". At 0.0 the expression collapses to `count` exactly —
+    same floats, same ordering, same plan as V2.
     """
-    blended = {
-        v: float(cov.counts.get(v, 0) + cov.recent_counts.get(v, 0)) for v in domain
-    }
+    illum = _illumination(cov, domain, stat) if quality_weight > 0 else {}
+    blended: dict[str, float] = {}
+    for v in domain:
+        n = float(cov.counts.get(v, 0) + cov.recent_counts.get(v, 0))
+        if quality_weight > 0:
+            n *= (1.0 - quality_weight) + quality_weight * illum[v]
+        blended[v] = n
     total = sum(blended.values())
     if total <= 0:
         return {v: 0.0 for v in domain}
@@ -282,10 +445,11 @@ def _blended_share(cov: AxisCoverage, domain: Sequence[str]) -> dict[str, float]
 
 
 def _rank_by_deficit(
-    cov: AxisCoverage, domain: Sequence[str], seed: int
+    cov: AxisCoverage, domain: Sequence[str], seed: int, quality_weight: float = 0.0,
+    stat: str = "mean",
 ) -> list[tuple[str, float]]:
     target = 1.0 / len(domain)
-    share = _blended_share(cov, domain)
+    share = _blended_share(cov, domain, quality_weight, stat)
     scored = [(v, target - share[v]) for v in domain]
     # Deterministic tie-break: hash of (seed, axis, value), never dict/insertion order.
     scored.sort(key=lambda vs: (-vs[1], _stable_key(seed, cov.axis, vs[0])))
@@ -351,11 +515,12 @@ def select_cells(
     cells: list[dict[str, str]] = [{} for _ in range(n)]
     for axis in sorted(dom):
         values = dom[axis]
-        ranked = [v for v, _ in _rank_by_deficit(report.axes[axis], values, eff_seed)]
+        ranked = [v for v, _ in _rank_by_deficit(
+            report.axes[axis], values, eff_seed, scfg.quality_weight, scfg.quality_stat)]
         if scfg.method == "entropy":
             cov = report.axes[axis]
             target = 1.0 / len(values)
-            share = _blended_share(cov, values)
+            share = _blended_share(cov, values, scfg.quality_weight, scfg.quality_stat)
             weights = [max(target - share[v], 0.0) + 1e-6 for v in values]
             rng = random.Random(_stable_key(eff_seed, axis, "entropy"))
             picks = rng.choices(values, weights=weights, k=n)
@@ -453,6 +618,8 @@ def receipt(
         "min_coverage": scfg.min_coverage,
         "recent_window": scfg.recent_window,
         "seed": scfg.seed,
+        "quality_weight": scfg.quality_weight,
+        "quality_stat": scfg.quality_stat,
         "fingerprint": report.fingerprint()[:16],
         "coverage": report.to_dict(),
         "cells": cells,

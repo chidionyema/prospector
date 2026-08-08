@@ -55,8 +55,8 @@ never marked `built` from intent. Nothing here is `proven`: proof is a daemon re
 | G3 | Kill-family denial constraints | `prospector/denylist.py`: mine the FULL kill corpus (not a 20-row window) into standing exhausted families (>=3 kills on `value_durability`/`incumbency`/`adversarial`, clustered by content-token Jaccard). Cached in `<store_dir>/exhausted_families.json`, refreshed when kills grow by 25. Appended to failure modes. Decay-proof: the window forgets, the denylist does not. Gate: `generation.denylist.enabled`. | built |
 | G4 | Persona widening + Verbalized Sampling | Descriptions for the 5 undescribed business personas that rendered as bare slugs (`generate.py` `_AUDIENCE_DESCRIPTIONS`, lifted to module level). `prospector/sampling.py`: each idea self-reports a `typicality` in [0,1] and at least `ceil(k * min_atypical_fraction)` of the batch must sit at or below `atypical_threshold`. The self-report is NEVER a filter — an atypical idea is not a better idea; the number is carried into `tags.typicality` purely so `diversity.batch_report` can measure whether the directive actually moved the batch. Gate: `generation.verbalized_sampling.enabled`. Differentiate-rewrite is folded into G8. | built |
 | G5 | Seed provenance + survival analysis | `tags.seed_kind` (`signal` \| `blue_sky`) stamped at the one place every accepted candidate passes through (`generate.py`, after the dedup/diversity passes — an earlier stamp survives on some paths and not others). Surfaced as `Candidate.seed_kind` and indexed as a `dossiers.seed_kind` column, same tag→property→column shape as `audience`. `tools/generation_survival.py` groups the index by any of seed_kind / audience / structural_form / ambition_tier / market and reports ruled-rows, pass rate, mean composite and modal kill gate. Zero-LLM, read-only. DEFER and provisional rows are excluded from the denominator; pre-migration rows stay `unknown` and are never redistributed. | built |
-| G7 | Coverage sampler V2 yield-weighting | `coverage.py` new method `yield`: cell deficit weighted by measured PASS-yield of the cell value (fertile-and-underfed first) with an exploration floor for never-tried values. Enable the sampler (`coverage_sampler.enabled: true`, method `yield`). | specified |
-| G8 | Critique->revise single pass | 2-3 parallel critiques -> ONE revision call, index-mapped (never title-matched), strictly non-lossy (identity fallback keeps every candidate). Replaces the retired refine-wave. Gate: `generation.critique_revise.enabled`. Never drops or kills a candidate — it only rewrites weak wedges/differentiation in place. | specified |
+| G7 | Coverage sampler illumination | `coverage.py`: a cell counts as covered to the degree its ideas are GOOD, not merely numerous — `credit(v) = count(v) * ((1-qw) + qw * stat(v)/best stat)`. Both per-cell statistics (`elite` = max composite, `mean_composite`) are measured always and appear in the receipt; only STEERING is gated, on `coverage_sampler.quality_weight` (0.0 = V2 exactly, including the seed). `quality_stat` defaults to `mean`, **not** the QD-canonical `elite`, on a live measurement — see the chunk E entry. Statistics come only from RULED, non-provisional rows. Note the polarity: this steers TOWARD the worst-performing cells, the opposite of G9. | built |
+| G8 | Critique->revise single pass | `prospector/critique.py`. ONE critique call (temperature 0.4) naming the weakest **composite axis** per idea, then ONE revision call (0.5) rewriting to remove that named weakness. Matching is by an injected integer `idx`, never by title — rewording the title is the point of a revision, so title-matching is structurally unusable. Strictly non-lossy **in code**: `len(out) == len(in)` is asserted and any index the model drops, duplicates or returns unparseably keeps its ORIGINAL. The axis brief renders from `config.yaml weights`, so a re-weighting moves the critic the same day it moves the scorer. Gate: `generation.critique_revise.enabled` (default off). When on it **replaces** the refine wave; it does not stack on it. | built |
 | G9 | Measured lane quotas | `prospector/lane_yield.py` + `run.py` `_lane_counts` mode `measured`: expected composite per RULED candidate, shrunk toward the global mean by a 20-pseudo-row prior, plus a uniform 20% exploration reserve and a floor of 1/lane. Apportioned largest-remainder to exactly the static total, so the mode changes where candidates land and never how many are generated. Gate: `generation.lane_quota_mode`, default `static`. **This is the one item that points a lever at the kill stats — read the guardrails in `lane_yield.py`'s docstring before enabling it.** | built |
 
 ## Status ledger
@@ -122,6 +122,128 @@ never marked `built` from intent. Nothing here is `proven`: proof is a daemon re
 
   `unknown` is the 976 pre-migration rows, which stay unattributed by design — inferring
   their provenance from `created_at` would manufacture data.
+
+### Chunk D — G8 critique -> revise (commit TBD)
+
+* **The premise this doc shipped was wrong, and checking it changed the design.** The G8 row
+  above previously said the pass "replaces the retired refine-wave". `_refine_wave` is not
+  retired: `prospector/generate.py:408` is live, batched, and was *fixed* on 2026-07-02, not
+  removed. So G8 is not filling a hole; it is replacing a pass that already runs.
+
+* **The actual defect, found by reading the prompt the live pass uses.**
+  `prompts/refine.md` was five lines and said, verbatim, **"Drop the weak/obvious ones."**
+  `prompts/refine_system.md` carried a section headed **"THE KILL LIST (Ideas to drop)"**.
+  The CODE was made non-lossy after the 2026-07-02 incident; the PROMPT never was. The way
+  that contradiction resolves is the bug: an idea the analyst decides to drop is simply not
+  returned, and the non-lossy guarantee then passes it through **unrefined**. Refinement was
+  therefore *anti-targeted* — the ideas judged weakest received exactly zero improvement.
+  Both prompt files are rewritten in this chunk to repair rather than remove, which is a
+  behavioural change on the DEFAULT path (the only non-golden-safe change in the programme)
+  and is justified by it bringing the prompt into line with a hard invariant the code has
+  enforced since 2026-07-02.
+
+* **The second defect: the refine prompt never mentioned the scoring axes.** Given that
+  `min_composite` is the modal kill gate in 8 of 9 persona cells (chunk C's measurement
+  above), the pass meant to raise an idea's ceiling was blind to what determines that
+  ceiling. `critique._axes_brief` renders the axes and weights from `cfg.weights`,
+  heaviest-first, so the critic cannot drift from the scorer — pinned by
+  `test_a_reweighting_changes_the_brief_without_a_code_change`.
+
+* **ONE round, and it replaces rather than stacks.** arXiv:2507.08350 finds the gain is in
+  the first critique-revise round and that further rounds regress toward the model's own
+  priors. Stacking refine-then-critique would also re-introduce the anti-targeting above,
+  so `_refine_wave` returns early when the gate is on
+  (`test_the_gate_on_replaces_the_refine_pass_rather_than_stacking_on_it`).
+
+* **Thin candidates are now included.** The `< 50 chars` skip was a heuristic for a pass that
+  could drop things; a two-word candidate is the clearest case for a critique. Under the gate
+  they are critiqued; under the default path the existing skip is untouched.
+
+* Cost, MEASURED rather than reasoned (`tools/experiments/g_generation_ab.py --fixture`,
+  1 signal x 1 repeat, k=6): baseline `{generate: 6}` = 6 calls per wave, G8 arm
+  `{generate: 6, critique: 1, revise: 1}` = 8. So the honest figure on the SHIPPED config
+  is **+2 calls per wave, not +1**: the earlier "+1 (1 -> 2)" assumed the refine call it
+  replaces was being paid, and `config.yaml:730` sets `refinement_enabled: false`, so it
+  is not. Where refinement IS enabled the delta is +1. No verdict, retrieval or gate is
+  touched either way.
+
+* **G8 was a DEAD LEVER until this measurement.** Its gate sat after the
+  `refinement_enabled` early return in `_refine_wave`, so on the only configuration that
+  actually runs, critique->revise could never fire. Every unit test missed it because
+  every one of them set `refinement_enabled: True`. The gate now precedes that return,
+  on the reasoning that the two flags name different mechanisms — `refinement_enabled`
+  is a judgement about the lossy refine pass, not a standing ban on improving a draft —
+  and `critique_revise.enabled` remains its own explicit opt-in, default off. Pinned by
+  `test_g8_still_fires_when_the_old_refine_pass_is_switched_off` and its converse.
+  The general lesson is the one already in memory as `rsi-tuned-a-lever-with-no-authority`:
+  measure a lever's AUTHORITY before measuring its effect.
+
+* Receipts: `ruff check prospector tools tests` -> `All checks passed!`;
+  `pytest tests/unit/test_critique_revise.py tests/invariants/test_house_voice.py
+  tests/unit/test_gen_quality_regression.py -q` -> `44 passed`. Full-suite receipt in the
+  commit message.
+
+* **Not proven.** Nothing in this chunk has a daemon receipt. `enabled: false` is the honest
+  default; the milestone that would change the status to `proven` is a live tick emitting
+  `store/generation_metrics.jsonl` with distinct-k measured gate-on vs gate-off.
+
+### Chunk E — G7 coverage illumination (commit TBD)
+
+The premise the row in the table used to carry was PASS-yield weighting: feed the cells that
+already pass. That is a pass-rate lever, which this programme is barred from building, and it
+is also the wrong direction — the generator cannot learn anything from a cell it stops
+attempting. What shipped steers the OPPOSITE way: a cell whose ideas score badly is treated as
+*under*-covered however many rows it has, so the sampler spends more attempts there, not fewer.
+
+The justification is that a row count cannot tell a barren cell from a badly-attempted one,
+and this repo has already been wrong about exactly that once: `smb`'s modal kill gate turned
+out to be `moat_ungrounded`, a retrieval outcome, not a verdict on the segment.
+
+* Mechanism: `credit(v) = count(v) * ((1 - qw) + qw * stat(v) / best_stat)`, `qw =
+  `coverage_sampler.quality_weight` (clamped to [0,1] — a typo must never stop generation).
+  At `qw = 0.0` the sampler is V2 byte-for-byte, including `fingerprint()`: the elites are
+  deliberately NOT hashed in, so turning measurement on cannot silently reseed the plan.
+
+* Both statistics are MEASURED always and both appear in the receipt (`elite`, `ruled`,
+  `mean_composite`); only STEERING is gated. Statistics come only from ruled, non-provisional
+  rows (`decision IN ('pass','kill')`, `provisional = 0`) — a provisional row is by definition
+  a verdict we do not trust, and a `defer` is a row we never ruled at all. A NULL composite is
+  absent, never zero.
+
+* **`quality_stat` defaults to `mean`, not to the QD-canonical `elite`, on a measurement**
+  (live index, 1,789 rows, 2026-08-08, cells with n >= 30):
+
+  ```
+  ambition_tier   max: 3.050-3.550 = 1.16x    mean: 0.852-2.179 = 2.56x
+  audience        max: 2.950-3.550 = 1.20x    mean: 0.842-1.437 = 1.71x
+  ```
+
+  Shipping `elite` alone would have been a lever with no authority: illumination lands in
+  0.77-1.00 for every cell, so a weight of 1.0 barely reorders anything. The cause is
+  structural, not a property of this snapshot — the maximum is an extreme order statistic and
+  has converged over 40-110 samples per cell. `elite` is kept selectable because on a sparse
+  or newly-split axis it has not converged and the max is then the more honest signal.
+
+* Silence is not evidence: a cell value that has never been ruled gets illumination 1.0 (no
+  penalty for being new), and if no cell has a positive statistic the whole weight goes inert
+  rather than dividing by zero.
+
+* Backward compatible on the index: `_table_columns()` PRAGMA-checks for
+  `composite`/`provisional`/`decision`, so an index predating them is still MEASURED for
+  coverage instead of refusing to measure.
+
+* Receipts: `ruff check prospector tools tests` -> `All checks passed!`;
+  `pytest tests/unit/test_coverage_illumination.py tests/unit/test_coverage.py -q` ->
+  `50 passed`. Full-suite receipt in the commit message.
+
+* The collection failure this chunk caused, recorded because the class of mistake will recur:
+  the two new keys were rejected by the `coverage_sampler` allow-list in
+  `prospector/config.py:349`, which every targeted test missed because targeted tests build
+  their own fixture config and never load `config.yaml`. **A new config key is not shipped
+  until something loads the REAL `config.yaml`.**
+
+* **Not proven.** `quality_weight: 0.0` ships inert. The milestone is a live sampler run with
+  the weight above zero and the resulting cell plan compared against the V2 plan.
 
 ## What is deliberately NOT here
 

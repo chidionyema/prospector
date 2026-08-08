@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 from .config import Config
 from .coverage import plan_cells
+from .critique import critique_revise
 from .landscape import incumbent_brief
 from .models import Candidate
 from .operator import Operator
@@ -411,7 +412,34 @@ def generate(
         Skips structurally-thin candidates (title+one_liner < 50 chars) —
         refinement won't help them survive the moat.
         """
-        if not candidates or not gen_cfg.get("refinement_enabled", True):
+        if not candidates:
+            return candidates
+
+        # G8: when critique->revise is on it REPLACES this pass rather than running beside it.
+        # Two reasons it must replace and not stack. The refine prompt still instructs the
+        # model to "Drop the weak/obvious ones" (prompts/refine.md) and carries a "KILL LIST
+        # (Ideas to drop)" section, which the code's non-lossy guarantee below converts into
+        # "the weakest ideas are the ones that receive no improvement" — running it before a
+        # critique pass would re-introduce exactly the anti-targeting G8 exists to remove. And
+        # arXiv:2507.08350 finds the gain is in ONE critique-revise round; stacking two
+        # rewrite passes regresses toward the model's own priors.
+        # It is given the FULL wave, thin candidates included: "too short to be worth
+        # refining" was a heuristic for a pass that could drop things, and a two-line
+        # candidate is precisely one whose ceiling a critique can raise.
+        #
+        # It is checked BEFORE `refinement_enabled`, and that ordering is load-bearing.
+        # `config.yaml:730` ships `refinement_enabled: false`, so behind that switch this
+        # gate was unreachable — G8 was a dead lever on the only configuration that runs.
+        # The two flags name different mechanisms: `refinement_enabled` turns off the
+        # lossy refine pass, which is a judgement about THAT pass, not a standing ban on
+        # ever improving a draft. `critique_revise.enabled` is its own explicit opt-in and
+        # defaults off, so nothing turns on by surprise. Found by the A/B fixture
+        # (`tools/experiments/g_generation_ab.py`), which measured the G8 arm costing
+        # exactly what baseline cost.
+        if (gen_cfg.get("critique_revise", {}) or {}).get("enabled", False):
+            return critique_revise(candidates, _gen, cfg, lane_directive)
+
+        if not gen_cfg.get("refinement_enabled", True):
             return candidates
 
         # Split: thin candidates return unchanged (refinement can't help them),

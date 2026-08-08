@@ -826,6 +826,26 @@ generation:
   # that would revive it.
   lane_quota_mode: static          # static | measured
   lane_exploration_reserve: 0.2    # share of the batch split uniformly regardless of value
+  # G8 critique -> revise. REPLACES the single refine pass with two calls: one that writes a
+  # critique naming the weakest COMPOSITE AXIS per idea, one that rewrites the idea to remove
+  # that named weakness. The rationale is measured, not assumed: `min_composite` is the modal
+  # kill gate in 8 of 9 persona cells (tools/generation_survival.py, 2026-08-08) — these ideas
+  # clear the hard gates and then score too low — while the refine prompt never mentioned the
+  # scoring axes at all. The axes and their weights are rendered from `weights` below, so the
+  # critic cannot drift from the scorer.
+  #
+  # COST: one extra generation call per wave (1 -> 2). Nothing else changes; no verdict, no
+  # retrieval and no gate is touched, and the pass stays non-lossy in CODE (prospector/
+  # critique.py asserts len(out) == len(in) and falls back per-index to the original).
+  #
+  # ONE round, deliberately: arXiv:2507.08350 finds the gain is in the first critique-revise
+  # round and that further rounds regress toward the model's own priors.
+  #
+  # OFF by default: it doubles the generation call count per wave, and nothing on this branch
+  # has a daemon receipt yet. Turn it on with a distinct-k A/B in hand, not on the strength of
+  # the argument above.
+  critique_revise:
+    enabled: false
   controller:
     killrate_window: 50
     exploration_min: 0.2
@@ -1139,6 +1159,27 @@ coverage_sampler:
   recent_window: 200         # rows of recent-candidate history that count as "recent"
   min_coverage: 0.25         # an axis below this fraction populated cannot drive sampling
   seed: 0                    # a sampler you cannot replay is not a measurement
+  # G7 illumination weight. 0.0 = V2 exactly: elites are measured and appear in the receipt,
+  # but they do not steer, and the plan is byte-identical including the seed. Above 0 a
+  # value's rows are discounted by how good its BEST ruled composite is, so a cell attempted
+  # a hundred times that never produced anything good stops counting as covered.
+  #
+  # Read the polarity before turning this up: it steers generation TOWARD the cells with the
+  # worst results, which is the opposite direction to G9 and costs pass rate in the short
+  # run. That is the point. A barren cell and a badly-attempted cell are indistinguishable in
+  # a row count, and this repo has already been wrong about one (chunk C read `smb` as weak
+  # generation when its modal kill gate was `moat_ungrounded`, a retrieval outcome).
+  quality_weight: 0.0        # [0,1]; clamped, never raises — a typo must not stop generation
+  # Which per-cell statistic the weight acts on. `mean` is the default even though `elite`
+  # (the max) is the QD-canonical choice, because the elite was MEASURED on the live index
+  # (1,789 rows, 2026-08-08, cells with n>=30) and barely discriminates:
+  #     ambition_tier   max spread 1.16x   mean spread 2.56x
+  #     audience        max spread 1.20x   mean spread 1.71x
+  # The maximum is an extreme order statistic and over 40-110 samples per cell it has already
+  # converged to the same value everywhere. `elite` stays selectable because it is right for
+  # the regime MAP-Elites assumes — an archive keeping only a cell's best occupant — which is
+  # not this pipeline, where every candidate is verified and scored.
+  quality_stat: mean         # mean | elite
 
 # V4 — meta-shape monitor. Embeds catalogue one-liners with the LOCAL ollama model and
 # alerts when one cluster exceeds a share of the catalogue. This is what turns "78 niches,

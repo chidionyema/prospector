@@ -349,6 +349,9 @@ _BLOCK_KEYS: dict[str, frozenset[str]] = {
     "coverage_sampler": frozenset({
         "enabled", "axes", "method", "unknown_policy", "recent_window",
         "min_coverage", "seed",
+        # G7 illumination. Both are steering-only: at quality_weight 0.0 the sampler is
+        # V2 byte-for-byte, so a config that omits them is not a config that lost a feature.
+        "quality_weight", "quality_stat",
     }),
     # V4 — nightly meta-shape monitor: "78 niches, one shape" becomes a measured number.
     "meta_shape_monitor": frozenset({
