@@ -125,14 +125,20 @@ describe('Design contract — global tokens (globals.css)', () => {
     expect(css).not.toMatch(/--text-small:/);
   });
 
-  it('sets H2 at 24px / weight 600 / line-height 1.3', () => {
+  // 1.2/520 and 1.55 are not drift, they are the numbers SITE_SPEC_PROGRAM.md's type table
+  // declares (`--type-h2` 1.5/1.2 at 520, `--type-body` 1.0/1.55 at 400). This test asserted the
+  // pre-§3 1.3/600 and 1.6 and was suspended before §3 landed, so it never saw the new scale; it
+  // then failed on un-suspension reading as a redesign regression. The trailing `;` in each
+  // pattern is load-bearing: without it `1\.2` also matches a future `1.25`.
+  it('sets H2 at 24px / weight 520 / line-height 1.2', () => {
     expect(css).toMatch(/--text-h2:\s*1\.5rem/); // 24px
-    expect(css).toMatch(/--text-h2--line-height:\s*1\.3/);
+    expect(css).toMatch(/--text-h2--line-height:\s*1\.2;/);
+    expect(css).toMatch(/--text-h2--font-weight:\s*520;/);
   });
 
-  it('sets body at 16px / line-height 1.6', () => {
+  it('sets body at 16px / line-height 1.55', () => {
     expect(css).toMatch(/--text-body:\s*1rem/); // 16px
-    expect(css).toMatch(/--text-body--line-height:\s*1\.6/);
+    expect(css).toMatch(/--text-body--line-height:\s*1\.55;/);
   });
 
   it('sets metadata at 14px, and does not also set a weight', () => {
@@ -702,13 +708,19 @@ describe('Design contract — layout', () => {
   const layout = readSource('../components/marketing/MarketingLayout.tsx');
 
   it('principal content wrapper is bounded, and bounded in one place', () => {
-    // v2 required <=1200px (max-w-6xl). v3's shell is max-w-7xl (1280px), which is what the
-    // three-column shelf needs to show three cards at a readable width without the grid
-    // collapsing to two on a 1440 laptop. The contract that matters is not the exact number, it
-    // is that ONE constant sets it: an unbounded or per-page wrapper is how the header, the
-    // shelf and the footer end up on three different left edges.
+    // §3.4 sets the shell at 1200px with 24px gutters, and MarketingLayout.tsx ships
+    // `max-w-[1200px] px-6`. The contract that matters is not the exact number, it is that ONE
+    // constant sets it: an unbounded or per-page wrapper is how the header, the shelf and the
+    // footer end up on three different left edges.
+    //
+    // The trailing `\b` this pattern used to carry made the `[1200px]` alternative UNMATCHABLE:
+    // `\b` needs a word char on one side, and an arbitrary-value class ends in `]` followed by a
+    // space, both non-word. So the branch written to permit the shipped value could never fire,
+    // and the guard failed on the one layout it was updated to accept. A negative lookahead is
+    // the correct anchor here because it asserts on the ABSENCE of a continuation rather than on
+    // a character class.
     expect(layout, 'the shell width is a single named constant').toMatch(
-      /const SHELL = '[^']*\bmax-w-(6xl|7xl|\[1200px\])\b/,
+      /const SHELL = '[^']*\bmax-w-(?:6xl|7xl|\[1200px\])(?![\w-])/,
     );
     expect(page, 'pages must not re-declare their own wider wrapper').not.toMatch(
       /max-w-(screen|full|none)\b[^'"]*mx-auto/,

@@ -1637,7 +1637,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
           <div className="max-w-3xl">
             <p className="text-body font-semibold text-text">
               {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
-              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That's {RESEARCH_STATS.rejectRate}%.
+              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s {RESEARCH_STATS.rejectRate}%.
             </p>
             <p className="mt-2 max-w-[64ch] text-meta text-muted">
               {survivorsSummary(stats?.listed)} The other{' '}
