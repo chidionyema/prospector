@@ -357,3 +357,55 @@ for (const id of QUARANTINED_2026_07_31) {
     await expect(page.getByRole('button', { name: /instant access/i })).toHaveCount(0);
   });
 }
+
+/**
+ * REACHING the filter, as opposed to where the filter happens to sit.
+ *
+ * History this pins (all measured on prod, 2026-08-08, Playwright): the three-question router was
+ * moved to the foot of the shelf, which put it at y=4054 on a 1280x800 desktop -- 5.1 screens down,
+ * past all 53 cards -- and y=4882 on a 390px phone. Before that it was at the top, where it pushed
+ * the first card 500px below the fold and broke the fold test above. Every fix was a MOVE, and each
+ * move traded one reader's problem for another's, because reachability was being expressed as a
+ * position and a position can only serve the reader standing at it.
+ *
+ * So these assert the property, not the coordinate: the controls are reachable from anywhere via a
+ * pinned trigger, and the router is not duplicated when that trigger opens it. No absolute y is
+ * asserted, because the catalogue grows and the page gets longer -- which is exactly the additive
+ * drift that buried it the first time.
+ */
+const FAB = '[data-testid="filter-fab"]';
+
+test('the filter is reachable from the foot of the shelf without scrolling back', async ({ page }) => {
+  await page.goto('/');
+
+  // Nothing pinned before the reader has met the controls: a "narrow it down" button on a page
+  // where no product has been seen yet is the control-panel-first defect in a smaller box.
+  await expect(page.locator(FAB)).toHaveCount(0);
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.locator(FAB)).toBeVisible();
+
+  await page.locator(FAB).click();
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+  // The trigger hides while the thing it opens is open, or it sits on top of its own sheet.
+  await expect(page.locator(FAB)).toBeHidden();
+});
+
+test('the router is mounted exactly once when the filter sheet is open', async ({ page }) => {
+  // The page renders the router inline AND in the sheet, and the inline one unmounts while the
+  // sheet is open. Two mounted routers would be two wizard positions for one filter state, and
+  // would double every selector matching on this copy -- the failure the `shelfControls` note in
+  // pages/index.tsx calls "two sources of truth".
+  const ROUTER_COPY = 'Show me packs I could actually run';
+  await page.goto('/');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.locator(FAB).click();
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+  const instances = await page.evaluate(
+    (copy) => document.body.innerText.split(copy).length - 1,
+    ROUTER_COPY,
+  );
+  expect(instances).toBe(1);
+});
