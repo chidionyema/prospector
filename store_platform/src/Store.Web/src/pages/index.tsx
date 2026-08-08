@@ -1822,21 +1822,17 @@ export default function Home({ packs, stats, initialState, market, currency, per
               line is not here because the proof strip above the shelf already carries it -- this
               sentence is the SHOP intro, not the FILTER intro. */}
           <h2 className="text-h2 font-semibold text-text">What survived</h2>
-          <p className="mt-1.5 hidden max-w-[60ch] text-meta text-muted sm:block">
-            {/* COUNTED, never typed. This line shipped a hand-written "8" while the same file
-                renders `{PACK_CONTENTS.length}` for the identical fact ~640 lines up, and
-                `PACK_CONTENTS` is pinned to the engine's own `BUNDLE_FILES` by
-                `components/marketing/__tests__/packContents.test.ts`. The two would diverge the
-                day the bundle changes, and one page would print both numbers -- which is exactly
-                the drift recorded in `lib/faqContent.ts` ("it said four while the bundle had
-                grown to eight"). */}
-            Every pack is the same {PACK_CONTENTS.length} documents. Price follows the size of the
-            opportunity, not the size of the download.{' '}
-            <Link href="/pricing" className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover">
-              Why prices differ
-            </Link>
-            .
-          </p>
+          {/* The pricing sentence that used to sit here is GONE, and its removal is the fix for a
+              measured defect rather than a trim for length. It was `hidden sm:block`, so from
+              640px up the page stated one fact twice, ~14px apart, under the same heading, with
+              the same "Why prices differ" link to the same /pricing page: this paragraph, then
+              `CatalogBrowser`'s at :1107. Measured on production 2026-08-08 at 1440x900 -- both
+              rendered; at 360 only :1107 did, which is why a phone-only read never showed it.
+
+              :1107 is the copy that survives, not this one, because SITE_SPEC_PROGRAM.md 6.1
+              pins its exact wording ("Same 8 documents in every pack. Bigger opportunity, higher
+              price.") and it is the one a phone already sees. Site spec 5 is the rule broken:
+              say each thing once, sitewide. Twice on ONE screen is the loudest version of it. */}
         </div>
 
         <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} />
