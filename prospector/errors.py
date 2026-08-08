@@ -18,11 +18,22 @@ class ProviderExhaustedError(RuntimeError):
 
     Carries the provider name so the fallback layer can log which brain/search
     backend retired and which one took over.
+
+    `retry_after_s` is the bench window when the RAISER already knows it exactly, and it
+    outranks every text-derived guess. The alternative — writing the reset into the message
+    and re-parsing it downstream — was measured failing on 2026-08-08: the usage-wall preflight
+    formatted a known 14-minute reset as "capacity returns 2026-08-08 22:37:45 (14.0 min)",
+    `limit_window_seconds` returned None on that prose, and `claude_cli` took the 1h
+    `DEFAULT_EXHAUSTION_S` instead. The moat sat benched for 46 minutes it had no reason to,
+    every ruling in that window fell to the emergency tail and came back `provisional`, and
+    nothing could publish. A number that is known must never be re-derived from prose.
     """
 
-    def __init__(self, message: str, *, provider: str = "") -> None:
+    def __init__(self, message: str, *, provider: str = "",
+                 retry_after_s: Optional[float] = None) -> None:
         super().__init__(message)
         self.provider = provider
+        self.retry_after_s = retry_after_s
 
 
 class FixtureMiss(RuntimeError):
