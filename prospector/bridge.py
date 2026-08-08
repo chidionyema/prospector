@@ -183,6 +183,28 @@ BUNDLE_FILES = (
     "QA_Report.md",
 )
 
+# Files a bundle MAY additionally contain. Bonus, never contract: a missing one must not block a
+# listing, which is exactly why they sit outside BUNDLE_FILES and outside `audit_bundle`.
+#
+# The registry exists because that deliberate blindness went unmeasured for months. `audit_bundle`
+# iterates BUNDLE_FILES asking "did it arrive?", so an entry in NEITHER list is invisible to it by
+# construction — and `tests/unit/test_bundle_index_html.py` pins that blindness on purpose. Nothing
+# ever compared the written archive against what the shop says is inside it, so the storefront read
+# "8 files" while (measured 2026-08-08, 45 live packs) 33 bundles held nine entries or ten.
+#
+# Declaring them converts a silent extra into a failing test: `undeclared_bundle_entries` names
+# anything shipped that neither list claims, so adding a third bonus file forces a decision about
+# the buyer-facing count instead of quietly making it false again.
+#
+# "manifest.jsonld" is duplicated from `pack_manifest.MANIFEST_FILENAME` rather than imported —
+# pack_manifest is imported lazily inside `_create_bundle` to keep this module's import graph flat,
+# and a module-level import here would reverse that. The duplication is pinned by
+# `tests/unit/test_bundle_declared_entries.py`, so it cannot drift silently.
+BUNDLE_BONUS_FILES = (
+    "index.html",       # the rendered reader (pack_html.py)
+    "manifest.jsonld",  # the machine-readable half (pack_manifest.MANIFEST_FILENAME)
+)
+
 # Human-readable section titles for the in-bundle index.html reading experience
 # (see pack_html.py). Mirrors the `title` field of store_platform's PackContents.tsx for the
 # same filenames — kept as a plain dict rather than imported (that file is TypeScript); a
@@ -224,6 +246,34 @@ def audit_bundle(zip_path: str) -> tuple[list[str], list[str]]:
         if f in written and written[f] < _MIN_BUNDLE_ENTRY_BYTES
     ]
     return missing, stubs
+
+
+def undeclared_bundle_entries(zip_path: str) -> list[str]:
+    """Entries a written bundle contains that neither BUNDLE_FILES nor BUNDLE_BONUS_FILES claims.
+
+    `audit_bundle` cannot answer this and is not meant to: it iterates BUNDLE_FILES asking "did it
+    arrive?", so anything in neither list is invisible to it. This function iterates the ARCHIVE
+    instead — the only direction in which an unexpected file can be seen at all.
+
+    Sorted names, so a log line is stable; empty means every entry is a promised deliverable or a
+    declared bonus.
+
+    Deliberately NOT wired into `is_listed`. An extra file is a claim problem (the storefront may
+    be counting wrong), never a fulfilment defect: the buyer received everything promised plus
+    more. Delisting a complete, paid pack over a surplus file would be a worse failure than the
+    inaccuracy it protects against, so this informs a human and a test, and gates nothing.
+
+    An unreadable or absent zip yields [] rather than raising, matching `audit_bundle`'s contract:
+    this runs on the register-unlisted retry path, and a diagnostic that throws takes down the
+    thing it exists to observe. "Missing zip" is already `audit_bundle`'s answer to give.
+    """
+    try:
+        with zipfile.ZipFile(zip_path) as check:
+            names = [i.filename for i in check.infolist()]
+    except (OSError, zipfile.BadZipFile):
+        return []
+    declared = set(BUNDLE_FILES) | set(BUNDLE_BONUS_FILES)
+    return sorted(n for n in names if n not in declared)
 
 
 def _held_back_md(artifact_label: str) -> str:
@@ -1270,6 +1320,18 @@ class EngineBridge:
                 logger.error(
                     f"EngineBridge: bundle {candidate_id} is structurally incomplete "
                     f"(missing={gaps or '-'}, stubs={stubs or '-'}) — registering UNLISTED"
+                )
+
+            # The other direction: not "did the promised files arrive" but "did anything else".
+            # Warning, not a gate — see `undeclared_bundle_entries`. The buyer is not short-changed
+            # by a surplus file; the SHOP is, if its count still says otherwise.
+            undeclared = undeclared_bundle_entries(zip_path)
+            if undeclared:
+                logger.warning(
+                    f"EngineBridge: bundle {candidate_id} ships {undeclared}, declared in neither "
+                    f"BUNDLE_FILES nor BUNDLE_BONUS_FILES. Listability is unaffected. Add it to "
+                    f"BUNDLE_BONUS_FILES, and re-read PackContents.tsx: the count beside the list "
+                    f"describes DELIVERABLES, and it must not become a claim about the archive."
                 )
 
             return zip_path
