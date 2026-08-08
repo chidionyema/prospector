@@ -145,8 +145,16 @@ export function PackContentsSection({
         <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
           <Icon name="download" size={14} className="flex-none text-subtle" />
           <span className="font-mono text-caption text-text">your pack/</span>
+          {/* "documents", not "files". `PACK_CONTENTS` is the eight advertised DELIVERABLES, and
+              the drift test pins it to `BUNDLE_FILES`. But the zip is not eight entries: bridge.py
+              also writes `index.html` (a rendered reader, pack_html.py) and `manifest.jsonld`,
+              deliberately outside BUNDLE_FILES so they do not trip that test -- measured 2026-08-08
+              across the 45 packs then live, 33 carry the reader and 19 the manifest, and entry
+              counts run 8 (12 packs), 9 (14), 10 (19), so most buyers count nine or ten entries
+              after being told eight. "Files" is a claim about the archive and it is false;
+              "documents" is a claim about the deliverables and it is exactly what this list is. */}
           <span className="ml-auto font-mono text-caption text-subtle">
-            {PACK_CONTENTS.length} files
+            {PACK_CONTENTS.length} documents
           </span>
         </div>
         <ul className="list-none p-0">
@@ -200,8 +208,8 @@ export function PackContentsSection({
           what you are buying. */}
       <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-[62ch] text-meta text-muted">
-          <span className="font-medium text-text">{PACK_CONTENTS.length} plain-text files in a zip,
-          5,000+ words.</span>{' '}
+          <span className="font-medium text-text">{PACK_CONTENTS.length} plain-text documents in a
+          zip, 5,000+ words.</span>{' '}
           Yours to keep, edit, or paste anywhere. No login, no subscription.
         </p>
         <span className="inline-flex flex-none items-center gap-2 text-meta font-medium text-text">
