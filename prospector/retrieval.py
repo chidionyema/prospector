@@ -148,6 +148,31 @@ def _get_timeout(url: str) -> float:
 _RESOLVE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
+# The two statuses that mean "this page is GONE", as distinct from "you are being walled".
+# Deliberately identical to pack_linter._DEAD_STATUSES: the retrieval-time drop and the
+# publish-time lint must agree by construction rather than by coincidence, or a URL passes
+# one gate and fails the other after the money rail has already been minted.
+_DEAD_STATUSES = frozenset({404, 410})
+
+
+def _confirm_dead(url: str, timeout: float) -> bool:
+    """True when a GET agrees with HEAD that the page is gone.
+
+    Some origins 404 a HEAD they would have served for a GET, and a false drop discards
+    real evidence. Only ever runs on the rare 404/410 path, so it costs one extra request
+    per dead citation, not per source.
+    """
+    req = urllib.request.Request(url, method="GET", headers={"User-Agent": _RESOLVE_UA})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            r.read(1)
+            return False
+    except urllib.error.HTTPError as e:
+        return e.code in _DEAD_STATUSES
+    except Exception:
+        return False  # no verdict is not a death certificate; keep the source
+
+
 def _resolve(url: str, timeout: Optional[float] = None) -> Optional[str]:
     """Confirm a grounding URL is REAL (not fabricated). Under web=True the CLI
     grounds on a live Google Search, so URLs come from Google's index, not model
@@ -169,9 +194,23 @@ def _resolve(url: str, timeout: Optional[float] = None) -> Optional[str]:
     try:
         with urllib.request.urlopen(req, timeout=to) as r:
             return r.url or url
-    except urllib.error.HTTPError:
-        # The server RESPONDED with an error code — the host is real (bot-wall,
-        # paywall, moved path). Under live grounding this is a real source; keep it.
+    except urllib.error.HTTPError as e:
+        # The server RESPONDED. Two different things hide behind that, and conflating them
+        # is what pinned the shelf:
+        #
+        #   401/403/429/5xx — a bot-wall, paywall or rate limit. The path is unjudgeable
+        #   from out here and the source is very likely real, so KEEP (the original rule;
+        #   en.wikipedia.org answers a bare HEAD with 403 and a browser GET with 200).
+        #
+        #   404/410 — NOT a bot-wall. No CDN answers a challenge with "Gone"; 410 is an
+        #   explicit permanent removal, and a 404 that survives the browser UA above is a
+        #   page that is genuinely missing. Keeping these stranded freshly-passed packs:
+        #   the dead URL rode all the way to publish, where pack_linter's identical
+        #   _DEAD_STATUSES check failed the whole pack — after the money rail had been
+        #   minted. Dropping one source here is cheap; keeping it cost the entire pack.
+        if e.code in _DEAD_STATUSES and _confirm_dead(url, to):
+            logger.warning("Dropping dead URL (HTTP %s)", e.code, extra={"url": url})
+            return None
         return url
     except Exception:
         # No HTTP response at all (DNS failure, connection refused, timeout):

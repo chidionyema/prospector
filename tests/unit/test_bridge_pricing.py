@@ -23,6 +23,8 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
+from sellable_pack import sellable_tags
+
 from prospector.bridge import EngineBridge
 from prospector.config import Config
 from prospector.models import Candidate, CheckResult, Decision, Dossier, ScoreResult, Verdict
@@ -42,15 +44,11 @@ def _dossier(candidate_id: str, tier: str = "", market: str = "",
         market=market,
     )
     candidate.candidate_id = candidate_id
-    candidate.tags = {
-        "artifacts": {
-            "build_spec": "Test build spec content",
-            "gtm_plan": "Test GTM plan content",
-            "ops_plan": "Test ops plan content",
-            "financial_model": "Test financial model content",
-        },
-        "marketing": [{"type": "listing_page", "copy": "# FuelClaim\n\nListing copy."}],
-    }
+    # A pack that genuinely clears the content gates. `publish_pass` decides completeness,
+    # the bundle audit and the Q2 lint BEFORE it mints, and skips provisioning entirely for a
+    # pack that cannot list — so a stub fixture here would exercise the no-mint path while
+    # claiming to test the minted price. See tests/unit/sellable_pack.py.
+    candidate.tags = sellable_tags()
     if tags_extra:
         candidate.tags.update(tags_extra)
 

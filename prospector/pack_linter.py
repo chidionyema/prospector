@@ -268,12 +268,22 @@ _DEAD_STATUSES = frozenset({404, 410})
 _URL_CACHE_TTL_S = 7 * 86400
 
 
+# A real browser UA, matching retrieval._RESOLVE_UA. Without one, Cloudflare and friends
+# 403 the probe on sight: 20 of the 21 citation warnings across the 2026-08-08 packs were
+# this artifact, including en.wikipedia.org, which serves 200 to a browser GET. Those were
+# only warnings, so they never blocked a pack — they just made the report unreadable.
+_PROBE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+
+
 def _probe_url(url: str, timeout_s: float) -> Tuple[Optional[int], str]:
     """(status, note). status None = could not determine (network, not the citation)."""
+    headers = {"User-Agent": _PROBE_UA}
     try:
-        resp = requests.head(url, timeout=timeout_s, allow_redirects=True)
+        resp = requests.head(url, timeout=timeout_s, allow_redirects=True, headers=headers)
         if resp.status_code in (405, 501):  # HEAD not allowed ≠ page gone
-            resp = requests.get(url, timeout=timeout_s, allow_redirects=True, stream=True)
+            resp = requests.get(url, timeout=timeout_s, allow_redirects=True, stream=True,
+                                headers=headers)
             resp.close()
         return resp.status_code, ""
     except requests.RequestException as exc:
