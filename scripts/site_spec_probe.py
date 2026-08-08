@@ -331,7 +331,20 @@ def probe_taxonomy() -> Result:
 
 
 def _globals_css() -> str:
-    return (WEB / "src" / "styles" / "globals.css").read_text(encoding="utf-8")
+    """The stylesheet layer, both files.
+
+    This used to read `globals.css` alone. On 2026-08-08 the token layer was split out into
+    `tokens.css` (`globals.css` line 2 imports it), and §3.5 immediately reported FAIL on a "120ms
+    micro duration" that had not changed at all -- `--transition-fast` had simply moved to
+    tokens.css:99. That is the probe measuring its own file list rather than the site, which is the
+    exact failure mode this script exists to prevent, so it reads the layer rather than a filename.
+    """
+    styles = WEB / "src" / "styles"
+    return "\n".join(
+        (styles / name).read_text(encoding="utf-8")
+        for name in ("globals.css", "tokens.css")
+        if (styles / name).exists()
+    )
 
 
 def probe_motion() -> Result:
@@ -367,6 +380,76 @@ def probe_view_transitions() -> Result:
     return Result(PASS, f"cross-doc view transitions live; {len(named)} file(s) name an element (LCP unmeasured)")
 
 
+def probe_design_system() -> Result:
+    """§3 — the design system, MINUS the dark palette (founder scope, 2026-08-08).
+
+    Every check here is falsifiable and reads the tree, replacing a hardcoded "superseded by brand
+    v3" that could never change no matter what shipped. It deliberately does NOT check the dark
+    palette: the founder retired it, so a probe that failed on `--ink-0` would report red for
+    conformance to a requirement that no longer exists.
+
+    What it cannot see: computed values. `--shadow-1: none` proves the declaration, not that the
+    last-declared wins over `@theme inline`'s self-reference -- that was verified once in a real
+    browser (Playwright, `getComputedStyle`, 0 elements with a box-shadow on five pages) and the
+    receipt is in the ledger. A probe that shells out to a browser would be a probe nobody runs.
+    """
+    styles = WEB / "src" / "styles"
+    tokens = styles / "tokens.css"
+    if not tokens.exists():
+        return Result(NOT_STARTED, "no src/styles/tokens.css")
+    css = _globals_css()
+    src = WEB / "src"
+
+    checks = {
+        "tokens.css is imported by globals.css": (
+            r'@import\s+"\./tokens\.css"', (styles / "globals.css").read_text(encoding="utf-8")),
+        "§3.2 Switzer self-hosted": (r"font-family:\s*'Switzer'", css),
+        "§3.2 Commit Mono self-hosted": (r"font-family:\s*'Commit Mono'", css),
+        "§3.4 radius 2px": (r"--radius-sm:\s*2px[\s\S]*?--radius-md:\s*2px", css),
+        "§3.4 no elevation": (r"--shadow-1:\s*none[\s\S]*?--shadow-2:\s*none", css),
+        "§3.1 accent is ink, not blue": (r"--accent:\s*var\(--text\)", css),
+    }
+    missing = [name for name, (pattern, hay) in checks.items()
+               if not re.search(pattern, hay, re.MULTILINE)]
+
+    # The scale is six steps, so the seventh has to be ABSENT -- an absence is asserted directly,
+    # not smuggled into the table above as a negative-lookahead regex nobody can read.
+    if re.search(r"--text-mega:", css):
+        missing.append("§3.2 --text-mega is a seventh step on a six-step scale")
+
+    # The fonts are only real if the files ship and Geist is GONE from the source. A next/font
+    # variable class sets the property on an element, which beats :root on every descendant -- so
+    # an unremoved import silently keeps rendering the old face while tokens.css looks correct.
+    fonts = WEB / "public" / "fonts"
+    woff = sorted(fonts.glob("*.woff2")) if fonts.exists() else []
+    if not woff:
+        missing.append("§3.2 no self-hosted font files in public/fonts")
+    # An IMPORT STATEMENT, not the string "next/font" -- _app.tsx carries a comment explaining why
+    # the import was deleted, and matching bare text failed the probe on its own documentation.
+    # (The same trap made the §6.1 open-items bullet look live: both hits were in comments
+    # recording the removal.) A probe that cannot tell code from prose reports the wrong colour.
+    if re.search(r"^\s*import\b[^\n]*next/font", (src / "pages" / "_app.tsx").read_text(encoding="utf-8"), re.M):
+        missing.append("§3.2 _app.tsx still imports next/font (element wins over :root)")
+
+    # §3.3: the six marks exist AND are used. A glyph set nothing imports is decoration.
+    glyph = src / "components" / "ui" / "Glyph.tsx"
+    if not glyph.exists():
+        missing.append("§3.3 no components/ui/Glyph.tsx")
+    else:
+        names = set(re.findall(r"name === '([a-z-]+)'", glyph.read_text(encoding="utf-8")))
+        if len(names) < 5:
+            missing.append(f"§3.3 only {len(names)} of the 5 marks drawn")
+        users = _run(["git", "grep", "-l", "<Glyph", "--", "src"], WEB)[1].split()
+        if len(users) < 5:
+            missing.append(f"§3.3 glyph set used by only {len(users)} surface(s)")
+
+    if missing:
+        return Result(FAIL, f"{len(missing)} §3 requirement(s) unmet", missing)
+    kb = sum(f.stat().st_size for f in woff) // 1024
+    return Result(PASS, f"tokens.css; Switzer+Commit Mono ({kb}KB); 2px; no shadows; "
+                        f"ink accent; 6 marks (dark palette retired by founder)")
+
+
 def probe_not_started(label: str):
     def _probe() -> Result:
         return Result(NOT_STARTED, label)
@@ -379,7 +462,7 @@ def probe_not_started(label: str):
 PROBES = {
     "1": ("Data integrity", probe_data_integrity),
     "2": ("Publish pass", probe_publish_pass),
-    "3": ("Design system", probe_not_started("superseded by brand v3 -- see ledger note")),
+    "3": ("Design system", probe_design_system),
     "4a": ("Source chip", probe_source_chip),
     "4b": ("QA row / glyph strip", probe_not_started("still per-surface; 5 QA-row shapes")),
     "3.5": ("Motion floor", probe_motion),
