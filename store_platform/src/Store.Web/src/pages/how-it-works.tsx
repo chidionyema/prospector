@@ -177,12 +177,18 @@ export default function HowItWorks() {
         <CheckSequence />
       </Section>
 
-      {/* B. The checks, as a stepped timeline */}
+      {/* B. The checks, as a stepped timeline.
+
+          Through the copy dictionary, NOT literals. Hardcoding the email's wording here orphaned
+          `sixChecksTitle` / `sixChecksDescription` in all three variants of `lib/copyConfig.ts`:
+          the A/B mechanism went dead for this section without the change saying so, and
+          `fixedCheckCount.test.ts`'s "every copy variant intros the timeline with a hedge" kept
+          passing over strings no page rendered any more. Variant a carries the email's wording. */}
       <Section
         bg="bg"
         width="6xl"
-        title="Six checks, in order. One hard fail and it stops."
-        intro="Some ideas face more checks; each pack page names its own. Every kill is logged with its reason, so the filter is auditable, not a black box."
+        title={variant.sixChecksTitle}
+        intro={variant.sixChecksDescription}
       >
         {/* THE AI DISCLOSURE, AND THIS PAGE OWNS IT.
             It was disclosed nowhere but clause 6 of the refund policy and, until 2026-08-07, a

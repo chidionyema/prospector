@@ -1661,18 +1661,34 @@ export default function Home({ packs, stats, initialState, market, currency, per
             The trade is taken at the level of the PARAGRAPH, not the heading: mobile gets the
             heading, desktop additionally gets the two sentences under it. A heading is ~30px and
             names the section; the paragraph is ~60px and repeats what the panel below the shelf
-            already says at every width. */}
+            already says at every width.
+
+            The copy rewrite cut the paragraph from 67 words to 22 and dropped `hidden sm:block`
+            with it, which reversed the split above while leaving this comment standing -- the code
+            and its stated reason disagreed. Restored, because shortening the sentence does not
+            answer the reason it is hidden: the redundancy against the panel below survives the
+            cut, and the measurement that set the split is on record while nothing measures the
+            new state. If mobile should get the paragraph, that is a fold measurement to take, not
+            a side effect of an edit to the wording. */}
         <div className="mb-4 sm:mb-6">
           {/* THE CATALOGUE INTRO (email §1).
               The email replaces the 67-word version with a 22-word line that does the whole job:
-              it states what every pack is (same 8 documents), why prices differ (opportunity size,
+              it states what every pack is (same `PACK_CONTENTS.length` documents, COUNTED not
+              typed -- see below), why prices differ (opportunity size,
               not download size), and where to read the longer version (/pricing). The kill-rate
               line is not here because the proof strip above the shelf already carries it -- this
               sentence is the SHOP intro, not the FILTER intro. */}
           <h2 className="text-h2 font-semibold text-text">What survived</h2>
-          <p className="mt-1.5 max-w-[60ch] text-meta text-muted">
-            Every pack is the same 8 documents. Price follows the size of the opportunity, not the
-            size of the download.{' '}
+          <p className="mt-1.5 hidden max-w-[60ch] text-meta text-muted sm:block">
+            {/* COUNTED, never typed. This line shipped a hand-written "8" while the same file
+                renders `{PACK_CONTENTS.length}` for the identical fact ~640 lines up, and
+                `PACK_CONTENTS` is pinned to the engine's own `BUNDLE_FILES` by
+                `components/marketing/__tests__/packContents.test.ts`. The two would diverge the
+                day the bundle changes, and one page would print both numbers -- which is exactly
+                the drift recorded in `lib/faqContent.ts` ("it said four while the bundle had
+                grown to eight"). */}
+            Every pack is the same {PACK_CONTENTS.length} documents. Price follows the size of the
+            opportunity, not the size of the download.{' '}
             <Link href="/pricing" className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover">
               Why prices differ
             </Link>

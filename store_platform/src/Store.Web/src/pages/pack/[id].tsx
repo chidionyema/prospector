@@ -241,6 +241,20 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
       ? `Survived all ${panelChecks.total} checks`
       : `${panelChecks.cleared} of ${panelChecks.total} checks cleared`;
 
+  // The same fact as `checksLine`, as a sentence, for the methodology disclosure further down.
+  //
+  // That disclosure shipped the literal "This one survived all 9." The denominator is
+  // lane-dependent, so a fixed 9 was false for 60 of the 63 packs measured on 2026-08-06
+  // (6/6 x40, 8/8 x15, 7/8 x4, 9/9 x3, 6/8 x1 -- see `__tests__/fixedCheckCount.test.ts`), and on
+  // the five 7/8 and 6/8 packs it claimed a clean sweep their own dossier refutes, on the page
+  // that asks for the money. Derived here for the reason `checksLine` above is derived: this page
+  // cannot know the denominator until it has read the pack.
+  const outcomeSentence = !panelChecks
+    ? 'This one cleared every check it faced.'
+    : panelChecks.cleared === panelChecks.total
+      ? `This one survived all ${panelChecks.total}.`
+      : `This one cleared ${panelChecks.cleared} of ${panelChecks.total}.`;
+
   // Shared checkout body, rendered in the desktop sticky card and the mobile purchase bar.
   // Deliberately an element VALUE, not a component defined during render: a component declared
   // inline is a new type on every render, so React unmounts and remounts the subtree and the
@@ -654,7 +668,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               </summary>
               <div className="mt-4">
                 <p className="text-meta text-muted">
-                  Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. This one survived all 9. Finding nothing is not the same as finding a green light; see how each check works on{' '}
+                  Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
                   <Link
                     href="/how-it-works"
                     className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover"
@@ -901,9 +915,16 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 <Icon name="verified" className="text-success" size={18} />
         <span className="text-caption font-medium text-subtle">The receipts</span>
               </div>
+              {/* The count is GUARDED, and the "open these" instruction belongs to the block below
+                  that actually renders the list. Unguarded, a pack with no `sourceCount` rendered
+                  " sources, each cited..."; and the instruction sat OUTSIDE the
+                  `openSources.length > 0` test below, so a pack with nothing openable printed
+                  "Open any of these 0 now." followed by nothing at all. The block below already
+                  gives the instruction once, against a list that exists. */}
               <p className="max-w-[60ch] text-meta leading-relaxed text-muted">
-                {pack.sourceCount} sources, each cited against the claim it supports. Open any of
-                these {Math.min(openSources.length, 4)} now. The rest are inside, in the QA report.
+                {typeof pack.sourceCount === 'number' && pack.sourceCount > 0
+                  ? `${pack.sourceCount} sources, each cited against the claim it supports.`
+                  : 'Every claim in this pack is cited against the source it rests on.'}
               </p>
 
               {/* The proof, not the promise. The paragraph above is a claim; these are the actual

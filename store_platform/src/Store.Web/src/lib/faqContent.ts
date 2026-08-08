@@ -82,6 +82,12 @@ export const FAQS: FaqItem[] = [
     answer: [
       'Yes. 14 days, full refund, no questions. Email ',
       { text: LEGAL.supportEmail, href: `mailto:${LEGAL.supportEmail}` },
+      // The route to the policy is not decoration. This is the answer a buyer reads BEFORE paying,
+      // and the rewrite that shortened it removed the only link from it to the terms that actually
+      // bind the refund. Brevity is the register; deleting the consumer's route to the terms is a
+      // different thing, and the segment list exists precisely so a link costs one line.
+      ', or read the full ',
+      { text: 'refund policy', href: '/refund' },
       '.',
     ],
   },
@@ -100,7 +106,11 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'Can I share or resell a pack?',
     answer: [
-      'It’s licensed to you. Build from it, edit it, quote it. Don’t republish or resell the pack itself.',
+      // Same reason as the refund answer: the licence question is answered in plain words, and the
+      // words are a summary of a document the reader is entitled to reach from here.
+      'It’s licensed to you. Build from it, edit it, quote it. Don’t republish or resell the pack itself. The full licence terms are in the ',
+      { text: 'Terms of Service', href: '/terms' },
+      '.',
     ],
   },
   { category: 'process',

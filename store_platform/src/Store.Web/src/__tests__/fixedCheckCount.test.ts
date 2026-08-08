@@ -77,7 +77,12 @@ const FORBIDDEN: { pattern: RegExp; why: string }[] = [
     why: 'promises a closed set of checks',
   },
   {
-    pattern: /\bsurvived\s+(six|seven|eight|nine|\d+)\s+(checks|gates)\b/i,
+    // The noun is OPTIONAL, and that is the whole point. The claim shipped on the pack template as
+    // "This one survived all 9." -- one word short of every pattern in this list, which is how a
+    // sentence false for 60 of the 63 measured packs reached the buying page with four green CI
+    // checks behind it. A fixed denominator is the defect whether or not the sentence names the
+    // thing it is counting.
+    pattern: /\bsurvived\s+(all\s+)?(six|seven|eight|nine|\d+)\b/i,
     why: 'states a per-pack count the engine varies per lane',
   },
   {
