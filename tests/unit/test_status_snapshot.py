@@ -164,20 +164,70 @@ def test_active_alerts_are_returned(tmp_path):
     assert snap["alerts"]["active"][0]["key"] == "zero_yield"
 
 
-def test_backlog_is_glob_counted(tmp_path):
-    """backlog is the count of deferred+provisional dossiers on disk."""
-    from prospector.scheduler.status import status_snapshot
+def test_backlog_counts_the_index_the_drain_works_from(tmp_path):
+    """Backlog is the index's two populations, with the drain's own exclusions.
 
+    Regression, measured 2026-08-08 on the live store: this counted `*.pass.json` as
+    "deferred" and `*.provisional.json` as "provisional", and reported **76 / 0** where the
+    index held **121 / 154**. `.pass.json` files are PASSES, and nothing is ever written as
+    `*.provisional.json` — `provisional` is a column. The test that pinned the old behaviour
+    invented a `c.provisional.json` fixture the engine never writes, so it stayed green while
+    the number the founder actually read was wrong.
+    """
+    import sqlite3
+    import types
+
+    from prospector.scheduler.status import status_snapshot
+    from prospector.store import Store
+
+    cfg = types.SimpleNamespace(store_dir=tmp_path)
+    store = Store(cfg)  # creates the schema, including the `tombstone` migration
+    rows = [
+        ("a", "defer", 0, None),      # plain defer
+        ("b", "defer", 0, None),
+        ("c", "pass", 1, None),       # provisional only
+        ("d", "defer", 1, None),      # BOTH — must not be counted twice in `total`
+        ("e", "kill", 0, None),       # terminal, never backlog
+        ("f", "defer", 0, "gone"),    # tombstoned: run.py:1414-1415 drops it from both
+    ]
+    with sqlite3.connect(store.db) as conn:
+        conn.executemany(
+            "INSERT INTO dossiers (candidate_id, decision, provisional, tombstone) "
+            "VALUES (?, ?, ?, ?)", rows)
+
+    # A decoy in exactly the shape the old implementation looked for. If the count moves,
+    # something is reading the filesystem again.
     d = tmp_path / "dossiers"
     d.mkdir(parents=True, exist_ok=True)
-    # Two pass.flag deferred, one provisional.kill
-    (d / "a.pass.json").write_text("{}")
-    (d / "b.pass.json").write_text("{}")
-    (d / "c.provisional.json").write_text("{}")
-    (d / "d.kill.json").write_text("{}")  # kills do NOT count as backlog
-    snap = status_snapshot(_cfg(tmp_path))
-    assert snap["backlog"]["deferred"] == 2
-    assert snap["backlog"]["provisional"] == 1
+    (d / "x.provisional.json").write_text("{}")
+    (d / "y.pass.json").write_text("{}")
+
+    for shape, probe in (("Path", cfg), ("str", types.SimpleNamespace(store_dir=str(tmp_path)))):
+        # BOTH caller shapes, because the two live callers disagree: the daemon passes a real
+        # Config (Path) and the Telegram cockpit passes `SimpleNamespace(store_dir=str(...))`
+        # (hermes-agent `gateway/operator_shell/prospector_now.py:290`). `store.py:71-72` calls
+        # `.mkdir()` on the raw attribute, so the str shape read "—" on the phone while the
+        # daemon read the truth — measured 2026-08-08 by rendering the real card.
+        snap = status_snapshot(probe)
+        assert snap["backlog"]["deferred"] == 3, f"{shape}: a, b, d — and NOT the tombstoned f"
+        assert snap["backlog"]["provisional"] == 2, f"{shape}: c and d"
+        assert snap["backlog"]["total"] == 4, f"{shape}: a, b, c, d — d is both, counted once"
+
+
+def test_backlog_is_none_not_zero_when_the_index_is_unreadable(tmp_path):
+    """An unreadable count must read as unknown. Zero is a claim the monitor cannot make."""
+    import types
+
+    from prospector.scheduler.status import status_snapshot
+
+    # A DIRECTORY where the sqlite index should be: `store.all()` raises OperationalError.
+    # The failure is isolated to the index on purpose — a bad `store_dir` makes
+    # `paths.scheduler_dir()` raise first, and that raise is load-bearing (the cockpit probes
+    # candidate repo paths by calling `status_snapshot` and catching). A str path is NOT a
+    # failure either; see the test above.
+    (tmp_path / "prospector.db").mkdir()
+    snap = status_snapshot(types.SimpleNamespace(store_dir=tmp_path))
+    assert snap["backlog"] == {"deferred": None, "provisional": None, "total": None}
 
 
 # ---------------------------------------------------------------------------

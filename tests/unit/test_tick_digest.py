@@ -86,6 +86,7 @@ def test_pusher_called_after_emit_tick_alerts(tmp_path, monkeypatch):
     (run_scheduled.py lines 822, 910, 933, 982, 1007, 1020). A grep proves the wiring."""
     import re
     from pathlib import Path
+
     from prospector.scheduler import run_scheduled as RS
     # Ask the imported module where it lives. A hardcoded absolute path here passed on
     # the machine that wrote it and failed everywhere else -- CI read it as
