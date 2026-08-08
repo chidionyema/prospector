@@ -3058,3 +3058,210 @@ Every new test is also non-vacuous by construction: `test_the_split_is_not_vacuo
 and `test_a_world_claim_is_never_absorbed_into_self_reference` fail on a build that classifies
 everything as self-referential, and `test_off_domain_says_nothing_rather_than_flagging_everything`
 fails on a meter that flags every axis.
+
+## 32. Getting past the "blocked on something that is not us" list (2026-08-08)
+
+Four items were carried as blocked on inputs outside this repo — daemon time, storefront traffic,
+sample size. Re-derived on disk, **three were not blocked on those things at all**, and the fourth is
+genuinely blocked but its quoted number cannot be re-derived. The one item genuinely owed (the
+E15/E17 matched pair) now has a mechanism rather than an intention, and the filed wrapper-vocabulary
+finding is answered and closed.
+
+### 32.1 E6 — the bar was answerable offline all along, and the answer is a KILL
+
+Filed as: *"shadow on since 2026-08-07, needs live daemon ticks to accumulate rows."* Two things
+were wrong with that framing.
+
+**The shadow route could never reach the bar.** It measures AGREEMENT with the LLM prescreen, but the
+LLM prescreen drops only **48/990 = 4.85%** of candidates — summed over the **95** records in
+`store/scheduler/batch_diagnostics.jsonl` that carry a `funnel` (generated 995, dedup_dropped 1,
+rejection_fastpath 4, prescreen_in 990, prescreened_out 48, novelty_selected 942, vetted 919; a
+single batch is 15 candidates, so no one record answers this). A prefilter that agrees with a filter
+which removes 4.85% cannot remove 20% of calls at any number of ticks.
+
+**The bar is about eventual OUTCOME, and outcomes are already on disk.** ">=20% of prescreen calls
+removed at no PASS loss" is a claim about which candidates would have been lost, and every candidate
+with a dossier already has its final decision. `tools/experiments/e6b_prefilter_pass_safety.py`
+replays the SHIPPED scorer (`prescreen_prefilter.PrescreenShadow`) over the corpus, labelling on the
+final decision and seeding no exemplars from the production log.
+
+Result over **1,789 candidates (79 PASS, 21 abstained)**:
+
+```
+  bar: remove >= 20% of prescreen calls, losing no PASS
+  SAFE (no pass, no defer lost): drop_rate=0.00% at threshold 0.0
+  SAFE (no pass lost, defers allowed): drop_rate=0.00% at threshold 0.0
+  VERDICT: FAILS_BAR
+```
+
+The failure is **structural, not marginal**. 82.56% of candidates score exactly 0.0, and the next
+observed score is 0.169:
+
+| threshold | dropped | PASS lost | PASS loss |
+|---|---|---|---|
+| 0.00000 | 0.00% | 0 | 0.0% |
+| 0.16892 | 82.56% | 50 | 63.3% |
+| 0.61000 | 98.77% | 79 | 100.0% |
+
+There is no 20% operating point in the distribution at all — the only available choices are drop
+nothing, or drop 82.6% and lose 50 of 79 passes. **E6 closes as a KILL on evidence rather than on
+waiting.** Recorded limits (in the receipts): the label is the final decision rather than `llm_keep`
+(an `llm_keep` replay is degenerate, since every dossier already survived prescreen); the population
+excludes the 4.85% the LLM drops, so the safe rate is a floor; `defer` is unruled; and this is a
+retrospective replay, not a live A/B.
+
+### 32.2 E5 — "41 batches/arm" is the requirement of the two axes that cannot move
+
+The 41 is `max()` across axes, and the per-axis numbers were in the receipt the whole time — in
+`batch_noise`, not `axes`:
+
+| axis | sd | `mde_normalised` (batch=15, 4000 trials) | `batches_for_target_mde` (0.10) |
+|---|---|---|---|
+| ambition_tier | 0.1613 | 0.3690 | **41** |
+| market | 0.1589 | 0.3635 | **40** |
+| audience | 0.0595 | 0.1361 | **6** |
+| structural_form | 0.0525 | 0.1201 | **5** |
+
+The two expensive axes are also the two with nothing to win: `market` has 2 distinct values at
+0.9905 coverage and `h_norm` 0.2037, and `ambition_tier` has 4. Restricted to the axes that can
+actually move, E5 needs **6 batches/arm (~12 batches)** plus flipping `coverage_sampler.enabled`,
+which is `false` on disk. **Blocked on a config flag and ~12 batches, not on 82.**
+
+### 32.3 E2 — not a sample-size problem, at any n
+
+§30.5's verdict was "needs 5,274 candidates; should not be scheduled". Re-derived, the diagnosis is
+different and the prescription does not follow: **persona is never stamped at all.**
+
+- `config.yaml:852` — `active_persona: ""`
+- `prospector/dossier.py:187` — `persona=cfg.active_persona` (the only write site)
+- `prospector/scheduler/run_scheduled.py:724` — `run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes)`, passing no persona, so every tick inherits the empty default
+
+On disk: `{'': 1473, '(none)': 315, 'shark': 1}` — and there are **three** configured personas
+(`academic`, `minimalist`, `shark`), not five as previously carried. The single `shark` row is a
+hand-run `--persona` invocation (`run.py:1067`).
+
+Every row the daemon has ever written therefore sits in **one arm**. No persona contrast is
+estimable at any n, and 5,274 more candidates of the same kind would not make it estimable.
+Unblocking E2 is a config default plus an arm rotation, then batches.
+
+### 32.4 L2 — the quoted number traces to a source comment, not a receipt (correction)
+
+**Correction to my own earlier claim in this session.** I first reported that the "172 price views /
+90 days" figure had no receipt anywhere on disk. That was wrong. It traces to
+`store_platform/src/Store.Web/src/components/cart/CartButton.tsx:45-46`, dated 2026-08-07:
+*"over a 90-day production window: price_viewed 172, checkout_completed 1, checkout_started ZERO"*.
+
+It remains unquotable as a current measurement, for three reasons that are not "no receipt":
+
+1. **A source comment is a note, not a receipt.** There is no query, export or dataset behind it.
+2. **It cannot be re-derived.** `api.mumchimp.com/health` and `/v1/listings` both return **404** as
+   measured now. The local `store_platform/src/Store.Api/store.db` is a dev artifact: `page_view` 24
+   (all 2026-08-01), and `price_viewed` / `checkout_started` / `checkout_completed` all **zero**.
+3. **The instrument has since changed.** The same comment records that `checkout_started` was ZERO —
+   a funnel with one completion and no starts — which is precisely why `CartButton.tsx:52` now emits
+   it per cart line. The 172 is a reading from before that fix.
+
+L2 stays genuinely traffic-blocked. The figure must not be quoted as a live number, and the probe
+now says so at the point of use.
+
+### 32.5 The wrapper-vocabulary finding is confounded, and does not survive adjustment — E18
+
+Filed and deliberately not acted on: a large share of shipped query bases lead with our packaging
+vocabulary (`solo`, `fixed-fee`, `done-for-you`) instead of a domain term. Promoted from a scratch
+script to `tools/experiments/e18_query_vocabulary_confound.py` so it is reproducible.
+
+Over **7,843 checks / 1,600 candidates**:
+
+- **prevalence:** 23.0% of checks lead with packaging vocabulary. (This is a *different statistic*
+  from the filed 31.2%, which was over k=6 query bases. Different denominators — they should not be
+  conflated.)
+- **naive, between-candidate:** mean_sources **2.37** (wrapper) vs **3.79** (domain); unverifiable
+  **80.51%** vs **61.27%** — large, and in the same direction on every check.
+- **design:** only **44 of 1,600 candidates (2.8%)** appear in both arms. The vocabulary travels with
+  the IDEA, so the naive contrast compares two populations of idea, not two ways of searching.
+- **doubly-adjusted** (residualised on `check_name`, then paired within candidate):
+
+| estimate | n | mean | 95% CI |
+|---|---|---|---|
+| d_sources | 44 | **+0.2184** | [-0.2094, +0.6462] |
+| d_unverifiable | 44 | **+0.0547** | [-0.0934, +0.2028] |
+
+Both intervals span zero, and **both point estimates carry the opposite sign to the naive
+association**. Verdict: **DO_NOT_ACT** — do not edit the query builder. §30.6 (E1) is just-measured
+evidence in this same programme that blind query surgery can be wrong-signed. The null is bounded
+and stated: n=44 pairs, observational, first-token detection only.
+
+### 32.6 A matched pair is now guaranteed by construction, not hoped for
+
+§31.4 recorded that E15 and E17 both reported `n_dossiers: 1597` under different fingerprints
+(`d97829ed7ea0bae0` @20:16:23Z vs `81d96e5387f7467a` @20:35:10Z). `corpus_fingerprint()` DETECTS
+that; it cannot prevent it.
+
+- `tools/experiments/_corpus.py` now resolves the corpus **per call** (`corpus_dir()`, `db_path()`,
+  `is_frozen()`) with `PROSPECTOR_CORPUS_DIR` / `PROSPECTOR_CORPUS_DB` overrides. Resolution is
+  per-call deliberately: a constant captured at import would ignore an override set afterwards, and
+  a constant that no longer describes what the code reads is this repo's "write-only field" trap.
+- `tools/experiments/_freeze_corpus.py` snapshots and **verifies**: fingerprint the live store, copy
+  with `copy2` (preserving the mtime and size the fingerprint hashes), fingerprint the snapshot, and
+  retry up to 3 times. It **raises rather than returning a torn snapshot** — a torn snapshot is worse
+  than none, because it looks frozen and is not. Freezing from inside an already-frozen shell pops
+  the overrides first, so it cannot re-copy the snapshot and report a meaningless perfect match.
+
+Verified: 1,611 dossiers, 79 MB, 6.7 s, `sha256=00fc2c965e68d1d3`, before == after. Receipts now
+carry `frozen`, so a number can never be mistaken for a live reading.
+
+**One failure worth recording from the first frozen run.** The three experiments were chained in one
+shell as `runner.py run E15 --all 2>&1 | tail -6`, and E15 exited after ~3 minutes without writing a
+receipt. The chain continued to E17 regardless, so the visible symptom was simply a missing file —
+the cause had been thrown away by `tail -6`, and the `;`-chaining meant a non-zero exit changed
+nothing. This is the repo's "captured-output guard hides a failure" trap in its exact shape, and it
+is why the re-run redirects the whole stream to a log rather than piping it. The cause of that
+particular exit is **unrecoverable** and is not claimed here; the re-run under the same frozen
+environment proceeded normally past the point where the first attempt died.
+
+### 32.7 The blocked list is now a probe, and it found five defects in itself
+
+`scripts/blocker_probe.py` prints, for every open item, the BAR, the value read off disk now, a
+verdict and the command that reproduces it. A row can only say BLOCKED if a number says so.
+
+It earned its place by exposing five defects **in itself** — recorded here because a tracking probe
+that misreports its own inputs is the same drift it exists to kill:
+
+1. it read a bar verdict straight out of receipts generated by a `--limit 200` **smoke run** — the
+   exact "truncate the evidence, then classify the truncation" failure. It now refuses any receipt
+   whose `_meta.argv` carries `--limit`.
+2. it looked for the per-axis batch requirement in `axes`, where it does not live, and printed
+   "per-axis need=run E5" while the receipt held the numbers.
+3. it derived "which personas are missing" by filtering its own `GROUP BY` for `count == 0`. A
+   `GROUP BY` only returns values that OCCUR, so that filter is unsatisfiable and the absent arms —
+   the entire point — could never be reported. The missing set is now subtracted from the CONFIGURED
+   personas.
+4. it printed `untraceable_rate` unlabelled. That field deliberately keeps its pre-correction lumped
+   meaning for back-compat (§31.1, and :2931 above), so printing it bare re-publishes the **38.0%**
+   that §31.1 retracted. It is now named as lumped, and §31.1's decision figure (9.7%, Wilson95
+   [4.5, 19.5]) is carried beside it.
+5. **the worst of the five, found on a later run:** its E15/E17 row read
+   `<stem>_receipts.json` while its own `reproduce` line told you to run the experiment with
+   `--all` — and `--all` sets `_receipt_suffix`, so `runner.py:223` writes
+   `<stem>_full_receipts.json`. The probe measured a file its own instruction never writes. It
+   would have reported the matched pair BLOCKED forever, *including after the pair landed*: a
+   permanent red that no amount of correct work could clear. It now prefers the widest run
+   available (`_full` → `_current_moat` → plain) and prints the filename beside each fingerprint,
+   so a number can be traced to the run that produced it.
+
+That fifth one is also why this section is not written as "the probe now guarantees the register is
+honest". A probe is an instrument, and an instrument can be wrong about its own inputs. What it
+guarantees is that being wrong is now *discoverable by running something*, rather than by rereading
+prose.
+
+### 32.8 Register after this session
+
+| # | item | state |
+|---|---|---|
+| 1 | **E6** | **CLOSED — KILL on evidence** (§32.1). FAILS_BAR, safe drop rate 0.00%; no 20% operating point exists |
+| 2 | **E18** | **CLOSED — DO_NOT_ACT** (§32.5). The naive effect is a confound; adjusted intervals span zero and flip sign |
+| 3 | **E5** | **UNBLOCKED, not run.** 6 batches/arm on `structural_form`+`audience`, plus `coverage_sampler.enabled` |
+| 4 | **E2** | **RE-DIAGNOSED** (§32.3). Blocked on a config default and an arm rotation, not on 5,274 candidates |
+| 5 | **L2** | **STILL BLOCKED on traffic.** The "172 / 90 days" figure is retired as a quotable number (§32.4) |
+| 6 | **E15/E17** | mechanism shipped (§32.6); the frozen matched pair is the remaining run |
+
