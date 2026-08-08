@@ -33,6 +33,10 @@ import { survivorsSummary } from '@/lib/stats';
 type KillEntry = {
   title: string;
   gate: string;
+  /* The buyer-facing sentence, verbatim from `tools/make_kill_log.py`'s GATE_LABELS -- the same
+     string /kill-log prints on the matching row. Render THIS. `gate` is the engine's own id
+     (`value_durability`) and is here to key on, never to show. */
+  gateLabel: string;
 };
 
 const ENTRIES: KillEntry[] = killNames as KillEntry[];
@@ -55,7 +59,12 @@ const KILLS = pickRandom(ENTRIES, 3);
 // data structure keeps the render loop lean.
 const KILL_LINES = KILLS.map((k) => ({
   name: k.title.split(',')[0],
-  gate: k.gate.replace(/_/g, ' '),
+  // Was `k.gate.replace(/_/g, ' ')`, which printed the engine's schema name into the hero:
+  // measured on prod 2026-08-08, this card read "killed by value durability" and "killed by
+  // payer solvency". SITE_SPEC 5.1 rule 5 names the kill-log verdict labels as the canonical
+  // phrasing everywhere the checks are named, and de-underscoring an identifier is not a
+  // phrasing -- it is the identifier with the underscores taken out.
+  reason: k.gateLabel,
 }));
 /*
  * The "Last 3 passes" block was REMOVED on 2026-08-05.
@@ -142,15 +151,18 @@ export default function LiveKillCard({ className, listed }: LiveKillCardProps) {
       {/* The body: three real kills from the same JSON the /kill-log page renders. */}
       <div className="px-5">
         {KILL_LINES.map((k, i) => (
-          /* `items-start`, not `items-baseline`, because the gate wraps under the name on a
+          /* `items-start`, not `items-baseline`, because the reason wraps under the name on a
              narrow card instead of being truncated. The old single-line `truncate` cut the text
-             mid-word at 390px ("killed by value dura…"), which hid the gate, and the gate is
+             mid-word at 390px ("killed by value dura…"), which hid the reason, and the reason is
              the entire point of the row. */
           <div key={i} className="flex items-start gap-2 border-b border-border py-2.5 last:border-b-0">
             <span className="mt-0.5 shrink-0 text-caption text-danger" aria-hidden>✕</span>
             <span className="min-w-0">
               <span className="block break-words text-meta font-medium text-text">{k.name}</span>
-              <span className="block font-mono text-caption text-subtle">killed by {k.gate}</span>
+              {/* No "killed by" prefix any more. The label is a full sentence ("The value would
+                  not last"), so prefixing it produced "killed by The value would not last". The
+                  ✕ and the red already say this one died; the sentence says why. */}
+              <span className="block break-words font-mono text-caption text-subtle">{k.reason}</span>
             </span>
           </div>
         ))}

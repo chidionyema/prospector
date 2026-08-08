@@ -26,15 +26,21 @@ import { cx } from '@/components/ui/cx';
 */
 
 /* `kill-log-names.json`, deliberately: see the note in `LiveKillCard`. This column needs a name
-   and a gate, and the full log is ~507 KB of reasons and citations it would never render. */
-type Entry = { title: string; gate: string };
+   and a reason, and the full log is ~507 KB of reasons and citations it would never render. */
+type Entry = { title: string; gate: string; gateLabel: string };
 
 const ENTRIES = (killNames as Entry[]).map((entry) => ({
   // The catalogue's titles are "Name, the thing it does for whom" -- the clause after the first
   // comma is a sentence and would wrap to three lines at this width, turning a column of names
   // into a wall of grey prose. The name alone is what reads as a headstone.
   name: entry.title.split(',')[0].trim(),
-  gate: entry.gate.replace(/_/g, ' '),
+  // `entry.gateLabel`, not `entry.gate.replace(/_/g, ' ')`. The old form printed the engine's
+  // schema names down the hero -- "value durability", "payer solvency" -- and rendered ONE gate
+  // under two different names in the same visible column, because the log carries both
+  // `distribution` and `route_to_market` for the same check (5 and 3 of 400 entries). The label
+  // collapses them to the one sentence /kill-log prints, so the same failure cannot appear twice
+  // under two names 40px apart.
+  reason: entry.gateLabel,
 }));
 
 /*
@@ -68,12 +74,12 @@ export function AmbientKillColumn({ className }: { className?: string }) {
       <div className="kill-drift flex flex-col gap-1.5">
         {LOOP.map((entry, i) => (
           <div key={i} className="flex items-baseline gap-2 whitespace-nowrap">
-            {/* `line-through` on the name, and the name only. Striking the gate label too would
+            {/* `line-through` on the name, and the name only. Striking the reason too would
                 say the REASON was withdrawn, when the reason is the part that still stands. */}
             <span className="font-mono text-caption text-subtle line-through decoration-kill/50">
               {entry.name}
             </span>
-            <span className="font-mono text-caption text-kill/45">{entry.gate}</span>
+            <span className="font-mono text-caption text-kill/45">{entry.reason}</span>
           </div>
         ))}
       </div>

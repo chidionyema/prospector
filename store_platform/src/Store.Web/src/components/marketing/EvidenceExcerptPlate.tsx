@@ -46,6 +46,7 @@ export default function EvidenceExcerptPlate({
   // optimisation the compiler would have applied to this component. The work is one pass over at
   // most a handful of lines; the compiler memoizes it for us.
   const first = firstCitedLine(pack.sampleExtract);
+  const reference = recordReference(pack.dossierRef);
 
   if (!first) return null;
 
@@ -64,7 +65,9 @@ export default function EvidenceExcerptPlate({
             number. The count is a fact about the PACK and belongs in the pack's evidence row;
             this plate identifies the RECORD the excerpt was lifted from (`dossierRef` is the
             API's own field name, and renaming a wire field is a different, breaking change). */}
-        <span className="font-mono text-caption text-subtle">{pack.dossierRef}</span>
+        {reference && (
+          <span className="font-mono text-caption text-subtle">{reference}</span>
+        )}
       </figcaption>
 
       <blockquote className="border-l-2 border-l-success px-5 py-5 md:px-7">
@@ -77,6 +80,35 @@ export default function EvidenceExcerptPlate({
       </blockquote>
     </figure>
   );
+}
+
+/**
+ * The record reference as a buyer may read it: the id, without the wire field's type prefix.
+ *
+ * WHY THIS EXISTS. `dossierRef` arrives from the API as `dossier:8d5a441749448b69` and was
+ * rendered verbatim, so every pack page printed the word "dossier" -- retired by SITE_SPEC 5.2 in
+ * favour of "pack", with "evidence record" as the name for the record inside one. Confirmed live
+ * on 2026-08-08: `curl https://mumchimp.com/pack/8d5a441749448b69` returns `dossier:8d5a44...`.
+ *
+ * WHY THE PROBE SAID THIS WAS CLEAN. `site_spec_probe.py` reads 5.2 out of PROSE -- JSX text and
+ * sentence-shaped literals -- and this string is neither: it is an interpolation whose value is
+ * assembled by the API at runtime. No amount of source scanning can see it, which is why the
+ * probe printed "0 reader-facing instances of catalog/shot/grounded/gauntlet/dossier" over a term
+ * that was on every pack page. A source-only vocabulary check is blind to any retired word that
+ * arrives over the wire, and this is the first one that did.
+ *
+ * The FIELD keeps its name. Renaming a wire field is a breaking change and is not the defect; the
+ * defect is showing a reader a type tag from our own schema. Stripping is done here, at the render
+ * boundary, so a republish cannot reintroduce it.
+ *
+ * The prefix is stripped by SHAPE (`word:` at the start), not by matching "dossier", so an API
+ * that renames the field's prefix tomorrow does not start leaking again. Returns null for an
+ * absent or prefix-only value: `store/listings/*.json` carries `dossierRef: null` on live rows
+ * while `client.ts:144` types it a required `string`, so the empty case is reachable today.
+ */
+export function recordReference(ref: string | null | undefined): string | null {
+  const id = (ref ?? '').trim().replace(/^[a-z][a-z0-9_]*:/i, '').trim();
+  return id === '' ? null : id;
 }
 
 /** The first extract line that actually resolves a citation, or null when none does. */

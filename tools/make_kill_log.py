@@ -70,7 +70,10 @@ OUT_TOTALS = "store_platform/src/Store.Web/src/data/kill-log-totals.json"
 # the home page at the full log would therefore have put half a megabyte of reasons and citations
 # into the bundle of the one page that never displays them.
 #
-# This file carries `title` and `gate` and nothing else, for the newest PREVIEW_LIMIT kills.
+# This file carries `title`, `gate` and `gateLabel` and nothing else, for the newest
+# PREVIEW_LIMIT kills. `gateLabel` is what the consumers RENDER; `gate` is kept because it is the
+# stable key to filter or group on, and a component that needs to branch on which check fired
+# must not have to string-match a sentence to do it.
 OUT_NAMES = "store_platform/src/Store.Web/src/data/kill-log-names.json"
 # `/how-it-works` illustrates each of the six checks with one real kill, so unlike the home page it
 # needs WHOLE entries (reason, citations), not just names. It does not need four hundred of them.
@@ -261,8 +264,22 @@ def main() -> int:
     args = parser.parse_args()
 
     payload = build(args.limit)
+    # `gateLabel` travels with `gate`, and that is the whole fix for a leak measured on prod
+    # 2026-08-08: the home page rendered "killed by value durability" and the ambient column
+    # rendered "payer solvency", because this slim file carried the engine's gate id and dropped
+    # the buyer-facing label that line 230 had already computed one screen above. Both consumers
+    # then reached for the only string they had and de-underscored it, which is how an internal
+    # identifier became the hero's copy.
+    #
+    # Deriving the label in the component instead was the other option and is worse in a way that
+    # is measurable, not aesthetic: `src/lib/checks.ts` covers the SIX filter checks, and 65 of
+    # these 60-row previews' gates are `adversarial_decisive` or `currency`, which it has no entry
+    # for. A component-side map would have left those rendering the slug. GATE_LABELS covers all
+    # twelve gates and falls back to "It failed a check", so no gate can leak, including one added
+    # tomorrow. It also makes the hero and /kill-log agree by construction rather than by two
+    # lists staying in sync, which is the promise `LiveKillCard`'s own header comment makes.
     names = [
-        {"title": entry["title"], "gate": entry["gate"]}
+        {"title": entry["title"], "gate": entry["gate"], "gateLabel": entry["gateLabel"]}
         for entry in payload["entries"][:PREVIEW_LIMIT]
     ]
     examples = {
