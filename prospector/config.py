@@ -200,6 +200,7 @@ class ModelDefaults:
     minimax: str = "MiniMax-M3"        # full reasoning model
     minimax_fast: str = "MiniMax-M3"  # also M3 per standing order
     ollama: str = "qwen2.5-coder:7b"
+    standardcompute: str = "standardcompute"
     # Search provider defaults (the LLM that decomposes queries for the
     # function-calling search providers). One per search provider.
     search: dict[str, str] = field(default_factory=lambda: {
@@ -715,6 +716,7 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
         minimax=raw_md.get("minimax", "MiniMax-M3"),
         minimax_fast=raw_md.get("minimax_fast", "MiniMax-M2.7"),
         ollama=raw_md.get("ollama", "qwen2.5-coder:7b"),
+        standardcompute=raw_md.get("standardcompute", "standardcompute"),
         search=search,
     )
 

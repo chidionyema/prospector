@@ -32,7 +32,7 @@ from .run import vet_candidate
 
 OPERATOR_CHOICES = [
     "claude",
-    "minimax", "deepseek", "mock",
+    "minimax", "deepseek", "standardcompute", "mock",
 ]
 
 # Surface check: the dossier must SURFACE the case's key reason. We match a keyword

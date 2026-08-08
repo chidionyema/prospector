@@ -300,7 +300,7 @@ def _get_verify():
 #
 # Ollama REJECTED 2026-07-01 (markdown, not JSON). Module-level so run_signal, `operators`, and
 # the proof tools all reference the SAME chain.
-_NONCRITICAL_ORDER = ("claude_cli", "minimax")
+_NONCRITICAL_ORDER = ("claude_cli", "standardcompute", "minimax")
 
 
 # ---------------------------------------------------------------------------
