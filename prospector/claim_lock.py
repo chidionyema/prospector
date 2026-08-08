@@ -284,6 +284,16 @@ class ClaimLock:
             return True
         return age > self._stale_after_s
 
+    def _unlink_corpse(self, path: Path) -> bool:
+        """Remove a lock already judged dead. True if the path is now clear to re-create."""
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            return False
+        return True
+
     def _expire(self, path: Path) -> bool:
         """Remove an expired lock under a steal guard. True if it is now safe to re-create.
 
@@ -308,15 +318,62 @@ class ClaimLock:
         finally:
             os.close(fd)
         try:
-            if not self._is_stale(path):
-                return False             # re-taken while we were acquiring the guard
+            # ABSENT IS NOT STALE, AND THIS IS WHERE MUTUAL EXCLUSION WAS LOST.
+            #
+            # `_is_stale` answers True for a file that does not exist, which is right for the
+            # caller in `claim()` (retrying the create is the correct next move) and WRONG here,
+            # because this branch does not retry a create -- it unlinks. So a steal that arrived
+            # while the path was momentarily empty read "stale", then unlinked whatever a peer
+            # had created in the microseconds since, and BOTH threads went on to hold the claim:
+            #
+            #   T1  _expire: path absent -> "stale"
+            #   T2  _create: O_EXCL succeeds, T2 now holds the claim
+            #   T1  unlink() -- deletes T2's LIVE lock
+            #   T1  _create: O_EXCL succeeds, T1 also holds the claim
+            #
+            # Reproduced 2 times in 400 under CPU load (2026-08-08), and it is the failure CI
+            # kept surfacing on slower runners while a quiet laptop passed 5 of 5. The half-open
+            # probe in `health.py` is the caller that pays for it: two winners means two callers
+            # re-probe one dead brain, which is the exact double-spend the lock exists to stop.
+            #
+            # There is nothing to expire on an empty path. Return True and let the O_EXCL create
+            # in `_create` arbitrate, which is the only thing that can arbitrate it.
             try:
-                path.unlink()
+                raw = path.read_text(encoding="utf-8")
             except FileNotFoundError:
-                pass
+                return True
             except OSError:
                 return False
-            return True
+
+            try:
+                record = json.loads(raw)
+                if not isinstance(record, dict):
+                    raise ValueError("lock record is not an object")
+            except ValueError:
+                # Unparseable, but PRESENT: either a peer's create caught mid-write (fresh, and
+                # `_is_stale` already declines to steal it because the mtime fallback dates it to
+                # real wall time) or a genuinely corrupt corpse. Keep the old mtime-based
+                # judgement so a corrupt lock still expires rather than deadlocking the key
+                # forever, and accept that it carries no token to verify against.
+                if not self._is_stale(path):
+                    return False
+                return self._unlink_corpse(path)
+
+            if not self._stale_record(record, path):
+                return False             # re-taken while we were acquiring the guard
+
+            # Only ever remove the exact corpse just judged stale. Re-read and compare the token
+            # so that a lock legitimately released and re-taken between the judgement and the
+            # unlink is not destroyed under its new, live holder.
+            try:
+                current = json.loads(path.read_text(encoding="utf-8"))
+            except FileNotFoundError:
+                return True
+            except (OSError, ValueError):
+                return False
+            if not isinstance(current, dict) or current.get("token") != record.get("token"):
+                return False
+            return self._unlink_corpse(path)
         finally:
             try:
                 steal.unlink()
