@@ -89,6 +89,25 @@ def e1(monkeypatch):
     # checked at all, since nobody runs this file by hand.
     monkeypatch.setattr(mod, "_load_candidates",
                         lambda n, seed_checks: [_fixture_dossier(i) for i in range(n)])
+    # The verdict chain is pinned for the same reason, one level up. `_resolve_live_path`
+    # (`:150`) reads the LIVE `config.yaml` through `_arm_config`, so these tests inherited
+    # whatever `operator:` happened to say that day. On 2026-08-08 the founder re-added a
+    # `minimax` tail and all six live-path tests died at once on E1's provisional fence — a
+    # correct fence, firing on a config change, in a file that tests abort-on-OUTAGE logic and
+    # has no opinion about the chain. Same defect as the corpus above, with config in place of
+    # the machine: a result that moves when something unrelated to the code under test moves.
+    #
+    # Pinned, not stubbed away: the fence itself is worth testing, so it is tested directly and
+    # deterministically in `test_the_fence_refuses_a_chain_a_provisional_brain_could_rule`
+    # rather than left to be exercised by accident by whatever config.yaml currently ships.
+    _real_arm_config = mod._arm_config
+
+    def _trusted_arm_config(checks, hybrid):
+        cfg = _real_arm_config(checks, hybrid)
+        cfg.operator = ["claude_cli"]
+        return cfg
+
+    monkeypatch.setattr(mod, "_arm_config", _trusted_arm_config)
     return mod
 
 
@@ -281,3 +300,33 @@ def test_mcnemar_is_silent_rather_than_significant_when_nothing_is_discordant(e1
     rows = _paired_rows({"legality": [(True, True), (False, False)]})
     m = e1._mcnemar(rows, "legality")
     assert m["p_exact"] is None and m["separable"] is False and m["direction"] is None
+
+
+def test_the_fence_refuses_a_chain_a_provisional_brain_could_rule(e1, monkeypatch):
+    """E1 must refuse a verdict chain whose tail is provisional — on CONFIG, not on the env.
+
+    Until 2026-08-08 nothing tested this fence. It was reachable only through the ambient
+    `config.yaml`: while `operator:` was trusted-only every test sailed past it, and the moment
+    a `minimax` tail was added every live-path test died on it. Neither state was a test of the
+    fence; both were a test of the config file.
+
+    The assertion on the message is deliberate. The fence must name the offending provider,
+    because the failure it guards against is silent: an E1 delta measured on a provisional tail
+    is not a weaker number, it is a number about a different brain.
+    """
+    from prospector.config import load_config
+
+    def _provisional(checks, hybrid):
+        cfg = load_config()
+        cfg.retrieval.hybrid_entity_checks = list(checks) if hybrid else []
+        cfg.operator = ["claude_cli", "minimax"]
+        return cfg
+
+    monkeypatch.setattr(e1, "_arm_config", _provisional)
+    with pytest.raises(SystemExit) as exc:
+        e1._resolve_live_path(("payer_solvency",))
+    msg = str(exc.value)
+    assert "provisional provider" in msg, msg
+    assert "minimax" in msg, msg
+    # No credential is needed to reach this refusal: the fence precedes the constructors.
+    assert "API_KEY" not in msg, f"fence ran after construction and reported a key instead: {msg}"

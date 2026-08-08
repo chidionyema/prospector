@@ -165,12 +165,18 @@ def _resolve_live_path(checks: tuple[str, ...]) -> dict[str, str]:
     from prospector.verify import gen_queries_batched, run_check  # noqa: F401 - existence check
 
     cfg = _arm_config(checks, hybrid=False)
-    op = make_operator(cfg)
-    search = make_provider(cfg)
 
     # E1 measures VERDICTS, so a provisional brain ruling here would not be a weaker result —
     # it would be a different experiment. `operator.py:892` stamps anything outside
     # MOAT_PRIMARY provisional; refuse rather than silently measure that.
+    #
+    # This fence runs BEFORE the constructors, and the order is load-bearing. Every metered
+    # adapter raises in `__init__` on a missing key (`operator.py:167/197/305/412/517`) and
+    # `make_operator` (`:1086`) builds EVERY configured tier eagerly. Built first, a chain with
+    # an unusable provisional tail therefore failed as `RuntimeError: <X>_API_KEY not set` —
+    # a credential complaint about a brain E1 is about to refuse to use anyway, which sends the
+    # reader hunting for a key instead of reading the actual refusal. The fence is a statement
+    # about configuration, so it must not depend on the environment to be reachable.
     ruling = cfg.operator if isinstance(cfg.operator, list) else [cfg.operator]
     provisional = [r for r in ruling if is_provisional_provider(r)]
     if provisional:
@@ -178,6 +184,9 @@ def _resolve_live_path(checks: tuple[str, ...]) -> dict[str, str]:
             f"REFUSING: cfg.operator {ruling} includes provisional provider(s) {provisional}; "
             f"only {sorted(MOAT_PRIMARY)} may rule a verdict, so an E1 delta measured here "
             "would describe the fallback tail, not the moat.")
+
+    op = make_operator(cfg)
+    search = make_provider(cfg)
     return {"operator": op.name, "search": search.name if hasattr(search, "name") else
             type(search).__name__, "ruling_providers": ",".join(ruling)}
 
