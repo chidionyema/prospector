@@ -50,7 +50,14 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [claude_cli, minimax]
+operator: [claude_cli, standardcompute, minimax]
+# standardcompute inserted ahead of minimax 2026-08-08 (founder directive: "fall back for claude
+# ahead of minimax"). It is a TAIL, not a head — claude_cli still leads, per the standing rule that
+# the chain must stay led by a trusted brain. It is NOT in MOAT_PRIMARY (operator.py:885), so a
+# ruling it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto
+# re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
+# To promote it to trusted-final, the gate is the one named below:
+#   python -m prospector.golden --operator standardcompute --fixtures fixtures/golden_fixtures.json --runs 3
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -74,6 +81,10 @@ model_defaults:
   minimax:      "MiniMax-M3"           # MiniMaxOperator (full reasoning)
   minimax_fast: "MiniMax-M3"           # MiniMaxOperator (fast — also M3 per standing order)
   ollama:       "qwen2.5-coder:7b"     # OllamaOperator default
+  # StandardCompute (api.stdcmpt.com) — OpenAI-compatible, key in .env as
+  # STANDARDCOMPUTE_API_KEY, base URL overridable via STANDARDCOMPUTE_BASE_URL.
+  # Wire format verified live 2026-08-08: /v1/chat/completions 200, /v1/messages 404.
+  standardcompute: "standardcompute"    # StandardComputeOperator default
   search:
     deepseek:    "deepseek-v4-flash"
     minimax:     "MiniMax-M3"
@@ -988,6 +999,25 @@ listing:
   # run. A definitive 404/410 blocks listing; a timeout is only a warning — our outage is
   # not the citation's death (the same rule as DEFER-not-KILL on the verdict path).
   lint_check_urls: true
+  # Grammar pass (Harper) on the publish path. Runs in-process, fails OPEN: a missing or
+  # broken checker records `grammar_check_unavailable` and blocks nothing, because an
+  # absent checker must never unlist a good pack.
+  lint_grammar: true
+  # The actuator. 0 = record the rate but never block. Above 0, a pack whose grammar
+  # defect rate exceeds this is refused, goes UNLISTED, and the daemon's repair path picks
+  # it up — no human in the loop.
+  # Basis: MEASURED on production packs 2026-08-08 — the same `check_grammar` call the
+  # publish path makes, over all 99 packs carrying artifact prose (542,689 words):
+  #   mean 2.28   median 1.61   p90 4.57   p95 5.50   max 10.95
+  # 6.0 sits just above p95, so it fires on genuinely degraded copy: it refuses 2 of 99
+  # packs where the earlier 3.0 refused 19.
+  #
+  # 3.0 was set from a 40-dossier sample on the belief that engine prose ran 0.8 per 1k and
+  # that 3.0 was therefore ~3.75x the mean. PACK ARTIFACTS ARE NOT THAT CORPUS: their mean
+  # is 2.28, which put 3.0 BELOW p90 — i.e. firing on normal variance, not degradation.
+  # Note the rate is least stable exactly where it bites hardest: the worst offenders are
+  # 300-800 word packs where a handful of findings dominates the ratio.
+  max_grammar_defects_per_1k: 6.0
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
   exclusivity: true
