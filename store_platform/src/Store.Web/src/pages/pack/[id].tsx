@@ -14,7 +14,9 @@ import { categoryFor } from '@/lib/category';
 import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
-import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails } from '@/lib/api/client';
+import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
+import { RESEARCH_STATS } from '@/lib/stats';
+import { paybackEquation } from '@/lib/payback';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { isTruncated, repairTruncation } from '@/lib/copy';
 import { track, trackPriceEvent } from '@/lib/analytics';
@@ -220,6 +222,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
   const priceLabel = formatPriceForMarket(pack.price, currency);
 
+  // The one number that answers "is this worth it", as a RATIO. See the note at its render site.
+  // `paybackEquation` returns null unless the snapshot carries a single unambiguous month-1
+  // figure that at least covers the price, so this can never appear only when it flatters.
+  const payback = paybackEquation(pack.price, pack.financialSnapshot);
+
   const notifyHref =
     `mailto:${LEGAL.supportEmail}` +
     `?subject=${encodeURIComponent(`Notify me when "${pack.title}" opens`)}` +
@@ -411,9 +418,46 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
        * is the right level of detail for the buy box. Numbers shown here are computed from cited
        * inputs; a value the page cannot source is not rendered.
        */}
+      {/*
+       * THE PRICE, AGAINST SOMETHING. (Reinstates one line of what the note above removed.)
+       *
+       * The note above is right that a "Modelled economics" dashboard of three figures beside a
+       * buy button reads as fantasy to anyone who has operated, and that box is not coming back.
+       * But removing it left the rail with a cost and nothing to weigh it against: eight lines
+       * about refunds and downloads answer "is it safe to pay" and never answer "is it worth it".
+       *
+       * So: the RATIO, in a sentence, and nothing else. It is the one form of this number that
+       * survives every objection the note raised --
+       *   - it is not a revenue promise, it is a comparison to the price on the same card;
+       *   - `paybackEquation` refuses ranges, refuses unparseable figures, and returns null when
+       *     the modelled month 1 does not even cover the pack price, so it cannot become a widget
+       *     that appears only when the numbers flatter (lib/payback.ts:56-65);
+       *   - it invents nothing: `month1Revenue` is computed in `artifacts.py::_financial_snapshot`
+       *     from the pack's verified inputs, and the only new operation is the division;
+       *   - and it is a RATIO, so it is currency-invariant. Stating it as money would have put a
+       *     GBP figure beside an FX-converted price label, which is the drift `formatChargeNote`
+       *     exists to prevent.
+       *
+       * The sentence points at `04_Financial_Model.md` rather than elaborating, because the rail
+       * is the wrong place to argue economics at length -- that document IS the argument.
+       */}
+      {payback && (
+        <p className="mt-6 text-caption leading-relaxed text-subtle">
+          <span className="font-medium text-text">
+            The pack&rsquo;s own model puts month one at {payback.multiple}× what the pack costs
+            {payback.paybackMonths ? `, and payback at ${tidyMonths(payback.paybackMonths)}` : ''}.
+          </span>{' '}
+          Every input behind that is sourced, and the workings are the fourth document.
+        </p>
+      )}
+
       <p className="mt-6 text-caption leading-relaxed text-subtle">
-        The numbers are in the pack. Pricing mechanics and unit economics, every input sourced.
-        What couldn’t be verified is marked absent, never invented.
+        {/* WAS "What couldn't be verified is marked absent, never invented." Same fact, stated as
+            a promise the reader gets rather than as a confession of what we could not do. The
+            page had eleven negations before this one; this is the cheapest to invert without
+            losing a word of its meaning. */}
+        The numbers are in the pack. Pricing mechanics and unit economics, every input sourced,
+        and anything the research could not stand up is marked so.
       </p>
 
       <p className="mt-6 text-caption leading-relaxed text-subtle">
@@ -597,6 +641,56 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               </p>
             )}
 
+            {/*
+             * THE SELECTIVITY PLATE -- the page's one typographic peak, and the one place the
+             * rigour is stated as confidence instead of as a disclaimer.
+             *
+             * TWO DEFECTS IT ANSWERS, both measured on the live page 2026-08-08
+             * (mumchimp.com/pack/08b22037fc2afc07):
+             *
+             *   1. NO HIERARCHY. Every element on the money page rendered at body weight -- the
+             *      only things above `text-body` were the h1 and four section headings. A page
+             *      with no peak reads flat however good the content is, which is most of what
+             *      "visually underwhelming" was pointing at.
+             *
+             *   2. RIGOUR WRITTEN AS NEGATION. Counted over the rendered text of that page:
+             *      `kill` x6, `never` x5, `thin` x4, `killed` x2, `attack` x2, `could not` x2,
+             *      `couldn't` x2, plus "not a promise of business success", "we don't guarantee
+             *      any business outcome" and the footer disclaimer. The dominant register of the
+             *      page asking for money was self-doubt, and a reader finishes that page thinking
+             *      even we do not believe in this one.
+             *
+             * The fix is not to soften a single one of those lines -- they are true and they are
+             * the moat. It is that the SAME fact has a confident face that was sitting unused in
+             * the footer: the reject rate. "94% were killed" and "this is one of the survivors"
+             * are one number read from either end, and only the second one is an argument for
+             * buying. `RESEARCH_STATS` is the shared derivation, so this cannot drift from
+             * /kill-log or /how-it-works the way the hand-rolled versions did (lib/stats.ts:9-21).
+             *
+             * `survived`, deliberately NOT the number listed: this pack is one of the ideas that
+             * cleared the gates, which is a verdict, not a state of packaging. Conflating the two
+             * is the exact error `survivorsSummary` exists to prevent, so neither figure is
+             * written into copy here and the listed count is not claimed at all.
+             */}
+            <div className="mt-8 flex flex-col gap-x-6 gap-y-3 rounded-md border border-border bg-surface p-6 sm:flex-row sm:items-center">
+              <p className="flex-none font-mono text-h1 font-semibold leading-none text-text">
+                1<span className="text-muted"> / </span>
+                {RESEARCH_STATS.survived.toLocaleString('en-GB')}
+              </p>
+              <p className="max-w-[52ch] text-meta leading-relaxed text-muted">
+                <span className="font-medium text-text">One of the ideas that survived.</span>{' '}
+                {RESEARCH_STATS.researched.toLocaleString('en-GB')} went through the filter and{' '}
+                {RESEARCH_STATS.rejectRate}% died on cited evidence.{' '}
+                <Link
+                  href="/kill-log"
+                  className="text-accent underline underline-offset-2 hover:text-accent-hover"
+                >
+                  Read what killed them
+                </Link>
+                .
+              </p>
+            </div>
+
             {/* PROOF, BUT AFTER THE THING IT IS PROOF OF.
                 This plate opened the page -- above the breadcrumb's own product, above the title,
                 above every word saying what is for sale. What a stranger met first, verbatim from
@@ -661,6 +755,70 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               />
             </div>
 
+            {/*
+             * WHO RUNS IT -- moved ABOVE the two methodology disclosures.
+             *
+             * The order the page shipped was: deliverables, how we tried to kill it, how it
+             * scores, and only then who this is for. That is the order of OUR interests. The
+             * buyer's questions arrive as: what is it, could I do it, does it make money, is the
+             * research real. "Could I do it" was the third-from-last thing the page answered, two
+             * collapsed disclosures deep -- on the surface where the reader decides whether any
+             * of the rest applies to them at all.
+             *
+             * The heading changed with the position. "Is this for you?" is a shopping question
+             * about a document; "Could you run this?" is a question about the reader's own next
+             * six months, which is the thing actually being sold. Nothing below it changed -- the
+             * facts were always here, they were just filed under the wrong question, behind the
+             * methodology.
+             */}
+            {(pack.market || pack.whoPays || pack.timeToFirstRevenue) && (
+              <div className="mt-12">
+                <h2 className="text-h2 font-semibold text-text">Could you run this?</h2>
+                <p className="mt-2 max-w-[60ch] text-meta text-muted">
+                  Behind the research is a business somebody has to actually operate. Here is who
+                  they would be selling to, and how soon the first money arrives.
+                </p>
+                {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
+                    "Effort to build" used to print the legacy `effortTag` string, which was never
+                    defined to mean how much of delivery is machine-doable (spec 2.3). */}
+                <FacetChips pack={pack} className="mt-4" />
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {pack.market && (
+                    <div className="flex flex-col rounded-md border border-border bg-surface p-5 sm:col-span-3">
+                      <span className="text-caption font-medium text-subtle">
+                        Market
+                      </span>
+                      <span className="mt-1.5 text-meta font-semibold text-text">
+                        {marketLabel(pack.market)}
+                      </span>
+                      {/* State it plainly: the research is about this jurisdiction, and the
+                          pack is still sold in GBP. Leaving that implicit invites a refund. */}
+                      <span className="mt-1.5 text-caption leading-relaxed text-muted">
+                        The opportunity, its evidence and its economics are researched for this
+                        market. The pack itself is priced and sold in GBP.
+                      </span>
+                    </div>
+                  )}
+                  {pack.whoPays && (
+                    <div className="flex flex-col rounded-md border border-border bg-surface p-5 sm:col-span-3">
+                      <span className="text-caption font-medium text-subtle">
+                        Who pays
+                      </span>
+                      <span className="mt-1.5 text-meta leading-relaxed text-muted">{pack.whoPays}</span>
+                    </div>
+                  )}
+                  {pack.timeToFirstRevenue && (
+                    <div className="flex flex-col rounded-md border border-border bg-surface p-5">
+                      <span className="text-caption font-medium text-subtle">
+                        Time to first revenue
+                      </span>
+                      <span className="mt-1.5 text-meta font-semibold text-text">{pack.timeToFirstRevenue}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* US-4: the six-check methodology collapses behind a details disclosure.
                 On mobile (the primary surface), the buyer is not forced to read 200px
                 of methodology before the deliverables. They can tap to expand if
@@ -694,12 +852,43 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                     who wants the result meets the buy button first. That decision stands; what
                     changes is that the pointer now names where the scores actually are. */}
                 <p className="mt-3 text-meta text-muted">
-                  {/* NOT "the six fronts". The check count is lane-dependent (6/6, 8/8, 7/8, 9/9
+                  {/* THE COUNT A READER CAN SEE, RECONCILED WITH THE COUNT THE PAGE CLAIMS.
+                      NOT "the six fronts": the check count is lane-dependent (6/6, 8/8, 7/8, 9/9
                       and 6/8 all occur live), which is why `fixedCheckCount.test.ts` exists and
-                      why it failed on this sentence the moment it was written. */}
-                  The checks every idea is attacked on are below. For where this pack&rsquo;s case
-                  is strong and where it is thin, open <span className="font-medium text-text">How it
-                  scores</span> further down, weak bars included.
+                      why it failed on this sentence the moment it was written.
+
+                      But the sentence then went to the opposite failure. The list below is
+                      `COMMON_CHECKS` -- the ones that run on every idea in every lane -- and the
+                      buy rail four inches away states this pack's OWN denominator. So the live
+                      page said "7 of 8 checks cleared" above a list a reader can count to six,
+                      and never closed the gap (verified on mumchimp.com/pack/08b22037fc2afc07,
+                      2026-08-08). On a storefront whose pitch is that it checks its arithmetic,
+                      an unexplained 6-vs-8 is the most expensive two digits on the page.
+
+                      What is still NOT said, because the page cannot source it: WHICH check this
+                      pack lost. `PackDetails` carries no per-check verdicts, so naming one would
+                      be invention. The honest available facts are how many there were and where
+                      the extra ones came from. */}
+                  The {CHECKS.length} below run on every idea, whatever it is.
+                  {panelChecks && panelChecks.total > CHECKS.length
+                    ? ` This one's lane ran ${panelChecks.total - CHECKS.length} more on top, for ${panelChecks.total} in all.`
+                    : ''}
+                  {/* THE POINTER ONLY EXISTS WHEN ITS TARGET DOES.
+                      "open How it scores further down" was unconditional, but that section is
+                      guarded on `axes.length > 0`, and a pack whose `financialSnapshot` carries
+                      no `N of 5` axes renders no such section. Verified against the live pack
+                      08b22037fc2afc07 on 2026-08-08: its snapshot holds only the three financial
+                      figures, so the page sent the reader down the page to a heading that was
+                      never emitted. This is the same defect class as the 6-vs-8 two paragraphs
+                      up -- the page asserting something about itself that it did not check. */}
+                  {axes.length > 0 && (
+                    <>
+                      {' '}
+                      For where this pack&rsquo;s case is strong and where it is thin, open{' '}
+                      <span className="font-medium text-text">How it scores</span> further down,
+                      weak bars included.
+                    </>
+                  )}
                 </p>
                 <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {CHECKS.map((check, i) => (
@@ -729,8 +918,26 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             {/* US-4: the scored axes collapse behind a details disclosure. The
                 methodology is opt-in; the buyer who only cares about the
                 result sees the buy button first, the methodology on demand. */}
-            {(axes.length > 0 || verdict.risk) && (
-              <details className="mt-12 group">
+            {/* OPEN BY DEFAULT, and no longer the risk plate's second home.
+             *
+             * Two changes, one cause: this page had no visual hierarchy. Every element on it was
+             * body text at one weight, and the ONLY chart it owns -- these bars -- was the one
+             * thing behind a click. US-4 collapsed it so "the buyer who only cares about the
+             * result sees the buy button first", but the buy rail is `sticky top-24` on desktop
+             * and a `lg:hidden` card in the fold on mobile, so it is on screen either way; the
+             * disclosure was not protecting the CTA, it was hiding the page's only picture.
+             *
+             * It stays a `<details>` so it can still be collapsed, and so the summary keeps
+             * carrying a heading a reader can scan to.
+             *
+             * The guard drops `|| verdict.risk`: the risk plate rendered here AND at the top of
+             * the page (see "Where this could break" under the header), identical heading,
+             * identical text, identical trailing sentence. Two copies of our own strongest
+             * counter-argument reads as padding, which is the precise opposite of what stating
+             * it is for. The top one is the one that stays -- it is above the deliverables,
+             * where a buyer meets it before they have decided, which was the point of US-6. */}
+            {axes.length > 0 && (
+              <details className="mt-12 group" open>
                 <summary className="cursor-pointer list-none text-h2 font-semibold text-text transition-colors hover:text-muted">
                   <span className="inline-flex items-center gap-2">
                     <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
@@ -739,8 +946,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 </summary>
                 <div className="mt-4">
                   <p className="max-w-[60ch] text-meta text-muted">
-                    Six things we measure. The strong ones are strengths. The weaker ones are things
-                    you should know before you build.
+                    {/* WAS "Six things we measure", hardcoded, above a `dl` whose length is
+                        `axes.length` -- a count the page reads off the snapshot and does not
+                        control. Same defect class as the 6-vs-8 above, one scroll further down. */}
+                    What we measure, scored. The strong ones are strengths. The weaker ones are
+                    things you should know before you build, and they are left visible.
                   </p>
 
                 {axes.length > 0 && (
@@ -778,67 +988,10 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   </dl>
                 )}
 
-                {verdict.risk && (
-                  <div className="mt-6 rounded-md border-l-2 border-l-warning bg-warning-bg py-4 pl-5 pr-5">
-                    <div className="flex items-center gap-2">
-                      <Glyph name="pushed-back" className="text-warning" />
-                      <span className="text-meta font-semibold text-text">
-                        Where this could break
-                      </span>
-                    </div>
-                    <p className="mt-2 max-w-[62ch] text-meta leading-relaxed text-muted">{verdict.risk}</p>
-                    <p className="mt-2 text-caption text-muted">
-                      The strongest case against the idea, with its source, also lives inside the pack.
-                    </p>
-                  </div>
-                )}
+                {/* The "Where this could break" plate that stood here is gone; it is rendered
+                    once, under the page header, where the buyer meets it before deciding. */}
                 </div>
               </details>
-            )}
-
-            {/* Is this for you?, the concrete fit signals, when the pack carries them */}
-            {(pack.market || pack.whoPays || pack.timeToFirstRevenue) && (
-              <div className="mt-12">
-                <h2 className="text-h2 font-semibold text-text">Is this for you?</h2>
-                {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
-                    "Effort to build" used to print the legacy `effortTag` string, which was never
-                    defined to mean how much of delivery is machine-doable (spec 2.3). */}
-                <FacetChips pack={pack} className="mt-4" />
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  {pack.market && (
-                    <div className="flex flex-col rounded-md border border-border bg-surface p-5 sm:col-span-3">
-           <span className="text-caption font-medium text-subtle">
-                        Market
-                      </span>
-                      <span className="mt-1.5 text-meta font-semibold text-text">
-                        {marketLabel(pack.market)}
-                      </span>
-                      {/* State it plainly: the research is about this jurisdiction, and the
-                          pack is still sold in GBP. Leaving that implicit invites a refund. */}
-                      <span className="mt-1.5 text-caption leading-relaxed text-muted">
-                        The opportunity, its evidence and its economics are researched for this
-                        market. The pack itself is priced and sold in GBP.
-                      </span>
-                    </div>
-                  )}
-                  {pack.whoPays && (
-                    <div className="flex flex-col rounded-md border border-border bg-surface p-5 sm:col-span-3">
-           <span className="text-caption font-medium text-subtle">
-                        Who pays
-                      </span>
-                      <span className="mt-1.5 text-meta leading-relaxed text-muted">{pack.whoPays}</span>
-                    </div>
-                  )}
-                  {pack.timeToFirstRevenue && (
-                    <div className="flex flex-col rounded-md border border-border bg-surface p-5">
-           <span className="text-caption font-medium text-subtle">
-                        Time to first revenue
-                      </span>
-                      <span className="mt-1.5 text-meta font-semibold text-text">{pack.timeToFirstRevenue}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
             )}
 
             {/* The per-pack table of contents. The generic four-asset breakdown is higher up the page. */}
@@ -1039,12 +1192,47 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
  * packs, and any pack whose bundle is incomplete). Showing a plausible-looking fake document for
  * a pack with nothing behind it is the single worst thing this element could do.
  */
+/**
+ * The modelled figures the preview may show, with the labels a buyer reads.
+ *
+ * `FinancialSnapshot` is a loose `Record<string, string>` (lib/api/client.ts:16) that carries the
+ * SCORE AXES alongside the financial figures -- `pain_acuity: "4 of 5"` sits in the same object as
+ * `month1Revenue: "£640"`. This element used to `Object.entries` over the whole thing and render
+ * the key as the label, so the live page printed `month1Revenue`, `ltvCac` and `paybackMonths`,
+ * in that raw camelCase, on the one element whose entire job is to look like a finished document
+ * a buyer is about to pay for. Verified on mumchimp.com/pack/08b22037fc2afc07, 2026-08-08.
+ *
+ * An allow-list, not a de-camel-caser: a key with no buyer-facing name here is not rendered at
+ * all, because mechanically un-camelling `ltvCac` yields "Ltv Cac", which is the same defect
+ * wearing a space. New engine fields stay invisible until someone names them, which is the
+ * failure direction that costs nothing.
+ */
+const PREVIEW_FIGURES: ReadonlyArray<{ key: string; label: string }> = [
+  { key: 'month1Revenue', label: 'Month 1 revenue' },
+  { key: 'ltvCac', label: 'LTV : CAC' },
+  { key: 'paybackMonths', label: 'Payback' },
+];
+
+/** Named figures only, in a fixed order, with the engine's value verbatim apart from `tidyMonths`. */
+function previewFigures(snapshot?: FinancialSnapshot): Array<{ label: string; value: string }> {
+  return PREVIEW_FIGURES.flatMap(({ key, label }) => {
+    const raw = snapshot?.[key];
+    const value = typeof raw === 'string' ? raw.trim() : '';
+    return value ? [{ label, value: tidyMonths(value) }] : [];
+  });
+}
+
+/** "1 months" -> "1 month". The engine formats the plural unconditionally (`artifacts.py`), and
+ *  the disagreeing plural landed on the money page next to a price. Display-side only: the stored
+ *  value is untouched, and any count other than exactly one passes through unchanged. */
+function tidyMonths(value: string): string {
+  return value.replace(/^1\s+months\b/i, '1 month');
+}
+
 function PreviewDocument({ pack }: { pack: PackDetails }) {
   const headings = pack.whatYouGet ?? [];
   const body = pack.sampleExtract ?? [];
-  const figures = Object.entries(pack.financialSnapshot ?? {}).filter(
-    ([, v]) => typeof v === 'string' && v.trim(),
-  );
+  const figures = previewFigures(pack.financialSnapshot);
   const hasRealContent = headings.length > 0 || body.length > 0;
 
   return (
@@ -1073,7 +1261,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
             ))}
             {figures.length > 0 && (
               <div className="flex gap-3 pt-1">
-                {figures.slice(0, 3).map(([label, value]) => (
+                {figures.slice(0, 3).map(({ label, value }) => (
                   <div key={label} className="flex-1 rounded-md bg-bg p-2.5">
                     <p className="text-caption font-medium text-subtle">{label}</p>
                     <p className="mt-1 font-mono text-caption font-semibold text-text">{value}</p>
