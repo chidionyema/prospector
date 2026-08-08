@@ -137,6 +137,25 @@
      at 5.48:1 on white clears the 3:1 that UI components require. */
   --focus: var(--survive);       /* #047857. 5.48:1 on --bg. Clears the 3:1 UI floor. */
 
+  /* BRAND MARK ACCENT -- founder override, 2026-08-08, reversing §3.1's "no brand colour" for
+     the header logo mark ONLY. CTAs and links are untouched and stay ink (--accent above); this
+     token has exactly one consumer, `Logo.tsx`'s `BrandMark`.
+
+     Reuses the exact hex already on the Care & Benefits category tag (--cat-care-benefits)
+     rather than minting a 13th arbitrary colour -- it is the "muted teal/green" already visible
+     elsewhere on the page, not a new hue.
+
+     COLLISION FLAGGED, NOT RESOLVED: --success/--focus (#047857, "survived") sits at Lab hue
+     ~163deg; this token sits at ~175deg -- ~12deg apart, well under the >=25deg-from-verdict
+     separation §3.1's own category-hue methodology requires everywhere else on this sheet (see
+     the --cat-professional-services comment above for that rule being applied). Every teal/green
+     slot on the wheel is already reserved by --success or a category hue
+     (--cat-pets-animals ~193deg, --cat-care-benefits itself ~175deg) -- there is no unoccupied
+     teal/green left, so this is the closest available fit, not a clean one. The header now sits
+     in the same colour family as the "survived" verdict mark; nothing in this codebase has
+     confirmed that's an acceptable read. */
+  --brand-mark: #0F766E;         /* = --cat-care-benefits. 4.75:1 on white. */
+
   /* SEMANTICS. Red and green are reserved for exactly one meaning on this site: killed and
      survived. They are never decoration and never a brand colour.
      Each pair ships a `-bg` tint and a `-strong` text colour, because the base hue does not
@@ -338,6 +357,7 @@
   --color-on-primary: var(--on-primary);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-brand-mark: var(--brand-mark); /* Logo.tsx's BrandMark only -- see the token above. */
   /* NOT decorative, and it was missing. `--focus` has existed since brand v2 but was never mapped
      into @theme, so the sixteen `ring-focus` / `border-focus` call sites across src/ compiled to
      NOTHING -- in Tailwind v4 an unmapped colour utility emits no rule at all. Every one of those

@@ -860,6 +860,25 @@ function CatalogBrowser({
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const shelfControlsRef = React.useRef<HTMLDivElement>(null);
 
+  /* Measured height of the inline StepFlow block, kept live while it's mounted so the spacer
+     below can stand in for it. WHY THIS EXISTS: opening the sheet unmounts that block (see the
+     comment on `shelfControls`), and for anyone who has scrolled past it -- which is exactly who
+     the pinned FilterFab trigger is for -- collapsing ~300-400px of page height that sits ABOVE
+     their current scroll position shifts everything below it up by that amount while `scrollY`
+     stays put. The reader's viewport lands on whatever content happened to end up at that pixel
+     offset: a "jump to a random section" that isn't random at all, just unmeasured. A same-height
+     placeholder keeps total page height constant across the open transition, so the scroll
+     position keeps pointing at the same content. */
+  const [stepFlowHeight, setStepFlowHeight] = React.useState<number | null>(null);
+  const stepFlowWrapRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = stepFlowWrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => setStepFlowHeight(entry.contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [filtersOpen]);
+
   const visible = React.useMemo(() => {
     const filtered = filterPacks(packs, state);
     if (sort === 'newest') return filtered; // server already returns newest-first
@@ -1019,9 +1038,15 @@ function CatalogBrowser({
           file's rule is that these controls exist EXACTLY ONCE per page (see the note above the
           block). Two mounted routers would mean two wizard positions for one filter state, and
           would double every selector an e2e test matches on. The remount costs the step position,
-          which is the right thing to lose: opening the sheet is starting the narrowing again. */}
-      {!filtersOpen && (
-        <div className="mt-6 border-t border-border pt-6">
+          which is the right thing to lose: opening the sheet is starting the narrowing again.
+
+          The unmount itself is real -- `stepFlowHeight` below only stands in for its FOOTPRINT,
+          so page height doesn't move and a reader scrolled past this block doesn't get jumped.
+          See the comment on `stepFlowHeight`. */}
+      {filtersOpen ? (
+        stepFlowHeight != null && <div aria-hidden="true" style={{ height: stepFlowHeight }} />
+      ) : (
+        <div ref={stepFlowWrapRef} className="mt-6 border-t border-border pt-6">
           <StepFlow packs={packs} state={state} onChange={apply} />
         </div>
       )}
