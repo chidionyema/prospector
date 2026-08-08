@@ -1458,7 +1458,10 @@ export default function Home({ packs, stats, initialState, market, currency, per
         // 27px at 360x780 -- the h1 takes one more line at that width. 24px of band padding is
         // the difference between a card you can see and a sliver. `md:` is untouched, so nothing
         // above a phone gets tighter.
-        className="animate-rise pt-8 pb-8 md:pt-14 md:pb-16 [@media(max-height:820px)]:md:pt-8 [@media(max-height:820px)]:md:pb-8"
+        // `animate-settle`, not `animate-rise`: this band holds the h1, which is the page's
+        // LCP element, and `rise` fades from opacity 0 -- which made LCP 1940ms against a
+        // 328ms first paint (F-005). See the keyframes note in `tokens.css`.
+        className="animate-settle pt-8 pb-8 md:pt-14 md:pb-16 [@media(max-height:820px)]:md:pt-8 [@media(max-height:820px)]:md:pb-8"
       >
         {/* Two columns on lg+: the claim on the left, the evidence for it on the right. The
             filter-log card is the argument -- it is the only thing above the fold that a
@@ -1632,7 +1635,32 @@ export default function Home({ packs, stats, initialState, market, currency, per
         used to do this work too; it now stops repeating the same total and just describes the
         method.
       */}
-      <Section bg="bg" width="7xl" className="!py-10 md:!py-12">
+      {/* THE PHONE FOLD IS A HEIGHT BUDGET, AND THIS STRIP IS 233px OF IT (F-001).
+          Measured on the built tree at 3be12ca by `scripts/design-audit/measure-fold.mjs`: the
+          first pack card sat at y=937 with the fold at 780/844, so a shop's home page opened
+          with no product on screen at 360x780 (-157px) and 390x844 (-93px), and cleared
+          430x932 by only 57px.
+
+          The budget above the card, measured, not guessed: header 65 + hero 379 + THIS STRIP
+          233 + catalogue heading 29 + pricing line 31 + search toolbar 92 + sector chips 36.
+          The strip is the single biggest block that is not the hero and not the shelf's own
+          controls, and it is the only one that is pure argument -- every other block is either
+          navigation or the shelf itself.
+
+          So it moves below the shelf on phones and keeps its spec position from `sm:` up, via
+          `order` on a flex wrapper. ONE DOM node, no duplicated copy: rendering it twice behind
+          `hidden`/`block` would put the same two numbers in the document twice, which is a
+          screen-reader defect and a copy-drift risk for a section whose whole job is that its
+          numbers are trustworthy.
+
+          Shrinking instead was measured and rejected in the original audit: dropping the second
+          paragraph and tightening padding recovers ~90px of the ~197px needed at 360.
+
+          NOTE FOR WHOEVER ADDS THE NEXT BLOCK HERE: this is additive. Anything else placed
+          above the shelf spends the same budget, and `measure-fold.mjs` is the check --
+          `e2e/discovery.spec.ts` only runs at 1280x720 and physically cannot see it. */}
+      <div className="flex flex-col">
+      <Section bg="bg" width="7xl" outerClassName="order-1 sm:order-none" className="!py-10 md:!py-12">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="max-w-3xl">
             <p className="text-body font-semibold text-text">
@@ -1656,7 +1684,13 @@ export default function Home({ packs, stats, initialState, market, currency, per
       </Section>
 
       <div id="catalog" className="scroll-mt-20" />
-      <Section bg="bg" width="7xl" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
+      {/* `!border-b` pins a border this band already had. `SectionBand` carries
+          `last:border-b-0`, and the flex wrapper introduced above makes this the LAST child of
+          its parent for the first time -- so wrapping it would silently delete the divider
+          between the shelf and the section below, on every viewport, as a side effect of a
+          mobile-only fold fix. `:last-child` is DOM order, not flex order, so this holds at
+          both breakpoints. */}
+      <Section bg="bg" width="7xl" outerClassName="!border-b" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
         {/* THE SHELF HAS A NAME AT EVERY WIDTH NOW.
             This block was `hidden sm:block` outright, to buy fold budget on a phone. What that
             actually bought was a phone reader going from the hero's last line straight into a
@@ -1704,6 +1738,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
 
         <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} />
       </Section>
+      </div>
 
       {/* THE FILTER LOG, at every width now, and always AFTER the shelf.
           It used to be `lg:hidden` here and the hero's right column on desktop. Both positions
