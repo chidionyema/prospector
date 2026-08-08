@@ -219,14 +219,82 @@ def test_no_live_tooling_still_sets_the_cursor_concurrency_knob():
         + "\n  ".join(offenders))
 
 
-def test_configured_verdict_chain_is_trusted_only():
-    """Publish-on-PASS depends on this: no brain outside MOAT_PRIMARY may rule a verdict."""
+def test_the_verdict_chain_is_led_by_a_trusted_brain():
+    """REPLACES `test_configured_verdict_chain_is_trusted_only` (founder directive 2026-08-08,
+    "veridt should also have fallback").
+
+    The old test asserted the chain contained NO untrusted brain at all. That is no longer the
+    policy: minimax is back as a guardrailed emergency tail. What must still hold is that the
+    chain is LED by a trusted brain, so the default path rules finally and the untrusted tier is
+    reached only on failover — never as the normal case.
+    """
     from prospector.config import load_config
     from prospector.operator import MOAT_PRIMARY
     ops = load_config().operator
     ops = [ops] if isinstance(ops, str) else list(ops)
     assert ops, "verdict chain must not be empty"
-    untrusted = [o for o in ops if o not in MOAT_PRIMARY]
-    assert not untrusted, (
-        f"{untrusted} would rule verdicts provisionally instead of deferring; "
-        "a provisional pass costs a verdict run now AND a re-vet later for the same answer")
+    assert ops[0] in MOAT_PRIMARY, (
+        f"the verdict chain is led by {ops[0]!r}, which cannot rule finally; every normal "
+        "verdict would be provisional and the catalogue would stop publishing entirely")
+
+
+def test_every_untrusted_tier_on_the_verdict_chain_is_fenced():
+    """The safety case for the re-add, checked against the LIVE config rather than a fixture.
+
+    A tail brain is only acceptable because three things are true at once. This pins the first;
+    the two below pin the rest.
+    """
+    from prospector.config import load_config
+    from prospector.operator import MOAT_PRIMARY, is_provisional_provider
+    ops = load_config().operator
+    ops = [ops] if isinstance(ops, str) else list(ops)
+    for name in ops[1:]:
+        if name not in MOAT_PRIMARY:
+            assert is_provisional_provider(name), (
+                f"{name!r} sits on the verdict chain and is NOT stamped provisional — it would "
+                "rule as trusted-final and its PASSes would publish")
+
+
+def test_a_verdict_served_by_the_tail_is_stamped_provisional():
+    """The fence must bite on the OPERATOR that actually served, not on the config.
+
+    `verify.py` asks the chain `served_is_provisional()` immediately after each ruling
+    (verify.py:52-56, :480). If that answered False for a minimax-served call, the ruling would
+    be indistinguishable from a claude_cli one and would publish.
+    """
+    from prospector.operator import FallbackOperator, Operator
+
+    class _Op(Operator):
+        def __init__(self, name):
+            self.name = name
+
+        def _raw(self, system, user, temperature):
+            return "{}"
+
+    chain = FallbackOperator([("claude_cli", _Op("claude_cli")), ("minimax", _Op("minimax"))])
+
+    # Nothing served yet: provisional is False, so a chain that has never run cannot poison a
+    # dossier by default.
+    assert chain.served_is_provisional() is False
+
+    chain._served.name = "minimax"
+    assert chain.served_is_provisional() is True, "a minimax ruling must be provisional"
+
+    chain._served.name = "claude_cli"
+    assert chain.served_is_provisional() is False, "a claude_cli ruling must be final"
+
+
+def test_a_provisional_pass_is_refused_by_the_publish_gate():
+    """The rail that makes the whole re-add safe: `run.py:528`'s `not dossier.provisional`.
+
+    Asserted by reading the gate's source rather than by running a full vet, because the
+    alternative — a live vet — cannot be run offline and would make this test skip in CI,
+    which is where it most needs to hold.
+    """
+    import inspect
+
+    from prospector import run as R
+    src = inspect.getsource(R.vet_candidate)
+    assert "and not dossier.provisional" in src, (
+        "the publish gate no longer excludes provisional rulings; an untrusted brain's PASS "
+        "would reach the storefront")

@@ -108,13 +108,38 @@ def test_healthy_moat_drains_normally():
 
 def test_drain_and_scheduler_share_one_implementation():
     """A duplicated moat classifier is the same defect shape `errors.looks_exhausted` exists to
-    prevent: two copies drift, and the one that drifts is the one nobody is watching. The drain
-    and the daemon must not be able to disagree about whether the moat can rule."""
+    prevent: two copies drift, and the one that drifts is the one nobody is watching.
+
+    On a trusted-only chain the two callers must still agree exactly. Where they now differ is
+    a PARAMETER of the shared function, not a second copy of the logic — see the test below.
+    """
     from prospector.scheduler import run_scheduled as rs
 
     H.get_health().mark_exhausted("claude_cli", 3600.0, error="usage limit")
     cfg = _cfg()
     assert rs._moat_blind_reason(cfg) == H.moat_blind_reason(cfg) != ""
+
+
+def test_the_drain_refuses_a_provisional_tail_that_generation_accepts():
+    """The asymmetry added 2026-08-08, and the reason it is not an inconsistency.
+
+    Generation may run into a live provisional tail: the rows it mints CAN be ruled, and a
+    provisional ruling is finalised later by a re-vet. The DRAIN may not, and this is the
+    whole point — its job is to convert `provisional` rows into final ones, and re-vetting a
+    provisional row on a provisional brain re-stamps it `provisional`. The row does not move,
+    the money is spent, and the drain's own CLI load helps keep the trusted brain benched.
+
+    Measured 2026-08-06 on a one-brain moat marked dead: a 30-minute drain moved provisional
+    -14 / defer +13, a net backlog change of -1 for a full pass of subscription-CLI spend.
+    """
+    from prospector.scheduler import run_scheduled as rs
+
+    H.get_health().mark_exhausted("claude_cli", 3600.0, error="usage limit")
+    cfg = _cfg(operator=("claude_cli", "minimax"))
+
+    assert rs._moat_blind_reason(cfg) == "", "generation proceeds — minimax can still rule"
+    assert "moat blind" in H.moat_blind_reason(cfg), "the drain refuses — it cannot FINALISE"
+    assert "moat blind" in _resume(cfg)["skipped"], "and the refusal reaches the real drain"
 
 
 def test_the_preflight_does_not_burn_the_half_open_probe():

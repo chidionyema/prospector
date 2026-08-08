@@ -243,8 +243,21 @@ def moat_brains(cfg) -> list[str]:
     return [str(o) for o in ops if str(o) in MOAT_PRIMARY]
 
 
-def moat_blind_reason(cfg) -> str:
-    """Why no moat work can run right now, or "" if some trusted brain can still rule.
+def verdict_brains(cfg) -> list[str]:
+    """EVERY brain on this config's verdict chain, trusted or provisional, in order.
+
+    The counterpart to `moat_brains`. Added 2026-08-08 with the minimax re-add: with a
+    provisional tail configured, "can any brain rule at all?" and "can a brain rule
+    FINALLY?" stopped being the same question, and answering the first with the second is
+    what would have made the fallback inert (see `moat_blind_reason(trusted_only=...)`).
+    """
+    ops = getattr(cfg, "operator", None) or []
+    ops = [ops] if isinstance(ops, str) else list(ops)
+    return [str(o) for o in ops]
+
+
+def moat_blind_reason(cfg, *, trusted_only: bool = True) -> str:
+    """Why no moat work can run right now, or "" if some brain can still rule.
 
     ONE implementation, two callers: the scheduler's generation preflight
     (`scheduler/run_scheduled.py::_moat_blind_reason`) and the drain's preflight
@@ -254,15 +267,28 @@ def moat_blind_reason(cfg) -> str:
     classifier that `errors.looks_exhausted` exists to prevent: two copies drift, and the
     one that drifts is the one nobody is watching.
 
+    `trusted_only` is the one thing the two callers do NOT share, and the asymmetry is the
+    point (founder directive 2026-08-08, re-adding minimax to `operator:`):
+
+      * **The drain passes True** (the default, so a new caller is safe by construction).
+        Re-vetting a `provisional` row on a provisional brain re-stamps it `provisional` —
+        the row does not move, the money is spent, and the drain's own CLI load is what
+        keeps the trusted brain benched. A drain that cannot finalise must not run.
+      * **Generation passes False.** Generating while a provisional tail is alive produces
+        rows that CAN be ruled — provisionally now, finally on re-vet — which is exactly the
+        trade the founder accepted. Had generation stayed trusted-only, the re-add would have
+        been inert: the daemon would still skip every tick whenever claude_cli was dead,
+        which is the only time the fallback exists to matter.
+
     Uses `dead_until()`, NOT `is_dead()`: `is_dead` can CLAIM the half-open probe slot, and
     a bookkeeping check must never consume the one call whose job is to measure recovery.
     This reads the mark; it does not spend the probe.
 
-    Returns "" when no trusted brain is configured at all — that is a config error, and it
-    should surface downstream as a loud failure rather than a quiet skip.
+    Returns "" when no brain of the requested kind is configured at all — that is a config
+    error, and it should surface downstream as a loud failure rather than a quiet skip.
     """
     import time as _time
-    brains = moat_brains(cfg)
+    brains = moat_brains(cfg) if trusted_only else verdict_brains(cfg)
     if not brains:
         return ""
     health = get_health()
@@ -271,4 +297,7 @@ def moat_blind_reason(cfg) -> str:
         return ""
     now = _time.time()
     detail = ", ".join(f"{b} for {int(v - now)}s more" for b, v in sorted(marks.items()))
-    return f"moat blind: every trusted brain is marked dead ({detail})"
+    # Wording is deliberately NOT derived from `trusted_only`: on a trusted-only chain both
+    # callers inspect the identical brain set, and their reasons must then be byte-identical so
+    # a drift between them is visible. The brains are named in `detail` either way.
+    return f"moat blind: every brain it can rule with is marked dead ({detail})"

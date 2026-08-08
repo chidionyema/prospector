@@ -59,16 +59,46 @@ def test_one_live_trusted_brain_is_enough_to_run(tmp_path):
     assert not tick.get("moat_blind")
 
 
-def test_a_live_untrusted_brain_does_not_unblind_the_moat(tmp_path):
-    """minimax being up is exactly the condition that produced 15/15 provisional rulings —
-    it can serve, so the run 'succeeds', and every verdict it serves owes a re-vet."""
+def test_a_live_untrusted_brain_now_unblinds_generation(tmp_path):
+    """REVERSED 2026-08-08 by founder directive ("veridt should also have fallback").
+
+    Until 2026-08-08 this asserted the opposite: minimax being up did NOT unblind the tick,
+    because a provisional ruling costs a verdict run now AND a re-vet later (2x) to reach the
+    answer a DEFER reaches once (1x). That arithmetic is unchanged and still true — see
+    config.yaml — but the founder accepted the 2x cost, because a DEFER stops the line
+    entirely: on 2026-08-08 claude_cli hit a monthly spend limit and the daemon produced
+    nothing rulable for the duration.
+
+    This test is the one that makes the re-add REACH the daemon. Had the preflight stayed
+    trusted-only, `operator: [claude_cli, minimax]` would have been inert in exactly the
+    situation the fallback exists for — claude_cli dead — and the config change would have
+    looked shipped while changing nothing.
+    """
     H.get_health().mark_exhausted("claude_cli", 3600.0, error="usage limit")
+    calls = []
+    tick = rs.run_tick(_cfg(tmp_path, operator=("claude_cli", "minimax")),
+                       generate_fn=lambda c, n: calls.append(n))
+
+    assert calls == [3], "a live provisional tail can rule, so the tick has work worth doing"
+    assert not tick.get("moat_blind")
+
+
+def test_generation_is_still_blind_when_the_provisional_tail_dies_too(tmp_path):
+    """The converse, and the reason `trusted_only=False` is not simply "never blind".
+
+    A preflight that unblinded on a configured-but-dead tail would be worse than none: it
+    would mint candidates no brain at all can rule.
+    """
+    h = H.get_health()
+    h.mark_exhausted("claude_cli", 3600.0, error="usage limit")
+    h.mark_exhausted("minimax", 3600.0, error="usage limit")
     calls = []
     tick = rs.run_tick(_cfg(tmp_path, operator=("claude_cli", "minimax")),
                        generate_fn=lambda c, n: calls.append(n))
 
     assert calls == []
     assert tick["moat_blind"] is True
+    assert "minimax" in tick["reason"], "the reason must name every dead brain, not just the head"
 
 
 def test_healthy_moat_runs_normally(tmp_path):
