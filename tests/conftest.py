@@ -109,6 +109,52 @@ def _isolate_prescreen_shadow(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_generation_artifacts(tmp_path, monkeypatch):
+    """Redirect the G1 diversity receipts and the G3 exhausted-family cache off the
+    production store.
+
+    Eighth instance of this file's recurring leak, and it needed no store fixture to
+    happen: `tests/unit/test_blue_sky.py` builds a REAL Config with `load_config()`,
+    whose `store_dir` IS the repo's own `store/`, and hands it a stub store. Generation
+    then resolves `<store_dir>/exhausted_families.json` and writes it — measured before
+    this fixture existed: a clean `store/` grew an untracked
+    `store/exhausted_families.json` carrying `built_at_kill_count: 0` on every
+    `pytest tests/unit` run, i.e. a denial list built from an EMPTY stub store, sitting
+    in the exact path the daemon reads before generating.
+
+    setenv is sufficient: `diversity.generation_artifact_dir()` reads the env var per
+    call, so nothing is bound at import."""
+    monkeypatch.setenv("PROSPECTOR_GENERATION_ARTIFACT_DIR",
+                       str(tmp_path / "generation_artifacts"))
+
+
+@pytest.fixture(autouse=True)
+def _isolate_usage_wall(tmp_path, monkeypatch):
+    """Point the estate-wide usage-wall marker at a per-test path.
+
+    `usage_wall.py:51` already declares `PROSPECTOR_USAGE_WALL_MARKER` "overridable for
+    tests ONLY" — but nothing set it, so the suite read
+    `~/.hermes/state/claude_usage_limit.json`, a marker written by whichever of Otto or
+    this daemon last hit the shared subscription. `run_claude_cli` preflights on it
+    (claude_cli.py:267), so while a REAL wall is up the preflight raises before
+    `_attempt_claude_cli` is reached and every test that counts CLI attempts fails.
+
+    Measured 2026-08-08 01:04, with a live marker reading `capacity returns 01:16:08,
+    observed by prospector-cli`: test_fast_fail_exhaustion and
+    test_claude_cli_failure_reason failed `assert 0 == 1`, and the same
+    behavioural+scheduler command gave `33 failed` and then `246 passed` twenty minutes
+    apart with no code change between them. The suite was measuring the estate's quota,
+    not the code.
+
+    Writing matters as much as reading: `usage_wall.observe()` (usage_wall.py:180)
+    writes that same shared path atomically, so a test exercising the record path would
+    have benched OTTO for the cooldown. Tests that mean to exercise the marker
+    monkeypatch this env var themselves, which runs after this fixture and wins."""
+    monkeypatch.setenv("PROSPECTOR_USAGE_WALL_MARKER",
+                       str(tmp_path / "usage_wall" / "claude_usage_limit.json"))
+
+
+@pytest.fixture(autouse=True)
 def _no_live_payment_credentials(monkeypatch):
     """Strip money-rail credentials from os.environ for every test.
 

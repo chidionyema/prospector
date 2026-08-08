@@ -90,6 +90,70 @@ def _automatability_score(val: Any) -> Optional[float]:
         return None
 
 
+# Audience persona descriptions injected into generate.md. Each description names a
+# SPECIFIC person (age range, life situation, daily pains, spend profile, budget
+# authority) so the model produces ideas aimed at a real buyer rather than a
+# generic "B2B" frame. Module-level so the dict is importable for the persona-
+# completeness regression test; contents are static (no runtime deps).
+_AUDIENCE_DESCRIPTIONS: dict[str, str] = {
+    "retiree_cohort":
+        "A person aged 60-75, recently retired or approaching retirement. Has accumulated "
+        "assets (pension pot, property) but irregular income. Feels: health anxiety, "
+        "loneliness, desire to pass wealth on, digital exclusion. Spends on: healthcare, "
+        "leisure, gifting, inheritance planning. Has budget authority over their own finances "
+        "and often adult children's finances too.",
+    "gen_z_worker":
+        "A person aged 18-27, in casualised or gig work (rideshare, delivery, freelance). "
+        "No pension, no savings buffer, income volatile week-to-week. Feels: instability, "
+        "exclusion from mainstream financial products, time-poverty. Spends on: transport, "
+        "housing, food. Has budget authority over a very tight monthly balance.",
+    "smb_owner":
+        "A person running a business with 1-20 employees, often themselves as the primary "
+        "worker. Handles finance, sales, operations, HR simultaneously. Feels: cash-flow "
+        "stress, admin overwhelm, competitive pressure. Spends on: software subscriptions, "
+        "staff, supplies. Has budget authority but every pound is scrutinised.",
+    "primary_carer":
+        "A person (any age) who is the main carer for young children, elderly parents, or "
+        "disabled relatives. Has fragmented work history and reduced earning capacity. Feels: "
+        "time-poverty, guilt, isolation, financial precarity. Spends on: childcare, care "
+        "products, respite services. Budget is constrained but decisions are high-stakes.",
+    "manual_tradesperson":
+        "A person aged 25-55 working in construction, plumbing, electrical, logistics, or "
+        "hospitality. Physically skilled, time-poor, digitally underserved. Feels: "
+        "admin burden eating into earning time, unfair tax treatment, physical risk. "
+        "Spends on: tools, transport, training, insurance. Budget authority over "
+        "business purchases, personal spending is disciplined.",
+    "public_sector_worker":
+        "A person aged 30-60 employed in the NHS, a school, local government, or the "
+        "civil service. Stable income, defined pension, but pay is capped and conditions "
+        "are tightening. Feels: workload pressure, frustration with under-resourcing, "
+        "desire for side income. Spends on: housing, childcare, transport. Has budget "
+        "authority within a constrained household.",
+    "freelancer_creative":
+        "A person aged 25-45 working as a designer, writer, developer, consultant, or "
+        "creative professional. Income is project-based and lumpy. Feels: client "
+        "management burden, feast-or-famine anxiety, desire for predictability. Spends on: "
+        "software, subscriptions, professional development. Has budget authority over "
+        "discretionary spend but is price-sensitive on subscriptions.",
+    "squeezed_middle":
+        "A person aged 35-55 with a professional career, mortgage, and children. "
+        "Appears affluent on paper (property, pension) but cash-poor in the short term. "
+        "Feels: the pinch between fixed costs and aspirational spending, complexity of "
+        "financial decisions. Spends on: mortgage, school fees, healthcare, elder care. "
+        "Budget authority is shared with a partner; decisions are deliberated.",
+    "startup_operator":
+        "an early-stage startup founder-operator wearing every hat, who pays for anything that removes a bottleneck to revenue, compliance or fundraising without hiring",
+    "software_developer":
+        "a professional software developer or indie hacker who buys tools, data and infrastructure that save engineering time or unlock a paid capability, and is allergic to fluff",
+    "agency_owner":
+        "the owner of a small client-services agency (marketing, dev, design) who buys leverage: anything that raises billable margin, wins retainers or de-risks client delivery",
+    "ops_manager":
+        "an operations manager inside a small or mid-sized firm who owns messy cross-system processes and has budget for tools that kill manual work, errors and audit risk",
+    "ecommerce_seller":
+        "an online-store operator (Shopify, Amazon, eBay) who pays for anything that raises conversion, cuts fulfilment or returns cost, or defends against platform policy shifts",
+}
+
+
 @track_latency(name="generate")
 def generate(
     op: Operator,
@@ -172,53 +236,6 @@ def generate(
     # distinct form x audience cell. Descriptions are specific: named person, age range,
     # pain felt daily, budget authority.
     audience_forms = [str(a).strip() for a in (gen_cfg.get("audience_forms") or []) if str(a).strip()]
-    _AUDIENCE_DESCRIPTIONS: dict[str, str] = {
-        "retiree_cohort":
-            "A person aged 60-75, recently retired or approaching retirement. Has accumulated "
-            "assets (pension pot, property) but irregular income. Feels: health anxiety, "
-            "loneliness, desire to pass wealth on, digital exclusion. Spends on: healthcare, "
-            "leisure, gifting, inheritance planning. Has budget authority over their own finances "
-            "and often adult children's finances too.",
-        "gen_z_worker":
-            "A person aged 18-27, in casualised or gig work (rideshare, delivery, freelance). "
-            "No pension, no savings buffer, income volatile week-to-week. Feels: instability, "
-            "exclusion from mainstream financial products, time-poverty. Spends on: transport, "
-            "housing, food. Has budget authority over a very tight monthly balance.",
-        "smb_owner":
-            "A person running a business with 1-20 employees, often themselves as the primary "
-            "worker. Handles finance, sales, operations, HR simultaneously. Feels: cash-flow "
-            "stress, admin overwhelm, competitive pressure. Spends on: software subscriptions, "
-            "staff, supplies. Has budget authority but every pound is scrutinised.",
-        "primary_carer":
-            "A person (any age) who is the main carer for young children, elderly parents, or "
-            "disabled relatives. Has fragmented work history and reduced earning capacity. Feels: "
-            "time-poverty, guilt, isolation, financial precarity. Spends on: childcare, care "
-            "products, respite services. Budget is constrained but decisions are high-stakes.",
-        "manual_tradesperson":
-            "A person aged 25-55 working in construction, plumbing, electrical, logistics, or "
-            "hospitality. Physically skilled, time-poor, digitally underserved. Feels: "
-            "admin burden eating into earning time, unfair tax treatment, physical risk. "
-            "Spends on: tools, transport, training, insurance. Budget authority over "
-            "business purchases, personal spending is disciplined.",
-        "public_sector_worker":
-            "A person aged 30-60 employed in the NHS, a school, local government, or the "
-            "civil service. Stable income, defined pension, but pay is capped and conditions "
-            "are tightening. Feels: workload pressure, frustration with under-resourcing, "
-            "desire for side income. Spends on: housing, childcare, transport. Has budget "
-            "authority within a constrained household.",
-        "freelancer_creative":
-            "A person aged 25-45 working as a designer, writer, developer, consultant, or "
-            "creative professional. Income is project-based and lumpy. Feels: client "
-            "management burden, feast-or-famine anxiety, desire for predictability. Spends on: "
-            "software, subscriptions, professional development. Has budget authority over "
-            "discretionary spend but is price-sensitive on subscriptions.",
-        "squeezed_middle":
-            "A person aged 35-55 with a professional career, mortgage, and children. "
-            "Appears affluent on paper (property, pension) but cash-poor in the short term. "
-            "Feels: the pinch between fixed costs and aspirational spending, complexity of "
-            "financial decisions. Spends on: mortgage, school fees, healthcare, elder care. "
-            "Budget authority is shared with a partner; decisions are deliberated.",
-    }
 
     arche = str(gen_cfg.get("operator_archetype", "")).strip()
     arche_cfg = (gen_cfg.get("archetypes") or {}).get(arche, {}) if arche else {}

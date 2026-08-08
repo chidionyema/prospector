@@ -779,6 +779,14 @@ generation:
     startup:
       binding: "STARTUP FOUNDER (binding — an idea failing these is INVALID, do not propose it): ambitious venture-scale opportunity for a founding team that CAN raise capital and hire; must name a SPECIFIC wedge + a plausible path to a repeatable growth motion; distribution may be paid, partner, or product-led; the moat can be built over time (data, network effects, switching cost) but the idea must NOT require already BEING a large incumbent."
       forbid: "FORBIDDEN SHAPES (even a funded startup cannot be these at birth — proposing one is an automatic miss): a licensed rating agency or central registry/authority that only works once you are already the standard, a regulator or standards body, or a play that presupposes an existing national balance sheet / charter you do not have."
+  # G1: per-batch distinct-k receipts -> store/generation_metrics.jsonl (zero LLM)
+  diversity_meter: true
+  # G3: standing exhausted-family denial list mined from the full kill corpus (zero LLM)
+  denylist:
+    enabled: true
+    min_family_size: 3
+    refresh_every_kills: 25
+    max_families: 12
   controller:
     killrate_window: 50
     exploration_min: 0.2

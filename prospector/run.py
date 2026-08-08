@@ -212,6 +212,7 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
 from . import drain_state  # noqa: E402 - deferred import after the helper block
 from .config import Config, load_config  # noqa: E402 - deferred import after the helper block
 from .dedup import dedup, drops_by_market  # noqa: E402 - deferred import after the helper block
+from .diversity import write_receipt  # noqa: E402 - deferred import after the helper block
 from .dossier import (  # noqa: E402 - deferred import after the helper block
     build_dossier,
     render_markdown,
@@ -741,9 +742,15 @@ def run_signal(
 
     # --- Dedup against catalogue (per market: the same idea elsewhere is not a dupe) ---
     catalogue = store.catalogue_titles()
+    # G1: per-batch diversity receipts, gated by cfg.generation.diversity_meter. The
+    # meter is best-effort (returns None on any failure) so a misconfigured receipt
+    # never breaks the generation path. "generated" captures the raw output before
+    # dedup; "post_dedup" captures the survivors after near-duplicates are removed.
+    write_receipt(cfg, "generated", candidates)
     unique, dropped = dedup(candidates, catalogue, threshold=cfg.dedup_threshold,
                             token_threshold=cfg.dedup_token_threshold,
                             default_market=_default_market(cfg))
+    write_receipt(cfg, "post_dedup", unique)
     if dropped:
         by_market = drops_by_market(dropped)
         logger.info(f"Dedup dropped {len(dropped)} near-duplicate pair(s)",
