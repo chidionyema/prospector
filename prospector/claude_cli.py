@@ -265,12 +265,20 @@ def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
     # exhausted brain correctly, and a wall IS exhaustion — it just happens to know its own
     # reset time. The message carries the literal "usage limit reached" so `looks_exhausted`
     # and `classify_exhaustion` classify it exactly as they would the CLI's own words.
+    #
+    # ...but the WINDOW must not travel as prose. `usage_wall.reason()` renders the reset for a
+    # human ("capacity returns 2026-08-08 22:37:45 (14.0 min)"), and `limit_window_seconds`
+    # returns None on that shape, so before 2026-08-08 a known 14-minute wall was benched as the
+    # 1h default and the moat went provisional for 46 minutes it did not owe. We know the number
+    # exactly — `blocked_for()` is the same value `reason()` is rendered from — so hand it over
+    # structurally and let no regex stand between the two.
     walled = usage_wall.reason()
     if walled:
         logger.warning("Claude CLI skipped: usage wall is live", extra={"web": web})
         raise ProviderExhaustedError(
             f"claude cli not called: usage limit reached — {walled}",
-            provider=f"claude_cli/{model or 'default'}")
+            provider=f"claude_cli/{model or 'default'}",
+            retry_after_s=usage_wall.blocked_for())
 
     cmd = [CLAUDE_BIN, "-p", prompt, "--output-format", "json"]
     if web:

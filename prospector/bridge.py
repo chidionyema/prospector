@@ -721,6 +721,104 @@ class EngineBridge:
             logger.error(f"EngineBridge: Failed to create bundle for {candidate_id}")
             return False
 
+        # 2c. THE CONTENT GATES, DECIDED BEFORE ANYTHING IS MINTED.
+        #
+        # These three operands of `listing_gate` — completeness, the bundle audit and the Q2
+        # lint — are pure functions of the pack we have already built. None of them can
+        # change based on a Stripe object or an R2 key. Running them after provisioning (as
+        # this did until 2026-08-08) meant a pack that could never list still minted a
+        # Product and a Price and uploaded its zip first: four orphan Stripe products in one
+        # afternoon, and the same leak on every retry. Deciding here makes provisioning
+        # conditional on the pack being sellable at all.
+        #
+        # `_resolve_money_rail` below still runs unconditionally — it only READS
+        # (describe_price) and a republish must keep the ids it is already sold with. It is
+        # the MINT that is gated, not the money rail's resolution.
+        # The storefront tells buyers exactly which documents are in the download
+        # (Store.Web PackContents.tsx, bound to BUNDLE_FILES by a drift test). That claim is
+        # only honest if an incomplete bundle cannot be listed, and `pack_complete` alone does
+        # not carry it: `validate_pack` reads the in-memory artifacts, so it cannot see a file
+        # that never reached the zip. a03a2ba029b408a7 is the proof — it shipped 3 of 8 files
+        # with a 20-byte Marketing_Assets.md and was listed for sale anyway.
+        bundle_gaps, bundle_stubs = audit_bundle(bundle_path)
+        bundle_complete = not bundle_gaps and not bundle_stubs
+        if not bundle_complete:
+            logger.error(
+                f"EngineBridge: {candidate_id} bundle fails the structural audit "
+                f"(missing={bundle_gaps or '-'}, stubs={bundle_stubs or '-'}); "
+                f"publishing UNLISTED — the storefront promises every file in BUNDLE_FILES."
+            )
+        # Q2 LINT GATE: the deterministic quality floor on what a buyer actually SEES —
+        # currency consistent with the market, computed lines whose arithmetic re-checks,
+        # no mid-word cuts in storefront copy, citations that resolve. validate_pack proves
+        # presence and audit_bundle proves the zip's shape; neither reads the content. The
+        # full pre-slice texts are recomputed here so the truncation check can compare each
+        # final rendered field against its source.
+        listing_cfg = self.cfg.listing if isinstance(getattr(self.cfg, "listing", None), dict) else {}
+        store_dir = getattr(self.cfg, "store_dir", None)
+        store_dir = Path(store_dir) if isinstance(store_dir, (str, Path)) else None
+        one_liner_full = to_plain_text(candidate.one_liner, collapse=True) or to_plain_text(
+            listing_copy, collapse=True
+        )
+        lint_report = lint_pack(
+            artifacts=artifacts,
+            listing_copy=listing_copy,
+            listing_texts={
+                # Rendered half and source half must stay in the SAME normalisation space.
+                # `check_truncation` decides "cut mid-word" with `source.startswith(final)`,
+                # so normalising only the rendered half would not make that check wrong — it
+                # would make it silently vacuous, which is the more expensive failure. The
+                # rendered halves are normalised by `_card_field`; these sources bypass it,
+                # so they are normalised here.
+                "oneLine": (one_liner, nodash(one_liner_full)),
+                "headline": (catalog_meta.get("headline", ""),
+                             nodash(to_plain_text(listing.get("headline"), collapse=True))),
+                "subhead": (catalog_meta.get("subhead", ""), subhead),
+            },
+            truncation_caps={"headline": 140, "subhead": 280},
+            market=getattr(candidate, "market", "") or "",
+            check_urls_enabled=bool(listing_cfg.get("lint_check_urls", False)),
+            url_cache_path=(store_dir / "lint_url_cache.json") if store_dir else None,
+            # `title` lints the value that ACTUALLY SHIPS — i.e. after the catalogue choke
+            # point. That makes this a regression guard on the choke point itself: if the
+            # normalisation is ever bypassed again, this errors instead of going quiet, and
+            # a quiet bypass is exactly how 71 dashes reached 68 of 72 live listings.
+            house_fields={"title": nodash(to_plain_text(candidate.title, collapse=True))},
+            grammar_enabled=bool(listing_cfg.get("lint_grammar", False)),
+            max_grammar_defects_per_1k=float(
+                listing_cfg.get("max_grammar_defects_per_1k", 0.0) or 0.0),
+        )
+        lint_ok = bool(lint_report.get("ok"))
+        if not lint_ok:
+            lint_errors = [p["detail"] for p in lint_report["problems"]
+                           if p["severity"] == "error"]
+            logger.error(
+                f"EngineBridge: {candidate_id} FAILED the pack lint ({lint_errors}); "
+                f"publishing UNLISTED — wrong currency or wrong arithmetic must not sell."
+            )
+        # The receipt: the full report (lint + completeness + bundle audit) lives next to
+        # the dossier, machine-readable, pass or fail.
+        if store_dir is not None:
+            report_path = store_dir / "dossiers" / f"{candidate_id}.lint.json"
+            try:
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(json.dumps({
+                    **lint_report,
+                    "pack_complete": pack_complete,
+                    "completeness_problems": pack_problems,
+                    "bundle_missing": bundle_gaps,
+                    "bundle_stubs": bundle_stubs,
+                }, indent=2, ensure_ascii=False))
+            except OSError as exc:
+                logger.warning(
+                    f"EngineBridge: could not write lint report for {candidate_id}: {exc}"
+                )
+
+        # Everything decidable without touching a payment provider or object storage. When
+        # this is False the pack CANNOT list however provisioning goes, so minting for it
+        # would only ever produce an orphan.
+        content_ok = pack_complete and bundle_complete and lint_ok
+
         # 2b. Decide the price ONCE, here (C2). Two things downstream need it — the
         # provider Price object and the catalogue row — and they must not be able to
         # disagree: the fulfilment fence compares what the buyer paid against the
@@ -797,6 +895,18 @@ class EngineBridge:
 
         if reused is not None:
             pass  # already provisioned; minting anything here is the defect itself
+        elif not content_ok:
+            # The pack has already failed a content gate, so `listing_gate` returns False no
+            # matter what we mint. Minting anyway is how four unsellable Stripe products were
+            # created on 2026-08-08 — one per publish attempt, none reachable by a buyer,
+            # none cleaned up. The pack still registers UNLISTED below with its stub ids, so
+            # the operator sees it and a later republish provisions it properly.
+            logger.error(
+                f"EngineBridge: {candidate_id} failed a content gate "
+                f"(complete={pack_complete}, bundle={bundle_complete}, lint={lint_ok}); "
+                f"SKIPPING {payment_provider} provisioning — it could not list either way, "
+                f"and a product minted for an unlistable pack is an orphan."
+            )
         elif prov:
             try:
                 logger.info(f"EngineBridge: Creating {payment_provider} product for {candidate_id}")
@@ -843,7 +953,7 @@ class EngineBridge:
         content_hash: Optional[str] = None
         content_key: Optional[str] = None
         uploaded = False
-        if pack_complete:
+        if content_ok:
             content_hash = self._sha256(bundle_path)
             content_key = f"packs/{candidate_id}/{content_hash}.zip"
             uploaded = self.r2.upload(bundle_path, content_key)
@@ -872,85 +982,6 @@ class EngineBridge:
                 f"({provider_price_id!r}); publishing UNLISTED."
             )
 
-        # The storefront tells buyers exactly which documents are in the download
-        # (Store.Web PackContents.tsx, bound to BUNDLE_FILES by a drift test). That claim is
-        # only honest if an incomplete bundle cannot be listed, and `pack_complete` alone does
-        # not carry it: `validate_pack` reads the in-memory artifacts, so it cannot see a file
-        # that never reached the zip. a03a2ba029b408a7 is the proof — it shipped 3 of 8 files
-        # with a 20-byte Marketing_Assets.md and was listed for sale anyway.
-        bundle_gaps, bundle_stubs = audit_bundle(bundle_path)
-        bundle_complete = not bundle_gaps and not bundle_stubs
-        if not bundle_complete:
-            logger.error(
-                f"EngineBridge: {candidate_id} bundle fails the structural audit "
-                f"(missing={bundle_gaps or '-'}, stubs={bundle_stubs or '-'}); "
-                f"publishing UNLISTED — the storefront promises every file in BUNDLE_FILES."
-            )
-        # Q2 LINT GATE: the deterministic quality floor on what a buyer actually SEES —
-        # currency consistent with the market, computed lines whose arithmetic re-checks,
-        # no mid-word cuts in storefront copy, citations that resolve. validate_pack proves
-        # presence and audit_bundle proves the zip reached storage; neither reads the
-        # content. The full pre-slice texts are recomputed here so the truncation check can
-        # compare each final rendered field against its source.
-        listing_cfg = self.cfg.listing if isinstance(getattr(self.cfg, "listing", None), dict) else {}
-        store_dir = getattr(self.cfg, "store_dir", None)
-        store_dir = Path(store_dir) if isinstance(store_dir, (str, Path)) else None
-        one_liner_full = to_plain_text(candidate.one_liner, collapse=True) or to_plain_text(
-            listing_copy, collapse=True
-        )
-        lint_report = lint_pack(
-            artifacts=artifacts,
-            listing_copy=listing_copy,
-            listing_texts={
-                # Rendered half and source half must stay in the SAME normalisation space.
-                # `check_truncation` decides "cut mid-word" with `source.startswith(final)`,
-                # so normalising only the rendered half would not make that check wrong — it
-                # would make it silently vacuous, which is the more expensive failure. The
-                # rendered halves are normalised by `_card_field`; these sources bypass it,
-                # so they are normalised here.
-                "oneLine": (one_liner, nodash(one_liner_full)),
-                "headline": (catalog_meta.get("headline", ""),
-                             nodash(to_plain_text(listing.get("headline"), collapse=True))),
-                "subhead": (catalog_meta.get("subhead", ""), subhead),
-            },
-            truncation_caps={"headline": 140, "subhead": 280},
-            market=getattr(candidate, "market", "") or "",
-            check_urls_enabled=bool(listing_cfg.get("lint_check_urls", False)),
-            url_cache_path=(store_dir / "lint_url_cache.json") if store_dir else None,
-            # `title` lints the value that ACTUALLY SHIPS — i.e. after the catalogue choke
-            # point. That makes this a regression guard on the choke point itself: if the
-            # normalisation is ever bypassed again, this errors instead of going quiet, and
-            # a quiet bypass is exactly how 71 dashes reached 68 of 72 live listings.
-            house_fields={"title": nodash(to_plain_text(candidate.title, collapse=True))},
-            grammar_enabled=bool(listing_cfg.get("lint_grammar", False)),
-            max_grammar_defects_per_1k=float(
-                listing_cfg.get("max_grammar_defects_per_1k", 0.0) or 0.0),
-        )
-        lint_ok = bool(lint_report.get("ok"))
-        if not lint_ok:
-            lint_errors = [p["detail"] for p in lint_report["problems"]
-                           if p["severity"] == "error"]
-            logger.error(
-                f"EngineBridge: {candidate_id} FAILED the pack lint ({lint_errors}); "
-                f"publishing UNLISTED — wrong currency or wrong arithmetic must not sell."
-            )
-        # The receipt: the full report (lint + completeness + bundle audit) lives next to
-        # the dossier, machine-readable, pass or fail.
-        if store_dir is not None:
-            report_path = store_dir / "dossiers" / f"{candidate_id}.lint.json"
-            try:
-                report_path.parent.mkdir(parents=True, exist_ok=True)
-                report_path.write_text(json.dumps({
-                    **lint_report,
-                    "pack_complete": pack_complete,
-                    "completeness_problems": pack_problems,
-                    "bundle_missing": bundle_gaps,
-                    "bundle_stubs": bundle_stubs,
-                }, indent=2, ensure_ascii=False))
-            except OSError as exc:
-                logger.warning(
-                    f"EngineBridge: could not write lint report for {candidate_id}: {exc}"
-                )
         is_listed = listing_gate(
             uploaded=uploaded, pack_complete=pack_complete, priced=priced,
             bundle_complete=bundle_complete, lint_ok=lint_ok,
