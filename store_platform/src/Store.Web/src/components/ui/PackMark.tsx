@@ -43,11 +43,40 @@ export function PackMark({
    * goes flat black.
    */
   emphasis = false,
+  /**
+   * Which way the strata run. THE RULE: bands run PERPENDICULAR TO THE BOX'S LONG AXIS.
+   *
+   * WHY THIS EXISTS. The mark is a 0-1 viewBox with `preserveAspectRatio="none"`, so one geometry
+   * is stretched into every box it lands in. Two of the three call sites are TALL -- the row
+   * card's spine is 48x28 (`pages/index.tsx:284-292`, whose own comment says the form was drawn
+   * for that orientation) and the lead card's panel is `h-36 sm:h-44 lg:w-[34%]`. There `across`
+   * is correct and the mark reads as a core sample.
+   *
+   * The detail masthead is not: `h-20 w-full sm:h-24` measures 704x96 on desktop, a 7.3:1 box.
+   * Stretched into it, the bands become wide flat lines of RAGGED WIDTH with varying left insets
+   * -- which is, precisely, the geometry of a text-line loading placeholder.
+   * `components/ui/Skeleton.tsx` is that idiom in this same kit (`bg-border/60`, rounded, bar
+   * shaped), so what a buyer meets above the fold on a paid product page is a ragged bar stack:
+   * an unfinished render, not an identity. This was WORST on `professional-services`, which was
+   * grey (#374151) until 2026-08-08 and is now olive (`styles/tokens.css:217`) -- but recolouring
+   * it does not fix this and never did. The skeleton read is GEOMETRY. A coloured ragged bar
+   * stack is still a ragged bar stack.
+   *
+   * `emphasis` was the previous attempt at this and could not have worked -- it raises opacity,
+   * and opacity is not what makes the shape read as text. The fix has to be the AXIS.
+   *
+   * `down` transposes the same bands into columns read left to right. It is not a different mark:
+   * the seed, the band count, the thicknesses and the insets are identical, so the shelf-to-detail
+   * morph still lands on the same set of divisions and the identity survives the rotation. It
+   * simply stops the long axis running along the bands.
+   */
+  axis = 'across',
 }: {
   id: string;
   className?: string;
   morph?: boolean;
   emphasis?: boolean;
+  axis?: 'across' | 'down';
 }) {
   const bands = strata(id);
 
@@ -58,22 +87,34 @@ export function PackMark({
       className={cx('pointer-events-none block h-full w-full', className)}
       /* A 0-1 viewBox with `preserveAspectRatio="none"` lets the same geometry fill a wide card
          cover and a tall detail-page rail without recomputing anything: the strata stretch, and
-         because they are horizontal bands stretching is exactly the behaviour that keeps the
-         layer reading as a layer. A uniform-scale fit would letterbox and leave dead margin. */
+         stretching is what keeps the layer reading as a layer, PROVIDED the bands run across the
+         box's short axis -- which is what `axis` is for. A uniform-scale fit would letterbox and
+         leave dead margin. */
       viewBox="0 0 1 1"
       preserveAspectRatio="none"
       style={morph ? { viewTransitionName: markTransitionName(id) } : undefined}
     >
-      {bands.map((b, i) => (
+      {bands.map((b, i) => {
+        /* A hairline gap between bands, subtracted from the THICKNESS rather than added to the
+           offset, so the column still ends flush at the far edge. `Math.max` keeps a very thin
+           band from going negative and disappearing entirely. */
+        const thickness = Math.max(b.h - 0.006, 0.004);
+        /* The transpose, and the whole of it. `down` swaps the two axes: the band's position
+           along the stack (`b.y`) becomes its x, its thickness becomes its width, and its inset
+           (`b.x`, capped at 22% by `strata()`) becomes an inset from the TOP -- so every column
+           ends flush at y=1 exactly as every band ended flush at x=1. Same numbers, same
+           divisions, one axis swap. */
+        const r =
+          axis === 'down'
+            ? { x: b.y, y: b.x, width: thickness, height: b.w }
+            : { x: b.x, y: b.y, width: b.w, height: thickness };
+        return (
         <rect
           key={i}
-          x={b.x}
-          y={b.y}
-          width={b.w}
-          /* A hairline gap between bands, subtracted from the height rather than added to the
-             offset, so the column still ends flush at y=1. `Math.max` keeps a very thin band from
-             going negative and disappearing entirely. */
-          height={Math.max(b.h - 0.006, 0.004)}
+          x={r.x}
+          y={r.y}
+          width={r.width}
+          height={r.height}
           fill="currentColor"
           /* 2.6x lifts the 0.10-0.34 furniture range to 0.26-0.88 before the clamp, so the
              faintest band in the set still reads as drawn rather than as a gap. The multiply is
@@ -82,7 +123,8 @@ export function PackMark({
              the morph. */
           opacity={emphasis ? Math.min(b.o * 2.6, 0.86) : b.o}
         />
-      ))}
+        );
+      })}
     </svg>
   );
 }

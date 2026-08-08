@@ -203,7 +203,26 @@
      the composite from these tokens rather than trusting the annotations.
 
      Names are the engine's `sector` keys verbatim (`lib/facets.ts`), not colour names, so a
-     renamed sector fails the build instead of silently keeping a stale hue. */
+     renamed sector fails the build instead of silently keeping a stale hue.
+
+     professional-services was #374151 grey until 2026-08-08 and is now olive. Grey was not wrong
+     on contrast -- it measured 8.72:1, the highest in the set -- it was wrong on IDENTITY: it sat
+     8.7 dE from --cat-other, the deliberately-neutral bucket for an UNTAGGED pack, so the one
+     sector a buyer is most likely to be shopping for wore the colour that means "we could not
+     classify this". It now sits 52.6 dE from --cat-other.
+
+     The replacement was searched rather than chosen, because eleven hues were already occupied
+     and the constraints are tighter than they look. Every candidate had to clear: >= 4.9:1 on its
+     own 10% tint (the surface it is actually printed on); >= 38 dE AND >= 25 degrees of Lab hue
+     from every reserved verdict token; >= 22 degrees of Lab hue from all ten remaining sectors;
+     and an L* inside this family's existing 34.6-44.5 band, so it reads as a peer rather than as
+     "the dark one" -- which is the trap that lets a near-black plum score well on raw dE while
+     repeating grey's actual failure. Exactly one region of the wheel survives all four: the
+     yellow-olive gap between trades-construction (Lab hue 69) and the green band. #656A1B is its
+     centre, 38 degrees off the nearest occupied hue.
+
+     Olive is yellow-green, so the SS8 reservation was checked directly and not assumed: 39.4 dE
+     and 47 degrees of Lab hue from --success. A pale khaki tint is not a pale mint one. */
   --cat-licensing-admin: #9D174D;        /* 6.63:1 on its own badge tint */
   --cat-employment-pay: #6D28D9;         /* 6.04:1 on its own badge tint */
   --cat-housing-rental: #1D4ED8;         /* 5.72:1 on its own badge tint */
@@ -214,7 +233,7 @@
   --cat-property-probate: #4338CA;       /* 6.71:1 on its own badge tint */
   --cat-energy-planning: #075985;        /* 6.44:1 on its own badge tint */
   --cat-retail-inventory: #854D0E;       /* 5.90:1 on its own badge tint */
-  --cat-professional-services: #374151;  /* 8.72:1 on its own badge tint */
+  --cat-professional-services: #656A1B;  /* 5.05:1 on its own badge tint */
   --cat-other: #4B5563;                  /* 6.51:1 on its own badge tint */
 
   /* ── §3.4 (2026-08-08): NO BOX-SHADOWS. Depth is a surface step plus a hairline. ────────────

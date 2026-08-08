@@ -520,7 +520,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 cat.ink,
               )}
             >
-              <PackMark id={pack.id} morph emphasis />
+              {/* `axis="down"` because this box is 704x96 -- the one WIDE box the mark lands in.
+                  Left `across`, the bands stretch into ragged-width horizontal lines, which is the
+                  text-skeleton idiom (`components/ui/Skeleton.tsx`), so the masthead reads as an
+                  unfinished render above the buy button. See the rule on `PackMark`'s `axis`. */}
+              <PackMark id={pack.id} morph emphasis axis="down" />
             </div>
             {/* `PackCover` was here, a 44px bordered strip holding the sector chip, the market and
                 "№ 08B220". It is gone from the fold, and each of its three facts is accounted for

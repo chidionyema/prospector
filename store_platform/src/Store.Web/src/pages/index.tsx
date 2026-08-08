@@ -939,6 +939,59 @@ function CatalogBrowser({
     [packs],
   );
 
+  /*
+   * THE SHELF CONTROLS -- search, count, sort, sector chips -- as ONE block, so the page can
+   * choose where they go instead of having them nailed above the grid.
+   *
+   * WHY (measured on the live page, 2026-08-08, 1280x800). The section headed "What survived" ran:
+   * heading, one line of copy, a search field, a count, a sort dropdown, then ELEVEN sector chips
+   * over two rows -- and only then a product. The first pack card sat at y=983 of an 8,284px page
+   * with ~200px of control panel directly above it. A storefront that puts a database console
+   * between a stranger and its products has asked them to operate the shop before it has sold them
+   * anything; the controls are a tool for narrowing a shelf, which is a thing a visitor wants
+   * AFTER they have seen the shelf and decided it is too big.
+   *
+   * This is the same argument, and the same fix, that already moved `StepFlow` below the first
+   * product row (see the note where it used to render). It is a REORDER, not a removal: every
+   * control, every chip and the palette are exactly as they were.
+   *
+   * Rendered EXACTLY ONCE per page. Two `SearchTrigger`s would give the palette two ref'd owners
+   * and the chips two sources of truth, so the two render sites below are mutually exclusive
+   * branches, never an either/or that can both be true.
+   */
+  const shelfControls = (
+    <div className="mb-8 border-t border-border pt-6">
+      {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
+          what it is FOR, which is the thing the old placement never had to say because it was
+          simply in the way. */}
+      <h3 className="mb-3 text-body font-semibold text-text">Narrow it down</h3>
+
+      {/* Toolbar: search, count, sort. */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full sm:w-64">
+          <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
+        </div>
+        <div className="flex items-center gap-4">
+          {/* Count and freshness in one mono caption -- both are quantities, and this is the only
+              place either is stated on the shelf now. */}
+          <span className="whitespace-nowrap font-mono text-caption text-subtle">
+            {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
+            {lastVerified && ` · updated ${lastVerified.replace(/^Verified /, '')}`}
+          </span>
+          <div className="w-40">
+            <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
+          </div>
+        </div>
+      </div>
+
+      {/* The sector filter, in the same place the eye already met the sector: the pills on the
+          cards. */}
+      <SectorChips packs={packs} state={state} onChange={apply} />
+
+      <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
+    </div>
+  );
+
   if (packs.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border bg-surface py-16 text-center">
@@ -983,30 +1036,11 @@ function CatalogBrowser({
           before: at the top of the page it is a three-question quiz standing between a stranger
           and the product. Nothing is removed and no step changes -- only the order. */}
 
-      {/* Toolbar: search, count, sort. */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full sm:w-64">
-          <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Count and freshness in one mono caption -- both are quantities, and this is the only
-              place either is stated on the shelf now. */}
-          <span className="whitespace-nowrap font-mono text-caption text-subtle">
-            {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
-            {lastVerified && ` · updated ${lastVerified.replace(/^Verified /, '')}`}
-          </span>
-          <div className="w-40">
-            <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
-          </div>
-        </div>
-      </div>
-
-      {/* The sector filter, in the same place the eye already met the sector: the pills on the
-          cards. Above the grid, not behind the "Advanced filters" disclosure that renders after
-          the 63rd card. */}
-      <SectorChips packs={packs} state={state} onChange={apply} />
-
-      <AppliedFilterChips state={state} onChange={apply} className="mb-4" />
+      {/* The toolbar and the sector chips USED TO RENDER HERE, above every product on the page.
+          They now render as `shelfControls`, after the first row of packs -- or, when the shelf
+          came back empty, immediately below, because an empty shelf is the one state where the
+          controls ARE the content the visitor needs (they are what un-filters it). */}
+      {visible.length === 0 && shelfControls}
 
       {/* WHY ONE CARD SAYS £49 AND THE NEXT SAYS £29, stated where the prices are.
           Six distinct prices run down this grid (measured on the live /catalog 2026-08-06: £29 x7,
@@ -1115,6 +1149,12 @@ function CatalogBrowser({
                   </div>
                 </div>
               )}
+
+              {/* PRODUCT FIRST, THEN THE MEANS TO NARROW IT. See the note on `shelfControls`.
+                  When the visitor has already filtered, `editorial` is false, so `newestRow` is
+                  empty and this lands directly above the results -- which is correct: at that
+                  point the controls are what they are USING, not what is in their way. */}
+              {shelfControls}
 
               {/* Was "The rest of the catalogue, newest first". The shelf above it is headed
                   "Newest survivors" -- a claim -- and then the same products, in the same order,
