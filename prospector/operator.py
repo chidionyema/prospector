@@ -1081,9 +1081,38 @@ def make_operator(cfg, fast: bool = False) -> Operator:
             _claude_conc(int(getattr(r0, "claude_concurrency", 2) or 2))
         except Exception:
             pass
+    from .telemetry import logger
+
     kinds = cfg.operator
     kinds = [kinds] if isinstance(kinds, str) else list(kinds)
-    built = [(k, _build_operator(k, cfg, fast)) for k in kinds]
+    # A tier whose CREDENTIALS are absent is skipped; a tier that is UNKNOWN or REMOVED is
+    # still fatal. Before 2026-08-08 this was a list comprehension, so the moment the verdict
+    # chain grew a `minimax` tail (founder directive, same day) every machine without
+    # MINIMAX_API_KEY lost the whole chain — claude_cli included — at construction time. CI
+    # caught it as 6 red tests in tests/unit/test_e1_abort_on_outage.py; the real blast radius
+    # was any deploy, including the daemon, that does not carry a key for the FALLBACK.
+    # Catching only RuntimeError is what draws that line: `_build_operator` raises RuntimeError
+    # for a missing key and ValueError for an unknown/removed name (e.g. the cursor_cli fence
+    # above), and a stale config must keep failing loudly.
+    # This mirrors the two chains that already got it right: `run._build_operator_chain`
+    # (run.py:618) and `run._build_artifact_op` (run.py:328).
+    built: list[tuple[str, Operator]] = []
+    for k in kinds:
+        try:
+            built.append((k, _build_operator(k, cfg, fast)))
+        except RuntimeError as e:
+            # Loud, and it names the consequence: a silently-dropped tier is exactly how a
+            # fallback ends up configured-but-inert, which is the defect this whole change set
+            # exists to close.
+            logger.warning(
+                "Operator tier %r unavailable (%s) — dropping it from the verdict chain. "
+                "The chain will run WITHOUT it; if it was the fallback, there is no fallback.",
+                k, e)
+    if not built:
+        # Never return a chain that cannot rule. The caller's DEFER path is the correct
+        # outcome here, and it is reached by raising, not by handing back an empty chain.
+        raise RuntimeError(
+            f"no operator in {kinds!r} could be constructed — check API keys and credentials.")
     if len(built) == 1:
         return built[0][1]
     r = cfg.retrieval

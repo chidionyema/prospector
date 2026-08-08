@@ -298,3 +298,65 @@ def test_a_provisional_pass_is_refused_by_the_publish_gate():
     assert "and not dossier.provisional" in src, (
         "the publish gate no longer excludes provisional rulings; an untrusted brain's PASS "
         "would reach the storefront")
+
+
+# ------------------------------------------- the chain must survive a keyless fallback tier
+#
+# These three pin `make_operator`'s tier loop. They exist because the minimax re-add shipped a
+# regression that a full green local suite could not see: `make_operator` built every tier
+# eagerly in a list comprehension, so on a machine with no MINIMAX_API_KEY the chain raised
+# RuntimeError and took claude_cli down WITH it. It passed locally (key present) and failed in
+# CI (key absent). Every test below sets the environment EXPLICITLY rather than inheriting it,
+# which is the only reason they mean the same thing on both machines.
+
+def test_a_fallback_tier_with_no_credentials_is_dropped_not_fatal(monkeypatch):
+    """Missing key on the TAIL must cost you the tail, never the head."""
+    from prospector.config import load_config
+    from prospector.operator import make_operator
+
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    cfg = load_config()
+    cfg.operator = ["claude_cli", "minimax"]
+
+    op = make_operator(cfg)
+    # claude_cli is the sole survivor, so make_operator collapses to it rather than wrapping a
+    # one-tier FallbackOperator. The assertion is that we got a usable operator at all: before
+    # the fix this line raised RuntimeError("MINIMAX_API_KEY not set").
+    assert op is not None
+    assert "minimax" not in getattr(op, "name", ""), (
+        "a tier with no credentials must not appear in the built chain")
+
+
+def test_a_removed_operator_is_still_fatal_even_though_missing_keys_are_not(monkeypatch):
+    """The tier loop catches RuntimeError only. A stale config name must still fail loudly.
+
+    Without this, the same `except` that rescues a keyless fallback would also swallow the
+    cursor_cli fence (`operator.py`'s explicit removal ValueError) and silently build a chain
+    one brain shorter than the config reads.
+    """
+    from prospector.config import load_config
+    from prospector.operator import make_operator
+
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    cfg = load_config()
+    cfg.operator = ["claude_cli", "cursor_cli"]
+
+    with pytest.raises(ValueError, match="cursor_cli"):
+        make_operator(cfg)
+
+
+def test_a_chain_with_no_constructible_tier_raises_rather_than_returning_nothing(monkeypatch):
+    """If NOTHING builds, raise — the caller's DEFER path is correct, an empty chain is not."""
+    from prospector.config import load_config
+    from prospector.operator import make_operator
+
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    cfg = load_config()
+    # minimax ALONE, because it is the one tier documented to raise RuntimeError on a missing
+    # key (`operator.py`'s `MiniMaxOperator.__init__`). An earlier draft of this test paired it
+    # with deepseek and passed vacuously in the other direction: DeepSeekOperator does not
+    # raise without a key, so `built` was never empty and the RuntimeError never fired.
+    cfg.operator = ["minimax"]
+
+    with pytest.raises(RuntimeError, match="could be constructed"):
+        make_operator(cfg)
