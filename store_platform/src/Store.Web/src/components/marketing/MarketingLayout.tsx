@@ -293,7 +293,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 {/* "£49 each" removed: the footer renders on every page including ones with no
                     catalogue loaded, and the shelf has not been one price since the segment
                     ladder shipped. The live figures live on /pricing, which reads them. */}
-                Business ideas that survived the checks. Fully sourced, ready to build.
+                Business ideas that survived the filter. Fully sourced, ready to build.
               </p>
             </div>
             <dl className="m-0 flex flex-none items-end gap-10">
