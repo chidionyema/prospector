@@ -404,6 +404,76 @@ Run at 360 and 1440 on every route. Aggregated:
 | serious | `color-contrast` | 7 | the F-002 nodes, independently confirmed |
 | moderate | `heading-order` | 8 | heading levels skip (e.g. `.md\:p-8 > h3`). **S2** |
 
+### F-013 — the harness manufactured its own LCP failure (S1, instrument) — **FIXED 2026-08-08**
+
+A 6-viewport home sweep on production reported **LCP 4964ms @1440 and 4672ms @2560** against
+472–952ms on phones, i.e. 5–7× worse at the *larger* viewport. That number was the instrument, not
+the site.
+
+`audit.mjs` screenshotted **before** it read the metrics, and `page.screenshot({fullPage: true})`
+resizes the viewport. The resize re-fires `largest-contentful-paint` for the **same** element at its
+new size with a late timestamp, and `measure` takes `Math.max` of every entry (`audit.mjs:330`).
+
+Repro, production, one page load, reading `window.__lcpAll` either side of the screenshot call:
+
+```
+=== 1440x900 ===
+max LCP BEFORE fullPage screenshot:  716ms  (1 candidate)
+max LCP AFTER  fullPage screenshot: 3652ms  (2 candidates)
+  late candidate: {"t":3652,"size":55263,"tag":"H1","text":"Business ideas with the research already done."}
+=== 360x780 ===
+max LCP BEFORE:  596ms  ·  AFTER: 596ms  (1 candidate)   <- phones never fired a second candidate
+```
+
+Same element (the H1), larger box (55263 vs 51728), late clock. Phones did not fire a second
+candidate, which is exactly why the artefact looked like a desktop-only regression.
+
+**Fix:** `Object.assign(rec, await page.evaluate(measure))` now runs *before* the screenshot loop
+(`scripts/design-audit/audit.mjs:361`), with the reason in a comment so it cannot be reordered back.
+
+**Corrected numbers, production, home, after the fix** — LCP passes the 1200ms bar everywhere:
+
+| vp | LCP (was) | LCP (real) | CLS | contrast fails |
+|---|---|---|---|---|
+| 320 | 952 | **564** | **0.033** | 80/267 |
+| 360 | 804 | **484** | 0.001 | 80/267 |
+| 390 | 672 | **472** | 0.002 | 80/267 |
+| 768 | 696 | **492** | 0.017 | 87/290 |
+| 1440 | 4964 | **564** | 0.009 | 207/412 |
+| 2560 | 4672 | **612** | 0.007 | 207/412 |
+
+Three consequences, and they matter more than the fix:
+
+1. **"Desktop LCP" is withdrawn.** There is no desktop performance defect on home. Do not open work
+   against it.
+2. **CLS 0.033 at 320 survived the correction** (0.033 before, 0.033 after), so it is real, not an
+   artefact of the same resize. Against T6's 0.000 bar it stands as a genuine open item.
+3. **The "desktop contrast is 2.5× worse" reading is also withdrawn.** 207@1440 vs 80@360 is not a
+   desktop-specific palette: it is the **same two tokens on more rendered nodes** (412 checked vs
+   267). Grouped by colour pair, both viewports are the identical four pairs —
+   `rgb(113,113,122)` at 4.83/4.63 (**F-003**) and `rgb(161,161,170)` at **2.56** (**F-002**), 8
+   nodes at every width. Only **8 of the 207** are below the AA 4.5:1 floor; the rest fail only the
+   7:1 house bar. Fixing F-002 and F-003 clears both viewports; there is no third finding here.
+
+**Also confirmed by this run:** F-002's 2.56:1 nodes are still live **on production** — the a11y
+pass that fixed them landed on `fix/storefront-a11y`, not on what is served.
+
+### F-014 — a phone gets no evidence above the fold at all (S1)
+
+`HeroEvidenceStrip` is `hidden md:block` (`src/pages/index.tsx:1673`) and the featured pack slot is
+`hidden lg:block` (`src/pages/index.tsx:1681`). Below 768px the fold therefore contains a headline,
+a sub-line and two CTAs, and **nothing the brand is built on**: no verdict, no kill count, no pack.
+Confirmed two ways in the sweep — `home-360-fold.png`, and the heading census, where 320/360/390
+carry neither "New this week" nor "Newest survivors" while 768+ carry both.
+
+For an evidence-first storefront this is the largest conversion item in the ledger: the one claim
+the site can prove on sight is withheld from the majority device class. It is **not** a redesign —
+the artefact already exists and already renders; the question is only what a phone may see of it,
+and at what fold cost (F-001 bought that budget back, and the 360 fold currently passes with 236px
+to spare against a 40px bar).
+
+S1. Proposed change is a story, not a patch: see `specs/home-mobile-evidence-and-cls.md`.
+
 ### 5.1 What this audit did NOT cover (so the ledger is not read as complete)
 
 1. **Checkout overlay** — embedded on the pack page and only reachable by driving a purchase; a page
