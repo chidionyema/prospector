@@ -199,7 +199,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
                     className={cx(
                       'group flex h-full flex-col justify-between gap-4 rounded-md bg-surface p-5',
                       'transition-[background-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
-                      'hover:bg-surface2 hover:shadow-1',
+                      'hover:bg-surface2',
                       lead && 'sm:flex-row sm:items-end sm:p-7',
                     )}
                   >

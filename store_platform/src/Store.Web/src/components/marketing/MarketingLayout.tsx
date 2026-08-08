@@ -97,7 +97,11 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const SHELL = 'mx-auto max-w-7xl px-4 sm:px-6 lg:px-8';
+  // §3.4: 1200px max, 24px gutters. Was `max-w-7xl px-4 sm:px-6 lg:px-8` -- 1280px with a gutter
+  // that stepped 16 -> 24 -> 32px across breakpoints. The step was the problem, not the width: a
+  // three-value gutter means the grid's outer margin is a different size on almost every device,
+  // so nothing on the page can be aligned to it reliably. One value, at every width.
+  const SHELL = 'mx-auto max-w-[1200px] px-6';
 
   return (
     <div className="min-h-dvh bg-bg font-sans text-text antialiased">
@@ -114,12 +118,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         it needed inverted text tokens (--on-band, --on-band-muted, --on-band-faint) and its own
         button variants, and the wordmark needed an `onDark` mode. Removing it deletes all three.
 
-        `shadow-1` appears only once scrolled, so the shadow means "there is content underneath
+        `` appears only once scrolled, so the shadow means "there is content underneath
         this" rather than being decoration -- the elevation rule in §5.3.
       */}
       <header
         className={`sticky top-0 z-30 w-full border-b border-border bg-bg/90 backdrop-blur-md pt-[env(safe-area-inset-top)] transition-shadow duration-200 ${
-          scrolled ? 'shadow-1' : ''
+          scrolled ? '' : ''
         }`}
       >
         <div className={`${SHELL} flex h-16 items-center justify-between gap-4`}>
@@ -161,12 +165,18 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
             {/* At every width, including mobile -- see `openSearch` above for why it is a
                 dispatcher and not the palette. The word is hidden below lg because the header
                 also carries five nav items at that width; the magnifier alone is the one icon
-                that needs no label. */}
+                that needs no label.
+
+                `min-h-11 min-w-11` (44px, the WCAG 2.5.8 floor): below `lg` this button is just
+                the 18px glyph plus `px-2 py-1.5`, which never adds up to 44px on either axis, so
+                the minimum has to be stated explicitly rather than left to padding. `justify-center`
+                keeps the glyph centred once the box is wider than its own content at the widths
+                where the "Search" label is hidden. */}
             <button
               type="button"
               onClick={openSearch}
               aria-label="Search the catalogue"
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Icon name="search" size={18} />
               <span className="hidden lg:inline">Search</span>
@@ -208,7 +218,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         </div>
 
         {menuOpen && (
-          <div id="marketing-menu" className="animate-rise border-t border-border bg-surface shadow-2 md:hidden">
+          <div id="marketing-menu" className="animate-rise border-t border-border bg-surface md:hidden">
             <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-4 sm:px-6">
               <div className="py-2">
                 {/* Same state, drawn differently, because the drawer has no bottom border for a
@@ -261,6 +271,11 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         Footer. Column headings are `text-caption font-medium text-subtle` in sentence case --
         previously orange, uppercase, letterspaced and bold, i.e. four emphasis devices on a word
         whose only job is to label a list of five links.
+
+        They are <h2>, not <h3>. The footer renders on every route, so its heading level is fixed
+        while the page above it is not: on a route whose content stops at <h1> (/account is the one
+        axe caught), an <h3> here skips a level and trips `heading-order`. h2 is the only level that
+        is correct after any page, since every page has exactly one h1.
 
         The disclaimer moved from `text-muted/50` to `text-subtle`. At 50% opacity over #FAFAFA
         that paragraph computed to roughly 2.4:1, below the 4.5:1 AA floor -- and it is the
@@ -315,19 +330,30 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           <div className="grid grid-cols-2 gap-8 border-t border-border pt-10 md:grid-cols-3">
 
             <div>
-              <h3 className="mb-4 text-caption font-medium text-subtle">Store</h3>
-              <ul className="flex flex-col gap-3">
-                <li><Link href="/" className="text-meta text-muted transition-colors hover:text-text">Catalogue</Link></li>
-                <li><Link href="/ideas" className="text-meta text-muted transition-colors hover:text-text">Categories</Link></li>
-                <li><Link href="/how-it-works" className="text-meta text-muted transition-colors hover:text-text">How it works</Link></li>
-                <li><Link href="/kill-log" className="text-meta text-muted transition-colors hover:text-text">Kill log</Link></li>
+              <h2 className="mb-4 text-caption font-medium text-subtle">Store</h2>
+              {/* TAP TARGETS, WCAG 2.5.8. Measured at 26x18 ("FAQ") up to 65x18 ("Catalogue") --
+                  these are nav-list items, not inline links in a sentence of prose, so the 44px
+                  minimum applies and padding alone (there was none) never got there. The fix is
+                  on the anchor, not the `li`: `inline-block py-[13px]` turns the 18px text line
+                  into a 44px box (18 + 13 top + 13 bottom = 44, the exact floor, not a rounder
+                  number chosen for its own sake). That 26px of new padding lands where the `ul`'s
+                  `gap-3` (12px) used to be the only spacing between items, so the gap is dropped
+                  to `gap-0` in trade: the padding boxes now touch, and the visible whitespace
+                  between rows grows from 12px to 26px rather than to 12+26=38px. It is not
+                  "unchanged", but it is the closest the rhythm gets without shipping a
+                  sub-44px target. */}
+              <ul className="flex flex-col gap-0">
+                <li><Link href="/" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Catalogue</Link></li>
+                <li><Link href="/ideas" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Categories</Link></li>
+                <li><Link href="/how-it-works" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">How it works</Link></li>
+                <li><Link href="/kill-log" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Kill log</Link></li>
                 {/* `/about` had ZERO inbound links from anywhere on the site (verified 2026-08-06:
                     `href="/about"` matched no file under src/). The page has existed and been
                     maintained the whole time -- it was simply unreachable except by typing the URL,
                     which means a visitor asking the single most common question about an anonymous
                     shop ("who is running this?") had no way to find the page that answers it. */}
-                <li><Link href="/about" className="text-meta text-muted transition-colors hover:text-text">Who makes this</Link></li>
-                <li><Link href="/faq" className="text-meta text-muted transition-colors hover:text-text">FAQ</Link></li>
+                <li><Link href="/about" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Who makes this</Link></li>
+                <li><Link href="/faq" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">FAQ</Link></li>
               </ul>
             </div>
 
@@ -340,7 +366,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 uses and clears 4.5:1 on --surface2 (`__tests__/categoryScale.test.ts` holds the
                 floor for the scale it belongs to). */}
             <div>
-              <h3 className="mb-4 text-caption font-medium text-subtle">Legal</h3>
+              <h2 className="mb-4 text-caption font-medium text-subtle">Legal</h2>
               <ul className="flex flex-col gap-2.5">
                 <li><Link href="/terms" className="text-caption text-subtle transition-colors hover:text-text">Terms of Service</Link></li>
                 <li><Link href="/privacy" className="text-caption text-subtle transition-colors hover:text-text">Privacy Policy</Link></li>
@@ -349,7 +375,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
             </div>
 
             <div className="col-span-2 md:col-span-1">
-              <h3 className="mb-4 text-caption font-medium text-subtle">Contact</h3>
+              <h2 className="mb-4 text-caption font-medium text-subtle">Contact</h2>
               <ul className="flex flex-col gap-3">
                 {/* `break-all` broke the address INSIDE a word -- it rendered as
                     "support@mumchimp." / "com", because at 2 columns on a 375px screen the

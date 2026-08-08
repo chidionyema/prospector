@@ -1,0 +1,1123 @@
+{
+  "headline": {
+    "mode": "live",
+    "checks": [
+      "payer_solvency",
+      "incumbency",
+      "legality"
+    ],
+    "paired_candidates": 8,
+    "templates_present": [
+      "incumbency",
+      "legality",
+      "payer_solvency"
+    ],
+    "arm_engages_offline": true,
+    "planned_check_runs": 48,
+    "live_path": {
+      "operator": "claude-cli/default",
+      "search": "DiskCache",
+      "ruling_providers": "claude_cli"
+    },
+    "separable_checks": [],
+    "deltas": {
+      "payer_solvency": 0.3036,
+      "incumbency": 0.25,
+      "legality": 0.7083
+    }
+  },
+  "preflight": {
+    "per_check": {
+      "payer_solvency": {
+        "n_candidates": 8,
+        "queries_min": 2,
+        "queries_median": 2.0,
+        "sample_queries": [
+          "Independent UK funeral directors budget spending on paid trade independent funeral",
+          "founder raising the round pays directly budget spending on self-serve founders raising seed"
+        ]
+      },
+      "incumbency": {
+        "n_candidates": 8,
+        "queries_min": 2,
+        "queries_median": 2.0,
+        "sample_queries": [
+          "who already sells paid trade independent funeral to freelancer creative",
+          "who already sells self-serve founders raising seed to startup operator"
+        ]
+      },
+      "legality": {
+        "n_candidates": 8,
+        "queries_min": 2,
+        "queries_median": 2.0,
+        "sample_queries": [
+          "uk regulation licensing requirements paid trade independent funeral",
+          "uk regulation licensing requirements self-serve founders raising seed"
+        ]
+      }
+    },
+    "empty_arm_cells": []
+  },
+  "candidate_ids": [
+    "839afa0ef83b82be",
+    "9e4556bc38cb9a6a",
+    "19907bbf2287c48f",
+    "9745c55c7a5afe82",
+    "701beb74ecc99769",
+    "8d5a441749448b69",
+    "13795bea31feee47",
+    "7a6f65f8257d73f5"
+  ],
+  "corpus_fingerprint": {
+    "n_dossiers": 1611,
+    "newest_mtime_utc": "2026-08-07T23:10:32.186972+00:00",
+    "sha256": "45bc80305fe1f995",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat."
+  },
+  "method": {
+    "design": "paired, per-check via verify.run_check (NOT the kill-fast lane)",
+    "control_arm": "gen_queries_batched -> precomputed_queries, stamped llm_batched",
+    "treatment_arm": "retrieval.hybrid_entity_checks set, stamped entity_template",
+    "liveness_fence": "every treatment cell must be stamped entity_template or the run aborts (\u00a718.3 inert-arm trap)",
+    "retrieval_failures": "excluded from both numerator and denominator",
+    "outage_fence": "two whole candidates unruled aborts the arm (arm B is then not billed); any check/arm cell with a zero denominator aborts the run. An outage is the end of the measurement, not a datum."
+  },
+  "table": [
+    {
+      "check": "payer_solvency",
+      "control": {
+        "n_ruled": 8,
+        "unverifiable": 1,
+        "rate": 0.125,
+        "wilson_lo": 0.0224,
+        "wilson_hi": 0.4709,
+        "excluded_retrieval_failed": 0
+      },
+      "treatment": {
+        "n_ruled": 7,
+        "unverifiable": 3,
+        "rate": 0.4286,
+        "wilson_lo": 0.1582,
+        "wilson_hi": 0.7495,
+        "excluded_retrieval_failed": 1
+      },
+      "unverifiable_delta": 0.3036,
+      "intervals_overlap": true
+    },
+    {
+      "check": "incumbency",
+      "control": {
+        "n_ruled": 8,
+        "unverifiable": 6,
+        "rate": 0.75,
+        "wilson_lo": 0.4093,
+        "wilson_hi": 0.9285,
+        "excluded_retrieval_failed": 0
+      },
+      "treatment": {
+        "n_ruled": 6,
+        "unverifiable": 6,
+        "rate": 1.0,
+        "wilson_lo": 0.6097,
+        "wilson_hi": 1.0,
+        "excluded_retrieval_failed": 2
+      },
+      "unverifiable_delta": 0.25,
+      "intervals_overlap": true
+    },
+    {
+      "check": "legality",
+      "control": {
+        "n_ruled": 8,
+        "unverifiable": 1,
+        "rate": 0.125,
+        "wilson_lo": 0.0224,
+        "wilson_hi": 0.4709,
+        "excluded_retrieval_failed": 0
+      },
+      "treatment": {
+        "n_ruled": 6,
+        "unverifiable": 5,
+        "rate": 0.8333,
+        "wilson_lo": 0.4365,
+        "wilson_hi": 0.9699,
+        "excluded_retrieval_failed": 2
+      },
+      "unverifiable_delta": 0.7083,
+      "intervals_overlap": true
+    }
+  ],
+  "rows": [
+    {
+      "candidate_id": "839afa0ef83b82be",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.55,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "SAIF NAFD membership fees independent funeral directors benefits",
+        "UK independent funeral homes closures insolvency cost pressures 2025"
+      ],
+      "latency_s": 14.53,
+      "error": null,
+      "rationale": "Passages show roughly 950-1,000+ independent UK funeral businesses already paying trade-body subscriptions \u2014 graded annual fees plus a \u00a3200 administration fee \u2014 which demonstrates these are operating "
+    },
+    {
+      "candidate_id": "839afa0ef83b82be",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.7,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "independent funeral directors supplier cost information sources UK",
+        "SunLife cost of dying report funeral pricing benchmark UK"
+      ],
+      "latency_s": 18.81,
+      "error": null,
+      "rationale": "The passages show consumer-facing funeral director websites and SunLife's annual Cost of Dying report, which tracks the prices consumers pay for funerals \u2014 none describe any trade publication or data "
+    },
+    {
+      "candidate_id": "839afa0ef83b82be",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.55,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "CMA guidance lawful benchmarking anonymised aggregated industry surveys",
+        "competition law price information exchange between competitors CMA fine"
+      ],
+      "latency_s": 18.3,
+      "error": null,
+      "rationale": "The CMA itself states that price/cost benchmarking can be done in a competition-law compliant way when an independent third party anonymises and sufficiently aggregates the data [28fb4a7b357ecb71], wh"
+    },
+    {
+      "candidate_id": "9e4556bc38cb9a6a",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.63,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "UK startup seed round legal fees typical cost founders",
+        "founders refuse pay fundraising tools free SeedLegals checklist enough"
+      ],
+      "latency_s": 16.45,
+      "error": null,
+      "rationale": "The passages show the payer pool is real and funded: 5,300+ funded UK startups exist, over 60,000 startups already use a paid platform for fundraising legals and cap tables, and the FounderCatalyst pa"
+    },
+    {
+      "candidate_id": "9e4556bc38cb9a6a",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.68,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "automated due diligence readiness software startups UK funded",
+        "SeedLegals Carta data room diligence check feature launch"
+      ],
+      "latency_s": 17.41,
+      "error": null,
+      "rationale": "The passages show adjacent offerings \u2014 enterprise contract-review software (Evisort, Ironclad, Icertis), customer due-diligence service firms, data-room tools, and SeedLegals as a platform built for s"
+    },
+    {
+      "candidate_id": "9e4556bc38cb9a6a",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.612,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Companies House API commercial use free licence developers",
+        "SRA reserved legal activities unauthorised legal advice software UK"
+      ],
+      "latency_s": 15.37,
+      "error": null,
+      "rationale": "The company data the tool relies on is free, public information from Companies House [375b7669b29f8bc5, 67ea049b8878d232], and the only legal services restricted to regulated professionals in the pass"
+    },
+    {
+      "candidate_id": "19907bbf2287c48f",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.55,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "IPSE membership fees professional indemnity insurance uptake UK freelancers",
+        "UK freelance creative earnings decline cost of living cancelling subscriptions"
+      ],
+      "latency_s": 22.15,
+      "error": null,
+      "rationale": "The passages show UK freelance creatives already spend on business protection: a freelance graphic designer is advised to carry Professional Indemnity and Public Liability insurance plus equipment cov"
+    },
+    {
+      "candidate_id": "19907bbf2287c48f",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.65,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "freelancers no reliable way prove human authorship AI detectors unreliable",
+        "Adobe Content Credentials C2PA free provenance rollout Photoshop 2026"
+      ],
+      "latency_s": 31.37,
+      "error": null,
+      "rationale": "The passages show existing approaches fall short of this need: AI detectors give only a statistical 'guess' from output patterns rather than proof, and C2PA/Content Credentials validates attached prov"
+    },
+    {
+      "candidate_id": "19907bbf2287c48f",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.58,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "eIDAS electronic timestamp legal recognition UK evidence admissibility",
+        "Figma Adobe plugin developer policy restrictions accessing user file content"
+      ],
+      "latency_s": 19.33,
+      "error": null,
+      "rationale": "The passages describe timestamping as an established, regulated trust service \u2014 eIDAS qualified timestamps are explicitly stated to be legally valid and admissible in court as evidence of a document's"
+    },
+    {
+      "candidate_id": "9745c55c7a5afe82",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.6,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "MoneySavingExpert council tax band challenge refund success homeowners",
+        "UK households cost of living cannot afford unexpected expense 2026"
+      ],
+      "latency_s": 21.21,
+      "error": null,
+      "rationale": "Real homeowners who challenged their band recovered \u00a34,000 and \u00a37,500, so a one-off \u00a379 outlay is small against the demonstrated payoff and it is a safe deduction that motivated homeowners can and wil"
+    },
+    {
+      "candidate_id": "9745c55c7a5afe82",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.15,
+      "n_citations": 1,
+      "n_sources": 1,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "council tax band review companies no win no fee UK",
+        "MoneySavingExpert free council tax band check guide dominant"
+      ],
+      "latency_s": 23.84,
+      "error": null,
+      "rationale": "One passage shows a specialist no-win-no-fee council tax band challenge service already operating across England and Wales on a 30% success fee \u2014 the exact model this candidate claims is absent \u2014 so t"
+    },
+    {
+      "candidate_id": "9745c55c7a5afe82",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.652,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "council tax appeal agents VOA representative permitted rules",
+        "FCA claims management regulation council tax refund companies warning"
+      ],
+      "latency_s": 14.98,
+      "error": null,
+      "rationale": "The passages show challenging a Council Tax band is a legitimate, established process \u2014 a taxpayer who believes their band is wrong can request reassessment and appeal to the Valuation Tribunal [6e778"
+    },
+    {
+      "candidate_id": "701beb74ecc99769",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.66,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "UK freelancers pay software subscriptions Bonsai FreeAgent tools",
+        "IPSE freelancer income falling day rates decline 2026"
+      ],
+      "latency_s": 29.61,
+      "error": null,
+      "rationale": "UK freelancers demonstrably budget for paid work tools \u2014 FreeAgent's paid accounting plan at $10/month is used by UK freelancers \u2014 which puts a one-off \u00a379 purchase within the segment's established sp"
+    },
+    {
+      "candidate_id": "701beb74ecc99769",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "refuted",
+      "confidence": 0.6,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "freelancers unsure what day rate charge UK forums",
+        "YunoJuno Malt freelancer day rate benchmark report UK"
+      ],
+      "latency_s": 30.19,
+      "error": null,
+      "rationale": "The passages show the UK freelance rate-benchmark space is already served: YunoJuno publishes rate benchmarks built from over 261,000 real UK freelance contracts \u2014 actual paid work, not surveys \u2014 acro"
+    },
+    {
+      "candidate_id": "701beb74ecc99769",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.712,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "salary benchmarking surveys lawful UK Glassdoor crowdsourced pay",
+        "CMA competition law price information sharing self-employed"
+      ],
+      "latency_s": 15.67,
+      "error": null,
+      "rationale": "The passages describe salary-benchmarking products in general terms and report competition-law enforcement against bathroom-industry suppliers and retailers, but none address whether collecting and sh"
+    },
+    {
+      "candidate_id": "8d5a441749448b69",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.65,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "litigants in person divorce legal fees spending UK 2026",
+        "family court litigants cannot afford legal advice deprivation UK"
+      ],
+      "latency_s": 32.46,
+      "error": null,
+      "rationale": "The passages show that divorcing spouses routinely proceed without lawyers as litigants in person, already pay court fees in the divorce process, and actively look for affordable help with document pr"
+    },
+    {
+      "candidate_id": "8d5a441749448b69",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.55,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "litigants in person unmet need financial disclosure support UK",
+        "divorce asset tracing search service UK fixed fee providers"
+      ],
+      "latency_s": 25.47,
+      "error": null,
+      "rationale": "The passages show that professional asset-tracing firms and thousands of Fiverr gig services exist for finding hidden assets [eeafd83b19b25989][ed458200368e3dc9][875574017df5e447], but none is shown t"
+    },
+    {
+      "candidate_id": "8d5a441749448b69",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.7,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Companies House Land Registry public records search lawful personal use",
+        "Imerman v Tchenguiz self-help disclosure unlawful evidence divorce"
+      ],
+      "latency_s": 18.22,
+      "error": null,
+      "rationale": "The kit's method rests on records the passages show are open to anyone: Land Registry property information is searchable even by non-owners [0a4c20221e08eff6] and the Companies House register is publi"
+    },
+    {
+      "candidate_id": "13795bea31feee47",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.63,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "freelancers paying credit control invoice chasing software UK adoption",
+        "UK freelancers income squeeze cancel software subscriptions IPSE survey"
+      ],
+      "latency_s": 16.99,
+      "error": null,
+      "rationale": "The passages show a market of invoice-chasing tools exists and that late payments genuinely hurt UK freelancers' finances and wellbeing [44ecbb372a265aad, f04aaf2109d106d3, 85cfe64a4159b7cc], but none"
+    },
+    {
+      "candidate_id": "13795bea31feee47",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.65,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "statutory late payment interest calculator unmet demand freelancers UK",
+        "Chaser Satago Xero automatic statutory interest demand letter feature"
+      ],
+      "latency_s": 27.84,
+      "error": null,
+      "rationale": "The passages show that rival tools exist \u2014 free UK statutory-interest calculators, and automated chasing tools like Satago that send reminders and can apply statutory interest automatically \u2014 but none"
+    },
+    {
+      "candidate_id": "13795bea31feee47",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.586,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Late Payment Commercial Debts Act 1998 claim interest gov.uk guidance",
+        "debt collection FCA authorisation required chasing invoices third party UK"
+      ],
+      "latency_s": 13.18,
+      "error": null,
+      "rationale": "The passages show the core margin rests on a statutory right in UK law: the Late Payment of Commercial Debts (Interest) Act 1998 lets businesses charge interest at 8% above the Bank of England base ra"
+    },
+    {
+      "candidate_id": "7a6f65f8257d73f5",
+      "check": "payer_solvency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.55,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "LaingBuisson self-pay private scan market growth UK",
+        "cost of living UK households cutting private healthcare spending"
+      ],
+      "latency_s": 16.52,
+      "error": null,
+      "rationale": "LaingBuisson's 7th-edition report shows the UK self-pay healthcare market is worth roughly \u00a31.6bn, steady in 2025 and ahead of the prior year, with continued demand driven by NHS waits \u2014 real money is"
+    },
+    {
+      "candidate_id": "7a6f65f8257d73f5",
+      "check": "incumbency",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "unverifiable",
+      "confidence": 0.6,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "private MRI price comparison sites UK static listings only",
+        "Scan.com Vista Health funding online scan booking platform"
+      ],
+      "latency_s": 17.85,
+      "error": null,
+      "rationale": "The passages show UK imaging providers exist (Medneo's scanner fleet, a Kent screening service from \u00a3245, a 20-scanner mobile fleet) and a simple booking site in Atlanta, Georgia \u2014 but none says wheth"
+    },
+    {
+      "candidate_id": "7a6f65f8257d73f5",
+      "check": "legality",
+      "arm": "llm",
+      "query_source": "llm_batched",
+      "verdict": "supported",
+      "confidence": 0.7,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "MRI self-referral no GP referral lawful UK CQC",
+        "IRMER 2017 CT scan referrer justification requirement enforcement"
+      ],
+      "latency_s": 14.74,
+      "error": null,
+      "rationale": "Passages show CQC-registered private providers already lawfully sell self-referred MRI scans with no GP referral and same/next-day slots, so the core booking margin exists within the law [9067381062c3"
+    },
+    {
+      "candidate_id": "839afa0ef83b82be",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "supported",
+      "confidence": 0.58,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Independent UK funeral directors budget spending on paid trade independent funeral",
+        "how much do Independent UK funeral directors pay for paid trade independent funeral"
+      ],
+      "latency_s": 17.19,
+      "error": null,
+      "rationale": "The passages show independent funeral directors operating as real trading businesses with premises [8ba2da049074aca1] and organised into trade associations founded specifically because independents we"
+    },
+    {
+      "candidate_id": "839afa0ef83b82be",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.37,
+      "n_citations": 2,
+      "n_sources": 2,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "who already sells paid trade independent funeral to freelancer creative",
+        "freelancer creative existing vendors alternatives paid trade independent funeral"
+      ],
+      "latency_s": 10.92,
+      "error": null,
+      "rationale": "The passages show that funeral trade associations exist and that two of them (NFDA and Selected Independent Funeral Homes) plan to merge, but they never say whether any organisation already publishes "
+    },
+    {
+      "candidate_id": "839afa0ef83b82be",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "supported",
+      "confidence": 0.562,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "uk regulation licensing requirements paid trade independent funeral",
+        "is paid trade independent funeral legal in uk"
+      ],
+      "latency_s": 15.46,
+      "error": null,
+      "rationale": "The passages show the UK funeral sector in England, Wales and Northern Ireland is unregulated or self-regulating, relying only on voluntary codes and trade-body inspections, so no cited law bars a tra"
+    },
+    {
+      "candidate_id": "9e4556bc38cb9a6a",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "supported",
+      "confidence": 0.6,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "founder raising the round pays directly budget spending on self-serve founders raising seed",
+        "how much do founder raising the round pays directly pay for self-serve founders raising seed"
+      ],
+      "latency_s": 21.79,
+      "error": null,
+      "rationale": "The passages show seed-stage founders operating with real budgets \u2014 discussing and taking salaries of $80K\u2013$150K from their rounds, with investors themselves insisting on $120K \u2014 so a one-time \u00a379 pur"
+    },
+    {
+      "candidate_id": "9e4556bc38cb9a6a",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.7,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "who already sells self-serve founders raising seed to startup operator",
+        "startup operator existing vendors alternatives self-serve founders raising seed"
+      ],
+      "latency_s": 10.85,
+      "error": null,
+      "rationale": "The passages describe an investor-search/CRM tool for deck-sending, a general seed-fundraising guide, a founder podcast, and a pitch-deck review session \u2014 none of them addresses whether any company al"
+    },
+    {
+      "candidate_id": "9e4556bc38cb9a6a",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.0,
+      "n_citations": 0,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "uk regulation licensing requirements self-serve founders raising seed",
+        "is self-serve founders raising seed legal in uk"
+      ],
+      "latency_s": 14.08,
+      "error": null,
+      "rationale": "The candidate's margin depends on lawfully accessing Companies House records, cap table exports, GitHub data and contracts, but none of these passages address any law, regulation, or provider terms go"
+    },
+    {
+      "candidate_id": "19907bbf2287c48f",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.73,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Individual UK freelance creatives budget spending on plugin figma adobe word",
+        "how much do Individual UK freelance creatives pay for plugin figma adobe word"
+      ],
+      "latency_s": 16.62,
+      "error": null,
+      "rationale": "The passages describe freelance marketplaces where hiring is free and bids are competitive, plus Figma tutorials and a plugin directory noting 'free and premium tools' exist \u2014 none of them say anythin"
+    },
+    {
+      "candidate_id": "19907bbf2287c48f",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.7,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "who already sells plugin figma adobe word to freelancer creative",
+        "freelancer creative existing vendors alternatives plugin figma adobe word"
+      ],
+      "latency_s": 8.42,
+      "error": null,
+      "rationale": "The passages cover Figma tutorial videos, a one-off Figma-to-WordPress job posting, and a general freelance marketplace; none describe any product, incumbent, or rival offering timestamped proof-of-au"
+    },
+    {
+      "candidate_id": "19907bbf2287c48f",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.7,
+      "n_citations": 4,
+      "n_sources": 4,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "uk regulation licensing requirements plugin figma adobe word",
+        "is plugin figma adobe word legal in uk"
+      ],
+      "latency_s": 11.9,
+      "error": null,
+      "rationale": "None of the passages address the lawfulness of timestamping saved creative work or any platform terms governing such a plugin \u2014 they cover a PDF-to-Word converter, a licensing sitemap link, converting"
+    },
+    {
+      "candidate_id": "9745c55c7a5afe82",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.73,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Mortgaged homeowners in England aged 35 to 55 budget spending on squeezed middle homeowners get",
+        "how much do Mortgaged homeowners in England aged 35 to 55 pay for squeezed middle homeowners get"
+      ],
+      "latency_s": 11.39,
+      "error": null,
+      "rationale": "The passages describe general homeowner conditions \u2014 age distribution of owner-occupiers in England, people aged 36-55 selling investments amid rising rates, growing deposits, some homeowners in mortg"
+    },
+    {
+      "candidate_id": "9745c55c7a5afe82",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.7,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "who already sells squeezed middle homeowners get to squeezed middle",
+        "squeezed middle existing vendors alternatives squeezed middle homeowners get"
+      ],
+      "latency_s": 11.57,
+      "error": null,
+      "rationale": "The passages describe 'squeezed middle' housing-cost pressure in general (deposit-saving difficulty, cost-burdened US buyers, the origin of the term) but never mention Council Tax band challenges or a"
+    },
+    {
+      "candidate_id": "9745c55c7a5afe82",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.724,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "uk regulation licensing requirements squeezed middle homeowners get",
+        "is squeezed middle homeowners get legal in uk"
+      ],
+      "latency_s": 13.51,
+      "error": null,
+      "rationale": "The passages cover licensing rules for houses in multiple occupation and general commentary on middle-income housing pressure; none address Council Tax band appeals, paid representation in that proces"
+    },
+    {
+      "candidate_id": "701beb74ecc99769",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "supported",
+      "confidence": 0.7,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Individual UK freelance creatives budget spending on rateproof tells freelance designers",
+        "how much do Individual UK freelance creatives pay for rateproof tells freelance designers"
+      ],
+      "latency_s": 13.17,
+      "error": null,
+      "rationale": "The passages show UK freelance creatives earning day rates from \u00a3150\u2013\u00a3250 at junior level up to \u00a3450\u2013\u00a3800 for experienced designers, so a one-off \u00a379 costs less than half of even a junior's single wor"
+    },
+    {
+      "candidate_id": "701beb74ecc99769",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.65,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "who already sells rateproof tells freelance designers to freelancer creative",
+        "freelancer creative existing vendors alternatives rateproof tells freelance designers"
+      ],
+      "latency_s": 11.17,
+      "error": null,
+      "rationale": "The passages describe marketplaces for finding freelance jobs and hiring talent (Freelancer.com, Upwork alternatives, Dribbble), but none describes any tool \u2014 dominant or otherwise \u2014 that benchmarks w"
+    },
+    {
+      "candidate_id": "701beb74ecc99769",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.712,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "uk regulation licensing requirements rateproof tells freelance designers",
+        "is rateproof tells freelance designers legal in uk"
+      ],
+      "latency_s": 9.59,
+      "error": null,
+      "rationale": "None of the passages address the lawfulness of collecting and publishing freelancers' self-submitted quote and win/loss data in the UK \u2014 they describe an unrelated freight-audit product, freelance mar"
+    },
+    {
+      "candidate_id": "8d5a441749448b69",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.7,
+      "n_citations": 6,
+      "n_sources": 6,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Squeezed-middle spouse initiating or responding to a contested budget spending on DIY step-by-step teaches divorcing",
+        "how much do Squeezed-middle spouse initiating or responding to a contested pay for DIY step-by-step teaches divorcing"
+      ],
+      "latency_s": 10.26,
+      "error": null,
+      "rationale": "None of the passages address whether a divorcing spouse can or will pay \u00a349 for this kit: they cover a step-count challenge, Skype troubleshooting, national defense budgets, a general statement that d"
+    },
+    {
+      "candidate_id": "8d5a441749448b69",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.58,
+      "n_citations": 3,
+      "n_sources": 3,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "who already sells DIY step-by-step teaches divorcing to squeezed middle",
+        "squeezed middle existing vendors alternatives DIY step-by-step teaches divorcing"
+      ],
+      "latency_s": 12.35,
+      "error": null,
+      "rationale": "The passages define DIY divorce as handling uncontested paperwork without a solicitor, but none identifies any provider \u2014 dominant or otherwise \u2014 offering a public-records asset-verification product f"
+    },
+    {
+      "candidate_id": "8d5a441749448b69",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.662,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "uk regulation licensing requirements DIY step-by-step teaches divorcing",
+        "is DIY step-by-step teaches divorcing legal in uk"
+      ],
+      "latency_s": 14.75,
+      "error": null,
+      "rationale": "The passages show that generic business regulations exist, that DIY divorce guides are openly published in the UK, and that an online divorce service operates, but none of them address the specific ac"
+    },
+    {
+      "candidate_id": "13795bea31feee47",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "supported",
+      "confidence": 0.68,
+      "n_citations": 5,
+      "n_sources": 5,
+      "retrieval_failed": false,
+      "degraded": false,
+      "provider": "claude-cli/default",
+      "queries": [
+        "Freelance creative professionals in the UK budget spending on owedclock watches every invoice",
+        "how much do Freelance creative professionals in the UK pay for owedclock watches every invoice"
+      ],
+      "latency_s": 14.47,
+      "error": null,
+      "rationale": "The passages show the motive is acute \u2014 creative freelancers report the highest non-payment rates of any freelance sector, 85% experience late payment and the creative self-employed were owed \u00a31.1bn i"
+    },
+    {
+      "candidate_id": "13795bea31feee47",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.0,
+      "n_citations": 0,
+      "n_sources": 0,
+      "retrieval_failed": true,
+      "degraded": true,
+      "provider": "",
+      "queries": [
+        "who already sells owedclock watches every invoice to freelancer creative",
+        "freelancer creative existing vendors alternatives owedclock watches every invoice"
+      ],
+      "latency_s": 0.01,
+      "error": null,
+      "rationale": "Verdict brain unavailable \u2014 all LLMs out of quota/credit. Cannot rule; candidate deferred for re-vet."
+    },
+    {
+      "candidate_id": "13795bea31feee47",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.0,
+      "n_citations": 0,
+      "n_sources": 0,
+      "retrieval_failed": true,
+      "degraded": true,
+      "provider": "",
+      "queries": [
+        "uk regulation licensing requirements owedclock watches every invoice",
+        "is owedclock watches every invoice legal in uk"
+      ],
+      "latency_s": 0.01,
+      "error": null,
+      "rationale": "Verdict brain unavailable \u2014 all LLMs out of quota/credit. Cannot rule; candidate deferred for re-vet."
+    },
+    {
+      "candidate_id": "7a6f65f8257d73f5",
+      "check": "payer_solvency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.0,
+      "n_citations": 0,
+      "n_sources": 0,
+      "retrieval_failed": true,
+      "degraded": true,
+      "provider": "",
+      "queries": [
+        "patient pays for the scan itself budget spending on booking site shows bookable",
+        "how much do patient pays for the scan itself pay for booking site shows bookable"
+      ],
+      "latency_s": 0.01,
+      "error": null,
+      "rationale": "Verdict brain unavailable \u2014 all LLMs out of quota/credit. Cannot rule; candidate deferred for re-vet."
+    },
+    {
+      "candidate_id": "7a6f65f8257d73f5",
+      "check": "incumbency",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.0,
+      "n_citations": 0,
+      "n_sources": 0,
+      "retrieval_failed": true,
+      "degraded": true,
+      "provider": "",
+      "queries": [
+        "who already sells booking site shows bookable to squeezed middle",
+        "squeezed middle existing vendors alternatives booking site shows bookable"
+      ],
+      "latency_s": 0.01,
+      "error": null,
+      "rationale": "Verdict brain unavailable \u2014 all LLMs out of quota/credit. Cannot rule; candidate deferred for re-vet."
+    },
+    {
+      "candidate_id": "7a6f65f8257d73f5",
+      "check": "legality",
+      "arm": "entity",
+      "query_source": "entity_template",
+      "verdict": "unverifiable",
+      "confidence": 0.0,
+      "n_citations": 0,
+      "n_sources": 0,
+      "retrieval_failed": true,
+      "degraded": true,
+      "provider": "",
+      "queries": [
+        "uk regulation licensing requirements booking site shows bookable",
+        "is booking site shows bookable legal in uk"
+      ],
+      "latency_s": 0.01,
+      "error": null,
+      "rationale": "Verdict brain unavailable \u2014 all LLMs out of quota/credit. Cannot rule; candidate deferred for re-vet."
+    }
+  ],
+  "_meta": {
+    "experiment": "E1",
+    "module": "e1_hybrid_query_arms.py",
+    "run_at_utc": "2026-08-07T23:26:35+00:00",
+    "argv": [
+      "--live",
+      "--verbose"
+    ],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

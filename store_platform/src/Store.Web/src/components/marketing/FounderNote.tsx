@@ -51,7 +51,7 @@ export function FounderNote({
           src={FOUNDER.photo}
           alt={FOUNDER.name}
           className={cx(
-            'h-16 w-16 flex-none rounded-full object-cover',
+            'h-16 w-16 flex-none rounded-sm object-cover',
             full && 'md:h-20 md:w-20',
           )}
         />

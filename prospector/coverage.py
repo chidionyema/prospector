@@ -476,11 +476,54 @@ def sampling_domains(
         supplied = [
             _norm(v) for v in (domains or {}).get(axis, []) or [] if str(v or "").strip()
         ]
+        # THE TRAP THIS NAMES. Falling back to `cov.observed` targets whatever the catalogue
+        # happens to contain, which is NOT the same set as what generation can produce.
+        # Measured 2026-08-08: `structural_form` holds 29 distinct values against 8 in
+        # `config.yaml generation.structural_forms` — 21 of them (421 rows) are vocabularies
+        # from earlier configs, still entering the index because the drain keeps vetting
+        # candidates minted under them. `generate.py:273` does supply the configured domain,
+        # so the shipped path is correct; a caller that forgets would silently aim 72% of its
+        # quota at forms `prompts/generate.md` can no longer be asked for, and the deficit
+        # would never close because the target is unreachable. Loud, not fatal: steering must
+        # never be able to stop generation (see `plan_cells`).
+        # INFO, not WARNING: two of the four axes (`ambition_tier`, `market`) have no
+        # configured vocabulary under `generation` at all, so warning here would fire on every
+        # tick for a condition that is correct. The load-bearing artifact is `off_domain_values`
+        # in the receipt — a MEASUREMENT of the drift — not this line.
+        if not supplied and cov.observed:
+            logger.info(
+                f"coverage sampler: no configured domain supplied for axis {axis!r}; falling "
+                f"back to the {len(cov.observed)} value(s) OBSERVED in the catalogue. Any of "
+                "these that generation can no longer produce is an unreachable target.",
+                extra={"axis": axis, "observed": len(cov.observed)})
         vals = supplied or list(cov.observed)
         # `unknown` is never a generation TARGET: an unlabelled cell is not an instruction.
         vals = [v for v in dict.fromkeys(vals) if v != UNKNOWN]
         if vals:
             out[axis] = vals
+    return out
+
+
+def off_domain_values(
+    report: CoverageReport,
+    domains: Mapping[str, Iterable[str]] | None = None,
+) -> dict[str, dict[str, int]]:
+    """Per axis: catalogue values that are NOT in the supplied (configured) domain, with counts.
+
+    This is the vocabulary-drift meter. It measures the corpus against what generation can be
+    asked for, so an axis whose history spans several config generations says so on its face
+    instead of quietly inflating the denominator of any entropy or coverage figure computed
+    over it. An empty dict per axis means the corpus and the config agree.
+    """
+    out: dict[str, dict[str, int]] = {}
+    for axis, cov in report.axes.items():
+        allowed = {_norm(v) for v in (domains or {}).get(axis, []) or [] if str(v or "").strip()}
+        if not allowed:
+            continue
+        drift = {v: int(cov.counts.get(v, 0))
+                 for v in cov.observed if v != UNKNOWN and v not in allowed}
+        if drift:
+            out[axis] = dict(sorted(drift.items(), key=lambda kv: -kv[1]))
     return out
 
 
@@ -622,5 +665,6 @@ def receipt(
         "quality_stat": scfg.quality_stat,
         "fingerprint": report.fingerprint()[:16],
         "coverage": report.to_dict(),
+        "off_domain": off_domain_values(report, domains),
         "cells": cells,
     }

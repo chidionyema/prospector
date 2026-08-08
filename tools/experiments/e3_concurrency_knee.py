@@ -65,7 +65,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 NAME = "E3"
 DOC_REF = "docs/COMMERCIAL_READINESS_PROGRAM.md §3 (row E3), §16 'E3 — the methodology, recovered'"
@@ -113,8 +113,15 @@ def _worker(n: int, calls: int, warm_waves: int) -> dict[str, Any]:
                 err = None
             except Exception as e:  # noqa: BLE001 — every failure mode is a datum here
                 text, err = "", f"{type(e).__name__}: {e}"
+            # The fence, re-read PER CALL. `run()`'s --require-quiet check proves only that the
+            # pause file existed when the sweep started; E1's run `bo2mosjog` (2026-08-08) had
+            # store/scheduler/PAUSE deleted mid-run by something outside this repo, and a
+            # startup-only gate cannot tell. Every latency number below is a claim about a quiet
+            # machine, so every call states whether the machine was actually quiet when it ran.
+            quiet = _quiet_state()
             return {"i": i, "latency_s": round(time.monotonic() - t0, 3),
-                    "text": (text or "")[:400], "error": err}
+                    "text": (text or "")[:400], "error": err,
+                    "quiet": bool(quiet["PAUSE"] or quiet["PAUSE_GENERATION"])}
 
         t0 = time.monotonic()
         with ThreadPoolExecutor(max_workers=n) as pool:
@@ -187,6 +194,42 @@ def _quiet_state() -> dict[str, Any]:
         "PAUSE": (sched / "PAUSE").exists(),
         "PAUSE_GENERATION": (sched / "PAUSE_GENERATION").exists(),
     }
+
+
+def _quiet_report(calls: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """Did the fence hold for every MEASURED call, or only at startup?
+
+    `run()` refuses to start without a pause file, which proves the fence existed at t=0 and
+    nothing more. Observed on E1's run `bo2mosjog` (2026-08-08): the PAUSE file created at
+    00:25Z was gone by 00:35Z with the run still in flight and the daemon (pid 66223) live.
+    Nothing in this repo deletes it — `grep -rn PAUSE prospector/ tools/ scripts/` finds no
+    unlink, and the control centre only prints "Delete it to resume"
+    (`control_center/pages/_overview.py:112`) — so the deleter is outside the process and
+    cannot be prevented from here. It CAN be recorded, and for E3 it must be: every number
+    this probe reports is a latency, and a latency measured while the daemon was free to take
+    the same machine-wide governor slots is a measurement of contention, not of N.
+
+    Recorded, not aborted. An abort would discard the levels already measured, and a partial
+    sweep cannot be compared across levels anyway (see `sweep_aborted`). The honest output is
+    the table plus an explicit statement that it is contaminated from call K onward.
+    """
+    seen = [bool(c.get("quiet")) for c in calls if "quiet" in c]
+    lost = next((i for i, q in enumerate(seen) if not q), None)
+    held = bool(seen) and lost is None
+    note = ""
+    if seen and not held:
+        note = (f"the daemon fence (store/scheduler/PAUSE|PAUSE_GENERATION) was GONE from "
+                f"measured call {lost + 1} of {len(seen)} onward — "
+                f"{sum(1 for q in seen if not q)} of {len(seen)} calls were timed with the "
+                "daemon free to compete for the same machine-wide governor slots. Every "
+                "latency, throughput and knee figure in this run is contaminated and must "
+                "not be quoted.")
+    elif not seen:
+        note = ("no call carried a `quiet` stamp — this receipt predates the per-call fence "
+                "and can only speak for the startup check.")
+    return {"held": held, "calls_observed": len(seen),
+            "calls_unfenced": sum(1 for q in seen if not q),
+            "lost_at_call": None if lost is None else lost + 1, "note": note}
 
 
 def _foreign_cli_census(own_pids: set[int]) -> dict[str, Any]:
@@ -406,7 +449,10 @@ def run(args: list[str]) -> dict[str, Any]:
         levels = [n for n in levels if by_level[n]]
         if not levels:
             return {"headline": {"aborted": sweep_aborted, "knee_n": None,
-                                 "levels_completed": []},
+                                 "levels_completed": [],
+                                 "quiet_fence": _quiet_report(
+                                     [c for rs in by_level.values() for r in rs
+                                      for c in r.get("calls", [])])},
                     "quiet_state": quiet}
 
     base_reps = by_level.get(1) or by_level[levels[0]]
@@ -493,14 +539,24 @@ def run(args: list[str]) -> dict[str, Any]:
     else:
         print("  foreign `claude -p` processes during the sweep: none observed (sampled every 5s)")
 
+    # The fence, as MEASURED across every timed call, not as asserted at startup.
+    fence = _quiet_report([c for n in levels for r in by_level[n] for c in r.get("calls", [])])
+    if not fence["held"] and fence["calls_observed"]:
+        print(f"  ⛔ QUIET FENCE LOST — {fence['note']}")
+    elif fence["held"]:
+        print(f"  quiet fence: held for all {fence['calls_observed']} measured call(s)")
+
     return {
         "headline": {
+            "quiet_fence": fence,
             "levels": levels,
             "knee_n": knee,
             "cross_talk_calls": total_cross,
             "bad_calls": total_bad,
             "total_calls": total_calls,
-            "daemon_quiet": is_quiet,
+            # STARTUP-ONLY. Kept for continuity with earlier receipts; `quiet_fence` above is
+            # the one that can answer whether the fence held while calls were being timed.
+            "daemon_quiet_at_startup": is_quiet,
             "foreign_cli_peak": foreign_peak,
             "foreign_cli_kinds": kinds,
             "single_tenant": foreign_peak == 0,

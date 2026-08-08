@@ -32,9 +32,20 @@ import { cx } from './cx';
  *
  * `underline-offset-2` rather than the default: the descenders in "y" and "p" collide with a
  * baseline underline at this text size.
+ *
+ * ── §3.1 (2026-08-08): THE UNDERLINE IS NOW THE WHOLE AFFORDANCE ───────────────────────────────
+ * `--accent` was #2563EB when the analysis above was written, and the argument for this form was
+ * that it is "the only one of the four distinguishable from body prose WITHOUT a pointer". Under
+ * spec §3.1 colour means "a verdict" and nothing else, so --accent now resolves to ink -- which
+ * means an inline link is the same ink as the sentence around it, and that argument now rests
+ * ENTIRELY on the underline. That is why the decoration is specified here rather than left to
+ * the default: at `decoration-border-strong` the rule is a hairline that reads as a link without
+ * competing with the text, and hover promotes it to full ink rather than changing hue. Remove the
+ * underline and a link becomes genuinely unfindable -- it is no longer a style choice.
  */
 export const textLinkClass = (className?: string) =>
   cx(
-    'text-accent underline underline-offset-2 transition-colors hover:text-accent-hover',
+    'text-accent underline decoration-border-strong underline-offset-2 transition-colors',
+    'hover:decoration-text hover:text-accent-hover',
     className,
   );

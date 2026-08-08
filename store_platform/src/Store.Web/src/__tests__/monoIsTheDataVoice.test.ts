@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { readStylesheet } from './helpers/stylesheet';
+
 /**
  * Geist Mono is the data voice, and only that.
  *
@@ -45,7 +47,9 @@ const TSX = walk(SRC, '.tsx')
 
 // Comments stripped: this file's own prose names the classes under test, and a doc comment
 // explaining that `.text-caption` must NOT set a family would otherwise match as if it did.
-const CSS = readFileSync(join(SRC, 'styles', 'globals.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+// With local `@import`s inlined -- the tokens live in `styles/tokens.css` now, and a guard that
+// reads only the entry file measures the wrong bytes. See `helpers/stylesheet.ts`.
+const CSS = readStylesheet(join(SRC, 'styles', 'globals.css')).replace(/\/\*[\s\S]*?\*\//g, '');
 
 describe('mono is the data voice', () => {
   it('is still in use, so this suite cannot pass by the family being deleted', () => {

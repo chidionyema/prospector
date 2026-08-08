@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon, SourcedLine } from '@/components/ui';
+import { Glyph, SourcedLine } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { parseCitations } from '@/lib/citations';
 import type { PackDetails } from '@/lib/api/client';
@@ -53,7 +53,7 @@ export default function EvidenceExcerptPlate({
     <figure className={cx('overflow-hidden rounded-md border border-border bg-surface', className)}>
       <figcaption className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-surface2 px-5 py-3">
         <span className="inline-flex items-center gap-2 text-caption font-medium text-muted">
-          <Icon name="verified" size={13} className="text-success" />
+          <Glyph name="source" className="text-success" />
           One page of the evidence record
         </span>
         {/* The reference only. Mono because it is the one value on this plate a reader would
