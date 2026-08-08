@@ -24,6 +24,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+from .copy_lint import (
+    check_grammar,
+    check_house_dashes,
+    check_identifier_leak,
+    is_prose_artifact,
+)
+
 Problem = Dict[str, str]  # {"check", "severity", "where", "detail"}
 
 # The one symbol table in the engine. `artifacts._render_financial_model` renders money
@@ -333,11 +340,19 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               truncation_caps: Optional[Dict[str, int]] = None,
               check_urls_enabled: bool = False,
               url_cache_path: Optional[Path] = None,
-              url_timeout_s: float = 5.0, max_urls: int = 20) -> Dict[str, Any]:
+              url_timeout_s: float = 5.0, max_urls: int = 20,
+              house_fields: Optional[Dict[str, str]] = None,
+              grammar_enabled: bool = False,
+              max_grammar_defects_per_1k: float = 0.0) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
 
     `report["ok"]` is False iff any problem has severity "error" — that is the half the
     publish gate ANDs into `is_listed`. Warnings ride along in the report only.
+
+    `house_fields` carries engine-authored single-line copy that is NOT already in
+    `listing_texts` — `title` above all. Its absence was the second half of the 2026-08-08
+    dash defect: the field skipped the normaliser AND was never handed to the linter, so
+    nothing on the publish path could see it. Callers pass every buyer-visible line.
     """
     fin = (artifacts or {}).get("financial_model", "") or ""
     problems: List[Problem] = []
@@ -345,6 +360,33 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     problems += check_arithmetic(fin)
     problems += check_sections(fin)
     problems += check_truncation(listing_texts or {}, truncation_caps)
+
+    # --- copy quality -----------------------------------------------------------------
+    # Engine-authored prose only. Quoted third-party passages are never linted: a cited
+    # source may contain any dash or any identifier, and "correcting" it would falsify the
+    # citation on a source-or-die storefront.
+    house = dict(house_fields or {})
+    for _name, _pair in (listing_texts or {}).items():
+        _rendered = _pair[0] if isinstance(_pair, (tuple, list)) and _pair else ""
+        if _rendered:
+            house.setdefault(_name, _rendered)
+    problems += check_house_dashes(house)
+
+    # `is_prose_artifact` is the SINGLE definition of what may be graded as writing; see
+    # copy_lint.DATA_ARTIFACT_SUFFIXES for the pack this got wrong. Selecting the corpus by a
+    # local `.json` test is what let .csv and .svg through to both copy checks at once.
+    prose = {k: v for k, v in (artifacts or {}).items()
+             if isinstance(v, str) and is_prose_artifact(k, v)}
+    problems += check_identifier_leak({**prose, **house})
+
+    grammar_rate: Optional[float] = None
+    if grammar_enabled:
+        gp = check_grammar(prose, max_per_1k=max_grammar_defects_per_1k)
+        problems += gp
+        for p in gp:
+            m = re.search(r"= ([\d.]+) per 1k", p.get("detail", ""))
+            if m:
+                grammar_rate = float(m.group(1))
 
     urls_seen = 0
     if check_urls_enabled:
@@ -359,5 +401,9 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "market": market,
         "urls_checked": urls_seen,
+        # Recorded pass or fail so the receipt accrues a real baseline while the actuator
+        # is still off — the number you turn `max_grammar_defects_per_1k` on with should be
+        # one you have seen on live packs, not one guessed from a sample.
+        "grammar_rate_per_1k": grammar_rate,
         "problems": problems,
     }

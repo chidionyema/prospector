@@ -16,6 +16,10 @@ loses the entire listing.) Specifically, you MUST NOT:
 When a structured field below has no grounding in the claims, output "" for it
 rather than inventing a plausible value. An empty optional field is safe; a
 fabricated one fails the whole piece.
+
+HARD RULE: never print a JSON key, a field name, or any snake_case identifier inside the
+copy itself. The field names below name the SLOTS you fill; they are not words a reader
+ever sees. Write "time to first revenue" in prose, never "time_to_first_revenue".
 Match your confidence to the evidence, which is often weak (a single source, a
 self-reported figure, confidence near 0.4). So:
   (d) never call the evidence "clear", "proven", "strong", or "guaranteed"; a

@@ -504,6 +504,11 @@ def nodash(s: str | None) -> str:
     """
     if not s:
         return ""
+    # U+2011 NON-BREAKING HYPHEN joins compound words ("O‑licence", "zero‑hour"), so it
+    # becomes a plain hyphen and NOT ", " — a comma would split the word itself. It renders
+    # as a dash the buyer sees while surviving every check written against U+002D, which is
+    # how 3 of them reached live titles undetected before 2026-08-08.
+    s = s.replace("‑", "-")
     s = re.sub(r"(\d)\s*[—–]\s*(\d)", r"\1-\2", s)
     s = s.replace("—", ", ").replace("–", ", ")
     s = re.sub(r"\s+-\s+", ", ", s)

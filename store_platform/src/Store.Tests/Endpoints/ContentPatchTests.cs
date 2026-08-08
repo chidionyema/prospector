@@ -166,6 +166,77 @@ public sealed class ContentPatchTests : IClassFixture<StoreApiFactory>
         }
     }
 
+    /// <summary>
+    /// The version counter belongs to the server, and this is the case that proves why.
+    ///
+    /// contentVersion is returned by no public GET projection, so a republishing engine cannot
+    /// read the current value to increment it. bridge.py computed <c>(missing ?? 0) + 1</c> and
+    /// sent 1 on every republish — knocking a pack on its fourth revision back to its first.
+    /// FulfilmentService stamps that number onto the buyer's record, so a reset makes one version
+    /// describe two different bundles. The engine now omits the field and the upsert counts.
+    /// </summary>
+    [Fact]
+    public async Task Republishing_new_content_bumps_the_version_without_being_told_the_number()
+    {
+        await PublishAsync("cp-server-owned");           // version 1, hash "oldhash"
+
+        // A republish carrying new content and NO contentVersion, exactly as the engine sends it.
+        await RepublishAsync("cp-server-owned", "hash-v2");
+        Assert.Equal(2, await VersionAsync("cp-server-owned"));
+
+        await RepublishAsync("cp-server-owned", "hash-v3");
+        Assert.Equal(3, await VersionAsync("cp-server-owned"));
+
+        // Unchanged content is not a new version — a copy-only republish must not inflate it.
+        await RepublishAsync("cp-server-owned", "hash-v3");
+        Assert.Equal(3, await VersionAsync("cp-server-owned"));
+    }
+
+    [Fact]
+    public async Task An_explicitly_sent_version_still_wins()
+    {
+        await PublishAsync("cp-explicit-version");
+        await RepublishAsync("cp-explicit-version", "hash-v2", version: 47);
+        Assert.Equal(47, await VersionAsync("cp-explicit-version"));
+    }
+
+    [Fact]
+    public async Task A_brand_new_pack_starts_at_version_one_not_two()
+    {
+        await PublishAsync("cp-first-publish");
+        Assert.Equal(1, await VersionAsync("cp-first-publish"));
+    }
+
+    private async Task RepublishAsync(string id, string hash, int? version = null)
+    {
+        _factory.Payments.CanBill = true;
+        var body = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["id"] = id,
+            ["title"] = $"Pack {id}",
+            ["oneLine"] = "One line.",
+            ["dossierRef"] = $"dossier:{id}",
+            ["paymentProvider"] = "stripe",
+            ["providerProductId"] = "prod_1",
+            ["providerPriceId"] = "price_real",
+            ["isListed"] = true,
+            ["contentKey"] = $"packs/{id}/{hash}.zip",
+            ["contentHash"] = hash,
+        };
+        if (version is { } v) body["contentVersion"] = v;
+
+        var response = await Client().PostAsJsonAsync("/internal/catalog", body);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    private async Task<int> VersionAsync(string id)
+    {
+        var response = await Client().GetAsync($"/internal/catalog/{id}/content");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return doc.RootElement.GetProperty("contentVersion").GetInt32();
+    }
+
     [Fact]
     public async Task Read_endpoint_requires_the_internal_key()
     {

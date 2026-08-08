@@ -475,6 +475,118 @@ class DeepSeekOperator(Operator):
         return content
 
 
+class StandardComputeOperator(Operator):
+    """StandardCompute OpenAI-compatible API brain.
+
+    Wire format verified live 2026-08-08 against https://api.stdcmpt.com/v1:
+      - POST /v1/chat/completions  -> 200, OpenAI `choices[0].message.content` shape
+      - POST /v1/messages          -> 404 {"detail":"Not Found"}   (NOT Anthropic-shaped)
+      - GET  /v1/models            -> 200, one model, id "StandardCompute"
+      - Auth is `Authorization: Bearer <key>`; `x-api-key` is not accepted.
+    So this is an OpenAI-compatible adapter, never an Anthropic one. Pointing the
+    Anthropic SDK (or ANTHROPIC_BASE_URL) at this host posts to a path that 404s.
+
+    NOT CLEARED FOR MOAT. `MOAT_PRIMARY` does not contain "standardcompute", so
+    everything this brain rules is stamped `provisional` and blocked from publishing
+    (run.py:528). Promotion requires the golden-set gate recorded in config.yaml:50-52.
+
+    Uses urllib directly (no extra dependencies), matching DeepSeekOperator above.
+    """
+
+    _BASE_URL = "https://api.stdcmpt.com/v1"
+    _USER_AGENT = "prospector/1.0"
+
+    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None,
+                 default_model: Optional[str] = None, base_url: Optional[str] = None):
+        key = api_key or os.environ.get("STANDARDCOMPUTE_API_KEY")
+        if not key:
+            raise RuntimeError("STANDARDCOMPUTE_API_KEY not set")
+        self._key = key
+        # `default_model` comes from cfg.model_defaults.standardcompute. An explicit
+        # `model` (from cfg.model) overrides it. No hardcoded identifier is the
+        # source of truth here — see the model-config audit ticket.
+        self.model = model or default_model or "standardcompute"
+        self.base_url = (base_url or os.environ.get("STANDARDCOMPUTE_BASE_URL")
+                         or self._BASE_URL).rstrip("/")
+        self.name = f"standardcompute/{self.model}"
+
+    @property
+    def model_version(self) -> str:
+        return self.name
+
+    @track_latency(name="standardcompute_raw_call")
+    def _raw(self, system: str, user: str, temperature: float) -> str:
+        """Call the StandardCompute OpenAI-compatible /v1/chat/completions endpoint."""
+        import urllib.error
+        import urllib.request
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": temperature,
+            "max_tokens": 8192,
+        }
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            f"{self.base_url}/chat/completions",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self._key}",
+                # REQUIRED, and it does not look required. This host sits behind
+                # Cloudflare, which bot-blocks urllib's default signature: measured
+                # 2026-08-08, identical request, UA "Python-urllib/3.14" -> 403
+                # "error code: 1010", UA "prospector/1.0" -> 200. A 403 reads as a bad
+                # key, so without this line the next diagnosis goes hunting for a
+                # credential problem that does not exist.
+                "User-Agent": self._USER_AGENT,
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            # The classifier needs the RESPONSE BODY, not just str(e). urllib renders an
+            # HTTPError as "HTTP Error 402: Payment Required" and drops the JSON body, which
+            # is the only place a provider spells out *which* allowance ran out. This
+            # provider's exhaustion wording is unknown to us, so `_ALLOWANCE_LIMIT_RE`
+            # (errors.py:112) gets the body too — a failure the classifier misses is retried
+            # forever and never leaves a dead mark.
+            detail = ""
+            if isinstance(e, urllib.error.HTTPError):
+                try:
+                    detail = (e.read() or b"").decode("utf-8", "replace")[:600]
+                except Exception:
+                    detail = ""
+            probe = f"{e} {detail}".strip()
+            from .errors import ProviderExhaustedError, looks_exhausted
+            if looks_exhausted(probe):
+                raise ProviderExhaustedError(
+                    f"StandardCompute quota exhausted: {probe}", provider=self.name)
+            raise RuntimeError(f"StandardCompute call failed: {probe}") from e
+
+        # Track token usage. The live probe returned prompt/completion/total plus a
+        # prompt_tokens_details.cached_tokens field; feed the cached count through so the
+        # ledger does not read a cache hit as fresh input.
+        usage = data.get("usage") or {}
+        inp = int(usage.get("prompt_tokens", 0) or 0)
+        out = int(usage.get("completion_tokens", 0) or 0)
+        total = int(usage.get("total_tokens", 0) or 0)
+        cached = int(((usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0)) or 0)
+        from .telemetry import logger, record_usage
+        record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
+                     cached_tokens=cached, web=False, provider=self.name)
+
+        content = (data.get("choices", [{}])[0].get("message", {})
+                   .get("content", "") or "")
+        logger.info(f"StandardCompute response: length={len(content)}")
+        return content
+
+
 
 class OpenRouterOperator(Operator):
     """Intelligent multi-model OpenRouter operator with self-healing rotation.
@@ -1014,6 +1126,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         "deepseek": ("deepseek-",),
         "minimax": ("minimax-", "MiniMax-"),
         "ollama": (),
+        "standardcompute": ("standardcompute",),
     }
     prefixes = _PROVIDER_MODEL_PREFIX.get(kind, ())
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
@@ -1059,6 +1172,15 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             model=model,
             default_model=md.ollama if md else None,
         )
+    if kind == "standardcompute":
+        # OpenAI-compatible third-party endpoint (api.stdcmpt.com). Added 2026-08-08 to
+        # move load off the Claude Code subscription. It is NOT in MOAT_PRIMARY, so any
+        # verdict it serves is stamped `provisional` and cannot publish — promotion needs
+        # the golden-set gate in config.yaml:50-52.
+        return StandardComputeOperator(
+            model=model,
+            default_model=md.standardcompute if md else None,
+        )
     # cursor_cli was removed here on 2026-08-06 (founder directive). It stays an EXPLICIT
     # error rather than an unknown one, so a stale config or plist fails loudly at startup
     # instead of silently building a chain one brain shorter than it reads.
@@ -1068,7 +1190,8 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             "measured at its usage limit and every call paid a guaranteed failure first). "
             "Use claude_cli. Update config.yaml `operator:`/`artifact_operator:`.")
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected claude_cli|claude|minimax|deepseek|ollama|mock)")
+                     "(expected claude_cli|claude|minimax|deepseek|ollama|"
+                     "standardcompute|mock)")
 
 
 def make_operator(cfg, fast: bool = False) -> Operator:

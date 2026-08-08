@@ -200,6 +200,7 @@ class ModelDefaults:
     minimax: str = "MiniMax-M3"        # full reasoning model
     minimax_fast: str = "MiniMax-M3"  # also M3 per standing order
     ollama: str = "qwen2.5-coder:7b"
+    standardcompute: str = "standardcompute"
     # Search provider defaults (the LLM that decomposes queries for the
     # function-calling search providers). One per search provider.
     search: dict[str, str] = field(default_factory=lambda: {
@@ -230,6 +231,17 @@ class Pricing:
     minimax: PriceTier = field(default_factory=lambda: PriceTier(0.30, 0.30))
     ollama: PriceTier = field(default_factory=lambda: PriceTier(0.00, 0.00))
     mock: PriceTier = field(default_factory=lambda: PriceTier(0.00, 0.00))
+
+    # Deliberately `None`, not PriceTier(0, 0). StandardCompute publishes no
+    # machine-readable rates: /v1/pricing, /v1/usage, /v1/billing and
+    # /v1/models/standardcompute all 404 (probed 2026-08-08), and /v1/models
+    # returns only {"id": "StandardCompute"}. A 0/0 default would satisfy
+    # `getattr(cfg.pricing, provider)` in telemetry.get_price and SILENCE the
+    # "not in cfg.pricing; returning $0" warning — converting a loud unknown
+    # into a confident zero, which is exactly how spend.daily_cap_usd ends up
+    # governing a fiction. None keeps the warning firing until real rates are
+    # entered under a top-level `pricing:` block in config.yaml.
+    standardcompute: PriceTier | None = None
 
 
 @dataclass
@@ -715,6 +727,7 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
         minimax=raw_md.get("minimax", "MiniMax-M3"),
         minimax_fast=raw_md.get("minimax_fast", "MiniMax-M2.7"),
         ollama=raw_md.get("ollama", "qwen2.5-coder:7b"),
+        standardcompute=raw_md.get("standardcompute", "standardcompute"),
         search=search,
     )
 
@@ -739,6 +752,12 @@ def _parse_pricing(raw_pr: dict | None) -> Pricing:
         minimax=_tier(raw_pr.get("minimax"), Pricing().minimax),
         ollama=_tier(raw_pr.get("ollama"), Pricing().ollama),
         mock=_tier(raw_pr.get("mock"), Pricing().mock),
+        # `None` when unset, NOT a 0/0 tier — see the Pricing.standardcompute comment.
+        # A 0/0 default here would satisfy the getattr in telemetry.get_price and mute
+        # the unpriced-provider warning, which is the only thing currently telling the
+        # operator that standardcompute spend is missing from the daily cap.
+        standardcompute=(_tier(raw_pr.get("standardcompute"), PriceTier(0.0, 0.0))
+                         if raw_pr.get("standardcompute") else None),
     )
 
 

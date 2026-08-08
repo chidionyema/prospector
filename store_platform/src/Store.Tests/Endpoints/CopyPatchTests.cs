@@ -13,12 +13,18 @@ namespace Store.Tests.Endpoints;
 /// no listing_page artifact on their dossier, so the storefront was showing pack_floors'
 /// deterministic floor — headline == title on 34, no cardLine on 55, proofPoint a raw check
 /// rationale on 28. Replacing that copy is a pure content job, but the only endpoint that could
-/// write those columns was the /internal/catalog upsert, which on the update path assigns
+/// write those columns was the /internal/catalog upsert, which on the update path assigned
 /// ProviderProductId and ProviderPriceId unconditionally and never reassigns PricePence.
 ///
-/// <see cref="Republishing_to_change_copy_nulls_the_provider_ids"/> is the test that earns this
-/// endpoint: it demonstrates the damage on the publish route rather than asserting it in a
-/// comment, so if that route is ever made safe this test fails and tells us so.
+/// <see cref="Republishing_to_change_copy_no_longer_nulls_the_provider_ids"/> was written to
+/// demonstrate that damage rather than assert it in a comment, so that it would FAIL the day the
+/// publish route was made safe. On 2026-08-08 it did, and the guard it was waiting for landed
+/// (Program.cs: the ids are now only overwritten when the request carried one). It is kept,
+/// inverted, as the regression that stops the unconditional assignment coming back.
+///
+/// The endpoint still earns its place: a copy job routed through publish must re-send the entire
+/// body, which re-runs the pricing ladder and the provisioner. This PATCH reaches copy and
+/// nothing else.
 /// </remarks>
 public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
 {
@@ -146,8 +152,9 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
     /// were exactly 153 characters and 32 of those ended part-way through a word — "for a flat fee
     /// per applicat...". That string is the card description AND the lead paragraph above the buy
     /// button. Fixing the engine stops the 35th; it does not touch the 34 already in the database,
-    /// and the only endpoint that could reach that column was the upsert whose update path nulls
-    /// the provider ids (see <see cref="Republishing_to_change_copy_nulls_the_provider_ids"/>).
+    /// and the only endpoint that could reach that column was the upsert whose update path used to
+    /// null the provider ids
+    /// (see <see cref="Republishing_to_change_copy_no_longer_nulls_the_provider_ids"/>).
     /// </summary>
     [Fact]
     public async Task Replaces_a_truncated_one_line_without_touching_the_money_rail()
@@ -235,18 +242,20 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
     }
 
     /// <summary>
-    /// The reason this endpoint exists, demonstrated rather than asserted.
-    ///
-    /// A copy job routed through POST /internal/catalog has to re-send the whole publish body.
-    /// The provider ids are not returned by any GET projection, so a backfill cannot read them
-    /// back to echo them — and omitting them does not leave them alone, it NULLS them
-    /// (Program.cs: <c>pack.ProviderProductId = request.ProviderProductId ?? request.PaddleProductId</c>).
+    /// The repair, pinned as a regression. This test was written inverted, to demonstrate the
+    /// damage: a copy job routed through POST /internal/catalog has to re-send the whole publish
+    /// body, the provider ids are returned by no GET projection so a backfill cannot echo them,
+    /// and omitting them did not leave them alone — it NULLED them
+    /// (<c>pack.ProviderProductId = request.ProviderProductId ?? request.PaddleProductId</c>).
     /// A null ProviderProductId breaks FulfilmentService's product lookup
     /// (<c>p.ProviderProductId == item.ProductId</c>): the buyer is charged and delivery never
     /// resolves.
+    ///
+    /// Program.cs now writes each id only when the request carried one, so omission is a no-op
+    /// and the assertions below are the inverse of what they were.
     /// </summary>
     [Fact]
-    public async Task Republishing_to_change_copy_nulls_the_provider_ids()
+    public async Task Republishing_to_change_copy_no_longer_nulls_the_provider_ids()
     {
         await PublishAsync("copy-republish-hazard");
         _factory.Payments.CanBill = true;
@@ -267,29 +276,45 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = doc.RootElement;
 
-        // The copy landed — which is exactly why this route looks like it worked.
+        // The copy landed.
         Assert.Equal("New card line from the backfill", root.GetProperty("cardLine").GetString());
 
-        // And the money rail is now broken, silently.
-        Assert.Equal(JsonValueKind.Null, root.GetProperty("providerProductId").ValueKind);
-        Assert.Equal(JsonValueKind.Null, root.GetProperty("providerPriceId").ValueKind);
+        // And the money rail survived it: an omitted id is "no change", not "clear".
+        Assert.Equal("prod_real", root.GetProperty("providerProductId").GetString());
+        Assert.Equal("price_real", root.GetProperty("providerPriceId").GetString());
+        Assert.True(root.GetProperty("isListed").GetBoolean());
 
-        // What happens to the listing from here depends on the payment provider, and both
-        // outcomes are broken, so this test asserts neither. A real Stripe answers
-        // CanBillPriceAsync("") false and the pack drops out of the catalogue; FakePaymentProvider
-        // returns its CanBill flag without looking at the id (FakePaymentProvider.cs:54-57), so
-        // here the pack stays listed with unresolvable provider ids — sellable and unfulfillable.
-        // Asserting either value would be asserting the fake, not the endpoint.
+        // The provider label must not drift either. Nothing in that body named a provider, and
+        // the legacy default is "paddle" — which on a pack holding price_* ids would describe a
+        // rail that does not exist.
+        Assert.Equal("stripe", root.GetProperty("paymentProvider").GetString());
 
-        // The copy PATCH, given the same job, does none of that.
-        await PublishAsync("copy-republish-hazard");
+        // Sending a DIFFERENT id still moves it: this guards omission, not change. Without this
+        // the guard could be implemented as "never overwrite", which would strand every pack on
+        // its first rail forever.
+        var moved = await Client().PostAsJsonAsync("/internal/catalog", new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["id"] = "copy-republish-hazard",
+            ["title"] = "Pack copy-republish-hazard",
+            ["oneLine"] = "One line.",
+            ["dossierRef"] = "dossier:copy-republish-hazard",
+            ["paymentProvider"] = "stripe",
+            ["providerProductId"] = "prod_moved",
+            ["providerPriceId"] = "price_moved",
+            ["isListed"] = true,
+        });
+        using var movedDoc = JsonDocument.Parse(await moved.Content.ReadAsStringAsync());
+        Assert.Equal("prod_moved", movedDoc.RootElement.GetProperty("providerProductId").GetString());
+        Assert.Equal("price_moved", movedDoc.RootElement.GetProperty("providerPriceId").GetString());
+
+        // The copy PATCH remains the narrow door, and still touches none of it.
         var patched = await Client().PatchAsJsonAsync(
             "/internal/catalog/copy-republish-hazard/copy",
-            new { cardLine = "New card line from the backfill" });
+            new { cardLine = "A second card line" });
         using var patchedDoc = JsonDocument.Parse(await patched.Content.ReadAsStringAsync());
-        Assert.Equal("New card line from the backfill", patchedDoc.RootElement.GetProperty("cardLine").GetString());
-        Assert.Equal("prod_real", patchedDoc.RootElement.GetProperty("providerProductId").GetString());
-        Assert.Equal("price_real", patchedDoc.RootElement.GetProperty("providerPriceId").GetString());
+        Assert.Equal("A second card line", patchedDoc.RootElement.GetProperty("cardLine").GetString());
+        Assert.Equal("prod_moved", patchedDoc.RootElement.GetProperty("providerProductId").GetString());
+        Assert.Equal("price_moved", patchedDoc.RootElement.GetProperty("providerPriceId").GetString());
         Assert.True(patchedDoc.RootElement.GetProperty("isListed").GetBoolean());
     }
 }
