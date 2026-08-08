@@ -34,6 +34,40 @@ CHECKS = ("payer_solvency", "incumbency", "legality")
 ARGS = ["--live", "--quiet-daemon-ok", "--candidates", "4", "--checks", ",".join(CHECKS)]
 
 
+def _fixture_dossier(i: int) -> tuple[str, dict]:
+    """One synthetic dossier that RAN all of CHECKS, shaped for the treatment arm.
+
+    Every field here is load-bearing, and an omission fails as a DIFFERENT refusal than the one
+    under test:
+
+      * `who_pays` fills `{payer}` and `market` fills `{market}` (verify._entity_queries);
+      * `tags["audience"]` fills `{aud}`, and it must be a TAG, not an attribute — `audience` is
+        a read-only property over `tags` (`models.py:145-163`), not a dataclass field, so
+        `Candidate(audience=...)` is a TypeError and a candidate without the tag yields ZERO
+        incumbency queries. That trips `REFUSING: the treatment arm produces NO queries` at
+        `e1_hybrid_query_arms.py:449` — an abort that looks like the outage abort these tests
+        assert on, and would make them pass for the wrong reason;
+      * `checks` must name all of CHECKS, because `_load_candidates` selects on "ran the check".
+
+    The path is a LABEL, never opened: `corpus.candidate_id` (`_corpus.py:124-126`) prefers the
+    dossier's own `candidate_id` and only falls back to the basename. It deliberately does not
+    read `store/dossiers` — a synthetic path that spells the real store is the exact string
+    `test_no_test_reads_the_operators_own_store` exists to flag, and that guard is right to be
+    lexical: it cannot tell a path a test opens from one it merely names.
+    """
+    return (f"fixtures/dossiers/fixture{i:02d}.json", {
+        "candidate": {
+            "candidate_id": f"fixture{i:02d}",
+            "title": f"Damp survey scheduling for letting agents {i}",
+            "one_liner": "A booking service for damp surveys",
+            "who_pays": "letting agents managing rented flats",
+            "market": "uk",
+            "tags": {"audience": "letting agents"},
+        },
+        "checks": [{"check_name": c} for c in CHECKS],
+    })
+
+
 @pytest.fixture
 def e1(monkeypatch):
     # `import _corpus` inside the module resolves only because Python auto-adds the script's
@@ -43,6 +77,18 @@ def e1(monkeypatch):
     spec = importlib.util.spec_from_file_location("_e1_under_test", E1_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    # The corpus is stubbed for the same reason the moat is: this file tests E1's ABORT logic,
+    # and `_load_candidates` (`:80`) reads the live dossier store, which is not committed —
+    # `git ls-tree store/dossiers` is EMPTY on every ref. So in CI and in any fresh worktree
+    # these tests failed with `REFUSING: only 0 dossier(s) ran all of [...]`, red since before
+    # the merge that surfaced it, while passing locally off a 1640-dossier store. That is a
+    # test whose result depends on the machine, not the code.
+    #
+    # Stubbed rather than SKIPPED deliberately. A skip would go green everywhere and guard
+    # nothing precisely where the guard is wanted — CI is the only place the E1 fence is
+    # checked at all, since nobody runs this file by hand.
+    monkeypatch.setattr(mod, "_load_candidates",
+                        lambda n, seed_checks: [_fixture_dossier(i) for i in range(n)])
     return mod
 
 
