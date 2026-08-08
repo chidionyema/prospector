@@ -429,7 +429,11 @@ def generate_artifacts(
 
     # Money figures in the pack must be denominated in the OPPORTUNITY's market currency
     # (a US pack quoting £ is wrong), independently of the £49 the pack itself sells for.
-    market_vars = market_kwargs(cfg) if cfg is not None else {k: "" for k in ALL_MARKET_KEYS}
+    # The market is the CANDIDATE's, not the config's active one. Without the override the
+    # currency hint is whatever market the run happens to be pointed at, while the pack lint
+    # grades against `candidate.market` — the mismatch that put `£` in a `us` pack.
+    market_vars = (market_kwargs(cfg, market=getattr(cand, "market", "") or "")
+                   if cfg is not None else {k: "" for k in ALL_MARKET_KEYS})
 
     with ThreadPoolExecutor(max_workers=len(types)) as ex:
         futures = {
@@ -668,8 +672,48 @@ def _salvage_listing(check_op: Operator, piece: Dict[str, Any], claims: List[Dic
     return salvaged
 
 
+def _currency_rule(cfg: Optional[Any], cand: Candidate) -> str:
+    """The currency instruction for marketing copy, or "" when no market is declared.
+
+    Deliberately quotes the SAME symbol `pack_linter.expected_currency` will grade against,
+    imported from the linter rather than restated here. A second copy of the market→symbol
+    table is how the generator and the grader drift apart, and that drift is the whole defect
+    this exists to close: the pack is refused at publish for a symbol the generator was never
+    told to use.
+    """
+    market = str(getattr(cand, "market", "") or "").strip()
+    if cfg is None or not market:
+        return ""
+    try:
+        from .pack_linter import expected_currency
+        symbol = expected_currency(market)
+    except Exception:  # noqa: BLE001 — an unmapped market must not break generation
+        symbol = ""
+    if not symbol:
+        return ""
+    mv = market_kwargs(cfg, market=market)
+    label = str(mv.get("market_label", "") or "").strip()
+    code = str(mv.get("currency_hint", "") or "").strip()
+    where = f" ({label})" if label else ""
+    unit = f" ({code})" if code else ""
+    # Worded to match `check_currency` (pack_linter.py:79) EXACTLY, because an instruction
+    # stricter than the grader is its own defect here: rule (b) above requires figures
+    # verbatim from a verified claim, and this repo never infers an FX rate. So a foreign
+    # comparable is legitimate — the grader makes it a mere warning when the market's own
+    # symbol appears too, and an error only when the buyer never sees their own currency.
+    return (
+        f"CURRENCY: this opportunity's market is {market}{where}, whose currency is "
+        f"{symbol}{unit}. Quoting a foreign-currency figure verbatim from a verified claim is "
+        f"fine and often necessary — keep the source's own symbol on it and attribute it to "
+        f"that source. But the copy must never be foreign-currency ONLY: whenever you quote "
+        f"one, at least one figure in {symbol} must appear alongside it, or the buyer never "
+        f"sees their own money. Never convert a figure yourself; quote what the claim says."
+    )
+
+
 def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claims_json: str,
-                     claims: List[Dict[str, Any]], t: str) -> Optional[Dict[str, Any]]:
+                     claims: List[Dict[str, Any]], t: str,
+                     currency_rule: str = "") -> Optional[Dict[str, Any]]:
     """Generate one marketing piece with regeneration that feeds claim-check violations.
 
     ``gen_op`` drafts the copy (cheap for ancillary pieces, the quality chain for the
@@ -684,7 +728,8 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
     copy_supplied = False
     for attempt in range(attempts):
         system, user = render("content_gen", candidate_json=cand_json,
-                              claims_json=claims_json, type=t)
+                              claims_json=claims_json, type=t,
+                              currency_rule=currency_rule)
         if feedback:
             user = f"{user}\n\n{feedback}"
         with telemetry_stage("content_gen"):
@@ -733,6 +778,7 @@ def generate_marketing_content(
     fast_op: Optional[Operator] = None,
     quality_op: Optional[Operator] = None,
     check_op: Optional[Operator] = None,
+    cfg: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     """Generate and claim-check listing_page, teaser_social, seo_preview, launch_email.
 
@@ -758,11 +804,19 @@ def generate_marketing_content(
 
     types = ["listing_page", "teaser_social", "seo_preview", "launch_email"]
 
+    # The artifact path has carried a currency hint since Epic D; this one never did, so the
+    # model picked a symbol from the copy's implicit context. `lint_pack` grades every piece
+    # against `candidate.market`, which is how `8ce5270ade208070` shipped a listing_page whose
+    # money was ENTIRELY in € inside a `uk` pack. Derived from the candidate's own market, so
+    # generation and grading read one field. Empty when no market is configured: the rule then
+    # substitutes to nothing rather than instructing the model in a currency nobody declared.
+    currency_rule = _currency_rule(cfg, cand)
+
     with ThreadPoolExecutor(max_workers=len(types)) as ex:
         futures = {
             ex.submit(_gen_one_content,
                       quality if t == "listing_page" else cheap_op,
-                      checker, cand_json, claims_json, claims, t): t
+                      checker, cand_json, claims_json, claims, t, currency_rule): t
             for t in types
         }
         results: List[Dict[str, Any]] = []

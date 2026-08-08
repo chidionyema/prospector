@@ -173,7 +173,8 @@ def main(argv: list[str]) -> int:
                 op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg,
                 dossier=dossier)
             cand.tags["marketing"] = generate_marketing_content(
-                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, check_op=op)
+                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, check_op=op,
+                cfg=cfg)
             # Epic C lite: if LLM listing_page fails claim-check, fill a claim-safe
             # floor from dossier fields only (same helper EngineBridge already uses).
             cand.tags["marketing"] = ensure_marketing_floor(

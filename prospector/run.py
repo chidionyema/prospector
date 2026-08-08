@@ -300,7 +300,21 @@ def _get_verify():
 #
 # Ollama REJECTED 2026-07-01 (markdown, not JSON). Module-level so run_signal, `operators`, and
 # the proof tools all reference the SAME chain.
-_NONCRITICAL_ORDER = ("claude_cli", "standardcompute", "minimax")
+#
+# HEAD CHANGED 2026-08-08 (founder directive: "non critical, use standardcompute first").
+# claude_cli headed this chain from 2026-08-06 only because the alternatives were dead at the
+# time (deepseek measured HTTP 402, cursor_cli at its usage limit). That made "non-critical"
+# a name with no cost meaning: the cheap chain and the moat chain were the SAME three
+# providers in the same order, so ancillary generation was paying the moat's price. Measured
+# on the 2026-08-08 republish of 34 packs: 36 claude_cli calls, 3227s of CLI wall-clock, ~90s
+# each. standardcompute is live (no dead mark in store/provider_health_noncritical.json), so
+# it takes the head and claude_cli becomes the failover it was always meant to be.
+#
+# Scope is deliberately ONLY the non-critical chain. `cfg.operator` (the moat) and
+# `cfg.artifact_operator` (the pack prose) are untouched, and claim-check still runs on
+# the moat: a truth gate that vetoes ungrounded copy is not an ancillary call, and this repo
+# holds those on MOAT_PRIMARY.
+_NONCRITICAL_ORDER = ("standardcompute", "claude_cli", "minimax")
 
 
 # ---------------------------------------------------------------------------
@@ -502,7 +516,8 @@ def vet_candidate(
                 op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg,
                 score=score)
             cand.tags["marketing"] = generate_marketing_content(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op)
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op,
+                cfg=cfg)
 
     now = datetime.datetime.now(datetime.timezone.utc)
 

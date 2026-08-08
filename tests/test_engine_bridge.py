@@ -301,14 +301,27 @@ class TestStripeProvisionerHardening(unittest.TestCase):
         return p
 
     def test_create_product_passes_idempotency_key(self):
+        """The key is keyed on the pack AND the request parameters.
+
+        This test used to pin the literal "prospector-product-cand-9". That literal WAS the
+        defect: a Stripe idempotency key is remembered for 24h and replaying it with
+        different parameters is a hard error, not a no-op, and this product's `name` and
+        `description` are the pack's own copy. Measured 2026-08-08, packs 13795bea31feee47
+        and 2abc23c3c0d05bab both failed with "Keys for idempotent requests can only be used
+        with the same parameters they were first used with" after a copy fix, leaving two
+        packs that could never list. So assert the PROPERTY the key exists for, not the
+        string: a pack-scoped prefix, and the same key for the same request.
+        """
         p = self._provisioner()
         p._stripe.Product.create.return_value = MagicMock(id="prod_123")
         pid = p.create_product("Name", "Desc", {"pack_id": "cand-9"})
         self.assertEqual(pid, "prod_123")
-        self.assertEqual(
-            p._stripe.Product.create.call_args.kwargs["idempotency_key"],
-            "prospector-product-cand-9",
-        )
+        key = p._stripe.Product.create.call_args.kwargs["idempotency_key"]
+        self.assertTrue(key.startswith("prospector-product-cand-9-"), key)
+
+        # Retry-safety, the property the key is FOR: an identical request never mints twice.
+        p.create_product("Name", "Desc", {"pack_id": "cand-9"})
+        self.assertEqual(p._stripe.Product.create.call_args.kwargs["idempotency_key"], key)
 
     def test_create_price_passes_idempotency_key(self):
         p = self._provisioner()
