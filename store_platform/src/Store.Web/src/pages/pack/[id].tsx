@@ -183,6 +183,25 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
     );
   }, [pack.sampleExtract]);
 
+  // THE HONEST HALF OF SOCIAL PROOF.
+  //
+  // The page has no customer count, no testimonial and no logo wall, and inventing any of them is
+  // the one move that would falsify the whole storefront. What it does have is third-party
+  // corroboration: the DOMAINS the free extract cites. Naming them near the title is the part of
+  // "other people stand behind this" that is true, because the visitor can go and read them, and
+  // the clickable list further down does exactly that.
+  //
+  // Deduped by host, not by URL: `openSources` already dedupes URLs, but three pages of
+  // legislation.gov.uk are one institution vouching once, and printing it three times would turn
+  // a trust mark back into a volume claim. The count is deliberately NOT restated here either --
+  // `evidenceTokens` above owns the numbers.
+  const sourceHosts = React.useMemo(() => {
+    const seen = new Set<string>();
+    return openSources
+      .map((c) => c.host)
+      .filter((h) => Boolean(h) && !seen.has(h) && seen.add(h));
+  }, [openSources]);
+
   // Map internal axis keys to buyer-facing labels so the scored section
   // reads as consumer content, not internal tooling.
   //
@@ -382,9 +401,16 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             )}
           </div>
           {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
-              only a gain for someone who wants several, so it never sits in front of the direct path. */}
+              only a gain for someone who wants several, so it never sits in front of the direct path.
+
+              `size='link'` rather than the default full-width secondary button. Two stacked
+              full-width blocks made the rail read as a choice between two comparable actions on a
+              single £29 item, and the second one serves the rarer buyer. Deleting it was the other
+              option and was rejected as silent feature removal: multi-pack buying still works, is
+              still labelled in words, and is still one click. Only its visual weight changed. */}
           <div className="mt-3">
             <AddToCartButton
+              size="link"
               line={{ id: pack.id, title: pack.title, price: pack.price, pricePence: pack.pricePence }}
             />
           </div>
@@ -620,6 +646,24 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               <p className="mt-4 max-w-[60ch] text-body text-muted">{pack.subhead}</p>
             )}
 
+            {/* WHY THIS IS WORTH MONEY, STATED ONCE, AND THE SAME ON EVERY PACK.
+                The page argues rigour from the first screen (checks, sources, survival) and never
+                says what the rigour spares the reader, so a visitor who has not already decided to
+                start a business has no reason to care that the vetting was thorough.
+
+                It is a STATIC line, and that is the whole design of it. A per-pack version would
+                have to assert something about this idea's stakes -- hours saved, money at risk --
+                which is a figure the engine does not compute and the page could not cite, so it
+                would be the first unsourced claim on the money page. This one asserts nothing
+                about the pack: it describes what the product category is, in the second person,
+                and every word of it is already backed by the sections below. Also carries no
+                number, so there is nothing here for `source-or-die` to demand a citation for. */}
+            <p className="mt-4 max-w-[60ch] text-meta leading-relaxed text-muted">
+              The expensive part of a business idea is not having it. It is the time you spend
+              finding out it does not work. This pack is that work, already done, with its sources
+              left open.
+            </p>
+
             {/* The evidence line: what stands behind the listing, in mono because every item on it
                 is a quantity or a date. Renders nothing it cannot state.
 
@@ -638,6 +682,36 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                     <span>{token}</span>
                   </React.Fragment>
                 ))}
+              </p>
+            )}
+
+            {/* The source-domain roster. See `sourceHosts` for why this is the only form of social
+                proof on the page and why it is deduped by host.
+
+                Not mono, unlike the evidence line directly above it: that line is mono because
+                every item on it is a quantity or a date, and a domain is neither. Four is the cap,
+                because the job is "you have heard of these", not an inventory, and the inventory
+                is the clickable `CitationList` further down. Plain text, not links, for the same
+                reason: two clickable copies of one source list on one page is how a visitor ends
+                up wondering which one is the real one.
+
+                KNOWN TENSION, recorded rather than hidden: `EvidenceExcerptPlate` further down
+                carries its own chip for the one line it quotes (`EvidenceExcerptPlate.tsx:70-76`,
+                "One claim, one source row"), and that host will usually also appear in this
+                roster, so one domain can be named twice on a long desktop screen. Accepted
+                because the two are answering different questions -- this line is "who stands
+                behind the pack", the chip is "who said that particular sentence" -- and because
+                the alternative was for this element to duplicate `firstCitedLine`'s selection
+                logic in order to subtract one host from a list of four. If the repetition reads
+                badly on a real screen, delete this element and not the chip: the chip is
+                attribution, this is decoration on top of it. */}
+            {sourceHosts.length > 0 && (
+              <p className="mt-3 max-w-[60ch] text-caption leading-relaxed text-subtle">
+                Sourced from{' '}
+                <span className="font-medium text-muted">
+                  {sourceHosts.slice(0, 4).join(', ')}
+                </span>
+                {sourceHosts.length > 4 && `, and ${sourceHosts.length - 4} more`}
               </p>
             )}
 

@@ -4,8 +4,18 @@ import { MAX_CART_LINES, useCart, type CartLine } from '@/lib/cart';
 
 interface AddToCartButtonProps {
   line: CartLine;
-  /** 'compact' sits on a shelf card next to the price; 'full' is the pack page's secondary CTA. */
-  size?: 'compact' | 'full';
+  /**
+   * 'compact' sits on a shelf card next to the price; 'full' is a standalone secondary CTA;
+   * 'link' is the demoted form used on the pack page, a labelled text action.
+   *
+   * 'link' exists because the pack page's basket affordance was a full-width secondary Button
+   * directly under the primary buy button: two equal-weight blocks for a single £29 item, where
+   * the second one is only ever a gain for a buyer who wants several. The alternative considered
+   * was deleting it, which is silent feature removal, and the other was reusing 'compact' -- but
+   * 'compact' is an unlabelled 32px icon square built for a shelf tile, so on the money page it
+   * would hide the capability behind a bare glyph. This keeps the words and drops the weight.
+   */
+  size?: 'compact' | 'full' | 'link';
   className?: string;
 }
 
@@ -43,7 +53,33 @@ export function AddToCartButton({ line, size = 'full', className }: AddToCartBut
   // Rendered only once the browser has read localStorage: before that every button would claim
   // the pack is not in the basket, and the ones that are would visibly flip a frame later.
   if (!cart.ready) {
-    return <span aria-busy={true} aria-hidden className={cx(size === 'compact' ? 'h-8 w-8' : 'h-11', 'block', className)} />;
+    // Each size reserves its OWN height. Reserving 44px for the text link would hold open a
+    // button-sized gap that never fills, which is the layout shift this placeholder prevents,
+    // running in reverse.
+    const placeholder = size === 'compact' ? 'h-8 w-8' : size === 'link' ? 'h-5' : 'h-11';
+    return <span aria-busy={true} aria-hidden className={cx(placeholder, 'block', className)} />;
+  }
+
+  if (size === 'link') {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={inCart}
+        className={cx(
+          // No aria-label: unlike 'compact' this one has its words on screen, and a label that
+          // repeated them would be read twice.
+          'inline-flex items-center gap-1.5 rounded-sm text-caption font-medium text-muted',
+          'underline decoration-border underline-offset-4 transition-colors',
+          'hover:text-primary hover:decoration-primary',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+          className,
+        )}
+      >
+        <Icon name={inCart ? 'check' : 'cart'} size={14} />
+        {inCart ? 'In your basket' : 'Add to basket'}
+      </button>
+    );
   }
 
   if (size === 'compact') {
