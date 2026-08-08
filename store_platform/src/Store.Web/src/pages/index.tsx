@@ -295,7 +295,7 @@ function PackCard({
           <span className="flex min-w-0 items-center gap-2">
             <span className="truncate text-body font-semibold text-text">{heading}</span>
             {viewed && (
-              <span className="flex-none font-mono text-caption text-faint">seen</span>
+              <span className="flex-none font-mono text-caption text-subtle">seen</span>
             )}
           </span>
           {line && <span className="mt-0.5 block truncate text-meta text-muted">{line}</span>}
@@ -341,7 +341,7 @@ function PackCard({
         className={cx(
           'group flex flex-col overflow-hidden rounded-md border border-border bg-surface lg:flex-row',
           'transition-[border-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
-          'hover:border-border-strong hover:shadow-1',
+          'hover:border-border-strong',
           focusRing,
         )}
       >
@@ -356,7 +356,7 @@ function PackCard({
           {cat.tagged && (
             <span
               className={cx(
-                'absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full',
+                'absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-sm',
                 'bg-surface/90 px-2.5 py-1 text-caption font-medium',
                 cat.ink,
               )}
@@ -399,7 +399,7 @@ function PackCard({
       className={cx(
         'group flex flex-col overflow-hidden rounded-md border border-border bg-surface',
         'transition-[border-color,box-shadow,transform] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
-        'hover:-translate-y-px hover:border-border-strong hover:shadow-1',
+        'hover:-translate-y-px hover:border-border-strong',
         focusRing,
       )}
     >
@@ -554,7 +554,7 @@ function PackCoverArt({
         <span
           className={cx(
             'absolute left-3 top-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5',
-            'truncate rounded-full bg-surface/90 px-2.5 py-1 text-caption font-medium',
+            'truncate rounded-sm bg-surface/90 px-2.5 py-1 text-caption font-medium',
             category.ink,
           )}
         >
@@ -595,12 +595,12 @@ function PackCoverArt({
           is now the sector's corner -- two chips fighting for one corner is how the market chip
           and the sector badge ended up competing before. */}
       {pack.market && pack.market !== viewerMarket && (
-        <span className="absolute right-3 top-3 rounded-full bg-surface/90 px-2.5 py-1 text-caption font-medium text-muted">
+        <span className="absolute right-3 top-3 rounded-sm bg-surface/90 px-2.5 py-1 text-caption font-medium text-muted">
           For {marketLabel(pack.market)} rules
         </span>
       )}
       {viewed && (
-        <span className="absolute bottom-2.5 right-3 rounded-full bg-surface/90 px-2.5 py-1 text-caption font-medium text-subtle">
+        <span className="absolute bottom-2.5 right-3 rounded-sm bg-surface/90 px-2.5 py-1 text-caption font-medium text-subtle">
           Viewed
         </span>
       )}
@@ -1502,11 +1502,17 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 costs the measured 1280x720 fold nothing, because at that width the thing being
                 protected is no longer underneath.
 
-                The measure tightens to 44rem at the same breakpoint. At 96px an 812px column fits
-                about 17 characters, so leaving the cap at 56rem would produce ragged three-line
-                text set at display size, which reads as an accident. A deliberately narrower
-                measure makes it a block. */}
-            <h1 className="w-full min-w-0 max-w-full text-h1 font-semibold text-text md:max-w-[56rem] md:text-balance md:text-display lg:max-w-[44rem] lg:text-mega">
+                THE 96px STEP IS GONE (2026-08-08, §3.2). `lg:text-mega` was a seventh size on a
+                six-size scale; the spec puts the homepage hero at --text-display, 3rem, and that
+                token now carries its own mobile size as a clamp, so the whole responsive ladder
+                collapses to one class. The fold argument above still holds and is now slack
+                rather than tight: dropping 96px to 48px can only give the fold more room.
+
+                The 44rem cap went with it. It existed because 96px in an 812px column fits about
+                17 characters, so 56rem would have set ragged three-line display text. At 48px
+                that column reads as an ordinary measure and the tighter cap would just make the
+                headline wrap early for no reason. */}
+            <h1 className="w-full min-w-0 max-w-full text-display font-semibold text-text md:max-w-[56rem] md:text-balance">
               {variant.globalHookLead}
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
@@ -1631,7 +1637,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
           <div className="max-w-3xl">
             <p className="text-body font-semibold text-text">
               {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
-              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That's {RESEARCH_STATS.rejectRate}%.
+              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s {RESEARCH_STATS.rejectRate}%.
             </p>
             <p className="mt-2 max-w-[64ch] text-meta text-muted">
               {survivorsSummary(stats?.listed)} The other{' '}

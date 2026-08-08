@@ -33,7 +33,23 @@ export function SocialSignIn({ returnTo }: { returnTo: string }) {
     };
   }, []);
 
-  if (!providers || providers.length === 0) {
+  // Distinct from "resolved to zero providers" below: this is the CLS defect (measured 0.184 at
+  // 360px, one of two shift entries, ~790ms after navigation, see PageAudit 2026-08-08). The old
+  // code returned null for BOTH "still loading" and "loaded, nothing configured", so on every load
+  // of a deployment that DOES have a provider configured (this one has Google, see the "Connect
+  // Google" fallback AccountPanel offers in its Security tab) the block popped from 0px to its full
+  // height ~80ms after the parent's own auth-status shift resolved, and shoved the email/password
+  // form down by however tall it turned out to be.
+  //
+  // Reserve that footprint while we don't yet know the answer, sized for exactly one provider
+  // (the only one this codebase names anywhere): Button h-10 (40px) + the space-y-3 gap (12px) +
+  // the divider row (pt-1 4px + text-caption line 0.75rem*1.5 = 18px = 22px) = 74px. If a second
+  // provider is ever configured, that account gets a residual ~52px (one more button + gap) of
+  // shift this reservation does not cover, only the single-provider case is closed.
+  if (providers === null) {
+    return <div className="min-h-[74px]" aria-hidden="true" />;
+  }
+  if (providers.length === 0) {
     return null;
   }
 

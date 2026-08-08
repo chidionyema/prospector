@@ -1,0 +1,84 @@
+{
+  "headline": {
+    "verdict": "DO_NOT_ACT",
+    "why": "the naive association does not survive adjustment \u2014 the adjusted intervals span zero, and the point estimates do not even carry the naive sign. Editing the query builder on the naive number would be a blind change of unknown sign.",
+    "wrapper_prevalence": 0.23026902970801988,
+    "n_checks": 7843
+  },
+  "naive_between_candidate": {
+    "mean_sources": {
+      "wrapper": 2.370431893687708,
+      "domain": 3.7883054497266855
+    },
+    "unverifiable_rate": {
+      "wrapper": 0.805094130675526,
+      "domain": 0.6127215504389597
+    },
+    "n_wrapper": 1806,
+    "n_domain": 6037,
+    "wrapper_prevalence": 0.23026902970801988
+  },
+  "design": {
+    "n_candidates": 1600,
+    "candidates_in_both_arms": 44,
+    "share_in_both_arms": 0.0275,
+    "interpretation": "the paired estimate can only use candidates in BOTH arms; a small share means the vocabulary travels with the idea, so the between-candidate contrast confounds vocabulary with idea difficulty"
+  },
+  "adjusted_paired": {
+    "d_sources": {
+      "n": 44,
+      "mean": 0.21839589981288168,
+      "se": 0.21828577906126198,
+      "t": 1.000504479733372,
+      "ci95": [
+        -0.20944422714719177,
+        0.6462360267729551
+      ]
+    },
+    "d_unverifiable": {
+      "n": 44,
+      "mean": 0.05473359706738201,
+      "se": 0.07555686192947515,
+      "t": 0.7244027302043116,
+      "ci95": [
+        -0.09335785231438928,
+        0.2028250464491533
+      ]
+    }
+  },
+  "wrapper_words": [
+    "done",
+    "done-for-you",
+    "fixed",
+    "fixed-fee",
+    "paid",
+    "productised",
+    "productized",
+    "solo",
+    "solo-operated",
+    "vertical",
+    "web"
+  ],
+  "corpus_fingerprint": {
+    "n_dossiers": 1611,
+    "newest_mtime_utc": "2026-08-08T00:26:38.650756+00:00",
+    "sha256": "00fc2c965e68d1d3",
+    "frozen": false,
+    "corpus_dir": "/Users/chidionyema/Documents/code/prospector/store/dossiers",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+  },
+  "limits": [
+    "Observational: vocabulary was never randomised, so adjustment is not randomisation.",
+    "Wrapper detection is FIRST-TOKEN only, against a fixed list \u2014 'leads with', not 'contains'.",
+    "n_sources counts what was retrieved and kept, not what was useful.",
+    "A null is 'no evidence at the motivating effect size', bounded by the paired n."
+  ],
+  "_meta": {
+    "experiment": "E18",
+    "module": "e18_query_vocabulary_confound.py",
+    "run_at_utc": "2026-08-08T01:00:33+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

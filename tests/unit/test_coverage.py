@@ -5,6 +5,7 @@ network. The config blocks are built inline as plain dicts (config.py is owned e
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 from pathlib import Path
@@ -20,6 +21,7 @@ from prospector.coverage import (  # noqa: E402
     SamplerConfig,
     cell_directive,
     measure,
+    off_domain_values,
     plan_cells,
     receipt,
     sampling_domains,
@@ -378,3 +380,74 @@ def test_generation_default_config_never_reaches_the_db(tmp_path, monkeypatch):
     cfg = _gen_cfg_double(tmp_path)
     del cfg.coverage_sampler  # a Config predating V2
     gen.generate(_NullOp(), cfg, k=2)
+
+
+# ----------------------------------------------------------------- vocabulary drift
+#
+# `sampling_domains` falls back to `cov.observed` when no configured domain is supplied,
+# and the catalogue is NOT the same set as what generation can produce. Measured
+# 2026-08-08 on store/prospector.db: `structural_form` holds 29 distinct values against
+# the 8 in `config.yaml generation.structural_forms` — 21 of them (421 rows) are
+# vocabularies from earlier configs, still arriving because the drain keeps vetting
+# candidates minted under them. `generate.py:273` does supply the configured domain, so
+# the shipped path is correct; these tests pin that, and make the drift measurable
+# instead of leaving it to be re-discovered by hand.
+
+def _drifted(tmp_path):
+    rows = _rows(6, 4)                      # 6 vertical_tool (configured) + 4 local_service
+    return _db(tmp_path, rows, name="drift.db")
+
+
+def test_off_domain_values_names_the_drift_with_counts(tmp_path):
+    rep = measure(_drifted(tmp_path), SamplerConfig.from_mapping(
+        {"enabled": True, "axes": ["structural_form"]}))
+    drift = off_domain_values(rep, {"structural_form": ["vertical_tool", "marketplace"]})
+
+    assert drift == {"structural_form": {"local_service": 4}}, (
+        "the meter must name the off-domain value AND how many rows carry it")
+
+
+def test_off_domain_is_silent_when_corpus_and_config_agree(tmp_path):
+    rep = measure(_drifted(tmp_path), SamplerConfig.from_mapping(
+        {"enabled": True, "axes": ["structural_form"]}))
+    assert off_domain_values(rep, {"structural_form": ["vertical_tool", "local_service"]}) == {}
+
+
+def test_off_domain_says_nothing_rather_than_flagging_everything(tmp_path):
+    """No configured domain for an axis is not evidence that all its values are wrong.
+
+    Two of the four axes (`ambition_tier`, `market`) have no vocabulary under
+    `generation` at all. Reporting drift there would make the meter fire forever on a
+    condition that is correct, and a meter that always fires is not read.
+    """
+    rep = measure(_drifted(tmp_path), SamplerConfig.from_mapping(
+        {"enabled": True, "axes": ["structural_form"]}))
+    assert off_domain_values(rep, None) == {}
+    assert off_domain_values(rep, {"structural_form": []}) == {}
+
+
+def test_the_receipt_carries_the_drift_meter(tmp_path):
+    cfg = _cfg(tmp_path, enabled=True, axes=["structural_form"])
+    r = receipt(cfg, 4, domains={"structural_form": ["vertical_tool"]},
+                db_path=_drifted(tmp_path))
+    assert r["off_domain"] == {"structural_form": {"local_service": 4}}
+    json.dumps(r)       # a receipt that cannot be written is not a receipt
+
+
+def test_an_unsupplied_domain_targets_the_catalogue_not_the_config(tmp_path):
+    """Pins the trap itself: forgetting `domains=` aims the quota at unreachable values.
+
+    `local_service` is in the index but not in the configured vocabulary here, so the
+    fallback selects a form `prompts/generate.md` can no longer be asked for — and the
+    deficit never closes, because the target is unreachable.
+    """
+    rep = measure(_drifted(tmp_path), SamplerConfig.from_mapping(
+        {"enabled": True, "axes": ["structural_form"]}))
+    scfg = SamplerConfig.from_mapping({"enabled": True, "axes": ["structural_form"]})
+
+    forgot = sampling_domains(rep, scfg)["structural_form"]
+    supplied = sampling_domains(rep, scfg, {"structural_form": ["vertical_tool"]})[
+        "structural_form"]
+
+    assert "local_service" in forgot, "the fallback really does target the catalogue"
+    assert supplied == ["vertical_tool"], "a supplied domain must be the whole answer"

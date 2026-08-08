@@ -49,7 +49,7 @@ export default function PackCover({ pack, className }: PackCoverProps) {
         {cat.tagged && (
           <span
             className={cx(
-              'inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-medium',
+              'inline-flex min-w-0 items-center gap-1.5 rounded-sm px-2.5 py-1 text-caption font-medium',
               cat.tint,
               cat.ink,
             )}

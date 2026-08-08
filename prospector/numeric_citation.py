@@ -48,7 +48,7 @@ import json
 import os
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -167,6 +167,7 @@ class Support:
     matched_token: str = ""
     unsure: bool = False
     reason: str = ""
+    self_ref: bool = False        # the figure is OUR OWN offer/price, not a claim about the world
 
     def to_dict(self) -> dict[str, Any]:
         return {"figure": self.figure.value, "surface": self.figure.surface,
@@ -174,7 +175,8 @@ class Support:
                 "supported": self.supported, "match_kind": self.match_kind,
                 "matched_source_id": self.matched_source_id,
                 "matched_url": self.matched_url, "matched_token": self.matched_token,
-                "unsure": self.unsure, "reason": self.reason}
+                "unsure": self.unsure, "reason": self.reason,
+                "self_ref": self.self_ref}
 
 
 @dataclass(frozen=True)
@@ -187,6 +189,8 @@ class Report:
     unsure_n: int = 0
     untraceable_rate: float = 0.0
     sources_n: int = 0
+    self_ref_n: int = 0           # unsupported figures that restate OUR OWN offer or list price
+    untraceable_n: int = 0        # unsupported AND not self-referential — the §25.5 metric
 
     @property
     def figures(self) -> tuple[Figure, ...]:
@@ -195,7 +199,15 @@ class Report:
     def to_dict(self) -> dict[str, Any]:
         return {"figures_n": self.figures_n, "supported_n": self.supported_n,
                 "unsupported_n": self.unsupported_n, "unsure_n": self.unsure_n,
+                # BACK-COMPAT: `untraceable_rate` is unsupported/figures, which lumps self_ref
+                # in with genuinely fabricated numbers. Rows written before 2026-08-08 carry
+                # only this field, so it keeps its meaning; `untraceable_rate_excl_self` below
+                # is the one that answers §25.5 and the one an enforcement decision must use.
                 "untraceable_rate": self.untraceable_rate,
+                "self_ref_n": self.self_ref_n,
+                "untraceable_n": self.untraceable_n,
+                "untraceable_rate_excl_self": (
+                    (self.untraceable_n / self.figures_n) if self.figures_n else 0.0),
                 "sources_n": self.sources_n,
                 "figures": [s.to_dict() for s in self.supports]}
 
@@ -495,31 +507,65 @@ def figure_supported(
 # 3. The per-rationale report
 # --------------------------------------------------------------------------- #
 
+def _is_self_reference(fig: Figure, self_text: str) -> bool:
+    """Is this figure OUR OWN offer or list price rather than a claim about the world?
+
+    "a £49 report is within budget" asserts nothing retrievable; it restates our own listing
+    rung. Counting it as an ungrounded claim is not merely noise — it is a number that MOVES
+    with our own code. `verify._check_question` began stating the actual rung to the
+    `payer_solvency` check on 2026-08-06 (§28.3), precisely so the check would stop inventing
+    a price; the model now repeats the rung we handed it, and a checker with no self_ref bucket
+    scores that obedience as a fabrication. An enforcement threshold calibrated on the lumped
+    number would therefore tighten every time we told the model MORE truth.
+
+    Matching only ever moves a figure OUT of `untraceable`, so this keeps that count a lower
+    bound — the same conservative direction q4c takes (`q4c_claim_level_tracing.py:221`).
+    """
+    if not self_text:
+        return False
+    if _contains_surface(self_text, fig.surface):
+        return True
+    return any(_contains_number(self_text, tok) for tok in match_tokens(fig))
+
+
 def audit_rationale(
     rationale: str,
     sources: Iterable[Any],
     *,
     settings: NumericCitationSettings | None = None,
     truncate: int = DEFAULT_TRUNCATE,
+    self_text: str = "",
 ) -> Report:
     """Per-figure verdicts for one rationale plus `untraceable_rate`.
 
     `untraceable_rate` is unsupported / total figures, 0.0 when the rationale
     asserts no figures — a rationale with no numbers is not 100% untraceable.
+
+    `self_text` is the candidate's own words plus the declared price rungs. Figures found
+    there are still `supported=False` (they are genuinely in no retrieved passage) but are
+    counted in `self_ref_n` and EXCLUDED from `untraceable_n`. Defaulting it to "" keeps every
+    existing caller's numbers byte-identical; only a caller that supplies it gets the split.
     """
     s = settings or NumericCitationSettings()
     srcs = list(sources or [])
     figs = extract_figures(rationale, ignore_years=s.ignore_years,
                            min_digits=s.min_digits)
-    supports = tuple(figure_supported(f, srcs, tolerance=s.tolerance, truncate=truncate)
-                     for f in figs)
+    supports = []
+    for f in figs:
+        sup = figure_supported(f, srcs, tolerance=s.tolerance, truncate=truncate)
+        if not sup.supported and _is_self_reference(f, self_text):
+            sup = replace(sup, self_ref=True, reason="self_reference_own_offer_or_rung")
+        supports.append(sup)
+    supports = tuple(supports)
     unsupported = sum(1 for x in supports if not x.supported)
+    self_ref = sum(1 for x in supports if x.self_ref)
     unsure = sum(1 for x in supports if x.unsure)
     n = len(supports)
     return Report(supports=supports, figures_n=n,
                   supported_n=n - unsupported, unsupported_n=unsupported,
                   unsure_n=unsure,
                   untraceable_rate=(unsupported / n) if n else 0.0,
+                  self_ref_n=self_ref, untraceable_n=unsupported - self_ref,
                   sources_n=len(srcs))
 
 
@@ -578,6 +624,35 @@ def resolve_log_path(cfg: Any, settings: NumericCitationSettings) -> Path:
     return base / f"shadow-{time.strftime('%Y-%m')}.jsonl"
 
 
+_SELF_FIELDS = ("title", "one_liner", "hypothesis", "who_pays", "why_now")
+
+
+def _self_text(cfg: Any, cand: Any) -> str:
+    """The candidate's own words + every declared price rung, as one haystack.
+
+    Rungs are rendered in BOTH the stored unit and the spoken one — `listing.pricing.rungs`
+    holds pence (4900) and a rationale writes "£49" — mirroring
+    `q4c_claim_level_tracing.price_rungs()` so the live and offline numbers stay the same
+    statistic. Anything unreadable yields "", which turns the split OFF for that row rather
+    than guessing: a missing haystack must never invent a self-reference.
+    """
+    parts: list[str] = []
+    for f in _SELF_FIELDS:
+        try:
+            parts.append(str(getattr(cand, f, "") or ""))
+        except Exception:  # noqa: BLE001 — a stub candidate must not break an observer
+            continue
+    try:
+        rungs = ((getattr(cfg, "listing", None) or {}).get("pricing", {}).get("rungs") or [])
+        for r in rungs:
+            parts.append(str(int(r)))
+            if int(r) % 100 == 0:
+                parts.append(str(int(r) // 100))
+    except Exception:  # noqa: BLE001 — an old Config has no listing block; that is fine
+        pass
+    return " ".join(p for p in parts if p)
+
+
 def record_shadow(
     cfg: Any,
     cand: Any,
@@ -601,7 +676,8 @@ def record_shadow(
             return None
         rationale = str(getattr(result, "rationale", "") or "")
         sources = list(getattr(result, "sources", []) or [])
-        report = audit_rationale(rationale, sources, settings=s, truncate=truncate)
+        report = audit_rationale(rationale, sources, settings=s, truncate=truncate,
+                                 self_text=_self_text(cfg, cand))
         verdict = getattr(result, "verdict", None)
         row = {
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -637,6 +713,7 @@ def summarise_shadow_log(path: str | Path) -> dict[str, Any]:
     p = Path(path)
     per_check: dict[str, dict[str, int]] = {}
     rows = figures = unsupported = unsure = checks_with_figures = 0
+    split_figures = unsplit_figures = self_ref = untraceable = 0
     if p.exists():
         with p.open("r", encoding="utf-8") as fh:
             for line in fh:
@@ -653,6 +730,17 @@ def summarise_shadow_log(path: str | Path) -> dict[str, Any]:
                 figures += n
                 unsupported += bad
                 unsure += int(row.get("unsure_n") or 0)
+                # Rows written before 2026-08-08 have no self_ref/untraceable split. They are
+                # counted for `unsupported` and EXCLUDED from the split denominator rather
+                # than assumed to hold zero self-references — assuming zero would silently
+                # blend two different statistics into one headline, which is the mistake that
+                # made the live 38.0% look like it contradicted q4c's 10.1%.
+                if "untraceable_n" in row:
+                    split_figures += n
+                    self_ref += int(row.get("self_ref_n") or 0)
+                    untraceable += int(row.get("untraceable_n") or 0)
+                else:
+                    unsplit_figures += n
                 if n:
                     checks_with_figures += 1
                 c = per_check.setdefault(str(row.get("check") or ""),
@@ -665,7 +753,15 @@ def summarise_shadow_log(path: str | Path) -> dict[str, Any]:
         "figures": figures,
         "unsupported": unsupported,
         "unsure": unsure,
+        # LUMPED: self-references counted as untraceable. Kept because every row can produce it.
         "untraceable_rate": (unsupported / figures) if figures else 0.0,
+        # SPLIT: the §25.5 metric, over only the rows that carry the split.
+        "split_figures": split_figures,
+        "unsplit_figures": unsplit_figures,
+        "self_ref": self_ref,
+        "untraceable": untraceable,
+        "untraceable_rate_excl_self": (
+            (untraceable / split_figures) if split_figures else None),
         "by_check": {k: {**v,
                          "untraceable_rate": (v["unsupported"] / v["figures"])
                          if v["figures"] else 0.0}

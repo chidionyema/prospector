@@ -39,7 +39,11 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
   const documentary = citedFigure('documentary-research');
   return (
     <div className="rounded-md border border-border bg-surface p-6 md:p-8">
-      <h3 className="text-h2 font-semibold text-text">What this costs when you commission it</h3>
+      {/* h2, not h3. This is a top-level section of the page and is styled `text-h2` to say so;
+          the tag disagreed with the type scale, and on /pricing that disagreement skipped a level
+          and tripped axe's `heading-order`. The rule: the tag follows the ROLE, and the type scale
+          follows the tag -- never the other way round. */}
+      <h2 className="text-h2 font-semibold text-text">What this costs when you commission it</h2>
       <p className="mt-3 max-w-[60ch] text-body text-muted">
         A pack is desk research: published sources, read until a claim either holds or dies. Firms
         sell that by the project, and publish what they charge for it.

@@ -135,9 +135,9 @@ export function SearchTrigger({
       )}
     >
       <Icon name="search" size={16} className="flex-none text-subtle" />
-      <span className="flex-1 text-meta text-faint">Search the catalogue</span>
+      <span className="flex-1 text-meta text-subtle">Search the catalogue</span>
       {shortcut && (
-        <kbd className="hidden rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-faint sm:block">
+        <kbd className="hidden rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-subtle sm:block">
           {shortcut}
         </kbd>
       )}
@@ -295,7 +295,7 @@ function PaletteDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Search the catalogue"
-        className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface shadow-2"
+        className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface"
       >
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <Icon name="search" size={16} className="flex-none text-subtle" />
@@ -313,7 +313,7 @@ function PaletteDialog({
             aria-expanded
             aria-controls="command-palette-results"
             aria-activedescendant={rows[active] ? `command-palette-row-${rows[active].id}` : undefined}
-            className="w-full bg-transparent text-body text-text outline-none placeholder:text-faint"
+            className="w-full bg-transparent text-body text-text outline-none placeholder:text-subtle"
           />
           <button
             type="button"
@@ -386,7 +386,7 @@ function PaletteDialog({
                     <FacetChips pack={pack} compact max={3} className="mt-1.5" />
                   </span>
                   {index === active && (
-                    <kbd className="shrink-0 rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-faint">
+                    <kbd className="shrink-0 rounded-md border border-border bg-surface2 px-1.5 py-0.5 font-mono text-caption text-subtle">
                       ↵
                     </kbd>
                   )}

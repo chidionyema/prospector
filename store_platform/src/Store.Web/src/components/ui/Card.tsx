@@ -17,7 +17,7 @@ export function Card({ interactive = false, className, children, ...rest }: Card
       className={cx(
         'rounded-md border border-border bg-surface p-6 card-transition shadow-none',
         interactive &&
-          'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-2 hover:border-primary/40',
+          'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/40',
         className,
       )}
     >

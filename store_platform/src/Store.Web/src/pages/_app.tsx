@@ -2,7 +2,6 @@ import "@/styles/globals.css";
 import { useEffect } from "react";
 import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
-import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui";
 import { Seo } from "@/components/Seo";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -11,37 +10,24 @@ import { CurrencyProvider } from "@/lib/currency";
 import { type Currency } from "@/lib/fx";
 import { track } from "@/lib/analytics";
 
-// TWO families, and they are a matched pair by design (brand v3, 2026-08-06).
+// ── §3.2 (2026-08-08): THE FONTS ARE NO LONGER LOADED FROM HERE ───────────────────────────────
 //
-// `variable` only publishes the family name as a CSS custom property on whatever element carries
-// the className; globals.css is where it is read. Without that read, next/font still downloads
-// the file and nothing renders it -- that has bitten this file twice.
+// `next/font/google` loaded Geist + Geist Mono and published their family names as
+// --font-sans-pref / --font-mono-pref onto the wrapper <div> below. Spec §3.2 names Switzer and
+// Commit Mono, and both are now self-hosted @font-face declarations in styles/tokens.css, which
+// also declares those same two custom properties at :root.
 //
-// Geist replaces BOTH Hanken Grotesk and Newsreader. The serif is gone entirely: a high-contrast
-// Didone over a grotesque over a mono was three type voices in one hero, and on a store selling
-// sober sourced evidence the serif was reading as brochure, not product.
+// This import had to GO, not merely stop being used. A next/font `variable` class sets the
+// property on an ELEMENT, and an element declaration beats a :root one on every descendant -- so
+// leaving the wrapper wearing `geist.variable` would have silently kept rendering Geist while
+// tokens.css sat there declaring Switzer, with both files looking correct in isolation. The
+// symptom would have been "the new font does not apply" and the cause would have been two files
+// away. Deleting the import is what makes :root the only declaration site.
 //
-// Exactly three weights, and no 700. `font-bold`/`font-extrabold`/`font-black` are banned by the
-// weight policy (600 is the heaviest anything gets), so loading 700 would only serve a class that
-// should not exist. The risk is worth naming: if a stray `font-bold` survives, the browser
-// SYNTHESISES it by smearing the 600, which is heavier and wider than a real cut -- that is the
-// visible symptom, and `weightAndCasePolicy.test.ts` is what stops it reaching the build.
-const geist = Geist({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-  variable: "--font-sans-pref",
-});
-
-// The DATA voice, and only that: prices, pack IDs, source counts, gate tags, filenames, scores.
-// Confining mono to checkable facts is what teaches the eye that monospace means "you can verify
-// this" -- which is the entire proposition of the shop.
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  display: "swap",
-  variable: "--font-mono-pref",
-});
+// The weight policy the deleted comment described still holds, and matters MORE now: Switzer is
+// a VARIABLE face with a declared 100-900 axis, so a stray `font-bold` no longer gets synthesised
+// by smearing a 600 -- it renders a real 700 and simply violates the policy silently.
+// `weightAndCasePolicy.test.ts` is now the only thing catching that.
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -56,11 +42,11 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [router.events]);
 
   return (
-    // `fonts-wired` is not cosmetic: it is the globals.css rule that maps the two `variable`
-    // classes above onto --font-sans/--font-mono and applies the result. Drop it and the fonts
-    // still download and still never render. It replaces the `font-sans` utility that used to be
-    // here, which resolved to the system fallback rather than to the loaded family.
-    <div className={`${geist.variable} ${geistMono.variable} fonts-wired`}>
+    // `fonts-wired` is not cosmetic: it is the globals.css rule that resolves --font-sans-pref /
+    // --font-mono-pref (now declared at :root by tokens.css) into --font-sans/--font-mono and
+    // APPLIES the result as a font-family. Drop it and the faces still download and still never
+    // render -- body copy has no font-family rule of its own and inherits from this element.
+    <div className="fonts-wired">
       <ErrorBoundary>
         <ToastProvider>
           {/* Mounted app-wide so the session is asked for once, not per page. It resolves to
