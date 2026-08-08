@@ -55,18 +55,54 @@ def listing_gate(*, uploaded: bool, pack_complete: bool, priced: bool,
 # ---------------------------------------------------------------------------
 
 def _card_field(raw: Any) -> str:
-    """Markdown-strip, then publish-pass, one single-line catalogue field.
+    """Markdown-strip, publish-pass, then house-normalise one single-line catalogue field.
 
-    Two different gates, in this order and both mandatory. `to_plain_text` takes the markup
-    off (the storefront has no markdown parser). `prose_pass` takes off what was never meant
-    to be published at all: passage ids, empty citation markers, raw confidence floats and
-    the register denylist — see prospector/plain_text.py for the measured defect classes.
+    Three gates, in this order and all mandatory. `to_plain_text` takes the markup off (the
+    storefront has no markdown parser). `prose_pass` takes off what was never meant to be
+    published at all: passage ids, empty citation markers, raw confidence floats and the
+    register denylist — see prospector/plain_text.py for the measured defect classes.
+
+    `nodash` runs HERE, before the caller's [:140]/[:280] slice, for two reasons. The slice
+    must count the characters that actually ship — an em-dash becomes ", ", so normalising
+    after it can push a capped field one character past its cap. And the pack lint reads
+    these values: grading a field the storefront never receives is what unlisted two live
+    packs on 2026-08-08 (13d41ccee9e96e2d, 3e72d5a5f1a60068) for an em-dash in `headline`
+    that `_normalise_catalog_payload` had already removed by the time the row was written.
+    The same title passed the same check as `title` (normalised at its call site, :832) and
+    failed as `headline` (not) — one string, two verdicts. `_update_catalog`'s choke point
+    still runs and `nodash` is idempotent, so it remains the backstop for every field that
+    does not come through here.
 
     `sentences=False` deliberately: a card line or a headline legitimately ends on a noun, and
     the strict form would empty the whole shelf. It still repairs a TRUNCATED field, and
     returns "" when nothing publishable survives so the caller can omit it and fall back.
     """
-    return prose_pass(to_plain_text(raw, collapse=True))
+    return nodash(prose_pass(to_plain_text(raw, collapse=True)))
+
+
+def _cap_words(text: str, cap: int) -> str:
+    """Cap a single-line catalogue field at `cap` chars WITHOUT cutting a word in half.
+
+    A bare `text[:cap]` ends wherever the cap happens to land. On 2026-08-08 that shipped a
+    subhead ending "to a true hourly wag" (pack 8ce5270ade208070). `check_truncation`
+    (pack_linter.py:229) is built to catch precisely that shape — `len(final) == cap` with a
+    word character on both sides of the cut — so a hard slice does not merely read badly, it
+    is GUARANTEED to unlist the pack. `cardLine` above takes the stricter route this repo
+    prefers, drop rather than truncate, because the card can fall back to the pack title.
+    `headline` and `subhead` have no fallback, so the better failure is a clean short line.
+
+    Cut back to the last word boundary and drop the punctuation the cut exposes. A single
+    token longer than the whole cap has no boundary to retreat to; it keeps the hard slice and
+    stays visible to the linter rather than being silently disguised.
+    """
+    t = (text or "").strip()
+    if len(t) <= cap:
+        return t
+    head = t[:cap]
+    cut = head.rfind(" ")
+    if cut <= 0:
+        return head
+    return head[:cut].rstrip(" ,;:")
 
 
 # Catalogue keys that are IDENTIFIERS, ENUMS or NUMBERS rather than prose. They pass
@@ -183,6 +219,28 @@ BUNDLE_FILES = (
     "QA_Report.md",
 )
 
+# Files a bundle MAY additionally contain. Bonus, never contract: a missing one must not block a
+# listing, which is exactly why they sit outside BUNDLE_FILES and outside `audit_bundle`.
+#
+# The registry exists because that deliberate blindness went unmeasured for months. `audit_bundle`
+# iterates BUNDLE_FILES asking "did it arrive?", so an entry in NEITHER list is invisible to it by
+# construction — and `tests/unit/test_bundle_index_html.py` pins that blindness on purpose. Nothing
+# ever compared the written archive against what the shop says is inside it, so the storefront read
+# "8 files" while (measured 2026-08-08, 45 live packs) 33 bundles held nine entries or ten.
+#
+# Declaring them converts a silent extra into a failing test: `undeclared_bundle_entries` names
+# anything shipped that neither list claims, so adding a third bonus file forces a decision about
+# the buyer-facing count instead of quietly making it false again.
+#
+# "manifest.jsonld" is duplicated from `pack_manifest.MANIFEST_FILENAME` rather than imported —
+# pack_manifest is imported lazily inside `_create_bundle` to keep this module's import graph flat,
+# and a module-level import here would reverse that. The duplication is pinned by
+# `tests/unit/test_bundle_declared_entries.py`, so it cannot drift silently.
+BUNDLE_BONUS_FILES = (
+    "index.html",       # the rendered reader (pack_html.py)
+    "manifest.jsonld",  # the machine-readable half (pack_manifest.MANIFEST_FILENAME)
+)
+
 # Human-readable section titles for the in-bundle index.html reading experience
 # (see pack_html.py). Mirrors the `title` field of store_platform's PackContents.tsx for the
 # same filenames — kept as a plain dict rather than imported (that file is TypeScript); a
@@ -224,6 +282,34 @@ def audit_bundle(zip_path: str) -> tuple[list[str], list[str]]:
         if f in written and written[f] < _MIN_BUNDLE_ENTRY_BYTES
     ]
     return missing, stubs
+
+
+def undeclared_bundle_entries(zip_path: str) -> list[str]:
+    """Entries a written bundle contains that neither BUNDLE_FILES nor BUNDLE_BONUS_FILES claims.
+
+    `audit_bundle` cannot answer this and is not meant to: it iterates BUNDLE_FILES asking "did it
+    arrive?", so anything in neither list is invisible to it. This function iterates the ARCHIVE
+    instead — the only direction in which an unexpected file can be seen at all.
+
+    Sorted names, so a log line is stable; empty means every entry is a promised deliverable or a
+    declared bonus.
+
+    Deliberately NOT wired into `is_listed`. An extra file is a claim problem (the storefront may
+    be counting wrong), never a fulfilment defect: the buyer received everything promised plus
+    more. Delisting a complete, paid pack over a surplus file would be a worse failure than the
+    inaccuracy it protects against, so this informs a human and a test, and gates nothing.
+
+    An unreadable or absent zip yields [] rather than raising, matching `audit_bundle`'s contract:
+    this runs on the register-unlisted retry path, and a diagnostic that throws takes down the
+    thing it exists to observe. "Missing zip" is already `audit_bundle`'s answer to give.
+    """
+    try:
+        with zipfile.ZipFile(zip_path) as check:
+            names = [i.filename for i in check.infolist()]
+    except (OSError, zipfile.BadZipFile):
+        return []
+    declared = set(BUNDLE_FILES) | set(BUNDLE_BONUS_FILES)
+    return sorted(n for n in names if n not in declared)
 
 
 def _held_back_md(artifact_label: str) -> str:
@@ -541,8 +627,8 @@ class EngineBridge:
             # mid-clause cut that enforcement exists to prevent. "" when the operator could
             # not write a truthful short line; the card then falls back to the pack title.
             "cardLine": _card_field(listing.get("card_line")),
-            "headline": _card_field(listing.get("headline"))[:140],
-            "subhead": subhead[:280],
+            "headline": _cap_words(_card_field(listing.get("headline")), 140),
+            "subhead": _cap_words(subhead, 280),
             # Empties dropped AFTER the pass as well as before it: a bullet that was nothing
             # but a passage id has no words left, and an empty chip on the card is worse than
             # one fewer chip.
@@ -816,9 +902,15 @@ class EngineBridge:
             artifacts=artifacts,
             listing_copy=listing_copy,
             listing_texts={
-                "oneLine": (one_liner, one_liner_full),
+                # Rendered half and source half must stay in the SAME normalisation space.
+                # `check_truncation` decides "cut mid-word" with `source.startswith(final)`,
+                # so normalising only the rendered half would not make that check wrong — it
+                # would make it silently vacuous, which is the more expensive failure. The
+                # rendered halves are normalised by `_card_field`; these sources bypass it,
+                # so they are normalised here.
+                "oneLine": (one_liner, nodash(one_liner_full)),
                 "headline": (catalog_meta.get("headline", ""),
-                             to_plain_text(listing.get("headline"), collapse=True)),
+                             nodash(to_plain_text(listing.get("headline"), collapse=True))),
                 "subhead": (catalog_meta.get("subhead", ""), subhead),
             },
             truncation_caps={"headline": 140, "subhead": 280},
@@ -1272,6 +1364,18 @@ class EngineBridge:
                     f"(missing={gaps or '-'}, stubs={stubs or '-'}) — registering UNLISTED"
                 )
 
+            # The other direction: not "did the promised files arrive" but "did anything else".
+            # Warning, not a gate — see `undeclared_bundle_entries`. The buyer is not short-changed
+            # by a surplus file; the SHOP is, if its count still says otherwise.
+            undeclared = undeclared_bundle_entries(zip_path)
+            if undeclared:
+                logger.warning(
+                    f"EngineBridge: bundle {candidate_id} ships {undeclared}, declared in neither "
+                    f"BUNDLE_FILES nor BUNDLE_BONUS_FILES. Listability is unaffected. Add it to "
+                    f"BUNDLE_BONUS_FILES, and re-read PackContents.tsx: the count beside the list "
+                    f"describes DELIVERABLES, and it must not become a claim about the archive."
+                )
+
             return zip_path
         except Exception as e:
             logger.error(f"EngineBridge: Error zipping bundle: {e}")
@@ -1510,17 +1614,36 @@ class StripeProvisioner:
         create_price (called once from publish_pass) so each product gets exactly one Price —
         creating one here too orphaned a Price in Stripe on every publish.
 
-        Idempotent on the pack id: a publish retry after a network blip reuses the same
-        Stripe-side product instead of minting a duplicate. Stripe errors are re-raised as a
-        domain ProvisioningError (with the request_id for the audit trail) so callers see a
-        provisioning failure, not a leaked SDK exception."""
+        Idempotent on (pack id, request parameters): a publish retry after a network blip
+        replays an identical request under the same key and reuses the Stripe-side product
+        instead of minting a duplicate. Stripe errors are re-raised as a domain
+        ProvisioningError (with the request_id for the audit trail) so callers see a
+        provisioning failure, not a leaked SDK exception.
+
+        The parameter fingerprint is load-bearing, and keying on the pack id ALONE was a
+        defect. A Stripe idempotency key is remembered for 24h and replaying it with
+        different parameters is a hard error, not a no-op — and this product's `name` and
+        `description` ARE the pack's copy. So any copy fix inside that window made the pack
+        permanently unprovisionable instead of idempotent: measured 2026-08-08, both
+        13795bea31feee47 and 2abc23c3c0d05bab failed with "Keys for idempotent requests can
+        only be used with the same parameters they were first used with", leaving two packs
+        that could never list. `create_price` has always keyed on (product, amount,
+        currency); this makes the product key consistent with it. The property that matters
+        is preserved exactly — an identical request never mints twice — and a duplicate on
+        CHANGED copy is not reachable from here, because `publish_pass` only calls this when
+        the catalogue holds no product id for the pack (:706 reuses the live rail otherwise).
+        """
         pack_id = metadata.get("pack_id") or metadata.get("candidate_id") or name
+        fingerprint = hashlib.sha256(json.dumps(
+            {"name": name, "description": description, "metadata": metadata},
+            sort_keys=True, ensure_ascii=False,
+        ).encode("utf-8")).hexdigest()[:16]
         try:
             product = self._stripe.Product.create(
                 name=name,
                 description=description,
                 metadata=metadata,
-                idempotency_key=f"prospector-product-{pack_id}",
+                idempotency_key=f"prospector-product-{pack_id}-{fingerprint}",
             )
         except self._stripe.error.StripeError as e:
             raise self._provisioning_error("product", e) from e

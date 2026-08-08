@@ -167,3 +167,88 @@ def test_a_productive_tick_resets_the_escalation(tmp_path):
     # counter reset — NOT 1200, which is what a persisted count would give. The 5th cycle
     # breaks on max_cycles before sleeping.
     assert sum(slept) == 300 + 600 + 7200 + 300
+
+
+# ── Code freshness ────────────────────────────────────────────────────────────────────────
+# The daemon imports the engine in-process and loads config once, so a running daemon serves
+# the code it STARTED with. On 2026-08-08 that left the pre-fix money rail (`bridge.py`) live
+# for hours after the fix was committed. These pin the rail that ends that.
+
+
+def test_fingerprint_tracks_content_not_mtime(tmp_path):
+    """A touch must not force a re-exec: a re-exec mid-cadence costs a real grounded batch."""
+    import os
+
+    conf = tmp_path / "config.yaml"
+    conf.write_text("schedule: {}\n")
+    first = rs.code_fingerprint(conf)
+    assert first
+
+    os.utime(conf, (0, 0))  # mtime moves a decade; bytes do not
+    assert rs.code_fingerprint(conf) == first
+
+    conf.write_text("schedule: {batch_size: 4}\n")
+    assert rs.code_fingerprint(conf) != first
+
+
+def test_daemon_redeploys_at_the_tick_boundary_when_code_changes(tmp_path):
+    """The swap happens BETWEEN ticks — the in-flight batch is never killed mid-run."""
+    conf = tmp_path / "config.yaml"
+    conf.write_text("schedule: {}\n")
+    execs, ran = [], []
+
+    def generate(cfg, n):
+        ran.append(n)
+        conf.write_text("schedule: {batch_size: 9}\n")  # a deploy lands while the tick runs
+        return {"dossiers": n}
+
+    cycles = rs.run_daemon(_cfg(tmp_path), interval=1, generate_fn=generate,
+                           max_cycles=5, sleep_fn=lambda s: None, config_path=conf,
+                           exec_fn=lambda path, argv: execs.append(argv))
+
+    assert ran == [3], "the tick that was already running must complete first"
+    assert cycles == 1, "and the loop must stop there rather than tick again on stale code"
+    assert len(execs) == 1
+    assert execs[0][1:3] == ["-m", rs._DAEMON_MODULE], "relaunch keeps the plist's -m form"
+
+
+def test_daemon_does_not_redeploy_when_code_is_unchanged(tmp_path):
+    conf = tmp_path / "config.yaml"
+    conf.write_text("schedule: {}\n")
+    execs = []
+    cycles = rs.run_daemon(_cfg(tmp_path), interval=1,
+                           generate_fn=lambda c, n: {"dossiers": n},
+                           max_cycles=3, sleep_fn=lambda s: None, config_path=conf,
+                           exec_fn=lambda path, argv: execs.append(argv))
+    assert cycles == 3 and execs == []
+
+
+def test_reload_is_on_by_default_and_can_be_switched_off(tmp_path):
+    """Default ON — a rail that ships off is an inert rail — but the switch must really cut it."""
+    assert rs._reload_on_code_change(_cfg(tmp_path)) is True
+
+    conf = tmp_path / "config.yaml"
+    conf.write_text("schedule: {}\n")
+    cfg = _cfg(tmp_path)
+    cfg.schedule["reload_on_code_change"] = False
+    execs = []
+
+    def generate(cfg_, n):
+        conf.write_text("schedule: {batch_size: 9}\n")
+        return {"dossiers": n}
+
+    cycles = rs.run_daemon(cfg, interval=1, generate_fn=generate, max_cycles=3,
+                           sleep_fn=lambda s: None, config_path=conf,
+                           exec_fn=lambda path, argv: execs.append(argv))
+    assert cycles == 3 and execs == []
+
+
+def test_heartbeat_names_the_code_the_daemon_is_running(tmp_path):
+    """So a monitor can compare loaded-vs-disk by EQUALITY, not by a start-time heuristic."""
+    conf = tmp_path / "config.yaml"
+    conf.write_text("schedule: {}\n")
+    rs.run_daemon(_cfg(tmp_path), interval=1, generate_fn=lambda c, n: {"dossiers": n},
+                  max_cycles=1, sleep_fn=lambda s: None, config_path=conf,
+                  exec_fn=lambda path, argv: None)
+    beat = json.loads((Path(tmp_path) / "scheduler" / "heartbeat.json").read_text())
+    assert beat["code"] == rs.code_fingerprint(conf)[:12]

@@ -114,16 +114,27 @@ def _fragment_chain(cfg) -> tuple[str, ...]:
     return tuple(chain)
 
 
-def market_kwargs(cfg, *, for_moat: bool = False) -> dict[str, str]:
+def market_kwargs(cfg, *, for_moat: bool = False, market: str = "") -> dict[str, str]:
     """The market variables a render site must pass.
 
     `for_moat=True` returns only MOAT_MARKET_KEYS — the restricted set for the verdict
     and adversarial prompts. Passing the rich set to those prompts would hand the moat
     substantive knowledge about the market, which is exactly the prior-knowledge leak
     that verdict-from-retrieval-only forbids.
+
+    `market` names the market these variables describe. Default "" keeps the previous
+    behaviour, the config's ACTIVE market. It exists because generation and linting read
+    the market from two different places: generation took it from config (one global
+    value per run) while `lint_pack` grades against `candidate.market` (bridge.py:842),
+    per pack. With the daemon's active market on `uk`, every US pack was told
+    `currency_hint = GBP` and duly wrote `£` into a `us` pack, which the linter then
+    refused to list. Three packs failed this way on 2026-08-08 (7a6c07535fd8a998,
+    8ce5270ade208070, 8d5e24fbe6c1f5d3). A per-pack override is the whole fix: the
+    generator and the grader now read the same field.
     """
     chain = _fragment_chain(cfg)
-    block = cfg.market_config() if getattr(cfg, "markets", None) else {}
+    block = (cfg.market_config(market or None)
+             if getattr(cfg, "markets", None) else {})
     label = str(block.get("label", "") or "")
 
     # market_scope is derived from the LABEL alone — a name, never a fact. That makes it
