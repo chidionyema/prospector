@@ -43,6 +43,12 @@ def bridge(cfg: Config, monkeypatch):
     b = EngineBridge(cfg)
     b.store_api_url = "http://localhost:5050"
     b.entitlements_check = MagicMock(return_value=True)
+    # Must not depend on real R2 credentials/network: whoever runs this suite may have live
+    # R2_* env vars set (real Cloudflare creds), which makes self.r2.upload() a genuine network
+    # call to production storage instead of a unit-test fixture. Mock it deterministically,
+    # the same way the provisioner is mocked per-test in `_publish`.
+    b.r2 = MagicMock()
+    b.r2.upload.return_value = True
     return b
 
 
