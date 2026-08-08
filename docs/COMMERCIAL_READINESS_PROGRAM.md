@@ -2882,3 +2882,179 @@ FAILED tests/unit/test_claude_cli_failure_reason.py::test_exhaustion_on_stdout_r
 FAILED tests/unit/test_claude_cli_failure_reason.py::test_transient_failure_still_gets_its_full_retry_budget
 ### restored: tests/unit — 1495 passed, 2 skipped in 49.14s
 ```
+
+## 31. Closing the §30.5 list — the shadow metric corrected, the drift meter built, E3's fence ported (2026-08-08)
+
+Four items were open after §30.5: one cheap offline measurement (numeric_citation's live rate), one
+fence port (E3), and two data-quality defects (vocabulary drift, `_keywords` mangled tails). All four
+are addressed below. Two of them turned out to be corrections to figures this document already
+carried, which is the point of re-deriving rather than quoting.
+
+### 31.1 The numeric-citation live rate was wrong twice, and the checker was measuring our own price
+
+The shipped shadow scored **38.0%** of asserted figures as untraceable. Q4c, offline over 1,611
+dossiers, scored the same statistic at **10.1%**. A 3.7× gap between two instruments pointed at the
+same corpus is not a finding, it is a broken instrument, and §28.1 item 3 — the founder's enforcement
+decision — rests on this number. Both instruments were wrong in the same direction.
+
+**Error 1 — the denominator counted re-vets.** The log is append-only and a re-vetted check appends a
+second row, so a candidate vetted twice contributed its figures twice:
+
+```
+[A] shadow log store/numeric_citation_shadow/shadow-2026-08.jsonl  rows=132
+[B] ALL 132 rows              : 35/92 = 38.0%   <- the number §29 quoted; DOUBLE-COUNTS re-vets
+[C] 104 distinct (cand,check) : 21/62 = 33.9%   <- lumped, correct denominator
+```
+
+**Error 2 — our own list price was being scored as a fabricated claim.** `verify._check_question`
+began stating the actual rung to `payer_solvency` on 2026-08-06 (§28.3), precisely so the check would
+stop inventing a price. The model now repeats the rung we handed it — and a checker with no
+self-reference bucket scores that obedience as an ungrounded number. **An enforcement threshold
+calibrated on the lumped rate would therefore have tightened every time we told the model more
+truth.** `numeric_citation.py` now carries the same five-bucket discipline q4c uses
+(`_is_self_reference`, `Report.self_ref_n`, `Report.untraceable_n`):
+
+```
+[D] the 62 deduped figures, replayed WITH the split
+      lumped        21/62 = 33.9%
+      self_ref      15/62 = 24.2%
+      UNTRACEABLE    6/62 =  9.7%   Wilson95 [4.5, 19.5]
+    q4c on 1,611 dossiers, SAME statistic: 10.1%  -> inside the interval
+```
+
+The replay's haystack is the dossier index's `title` + `one_liner` + the declared rungs; the live
+`_self_text` also reads `hypothesis`, `who_pays` and `why_now`, so the replay's haystack is
+**narrower** than the shipped one and 9.7% is an **upper** bound. The two instruments now agree, and
+the disagreement was never about truncation — `verify.py:672` passes the same
+`VERDICT_PASSAGE_TRUNCATE` the model itself saw, and q4c's `truncated` bucket is 0.
+
+Back-compat is deliberate: `untraceable_rate` keeps its old lumped meaning because rows written
+before today carry only that field, and `summarise_shadow_log` counts pre-split rows in
+`unsplit_figures` rather than assuming they hold zero self-references. Assuming zero is exactly what
+made 38.0% look like it contradicted 10.1% when the two were never the same measurement;
+`untraceable_rate_excl_self` returns `None` — not `0.0` — when nothing carries the split.
+
+**Still SHADOW.** `numeric_citation.shadow_mode: true` (`config.yaml:1076`); enforcement remains
+unbuilt and remains the founder's call. What changed is that the number the decision would be made
+on is now the right number.
+
+### 31.2 §30.3's vocabulary-drift claim is RETRACTED; a meter replaces it
+
+§30.3 states that the coverage sampler "spreads its deficit calculation across 21 forms generation
+can no longer produce." **That is false for the shipped path.** `generate.py:272-274` does supply the
+configured domain to `plan_cells`, and `coverage_sampler.enabled` is `False` on disk anyway. The
+drift is real; the consequence attributed to it was not.
+
+```
+[E] structural_form: 29 distinct in the index vs 8 configured -> 21 off-domain, 421 rows
+      top off-domain: local_service, vertical_saas, micro_ecommerce, productized_freelance, ...
+[F] sampling domain WITH config supplied: 8      WITHOUT (the latent trap): 29
+[G] coverage_sampler.enabled = False
+```
+
+Why legacy values keep arriving with fresh timestamps: the backlog drain vets candidates **minted
+under older configs** (a tight `00:44–00:45` cluster, `revet_history=0`). It is not a live generation
+defect and needs no fix.
+
+The latent trap — `sampling_domains` falling back to `cov.observed` when a caller forgets `domains=`
+— is now fenced by an INFO line (not WARNING: `ambition_tier` and `market` have no configured
+vocabulary at all, and a meter that fires every tick is not read) and, load-bearingly, by
+`coverage.off_domain_values()`, which is emitted in every `receipt()`. The drift is now a
+**measurement in the receipt** instead of something re-discovered by hand.
+
+### 31.3 `_keywords` mangled tails — real, but confined to dead code
+
+§29.4 records that `_keywords(cand, k=4)` produces mangled `{base}` tails. The k=4 call site is
+`_entity_queries` (`verify.py:267`), which is gated at `verify.py:564-565` by
+`if check_name in (r.hybrid_entity_checks or [])` — and `config.yaml:113` reads
+`hybrid_entity_checks: []`. **The k=4 path is unreachable in the shipped config.** The path that ships
+is `_templated_queries` at `verify.py:224`, `k=6`.
+
+Measured on the shipped k=6 bases: **31.2% lead with a product-wrapper word** (solo, fixed-fee,
+solo-operated, web, vertical, paid, done-for-you, productized) rather than a domain term — the
+search engine is being handed our packaging vocabulary before the subject. That is a hypothesis about
+yield, not a fix, and it is deliberately **not** acted on here: E1 is direct, just-measured evidence
+that blind query surgery can be wrong-signed. Filed as a candidate experiment, not a change.
+
+### 31.4 E15/E17 are not a matched pair
+
+Both receipts report `n_dossiers: 1597`, which reads as the same corpus. The fingerprints disagree:
+
+```
+e15  sha256 d97829ed7ea0bae0   newest_mtime 2026-08-07T20:16:23Z
+e17  sha256 81d96e5387f7467a   newest_mtime 2026-08-07T20:35:10Z
+```
+
+Nineteen minutes apart, identical count, different content — the store is live. Per the receipts'
+own note, "two runs with different fingerprints are different samples, not a repeat." The queued
+fingerprinted repeat is **still owed**; any E15↔E17 agreement figure computed across them today is
+comparing two samples, not two methods.
+
+### 31.5 E3's quiet-machine fence is now checked per call
+
+E3 reports latencies, and a latency is a claim about concurrency only if the daemon was not competing
+for the same machine-wide governor slots while it was timed. `run()` refused to start without
+`store/scheduler/PAUSE` — which proves the fence existed at t=0 and nothing more. E1's run
+`bo2mosjog` (2026-08-08) had that file created at 00:25Z and **gone by 00:35Z with the run still in
+flight and the daemon (pid 66223) live**. Nothing in this repo unlinks it, so the deleter cannot be
+prevented from here; it can be recorded. Every measured call now stamps its own fence reading, and
+`_quiet_report` names the call at which the fence was lost and marks the run's figures unquotable.
+
+Recorded, **not** aborted: an abort discards the levels already measured, and a partial sweep is not
+comparable across levels anyway. A receipt with no stamps reports `held: false` with an explicit
+"predates the per-call fence" note — defaulting it to `true` would launder a startup-only guarantee
+into a per-call one for exactly the historic runs already quoted in §29.
+
+### 31.6 Are the experiments actually wired into the pipeline?
+
+Asked directly, and worth the register carrying the answer. Re-read from disk, not from memory:
+
+| Experiment | Config on disk | Reaches the pipeline at | State |
+|---|---|---|---|
+| E11 confidence floor | `thresholds.confidence_floor: 0.4` (`config.yaml:223`) | `kill_filter.py:50` | **ACTING** |
+| Q4 admissibility | `admissibility.policy: P1_check_aware` (`config.yaml:202`) | `verify.py:509,512` — demotes an inadmissible ruling to UNVERIFIABLE at conf 0.0 | **ACTING** |
+| E3 concurrency knee | `retrieval.claude_concurrency: 4` (`config.yaml:154`) | `operator.py:1081` → `claude_cli.py:48` `_MAX_CLI` | **ACTING** |
+| Generation vocabulary | `generation.structural_forms` (8 values) | `generate.py:167` | **ACTING** |
+| numeric_citation (§25.5) | `enabled: true`, `shadow_mode: true` (`config.yaml:1075-1076`) | `verify.py:672` — logs, cannot rule | **SHADOW** |
+| E6 prescreen prefilter | `prescreen_prefilter.shadow_mode: true` (`config.yaml:1036`) | `prescreen.py:23,169` | **SHADOW** (E6 killed) |
+| E1 hybrid entity queries | `hybrid_entity_checks: []` (`config.yaml:113`) | `verify.py:564` — gate is empty | **INERT** (E1 killed; nothing ships) |
+| E16 rerank | no `rerank` key exists | — | **INERT** (ceiling probe only) |
+| V2 coverage sampler | `coverage_sampler.enabled: false` (`config.yaml:1087`) | `generate.py:272` | **INERT** |
+
+Four levers act on every run; two log without acting behind their own explicit fence; three are inert
+because the experiment that would have justified them returned a KILL or was never more than a
+ceiling probe. That distribution is the programme working as designed — a KILL that stops a lever
+shipping is the cheapest result available.
+
+### 31.7 Receipts
+
+Three source changes, each mutation-proved (the fix reverted in place, the new tests shown to fail,
+the file restored):
+
+```
+MUTANT: audit_rationale never classifies a self-reference
+  FAILED test_our_own_rung_is_self_ref_not_untraceable
+  FAILED test_untraceable_rate_keeps_its_old_lumped_meaning
+  FAILED test_record_shadow_splits_the_rung_the_pipeline_itself_handed_the_model
+MUTANT: _self_text drops config.listing.pricing.rungs
+  FAILED test_record_shadow_splits_the_rung_the_pipeline_itself_handed_the_model
+MUTANT: pre-split rows blended into the split denominator
+  FAILED test_summarise_counts_pre_split_rows_separately_instead_of_assuming_zero
+  FAILED test_summarise_reports_no_split_rate_rather_than_a_fake_zero
+MUTANT: off_domain_values reports nothing
+  FAILED test_off_domain_values_names_the_drift_with_counts
+  FAILED test_the_receipt_carries_the_drift_meter
+MUTANT: _one stops stamping each call
+  FAILED test_every_measured_call_carries_its_own_fence_reading
+  FAILED test_a_fence_lost_mid_sweep_is_caught_where_startup_alone_would_pass
+MUTANT: _quiet_report calls a startup-only receipt held
+  FAILED test_an_unstamped_receipt_is_not_reported_as_held
+  FAILED test_no_calls_at_all_is_not_held
+
+### restored: tests/unit — 1513 passed, 2 skipped in 67.76s   (1495 + 18 new)
+```
+
+Every new test is also non-vacuous by construction: `test_the_split_is_not_vacuous_without_the_haystack`
+and `test_a_world_claim_is_never_absorbed_into_self_reference` fail on a build that classifies
+everything as self-referential, and `test_off_domain_says_nothing_rather_than_flagging_everything`
+fails on a meter that flags every axis.
