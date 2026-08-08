@@ -102,7 +102,8 @@ def _entropy(hist: dict[str, int]) -> float:
     return h / math.log2(n_keys)
 
 
-def batch_report(candidates: list[Any], token_threshold: float = 0.34) -> dict:
+def batch_report(candidates: list[Any], token_threshold: float = 0.34,
+                 atypical_threshold: float = 0.3) -> dict:
     """Summarise a batch: distinct-k + pairwise overlap + per-axis histograms.
 
     Axes (structural_form / audience / market / ambition_tier) are extracted
@@ -156,12 +157,34 @@ def batch_report(candidates: list[Any], token_threshold: float = 0.34) -> dict:
         max_overlap = 0.0
 
     dk = distinct_k(candidates, token_threshold)
+
+    # G4 observability: did the Verbalized Sampling directive actually reach lower-probability
+    # modes, or did the model just relabel its usual output? `n_reported` is the honest
+    # denominator — when the directive is off, or the model ignored it, it is 0 and the other
+    # two figures are 0.0 rather than a mean over nothing.
+    tvals: list[float] = []
+    for c in candidates:
+        tags = getattr(c, "tags", {}) or {}
+        if not isinstance(tags, dict):
+            continue
+        v = tags.get("typicality")
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            continue
+        tvals.append(float(v))
+    typicality = {
+        "n_reported": len(tvals),
+        "mean": (sum(tvals) / len(tvals)) if tvals else 0.0,
+        "atypical_fraction": (
+            sum(1 for v in tvals if v <= atypical_threshold) / len(tvals)) if tvals else 0.0,
+    }
+
     return {
         "n": n,
         "distinct_k": dk,
         "distinct_ratio": (dk / n) if n else 0.0,
         "mean_pairwise_overlap": mean_overlap,
         "max_pairwise_overlap": max_overlap,
+        "typicality": typicality,
         "axes": axes,
     }
 
@@ -184,7 +207,9 @@ def write_receipt(
     if not gen_cfg.get("diversity_meter", False):
         return None
     try:
-        report = batch_report(candidates, token_threshold)
+        vcfg = gen_cfg.get("verbalized_sampling", {}) or {}
+        atypical_threshold = float(vcfg.get("atypical_threshold", 0.3))
+        report = batch_report(candidates, token_threshold, atypical_threshold)
         record = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "stage": stage,

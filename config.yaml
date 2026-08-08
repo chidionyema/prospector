@@ -787,6 +787,30 @@ generation:
     min_family_size: 3
     refresh_every_kills: 25
     max_families: 12
+  # G2: one bounded, cached live search per (topic, market), injected as generation CONTEXT.
+  # It is never a Source, never cited, never scored and can never kill — it exists so ideas are
+  # designed against the incumbents that currently kill them at the `incumbency` gate.
+  # `providers` deliberately EXCLUDES claude_cli: the moat's grounding queue runs on it, and a
+  # generation-side query must never queue ahead of a verdict (job 20260730T212901866 died at
+  # 1731s on exactly that saturation). Empty signal AND empty sector => no brief, no call.
+  incumbent_seed:
+    enabled: true
+    providers: [ddg, exa]
+    max_queries: 2
+    results_per_query: 3
+    max_chars: 700
+    max_entries: 8
+    cache_ttl_s: 604800          # 7 days
+    query_templates:
+      - "{topic} existing providers"
+      - "{topic} software vendors pricing"
+  # G4: Verbalized Sampling (arXiv:2510.01171) — ask the model for its distribution instead of
+  # k samples from its mode. The self-reported typicality is observability only; nothing is
+  # filtered, reordered or down-weighted by it.
+  verbalized_sampling:
+    enabled: true
+    atypical_threshold: 0.3
+    min_atypical_fraction: 0.4
   controller:
     killrate_window: 50
     exploration_min: 0.2

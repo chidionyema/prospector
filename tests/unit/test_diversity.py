@@ -170,3 +170,39 @@ def test_write_receipt_never_raises(tmp_path, monkeypatch):
     # Should NOT raise — broad except inside write_receipt absorbs the OSError.
     result = write_receipt(cfg, "generated", cands)
     assert result is None
+
+
+# ---- G4 typicality observability --------------------------------------------
+
+
+def test_typicality_stats_reported():
+    """Three candidates with valid typicality tags => n_reported 3, mean ~0.4,
+    atypical_fraction ~2/3 under atypical_threshold=0.3."""
+    cands = [
+        _Cand(title="Idea A", one_liner="x", tags={"typicality": 0.1}),
+        _Cand(title="Idea B", one_liner="x", tags={"typicality": 0.9}),
+        _Cand(title="Idea C", one_liner="x", tags={"typicality": 0.2}),
+    ]
+    rep = batch_report(cands, atypical_threshold=0.3)
+    t = rep["typicality"]
+    assert t["n_reported"] == 3
+    assert t["mean"] == pytest.approx(0.4)
+    assert t["atypical_fraction"] == pytest.approx(2 / 3)
+
+
+def test_typicality_absent_is_zeroed():
+    """No typicality tag => n_reported 0, mean 0.0, atypical_fraction 0.0.
+
+    A bool tag is NOT a typicality — it must be ignored (not coerced to 1.0/0.0)
+    because True/False carries no meaning for typicality, unlike automatability."""
+    cands = [
+        _Cand(title="Idea A", one_liner="x"),                                # no tag
+        _Cand(title="Idea B", one_liner="x", tags={"typicality": True}),    # bool -> ignored
+        _Cand(title="Idea C", one_liner="x", tags={"typicality": False}),   # bool -> ignored
+        _Cand(title="Idea D", one_liner="x", tags={"typicality": "x"}),     # bad type -> ignored
+    ]
+    rep = batch_report(cands, atypical_threshold=0.3)
+    t = rep["typicality"]
+    assert t["n_reported"] == 0
+    assert t["mean"] == 0.0
+    assert t["atypical_fraction"] == 0.0

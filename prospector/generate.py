@@ -14,9 +14,11 @@ from typing import Any, Optional
 
 from .config import Config
 from .coverage import plan_cells
+from .landscape import incumbent_brief
 from .models import Candidate
 from .operator import Operator
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
+from .sampling import typicality_directive, typicality_score
 from .telemetry import logger, track_latency
 from .telemetry import stage as telemetry_stage
 
@@ -44,9 +46,18 @@ def _parse_candidates(data: Any) -> list[Candidate]:
         if not isinstance(item, dict) or not item.get("title"):
             continue
         try:
-            out.append(Candidate.from_dict(item))
+            cand = Candidate.from_dict(item)
         except Exception:
             continue
+        # G4: carry the model's self-reported typicality into tags so the diversity meter
+        # (prospector/diversity.py) can measure whether the Verbalized Sampling directive
+        # actually moved the batch off its mode. setdefault, never overwrite: a value the
+        # model already put in its own `tags` dict wins. This is observability only — no
+        # candidate is ever dropped, reordered or down-weighted for its typicality.
+        t = typicality_score(item.get("typicality"))
+        if t is not None and isinstance(cand.tags, dict):
+            cand.tags.setdefault("typicality", t)
+        out.append(cand)
     return out
 
 
@@ -279,6 +290,25 @@ def generate(
         run_market = ""
         market_vars = {k: "" for k in ALL_MARKET_KEYS}
 
+    # G2 + G4 are appended to the RENDERED user prompt rather than added as {placeholders} in
+    # prompts/generate.md, and that is deliberate: prompts.render() does not raise on an
+    # unsubstituted token (prompts.py:194 only logs, and only for `{market_`), so a new
+    # placeholder would be shipped to the model VERBATIM by the two call sites that do not pass
+    # it — run.py:2039 and tests/unit/test_moat_discipline.py:44. Appending in Python is
+    # golden-safe by construction: both helpers return "" when their gate is off, and an empty
+    # suffix leaves the prompt byte-identical to today. Same pattern as the OUTPUT CONTRACT
+    # prefix below.
+    #
+    # The sampling directive is a pure function of (cfg, k), so it is resolved once here. The
+    # landscape brief is NOT, and that is the whole reason it moved: on the blue-sky path the
+    # AUDIENCE PERSONA is the only topic available, and `_assign` rotates it call by call. The
+    # daemon is that path — `scheduler/run_scheduled.py:724` calls `run_signal("", cfg=cfg,
+    # k=batch_size, publish=True, lanes=lanes)` with an empty signal — so resolving the brief
+    # once per generate() would have left the feature inert on the majority of all generation.
+    # It costs nothing extra when a signal or sector IS present: every call then derives the
+    # same topic and hits the same cache entry after the first fetch.
+    sampling_directive = typicality_directive(cfg, k)
+
     # V2 COVERAGE SAMPLER (default OFF — `coverage_sampler.enabled: false`). When enabled it
     # replaces the round-robin form x audience rotation below with cells chosen from the
     # MEASURED under-coverage of store/prospector.db (read-only, zero LLM calls, deterministic
@@ -339,6 +369,17 @@ def generate(
             "prompt. Return ONLY the JSON specified by the task — no preamble, no prose, no "
             "meta-discussion, no code fences.\n\n" + system
         )
+        # Resolved per call so the blue-sky path can fall back to this cell's audience persona
+        # as the topic (landscape._topic rung 3). Cached on (topic, market), so the repeated
+        # calls that share a topic pay one fetch between them, not one each.
+        landscape_directive = incumbent_brief(
+            cfg, signal_text=signal_text, sector=sector, market=run_market,
+            audience=audience)
+        # Order matters: the landscape is context the model should read before it is told HOW
+        # to sample, so it lands first.
+        for _extra in (landscape_directive, sampling_directive):
+            if _extra:
+                user = f"{user}\n\n{_extra}"
         # gen_op is the non-critical generation chain (claude_cli primary → minimax tail); falls
         # back to the moat op only if no gen chain was wired.
         _gen = gen_op or op

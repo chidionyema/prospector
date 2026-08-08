@@ -224,6 +224,24 @@ def _no_live_grounding_probe(monkeypatch):
     monkeypatch.setattr(rs, "_probe_grounding_once", lambda cfg, timeout_s: ("", None))
 
 
+@pytest.fixture(autouse=True)
+def _no_live_incumbent_seed(monkeypatch):
+    """Stub G2's retrieval so no test can put a live web search on the generation path.
+
+    `generation.incumbent_seed.enabled` is TRUE in config.yaml, and a dozen unit tests build a
+    real Config via `load_config()` and call `generate()` (e.g.
+    tests/unit/test_generation_cross_run_memory.py:32). Without this fence, any of them that
+    passes a signal_text or sector would issue real DuckDuckGo/Exa queries during pytest —
+    the same class of defect as the audit log, the durable ledger and the usage wall before it,
+    and it would additionally make those tests flaky on network weather.
+
+    Only `_fetch_brief` is stubbed, so the gate, the topic derivation and the cache logic all
+    still run for real. tests/unit/test_landscape.py monkeypatches over this fixture, which
+    wins because it is applied after."""
+    from prospector import landscape
+    monkeypatch.setattr(landscape, "_fetch_brief", lambda cfg, icfg, topic: "")
+
+
 @pytest.fixture
 def cfg() -> Config:
     """Load real config from config.yaml (fixture mode wired by individual tests)."""
