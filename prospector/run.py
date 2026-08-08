@@ -136,10 +136,22 @@ def _lane_counts(cfg, lanes: list, k: Optional[int]) -> dict:
     """How many candidates to generate per lane. With no explicit total (`k` None) use the
     per-lane `lane_quota` (default 3). With an explicit `--candidates k`, distribute k across
     the lanes PROPORTIONAL to the quota weights (every lane keeps >=1) so the flag scales the
-    whole fan-out rather than any single tier. All values are config-sourced — no hardcoding."""
+    whole fan-out rather than any single tier. All values are config-sourced — no hardcoding.
+
+    G9: with `generation.lane_quota_mode: measured` the static quota is replaced by one
+    derived from realised value per lane (`prospector/lane_yield.py`). The measured quota is
+    a pure REALLOCATION — it sums to exactly the static total, so switching modes changes
+    which lanes the candidates land in and never how many are generated. It fails open to
+    the static quota on any error, and the mode is `static` by default."""
     if not lanes:
         return {}
     quota = {t: max(1, int((cfg.lane_quota or {}).get(t, 3))) for t in lanes}
+    mode = str((getattr(cfg, "generation", {}) or {}).get(
+        "lane_quota_mode", "static")).strip().lower()
+    if mode == "measured":
+        measured = measured_lane_quota(cfg, list(lanes), sum(quota.values()))
+        if measured:
+            quota = measured
     if k is None:
         return quota
     total_w = sum(quota.values()) or len(lanes)
@@ -219,6 +231,11 @@ from .dossier import (  # noqa: E402 - deferred import after the helper block
 )
 from .errors import ProviderExhaustedError  # noqa: E402 - deferred import after the helper block
 from .generate import generate  # noqa: E402 - deferred import after the helper block
+
+# Imported here, below `_lane_counts` that uses it: the helper block above deliberately
+# precedes the package imports, and a function body resolves its globals at CALL time, so
+# the ordering is fine and matches every other name in this block.
+from .lane_yield import measured_lane_quota  # noqa: E402 - deferred import after the helper block
 from .models import (  # noqa: E402 - deferred import after the helper block
     DEFER_GATE,
     Candidate,

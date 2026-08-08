@@ -631,6 +631,16 @@ def generate(
                     # Persist audience persona into the candidate's tags for audit.
                     if aud:
                         c.tags["audience"] = aud
+                    # G5 seed provenance. Stamped HERE, at the one place every accepted
+                    # candidate passes through, rather than in _one_call: refinement and the
+                    # dedup/diversity passes above rebuild candidate objects, and a stamp
+                    # applied earlier would survive on some paths and not others — a
+                    # provenance field that is silently missing on a subset is worse than
+                    # none, because the survival report would read the gap as a real
+                    # population difference. `signal_text` is the enclosing generate()
+                    # argument, so this is the run's own truth, not an inference.
+                    c.tags.setdefault(
+                        "seed_kind", "signal" if str(signal_text or "").strip() else "blue_sky")
                     candidates.append(c)
                     added += 1
                     if len(candidates) >= target:

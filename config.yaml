@@ -811,6 +811,21 @@ generation:
     enabled: true
     atypical_threshold: 0.3
     min_atypical_fraction: 0.4
+  # G9 lane quota mode. `static` uses the hand-tuned `lane_quota` block above verbatim.
+  # `measured` replaces it with a split derived from realised value per lane
+  # (prospector/lane_yield.py) that sums to the SAME total, so the mode changes where
+  # candidates land and never how many are generated.
+  #
+  # Left OFF deliberately. This is the one item in the generation-quality programme that
+  # points a lever at the kill stats, and the founder rule is that those are a report card,
+  # not a lever. The guardrails are in lane_yield.py's docstring: it weights on realised
+  # composite rather than pass COUNT, it touches no gate, and the exploration reserve below
+  # is uniform and unconditional. Turn it on only with a survival report in hand
+  # (`python -m tools.generation_survival --by ambition_tier`) — venture is at 0 PASS in 35
+  # and an unreserved value-weighting would starve it into never producing the evidence
+  # that would revive it.
+  lane_quota_mode: static          # static | measured
+  lane_exploration_reserve: 0.2    # share of the batch split uniformly regardless of value
   controller:
     killrate_window: 50
     exploration_min: 0.2
