@@ -4,9 +4,12 @@
 > (`reference-project-claude-md-full-2026-08-06.md` is the verbatim pre-compression text).
 > This file carries the RULE; the memory files carry the incident that produced it.
 >
-> Two programmes have their own tracked specs — read and append there, never here:
-> `docs/COST_PROGRAM.md` (all cost work, all measurements) and
-> `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness).
+> Three programmes have their own tracked specs — read and append there, never here:
+> `docs/COST_PROGRAM.md` (all cost work, all measurements),
+> `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness) and
+> `docs/SITE_SPEC_PROGRAM.md` (the mumchimp.com design/UX/copy spec + its live status ledger —
+> it lived only in a chat transcript until 2026-08-07, which is why its status kept evaporating
+> between sessions; read it before touching the storefront).
 
 **Source-or-die:** every factual claim and quantitative figure must cite a retrievable source or be marked `unverifiable`. No unsourced numbers ship, ever.
 

@@ -45,7 +45,9 @@ check, and prints the call budget the live run would spend. `--live` is the only
 from __future__ import annotations
 
 import argparse
+import collections
 import json
+import math
 import statistics
 import sys
 import time
@@ -145,16 +147,74 @@ def _preflight(cands: list[tuple[str, dict]], checks: tuple[str, ...]) -> dict[s
     return {"per_check": per_check, "empty_arm_cells": empties}
 
 
+def _resolve_live_path(checks: tuple[str, ...]) -> dict[str, str]:
+    """Import and CONSTRUCT everything the live arms need, spending nothing.
+
+    Why this runs during preflight. The first live attempt of this harness died on
+    `ImportError: cannot import name 'build_search'` — a name I had invented — after printing
+    "arm A (control) …", i.e. at the moment it committed to billing. Preflight was green,
+    because preflight builds queries offline and never touches the operator or retrieval
+    layer, so the two halves of the module had no check that they agreed.
+
+    Constructing both objects is free (no call is issued until `_raw`/`search`), so there is no
+    reason for the live path's first proof of existence to be a billed run. This is the same
+    principle as `--preflight` itself, applied to the wiring rather than to the arms.
+    """
+    from prospector.operator import MOAT_PRIMARY, is_provisional_provider, make_operator
+    from prospector.retrieval import make_provider
+    from prospector.verify import gen_queries_batched, run_check  # noqa: F401 - existence check
+
+    cfg = _arm_config(checks, hybrid=False)
+    op = make_operator(cfg)
+    search = make_provider(cfg)
+
+    # E1 measures VERDICTS, so a provisional brain ruling here would not be a weaker result —
+    # it would be a different experiment. `operator.py:892` stamps anything outside
+    # MOAT_PRIMARY provisional; refuse rather than silently measure that.
+    ruling = cfg.operator if isinstance(cfg.operator, list) else [cfg.operator]
+    provisional = [r for r in ruling if is_provisional_provider(r)]
+    if provisional:
+        raise SystemExit(
+            f"REFUSING: cfg.operator {ruling} includes provisional provider(s) {provisional}; "
+            f"only {sorted(MOAT_PRIMARY)} may rule a verdict, so an E1 delta measured here "
+            "would describe the fallback tail, not the moat.")
+    return {"operator": op.name, "search": search.name if hasattr(search, "name") else
+            type(search).__name__, "ruling_providers": ",".join(ruling)}
+
+
 def _run_arm(cands: list[tuple[str, dict]], checks: tuple[str, ...], hybrid: bool,
-             verbose: bool) -> list[dict[str, Any]]:
-    from prospector.retrieval import build_search
-    from prospector.run import _build_operator  # the same builder the engine uses
+             verbose: bool) -> tuple[list[dict[str, Any]], str | None]:
+    """Run one arm. Returns (rows, dead_arm_reason).
+
+    `dead_arm_reason` is set when the moat stops answering: two consecutive candidates whose
+    every cell came back unruled. Measured 2026-08-08 — run `ba5ah4zyn` ground through all 48
+    cells against a live usage wall ("capacity returns 2026-08-08 00:25:47"), every one
+    deferring, and then printed a delta table of `0/0`. Nothing was measured and nothing was
+    learned; the only thing spent was 48 cells of wall-clock and the operator's attention on a
+    table that read like a result. Same rule E3 already carries: an outage is the end of the
+    measurement, not a datum.
+
+    Two candidates, not one, because a single candidate whose three checks all fail retrieval is
+    a plausible property of that candidate. Six consecutive unruled cells is a property of the
+    moat.
+    """
+    # The names production uses, verified on disk 2026-08-08 rather than recalled: the moat
+    # operator is `make_operator(cfg)` (`run.py:576`, `:1126`) and retrieval is
+    # `make_provider(cfg)` (`run.py:640`). An earlier draft of this file imported
+    # `retrieval.build_search` and `run._build_operator`, neither of which exists at those
+    # paths — `_build_operator` lives in `prospector.operator` and takes `(kind, cfg, fast)`.
+    # Both were invented, and `--preflight` could not catch them because preflight never
+    # touches the retrieval or operator layer. See the note in `main()`.
+    from prospector.operator import make_operator
+    from prospector.retrieval import make_provider
     from prospector.verify import gen_queries_batched, run_check
 
     cfg = _arm_config(checks, hybrid=hybrid)
-    op = _build_operator(cfg)
-    search = build_search(cfg)
+    op = make_operator(cfg)
+    search = make_provider(cfg)
     rows: list[dict[str, Any]] = []
+    unruled_streak = 0
+    dead_arm_after = 2 * len(checks)
 
     for path, d in cands:
         cand = _candidate_from(d)
@@ -187,6 +247,12 @@ def _run_arm(cands: list[tuple[str, dict]], checks: tuple[str, ...], hybrid: boo
                     "queries": list(res.queries or []),
                     "latency_s": round(time.monotonic() - t0, 2),
                     "error": None,
+                    # The two DEFER paths are indistinguishable from `retrieval_failed` alone:
+                    # "Retrieval unavailable — all searches failed" (verify.py:621) is a SEARCH
+                    # outage, "Verdict call failed; fail-safe." (verify.py:469) is a BRAIN
+                    # outage. Recording it is what lets the abort below name the cause instead
+                    # of reporting an unattributed hole.
+                    "rationale": (res.rationale or "")[:200],
                 }
             except Exception as e:  # noqa: BLE001
                 row = {"candidate_id": cid, "check": check,
@@ -195,13 +261,123 @@ def _run_arm(cands: list[tuple[str, dict]], checks: tuple[str, ...], hybrid: boo
                        "n_citations": 0, "n_sources": 0, "retrieval_failed": True,
                        "degraded": True, "provider": None, "queries": [],
                        "latency_s": round(time.monotonic() - t0, 2),
-                       "error": f"{type(e).__name__}: {e}"}
+                       "error": f"{type(e).__name__}: {e}", "rationale": ""}
+            row["quiet"] = _quiet_now()
             rows.append(row)
+            unruled_streak = 0 if _is_ruled(row) else unruled_streak + 1
             if verbose:
                 print(f"    [{cid}] {check:<16} {row['arm']:<6} "
                       f"src={row['query_source']} verdict={row['verdict']} "
                       f"cites={row['n_citations']} {row['latency_s']}s")
-    return rows
+        if unruled_streak >= dead_arm_after:
+            reason = (f"{unruled_streak} consecutive unruled cells "
+                      f"({dead_arm_after // len(checks)} whole candidates) in arm "
+                      f"{'entity' if hybrid else 'llm'}: {_why_unruled(rows)}")
+            print(f"  ABORTING ARM — {reason}")
+            return rows, reason
+    return rows, None
+
+
+def _quiet_now() -> bool:
+    """Is the daemon still fenced off, RIGHT NOW?
+
+    The startup check in `run()` proves the fence existed when the run began and nothing more.
+    Observed 2026-08-08 during run `bo2mosjog`: the PAUSE file created at 00:25Z was gone by
+    00:35Z with the run still in flight and the daemon (pid 66223) live. Nothing in this repo
+    deletes PAUSE — `grep -rn PAUSE prospector/ tools/ scripts/` finds no unlink, and the
+    control centre only prints "Delete it to resume" (`control_center/pages/_overview.py:112`) —
+    so the deleter is outside the process and cannot be prevented from here. It CAN be recorded.
+
+    Recorded, not aborted: a daemon competing for the two governor slots slows the run and can
+    push cells into the usage wall, but both arms are billed under the same conditions, so the
+    contrast survives. What does not survive is an unqualified cost or latency number. If the
+    competition is severe enough to stop the moat answering, the dead-arm abort catches it.
+    """
+    from pathlib import Path as _P
+    sched = _P(__file__).resolve().parents[2] / "store" / "scheduler"
+    return (sched / "PAUSE").exists() or (sched / "PAUSE_GENERATION").exists()
+
+
+def _mcnemar(rows: list[dict[str, Any]], check: str | None) -> dict[str, Any]:
+    """The paired test the design was built for, on the pairs where BOTH arms ruled.
+
+    E1 runs the same candidates through both arms precisely so each candidate is its own control.
+    Comparing two independent Wilson intervals discards that pairing, and at n<=8 per arm two such
+    intervals overlap almost regardless of the effect — so the unpaired read is a null-result
+    generator.
+
+    Measured on run `bo2mosjog` (2026-08-08), the same 48 rows read two ways:
+      unpaired Wilson : "separable on 0 of 3 checks"
+      paired McNemar  : 19 usable pairs, 9 treatment-worse vs 1 treatment-better,
+                        exact two-sided p = 0.0215
+
+    Cells the moat never ruled are excluded from BOTH members of a pair, so the five quota
+    failures that fell entirely in the second arm cannot manufacture the result.
+    """
+    # `check=None` pools every (candidate, check) pair. Pooling is reported because a per-check
+    # test on 4-6 discordant pairs can detect almost nothing — but the three checks of one
+    # candidate share a retrieved corpus, so the pooled pairs are NOT independent and the pooled
+    # p is optimistic. It is a direction-consistency signal, never the verdict.
+    by_cand: dict[tuple[str, str], dict[str, dict[str, Any]]] = collections.defaultdict(dict)
+    for r in rows:
+        if (check is None or r["check"] == check) and _is_ruled(r):
+            by_cand[(r["candidate_id"], r["check"])][r["arm"]] = r
+
+    worse = better = concordant = 0
+    for arms in by_cand.values():
+        ctrl, treat = arms.get("llm"), arms.get("entity")
+        if not (ctrl and treat):
+            continue
+        cu = ctrl["verdict"] == "unverifiable"
+        tu = treat["verdict"] == "unverifiable"
+        if cu == tu:
+            concordant += 1
+        elif tu:
+            worse += 1
+        else:
+            better += 1
+
+    disc = worse + better
+    # Exact binomial (sign) test, not the chi-square approximation: with disc in the teens the
+    # continuity-corrected chi-square is not trustworthy and there is no reason to approximate.
+    p = (min(1.0, 2 * sum(math.comb(disc, k) for k in range(min(worse, better) + 1)) / 2 ** disc)
+         if disc else None)
+    return {"n_pairs": worse + better + concordant, "concordant": concordant,
+            "treatment_worse": worse, "treatment_better": better,
+            "p_exact": None if p is None else round(p, 4),
+            "separable": bool(p is not None and p < 0.05),
+            "direction": None if not disc else ("treatment_worse" if worse > better
+                                                else "treatment_better" if better > worse else "tie")}
+
+
+def _quiet_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Did the fence hold for every billed cell? A startup-only check cannot answer this."""
+    seen = [bool(r.get("quiet")) for r in rows if "quiet" in r]
+    lost = next((i for i, q in enumerate(seen) if not q), None)
+    held = bool(seen) and lost is None
+    note = ""
+    if not held and seen:
+        note = (f"the daemon fence (store/scheduler/PAUSE) was GONE from cell {lost + 1} of "
+                f"{len(seen)} onward — {sum(1 for q in seen if not q)} of {len(seen)} cells were "
+                "billed with the daemon free to compete for the moat and the two governor slots. "
+                "The arm contrast still holds (both arms ran under the same conditions); the "
+                "latency and cost figures from this run are contaminated and must not be quoted.")
+    return {"held": held, "cells_observed": len(seen),
+            "cells_unfenced": sum(1 for q in seen if not q),
+            "lost_at_cell": None if lost is None else lost + 1, "note": note}
+
+
+def _is_ruled(row: dict[str, Any]) -> bool:
+    """The denominator's definition, in one place. `_rate` must agree with the abort."""
+    return row["error"] is None and not row["retrieval_failed"]
+
+
+def _why_unruled(rows: list[dict[str, Any]]) -> str:
+    """Name the dominant cause across the unruled tail, so an abort is attributable."""
+    causes = collections.Counter(
+        (r["error"] or r.get("rationale") or "unruled, no cause recorded")[:120]
+        for r in rows if not _is_ruled(r))
+    return "; ".join(f"{n}x {c!r}" for c, n in causes.most_common(2))
 
 
 # ---------------------------------------------------------------------------
@@ -298,8 +474,17 @@ def run(args: list[str]) -> dict[str, Any]:
             "liveness_fence": "every treatment cell must be stamped entity_template or the run "
                               "aborts (§18.3 inert-arm trap)",
             "retrieval_failures": "excluded from both numerator and denominator",
+            "outage_fence": "two whole candidates unruled aborts the arm (arm B is then not "
+                            "billed); any check/arm cell with a zero denominator aborts the "
+                            "run. An outage is the end of the measurement, not a datum.",
         },
     }
+    # Prove the LIVE path exists before claiming preflight is green. Free: construction only.
+    wiring = _resolve_live_path(checks)
+    print(f"  live path resolves: operator={wiring['operator']} search={wiring['search']} "
+          f"ruling={wiring['ruling_providers']}")
+    out["headline"]["live_path"] = wiring
+
     if not ns.live:
         print("  PREFLIGHT ONLY — nothing was billed. Re-run with --live to measure.")
         return out
@@ -313,15 +498,38 @@ def run(args: list[str]) -> dict[str, Any]:
             "and the governor slots mid-run. Create PAUSE, run, and DELETE it afterwards. "
             "Override with --quiet-daemon-ok.")
 
+    def _outage(rows: list[dict[str, Any]], reason: str) -> dict[str, Any]:
+        return {**out, "headline": {**out["headline"], "aborted": "moat_outage",
+                                    "separable_checks": None, "deltas": None,
+                                    # An abort still reports the fence: "the daemon was
+                                    # competing" is a candidate explanation for the outage.
+                                    "quiet_fence": _quiet_report(rows)},
+                "rows": rows,
+                "abort_reason": (
+                    f"{reason}. NOT a null result: with an empty denominator there is no rate "
+                    "to compare, so E1's kill bar ('no drop in unverifiable rate') was never "
+                    "tested. Re-run when the moat answers.")}
+
     print("  arm A (control, llm_batched) …")
-    rows = _run_arm(cands, checks, hybrid=False, verbose=ns.verbose)
+    rows, dead = _run_arm(cands, checks, hybrid=False, verbose=ns.verbose)
+    if dead:
+        # Arm B is not billed: the moat that just refused arm A rules arm B too.
+        return _outage(rows, dead)
     print("  arm B (treatment, entity_template) …")
-    rows += _run_arm(cands, checks, hybrid=True, verbose=ns.verbose)
+    rows_b, dead = _run_arm(cands, checks, hybrid=True, verbose=ns.verbose)
+    rows += rows_b
+    if dead:
+        return _outage(rows, dead)
 
     # THE FENCE. Checked before any rate is computed, so a broken arm can never be reported as
     # a null result.
+    # `_is_ruled`, not `error is None`: a cell that DEFERRED (retrieval_failed, no exception)
+    # carries no query_source, because it never got as far as searching. Judging it by the
+    # stamp reports an outage as a wiring bug — the harness would say "the treatment arm did
+    # not engage" when the truth is "the moat did not answer". An unruled cell is evidence
+    # about the moat and about nothing else; it falls through to the outage fence below.
     inert = [f"{r['candidate_id']}/{r['check']}={r['query_source']}"
-             for r in rows if r["arm"] == "entity" and r["error"] is None
+             for r in rows if r["arm"] == "entity" and _is_ruled(r)
              and r["query_source"] != "entity_template"]
     if inert:
         return {**out, "headline": {**out["headline"], "aborted": "treatment_arm_inert"},
@@ -331,6 +539,19 @@ def run(args: list[str]) -> dict[str, Any]:
                     f"{inert[:3]}. §18.3's trap fired: the arm did not engage, so no delta "
                     "computed. This is NOT a null result.")}
 
+    # THE SECOND FENCE: an empty denominator. The streak abort above catches a total outage;
+    # this catches a scattered one that never lines up six-in-a-row but still leaves a cell
+    # with nothing in it. `_rate` returns rate=None for n=0, the delta becomes None, and
+    # `intervals_overlap` computes True over two zero-width intervals — so the headline reads
+    # "separable on 0 of 3", which is verbatim E1's kill bar. A hole must never render as a
+    # finding.
+    empty = [f"{check}/{arm}" for check in checks for arm in ("llm", "entity")
+             if not [r for r in rows if r["check"] == check and r["arm"] == arm
+                     and _is_ruled(r)]]
+    if empty:
+        return _outage(rows, f"{len(empty)} of {2 * len(checks)} cells ruled nothing "
+                             f"({', '.join(empty)}): {_why_unruled(rows)}")
+
     table = []
     for check in checks:
         ctrl, treat = _rate(rows, check, "llm"), _rate(rows, check, "entity")
@@ -338,29 +559,52 @@ def run(args: list[str]) -> dict[str, Any]:
                  else round(treat["rate"] - ctrl["rate"], 4))
         table.append({"check": check, "control": ctrl, "treatment": treat,
                       "unverifiable_delta": delta,
+                      # The design's own test. `intervals_overlap` below is kept as the unpaired
+                      # reference, NOT as the verdict — see `_mcnemar`.
+                      "paired": _mcnemar(rows, check),
                       # Overlap of the two Wilson intervals: with n this small the honest
                       # statement is usually "cannot distinguish", and saying so is the point.
                       "intervals_overlap": not (treat["wilson_hi"] < ctrl["wilson_lo"]
                                                 or ctrl["wilson_hi"] < treat["wilson_lo"])})
 
     print()
-    print(f"  {'check':<16} {'ctrl_unv':>9} {'treat_unv':>10} {'delta':>8} {'separable':>10}")
+    print(f"  {'check':<16} {'ctrl_unv':>9} {'treat_unv':>10} {'delta':>8} "
+          f"{'pairs w/b':>10} {'p_exact':>8} {'separable':>10}")
     for t in table:
-        c, tr = t["control"], t["treatment"]
+        c, tr, pr = t["control"], t["treatment"], t["paired"]
         d = t["unverifiable_delta"]
         delta_txt = "n/a" if d is None else f"{d:+.0%}"
+        p_txt = "n/a" if pr["p_exact"] is None else f"{pr['p_exact']:.4f}"
         print(f"  {t['check']:<16} {c['unverifiable']}/{c['n_ruled']:<7} "
               f"{tr['unverifiable']}/{tr['n_ruled']:<8} {delta_txt:>8} "
-              f"{('no' if t['intervals_overlap'] else 'YES'):>10}")
+              f"{pr['treatment_worse']}/{pr['treatment_better']:<9} {p_txt:>8} "
+              f"{('YES' if pr['separable'] else 'no'):>10}")
 
-    decided = [t for t in table if not t["intervals_overlap"]]
+    # The paired test is the verdict; the unpaired Wilson columns above are reference only.
+    decided = [t for t in table if t["paired"]["separable"]]
     print()
-    print(f"  separable on {len(decided)} of {len(table)} checks at 95% Wilson; "
-          f"E1's kill bar is 'no drop in unverifiable rate'")
+    print(f"  separable on {len(decided)} of {len(table)} checks by exact paired McNemar "
+          f"(p<0.05); E1's kill bar is 'no drop in unverifiable rate'")
+    worse = [t["check"] for t in table if t["paired"]["direction"] == "treatment_worse"]
+    if worse:
+        print(f"  direction: treatment (entity_template) is WORSE on {len(worse)} of "
+              f"{len(table)} checks — {', '.join(worse)}")
+    pooled = _mcnemar(rows, None)
+    print(f"  pooled across checks: {pooled['treatment_worse']} treatment-worse vs "
+          f"{pooled['treatment_better']} treatment-better of {pooled['n_pairs']} pairs, "
+          f"exact p={pooled['p_exact']} — NOT independent (3 checks share one candidate's "
+          f"corpus), so this is a direction signal, not the verdict.")
+    quiet = _quiet_report(rows)
+    if not quiet["held"]:
+        print(f"  NOTE: {quiet['note']}")
     return {**out,
             "headline": {**out["headline"],
                          "separable_checks": [t["check"] for t in decided],
-                         "deltas": {t["check"]: t["unverifiable_delta"] for t in table}},
+                         "separable_basis": "mcnemar_exact_paired_p<0.05",
+                         "paired": {t["check"]: t["paired"] for t in table},
+                         "paired_pooled": pooled,
+                         "deltas": {t["check"]: t["unverifiable_delta"] for t in table},
+                         "quiet_fence": quiet},
             "table": table, "rows": rows}
 
 
