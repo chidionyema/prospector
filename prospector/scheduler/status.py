@@ -236,8 +236,18 @@ def _read_backlog(cfg) -> dict:
     provisional: int | None = None
     total: int | None = None
     try:
+        from types import SimpleNamespace
+
         from prospector.store import Store
-        store = Store(cfg)
+
+        # Coerce to Path and hand `Store` its own minimal cfg. `store.py:71-72` assigns
+        # `cfg.store_dir` straight to a `Path`-annotated attribute and calls `.mkdir()` on it,
+        # so a caller passing a STRING raises AttributeError and this reader reports "—".
+        # That is not hypothetical: the Telegram cockpit does exactly that
+        # (`hermes-agent gateway/operator_shell/prospector_now.py:290`,
+        # `SimpleNamespace(store_dir=str(repo_root / "store"))`), which is the ONLY shape the
+        # engine's own `paths.py` requires. The monitor must read the same number from either.
+        store = Store(SimpleNamespace(store_dir=Path(paths.store_dir(cfg))))
         def_rows = [r for r in store.all(decision="defer") if not r.get("tombstone")]
         prov_rows = [r for r in store.provisional() if not r.get("tombstone")]
         deferred = len(def_rows)

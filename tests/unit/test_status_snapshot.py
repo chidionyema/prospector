@@ -202,10 +202,16 @@ def test_backlog_counts_the_index_the_drain_works_from(tmp_path):
     (d / "x.provisional.json").write_text("{}")
     (d / "y.pass.json").write_text("{}")
 
-    snap = status_snapshot(cfg)
-    assert snap["backlog"]["deferred"] == 3, "a, b, d — and NOT the tombstoned f"
-    assert snap["backlog"]["provisional"] == 2, "c and d"
-    assert snap["backlog"]["total"] == 4, "a, b, c, d — d is both, counted once"
+    for shape, probe in (("Path", cfg), ("str", types.SimpleNamespace(store_dir=str(tmp_path)))):
+        # BOTH caller shapes, because the two live callers disagree: the daemon passes a real
+        # Config (Path) and the Telegram cockpit passes `SimpleNamespace(store_dir=str(...))`
+        # (hermes-agent `gateway/operator_shell/prospector_now.py:290`). `store.py:71-72` calls
+        # `.mkdir()` on the raw attribute, so the str shape read "—" on the phone while the
+        # daemon read the truth — measured 2026-08-08 by rendering the real card.
+        snap = status_snapshot(probe)
+        assert snap["backlog"]["deferred"] == 3, f"{shape}: a, b, d — and NOT the tombstoned f"
+        assert snap["backlog"]["provisional"] == 2, f"{shape}: c and d"
+        assert snap["backlog"]["total"] == 4, f"{shape}: a, b, c, d — d is both, counted once"
 
 
 def test_backlog_is_none_not_zero_when_the_index_is_unreadable(tmp_path):
@@ -214,8 +220,13 @@ def test_backlog_is_none_not_zero_when_the_index_is_unreadable(tmp_path):
 
     from prospector.scheduler.status import status_snapshot
 
-    # store_dir as a str: Store() raises on it, which is the stand-in for any IO failure.
-    snap = status_snapshot(types.SimpleNamespace(store_dir=str(tmp_path)))
+    # A DIRECTORY where the sqlite index should be: `store.all()` raises OperationalError.
+    # The failure is isolated to the index on purpose — a bad `store_dir` makes
+    # `paths.scheduler_dir()` raise first, and that raise is load-bearing (the cockpit probes
+    # candidate repo paths by calling `status_snapshot` and catching). A str path is NOT a
+    # failure either; see the test above.
+    (tmp_path / "prospector.db").mkdir()
+    snap = status_snapshot(types.SimpleNamespace(store_dir=tmp_path))
     assert snap["backlog"] == {"deferred": None, "provisional": None, "total": None}
 
 
