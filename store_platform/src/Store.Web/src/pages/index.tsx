@@ -1758,8 +1758,15 @@ export default function Home({ packs, stats, initialState, market, currency, per
               {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
               {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s {RESEARCH_STATS.rejectRate}%.
             </p>
+            {/* The full stop is HERE and not inside `survivorsSummary`, and that is deliberate.
+                Without it the home page ran two sentences together -- confirmed live on
+                2026-08-08, `curl https://mumchimp.com/` renders "...49 are packaged and listed so
+                far The other 1,364 are published...". The helper returns a CLAUSE, and its other
+                two callers (LiveKillCard.tsx:175, kill-log.tsx:286) print it as a standalone stat
+                beside a glyph, where a trailing full stop would be wrong. Punctuation belongs to
+                whoever continues the sentence. */}
             <p className="mt-2 max-w-[64ch] text-meta text-muted">
-              {survivorsSummary(stats?.listed)} The other{' '}
+              {survivorsSummary(stats?.listed)}. The other{' '}
               {RESEARCH_STATS.killed.toLocaleString('en-GB')} are published, each with the evidence
               that killed it.
             </p>

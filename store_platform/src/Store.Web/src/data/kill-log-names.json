@@ -1,242 +1,302 @@
 [
   {
     "title": "Sound Check Rounds, the monthly noise test that keeps a small music venue's licence safe",
-    "gate": "payer_solvency"
+    "gate": "payer_solvency",
+    "gateLabel": "The payer cannot actually pay"
   },
   {
     "title": "MedRoom, the daily medicine chart a family carer can actually keep, and prove",
-    "gate": "payer_solvency"
+    "gate": "payer_solvency",
+    "gateLabel": "The payer cannot actually pay"
   },
   {
     "title": "CHC Appeal Builder",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "The Brief Winnow",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "Care Home True Cost Index",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "FlightBite DIY, The Delay Compensation Claim Kit",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "CropPlan, The Market Gardener's Planting & Revenue Optimizer",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "PotBridge, moves your old pensions to a better one, and lets the new provider pay the fee, not you",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "RotaRisk, a fixed-fee check-up that scores your NHS shift pattern for fatigue, using the maths airlines use for pilots",
-    "gate": "payer_solvency"
+    "gate": "payer_solvency",
+    "gateLabel": "The payer cannot actually pay"
   },
   {
     "title": "Invoice Justice, The Freelancer's Non-Payment Recovery Service",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "RateProof, shows freelance creatives what to actually charge, built from quotes that won",
-    "gate": "distribution"
+    "gate": "distribution",
+    "gateLabel": "There is no route to reach buyers"
   },
   {
     "title": "The Vet's Fee Extractor",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "ShiftSole, Custom Insoles by Mail for Standing Workers",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "AI Meal Planner Subscription App",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "FosterClaim, The Carer's Finance & Permission Slip Generator",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "VanVault: The Trades Van Depreciation Guard",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "WorkLog Shield, the day-by-day proof that you're really self-employed, not a hidden employee",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "Probate Delay Atlas",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "SponsorGuard, cash cover for the day the Home Office suspends your visa sponsor licence",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "The Uni Fee Refund Sleuth",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "SchoolFees Swap, the broker that turns unused school fee credit into cash for another family",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "PetGut Insight, Canine Microbiome Analysis by Post",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "The Solo Builder's Warranty Audit",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "StockFloat: The Material Inventory Booster",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "SwapShift, the platform where NHS and care staff sell shifts they can't work to colleagues who want them",
-    "gate": "legality"
+    "gate": "legality",
+    "gateLabel": "There is a legal landmine"
   },
   {
     "title": "The Tradesperson's Job Warrant Sticker",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "The Site Surplus Scout",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Padel Court Referee Booking Engine",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "SoilKeep, the arable farmer's field-by-field record that proves your soil work to the payer, the auditor and the buyer",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "FareFare Forensics, The Rideshare Driver's Earnings Audit & Claim System",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "HMRC Inheritance Tax Valuation Benchmark Report",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "LabelMatch, pre-printed allergen labels that keep up with your changing menu",
-    "gate": "route_to_market"
+    "gate": "route_to_market",
+    "gateLabel": "There is no route to reach buyers"
   },
   {
     "title": "The Creative Rights Recovery Agent",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "HostReady Box, the baby hosting kit that arrives before your visitors do",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "YieldShield, The Landscaper's Perennial Performance Bond",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "PrepRoom Sweep, The County Science Department Chemical Amnesty Round",
-    "gate": "payer_solvency"
+    "gate": "payer_solvency",
+    "gateLabel": "The payer cannot actually pay"
   },
   {
     "title": "CrewShare Books, the shared VAT and tax return service for film and TV crew who work through their own company",
-    "gate": "payer_solvency"
+    "gate": "payer_solvency",
+    "gateLabel": "The payer cannot actually pay"
   },
   {
     "title": "The Inheritance Heat Map",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Council Parking Penalty FoI Appeal Builder",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Carer’s Assessment Negotiator",
-    "gate": "payer_solvency"
+    "gate": "payer_solvency",
+    "gateLabel": "The payer cannot actually pay"
   },
   {
     "title": "The Fire Safety Photo Audit for HMO Landlords",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The CHC Decision Denial Forecaster",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "Business Rates Overpayment Recovery Agent",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Septic Sentinel",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Mould-Proof Home Audit & Sensor Service",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "ChargeBreak, find and fight the overcharges in your California hospital bill, for $29",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The On-Site Media Vault",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "MedDebtShield, The Carer’s Medical Bill Arbitration Broker",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "The Street-Level Air Quality Arbitrage Sensor",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "The Garden Office Power Broker",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Carer’s Room‑for‑Care Exchange",
-    "gate": "value_durability"
+    "gate": "value_durability",
+    "gateLabel": "The value would not last"
   },
   {
     "title": "The AI Tool Liability Brief",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "SettleShare, the family carer's fixed-fee route to sell an unwanted care home place back to the waiting list",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "RepayFight, the fixed-fee service that fights your Carer's Allowance repayment bill",
-    "gate": "currency"
+    "gate": "currency",
+    "gateLabel": "No real money is flowing here today"
   },
   {
     "title": "TutorBrief Engine, The Independent UK Personal Tutor's Exam-Board-Aligned Parental Progress Brief Generator",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "AccountKey CA, we unlock your parent's digital accounts after death or incapacity, for a flat fee",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "RotaRest, the day-room network that lets NHS night-shift staff sleep before driving home",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Gig Deactivation Appeal Engine",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   },
   {
     "title": "The Dead Stock Buyer for Independent Pharmacies",
-    "gate": "payer_solvency"
+    "gate": "payer_solvency",
+    "gateLabel": "The payer cannot actually pay"
   },
   {
     "title": "CareEstate, The Specialist Care Equipment Liquidator",
-    "gate": "incumbency"
+    "gate": "incumbency",
+    "gateLabel": "Incumbents already own the space"
   }
 ]

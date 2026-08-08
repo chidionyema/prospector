@@ -110,10 +110,28 @@ export function CheckSequence({ className }: { className?: string }) {
                   <span className="text-body font-semibold leading-snug text-text">
                     {check.name}
                   </span>
-                  {/* Never colour alone. The word states the verdict, the confidence states how
-                      hard the engine was willing to state it, and both are set in mono because
-                      both are readings rather than prose. A ruling at 0.41 that is printed as a
-                      bare green tick is the overstatement this whole storefront exists against. */}
+                  {/* Never colour alone: the WORD states the verdict, in mono because it is a
+                      reading rather than prose. A ruling printed as a bare green tick is the
+                      overstatement this whole storefront exists against, and the word is what
+                      prevents it.
+
+                      `· conf 0.87` USED TO FOLLOW, and SITE_SPEC 2 P0 rule 4 forbids it outright:
+                      "never render raw floats (`conf 0.41` reads as 41% confident and undermines
+                      the verdict). Default = omit on marketing pages, show with explanation
+                      inside the QA report." /how-it-works is a marketing page, so this is the
+                      omit case.
+
+                      A word-band ("high", "tentative") was the obvious alternative and is worse
+                      here: no such helper exists anywhere in the storefront (this was the only
+                      confidence render site on the site), so shipping one would mean inventing
+                      cut-points that no source sets, and an unsourced number is the one thing
+                      this shop cannot print.
+
+                      NOT A SILENT REMOVAL, and the signal has nowhere else to go yet: with this
+                      line gone, the engine's confidence appears on NO storefront surface. The
+                      spec's own answer is the QA report, with the explanation next to it. That
+                      surface is a separate build and is called out in the commit, not quietly
+                      dropped here. */}
                   <span
                     className={cx(
                       'font-mono text-caption',
@@ -121,7 +139,6 @@ export function CheckSequence({ className }: { className?: string }) {
                     )}
                   >
                     {supported ? 'survived' : 'pushed back'}
-                    <span className="text-subtle">{` · conf ${check.confidence.toFixed(2)}`}</span>
                   </span>
                 </div>
                 <p className="mt-1.5 max-w-[62ch] text-meta leading-relaxed text-muted">
