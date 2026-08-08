@@ -172,13 +172,21 @@ def _read_providers(cfg) -> dict:
     moat_brains_list = [str(b) for b in moat_brains_raw] if isinstance(moat_brains_raw, list) else []
     blind = bool(moat_brains_list) and all(b in dead for b in moat_brains_list)
 
-    # moat_blind_reason: optional diagnostics file. Read best-effort; missing is fine.
+    # moat_blind_reason comes from the ONE function the daemon's own preflight calls, not from
+    # a file. This used to JSON-parse `scheduler/DIAGNOSTICS_LATEST.txt`, which is a text report
+    # (it opens with a box-drawing rule), so the parse raised on every call, the warning was
+    # swallowed as "missing is fine", and `blind_reason` was structurally None forever. No file
+    # under `store/scheduler/` contains `moat_blind` at all.
+    # `trusted_only=False` matches the generation preflight (`run_scheduled.py:504`): one live
+    # brain of any tier means the daemon is not blind. It reads raw `dead_until`, so this cannot
+    # consume the half-open probe slot a real verdict call should get.
     blind_reason: str | None = None
-    diag = _safe_read_json(store / "scheduler" / "DIAGNOSTICS_LATEST.txt")
-    if isinstance(diag, dict):
-        reason = diag.get("moat_blind_reason") or diag.get("blind_reason")
-        if isinstance(reason, str):
-            blind_reason = reason
+    try:
+        from prospector.health import moat_blind_reason
+        reason = moat_blind_reason(cfg, trusted_only=False)
+        blind_reason = reason or None
+    except Exception as exc:  # a monitor must never be the thing that breaks a tick
+        logger.warning("status_snapshot: moat_blind_reason failed (%s)", exc)
 
     return {"moat_blind": blind, "dead": dead, "moat_brains": moat_brains_list,
             "blind_reason": blind_reason}
@@ -201,22 +209,44 @@ def _read_alerts(cfg) -> dict:
 
 
 def _read_backlog(cfg) -> dict:
-    """Backlog sizes from the dossier glob. None on any IO failure.
+    """Backlog from the dossier INDEX — the same two populations the drain works from.
 
-    A deferred candidate lives at `<store>/dossiers/<id>.pass.json` (the verdict was DEFER,
-    but the dossier already passed prescreen and exists on disk as a `.pass.json` placeholder
-    pending re-vet); a provisional one at `<id>.provisional.json`. KILLs are terminal and do
-    NOT count — see `run.py::_cmd_resume` for the same exclusion."""
-    dossiers = paths.store_dir(cfg) / "dossiers"
+    None on any failure, never 0: a monitor that reports an unreadable count as "empty" is the
+    worst possible reading of it.
+
+    This globbed the dossier directory until 2026-08-08 and was wrong three ways at once,
+    measured against the live store on that date:
+
+      * `*.pass.json` counts PASSES, not defers. Deferred dossiers are written `*.defer.json`.
+        The glob said **76** (the pass count) where the index held **121** defers.
+      * Nothing is ever written as `*.provisional.json` — `provisional` is a COLUMN on the
+        index row (`store.py:34`), not a filename suffix. The glob therefore reported a
+        confident **0** against the index's **154**, and the test that pinned it invented a
+        `c.provisional.json` fixture the engine never writes.
+      * A file scan disagrees with the index even where the names are right (113 vs 158 on
+        2026-08-05). The drain works from the index, so the index is the only number that means
+        anything; a monitor that contradicts the engine is worse than no monitor.
+
+    Tombstoned rows are excluded because `drain_survey` excludes them (`run.py:1414-1415`):
+    they have no dossier JSON behind them and can never be re-vetted, and 46 of the 189
+    tombstones are backlog rows. `total` de-duplicates by candidate_id — a row can be BOTH a
+    defer and provisional, so `deferred + provisional` overstates the work that exists.
+    """
     deferred: int | None = None
     provisional: int | None = None
+    total: int | None = None
     try:
-        if dossiers.exists():
-            deferred = sum(1 for _ in dossiers.glob("*.pass.json"))
-            provisional = sum(1 for _ in dossiers.glob("*.provisional.json"))
-    except OSError as exc:
-        logger.warning("status_snapshot: dossier glob failed (%s)", exc)
-    return {"deferred": deferred, "provisional": provisional}
+        from prospector.store import Store
+        store = Store(cfg)
+        def_rows = [r for r in store.all(decision="defer") if not r.get("tombstone")]
+        prov_rows = [r for r in store.provisional() if not r.get("tombstone")]
+        deferred = len(def_rows)
+        provisional = len(prov_rows)
+        total = len({r.get("candidate_id") for r in def_rows}
+                    | {r.get("candidate_id") for r in prov_rows})
+    except Exception as exc:  # sqlite is not just OSError, and a monitor must not raise
+        logger.warning("status_snapshot: backlog index unreadable (%s)", exc)
+    return {"deferred": deferred, "provisional": provisional, "total": total}
 
 
 def status_snapshot(cfg) -> dict:
@@ -359,7 +389,11 @@ def format_status_snapshot(snap: dict) -> str:
 
     deferred = backlog.get("deferred")
     provisional = backlog.get("provisional")
+    total = backlog.get("total")
     backlog_line = (f"backlog def={_fmt_count(deferred)} prov={_fmt_count(provisional)}"
+                    # `def + prov` double-counts the rows that are both, so state the de-duped
+                    # total rather than let the reader add two numbers that overlap.
+                    + (f" = {total}" if isinstance(total, int) else "")
                     if deferred is not None or provisional is not None
                     else "backlog —")
 
