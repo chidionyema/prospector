@@ -358,6 +358,14 @@ try {
         await page.goto(BASE + route, { waitUntil: 'networkidle', timeout: 45000 });
         await page.waitForTimeout(1200);
 
+        // MEASURE BEFORE SCREENSHOTTING. A fullPage screenshot resizes the viewport,
+        // which re-fires largest-contentful-paint for the SAME element at its new size
+        // with a late timestamp — and `measure` takes the max of every entry. Read in
+        // the other order this reported home@1440 LCP as 4964ms when the real figure is
+        // ~1100ms; the late "candidate" was the H1 again, 3652ms, size 55263 vs 51728.
+        // Layout-shift is buffered and accumulating too, so CLS was inflated the same way.
+        Object.assign(rec, await page.evaluate(measure));
+
         for (const [file, opts] of [
           [`${id}-${label}.png`, { fullPage: true }],
           [`${id}-${label}-fold.png`, {}],
@@ -368,8 +376,6 @@ try {
             rec.screenshotError = String(err).slice(0, 200);
           }
         }
-
-        Object.assign(rec, await page.evaluate(measure));
 
         // Axe twice per route, not six times: the violations are structural, and a
         // six-viewport sweep would triple the run for near-duplicate output.
