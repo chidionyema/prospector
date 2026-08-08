@@ -1,0 +1,446 @@
+{
+  "headline": {
+    "dossiers": 1611,
+    "tagged_with_decision": 1574,
+    "personas_seen": 12,
+    "personas_in_config": 13,
+    "spread_verdict": {
+      "tested": true,
+      "best": "gen_z_worker",
+      "worst": "freelancer_creative",
+      "ratio": 12.87,
+      "separable": true,
+      "best_ci": [
+        0.05,
+        0.1175
+      ],
+      "worst_ci": [
+        0.0011,
+        0.0329
+      ]
+    },
+    "class_pass_rate": {
+      "business": 0.0646,
+      "household": 0.0469
+    },
+    "class_separable": false,
+    "live_arm_n_per_arm": 2637,
+    "power": 0.8,
+    "v1_operator_dossiers": 16,
+    "baseline_covers_v1_arm": false,
+    "personas_with_zero_dossiers": [
+      "ecommerce_seller"
+    ]
+  },
+  "per_persona": [
+    {
+      "audience": "gen_z_worker",
+      "in_config": true,
+      "payer_class": "household",
+      "v1_operator": false,
+      "n": 246,
+      "pass": 19,
+      "kill": 208,
+      "defer": 19,
+      "pass_rate": {
+        "k": 19,
+        "n": 246,
+        "rate": 0.0772,
+        "lo": 0.05,
+        "hi": 0.1175
+      },
+      "moat_ungrounded_kills": 26,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 147,
+          "supported": 32,
+          "refuted": 4
+        },
+        "distribution": {
+          "supported": 67,
+          "unverifiable": 110,
+          "refuted": 2
+        }
+      }
+    },
+    {
+      "audience": "smb_owner",
+      "in_config": true,
+      "payer_class": "business",
+      "v1_operator": false,
+      "n": 278,
+      "pass": 19,
+      "kill": 232,
+      "defer": 27,
+      "pass_rate": {
+        "k": 19,
+        "n": 278,
+        "rate": 0.0683,
+        "lo": 0.0442,
+        "hi": 0.1043
+      },
+      "moat_ungrounded_kills": 29,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 134,
+          "supported": 41,
+          "refuted": 12
+        },
+        "distribution": {
+          "unverifiable": 113,
+          "supported": 63,
+          "refuted": 1
+        }
+      }
+    },
+    {
+      "audience": "primary_carer",
+      "in_config": true,
+      "payer_class": "household",
+      "v1_operator": false,
+      "n": 245,
+      "pass": 15,
+      "kill": 204,
+      "defer": 26,
+      "pass_rate": {
+        "k": 15,
+        "n": 245,
+        "rate": 0.0612,
+        "lo": 0.0375,
+        "hi": 0.0985
+      },
+      "moat_ungrounded_kills": 40,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 125,
+          "supported": 38,
+          "refuted": 26
+        },
+        "distribution": {
+          "unverifiable": 110,
+          "supported": 59
+        }
+      }
+    },
+    {
+      "audience": "manual_tradesperson",
+      "in_config": true,
+      "payer_class": "household",
+      "v1_operator": false,
+      "n": 201,
+      "pass": 12,
+      "kill": 165,
+      "defer": 24,
+      "pass_rate": {
+        "k": 12,
+        "n": 201,
+        "rate": 0.0597,
+        "lo": 0.0345,
+        "hi": 0.1014
+      },
+      "moat_ungrounded_kills": 26,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 104,
+          "supported": 37,
+          "refuted": 4
+        },
+        "distribution": {
+          "unverifiable": 80,
+          "supported": 60
+        }
+      }
+    },
+    {
+      "audience": "squeezed_middle",
+      "in_config": true,
+      "payer_class": "household",
+      "v1_operator": false,
+      "n": 128,
+      "pass": 7,
+      "kill": 112,
+      "defer": 9,
+      "pass_rate": {
+        "k": 7,
+        "n": 128,
+        "rate": 0.0547,
+        "lo": 0.0267,
+        "hi": 0.1086
+      },
+      "moat_ungrounded_kills": 6,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 64,
+          "supported": 14,
+          "refuted": 3
+        },
+        "distribution": {
+          "unverifiable": 58,
+          "supported": 22
+        }
+      }
+    },
+    {
+      "audience": "retiree_cohort",
+      "in_config": true,
+      "payer_class": "household",
+      "v1_operator": false,
+      "n": 112,
+      "pass": 3,
+      "kill": 100,
+      "defer": 9,
+      "pass_rate": {
+        "k": 3,
+        "n": 112,
+        "rate": 0.0268,
+        "lo": 0.0092,
+        "hi": 0.0758
+      },
+      "moat_ungrounded_kills": 8,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 60,
+          "refuted": 3,
+          "supported": 11
+        },
+        "distribution": {
+          "supported": 15,
+          "unverifiable": 55,
+          "refuted": 2
+        }
+      }
+    },
+    {
+      "audience": "public_sector_worker",
+      "in_config": true,
+      "payer_class": "household",
+      "v1_operator": false,
+      "n": 180,
+      "pass": 3,
+      "kill": 165,
+      "defer": 12,
+      "pass_rate": {
+        "k": 3,
+        "n": 180,
+        "rate": 0.0167,
+        "lo": 0.0057,
+        "hi": 0.0478
+      },
+      "moat_ungrounded_kills": 19,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 104,
+          "supported": 17,
+          "refuted": 8
+        },
+        "distribution": {
+          "unverifiable": 89,
+          "supported": 32,
+          "refuted": 1
+        }
+      }
+    },
+    {
+      "audience": "freelancer_creative",
+      "in_config": true,
+      "payer_class": "household",
+      "v1_operator": false,
+      "n": 168,
+      "pass": 1,
+      "kill": 154,
+      "defer": 13,
+      "pass_rate": {
+        "k": 1,
+        "n": 168,
+        "rate": 0.006,
+        "lo": 0.0011,
+        "hi": 0.0329
+      },
+      "moat_ungrounded_kills": 31,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 102,
+          "supported": 18,
+          "refuted": 2
+        },
+        "distribution": {
+          "unverifiable": 86,
+          "supported": 32,
+          "refuted": 2
+        }
+      }
+    },
+    {
+      "audience": "startup_operator",
+      "in_config": true,
+      "payer_class": "business",
+      "v1_operator": true,
+      "n": 10,
+      "pass": 0,
+      "kill": 10,
+      "defer": 0,
+      "pass_rate": {
+        "k": 0,
+        "n": 10,
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 0.2775
+      },
+      "moat_ungrounded_kills": 4,
+      "starved_checks": {
+        "payer_solvency": {
+          "supported": 2,
+          "unverifiable": 7
+        },
+        "distribution": {
+          "unverifiable": 6,
+          "supported": 3
+        }
+      }
+    },
+    {
+      "audience": "software_developer",
+      "in_config": true,
+      "payer_class": "business",
+      "v1_operator": true,
+      "n": 3,
+      "pass": 0,
+      "kill": 3,
+      "defer": 0,
+      "pass_rate": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 0.5615
+      },
+      "moat_ungrounded_kills": 2,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 2,
+          "supported": 1
+        },
+        "distribution": {
+          "unverifiable": 2,
+          "supported": 1
+        }
+      }
+    },
+    {
+      "audience": "agency_owner",
+      "in_config": true,
+      "payer_class": "business",
+      "v1_operator": true,
+      "n": 2,
+      "pass": 0,
+      "kill": 2,
+      "defer": 0,
+      "pass_rate": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 0.6576
+      },
+      "moat_ungrounded_kills": 2,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 2
+        },
+        "distribution": {
+          "unverifiable": 2
+        }
+      }
+    },
+    {
+      "audience": "ops_manager",
+      "in_config": true,
+      "payer_class": "business",
+      "v1_operator": true,
+      "n": 1,
+      "pass": 0,
+      "kill": 1,
+      "defer": 0,
+      "pass_rate": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 0.7935
+      },
+      "moat_ungrounded_kills": 1,
+      "starved_checks": {
+        "payer_solvency": {
+          "unverifiable": 1
+        },
+        "distribution": {
+          "unverifiable": 1
+        }
+      }
+    }
+  ],
+  "per_class": {
+    "business": {
+      "pass": 19,
+      "n": 294,
+      "ungrounded": 38,
+      "kill": 248,
+      "rate": {
+        "k": 19,
+        "n": 294,
+        "rate": 0.0646,
+        "lo": 0.0418,
+        "hi": 0.0987
+      },
+      "starved_checks": {
+        "unverifiable": 270,
+        "supported": 111,
+        "refuted": 13
+      }
+    },
+    "household": {
+      "pass": 60,
+      "n": 1280,
+      "ungrounded": 156,
+      "kill": 1108,
+      "rate": {
+        "k": 60,
+        "n": 1280,
+        "rate": 0.0469,
+        "lo": 0.0366,
+        "hi": 0.0599
+      },
+      "starved_checks": {
+        "unverifiable": 1294,
+        "supported": 454,
+        "refuted": 57
+      }
+    }
+  },
+  "untagged": {
+    "kill": 25,
+    "(none)": 11,
+    "defer": 1
+  },
+  "method": {
+    "source": "store/dossiers/*.json, read-only, zero LLM",
+    "payer_class": "declared in this module (PAYER_IS_A_BUSINESS); membership from config.yaml generation.audience_forms",
+    "intervals": "95% Wilson; 'separable' means the two intervals do not overlap",
+    "min_n": 30,
+    "caveat": "full history spans several query-gen eras \u2014 this is the CONTROL for E2's biased batches, not the A/B itself (\u00a78's caveat, still true)"
+  },
+  "corpus_fingerprint": {
+    "n_dossiers": 1611,
+    "newest_mtime_utc": "2026-08-07T23:10:32.186972+00:00",
+    "sha256": "45bc80305fe1f995",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat."
+  },
+  "_meta": {
+    "experiment": "E2",
+    "module": "e2_persona_grounding.py",
+    "run_at_utc": "2026-08-07T23:25:17+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

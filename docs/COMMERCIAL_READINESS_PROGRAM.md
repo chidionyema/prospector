@@ -2532,3 +2532,736 @@ it could buy is 24 probes/day → 1/day; and a spend limit is the one limit an o
 a day (the observed failures returned in ~1.3s) for up to 24h of silence after a raise. Pinned as a
 decision in `test_a_monthly_limit_takes_the_hourly_default_and_that_is_deliberate`, to be revisited
 only on evidence that the probes cost more than the staleness.
+
+## 30. E1 hardened, E2 re-derived (and §8 retracted), E5 sized (2026-08-08)
+
+### 30.1 E1 printed a full result table having measured nothing
+
+Live run `ba5ah4zyn` (2026-08-07 23:04Z) completed, cost 48 cells of wall-clock, and printed:
+
+```
+  check             ctrl_unv  treat_unv    delta  separable
+  payer_solvency   0/0       0/0             n/a         no
+  incumbency       0/0       0/0             n/a         no
+  legality         0/0       0/0             n/a         no
+
+  separable on 0 of 3 checks at 95% Wilson; E1's kill bar is 'no drop in unverifiable rate'
+```
+
+Every verdict call had been refused by a **usage wall** — a rail distinct from the monthly spend
+limit of §29.5, which skips the CLI without calling it:
+
+```
+"Claude CLI skipped: usage wall is live"
+"claude cli not called: usage limit reached — claude usage wall: capacity returns
+ 2026-08-08 00:25:47 (12.1 min), observed by prospector-cli"
+"All brains exhausted ruling payer_solvency: ...; deferring"
+```
+
+DDG searches succeeded throughout; only the verdicts died. The output is worse than useless: `_rate`
+returns `rate=None` at n=0, the delta goes `None`, and `intervals_overlap` computes `True` over two
+zero-width intervals — so **"separable on 0 of 3 checks" is verbatim E1's kill criterion**. A total
+outage renders as the experiment's own negative finding.
+
+This is the trap the module docstring already names for the INERT ARM ("an experiment whose null
+result and whose broken result are the same output is not an experiment"). The fence existed for the
+arm and not for the denominator. §29.5 stated the rule for E3 — *a permanent exhaustion is the end of
+the measurement, not a datum* — and E1 did not carry it.
+
+**Three defects fixed** (`tools/experiments/e1_hybrid_query_arms.py`):
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | 48 cells ground out against a dead moat | `_run_arm` aborts after **2 whole candidates** unruled and returns a reason. Arm B is then not billed at all — the moat that refused arm A rules arm B too. Two candidates, not one, because three failed checks on one candidate is a plausible property of that candidate; six consecutive is a property of the moat. |
+| 2 | An empty denominator printed as a delta table | Any `check/arm` cell with `n_ruled == 0` aborts the run with `aborted: "moat_outage"`, `deltas: None`, `separable_checks: None`, and no `table` key. Catches the scattered outage the streak misses. |
+| 3 | **A deferred cell was misdiagnosed as an inert arm** | The inert fence tested `error is None`, but a cell that DEFERRED carries no `query_source` — it never got as far as searching. It would have reported "the treatment arm did not engage" when the truth is "the moat did not answer". Now gated on `_is_ruled`, one shared definition of the denominator used by both the fence and `_rate`. |
+
+Aborts name their cause: rows now record `rationale`, which is what separates the two DEFER paths —
+`"Retrieval unavailable — all searches failed"` (`verify.py:621`, a SEARCH outage) from
+`"Verdict call failed; fail-safe."` (`verify.py:469`, a BRAIN outage).
+
+Pinned by `tests/unit/test_e1_abort_on_outage.py` (5 tests, stubbed verify layer, zero spend),
+**mutation-proved with one-to-one attribution**:
+
+```
+### mutation 1 (empty-denominator fence disabled) kills:
+FAILED tests/unit/test_e1_abort_on_outage.py::test_one_empty_cell_aborts_even_when_the_streak_never_fires
+### mutation 2 (dead-arm streak abort disabled) kills:
+FAILED tests/unit/test_e1_abort_on_outage.py::test_arm_B_is_not_billed_once_arm_A_is_dead
+### restored: 5 passed
+```
+
+`test_a_healthy_run_still_reports_a_table` is the non-vacuity guard — without it a fence that always
+aborted would pass every other test in the file.
+
+**Process defect, same run:** E1 has no receipts writer, so `ba5ah4zyn`'s 48 rows went to the floor
+and the outage had to be reconstructed from stdout. `tools/experiments/runner.py:223` persists
+`<stem>_receipts.json` for any registered experiment; the run had bypassed it by invoking the script
+directly. Live runs go through the runner. (This is the same evidence-loss that nearly sank the
+§29.5 retraction — E3's receipts file is what allowed the real payload to be recovered.)
+
+**A fourth defect, found by watching the replacement run.** E1 refuses to start without
+`store/scheduler/PAUSE` (`e1_hybrid_query_arms.py:403`) so the daemon cannot take the moat and the two
+governor slots mid-run. During run `bo2mosjog` the PAUSE file created at 00:25Z was **gone by 00:35Z
+with the run still billing cells** and the daemon (pid 66223) live. Nothing in this repo deletes it —
+
+```
+$ grep -rn "PAUSE" prospector/ tools/ scripts/ --include='*.py' | grep -i "unlink\|os.remove"
+(no output)
+```
+
+— and the control centre only prints `"PAUSE kill switch ON … Delete it to resume."`
+(`control_center/pages/_overview.py:112`). The deleter is outside the process, so it cannot be
+prevented from here. It can be **recorded**: every cell now stamps `quiet`, and the headline carries
+`quiet_fence: {held, cells_observed, cells_unfenced, lost_at_cell, note}`.
+
+The disappearance is corroborated independently of the `ls`, by the guard's own log — eight
+evaluations in `store/scheduler/ticks.jsonl` between 23:36:58Z and 23:37:05Z, mid-run, all reading:
+
+```json
+{"ts": "2026-08-07T23:37:05Z", "allowed": true, "dry_run": true,
+ "reason": "ok: $0.0000 of $20.00 spent today (+$0.0000 subscription-equivalent, uncapped)",
+ "pid": 73745, "run_id": "f2f8428ae0f5"}
+```
+
+`allowed: true` with no PAUSE in the reason is the guard confirming the kill switch was not there.
+**No harm was realised on this run**: every one of those rows is `dry_run: true` from a foreign pid
+(the daemon is 66223), and the daemon's own 7200s cadence did not land inside the window. The fence
+failed; the collision it exists to prevent did not happen this time. That is exactly the kind of luck
+that should not be load-bearing, and is why the run now records the fact instead of assuming it.
+
+Recorded, not aborted — the distinction matters. Both arms are billed under the same conditions, so
+a competing daemon does not bias the contrast E1 exists to measure; what it does invalidate is any
+latency or cost figure from that run, and the note says so. If the competition is severe enough to
+stop the moat answering, defect 1 catches it. Mutation-proved:
+
+```
+### mutation 3 (fence always reports held) kills:
+FAILED tests/unit/test_e1_abort_on_outage.py::test_a_run_records_whether_the_daemon_fence_actually_held
+### restored: 7 passed
+```
+
+`test_a_fully_fenced_run_reports_held_with_no_note` is the non-vacuity guard — a reporter that always
+said "contaminated" would otherwise pass. This landed mid-flight, so `bo2mosjog`'s own receipts
+predate it and carry no `quiet_fence` key; the first run to report one is the next.
+
+**The general defect class: a precondition checked once is not a precondition.** E3 has the same
+shape (`e3_concurrency_knee.py:352` records `quiet` at start and never again) and its §29 latency
+numbers rest on it. Not fixed here; logged.
+
+### 30.2 E2 — §8's conclusion does not survive re-derivation, and is retracted
+
+§8's baseline was computed by a "script in session log". The session log is gone, so the number could
+not be re-derived, diffed, or checked — the same failure mode as a spec living only in a transcript.
+It is now a command: `.venv/bin/python tools/experiments/runner.py run E2` (offline, zero LLM).
+
+**What §8 claimed:** *"Persona class moves PASS rate ~9x … Consistent with E2's hypothesis; the
+operator/B2B-persona arm (V1) should beat the 1% tail."* Five operator personas
+(`startup_operator`, `software_developer`, `agency_owner`, `ops_manager`, `ecommerce_seller`) were
+added to the generation vocabulary on that reading (`886c9d6`, 2026-08-06).
+
+**§8's own numbers did not support it.** §8 reported no confidence intervals. Computed on §8's
+figures exactly as published:
+
+| persona | §8 | rate | 95% Wilson |
+|---|---|---|---|
+| smb_owner (**business payer**) | 21/242 | 8.7% | [5.7%, 12.9%] |
+| gen_z_worker (**household payer**) | 18/221 | 8.1% | [5.2%, 12.5%] |
+
+The top two differ by 0.6pp with almost totally overlapping intervals, and #2 is a gig-economy
+consumer persona. The 9x spread §8 measured is real, but it runs from the top of the table to the
+bottom — it is not a business-vs-household split, and "payer_solvency grounds when the payer is a
+business" was never what those numbers showed.
+
+**Re-derived on the current corpus** (1,611 dossiers; 1,574 with a decision and an audience tag;
+2.3% untagged, so not selection-biased):
+
+| persona | class | n | pass | rate | 95% CI | moat_ungrounded kills |
+|---|---|---|---|---|---|---|
+| gen_z_worker | household | 246 | 19 | 7.7% | [5.0%, 11.8%] | 26 |
+| smb_owner | business | 278 | 19 | 6.8% | [4.4%, 10.4%] | 29 |
+| primary_carer | household | 245 | 15 | 6.1% | [3.8%, 9.8%] | 40 |
+| manual_tradesperson | household | 201 | 12 | 6.0% | [3.5%, 10.1%] | 26 |
+| squeezed_middle | household | 128 | 7 | 5.5% | [2.7%, 10.9%] | 6 |
+| retiree_cohort | household | 112 | 3 | 2.7% | [0.9%, 7.6%] | 8 |
+| public_sector_worker | household | 180 | 3 | 1.7% | [0.6%, 4.8%] | 19 |
+| freelancer_creative | household | 168 | 1 | 0.6% | [0.1%, 3.3%] | 31 |
+| startup_operator | business | 10 | 0 | 0.0% | [0.0%, 27.8%] | 4 |
+| software_developer | business | 3 | 0 | — | — | 2 |
+| agency_owner | business | 2 | 0 | — | — | 2 |
+| ops_manager | business | 1 | 0 | — | — | 1 |
+
+- **The business persona is no longer top.** `gen_z_worker` (household) leads at 7.7%; `smb_owner` is
+  second at 6.8%.
+- **The class contrast is NOT separable.** business 19/294 = 6.5% [4.2%, 9.9%] vs household
+  60/1280 = 4.7% [3.7%, 6.0%] — intervals overlap. Grounding starvation on the two E1 target checks
+  is near-identical by class: `payer_solvency`+`distribution` unverifiable:supported = **2.4:1
+  business vs 2.9:1 household**, not the 5:1-vs-nothing the hypothesis predicts.
+- **The real, separable spread is within the household set**: `gen_z_worker` 7.7% vs
+  `freelancer_creative` 0.6% = **12.9x, intervals disjoint**. Persona matters; *payer class* is not
+  the mechanism.
+- **The baseline is silent about the arm E2 wants to run.** The five V1 operator personas carry
+  **16 dossiers** between them — they were added 2026-08-06 and the corpus predates them. The entire
+  business-payer column above rests on `smb_owner`.
+
+**E2's live arm should not be scheduled as specified.** Confirming the observed class contrast
+(6.5% vs 4.7%) at 95% / 80% power needs **2,637 candidates per arm — 5,274 total**. At
+`schedule.batch_size` = 15 that is 352 batches. §4 specified "2-3 batches".
+
+What survives: persona selection moves PASS rate by an order of magnitude and is worth exploiting.
+What does not: the payer-class explanation, and the "bias 2-3 batches toward operator/B2B personas"
+design built on it. The five V1 personas are harmless (the founder rule is spectrum, not one lane)
+but should not be expected to lift yield on §8's reasoning.
+
+### 30.3 E5 — the sampler engages; "3 batches vs 3" cannot see anything
+
+`tools/experiments/e5_coverage_sampler_entropy.py`. **Setup only** per the founder decision — it
+never writes `coverage_sampler.enabled`, which is pinned by a mutation-proved test (below).
+
+**Q1, does the treatment arm engage?** This mattered more than for E1: `plan_cells`
+(`coverage.py:390`) returns `[]` on **five** paths — disabled, index missing, all axes suppressed by
+`min_coverage`, `select_cells` raised, config invalid — four of them logging a warning and continuing,
+because steering must never break generation. Correct for production, lethal for an experiment: three
+"treatment" batches could run with the sampler inert and report "no entropy lift" meaning "it never
+spoke". Constructed offline against the real index:
+
+```
+CONTROL arm (flag as on disk): 0 cell(s) — rotation, as expected
+TREATMENT arm ENGAGES: 15 cell(s), e.g.
+  {'ambition_tier': 'side_hustle', 'audience': 'ecommerce_seller', 'market': 'uk',
+   'structural_form': 'risk_financing'}
+```
+
+**Q2, can 3 batches vs 3 see a lift?** No. Entropy over k=15 rows is noisy; the noise floor is
+measured by resampling the observed distribution (4,000 trials), not assumed:
+
+| axis | distinct | coverage | H_norm | batch sd | MDE @3v3 | batches@0.10 |
+|---|---|---|---|---|---|---|
+| ambition_tier | 4 | 33.7% | 0.682 | 0.161 | **0.369** | **41** |
+| structural_form | 29 | 89.6% | 0.834 | 0.052 | 0.120 | 5 |
+| audience | 12 | 87.8% | 0.860 | 0.059 | 0.136 | 6 |
+| market | 2 | 99.0% | 0.204 | 0.159 | 0.363 | 40 |
+
+**DESIGN VERDICT: UNDERPOWERED at 3 batches/arm.** Batch-to-batch noise alone spans an MDE of 0.369
+normalised bits on the worst axis. Detecting a 0.10 lift needs **41 batches per arm**. The two
+low-cardinality axes (`ambition_tier`, `market`) dominate the requirement; on `structural_form` and
+`audience` alone, 6 batches would do — so a narrowed E5 is affordable and the version in §4 is not.
+
+**Incidental finding — vocabulary drift.** `structural_form` shows **29 distinct values in the index
+against 8 in `config.yaml generation.structural_forms`** (`api_product`, `b2b_service`,
+`content_channel`, `data_workflow`, `ecommerce_brand`, `equipment_or_rental`, …). The sampler's quota
+therefore spreads its deficit calculation across 21 forms generation can no longer produce. Not
+fixed here; flagged as a prerequisite for E5's live half.
+
+This surfaced through a harness bug worth recording: the first run printed
+`structural_form H_norm = 1.365` — a *normalised* entropy above 1, which is impossible. The cause was
+normalising by the configured domain (8) while the data held 29 values. The impossible number was the
+only reason the drift was found.
+
+### 30.4 Two harness bugs that rendered as findings
+
+Both fixed, and both worth naming because they are the same defect class as §30.1 — a broken harness
+producing output shaped exactly like a result:
+
+- **E2 read the persona vocabulary with `getattr` on what is a plain `dict`** (`cfg.generation`),
+  got `None`, and printed `audience_forms in config: 0` while flagging all twelve observed personas
+  `(not in config)`. A reader bug rendering as a data finding. `_config_personas` now raises rather
+  than returning empty — there is no corpus in which zero is the right answer.
+- **E5's entropy normalisation** as above.
+
+Pinned by `tests/unit/test_e2_e5_harnesses.py` (10 tests). The load-bearing one is
+`test_e5_never_writes_the_live_sampler_flag`, mutation-proved: changing `copy.copy(cfg)` to `cfg` in
+the harness fails exactly that test and nothing else.
+
+### 30.5 Register after this session
+
+| item | state |
+|---|---|
+| E1 harness | **hardened** — outage fence, arm-B not billed after a dead arm A, deferred≠inert; 5 tests, mutation-proved |
+| E1 result | **KILLED** — see §30.6 |
+| E2 | **baseline re-derived and §8 retracted**; live arm as specified needs 5,274 candidates and should not be scheduled |
+| E5 | **setup complete** — arm engages; 3v3 underpowered, needs 41 batches/arm (or 6 on the two high-cardinality axes) |
+| L2 | traffic-blocked, unchanged |
+
+### 30.6 E1 measured — the entity-template arm is KILLED
+
+Run `bo2mosjog`, 2026-08-08, live, behind `runner.py run E1 --live` so the receipts persisted
+(`tools/experiments/e1_hybrid_query_arms_receipts.json`, 48 rows). 8 paired candidates × 3 checks ×
+2 arms; 58 CLI calls billed.
+
+```
+  check             ctrl_unv  treat_unv    delta  separable
+  payer_solvency   1/8       3/7            +30%         no
+  incumbency       6/8       6/6            +25%         no
+  legality         1/8       5/6            +71%         no
+```
+
+**The unverifiable rate did not drop. It rose on all three checks.** E1's kill bar is "no drop in
+unverifiable rate", so E1 is killed on its own criterion — and the direction is not merely absent, it
+is consistently wrong.
+
+**The fences did their job.** Five cells came back
+`"Verdict brain unavailable — all LLMs out of quota/credit"` with `retrieval_failed=True` and were
+excluded from both numerator and denominator; they are rows 43–47, i.e. the **last five of the run,
+all in arm B**. That is a design confound worth naming: the arms run sequentially, so any drift in
+moat health over the run lands entirely on the treatment. The dead-arm abort did not fire because the
+degradation arrived in the final five cells, under the six-cell threshold — the fence behaved
+correctly, and the run still needs the caveat.
+
+**The unpaired analysis was the wrong test, and it was E1's own.** The design pairs candidates across
+arms so each candidate is its own control, then compared two independent Wilson intervals, which
+throws that pairing away — and at n≤8 two such intervals overlap almost regardless of effect. Read
+the same 48 rows as the paired data they are:
+
+| check | pairs | treat-worse | treat-better | exact p |
+|---|---|---|---|---|
+| payer_solvency | 7 | 3 | 1 | 0.625 |
+| incumbency | 6 | 2 | 0 | 0.500 |
+| legality | 6 | 4 | 0 | 0.125 |
+| **pooled** | **19** | **9** | **1** | **0.0215** |
+
+No single check is separable — 4–6 discordant pairs can detect almost nothing. Pooled, the treatment
+loses 9 of 10 discordant pairs at p=0.0215. **That pooled figure is optimistic and is not the
+verdict**: the three checks of one candidate share a retrieved corpus, so the pooled pairs are not
+independent. It is a direction-consistency signal. E1 now prints per-check McNemar as the verdict and
+the pooled figure explicitly labelled as a signal (`separable_basis: "mcnemar_exact_paired_p<0.05"`).
+Mutation-proved:
+
+```
+### mutation 4 (pooling keys on candidate only, losing the check) kills:
+FAILED tests/unit/test_e1_abort_on_outage.py::test_the_paired_test_uses_the_pairing_the_design_paid_for
+### mutation 5 (unruled cells kept in pairs) kills:
+FAILED tests/unit/test_e1_abort_on_outage.py::test_a_pair_is_dropped_whenever_EITHER_arm_failed_to_rule
+### restored: 10 passed
+```
+
+**It is not a retrieval-volume story.** Mean citations per *ruled* cell are 4.04 (control) vs 4.37
+(treatment) — the entity arm fetched marginally *more* evidence and still ruled `unverifiable` more
+often. Whatever entity templates do, they are not starving the check of sources; they are fetching
+sources the verdict brain does not accept as answering the question. That is consistent with the
+§-recorded finding that the grounding bottleneck is **relevance, not availability**.
+
+**Decision: leave `retrieval.hybrid_entity_checks` empty.** It is `[]` on disk today
+(`config.yaml:113`), so no change ships. The status moves from "untested, plausible" to "tested,
+evidence against" — the register row for E1 is closed, not deferred.
+
+What would reopen it: entity templates that are *check-aware in the question they ask*, not just in
+the entity they name. Nothing in this run suggests re-running the same templates at larger n; the
+point estimate is wrong-signed on 3 of 3 checks, so more n buys precision on a negative.
+
+### 30.7 The suite was gated on the estate's last hour
+
+E1's live run tripped the shared Claude usage wall, and the next full suite run failed:
+
+```
+FAILED tests/unit/test_claude_cli_failure_reason.py::test_exhaustion_on_stdout_retires_the_brain_instead_of_retrying
+E       assert 0 == 1
+E        +  where 0 = len([])
+WARNING  prospector:claude_cli.py:270 Claude CLI skipped: usage wall is live
+```
+
+The test asserts that a spent seat raises `ProviderExhaustedError` on the **first** subprocess
+attempt rather than burning the retry budget. `run_claude_cli` preflights the usage wall and raises
+*before spawning anything* (`claude_cli.py:268-273`), so with the wall live the code path under test
+never executes and the count is zero. The marker is the shared estate file
+`~/.hermes/state/claude_usage_limit.json`, which Otto and this daemon both write — so the test's
+colour depended on what the machine had done in the previous hour. It had been green all day.
+
+Fenced in `tests/conftest.py` as `_isolate_usage_wall`, the eighth autouse fixture in that file and
+the same shape as the seven before it: redirect `PROSPECTOR_USAGE_WALL_MARKER` at a per-test temp
+path. This closes a **write** leak too — `usage_wall.observe()` writes that marker, so a test
+exercising an exhaustion path could bench the shared subscription for Otto and the daemon
+machine-wide, which is the Stripe defect class exactly. Fencing the path rather than each call site
+means a new test cannot opt out by forgetting.
+
+Mutation-proved:
+
+```
+### mutation (fence removed) kills:
+FAILED tests/unit/test_claude_cli_failure_reason.py::test_exhaustion_on_stdout_retires_the_brain_instead_of_retrying
+FAILED tests/unit/test_claude_cli_failure_reason.py::test_transient_failure_still_gets_its_full_retry_budget
+### restored: tests/unit — 1495 passed, 2 skipped in 49.14s
+```
+
+## 31. Closing the §30.5 list — the shadow metric corrected, the drift meter built, E3's fence ported (2026-08-08)
+
+Four items were open after §30.5: one cheap offline measurement (numeric_citation's live rate), one
+fence port (E3), and two data-quality defects (vocabulary drift, `_keywords` mangled tails). All four
+are addressed below. Two of them turned out to be corrections to figures this document already
+carried, which is the point of re-deriving rather than quoting.
+
+### 31.1 The numeric-citation live rate was wrong twice, and the checker was measuring our own price
+
+The shipped shadow scored **38.0%** of asserted figures as untraceable. Q4c, offline over 1,611
+dossiers, scored the same statistic at **10.1%**. A 3.7× gap between two instruments pointed at the
+same corpus is not a finding, it is a broken instrument, and §28.1 item 3 — the founder's enforcement
+decision — rests on this number. Both instruments were wrong in the same direction.
+
+**Error 1 — the denominator counted re-vets.** The log is append-only and a re-vetted check appends a
+second row, so a candidate vetted twice contributed its figures twice:
+
+```
+[A] shadow log store/numeric_citation_shadow/shadow-2026-08.jsonl  rows=132
+[B] ALL 132 rows              : 35/92 = 38.0%   <- the number §29 quoted; DOUBLE-COUNTS re-vets
+[C] 104 distinct (cand,check) : 21/62 = 33.9%   <- lumped, correct denominator
+```
+
+**Error 2 — our own list price was being scored as a fabricated claim.** `verify._check_question`
+began stating the actual rung to `payer_solvency` on 2026-08-06 (§28.3), precisely so the check would
+stop inventing a price. The model now repeats the rung we handed it — and a checker with no
+self-reference bucket scores that obedience as an ungrounded number. **An enforcement threshold
+calibrated on the lumped rate would therefore have tightened every time we told the model more
+truth.** `numeric_citation.py` now carries the same five-bucket discipline q4c uses
+(`_is_self_reference`, `Report.self_ref_n`, `Report.untraceable_n`):
+
+```
+[D] the 62 deduped figures, replayed WITH the split
+      lumped        21/62 = 33.9%
+      self_ref      15/62 = 24.2%
+      UNTRACEABLE    6/62 =  9.7%   Wilson95 [4.5, 19.5]
+    q4c on 1,611 dossiers, SAME statistic: 10.1%  -> inside the interval
+```
+
+The replay's haystack is the dossier index's `title` + `one_liner` + the declared rungs; the live
+`_self_text` also reads `hypothesis`, `who_pays` and `why_now`, so the replay's haystack is
+**narrower** than the shipped one and 9.7% is an **upper** bound. The two instruments now agree, and
+the disagreement was never about truncation — `verify.py:672` passes the same
+`VERDICT_PASSAGE_TRUNCATE` the model itself saw, and q4c's `truncated` bucket is 0.
+
+Back-compat is deliberate: `untraceable_rate` keeps its old lumped meaning because rows written
+before today carry only that field, and `summarise_shadow_log` counts pre-split rows in
+`unsplit_figures` rather than assuming they hold zero self-references. Assuming zero is exactly what
+made 38.0% look like it contradicted 10.1% when the two were never the same measurement;
+`untraceable_rate_excl_self` returns `None` — not `0.0` — when nothing carries the split.
+
+**Still SHADOW.** `numeric_citation.shadow_mode: true` (`config.yaml:1076`); enforcement remains
+unbuilt and remains the founder's call. What changed is that the number the decision would be made
+on is now the right number.
+
+### 31.2 §30.3's vocabulary-drift claim is RETRACTED; a meter replaces it
+
+§30.3 states that the coverage sampler "spreads its deficit calculation across 21 forms generation
+can no longer produce." **That is false for the shipped path.** `generate.py:272-274` does supply the
+configured domain to `plan_cells`, and `coverage_sampler.enabled` is `False` on disk anyway. The
+drift is real; the consequence attributed to it was not.
+
+```
+[E] structural_form: 29 distinct in the index vs 8 configured -> 21 off-domain, 421 rows
+      top off-domain: local_service, vertical_saas, micro_ecommerce, productized_freelance, ...
+[F] sampling domain WITH config supplied: 8      WITHOUT (the latent trap): 29
+[G] coverage_sampler.enabled = False
+```
+
+Why legacy values keep arriving with fresh timestamps: the backlog drain vets candidates **minted
+under older configs** (a tight `00:44–00:45` cluster, `revet_history=0`). It is not a live generation
+defect and needs no fix.
+
+The latent trap — `sampling_domains` falling back to `cov.observed` when a caller forgets `domains=`
+— is now fenced by an INFO line (not WARNING: `ambition_tier` and `market` have no configured
+vocabulary at all, and a meter that fires every tick is not read) and, load-bearingly, by
+`coverage.off_domain_values()`, which is emitted in every `receipt()`. The drift is now a
+**measurement in the receipt** instead of something re-discovered by hand.
+
+### 31.3 `_keywords` mangled tails — real, but confined to dead code
+
+§29.4 records that `_keywords(cand, k=4)` produces mangled `{base}` tails. The k=4 call site is
+`_entity_queries` (`verify.py:267`), which is gated at `verify.py:564-565` by
+`if check_name in (r.hybrid_entity_checks or [])` — and `config.yaml:113` reads
+`hybrid_entity_checks: []`. **The k=4 path is unreachable in the shipped config.** The path that ships
+is `_templated_queries` at `verify.py:224`, `k=6`.
+
+Measured on the shipped k=6 bases: **31.2% lead with a product-wrapper word** (solo, fixed-fee,
+solo-operated, web, vertical, paid, done-for-you, productized) rather than a domain term — the
+search engine is being handed our packaging vocabulary before the subject. That is a hypothesis about
+yield, not a fix, and it is deliberately **not** acted on here: E1 is direct, just-measured evidence
+that blind query surgery can be wrong-signed. Filed as a candidate experiment, not a change.
+
+### 31.4 E15/E17 are not a matched pair
+
+Both receipts report `n_dossiers: 1597`, which reads as the same corpus. The fingerprints disagree:
+
+```
+e15  sha256 d97829ed7ea0bae0   newest_mtime 2026-08-07T20:16:23Z
+e17  sha256 81d96e5387f7467a   newest_mtime 2026-08-07T20:35:10Z
+```
+
+Nineteen minutes apart, identical count, different content — the store is live. Per the receipts'
+own note, "two runs with different fingerprints are different samples, not a repeat." The queued
+fingerprinted repeat is **still owed**; any E15↔E17 agreement figure computed across them today is
+comparing two samples, not two methods.
+
+### 31.5 E3's quiet-machine fence is now checked per call
+
+E3 reports latencies, and a latency is a claim about concurrency only if the daemon was not competing
+for the same machine-wide governor slots while it was timed. `run()` refused to start without
+`store/scheduler/PAUSE` — which proves the fence existed at t=0 and nothing more. E1's run
+`bo2mosjog` (2026-08-08) had that file created at 00:25Z and **gone by 00:35Z with the run still in
+flight and the daemon (pid 66223) live**. Nothing in this repo unlinks it, so the deleter cannot be
+prevented from here; it can be recorded. Every measured call now stamps its own fence reading, and
+`_quiet_report` names the call at which the fence was lost and marks the run's figures unquotable.
+
+Recorded, **not** aborted: an abort discards the levels already measured, and a partial sweep is not
+comparable across levels anyway. A receipt with no stamps reports `held: false` with an explicit
+"predates the per-call fence" note — defaulting it to `true` would launder a startup-only guarantee
+into a per-call one for exactly the historic runs already quoted in §29.
+
+### 31.6 Are the experiments actually wired into the pipeline?
+
+Asked directly, and worth the register carrying the answer. Re-read from disk, not from memory:
+
+| Experiment | Config on disk | Reaches the pipeline at | State |
+|---|---|---|---|
+| E11 confidence floor | `thresholds.confidence_floor: 0.4` (`config.yaml:223`) | `kill_filter.py:50` | **ACTING** |
+| Q4 admissibility | `admissibility.policy: P1_check_aware` (`config.yaml:202`) | `verify.py:509,512` — demotes an inadmissible ruling to UNVERIFIABLE at conf 0.0 | **ACTING** |
+| E3 concurrency knee | `retrieval.claude_concurrency: 4` (`config.yaml:154`) | `operator.py:1081` → `claude_cli.py:48` `_MAX_CLI` | **ACTING** |
+| Generation vocabulary | `generation.structural_forms` (8 values) | `generate.py:167` | **ACTING** |
+| numeric_citation (§25.5) | `enabled: true`, `shadow_mode: true` (`config.yaml:1075-1076`) | `verify.py:672` — logs, cannot rule | **SHADOW** |
+| E6 prescreen prefilter | `prescreen_prefilter.shadow_mode: true` (`config.yaml:1036`) | `prescreen.py:23,169` | **SHADOW** (E6 killed) |
+| E1 hybrid entity queries | `hybrid_entity_checks: []` (`config.yaml:113`) | `verify.py:564` — gate is empty | **INERT** (E1 killed; nothing ships) |
+| E16 rerank | no `rerank` key exists | — | **INERT** (ceiling probe only) |
+| V2 coverage sampler | `coverage_sampler.enabled: false` (`config.yaml:1087`) | `generate.py:272` | **INERT** |
+
+Four levers act on every run; two log without acting behind their own explicit fence; three are inert
+because the experiment that would have justified them returned a KILL or was never more than a
+ceiling probe. That distribution is the programme working as designed — a KILL that stops a lever
+shipping is the cheapest result available.
+
+### 31.7 Receipts
+
+Three source changes, each mutation-proved (the fix reverted in place, the new tests shown to fail,
+the file restored):
+
+```
+MUTANT: audit_rationale never classifies a self-reference
+  FAILED test_our_own_rung_is_self_ref_not_untraceable
+  FAILED test_untraceable_rate_keeps_its_old_lumped_meaning
+  FAILED test_record_shadow_splits_the_rung_the_pipeline_itself_handed_the_model
+MUTANT: _self_text drops config.listing.pricing.rungs
+  FAILED test_record_shadow_splits_the_rung_the_pipeline_itself_handed_the_model
+MUTANT: pre-split rows blended into the split denominator
+  FAILED test_summarise_counts_pre_split_rows_separately_instead_of_assuming_zero
+  FAILED test_summarise_reports_no_split_rate_rather_than_a_fake_zero
+MUTANT: off_domain_values reports nothing
+  FAILED test_off_domain_values_names_the_drift_with_counts
+  FAILED test_the_receipt_carries_the_drift_meter
+MUTANT: _one stops stamping each call
+  FAILED test_every_measured_call_carries_its_own_fence_reading
+  FAILED test_a_fence_lost_mid_sweep_is_caught_where_startup_alone_would_pass
+MUTANT: _quiet_report calls a startup-only receipt held
+  FAILED test_an_unstamped_receipt_is_not_reported_as_held
+  FAILED test_no_calls_at_all_is_not_held
+
+### restored: tests/unit — 1513 passed, 2 skipped in 67.76s   (1495 + 18 new)
+```
+
+Every new test is also non-vacuous by construction: `test_the_split_is_not_vacuous_without_the_haystack`
+and `test_a_world_claim_is_never_absorbed_into_self_reference` fail on a build that classifies
+everything as self-referential, and `test_off_domain_says_nothing_rather_than_flagging_everything`
+fails on a meter that flags every axis.
+
+## 32. Getting past the "blocked on something that is not us" list (2026-08-08)
+
+Four items were carried as blocked on inputs outside this repo — daemon time, storefront traffic,
+sample size. Re-derived on disk, **three were not blocked on those things at all**, and the fourth is
+genuinely blocked but its quoted number cannot be re-derived. The one item genuinely owed (the
+E15/E17 matched pair) now has a mechanism rather than an intention, and the filed wrapper-vocabulary
+finding is answered and closed.
+
+### 32.1 E6 — the bar was answerable offline all along, and the answer is a KILL
+
+Filed as: *"shadow on since 2026-08-07, needs live daemon ticks to accumulate rows."* Two things
+were wrong with that framing.
+
+**The shadow route could never reach the bar.** It measures AGREEMENT with the LLM prescreen, but the
+LLM prescreen drops only **48/990 = 4.85%** of candidates — summed over the **95** records in
+`store/scheduler/batch_diagnostics.jsonl` that carry a `funnel` (generated 995, dedup_dropped 1,
+rejection_fastpath 4, prescreen_in 990, prescreened_out 48, novelty_selected 942, vetted 919; a
+single batch is 15 candidates, so no one record answers this). A prefilter that agrees with a filter
+which removes 4.85% cannot remove 20% of calls at any number of ticks.
+
+**The bar is about eventual OUTCOME, and outcomes are already on disk.** ">=20% of prescreen calls
+removed at no PASS loss" is a claim about which candidates would have been lost, and every candidate
+with a dossier already has its final decision. `tools/experiments/e6b_prefilter_pass_safety.py`
+replays the SHIPPED scorer (`prescreen_prefilter.PrescreenShadow`) over the corpus, labelling on the
+final decision and seeding no exemplars from the production log.
+
+Result over **1,789 candidates (79 PASS, 21 abstained)**:
+
+```
+  bar: remove >= 20% of prescreen calls, losing no PASS
+  SAFE (no pass, no defer lost): drop_rate=0.00% at threshold 0.0
+  SAFE (no pass lost, defers allowed): drop_rate=0.00% at threshold 0.0
+  VERDICT: FAILS_BAR
+```
+
+The failure is **structural, not marginal**. 82.56% of candidates score exactly 0.0, and the next
+observed score is 0.169:
+
+| threshold | dropped | PASS lost | PASS loss |
+|---|---|---|---|
+| 0.00000 | 0.00% | 0 | 0.0% |
+| 0.16892 | 82.56% | 50 | 63.3% |
+| 0.61000 | 98.77% | 79 | 100.0% |
+
+There is no 20% operating point in the distribution at all — the only available choices are drop
+nothing, or drop 82.6% and lose 50 of 79 passes. **E6 closes as a KILL on evidence rather than on
+waiting.** Recorded limits (in the receipts): the label is the final decision rather than `llm_keep`
+(an `llm_keep` replay is degenerate, since every dossier already survived prescreen); the population
+excludes the 4.85% the LLM drops, so the safe rate is a floor; `defer` is unruled; and this is a
+retrospective replay, not a live A/B.
+
+### 32.2 E5 — "41 batches/arm" is the requirement of the two axes that cannot move
+
+The 41 is `max()` across axes, and the per-axis numbers were in the receipt the whole time — in
+`batch_noise`, not `axes`:
+
+| axis | sd | `mde_normalised` (batch=15, 4000 trials) | `batches_for_target_mde` (0.10) |
+|---|---|---|---|
+| ambition_tier | 0.1613 | 0.3690 | **41** |
+| market | 0.1589 | 0.3635 | **40** |
+| audience | 0.0595 | 0.1361 | **6** |
+| structural_form | 0.0525 | 0.1201 | **5** |
+
+The two expensive axes are also the two with nothing to win: `market` has 2 distinct values at
+0.9905 coverage and `h_norm` 0.2037, and `ambition_tier` has 4. Restricted to the axes that can
+actually move, E5 needs **6 batches/arm (~12 batches)** plus flipping `coverage_sampler.enabled`,
+which is `false` on disk. **Blocked on a config flag and ~12 batches, not on 82.**
+
+### 32.3 E2 — not a sample-size problem, at any n
+
+§30.5's verdict was "needs 5,274 candidates; should not be scheduled". Re-derived, the diagnosis is
+different and the prescription does not follow: **persona is never stamped at all.**
+
+- `config.yaml:852` — `active_persona: ""`
+- `prospector/dossier.py:187` — `persona=cfg.active_persona` (the only write site)
+- `prospector/scheduler/run_scheduled.py:724` — `run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes)`, passing no persona, so every tick inherits the empty default
+
+On disk: `{'': 1473, '(none)': 315, 'shark': 1}` — and there are **three** configured personas
+(`academic`, `minimalist`, `shark`), not five as previously carried. The single `shark` row is a
+hand-run `--persona` invocation (`run.py:1067`).
+
+Every row the daemon has ever written therefore sits in **one arm**. No persona contrast is
+estimable at any n, and 5,274 more candidates of the same kind would not make it estimable.
+Unblocking E2 is a config default plus an arm rotation, then batches.
+
+### 32.4 L2 — the quoted number traces to a source comment, not a receipt (correction)
+
+**Correction to my own earlier claim in this session.** I first reported that the "172 price views /
+90 days" figure had no receipt anywhere on disk. That was wrong. It traces to
+`store_platform/src/Store.Web/src/components/cart/CartButton.tsx:45-46`, dated 2026-08-07:
+*"over a 90-day production window: price_viewed 172, checkout_completed 1, checkout_started ZERO"*.
+
+It remains unquotable as a current measurement, for three reasons that are not "no receipt":
+
+1. **A source comment is a note, not a receipt.** There is no query, export or dataset behind it.
+2. **It cannot be re-derived.** `api.mumchimp.com/health` and `/v1/listings` both return **404** as
+   measured now. The local `store_platform/src/Store.Api/store.db` is a dev artifact: `page_view` 24
+   (all 2026-08-01), and `price_viewed` / `checkout_started` / `checkout_completed` all **zero**.
+3. **The instrument has since changed.** The same comment records that `checkout_started` was ZERO —
+   a funnel with one completion and no starts — which is precisely why `CartButton.tsx:52` now emits
+   it per cart line. The 172 is a reading from before that fix.
+
+L2 stays genuinely traffic-blocked. The figure must not be quoted as a live number, and the probe
+now says so at the point of use.
+
+### 32.5 The wrapper-vocabulary finding is confounded, and does not survive adjustment — E18
+
+Filed and deliberately not acted on: a large share of shipped query bases lead with our packaging
+vocabulary (`solo`, `fixed-fee`, `done-for-you`) instead of a domain term. Promoted from a scratch
+script to `tools/experiments/e18_query_vocabulary_confound.py` so it is reproducible.
+
+Over **7,843 checks / 1,600 candidates**:
+
+- **prevalence:** 23.0% of checks lead with packaging vocabulary. (This is a *different statistic*
+  from the filed 31.2%, which was over k=6 query bases. Different denominators — they should not be
+  conflated.)
+- **naive, between-candidate:** mean_sources **2.37** (wrapper) vs **3.79** (domain); unverifiable
+  **80.51%** vs **61.27%** — large, and in the same direction on every check.
+- **design:** only **44 of 1,600 candidates (2.8%)** appear in both arms. The vocabulary travels with
+  the IDEA, so the naive contrast compares two populations of idea, not two ways of searching.
+- **doubly-adjusted** (residualised on `check_name`, then paired within candidate):
+
+| estimate | n | mean | 95% CI |
+|---|---|---|---|
+| d_sources | 44 | **+0.2184** | [-0.2094, +0.6462] |
+| d_unverifiable | 44 | **+0.0547** | [-0.0934, +0.2028] |
+
+Both intervals span zero, and **both point estimates carry the opposite sign to the naive
+association**. Verdict: **DO_NOT_ACT** — do not edit the query builder. §30.6 (E1) is just-measured
+evidence in this same programme that blind query surgery can be wrong-signed. The null is bounded
+and stated: n=44 pairs, observational, first-token detection only.
+
+### 32.6 A matched pair is now guaranteed by construction, not hoped for
+
+§31.4 recorded that E15 and E17 both reported `n_dossiers: 1597` under different fingerprints
+(`d97829ed7ea0bae0` @20:16:23Z vs `81d96e5387f7467a` @20:35:10Z). `corpus_fingerprint()` DETECTS
+that; it cannot prevent it.
+
+- `tools/experiments/_corpus.py` now resolves the corpus **per call** (`corpus_dir()`, `db_path()`,
+  `is_frozen()`) with `PROSPECTOR_CORPUS_DIR` / `PROSPECTOR_CORPUS_DB` overrides. Resolution is
+  per-call deliberately: a constant captured at import would ignore an override set afterwards, and
+  a constant that no longer describes what the code reads is this repo's "write-only field" trap.
+- `tools/experiments/_freeze_corpus.py` snapshots and **verifies**: fingerprint the live store, copy
+  with `copy2` (preserving the mtime and size the fingerprint hashes), fingerprint the snapshot, and
+  retry up to 3 times. It **raises rather than returning a torn snapshot** — a torn snapshot is worse
+  than none, because it looks frozen and is not. Freezing from inside an already-frozen shell pops
+  the overrides first, so it cannot re-copy the snapshot and report a meaningless perfect match.
+
+Verified: 1,611 dossiers, 79 MB, 6.7 s, `sha256=00fc2c965e68d1d3`, before == after. Receipts now
+carry `frozen`, so a number can never be mistaken for a live reading.
+
+**One failure worth recording from the first frozen run.** The three experiments were chained in one
+shell as `runner.py run E15 --all 2>&1 | tail -6`, and E15 exited after ~3 minutes without writing a
+receipt. The chain continued to E17 regardless, so the visible symptom was simply a missing file —
+the cause had been thrown away by `tail -6`, and the `;`-chaining meant a non-zero exit changed
+nothing. This is the repo's "captured-output guard hides a failure" trap in its exact shape, and it
+is why the re-run redirects the whole stream to a log rather than piping it. The cause of that
+particular exit is **unrecoverable** and is not claimed here; the re-run under the same frozen
+environment proceeded normally past the point where the first attempt died.
+
+### 32.7 The blocked list is now a probe, and it found five defects in itself
+
+`scripts/blocker_probe.py` prints, for every open item, the BAR, the value read off disk now, a
+verdict and the command that reproduces it. A row can only say BLOCKED if a number says so.
+
+It earned its place by exposing five defects **in itself** — recorded here because a tracking probe
+that misreports its own inputs is the same drift it exists to kill:
+
+1. it read a bar verdict straight out of receipts generated by a `--limit 200` **smoke run** — the
+   exact "truncate the evidence, then classify the truncation" failure. It now refuses any receipt
+   whose `_meta.argv` carries `--limit`.
+2. it looked for the per-axis batch requirement in `axes`, where it does not live, and printed
+   "per-axis need=run E5" while the receipt held the numbers.
+3. it derived "which personas are missing" by filtering its own `GROUP BY` for `count == 0`. A
+   `GROUP BY` only returns values that OCCUR, so that filter is unsatisfiable and the absent arms —
+   the entire point — could never be reported. The missing set is now subtracted from the CONFIGURED
+   personas.
+4. it printed `untraceable_rate` unlabelled. That field deliberately keeps its pre-correction lumped
+   meaning for back-compat (§31.1, and :2931 above), so printing it bare re-publishes the **38.0%**
+   that §31.1 retracted. It is now named as lumped, and §31.1's decision figure (9.7%, Wilson95
+   [4.5, 19.5]) is carried beside it.
+5. **the worst of the five, found on a later run:** its E15/E17 row read
+   `<stem>_receipts.json` while its own `reproduce` line told you to run the experiment with
+   `--all` — and `--all` sets `_receipt_suffix`, so `runner.py:223` writes
+   `<stem>_full_receipts.json`. The probe measured a file its own instruction never writes. It
+   would have reported the matched pair BLOCKED forever, *including after the pair landed*: a
+   permanent red that no amount of correct work could clear. It now prefers the widest run
+   available (`_full` → `_current_moat` → plain) and prints the filename beside each fingerprint,
+   so a number can be traced to the run that produced it.
+
+That fifth one is also why this section is not written as "the probe now guarantees the register is
+honest". A probe is an instrument, and an instrument can be wrong about its own inputs. What it
+guarantees is that being wrong is now *discoverable by running something*, rather than by rereading
+prose.
+
+### 32.8 Register after this session
+
+| # | item | state |
+|---|---|---|
+| 1 | **E6** | **CLOSED — KILL on evidence** (§32.1). FAILS_BAR, safe drop rate 0.00%; no 20% operating point exists |
+| 2 | **E18** | **CLOSED — DO_NOT_ACT** (§32.5). The naive effect is a confound; adjusted intervals span zero and flip sign |
+| 3 | **E5** | **UNBLOCKED, not run.** 6 batches/arm on `structural_form`+`audience`, plus `coverage_sampler.enabled` |
+| 4 | **E2** | **RE-DIAGNOSED** (§32.3). Blocked on a config default and an arm rotation, not on 5,274 candidates |
+| 5 | **L2** | **STILL BLOCKED on traffic.** The "172 / 90 days" figure is retired as a quotable number (§32.4) |
+| 6 | **E15/E17** | mechanism shipped (§32.6); the frozen matched pair is the remaining run |
+

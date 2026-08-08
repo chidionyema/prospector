@@ -1,0 +1,2399 @@
+{
+  "headline": "prefilter can safely remove 0.00% of prescreen calls vs a 20% bar -> FAILS_BAR",
+  "verdict": "FAILS_BAR",
+  "bar": 0.2,
+  "n_candidates": 1789,
+  "n_pass": 79,
+  "n_abstained": 21,
+  "safe_no_pass_no_defer": {
+    "threshold": 0.0,
+    "n_dropped": 0,
+    "drop_rate": 0.0,
+    "pass_dropped": 0,
+    "defer_dropped": 0,
+    "pass_loss_rate": 0.0
+  },
+  "safe_no_pass": {
+    "threshold": 0.0,
+    "n_dropped": 0,
+    "drop_rate": 0.0,
+    "pass_dropped": 0,
+    "defer_dropped": 0,
+    "pass_loss_rate": 0.0
+  },
+  "curve": [
+    {
+      "threshold": 0.0,
+      "n_dropped": 0,
+      "drop_rate": 0.0,
+      "pass_dropped": 0,
+      "defer_dropped": 0,
+      "pass_loss_rate": 0.0
+    },
+    {
+      "threshold": 0.16892268944679342,
+      "n_dropped": 1477,
+      "drop_rate": 0.8256008943543879,
+      "pass_dropped": 50,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6329113924050633
+    },
+    {
+      "threshold": 0.1696260189198864,
+      "n_dropped": 1478,
+      "drop_rate": 0.8261598658468418,
+      "pass_dropped": 50,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6329113924050633
+    },
+    {
+      "threshold": 0.17134269326144613,
+      "n_dropped": 1479,
+      "drop_rate": 0.8267188373392957,
+      "pass_dropped": 50,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6329113924050633
+    },
+    {
+      "threshold": 0.17454153463847183,
+      "n_dropped": 1480,
+      "drop_rate": 0.8272778088317496,
+      "pass_dropped": 50,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6329113924050633
+    },
+    {
+      "threshold": 0.17630182745051204,
+      "n_dropped": 1481,
+      "drop_rate": 0.8278367803242035,
+      "pass_dropped": 50,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6329113924050633
+    },
+    {
+      "threshold": 0.1782456516294643,
+      "n_dropped": 1482,
+      "drop_rate": 0.8283957518166574,
+      "pass_dropped": 50,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6329113924050633
+    },
+    {
+      "threshold": 0.17974318895165195,
+      "n_dropped": 1483,
+      "drop_rate": 0.8289547233091112,
+      "pass_dropped": 50,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6329113924050633
+    },
+    {
+      "threshold": 0.18044365948108618,
+      "n_dropped": 1484,
+      "drop_rate": 0.8295136948015651,
+      "pass_dropped": 51,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6455696202531646
+    },
+    {
+      "threshold": 0.18085352698965934,
+      "n_dropped": 1485,
+      "drop_rate": 0.830072666294019,
+      "pass_dropped": 51,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6455696202531646
+    },
+    {
+      "threshold": 0.1808661992370628,
+      "n_dropped": 1486,
+      "drop_rate": 0.8306316377864729,
+      "pass_dropped": 51,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6455696202531646
+    },
+    {
+      "threshold": 0.1810053966064612,
+      "n_dropped": 1487,
+      "drop_rate": 0.8311906092789267,
+      "pass_dropped": 52,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6582278481012658
+    },
+    {
+      "threshold": 0.18103247247426196,
+      "n_dropped": 1488,
+      "drop_rate": 0.8317495807713806,
+      "pass_dropped": 52,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6582278481012658
+    },
+    {
+      "threshold": 0.18223215019492175,
+      "n_dropped": 1489,
+      "drop_rate": 0.8323085522638345,
+      "pass_dropped": 52,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6582278481012658
+    },
+    {
+      "threshold": 0.1823840092856637,
+      "n_dropped": 1490,
+      "drop_rate": 0.8328675237562885,
+      "pass_dropped": 52,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6582278481012658
+    },
+    {
+      "threshold": 0.18281353273954148,
+      "n_dropped": 1491,
+      "drop_rate": 0.8334264952487423,
+      "pass_dropped": 52,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6582278481012658
+    },
+    {
+      "threshold": 0.18381804784320782,
+      "n_dropped": 1492,
+      "drop_rate": 0.8339854667411962,
+      "pass_dropped": 53,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1840835346661011,
+      "n_dropped": 1493,
+      "drop_rate": 0.8345444382336501,
+      "pass_dropped": 53,
+      "defer_dropped": 150,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18522880867561958,
+      "n_dropped": 1494,
+      "drop_rate": 0.835103409726104,
+      "pass_dropped": 53,
+      "defer_dropped": 151,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18590100485490915,
+      "n_dropped": 1495,
+      "drop_rate": 0.8356623812185578,
+      "pass_dropped": 53,
+      "defer_dropped": 151,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18608304967598327,
+      "n_dropped": 1496,
+      "drop_rate": 0.8362213527110117,
+      "pass_dropped": 53,
+      "defer_dropped": 151,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18618400974731003,
+      "n_dropped": 1497,
+      "drop_rate": 0.8367803242034656,
+      "pass_dropped": 53,
+      "defer_dropped": 152,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18669557646149945,
+      "n_dropped": 1498,
+      "drop_rate": 0.8373392956959195,
+      "pass_dropped": 53,
+      "defer_dropped": 153,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1868709540027943,
+      "n_dropped": 1499,
+      "drop_rate": 0.8378982671883733,
+      "pass_dropped": 53,
+      "defer_dropped": 153,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18726948560661646,
+      "n_dropped": 1500,
+      "drop_rate": 0.8384572386808273,
+      "pass_dropped": 53,
+      "defer_dropped": 153,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18756534202814665,
+      "n_dropped": 1501,
+      "drop_rate": 0.8390162101732812,
+      "pass_dropped": 53,
+      "defer_dropped": 154,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18794196106621822,
+      "n_dropped": 1502,
+      "drop_rate": 0.8395751816657351,
+      "pass_dropped": 53,
+      "defer_dropped": 154,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1880401415377825,
+      "n_dropped": 1503,
+      "drop_rate": 0.840134153158189,
+      "pass_dropped": 53,
+      "defer_dropped": 154,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18838498611544133,
+      "n_dropped": 1504,
+      "drop_rate": 0.8406931246506428,
+      "pass_dropped": 53,
+      "defer_dropped": 154,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18839001914420406,
+      "n_dropped": 1505,
+      "drop_rate": 0.8412520961430967,
+      "pass_dropped": 53,
+      "defer_dropped": 154,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1884307421920895,
+      "n_dropped": 1506,
+      "drop_rate": 0.8418110676355506,
+      "pass_dropped": 53,
+      "defer_dropped": 154,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18867769820866315,
+      "n_dropped": 1507,
+      "drop_rate": 0.8423700391280045,
+      "pass_dropped": 53,
+      "defer_dropped": 154,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18872206477803,
+      "n_dropped": 1508,
+      "drop_rate": 0.8429290106204583,
+      "pass_dropped": 53,
+      "defer_dropped": 155,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18886988780220273,
+      "n_dropped": 1509,
+      "drop_rate": 0.8434879821129122,
+      "pass_dropped": 53,
+      "defer_dropped": 155,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1889929086246585,
+      "n_dropped": 1510,
+      "drop_rate": 0.8440469536053661,
+      "pass_dropped": 53,
+      "defer_dropped": 155,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18923732264939547,
+      "n_dropped": 1511,
+      "drop_rate": 0.8446059250978201,
+      "pass_dropped": 53,
+      "defer_dropped": 155,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18933538707884684,
+      "n_dropped": 1512,
+      "drop_rate": 0.8451648965902739,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18936880975174206,
+      "n_dropped": 1513,
+      "drop_rate": 0.8457238680827278,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18942750677630718,
+      "n_dropped": 1514,
+      "drop_rate": 0.8462828395751817,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.18943559649061087,
+      "n_dropped": 1515,
+      "drop_rate": 0.8468418110676356,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1895714510685582,
+      "n_dropped": 1516,
+      "drop_rate": 0.8474007825600894,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1896490534110745,
+      "n_dropped": 1517,
+      "drop_rate": 0.8479597540525433,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1897678851991958,
+      "n_dropped": 1518,
+      "drop_rate": 0.8485187255449972,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.19001141951411143,
+      "n_dropped": 1519,
+      "drop_rate": 0.8490776970374511,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1900395338539798,
+      "n_dropped": 1520,
+      "drop_rate": 0.8496366685299049,
+      "pass_dropped": 53,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6708860759493671
+    },
+    {
+      "threshold": 0.1902085735343577,
+      "n_dropped": 1521,
+      "drop_rate": 0.8501956400223588,
+      "pass_dropped": 54,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.19041872004639931,
+      "n_dropped": 1522,
+      "drop_rate": 0.8507546115148128,
+      "pass_dropped": 54,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.19042890963702583,
+      "n_dropped": 1523,
+      "drop_rate": 0.8513135830072667,
+      "pass_dropped": 54,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.19043041688920848,
+      "n_dropped": 1524,
+      "drop_rate": 0.8518725544997205,
+      "pass_dropped": 54,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.19046336413133078,
+      "n_dropped": 1525,
+      "drop_rate": 0.8524315259921744,
+      "pass_dropped": 54,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.19054313852018917,
+      "n_dropped": 1526,
+      "drop_rate": 0.8529904974846283,
+      "pass_dropped": 54,
+      "defer_dropped": 156,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.19066834492226967,
+      "n_dropped": 1527,
+      "drop_rate": 0.8535494689770822,
+      "pass_dropped": 54,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.19083886561463917,
+      "n_dropped": 1528,
+      "drop_rate": 0.854108440469536,
+      "pass_dropped": 54,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.6835443037974683
+    },
+    {
+      "threshold": 0.1909018597951023,
+      "n_dropped": 1529,
+      "drop_rate": 0.8546674119619899,
+      "pass_dropped": 55,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.6962025316455697
+    },
+    {
+      "threshold": 0.19092886594292569,
+      "n_dropped": 1530,
+      "drop_rate": 0.8552263834544438,
+      "pass_dropped": 55,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.6962025316455697
+    },
+    {
+      "threshold": 0.190948724047274,
+      "n_dropped": 1531,
+      "drop_rate": 0.8557853549468977,
+      "pass_dropped": 56,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7088607594936709
+    },
+    {
+      "threshold": 0.19104275957501893,
+      "n_dropped": 1532,
+      "drop_rate": 0.8563443264393515,
+      "pass_dropped": 56,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7088607594936709
+    },
+    {
+      "threshold": 0.19140484893372173,
+      "n_dropped": 1533,
+      "drop_rate": 0.8569032979318055,
+      "pass_dropped": 56,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7088607594936709
+    },
+    {
+      "threshold": 0.19143157918749024,
+      "n_dropped": 1534,
+      "drop_rate": 0.8574622694242594,
+      "pass_dropped": 56,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7088607594936709
+    },
+    {
+      "threshold": 0.19148873711741934,
+      "n_dropped": 1535,
+      "drop_rate": 0.8580212409167133,
+      "pass_dropped": 56,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7088607594936709
+    },
+    {
+      "threshold": 0.19149547889714502,
+      "n_dropped": 1536,
+      "drop_rate": 0.8585802124091672,
+      "pass_dropped": 57,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7215189873417721
+    },
+    {
+      "threshold": 0.19153799682726405,
+      "n_dropped": 1537,
+      "drop_rate": 0.859139183901621,
+      "pass_dropped": 58,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7341772151898734
+    },
+    {
+      "threshold": 0.1916073334373908,
+      "n_dropped": 1538,
+      "drop_rate": 0.8596981553940749,
+      "pass_dropped": 58,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7341772151898734
+    },
+    {
+      "threshold": 0.19174687555821407,
+      "n_dropped": 1539,
+      "drop_rate": 0.8602571268865288,
+      "pass_dropped": 58,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7341772151898734
+    },
+    {
+      "threshold": 0.19193612918714692,
+      "n_dropped": 1540,
+      "drop_rate": 0.8608160983789827,
+      "pass_dropped": 58,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7341772151898734
+    },
+    {
+      "threshold": 0.19208833769580375,
+      "n_dropped": 1541,
+      "drop_rate": 0.8613750698714365,
+      "pass_dropped": 58,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7341772151898734
+    },
+    {
+      "threshold": 0.19242279510830113,
+      "n_dropped": 1542,
+      "drop_rate": 0.8619340413638904,
+      "pass_dropped": 58,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7341772151898734
+    },
+    {
+      "threshold": 0.19244235368205748,
+      "n_dropped": 1543,
+      "drop_rate": 0.8624930128563443,
+      "pass_dropped": 59,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7468354430379747
+    },
+    {
+      "threshold": 0.19272957801691387,
+      "n_dropped": 1544,
+      "drop_rate": 0.8630519843487983,
+      "pass_dropped": 60,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.759493670886076
+    },
+    {
+      "threshold": 0.19295879734670343,
+      "n_dropped": 1545,
+      "drop_rate": 0.8636109558412521,
+      "pass_dropped": 60,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.759493670886076
+    },
+    {
+      "threshold": 0.19301006821748942,
+      "n_dropped": 1546,
+      "drop_rate": 0.864169927333706,
+      "pass_dropped": 61,
+      "defer_dropped": 157,
+      "pass_loss_rate": 0.7721518987341772
+    },
+    {
+      "threshold": 0.19310781965700344,
+      "n_dropped": 1547,
+      "drop_rate": 0.8647288988261599,
+      "pass_dropped": 61,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7721518987341772
+    },
+    {
+      "threshold": 0.19311629639780592,
+      "n_dropped": 1548,
+      "drop_rate": 0.8652878703186138,
+      "pass_dropped": 61,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7721518987341772
+    },
+    {
+      "threshold": 0.19326207282206045,
+      "n_dropped": 1549,
+      "drop_rate": 0.8658468418110676,
+      "pass_dropped": 61,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7721518987341772
+    },
+    {
+      "threshold": 0.19328006010597662,
+      "n_dropped": 1550,
+      "drop_rate": 0.8664058133035215,
+      "pass_dropped": 61,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7721518987341772
+    },
+    {
+      "threshold": 0.19334550425970526,
+      "n_dropped": 1551,
+      "drop_rate": 0.8669647847959754,
+      "pass_dropped": 61,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7721518987341772
+    },
+    {
+      "threshold": 0.19340862090958522,
+      "n_dropped": 1552,
+      "drop_rate": 0.8675237562884293,
+      "pass_dropped": 61,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7721518987341772
+    },
+    {
+      "threshold": 0.19357153921552736,
+      "n_dropped": 1553,
+      "drop_rate": 0.8680827277808831,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19375530260011345,
+      "n_dropped": 1554,
+      "drop_rate": 0.868641699273337,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19382983383300678,
+      "n_dropped": 1555,
+      "drop_rate": 0.869200670765791,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19383915988805556,
+      "n_dropped": 1556,
+      "drop_rate": 0.8697596422582449,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19386404393429454,
+      "n_dropped": 1557,
+      "drop_rate": 0.8703186137506987,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19401710416529191,
+      "n_dropped": 1558,
+      "drop_rate": 0.8708775852431526,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19429984550835572,
+      "n_dropped": 1559,
+      "drop_rate": 0.8714365567356065,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19437221295925444,
+      "n_dropped": 1560,
+      "drop_rate": 0.8719955282280604,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19489223934641647,
+      "n_dropped": 1561,
+      "drop_rate": 0.8725544997205142,
+      "pass_dropped": 62,
+      "defer_dropped": 158,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.1951094986945692,
+      "n_dropped": 1562,
+      "drop_rate": 0.8731134712129681,
+      "pass_dropped": 62,
+      "defer_dropped": 159,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19517004200415164,
+      "n_dropped": 1563,
+      "drop_rate": 0.873672442705422,
+      "pass_dropped": 62,
+      "defer_dropped": 159,
+      "pass_loss_rate": 0.7848101265822784
+    },
+    {
+      "threshold": 0.19517715272925162,
+      "n_dropped": 1564,
+      "drop_rate": 0.8742314141978759,
+      "pass_dropped": 63,
+      "defer_dropped": 159,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19534666767514525,
+      "n_dropped": 1565,
+      "drop_rate": 0.8747903856903297,
+      "pass_dropped": 63,
+      "defer_dropped": 159,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19537204223792373,
+      "n_dropped": 1566,
+      "drop_rate": 0.8753493571827837,
+      "pass_dropped": 63,
+      "defer_dropped": 159,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19537353545062286,
+      "n_dropped": 1567,
+      "drop_rate": 0.8759083286752376,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1953958947282221,
+      "n_dropped": 1568,
+      "drop_rate": 0.8764673001676915,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19553443924039685,
+      "n_dropped": 1569,
+      "drop_rate": 0.8770262716601454,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1955522953989009,
+      "n_dropped": 1570,
+      "drop_rate": 0.8775852431525992,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1955862243434376,
+      "n_dropped": 1571,
+      "drop_rate": 0.8781442146450531,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19559425656726281,
+      "n_dropped": 1572,
+      "drop_rate": 0.878703186137507,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19561217030153655,
+      "n_dropped": 1573,
+      "drop_rate": 0.8792621576299608,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.195621456198839,
+      "n_dropped": 1574,
+      "drop_rate": 0.8798211291224147,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19579737489094892,
+      "n_dropped": 1575,
+      "drop_rate": 0.8803801006148686,
+      "pass_dropped": 63,
+      "defer_dropped": 160,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19590929365163195,
+      "n_dropped": 1576,
+      "drop_rate": 0.8809390721073225,
+      "pass_dropped": 63,
+      "defer_dropped": 161,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19596294704661762,
+      "n_dropped": 1577,
+      "drop_rate": 0.8814980435997765,
+      "pass_dropped": 63,
+      "defer_dropped": 161,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19602215973502973,
+      "n_dropped": 1578,
+      "drop_rate": 0.8820570150922303,
+      "pass_dropped": 63,
+      "defer_dropped": 161,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19614470432453557,
+      "n_dropped": 1579,
+      "drop_rate": 0.8826159865846842,
+      "pass_dropped": 63,
+      "defer_dropped": 162,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1962319054693954,
+      "n_dropped": 1580,
+      "drop_rate": 0.8831749580771381,
+      "pass_dropped": 63,
+      "defer_dropped": 162,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19629158811794611,
+      "n_dropped": 1581,
+      "drop_rate": 0.883733929569592,
+      "pass_dropped": 63,
+      "defer_dropped": 162,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19629918851206898,
+      "n_dropped": 1582,
+      "drop_rate": 0.8842929010620458,
+      "pass_dropped": 63,
+      "defer_dropped": 162,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19634595289632129,
+      "n_dropped": 1583,
+      "drop_rate": 0.8848518725544997,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1963466321364073,
+      "n_dropped": 1584,
+      "drop_rate": 0.8854108440469536,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19645992592419434,
+      "n_dropped": 1585,
+      "drop_rate": 0.8859698155394075,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1967393887035424,
+      "n_dropped": 1586,
+      "drop_rate": 0.8865287870318613,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19692109161217236,
+      "n_dropped": 1587,
+      "drop_rate": 0.8870877585243152,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1976519546871508,
+      "n_dropped": 1588,
+      "drop_rate": 0.8876467300167692,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.1977039364657882,
+      "n_dropped": 1589,
+      "drop_rate": 0.8882057015092231,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19790727651676027,
+      "n_dropped": 1590,
+      "drop_rate": 0.8887646730016769,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19790990992856106,
+      "n_dropped": 1591,
+      "drop_rate": 0.8893236444941308,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19795136264934898,
+      "n_dropped": 1592,
+      "drop_rate": 0.8898826159865847,
+      "pass_dropped": 63,
+      "defer_dropped": 163,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19811659579228139,
+      "n_dropped": 1593,
+      "drop_rate": 0.8904415874790386,
+      "pass_dropped": 63,
+      "defer_dropped": 164,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19820183957111065,
+      "n_dropped": 1594,
+      "drop_rate": 0.8910005589714924,
+      "pass_dropped": 63,
+      "defer_dropped": 164,
+      "pass_loss_rate": 0.7974683544303798
+    },
+    {
+      "threshold": 0.19834824662182046,
+      "n_dropped": 1595,
+      "drop_rate": 0.8915595304639463,
+      "pass_dropped": 64,
+      "defer_dropped": 164,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.1983993153425458,
+      "n_dropped": 1596,
+      "drop_rate": 0.8921185019564002,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.1986553801690632,
+      "n_dropped": 1597,
+      "drop_rate": 0.8926774734488541,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19872392216697385,
+      "n_dropped": 1598,
+      "drop_rate": 0.8932364449413079,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19883691154842714,
+      "n_dropped": 1599,
+      "drop_rate": 0.8937954164337619,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19886990352421827,
+      "n_dropped": 1600,
+      "drop_rate": 0.8943543879262158,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.1988872469705422,
+      "n_dropped": 1601,
+      "drop_rate": 0.8949133594186697,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19891043918398318,
+      "n_dropped": 1602,
+      "drop_rate": 0.8954723309111235,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19907405795875446,
+      "n_dropped": 1603,
+      "drop_rate": 0.8960313024035774,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19909355696647632,
+      "n_dropped": 1604,
+      "drop_rate": 0.8965902738960313,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.1991827343783846,
+      "n_dropped": 1605,
+      "drop_rate": 0.8971492453884852,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19930255950969927,
+      "n_dropped": 1606,
+      "drop_rate": 0.897708216880939,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.19935946086921277,
+      "n_dropped": 1607,
+      "drop_rate": 0.8982671883733929,
+      "pass_dropped": 64,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.810126582278481
+    },
+    {
+      "threshold": 0.1994311815900561,
+      "n_dropped": 1608,
+      "drop_rate": 0.8988261598658468,
+      "pass_dropped": 65,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.19969049929364588,
+      "n_dropped": 1609,
+      "drop_rate": 0.8993851313583007,
+      "pass_dropped": 65,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.19973288139010342,
+      "n_dropped": 1610,
+      "drop_rate": 0.8999441028507547,
+      "pass_dropped": 65,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.1997858400140428,
+      "n_dropped": 1611,
+      "drop_rate": 0.9005030743432085,
+      "pass_dropped": 65,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.19984881053623,
+      "n_dropped": 1612,
+      "drop_rate": 0.9010620458356624,
+      "pass_dropped": 65,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.1999446097700536,
+      "n_dropped": 1613,
+      "drop_rate": 0.9016210173281163,
+      "pass_dropped": 65,
+      "defer_dropped": 165,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.20003782247512553,
+      "n_dropped": 1614,
+      "drop_rate": 0.9021799888205702,
+      "pass_dropped": 65,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.2002332729946324,
+      "n_dropped": 1615,
+      "drop_rate": 0.902738960313024,
+      "pass_dropped": 65,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.20026183011185592,
+      "n_dropped": 1616,
+      "drop_rate": 0.9032979318054779,
+      "pass_dropped": 65,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8227848101265823
+    },
+    {
+      "threshold": 0.20038490997908556,
+      "n_dropped": 1617,
+      "drop_rate": 0.9038569032979318,
+      "pass_dropped": 66,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8354430379746836
+    },
+    {
+      "threshold": 0.20071833002740128,
+      "n_dropped": 1618,
+      "drop_rate": 0.9044158747903857,
+      "pass_dropped": 66,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8354430379746836
+    },
+    {
+      "threshold": 0.2007582548064872,
+      "n_dropped": 1619,
+      "drop_rate": 0.9049748462828395,
+      "pass_dropped": 67,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8481012658227848
+    },
+    {
+      "threshold": 0.2008242227604781,
+      "n_dropped": 1620,
+      "drop_rate": 0.9055338177752935,
+      "pass_dropped": 67,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8481012658227848
+    },
+    {
+      "threshold": 0.20085051367094348,
+      "n_dropped": 1621,
+      "drop_rate": 0.9060927892677474,
+      "pass_dropped": 67,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8481012658227848
+    },
+    {
+      "threshold": 0.20125572101445344,
+      "n_dropped": 1622,
+      "drop_rate": 0.9066517607602013,
+      "pass_dropped": 67,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8481012658227848
+    },
+    {
+      "threshold": 0.2012935833593203,
+      "n_dropped": 1623,
+      "drop_rate": 0.9072107322526551,
+      "pass_dropped": 68,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20151970559358426,
+      "n_dropped": 1624,
+      "drop_rate": 0.907769703745109,
+      "pass_dropped": 68,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20156187474161188,
+      "n_dropped": 1625,
+      "drop_rate": 0.9083286752375629,
+      "pass_dropped": 68,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20157090657087204,
+      "n_dropped": 1626,
+      "drop_rate": 0.9088876467300168,
+      "pass_dropped": 68,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20161059436254788,
+      "n_dropped": 1627,
+      "drop_rate": 0.9094466182224706,
+      "pass_dropped": 68,
+      "defer_dropped": 166,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20189933512645886,
+      "n_dropped": 1628,
+      "drop_rate": 0.9100055897149245,
+      "pass_dropped": 68,
+      "defer_dropped": 167,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20212314730468375,
+      "n_dropped": 1629,
+      "drop_rate": 0.9105645612073784,
+      "pass_dropped": 68,
+      "defer_dropped": 167,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.2023214638474929,
+      "n_dropped": 1630,
+      "drop_rate": 0.9111235326998323,
+      "pass_dropped": 68,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20246136004449494,
+      "n_dropped": 1631,
+      "drop_rate": 0.9116825041922862,
+      "pass_dropped": 68,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20248278793285504,
+      "n_dropped": 1632,
+      "drop_rate": 0.9122414756847401,
+      "pass_dropped": 68,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.2027170710692684,
+      "n_dropped": 1633,
+      "drop_rate": 0.912800447177194,
+      "pass_dropped": 68,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20276863173433593,
+      "n_dropped": 1634,
+      "drop_rate": 0.9133594186696479,
+      "pass_dropped": 68,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20277528660682317,
+      "n_dropped": 1635,
+      "drop_rate": 0.9139183901621017,
+      "pass_dropped": 68,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.2028958234280013,
+      "n_dropped": 1636,
+      "drop_rate": 0.9144773616545556,
+      "pass_dropped": 68,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8607594936708861
+    },
+    {
+      "threshold": 0.20303430203572154,
+      "n_dropped": 1637,
+      "drop_rate": 0.9150363331470095,
+      "pass_dropped": 69,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.20305985411193403,
+      "n_dropped": 1638,
+      "drop_rate": 0.9155953046394634,
+      "pass_dropped": 69,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.20308803383333504,
+      "n_dropped": 1639,
+      "drop_rate": 0.9161542761319172,
+      "pass_dropped": 69,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.20311228386355643,
+      "n_dropped": 1640,
+      "drop_rate": 0.9167132476243711,
+      "pass_dropped": 69,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.20311879748323405,
+      "n_dropped": 1641,
+      "drop_rate": 0.917272219116825,
+      "pass_dropped": 69,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.20344285226622214,
+      "n_dropped": 1642,
+      "drop_rate": 0.917831190609279,
+      "pass_dropped": 69,
+      "defer_dropped": 168,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.2041283837351133,
+      "n_dropped": 1643,
+      "drop_rate": 0.9183901621017329,
+      "pass_dropped": 69,
+      "defer_dropped": 169,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.20417201673273672,
+      "n_dropped": 1644,
+      "drop_rate": 0.9189491335941867,
+      "pass_dropped": 69,
+      "defer_dropped": 169,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.2043535731418319,
+      "n_dropped": 1645,
+      "drop_rate": 0.9195081050866406,
+      "pass_dropped": 69,
+      "defer_dropped": 169,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.2044810919779486,
+      "n_dropped": 1646,
+      "drop_rate": 0.9200670765790945,
+      "pass_dropped": 69,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.2046540566098179,
+      "n_dropped": 1647,
+      "drop_rate": 0.9206260480715484,
+      "pass_dropped": 69,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.2047407545847303,
+      "n_dropped": 1648,
+      "drop_rate": 0.9211850195640022,
+      "pass_dropped": 69,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8734177215189873
+    },
+    {
+      "threshold": 0.20495025423027444,
+      "n_dropped": 1649,
+      "drop_rate": 0.9217439910564561,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20500215945543457,
+      "n_dropped": 1650,
+      "drop_rate": 0.92230296254891,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20553027122861367,
+      "n_dropped": 1651,
+      "drop_rate": 0.9228619340413639,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20564541222467553,
+      "n_dropped": 1652,
+      "drop_rate": 0.9234209055338177,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20605511642881455,
+      "n_dropped": 1653,
+      "drop_rate": 0.9239798770262717,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20612598024033305,
+      "n_dropped": 1654,
+      "drop_rate": 0.9245388485187256,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20615435744888835,
+      "n_dropped": 1655,
+      "drop_rate": 0.9250978200111795,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20642456052662722,
+      "n_dropped": 1656,
+      "drop_rate": 0.9256567915036333,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.2064434576602071,
+      "n_dropped": 1657,
+      "drop_rate": 0.9262157629960872,
+      "pass_dropped": 70,
+      "defer_dropped": 170,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20670962672831147,
+      "n_dropped": 1658,
+      "drop_rate": 0.9267747344885411,
+      "pass_dropped": 70,
+      "defer_dropped": 171,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.2071649247244281,
+      "n_dropped": 1659,
+      "drop_rate": 0.927333705980995,
+      "pass_dropped": 70,
+      "defer_dropped": 171,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20717909701890913,
+      "n_dropped": 1660,
+      "drop_rate": 0.9278926774734488,
+      "pass_dropped": 70,
+      "defer_dropped": 171,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20733664150902076,
+      "n_dropped": 1661,
+      "drop_rate": 0.9284516489659027,
+      "pass_dropped": 70,
+      "defer_dropped": 171,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20782819648315853,
+      "n_dropped": 1662,
+      "drop_rate": 0.9290106204583566,
+      "pass_dropped": 70,
+      "defer_dropped": 171,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20804729559168308,
+      "n_dropped": 1663,
+      "drop_rate": 0.9295695919508105,
+      "pass_dropped": 70,
+      "defer_dropped": 171,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20830740564436478,
+      "n_dropped": 1664,
+      "drop_rate": 0.9301285634432644,
+      "pass_dropped": 70,
+      "defer_dropped": 171,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20851104301757115,
+      "n_dropped": 1665,
+      "drop_rate": 0.9306875349357183,
+      "pass_dropped": 70,
+      "defer_dropped": 172,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20857330446944233,
+      "n_dropped": 1666,
+      "drop_rate": 0.9312465064281722,
+      "pass_dropped": 70,
+      "defer_dropped": 172,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20858159925197006,
+      "n_dropped": 1667,
+      "drop_rate": 0.9318054779206261,
+      "pass_dropped": 70,
+      "defer_dropped": 173,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20880888611930642,
+      "n_dropped": 1668,
+      "drop_rate": 0.9323644494130799,
+      "pass_dropped": 70,
+      "defer_dropped": 173,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.2089761909365677,
+      "n_dropped": 1669,
+      "drop_rate": 0.9329234209055338,
+      "pass_dropped": 70,
+      "defer_dropped": 173,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20928284001006306,
+      "n_dropped": 1670,
+      "drop_rate": 0.9334823923979877,
+      "pass_dropped": 70,
+      "defer_dropped": 174,
+      "pass_loss_rate": 0.8860759493670886
+    },
+    {
+      "threshold": 0.20934873021614941,
+      "n_dropped": 1671,
+      "drop_rate": 0.9340413638904416,
+      "pass_dropped": 71,
+      "defer_dropped": 174,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.20944400322053489,
+      "n_dropped": 1672,
+      "drop_rate": 0.9346003353828954,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.20948893368036073,
+      "n_dropped": 1673,
+      "drop_rate": 0.9351593068753493,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.20954323420592616,
+      "n_dropped": 1674,
+      "drop_rate": 0.9357182783678032,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.20988234797180477,
+      "n_dropped": 1675,
+      "drop_rate": 0.9362772498602572,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21013351088641172,
+      "n_dropped": 1676,
+      "drop_rate": 0.936836221352711,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21031097400245724,
+      "n_dropped": 1677,
+      "drop_rate": 0.9373951928451649,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21064557308257725,
+      "n_dropped": 1678,
+      "drop_rate": 0.9379541643376188,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21078541058917935,
+      "n_dropped": 1679,
+      "drop_rate": 0.9385131358300727,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21080262050710644,
+      "n_dropped": 1680,
+      "drop_rate": 0.9390721073225266,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2110924603369459,
+      "n_dropped": 1681,
+      "drop_rate": 0.9396310788149804,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2111768779458924,
+      "n_dropped": 1682,
+      "drop_rate": 0.9401900503074343,
+      "pass_dropped": 71,
+      "defer_dropped": 175,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21190377165838337,
+      "n_dropped": 1683,
+      "drop_rate": 0.9407490217998882,
+      "pass_dropped": 71,
+      "defer_dropped": 176,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2123066121134637,
+      "n_dropped": 1684,
+      "drop_rate": 0.941307993292342,
+      "pass_dropped": 71,
+      "defer_dropped": 176,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2127642904833207,
+      "n_dropped": 1685,
+      "drop_rate": 0.9418669647847959,
+      "pass_dropped": 71,
+      "defer_dropped": 176,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21281334861883133,
+      "n_dropped": 1686,
+      "drop_rate": 0.9424259362772499,
+      "pass_dropped": 71,
+      "defer_dropped": 176,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2132311446751605,
+      "n_dropped": 1687,
+      "drop_rate": 0.9429849077697038,
+      "pass_dropped": 71,
+      "defer_dropped": 176,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2138376436769596,
+      "n_dropped": 1688,
+      "drop_rate": 0.9435438792621577,
+      "pass_dropped": 71,
+      "defer_dropped": 176,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21485189035419927,
+      "n_dropped": 1689,
+      "drop_rate": 0.9441028507546115,
+      "pass_dropped": 71,
+      "defer_dropped": 176,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21567300064968623,
+      "n_dropped": 1690,
+      "drop_rate": 0.9446618222470654,
+      "pass_dropped": 71,
+      "defer_dropped": 177,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21594381639874946,
+      "n_dropped": 1691,
+      "drop_rate": 0.9452207937395193,
+      "pass_dropped": 71,
+      "defer_dropped": 177,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21630936652235103,
+      "n_dropped": 1692,
+      "drop_rate": 0.9457797652319732,
+      "pass_dropped": 71,
+      "defer_dropped": 177,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2165494310337037,
+      "n_dropped": 1693,
+      "drop_rate": 0.946338736724427,
+      "pass_dropped": 71,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21807501412260233,
+      "n_dropped": 1694,
+      "drop_rate": 0.9468977082168809,
+      "pass_dropped": 71,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2195869292052062,
+      "n_dropped": 1695,
+      "drop_rate": 0.9474566797093348,
+      "pass_dropped": 71,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21965358703278912,
+      "n_dropped": 1696,
+      "drop_rate": 0.9480156512017887,
+      "pass_dropped": 71,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.21976912172550178,
+      "n_dropped": 1697,
+      "drop_rate": 0.9485746226942426,
+      "pass_dropped": 71,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.2200799019512506,
+      "n_dropped": 1698,
+      "drop_rate": 0.9491335941866965,
+      "pass_dropped": 71,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.8987341772151899
+    },
+    {
+      "threshold": 0.22099639803306664,
+      "n_dropped": 1699,
+      "drop_rate": 0.9496925656791504,
+      "pass_dropped": 72,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.9113924050632911
+    },
+    {
+      "threshold": 0.2221974802318547,
+      "n_dropped": 1700,
+      "drop_rate": 0.9502515371716043,
+      "pass_dropped": 72,
+      "defer_dropped": 178,
+      "pass_loss_rate": 0.9113924050632911
+    },
+    {
+      "threshold": 0.22475959540504464,
+      "n_dropped": 1701,
+      "drop_rate": 0.9508105086640581,
+      "pass_dropped": 72,
+      "defer_dropped": 179,
+      "pass_loss_rate": 0.9113924050632911
+    },
+    {
+      "threshold": 0.22497731026658138,
+      "n_dropped": 1702,
+      "drop_rate": 0.951369480156512,
+      "pass_dropped": 72,
+      "defer_dropped": 179,
+      "pass_loss_rate": 0.9113924050632911
+    },
+    {
+      "threshold": 0.22510332169597913,
+      "n_dropped": 1703,
+      "drop_rate": 0.9519284516489659,
+      "pass_dropped": 72,
+      "defer_dropped": 179,
+      "pass_loss_rate": 0.9113924050632911
+    },
+    {
+      "threshold": 0.22547704734200233,
+      "n_dropped": 1704,
+      "drop_rate": 0.9524874231414198,
+      "pass_dropped": 73,
+      "defer_dropped": 179,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.22561151681975805,
+      "n_dropped": 1705,
+      "drop_rate": 0.9530463946338736,
+      "pass_dropped": 73,
+      "defer_dropped": 179,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.22624094728172028,
+      "n_dropped": 1706,
+      "drop_rate": 0.9536053661263275,
+      "pass_dropped": 73,
+      "defer_dropped": 179,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.22637745712303273,
+      "n_dropped": 1707,
+      "drop_rate": 0.9541643376187814,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.22660921623578348,
+      "n_dropped": 1708,
+      "drop_rate": 0.9547233091112354,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.22914177578536202,
+      "n_dropped": 1709,
+      "drop_rate": 0.9552822806036892,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.23031328159775458,
+      "n_dropped": 1710,
+      "drop_rate": 0.9558412520961431,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.23084604030563152,
+      "n_dropped": 1711,
+      "drop_rate": 0.956400223588597,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.2319818720050274,
+      "n_dropped": 1712,
+      "drop_rate": 0.9569591950810509,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.23198377771335155,
+      "n_dropped": 1713,
+      "drop_rate": 0.9575181665735047,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.23510219525915677,
+      "n_dropped": 1714,
+      "drop_rate": 0.9580771380659586,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.24643313121415938,
+      "n_dropped": 1715,
+      "drop_rate": 0.9586361095584125,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.26184341205914063,
+      "n_dropped": 1716,
+      "drop_rate": 0.9591950810508664,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.2653049032602277,
+      "n_dropped": 1717,
+      "drop_rate": 0.9597540525433202,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.26933101940181775,
+      "n_dropped": 1718,
+      "drop_rate": 0.9603130240357741,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.29276881667571847,
+      "n_dropped": 1719,
+      "drop_rate": 0.9608719955282281,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.36921728351164534,
+      "n_dropped": 1720,
+      "drop_rate": 0.961430967020682,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3699244621000816,
+      "n_dropped": 1721,
+      "drop_rate": 0.9619899385131359,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.37001684526109496,
+      "n_dropped": 1722,
+      "drop_rate": 0.9625489100055897,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3707663006681331,
+      "n_dropped": 1723,
+      "drop_rate": 0.9631078814980436,
+      "pass_dropped": 73,
+      "defer_dropped": 180,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3781273533709898,
+      "n_dropped": 1724,
+      "drop_rate": 0.9636668529904975,
+      "pass_dropped": 73,
+      "defer_dropped": 181,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3788062953465632,
+      "n_dropped": 1725,
+      "drop_rate": 0.9642258244829514,
+      "pass_dropped": 73,
+      "defer_dropped": 181,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.37947258866967803,
+      "n_dropped": 1726,
+      "drop_rate": 0.9647847959754052,
+      "pass_dropped": 73,
+      "defer_dropped": 181,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.38443657099066064,
+      "n_dropped": 1727,
+      "drop_rate": 0.9653437674678591,
+      "pass_dropped": 73,
+      "defer_dropped": 181,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3847726292308641,
+      "n_dropped": 1728,
+      "drop_rate": 0.965902738960313,
+      "pass_dropped": 73,
+      "defer_dropped": 181,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.38738398242316,
+      "n_dropped": 1729,
+      "drop_rate": 0.9664617104527669,
+      "pass_dropped": 73,
+      "defer_dropped": 181,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3889831750460261,
+      "n_dropped": 1730,
+      "drop_rate": 0.9670206819452208,
+      "pass_dropped": 73,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.39185290290505814,
+      "n_dropped": 1731,
+      "drop_rate": 0.9675796534376747,
+      "pass_dropped": 73,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.39407407613542145,
+      "n_dropped": 1732,
+      "drop_rate": 0.9681386249301286,
+      "pass_dropped": 73,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3945658727186764,
+      "n_dropped": 1733,
+      "drop_rate": 0.9686975964225825,
+      "pass_dropped": 73,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.39732060486033366,
+      "n_dropped": 1734,
+      "drop_rate": 0.9692565679150363,
+      "pass_dropped": 73,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.39784281463842197,
+      "n_dropped": 1735,
+      "drop_rate": 0.9698155394074902,
+      "pass_dropped": 73,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9240506329113924
+    },
+    {
+      "threshold": 0.3986767425852659,
+      "n_dropped": 1736,
+      "drop_rate": 0.9703745108999441,
+      "pass_dropped": 74,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9367088607594937
+    },
+    {
+      "threshold": 0.3987141508868085,
+      "n_dropped": 1737,
+      "drop_rate": 0.970933482392398,
+      "pass_dropped": 75,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.39872495410742825,
+      "n_dropped": 1738,
+      "drop_rate": 0.9714924538848518,
+      "pass_dropped": 75,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.39995157852793517,
+      "n_dropped": 1739,
+      "drop_rate": 0.9720514253773057,
+      "pass_dropped": 75,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.4021876503392441,
+      "n_dropped": 1740,
+      "drop_rate": 0.9726103968697597,
+      "pass_dropped": 75,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.4031199883134091,
+      "n_dropped": 1741,
+      "drop_rate": 0.9731693683622136,
+      "pass_dropped": 75,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.4036459213481678,
+      "n_dropped": 1742,
+      "drop_rate": 0.9737283398546674,
+      "pass_dropped": 75,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.40369172462145547,
+      "n_dropped": 1743,
+      "drop_rate": 0.9742873113471213,
+      "pass_dropped": 75,
+      "defer_dropped": 182,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.40390929609628595,
+      "n_dropped": 1744,
+      "drop_rate": 0.9748462828395752,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.40518172031575295,
+      "n_dropped": 1745,
+      "drop_rate": 0.9754052543320291,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.4052028560016489,
+      "n_dropped": 1746,
+      "drop_rate": 0.975964225824483,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.40991767673798546,
+      "n_dropped": 1747,
+      "drop_rate": 0.9765231973169368,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.41016039575362373,
+      "n_dropped": 1748,
+      "drop_rate": 0.9770821688093907,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.41053466589381177,
+      "n_dropped": 1749,
+      "drop_rate": 0.9776411403018446,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.412036210115957,
+      "n_dropped": 1750,
+      "drop_rate": 0.9782001117942984,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.41365761239277904,
+      "n_dropped": 1751,
+      "drop_rate": 0.9787590832867524,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.4155061122529419,
+      "n_dropped": 1752,
+      "drop_rate": 0.9793180547792063,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.41565110940922523,
+      "n_dropped": 1753,
+      "drop_rate": 0.9798770262716602,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.41804291151340517,
+      "n_dropped": 1754,
+      "drop_rate": 0.980435997764114,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.4181673867463583,
+      "n_dropped": 1755,
+      "drop_rate": 0.9809949692565679,
+      "pass_dropped": 75,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9493670886075949
+    },
+    {
+      "threshold": 0.41844458364863685,
+      "n_dropped": 1756,
+      "drop_rate": 0.9815539407490218,
+      "pass_dropped": 76,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9620253164556962
+    },
+    {
+      "threshold": 0.4191863132143698,
+      "n_dropped": 1757,
+      "drop_rate": 0.9821129122414757,
+      "pass_dropped": 77,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9746835443037974
+    },
+    {
+      "threshold": 0.4196261142128932,
+      "n_dropped": 1758,
+      "drop_rate": 0.9826718837339296,
+      "pass_dropped": 78,
+      "defer_dropped": 183,
+      "pass_loss_rate": 0.9873417721518988
+    },
+    {
+      "threshold": 0.42277954360227377,
+      "n_dropped": 1759,
+      "drop_rate": 0.9832308552263834,
+      "pass_dropped": 79,
+      "defer_dropped": 183,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.424690928121298,
+      "n_dropped": 1760,
+      "drop_rate": 0.9837898267188373,
+      "pass_dropped": 79,
+      "defer_dropped": 183,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.4501937554714809,
+      "n_dropped": 1761,
+      "drop_rate": 0.9843487982112912,
+      "pass_dropped": 79,
+      "defer_dropped": 184,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.5797185175175221,
+      "n_dropped": 1762,
+      "drop_rate": 0.9849077697037452,
+      "pass_dropped": 79,
+      "defer_dropped": 184,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.5838099077377802,
+      "n_dropped": 1763,
+      "drop_rate": 0.985466741196199,
+      "pass_dropped": 79,
+      "defer_dropped": 184,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.5933278468416251,
+      "n_dropped": 1764,
+      "drop_rate": 0.9860257126886529,
+      "pass_dropped": 79,
+      "defer_dropped": 184,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.6011629254241252,
+      "n_dropped": 1765,
+      "drop_rate": 0.9865846841811068,
+      "pass_dropped": 79,
+      "defer_dropped": 184,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.6083528271513232,
+      "n_dropped": 1766,
+      "drop_rate": 0.9871436556735607,
+      "pass_dropped": 79,
+      "defer_dropped": 185,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.6100022414752184,
+      "n_dropped": 1767,
+      "drop_rate": 0.9877026271660145,
+      "pass_dropped": 79,
+      "defer_dropped": 185,
+      "pass_loss_rate": 1.0
+    },
+    {
+      "threshold": 0.6100022424752184,
+      "n_dropped": 1768,
+      "drop_rate": 0.9882615986584684,
+      "pass_dropped": 79,
+      "defer_dropped": 185,
+      "pass_loss_rate": 1.0
+    }
+  ],
+  "settings": {
+    "backend": "lexical",
+    "neighbours": 5,
+    "min_similarity": 0.15,
+    "min_exemplars": 20,
+    "max_exemplars": 500
+  },
+  "corpus_fingerprint": {
+    "n_dossiers": 1611,
+    "newest_mtime_utc": "2026-08-08T00:26:38.650756+00:00",
+    "sha256": "00fc2c965e68d1d3",
+    "frozen": true,
+    "corpus_dir": "/var/folders/gq/jbt0858s1g99w05n7k7531040000gn/T/prospector-corpus-00fc2c965e68d1d3/dossiers",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+  },
+  "limits": [
+    "Label is FINAL decision, not llm_keep: an llm_keep-labelled replay is degenerate because every dossier already survived prescreen.",
+    "Population excludes the 4.85% the LLM prescreen drops (they have no dossier), so the reported safe rate is a floor, not a ceiling.",
+    "defer is unruled; the headline rate loses neither a pass nor a defer.",
+    "Retrospective replay on one corpus, not a live A/B."
+  ],
+  "_meta": {
+    "experiment": "E6B",
+    "module": "e6b_prefilter_pass_safety.py",
+    "run_at_utc": "2026-08-08T01:24:56+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

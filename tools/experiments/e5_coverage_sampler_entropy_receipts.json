@@ -1,0 +1,343 @@
+{
+  "headline": {
+    "enabled_on_disk": false,
+    "flag_untouched": true,
+    "index_present": true,
+    "control_cells": 0,
+    "treatment_engages": true,
+    "treatment_cells": 15,
+    "batches_per_arm": 3,
+    "k_per_batch": 15,
+    "worst_axis_mde_normalised": 0.369,
+    "target_mde": 0.1,
+    "batches_per_arm_for_target": 41,
+    "design_runnable": true
+  },
+  "engagement": {
+    "cells": [
+      {
+        "ambition_tier": "side_hustle",
+        "audience": "ecommerce_seller",
+        "market": "uk",
+        "structural_form": "risk_financing"
+      },
+      {
+        "ambition_tier": "smb",
+        "audience": "ops_manager",
+        "market": "us",
+        "structural_form": "transaction_broker"
+      },
+      {
+        "ambition_tier": "venture",
+        "audience": "agency_owner",
+        "market": "uk",
+        "structural_form": "vertical_tool"
+      },
+      {
+        "ambition_tier": "growth",
+        "audience": "software_developer",
+        "market": "us",
+        "structural_form": "productized_service"
+      },
+      {
+        "ambition_tier": "side_hustle",
+        "audience": "startup_operator",
+        "market": "uk",
+        "structural_form": "data_intelligence"
+      },
+      {
+        "ambition_tier": "smb",
+        "audience": "retiree_cohort",
+        "market": "us",
+        "structural_form": "picks_and_shovels"
+      },
+      {
+        "ambition_tier": "venture",
+        "audience": "squeezed_middle",
+        "market": "uk",
+        "structural_form": "audience_media"
+      },
+      {
+        "ambition_tier": "growth",
+        "audience": "freelancer_creative",
+        "market": "us",
+        "structural_form": "physical_ops"
+      },
+      {
+        "ambition_tier": "side_hustle",
+        "audience": "public_sector_worker",
+        "market": "uk",
+        "structural_form": "risk_financing"
+      },
+      {
+        "ambition_tier": "smb",
+        "audience": "manual_tradesperson",
+        "market": "us",
+        "structural_form": "transaction_broker"
+      }
+    ],
+    "failure": null,
+    "control_cells": []
+  },
+  "axes": {
+    "ambition_tier": {
+      "distinct": 4,
+      "coverage": 0.3371,
+      "unknown": 1186,
+      "h_norm": 0.6822,
+      "domain_size": 5,
+      "configured_domain": 0,
+      "values_outside_config": []
+    },
+    "structural_form": {
+      "distinct": 29,
+      "coverage": 0.896,
+      "unknown": 186,
+      "h_norm": 0.8343,
+      "domain_size": 30,
+      "configured_domain": 8,
+      "values_outside_config": [
+        "api_product",
+        "b2b_service",
+        "content_channel",
+        "data_workflow",
+        "ecommerce_brand",
+        "equipment_or_rental",
+        "info_product",
+        "local_service",
+        "local_service_chain",
+        "marketplace_seller",
+        "micro_ecommerce",
+        "niche_distribution",
+        "niche_micro_saas",
+        "plg_tool",
+        "productized_freelance",
+        "prosumer_tool",
+        "rental_arbitrage",
+        "specialist_agency",
+        "transactional_platform",
+        "unknown"
+      ]
+    },
+    "audience": {
+      "distinct": 12,
+      "coverage": 0.8776,
+      "unknown": 219,
+      "h_norm": 0.8596,
+      "domain_size": 13,
+      "configured_domain": 13,
+      "values_outside_config": [
+        "unknown"
+      ]
+    },
+    "market": {
+      "distinct": 2,
+      "coverage": 0.9905,
+      "unknown": 17,
+      "h_norm": 0.2037,
+      "domain_size": 3,
+      "configured_domain": 0,
+      "values_outside_config": []
+    }
+  },
+  "batch_noise": {
+    "ambition_tier": {
+      "trials": 4000,
+      "batch": 15,
+      "mean": 0.5851,
+      "sd": 0.1613,
+      "p05": 0.3014,
+      "p95": 0.8313,
+      "mde_normalised": 0.369,
+      "batches_for_target_mde": 41
+    },
+    "structural_form": {
+      "trials": 4000,
+      "batch": 15,
+      "mean": 0.6246,
+      "sd": 0.0525,
+      "p05": 0.5311,
+      "p95": 0.7147,
+      "mde_normalised": 0.1201,
+      "batches_for_target_mde": 5
+    },
+    "audience": {
+      "trials": 4000,
+      "batch": 15,
+      "mean": 0.7271,
+      "sd": 0.0595,
+      "p05": 0.6186,
+      "p95": 0.826,
+      "mde_normalised": 0.1361,
+      "batches_for_target_mde": 6
+    },
+    "market": {
+      "trials": 4000,
+      "batch": 15,
+      "mean": 0.1526,
+      "sd": 0.1589,
+      "p05": -0.0,
+      "p95": 0.4416,
+      "mde_normalised": 0.3635,
+      "batches_for_target_mde": 40
+    }
+  },
+  "coverage_report": {
+    "rows": 1789,
+    "context": {},
+    "suppressed": {},
+    "axes": {
+      "ambition_tier": {
+        "distinct": 4,
+        "unknown": 1186,
+        "coverage": 0.3371,
+        "counts": {
+          "unknown": 1186,
+          "growth": 138,
+          "side_hustle": 186,
+          "smb": 176,
+          "venture": 103
+        },
+        "recent_counts": {
+          "unknown": 78,
+          "growth": 30,
+          "venture": 20,
+          "smb": 45,
+          "side_hustle": 27
+        }
+      },
+      "structural_form": {
+        "distinct": 29,
+        "unknown": 186,
+        "coverage": 0.896,
+        "counts": {
+          "unknown": 186,
+          "api_product": 9,
+          "audience_media": 121,
+          "b2b_service": 28,
+          "content_channel": 19,
+          "data_intelligence": 86,
+          "data_workflow": 9,
+          "ecommerce_brand": 23,
+          "equipment_or_rental": 3,
+          "info_product": 4,
+          "local_service": 59,
+          "local_service_chain": 32,
+          "marketplace_seller": 6,
+          "micro_ecommerce": 39,
+          "niche_distribution": 6,
+          "niche_micro_saas": 12,
+          "physical_ops": 125,
+          "picks_and_shovels": 97,
+          "plg_tool": 29,
+          "productized_freelance": 35,
+          "productized_service": 226,
+          "prosumer_tool": 24,
+          "rental_arbitrage": 6,
+          "risk_financing": 142,
+          "specialist_agency": 12,
+          "transaction_broker": 162,
+          "transactional_platform": 22,
+          "vertical_saas": 42,
+          "vertical_service_scaled": 2,
+          "vertical_tool": 223
+        },
+        "recent_counts": {
+          "audience_media": 13,
+          "vertical_tool": 26,
+          "prosumer_tool": 6,
+          "plg_tool": 7,
+          "productized_service": 24,
+          "b2b_service": 9,
+          "vertical_saas": 8,
+          "ecommerce_brand": 6,
+          "local_service_chain": 8,
+          "productized_freelance": 7,
+          "micro_ecommerce": 9,
+          "local_service": 8,
+          "picks_and_shovels": 10,
+          "data_intelligence": 7,
+          "transactional_platform": 6,
+          "transaction_broker": 10,
+          "niche_distribution": 2,
+          "specialist_agency": 4,
+          "content_channel": 2,
+          "unknown": 3,
+          "risk_financing": 11,
+          "physical_ops": 10,
+          "data_workflow": 2,
+          "info_product": 1,
+          "api_product": 1
+        }
+      },
+      "audience": {
+        "distinct": 12,
+        "unknown": 219,
+        "coverage": 0.8776,
+        "counts": {
+          "unknown": 219,
+          "agency_owner": 2,
+          "freelancer_creative": 168,
+          "gen_z_worker": 243,
+          "manual_tradesperson": 199,
+          "ops_manager": 1,
+          "primary_carer": 243,
+          "public_sector_worker": 178,
+          "retiree_cohort": 119,
+          "smb_owner": 275,
+          "software_developer": 3,
+          "squeezed_middle": 129,
+          "startup_operator": 10
+        },
+        "recent_counts": {
+          "freelancer_creative": 33,
+          "smb_owner": 28,
+          "startup_operator": 10,
+          "public_sector_worker": 29,
+          "squeezed_middle": 22,
+          "software_developer": 3,
+          "retiree_cohort": 8,
+          "gen_z_worker": 21,
+          "ops_manager": 1,
+          "agency_owner": 2,
+          "unknown": 3,
+          "manual_tradesperson": 19,
+          "primary_carer": 21
+        }
+      },
+      "market": {
+        "distinct": 2,
+        "unknown": 17,
+        "coverage": 0.9905,
+        "counts": {
+          "unknown": 17,
+          "uk": 1699,
+          "us": 73
+        },
+        "recent_counts": {
+          "uk": 200
+        }
+      }
+    }
+  },
+  "method": {
+    "entropy": "Shannon over each axis's observed counts, normalised by log2(domain size) so axes of different cardinality are comparable",
+    "noise_floor": "4000 resamples of 15 rows from the observed distribution",
+    "mde": "(1.96+0.84)*sd*sqrt(2/batches), two independent arm means",
+    "engagement": "plan_cells called on a COPY of the config with enabled=True; the on-disk flag is never written"
+  },
+  "corpus_fingerprint": {
+    "n_dossiers": 1611,
+    "newest_mtime_utc": "2026-08-07T23:10:32.186972+00:00",
+    "sha256": "45bc80305fe1f995",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat."
+  },
+  "_meta": {
+    "experiment": "E5",
+    "module": "e5_coverage_sampler_entropy.py",
+    "run_at_utc": "2026-08-07T23:28:41+00:00",
+    "argv": [],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}
