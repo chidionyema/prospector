@@ -1,0 +1,215 @@
+{
+  "candidate_id": "d8aa7528aa73eabb",
+  "policy": "P1_check_aware",
+  "title": "StorefrontShield \u2014 the ADA lawsuit-prevention kit for California small shops",
+  "counts": {
+    "figures": 15,
+    "untraceable": 0,
+    "sole_basis_low_tier": 2,
+    "recoverable": 13
+  },
+  "verdict": "SOLE-BASIS",
+  "rows": [
+    {
+      "check": "buyer_intent",
+      "verdict": "supported",
+      "figure": "$12,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://www.legalnewsline.com/newsletter/house-committee-votes-to-limit-drive-by-ada-lawsuits/article_23ae3195-9942-479f-a8db-320cbf42b880.html"
+      ],
+      "admissible_urls": [
+        "https://www.legalnewsline.com/newsletter/house-committee-votes-to-limit-drive-by-ada-lawsuits/article_23ae3195-9942-479f-a8db-320cbf42b880.html"
+      ]
+    },
+    {
+      "check": "currency",
+      "verdict": "supported",
+      "figure": "$4,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://onepageaudit.com/blog/ada-website-lawsuits-by-industry",
+        "https://testparty.ai/blog/the-california-ada-shakedown-across-three-law-firms-and-their-serial-plaintiffs"
+      ],
+      "admissible_urls": [
+        "https://onepageaudit.com/blog/ada-website-lawsuits-by-industry",
+        "https://testparty.ai/blog/the-california-ada-shakedown-across-three-law-firms-and-their-serial-plaintiffs"
+      ]
+    },
+    {
+      "check": "currency",
+      "verdict": "supported",
+      "figure": "37%",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://adaquickscan.com/blog/2025-ada-lawsuit-surge-37-percent"
+      ],
+      "admissible_urls": [
+        "https://adaquickscan.com/blog/2025-ada-lawsuit-surge-37-percent"
+      ]
+    },
+    {
+      "check": "claims_verifiable",
+      "verdict": "supported",
+      "figure": "$10,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act"
+      ],
+      "admissible_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act"
+      ]
+    },
+    {
+      "check": "claims_verifiable",
+      "verdict": "supported",
+      "figure": "$20,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act"
+      ],
+      "admissible_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act"
+      ]
+    },
+    {
+      "check": "claims_verifiable",
+      "verdict": "supported",
+      "figure": "$4,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act",
+        "https://www.clym.io/blog/ada-and-unruh-act-lawsuits-your-guide-for-california-healthcare-websites"
+      ],
+      "admissible_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act",
+        "https://www.clym.io/blog/ada-and-unruh-act-lawsuits-your-guide-for-california-healthcare-websites"
+      ]
+    },
+    {
+      "check": "claims_verifiable",
+      "verdict": "supported",
+      "figure": "$50,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act"
+      ],
+      "admissible_urls": [
+        "https://www.caspcalifornia.com/resources/unruh-civil-rights-act"
+      ]
+    },
+    {
+      "check": "distribution",
+      "verdict": "supported",
+      "figure": "$12",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://www.usps.com/ship/priority-mail.htm",
+        "https://www.pitneybowes.com/us/postal-information/usps-rate-change-overview.html"
+      ],
+      "admissible_urls": [
+        "https://www.usps.com/ship/priority-mail.htm",
+        "https://www.pitneybowes.com/us/postal-information/usps-rate-change-overview.html"
+      ]
+    },
+    {
+      "check": "distribution",
+      "verdict": "supported",
+      "figure": "$31",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://www.usps.com/ship/priority-mail.htm",
+        "https://www.pitneybowes.com/us/postal-information/usps-rate-change-overview.html"
+      ],
+      "admissible_urls": [
+        "https://www.usps.com/ship/priority-mail.htm",
+        "https://www.pitneybowes.com/us/postal-information/usps-rate-change-overview.html"
+      ]
+    },
+    {
+      "check": "pain_reality",
+      "verdict": "supported",
+      "figure": "$100,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://lawdrafted.com/ada-lawsuit-settlement-amounts/"
+      ],
+      "admissible_urls": [
+        "https://lawdrafted.com/ada-lawsuit-settlement-amounts/"
+      ]
+    },
+    {
+      "check": "pain_reality",
+      "verdict": "supported",
+      "figure": "$35,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://gitnux.org/small-business-lawsuit-statistics/",
+        "https://wcagsafe.com/blog/ada-lawsuit-statistics"
+      ],
+      "admissible_urls": [
+        "https://wcagsafe.com/blog/ada-lawsuit-statistics"
+      ]
+    },
+    {
+      "check": "pain_reality",
+      "verdict": "supported",
+      "figure": "0.9",
+      "in_any_passage": true,
+      "in_admissible_passage": false,
+      "matched_urls": [
+        "https://gitnux.org/small-business-lawsuit-statistics/"
+      ],
+      "admissible_urls": []
+    },
+    {
+      "check": "pain_reality",
+      "verdict": "supported",
+      "figure": "1.2 per 100",
+      "in_any_passage": true,
+      "in_admissible_passage": false,
+      "matched_urls": [
+        "https://gitnux.org/small-business-lawsuit-statistics/"
+      ],
+      "admissible_urls": []
+    },
+    {
+      "check": "pain_reality",
+      "verdict": "supported",
+      "figure": "35,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://gitnux.org/small-business-lawsuit-statistics/",
+        "https://wcagsafe.com/blog/ada-lawsuit-statistics"
+      ],
+      "admissible_urls": [
+        "https://wcagsafe.com/blog/ada-lawsuit-statistics"
+      ]
+    },
+    {
+      "check": "pain_reality",
+      "verdict": "supported",
+      "figure": "50,000",
+      "in_any_passage": true,
+      "in_admissible_passage": true,
+      "matched_urls": [
+        "https://wcagsafe.com/blog/ada-lawsuit-statistics"
+      ],
+      "admissible_urls": [
+        "https://wcagsafe.com/blog/ada-lawsuit-statistics"
+      ]
+    }
+  ]
+}
