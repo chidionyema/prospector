@@ -1,0 +1,11 @@
+extends: existence
+message: "%s — the catalogue and the storefront carry no em/en-dashes (house rule). Use a comma, or a plain hyphen inside a compound word."
+level: error
+link: prospector/copy_lint.py
+# U+2011 (non-breaking hyphen) is included because it RENDERS as a dash the buyer sees
+# while surviving every check written against U+002D — 3 reached live listing titles
+# undetected that way before 2026-08-08.
+tokens:
+  - '—'
+  - '–'
+  - '‑'

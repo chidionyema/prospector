@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
 from . import facets
+from .copy_lint import buyer_readable
 from .models import Candidate, CheckResult, Decision, Dossier, Verdict
 from .operator import Operator, ParseError, _extract_json
 from .pack_linter import symbol_for_currency
@@ -52,6 +53,95 @@ def _coerce_bare_markdown_artifact(text: str, t: str) -> dict:
                     extra={"type": t, "chars": len(content)})
         return {"type": t, "content": content}
     raise ParseError(f"cannot coerce response into artifact '{t}'")
+
+
+# ---------------------------------------------------------------------------
+# Buyer-facing prompt projection (2026-08-08)
+# ---------------------------------------------------------------------------
+
+# The artifact prompt used to be handed `json.dumps(cand.to_dict())` and the raw
+# CheckResult dicts, so the engine's SCHEMA was the only vocabulary the model had for the
+# opportunity — and it echoed that vocabulary into copy the buyer pays for. Measured
+# 2026-08-08: 589 occurrences across 51 of 99 packs, e.g. "monthly_price of £12 is
+# assumption", "the opportunity's who_pays field", "(source: verified claim
+# value_durability)". The last form was COMPELLED by the prompt, which tells the model to
+# cite "the verified claim it rests on" while giving it nothing but `check_name` to name
+# one with.
+#
+# The fix is vocabulary, not suppression: every field the writer needs is still there,
+# under a label a buyer can read. Labels contain a SPACE, so they also cannot match
+# copy_lint's identifier pattern (`[a-z]+(_[a-z0-9]+)+`) — the generator and the publish
+# gate therefore agree by construction, not because someone remembered to keep them in
+# step. That is the same choke-point property the catalogue normaliser has.
+_CANDIDATE_PROMPT_LABELS: Dict[str, str] = {
+    "title": "title",
+    "one_liner": "summary",
+    "hypothesis": "hypothesis",
+    "who_pays": "who pays",
+    "why_now": "why now",
+    "automatability": "automatability",
+    "weak_monetisation": "monetisation risk",
+    "structural_form": "business form",
+    "ambition_tier": "ambition tier",
+    "market": "market",
+}
+
+# Engine bookkeeping the artifact writer has no use for: `candidate_id` and
+# `refinement_history` are internal provenance, and `tags` carries the engine's own
+# artifact/comparables payloads — the pack's plumbing, not its subject.
+_CANDIDATE_PROMPT_DROP = frozenset({"candidate_id", "refinement_history", "tags"})
+
+_CHECK_PROMPT_LABELS: Dict[str, str] = {
+    "pain_reality": "pain reality",
+    "value_durability": "value durability",
+    "incumbency": "incumbency",
+    "payer_solvency": "payer solvency",
+    "distribution": "distribution",
+    "legality": "legality",
+    "price_comparables": "price comparables",
+}
+
+# Kept per check: the FINDING. Dropped: `queries`, `query_source`, `degraded`,
+# `retrieval_failed`, `provider`, `provisional` — those describe how retrieval went, which
+# is audit state the buyer's artifact must never narrate.
+_CHECK_PROMPT_KEEP = ("verdict", "confidence", "rationale", "citations", "sources")
+
+
+def _prompt_label(key: str, table: Dict[str, str]) -> str:
+    return table.get(key, str(key).replace("_", " "))
+
+
+def _candidate_prompt_view(cand: Any) -> Dict[str, Any]:
+    """Project a Candidate into buyer-readable keys for prompt injection."""
+    raw = cand.to_dict() if hasattr(cand, "to_dict") else dict(cand or {})
+    out: Dict[str, Any] = {}
+    for key, value in raw.items():
+        if key in _CANDIDATE_PROMPT_DROP:
+            continue
+        if value is None or value == "" or value == [] or value == {}:
+            continue
+        out[_prompt_label(key, _CANDIDATE_PROMPT_LABELS)] = value
+    return out
+
+
+def _claims_prompt_view(claims: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Project verified checks into buyer-readable keys, keeping the finding only.
+
+    `claim` replaces `check_name` deliberately: it is the handle the prompt tells the
+    model to cite by, so it has to be a phrase that is correct to print in a pack.
+    """
+    out: List[Dict[str, Any]] = []
+    for c in claims or []:
+        item: Dict[str, Any] = {
+            "claim": _prompt_label(c.get("check_name", ""), _CHECK_PROMPT_LABELS),
+        }
+        for key in _CHECK_PROMPT_KEEP:
+            value = c.get(key)
+            if value is None or value == "" or value == [] or value == {}:
+                continue
+            item[key.replace("_", " ")] = value
+        out.append(item)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -206,17 +296,21 @@ def _render_financial_model(assumptions: Dict[str, Any],
     lines.append("")
 
     # --- Key assumptions ---
+    # These two lists are the only FREE TEXT in this artifact — everything above is Python
+    # formatting a number. They are also where the schema leaks: the model was asked for a
+    # JSON object keyed `estimated_cac_gbp` and then asked to critique it, so it names the
+    # key. `buyer_readable` is the choke point that makes that unrepresentable in output.
     if assumptions_list:
         lines.append("### Key Assumptions (grounded in verified claims)")
         for a in assumptions_list:
-            lines.append(f"- {a}")
+            lines.append(f"- {buyer_readable(str(a))}")
         lines.append("")
 
     # --- Weaknesses ---
     if weaknesses:
         lines.append("### Model Weaknesses")
         for w in weaknesses:
-            lines.append(f"- ⚠️  {w}")
+            lines.append(f"- ⚠️  {buyer_readable(str(w))}")
         lines.append("")
 
     return "\n".join(lines)
@@ -325,8 +419,9 @@ def generate_artifacts(
     prose_op = quality_op or op
 
     claims = [c.to_dict() for c in checks if c.verdict == Verdict.SUPPORTED]
-    claims_json = json.dumps(claims)
-    cand_json = json.dumps(cand.to_dict())
+    # Projected, not raw: the model must never be handed the engine's own field names.
+    claims_json = json.dumps(_claims_prompt_view(claims))
+    cand_json = json.dumps(_candidate_prompt_view(cand))
 
     types = ["build_spec", "gtm_plan", "ops_plan", "financial_model"]
     results: Dict[str, str] = {}
@@ -655,8 +750,11 @@ def generate_marketing_content(
     checker = check_op or op
 
     claims = [c.to_dict() for c in checks if c.verdict == Verdict.SUPPORTED]
-    claims_json = json.dumps(claims)
-    cand_json = json.dumps(cand.to_dict())
+    # Projected for the same reason as the artifact path: marketing copy is the MOST
+    # buyer-facing prose the engine writes. `claims` below stays raw — the claim-check gate
+    # is an internal verdict, not something a buyer ever reads.
+    claims_json = json.dumps(_claims_prompt_view(claims))
+    cand_json = json.dumps(_candidate_prompt_view(cand))
 
     types = ["listing_page", "teaser_social", "seo_preview", "launch_email"]
 

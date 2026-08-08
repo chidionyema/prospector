@@ -1,0 +1,58 @@
+# Project vocabulary — brand names, UK institutions, UK spellings and domain terms.
+#
+# Built from the 549 distinct tokens Vale.Spelling flagged across 312,886 words of engine
+# prose on 2026-08-08. Almost none were misspellings: they were proper nouns, UK statutory
+# bodies and trade jargon. Spelling is not enabled by default in .vale.ini for that reason,
+# but this list is what makes it USABLE if you turn it on — without it, a spell check on
+# this corpus is a vocabulary complaint, not a defect signal.
+#
+# Regex, one per line. Case-sensitive unless you write it otherwise.
+
+# --- UK statutory bodies and schemes ---
+HMRC
+DWP
+DVSA
+FSA
+Cefas
+Ombudsman
+[Oo]-licence
+
+# --- UK spellings the US dictionary rejects ---
+anonymised
+anonymise
+organisation
+organisational
+recognised
+utilised
+specialised
+
+# --- platforms and vendors that appear in real market evidence ---
+Deliveroo
+Checkatrade
+Shopify
+Airtable
+Xero
+Uber
+Qover
+Tachomaster
+Postgres
+Stripe
+
+# --- domain and trade terms ---
+telematics
+valeters?
+esports
+VODs?
+tacho
+sailability
+depuration
+rebooking
+waitlist
+fillable
+backtest
+automatable
+sellable
+onboarding
+signup
+APIs?
+PDFs?
