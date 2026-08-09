@@ -56,7 +56,13 @@ export function AmbientKillColumn({ className }: { className?: string }) {
     <div
       aria-hidden
       className={cx(
-        'pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[42%] overflow-hidden lg:block',
+        // `opacity-[0.55]` is the fix, not decoration: the block comment above has always
+        // documented this column at "55% opacity... the weight of a watermark", but no opacity
+        // was ever applied here. `--subtle` (tokens.css) is chosen for 4.83:1 AA contrast -- a
+        // fully readable body colour, not a watermark tone -- so without this the "ambient" kill
+        // names rendered at full visual weight, competing with the hero and the featured card
+        // beside it instead of receding behind them. Measured live on mumchimp.com/ 2026-08-09.
+        'pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[42%] overflow-hidden opacity-[0.55] lg:block',
         className,
       )}
       style={{
