@@ -261,7 +261,7 @@ export default function HowItWorks() {
                       </p>
                       <Link
                         href="/kill-log"
-                        className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-accent transition-colors hover:text-accent-hover"
+                        className="mt-2 inline-flex items-center gap-1 py-[13px] text-caption font-semibold text-accent transition-colors hover:text-accent-hover"
                       >
                         See kill‑log <Icon name="arrowRight" size={12} />
                       </Link>

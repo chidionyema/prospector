@@ -135,7 +135,7 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = false
             </header>
             <div className="space-y-8">{withAnchors}</div>
             <div className="border-t border-border pt-8 mt-12">
-              <Link href="/" className="flex items-center gap-2 text-meta font-semibold text-accent transition-colors hover:text-accent-hover">
+              <Link href="/" className="flex items-center gap-2 py-3 text-meta font-semibold text-accent transition-colors hover:text-accent-hover">
                 &larr; Back to home
               </Link>
             </div>

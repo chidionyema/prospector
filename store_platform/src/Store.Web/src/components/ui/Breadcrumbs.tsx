@@ -22,7 +22,7 @@ export function Breadcrumbs({ items }: { items: { href: string; label: string }[
                   {item.label}
                 </span>
               ) : (
-                <Link href={item.href} className="text-muted hover:text-text transition-colors">
+                <Link href={item.href} className="inline-block py-3 text-muted hover:text-text transition-colors">
                   {item.label}
                 </Link>
               )}

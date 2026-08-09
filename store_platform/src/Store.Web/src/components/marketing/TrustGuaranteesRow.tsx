@@ -73,8 +73,16 @@ export default function TrustGuaranteesRow({
     },
   ];
 
+  // No `border-t` here. This row's only call site (index.tsx) renders it as the literal next
+  // sibling after a `</SectionBand>`, and every `SectionBand` already carries its own
+  // unconditional `border-b` (blocks.tsx). A second, independent top border on this section
+  // sat flush against that one with zero gap between them -- the same doubled-hairline defect
+  // already fixed once on this page (the old `border-y` on the "New this week" band), just via
+  // a different mechanism (two sibling elements each drawing an edge, not one element drawing
+  // two). If this component ever gets a second call site that is NOT preceded by a bordered
+  // band, give that caller its own `border-t` via `className`, not this one.
   return (
-    <section aria-label="Trust and guarantees" className={cx('border-t border-border', className)}>
+    <section aria-label="Trust and guarantees" className={cx(className)}>
       <div className="mx-auto max-w-6xl px-6 py-6 md:px-8">
         {/* No pills, no borders, no circles, left-aligned. These are three short factual lines;
             dressing each one in its own container implied three separate offers. */}
