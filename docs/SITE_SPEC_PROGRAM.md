@@ -409,6 +409,72 @@ Three more from the same critique pass, `MarketingLayout.tsx` only. Re-verified:
 Also asked and answered "something else — I'll describe it" via multiple-choice, but no
 detail was supplied in the response — nothing to act on there; open if the user specifies later.
 
+### v4, 2026-08-09 — a pasted six-item critique, re-opened and overridden in full
+
+A near-identical critique came back (logomark shape, Mum/chimp weight contrast, header spacing,
+alignment, Menu interaction, teal into UI, mobile scale). Three of six items directly repeat asks
+already tried and rejected 2-3 days earlier with written reasoning above (§3.1's colour ruling,
+the 2026-08-08 wordmark weight decision inside `weightAndCasePolicy.test.ts`, and the "checked,
+not re-touched" icon-shape verdict just above). Surfaced via `AskUserQuestion` rather than silently
+redoing or silently refusing; founder answer was **"Override again, full list"** — implement all
+six as a new explicit override, logged as such here. All in `store_platform/src/Store.Web`.
+
+1. **Logomark — the tile itself, not just its radius.** The "generic and boxed-in" complaint
+   survived the 2026-08-08 fix (that pass changed the bars inside the tile, not the tile). `rx=14`
+   rounded-rect is the universal app-icon silhouette at any radius. `BrandMark` (`Logo.tsx`) and
+   `public/icon.svg` both move to a cut-corner path — three corners at `r=2` (matches sitewide
+   `--radius-sm`/`--radius-md` instead of standing apart at the old `rx=14`), top-right corner cut
+   diagonally instead of rounded, giving the tile an asymmetric identity a plain rect can't have.
+   ViewBox, band rects and favicon ink fill (`#171717`, kept solid rather than re-coloured teal —
+   a few isolated bars with no solid ground lose contrast at 16px) are unchanged, so the two files
+   stay in lockstep, still pinned by `storefrontDesignContract.test.ts`'s favicon-parity block.
+2. **Mum/chimp weight contrast — explicit re-override of the 2026-08-08 wordmark decision.**
+   `Logo.tsx` now sets `font-bold` on "Mum" and `font-normal` on "chimp" (was one `font-semibold`
+   span rendering both halves as one string). This trips a SECOND, independent guard discovered
+   only by running the suite: `weightAndCasePolicy.test.ts`'s sitewide "no weight the scale never
+   declares" sweep, re-argued as recently as 2026-08-08 on a type-scale basis (not the synthesis
+   argument Logo.tsx's own docblock already answers — Switzer is a true variable face, `font-weight:
+   100 900`, so 700 renders as a real weight, not a smear). That test now carries a named,
+   one-line exemption (`components/ui/Logo.tsx` + the `{first}` span only) rather than a blanket
+   loosening — the other 170+ `font-semibold` sites and every other `font-bold` anywhere else in
+   the tree still fail the guard. `config.ts`'s `BRAND.wordmark` comment updated to match; the
+   `{ first, second }` value is unchanged.
+3. **Header padding/breathing room.** Row height `h-16`/`h-14` (resting/scrolled, from the
+   2026-08-08 compact-on-scroll pass) → `h-20`/`h-16` (80px/64px). No tap target shrinks below its
+   44px floor; only the row grows.
+4. **Logo/search/Menu on one baseline — checked, not changed.** Already `flex items-center` on a
+   fixed-height row for all three; no misalignment found, so no code change. Listed here so this
+   ask isn't silently dropped from the report.
+5. **Menu interaction — explicit override of the 2026-08-08 "ONE RADIUS, 2px, AND NO PILLS"
+   sweep**, found the same way as item 2 (by implementing, then by the design-contract-adjacent
+   convention of checking for a rule before assuming there wasn't one — see `tokens.css`'s own
+   comment for that sweep's reasoning). Search and Menu buttons both move from `rounded-md` to
+   `rounded-full` with a `bg-surface2`/`hover:bg-surface3` pill fill, matching the ask's "subtle
+   pill-shaped background." Scope is these two controls only; the sweep's "2px everywhere else"
+   holds everywhere it isn't named here.
+6. **Teal into UI beyond the logo — explicit extension of §3.1's already-flagged
+   colour override.** Desktop active-nav underline (`after:bg-text` → `after:bg-brand-mark`) and
+   the mobile drawer's active-nav left border (`border-l-text` → `border-l-brand-mark`) now use
+   `--brand-mark`. §3.1's hue-proximity flag (≈12° from `--success`, under the ≥25° separation
+   rule) applies here too and is not re-resolved by this pass — same caveat, now on two more
+   surfaces instead of one.
+7. **Mobile scale.** `MarketingLayout.tsx` previously rendered one unconditional `<Logo
+   className="text-h2" />` at every viewport. `Logo.tsx`'s `monogramOnly` prop existed
+   (declared, documented) but had zero call sites anywhere in the app — verified by grep, not
+   taken on an agent's word (an Explore subagent claimed mobile already showed the compact form;
+   `grep -rn "monogramOnly" src --include="*.tsx"` matched only the prop's own definition in
+   `Logo.tsx`, nowhere else). Now wired: `<Logo className="hidden text-h2 md:inline-flex" />` +
+   `<Logo monogramOnly className="text-h2 md:hidden" />`, so mobile genuinely gets the icon-only
+   ask instead of the full lockup at every width.
+
+**Verified:** `npx tsc --noEmit` exit 0; `npx vitest run` 57 files / 832 tests passed, exit 0
+(includes the rewritten wordmark block in `storefrontDesignContract.test.ts` and the new named
+exemption in `weightAndCasePolicy.test.ts`); `npm run lint` exit 0, 0 errors (8 pre-existing
+warnings, none in a file this pass touched); `npm run build` exit 0, Turbopack, 13/13 pages.
+
+Branch: `fix/header-logo-refresh`, off `origin/main` in an isolated worktree per this repo's
+worktree rule — not committed or pushed as of this entry; that remains an explicit next step.
+
 ### Known open items
 
 - ~~**§6.1 Home** — delete "What you get, at every price" (`index.tsx:1668`); "Newest on the shelf"

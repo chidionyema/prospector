@@ -120,11 +120,25 @@ describe('weight and case policy', () => {
     );
   });
 
-  it('uses no synthesised bold weight', () => {
-    const found = offenders(/\bfont-(bold|extrabold|black)\b/);
+  it('uses no weight the scale never declares, except the wordmark\'s named exemption (v4, 2026-08-09)', () => {
+    // EXEMPTION, ONE LINE, EXPLICIT FOUNDER OVERRIDE: Logo.tsx's "Mum" span sets `font-bold`
+    // (700) against "chimp"'s `font-normal`, deliberately re-opening the "no weight above 600"
+    // rule for the one string that is the brand -- see Logo.tsx's own docblock. This is NOT the
+    // synthesis argument this test's title used to rest on (that was already killed and the rule
+    // re-anchored to the type scale on 2026-08-08, per the file docblock above); it is a second,
+    // narrower override on TOP of the re-anchored rule, scoped to exactly the wordmark and
+    // nothing else. The other 170+ `font-semibold` call sites this test still guards, and every
+    // other `font-bold` in the tree, are unaffected -- the filter below only drops an offender
+    // that is BOTH this exact file AND this exact span, so a second `font-bold` added anywhere
+    // else (including elsewhere in Logo.tsx) still fails loudly.
+    const WORDMARK_EXEMPTION = 'components/ui/Logo.tsx';
+    const found = offenders(/\bfont-(bold|extrabold|black)\b/).filter(
+      (line) => !(line.startsWith(`${WORDMARK_EXEMPTION}:`) && line.includes('{first}')),
+    );
     expect(
       found,
-      `600 is the heaviest weight loaded; these synthesise:\n${found.join('\n')}`,
+      `no weight above 600 outside the wordmark exemption above; these ask for one the scale `
+        + `never declares:\n${found.join('\n')}`,
     ).toEqual([]);
   });
 

@@ -586,37 +586,54 @@ describe('Design contract — wordmark (Logo.tsx)', () => {
   const logo = readSource('../components/ui/Logo.tsx');
 
   /*
-   * REWRITTEN 2026-08-06. Every assertion in the v2 version pinned a decision the founder then
-   * rejected: "Mum" in ink + "chimp" in grey + a vermillion full stop, at weight 800, with a
-   * white-on-dark inverted variant. Three colour decisions inside eight characters, and the split
-   * fell mid-word so the two-tone read as a rendering fault. The v3 wordmark is ONE weight, ONE
-   * ink, no dot, tracking closed up slightly.
+   * REWRITTEN 2026-08-06 (v3), RE-REWRITTEN 2026-08-09 (v4, explicit founder override).
+   *
+   * v3's history: every assertion in the v2 version pinned a decision the founder then rejected:
+   * "Mum" in ink + "chimp" in grey + a vermillion full stop, at weight 800, with a white-on-dark
+   * inverted variant. Three colour decisions inside eight characters, and the split fell mid-word
+   * so the two-tone read as a rendering fault. v3's fix was ONE weight, ONE ink, no dot.
+   *
+   * v4 re-opens exactly the "one weight" third of that fix, and only that third: "Mum" now sets
+   * `font-bold`, "chimp" sets `font-normal`, ink and no-dot are untouched. The premise that made
+   * v3's weight rule necessary -- that the loaded font would SYNTHESISE a heavier weight the
+   * browser fakes by smearing the glyph -- is no longer true: the sans face is self-hosted
+   * Switzer, declared `font-weight: 100 900` as a real variable axis (`tokens.css`), not the
+   * static Geist 400/500/600 v3 was written against. 700 renders as a true intermediate weight
+   * on this face, so the objection the old test enforced does not apply to this font.
    */
 
-  it('renders the brand name from config, as one word', () => {
+  it('renders the brand name from config, as one visually unbroken word', () => {
     expect(logo, 'reads BRAND.wordmark').toMatch(/BRAND\.wordmark/);
     const cfg = readSource('../lib/config.ts');
     expect(cfg, 'wordmark first').toMatch(/first:\s*['"]Mum['"]/);
     expect(cfg, 'wordmark second').toMatch(/second:\s*['"]chimp['"]/);
-    // Assembled into a single rendered string, not two independently-styled spans.
-    expect(logo, 'the halves render as one word').toMatch(/\$\{first\}\$\{second\}/);
+    // v4 renders the two halves as separate spans (weight differs between them, and Tailwind
+    // reads class names from source text, so the weight utility has to sit on its own element)
+    // rather than one interpolated string. "One word" is now a LAYOUT contract instead of a
+    // string-assembly one: no visible gap and no wrapping between the two halves.
+    expect(logo, 'first half renders').toMatch(/\{first\}/);
+    expect(logo, 'second half renders').toMatch(/\{second\}/);
+    expect(logo, 'the halves sit in a non-wrapping run with no gap between them').toMatch(
+      /whitespace-nowrap/,
+    );
   });
 
-  it('uses one ink and one weight, with no coloured period', () => {
+  it('uses one ink and no coloured period', () => {
     expect(logo, 'single ink').toMatch(/text-text/);
     expect(logo, 'no coloured full stop').not.toMatch(/text-primary[^"]*">\.</);
-    expect(logo, 'no second, muted half').not.toMatch(/mutedColor/);
+    expect(logo, 'no second, muted colour').not.toMatch(/mutedColor/);
     expect(logo, 'tracking closed up').toMatch(/tracking-\[-0\.02em\]/);
   });
 
-  it('does not use a weight the font never loaded', () => {
-    // _app.tsx loads Geist at 400/500/600 only. `font-bold`/`font-extrabold`/`font-black` would
-    // be synthesised by the browser -- a smeared fake bold -- on the one string that is the
-    // brand. This is the inverse of the v2 assertion, which REQUIRED weight 800.
-    expect(logo, 'no synthesised weight on the wordmark').not.toMatch(
-      /font-extrabold|font-black|font-bold/,
+  it('contrasts the two halves by weight, not by colour (v4, 2026-08-09)', () => {
+    // "Mum" bold against "chimp" regular -- see the docblock above for why this no longer risks
+    // a synthesised weight on this font. Explicitly still no SECOND ink: this is a weight
+    // contrast, not a reintroduction of the two-colour split v3 removed.
+    expect(logo, '"Mum" is bold').toMatch(/font-bold[^"]*">\{first\}/);
+    expect(logo, '"chimp" is regular').toMatch(/font-normal[^"]*">\{second\}/);
+    expect(logo, 'no colour utility on either half').not.toMatch(
+      /(?:text-primary|text-danger|text-brand-mark)[^"]*">\{(?:first|second)\}/,
     );
-    expect(logo, 'semibold is the heaviest weight loaded').toMatch(/font-semibold/);
   });
 
   it('has an accessible name carrying the full brand name', () => {

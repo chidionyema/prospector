@@ -11,7 +11,8 @@ export const TOS_VERSION = '2026-06-15';
 
 export const BRAND = {
   name: 'Mumchimp',
-  /** Typographic wordmark split: first part in ink, second muted, period in teal. */
+  /** Typographic wordmark split: one ink, no dot -- "first" bold, "second" regular (v4,
+   *  2026-08-09; see Logo.tsx for why weight, not colour, now carries the contrast). */
   wordmark: { first: 'Mum', second: 'chimp' } as const,
 } as const;
 
