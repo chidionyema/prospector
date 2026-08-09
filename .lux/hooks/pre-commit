@@ -73,9 +73,18 @@ if sh -c "$VERIFY_CMD"; then
   exit 0
 else
   echo "─────────────────────────────────────────────────────────"
-  echo "❌ POPDD gate BLOCKED this commit — a lane covering this diff did not pass"
-  echo "   (or a staged source file has no lane, or the chain is invalid)."
-  echo "   Fix the failure and the receipt will prove green."
+  echo "❌ POPDD gate BLOCKED this commit."
+  echo "   Read the failing step above. It is NOT necessarily in your diff:"
+  echo "   ruff runs repo-wide by design (scripts/popdd_verify.py:166), so ANY"
+  echo "   unformatted file in the tree blocks EVERY commit — including files you"
+  echo "   never touched, and files a concurrent session left dirty."
+  echo "   Other causes: a lane covering your diff failed, a staged source file has"
+  echo "   no lane, or the chain is invalid."
+  echo ""
+  echo "   Preflight that matches this gate exactly:"
+  echo "     $VERIFY_CMD"
+  echo "   Lint only, in seconds — note NO path arguments, or you check less than"
+  echo "   the gate does:  .venv/bin/python -m ruff check"
   echo "   (Emergency override, recorded as a deliberate choice: git commit --no-verify)"
   exit 1
 fi

@@ -982,7 +982,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 </ul>
                 <Link
                   href="/how-it-works"
-                  className="mt-5 inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+                  className="mt-5 inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
                 >
                   See how each check works
                   <Icon name="arrowRight" size={14} />
@@ -1188,7 +1188,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               )}
               <Link
                 href="/sample"
-                className="mt-4 inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+                className="mt-4 inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
               >
                 Want to see the depth first? Read the free sample report
                 <Icon name="arrowRight" size={14} />

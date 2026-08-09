@@ -34,7 +34,7 @@ export function GuideLayout({
       <SectionBand bg="surface" width="2xl" className="py-12 sm:py-16">
         <article>
           <p className="mb-6 text-body">
-            <Link href="/guides" className="text-muted hover:text-text">
+            <Link href="/guides" className="inline-block py-3 text-muted hover:text-text">
               Guides
             </Link>
           </p>

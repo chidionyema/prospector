@@ -1078,7 +1078,7 @@ function CatalogBrowser({
               the switch survives past this one click, not just this one page load. */}
           <Link
             href={`/?market=${DEFAULT_MARKET}`}
-            className="whitespace-nowrap font-medium text-accent hover:text-accent-hover"
+            className="whitespace-nowrap py-3 font-medium text-accent hover:text-accent-hover"
           >
             Switch to {marketLabel(DEFAULT_MARKET)}
           </Link>
@@ -1652,7 +1652,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
               <Link
                 href="/sample"
                 onClick={() => track('sample_cta_clicked')}
-                className="inline-flex items-center gap-1.5 px-1 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+                className="inline-flex items-center gap-1.5 px-1 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
               >
                 {/* ONE LINE, IN THE LINK. This was a link ("Read a free sample") over a caption
                     ("A whole report, free. No payment, no email."), which restated "free" twice
@@ -1810,7 +1810,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
           </div>
           <Link
             href="/kill-log"
-            className="inline-flex flex-none items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+            className="inline-flex flex-none items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
           >
             Read the kill log
             <Icon name="arrowRight" size={14} />
@@ -1984,7 +1984,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
             </Link>
             <Link
               href="/kill-log"
-              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+              className="inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
             >
               See the {RESEARCH_STATS.killed.toLocaleString('en-GB')} it rejected
               <Icon name="arrowRight" size={14} />

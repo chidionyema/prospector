@@ -610,9 +610,10 @@ def _decay_per_tick(cfg) -> int:
         return _DECAY_PER_TICK_DEFAULT
 
 
-#: `tools/unlist_killed.py` needs Fly credentials, which is exactly why the unattended re-vet
-#: sweep does not call Store.Api itself. Running it as a bounded subprocess preserves that
-#: boundary: the sweep stays credential-free, and the drain is a separate idempotent process.
+#: `tools/unlist_killed.py` needs the Store.Api internal key, which is exactly why the
+#: unattended re-vet sweep does not call Store.Api itself. Running it as a bounded subprocess
+#: preserves that boundary: the sweep stays credential-free, the drain is a separate idempotent
+#: process.
 _UNLIST_TIMEOUT_S = 180
 
 
@@ -620,13 +621,15 @@ def _unlist_pass(cfg) -> dict | None:
     """Drain `pending_unlist.jsonl` against Store.Api. Never raises. None if nothing is queued.
 
     Self-gating on an empty queue keeps a normal tick free: the check is one file read, and the
-    `fly ssh console` round trip happens only when there is actually a pack to pull off sale.
+    HTTP round trip happens only when there is actually a pack to pull off sale.
 
-    Safe to run unattended in one direction only, which is the direction it runs:
-    `tools/unlist_killed.py:127` is `UPDATE Packs SET IsListed=0 ... AND IsListed=1`, verified
-    against the rows afterwards (`:133`) and re-queueing anything that arrived mid-flight
-    (`:78-81`). It can never list a pack and never charges anyone. So the cost of running it too
-    often is a wasted round trip, while the cost of not running it is a KILLed pack taking money.
+    Safe to run unattended in one direction only, which is the direction it runs: the drain
+    sends `PATCH /internal/catalog/{id}/listing` with `isListed: false` and verifies the echoed
+    row (`tools/unlist_killed.py:_unlist_one`), re-queueing anything that arrived mid-flight
+    (`:_commit`). It can never list a pack and never charges anyone. So the cost of running it
+    too often is a wasted round trip, while the cost of not running it is a KILLed pack taking
+    money — measured 2026-08-09, when the previous `fly ssh` + `sqlite3` actuator had been
+    failing silently and left 6 killed packs on sale.
     """
     import subprocess  # local, matching this module's existing convention
 

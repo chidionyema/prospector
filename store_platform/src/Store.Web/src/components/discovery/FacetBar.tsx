@@ -187,7 +187,7 @@ export function AppliedFilterChips({
         <button
           type="button"
           onClick={() => onChange({ ...state, q: '', advantage: [], sector: null, payer: null, effort: null, commitment: null, mechanism: null })}
-          className="ml-1 text-meta font-medium text-muted underline underline-offset-4 transition-colors hover:text-text"
+          className="ml-1 py-3 text-meta font-medium text-muted underline underline-offset-4 transition-colors hover:text-text"
         >
           Clear all
         </button>
@@ -376,7 +376,7 @@ export function StepFlow({
             <button
               type="button"
               onClick={clearAll}
-              className="mt-3 self-center text-meta font-medium text-muted underline underline-offset-4 transition-colors hover:text-text"
+              className="mt-3 self-center py-3 text-meta font-medium text-muted underline underline-offset-4 transition-colors hover:text-text"
             >
               Start over
             </button>
@@ -398,7 +398,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setStep(0)}
-                className="text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+                className="py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
               >
                 Edit
               </button>
@@ -406,7 +406,7 @@ export function StepFlow({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="text-meta font-medium text-muted transition-colors hover:text-text"
+                  className="py-3 text-meta font-medium text-muted transition-colors hover:text-text"
                 >
                   Clear
                 </button>
@@ -420,7 +420,7 @@ export function StepFlow({
               <button
                 type="button"
                 onClick={() => setShowAdvanced((prev) => !prev)}
-                className="flex w-full items-center justify-between text-caption font-medium text-muted hover:text-text"
+                className="flex w-full items-center justify-between py-[13px] text-caption font-medium text-muted hover:text-text"
               >
                 Advanced filters
                 <Icon

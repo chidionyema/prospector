@@ -28,6 +28,7 @@ from .copy_lint import (
     check_grammar,
     check_house_dashes,
     check_identifier_leak,
+    extract_urls,
     is_prose_artifact,
 )
 
@@ -315,9 +316,14 @@ def check_truncation(fields: Dict[str, Tuple[str, str]],
 # Citation URLs resolvable (bounded, cached — the one networked check)
 # ---------------------------------------------------------------------------
 
-_URL_RE = re.compile(r"https?://[^\s<>\)\]\"']+")
 _DEAD_STATUSES = frozenset({404, 410})
 _URL_CACHE_TTL_S = 7 * 86400
+
+#: Bumped whenever the probe's VERDICT LOGIC changes, and mixed into the cache key. Without
+#: it, the 7-day TTL would keep serving verdicts a fixed probe would no longer reach:
+#: `store/lint_url_cache.json` held `{'status': 404}` for a page that answers GET with 200,
+#: so the fix below would have looked inert for a week on exactly the packs it unblocks.
+_PROBE_LOGIC_VERSION = 2
 
 
 # A real browser UA, matching retrieval._RESOLVE_UA. Without one, Cloudflare and friends
@@ -328,18 +334,57 @@ _PROBE_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
 
-def _probe_url(url: str, timeout_s: float) -> Tuple[Optional[int], str]:
-    """(status, note). status None = could not determine (network, not the citation)."""
+def _probe_once(url: str, timeout_s: float, *, method: str) -> Tuple[Optional[int], str]:
+    """One request. (status, note); status None = could not determine (network, not the URL)."""
     headers = {"User-Agent": _PROBE_UA}
     try:
-        resp = requests.head(url, timeout=timeout_s, allow_redirects=True, headers=headers)
-        if resp.status_code in (405, 501):  # HEAD not allowed ≠ page gone
+        if method == "head":
+            resp = requests.head(url, timeout=timeout_s, allow_redirects=True, headers=headers)
+        else:
             resp = requests.get(url, timeout=timeout_s, allow_redirects=True, stream=True,
                                 headers=headers)
             resp.close()
         return resp.status_code, ""
     except requests.RequestException as exc:
         return None, type(exc).__name__
+
+
+def _probe_url(url: str, timeout_s: float) -> Tuple[Optional[int], str]:
+    """(status, note). status None = could not determine (network, not the citation).
+
+    Never condemns a citation on the strength of a HEAD. The old code retried with GET only on
+    405/501 ("HEAD not allowed != page gone"), but a server can refuse HEAD with a 404, and 404
+    is in `_DEAD_STATUSES`. Proven 2026-08-09 with this module's own UA and requests call:
+    `https://www.mcneilsafetyconsulting.com/services/osha-violation-defense` answers HEAD 404
+    and GET 200, and it was already cached dead for 7 days.
+
+    A dead GET then gets one more chance on the slash-toggled variant, because our own
+    extractor is capable of storing `…/wiki/Life_settlement/` for a page that only exists
+    without the slash. If that variant is alive the note names it, and `check_urls` downgrades
+    to a warning: the SOURCE is fine, the stored string is ours to repair, and blocking a pack
+    for our own defect is the false positive this whole path exists to avoid.
+    """
+    status, note = _probe_once(url, timeout_s, method="head")
+    if status is None or status not in _DEAD_STATUSES:
+        return status, note
+
+    get_status, get_note = _probe_once(url, timeout_s, method="get")
+    if get_status is not None and get_status not in _DEAD_STATUSES:
+        return get_status, f"HEAD said {status}, GET said {get_status}"
+    if get_status is None:
+        # The GET could not be completed, so "dead" is unproven. Fall back to unreachable
+        # rather than trusting the HEAD we just refused to trust.
+        return None, get_note
+
+    alt = url[:-1] if url.endswith("/") else url + "/"
+    alt_status, _ = _probe_once(alt, timeout_s, method="get")
+    if alt_status is not None and alt_status not in _DEAD_STATUSES and alt_status < 400:
+        return get_status, f"{_ALT_ALIVE_NOTE}{alt}"
+    return get_status, get_note
+
+
+#: Sentinel prefix in the probe note meaning "the citation resolves at this other URL".
+_ALT_ALIVE_NOTE = "resolves without/with trailing slash: "
 
 
 def check_urls(texts: Dict[str, str], *, cache_path: Optional[Path] = None,
@@ -360,8 +405,7 @@ def check_urls(texts: Dict[str, str], *, cache_path: Optional[Path] = None,
     seen: List[Tuple[str, str]] = []
     seen_urls = set()
     for where, text in texts.items():
-        for url in _URL_RE.findall(text or ""):
-            url = url.rstrip(".,;:")
+        for url in extract_urls(text or ""):
             if url not in seen_urls:
                 seen_urls.add(url)
                 seen.append((where, url))
@@ -370,14 +414,21 @@ def check_urls(texts: Dict[str, str], *, cache_path: Optional[Path] = None,
     now = time.time()
     checked = 0
     for where, url in seen[:max_urls]:
-        entry = cache.get(url)
+        key = f"v{_PROBE_LOGIC_VERSION}|{url}"
+        entry = cache.get(key)
         if entry and now - entry.get("ts", 0) < _URL_CACHE_TTL_S:
             status, note = entry.get("status"), entry.get("note", "cached")
         else:
             status, note = _probe_url(url, timeout_s)
-            cache[url] = {"status": status, "note": note, "ts": now}
+            cache[key] = {"status": status, "note": note, "ts": now}
             checked += 1
-        if status in _DEAD_STATUSES:
+        if status in _DEAD_STATUSES and note.startswith(_ALT_ALIVE_NOTE):
+            # OUR stored string is wrong, not the source. Warn (naming the URL that works) so
+            # the pack is not stranded by a defect on our side of the line.
+            problems.append(_warn(
+                "citation_urls", where,
+                f"{url} → HTTP {status}, but the source is live — {note}"))
+        elif status in _DEAD_STATUSES:
             problems.append(_err("citation_urls", where, f"{url} → HTTP {status}"))
         elif status is not None and status >= 400:
             problems.append(_warn("citation_urls", where, f"{url} → HTTP {status}"))

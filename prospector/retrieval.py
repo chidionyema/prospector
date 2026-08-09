@@ -32,6 +32,7 @@ import urllib.request
 
 from .audit import audit
 from .breaker import CircuitBreaker
+from .copy_lint import extract_urls
 from .errors import FixtureMiss, ProviderExhaustedError, ProviderUnavailable, SearchProviderError
 from .models import Source
 from .telemetry import logger, record_usage, track_latency
@@ -796,10 +797,11 @@ class _LLMSearchProvider(SearchProvider):
             text, sources = self._call_search(query)
             results: list[Source] = []
 
-            # Extract and validate URLs from the response
-            urls = re.findall(r'https?://[^\s\)\;\,\]\'"\'>]+', text)
-            for raw_url in urls[:k]:
-                url = raw_url.rstrip(".,;:)")
+            # Extract and validate URLs from the response. Shared with pack_linter via
+            # copy_lint.extract_urls — two private copies of this regex is how a URL got
+            # STORED truncated at a literal '(' and then flagged as a dead citation by the
+            # publish gate, with both halves of the engine agreeing on the wrong string.
+            for url in extract_urls(text)[:k]:
                 if self.resolve_urls:
                     resolved = _resolve(url)
                     if not resolved:

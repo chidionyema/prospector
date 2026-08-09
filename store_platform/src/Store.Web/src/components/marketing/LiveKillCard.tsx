@@ -175,7 +175,7 @@ export default function LiveKillCard({ className, listed }: LiveKillCardProps) {
         <span className="font-mono text-caption text-subtle">{survivorsSummary(listed)}</span>
         <Link
           href="/kill-log"
-          className="inline-flex items-center gap-1 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+          className="inline-flex items-center gap-1 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
         >
           Read the kill log
           <Icon name="arrowRight" size={14} />

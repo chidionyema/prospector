@@ -64,13 +64,35 @@ model_fast: ""                   # cheap model for query-gen/prescreen; blank = 
 model_version_tag: ""            # filled at runtime for audit
 
 # Quality chain for the customer-facing £49 deliverable (build_spec / gtm_plan / ops_plan
-# and the storefront listing_page). Subscription CLIs first; cheap non-critical tail is
-# not used for pack prose. Falls back to the moat operator if none are available.
-artifact_operator: [claude_cli]   # cursor_cli removed 2026-08-06 (founder directive; it was at
+# and the storefront listing_page). Subscription CLIs first, cheap tail behind them.
+# Falls back to the moat operator if none are available.
+artifact_operator: [claude_cli, minimax]
+                                  # cursor_cli removed 2026-08-06 (founder directive; it was at
                                   # its usage limit per the probe above, so it answered none of
                                   # the pack prose and every artifact call paid its failure
                                   # first). This chain runs against the NON-CRITICAL health
                                   # file, so a hiccup here can never blind the moat.
+                                  #
+                                  # minimax added 2026-08-08 (founder directive: "we can use
+                                  # minimax for cheap vetting"). It REVERSES this file's earlier
+                                  # "cheap non-critical tail is not used for pack prose" rule,
+                                  # deliberately and with a narrower claim: claude_cli still
+                                  # LEADS, so normal-path prose quality is unchanged; minimax
+                                  # only answers when claude_cli is walled, where the previous
+                                  # behaviour was that no pack was regenerated AT ALL. Measured
+                                  # 2026-08-08: 9 packs sat unlisted on content defects while a
+                                  # single-entry chain had nothing to fall back to.
+                                  #
+                                  # This is safe to make cheap ONLY because the pack lint is a
+                                  # backstop that runs after generation and before minting
+                                  # (bridge.py:820 content_ok, since 967457f): a weak minimax
+                                  # pack fails currency/citation/completeness and stays UNLISTED
+                                  # rather than reaching a buyer. Generation is non-critical by
+                                  # the standing rule; NO VERDICT moves here — minimax is
+                                  # outside MOAT_PRIMARY (operator.py:997) and anything it RULES
+                                  # is stamped provisional and refused publication (run.py:543).
+                                  # Regenerating a pack re-uses the stored trusted verdict and
+                                  # never re-rules, so nothing published this way is provisional.
 
 # --- Model defaults (Part: HARDCODED_MODEL_AUDIT_TICKET) ---
 # Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:
@@ -999,6 +1021,22 @@ listing:
   # run. A definitive 404/410 blocks listing; a timeout is only a warning — our outage is
   # not the citation's death (the same rule as DEFER-not-KILL on the verdict path).
   lint_check_urls: true
+  # CITATION ARCHIVING (prospector/archive.py, publish path). A pack is generated once and
+  # sold indefinitely, so its citations rot after the sale: measured 2026-08-09, 12 of 14
+  # dead citations blocking packs were genuinely 404 on a GET. Archiving mints a second
+  # pointer at publish, rendered beside the live URL in the pack's QA report, so
+  # "follow any of them and check us" stays true. Strictly additive: it can never block or
+  # delay a publish past its timeouts, and a total failure just means no mementos.
+  archive_citations: true
+  # Save Page Now is slow and rate-limits anonymous callers, so the cheap availability API
+  # runs first and this only controls whether a URL with NO existing snapshot gets one
+  # minted. Turn it off to archive from existing captures only (fast, unmetered).
+  archive_save_new: true
+  archive_lookup_timeout_s: 10
+  archive_save_timeout_s: 30
+  # Bound on citations archived per pack, so a long bibliography cannot stall a publish.
+  # What is dropped is logged: a silent cap reads as "we archived everything".
+  archive_max_urls: 30
   # Grammar pass (Harper) on the publish path. Runs in-process, fails OPEN: a missing or
   # broken checker records `grammar_check_unavailable` and blocks nothing, because an
   # absent checker must never unlist a good pack.

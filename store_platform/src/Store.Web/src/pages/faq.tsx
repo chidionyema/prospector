@@ -245,7 +245,7 @@ export default function Faq() {
      <div className="space-y-3 text-caption">
             <div className="flex flex-col border-b border-border pb-3">
               <span className="text-muted font-semibold tracking-tight mb-1">Email</span>
-              <a href={`mailto:${LEGAL.supportEmail}`} className="break-all font-medium text-accent transition-colors hover:text-accent-hover">{LEGAL.supportEmail}</a>
+              <a href={`mailto:${LEGAL.supportEmail}`} className="inline-block break-all py-[13px] font-medium text-accent transition-colors hover:text-accent-hover">{LEGAL.supportEmail}</a>
             </div>
             <div className="flex flex-col">
               <span className="mb-1 text-caption font-medium text-subtle">Response time</span>
