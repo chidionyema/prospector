@@ -1,10 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mumchimp">
-  <!-- The brand mark, mirroring Logo.tsx's `BrandMark` EXACTLY: same viewBox, same radius, same
+  <!-- The brand mark, mirroring Logo.tsx's `BrandMark` EXACTLY: same viewBox, same tile path, same
        three band rects, so the tab-strip icon and the header lockup cannot drift apart. It was a
        white "M" on the ink field; a single letter is shared with several thousand other sites,
        and the strata tile is the one shape this brand owns. Ink is #171717 (bg-text) and the
-       bands are knocked out in white, which is the page ground the lockup sits on. -->
-  <rect width="100" height="100" rx="14" fill="#171717" />
+       bands are knocked out in white, which is the page ground the lockup sits on.
+
+       Tile is a cut-corner path, not a plain rounded rect, since 2026-08-09: see Logo.tsx's
+       BrandMark for the reasoning (a rounded-square-with-bars is the generic app-icon silhouette
+       regardless of radius; the cut top-right corner gives the tile its own identity and the other
+       three corners' r=2 now matches the sitewide --radius-sm/--radius-md instead of standing
+       apart from it at the old rx=14). Favicon keeps the solid ink fill -- unlike the header/footer
+       lockup, this file is never re-coloured with --brand-mark, because a few isolated bars with
+       no solid ground lose all contrast at a 16px tab-strip size. -->
+  <path
+    d="M 2 0 L 78 0 L 100 22 L 100 98 A 2 2 0 0 1 98 100 L 2 100 A 2 2 0 0 1 0 98 L 0 2 A 2 2 0 0 1 2 0 Z"
+    fill="#171717"
+  />
   <rect x="10" y="19" width="80" height="14" rx="2" fill="#ffffff" />
   <rect x="24" y="43" width="52" height="14" rx="2" fill="#ffffff" />
   <rect x="38" y="67" width="24" height="14" rx="2" fill="#ffffff" />

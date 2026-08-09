@@ -136,21 +136,34 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           scrolled ? 'border-border' : 'border-transparent'
         }`}
       >
-        {/* COMPACT ON SCROLL. `h-16` (64px) is the resting height; past the same `scrolled`
-            threshold that turns the hairline on (4px, above), it steps to `h-14` (56px) -- an
-            8px reclaim, not a redesign. The logo and nav sizes are untouched: shrinking the row
-            instead of the content keeps every tap target's own 44px floor intact rather than
-            scaling toward it. `transition-[height]` rides the same 200ms as the border so the
-            two reads as one event, not two. */}
+        {/* COMPACT ON SCROLL, MORE ROOM AT REST (bumped 2026-08-09, founder override -- header
+            was reading as sitting too close to the top edge and to the content below it).
+            `h-20` (80px) is now the resting height, was `h-16` (64px); past the same `scrolled`
+            threshold that turns the hairline on (4px, above), it steps to `h-16` (64px), was
+            `h-14` (56px) -- a 16px reclaim, twice the old 8px, so the compact state still reads
+            as a deliberate contraction rather than the new resting height with a rounding error.
+            The logo and nav sizes are untouched: shrinking the row instead of the content keeps
+            every tap target's own 44px floor intact rather than scaling toward it.
+            `transition-[height]` rides the same 200ms as the border so the two reads as one
+            event, not two. */}
         <div
           className={`${SHELL} flex items-center justify-between gap-4 transition-[height] duration-200 ${
-            scrolled ? 'h-14' : 'h-16'
+            scrolled ? 'h-16' : 'h-20'
           }`}
         >
           {/* Left: Brand & Main Nav */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
-              <Logo className="text-h2" />
+              {/* COMPACT LOGO BELOW `md` (wired 2026-08-09). `monogramOnly` existed on `Logo`
+                  and in the favicon-parity contract, but had no call site anywhere in the app
+                  (`grep -rn monogramOnly src --include='*.tsx'` matched only Logo.tsx itself) --
+                  the full wordmark lockup was rendering at every width, including the phone
+                  header `monogramOnly` was built for. Two elements, not one conditional prop,
+                  because Tailwind's responsive classes are static per element, not runtime
+                  branches: `hidden md:inline-flex` / `inline-flex md:hidden` swap on the same
+                  breakpoint the nav already uses. */}
+              <Logo className="hidden text-h2 md:inline-flex" />
+              <Logo monogramOnly className="text-h2 md:hidden" />
             </Link>
 
             <nav className="hidden items-center gap-7 md:flex">
@@ -167,14 +180,19 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                        plus a 2px rule sitting on the header's own bottom border, changes nothing
                        about the box. */
                     aria-current={active ? 'page' : undefined}
-                    /* `h-full`, not a hardcoded `h-16`: the active-state underline is pinned to
-                       `-bottom-px` of THIS box, so it has to track the header row's real height
-                       rather than assume one -- the row now steps to `h-14` once `scrolled`
-                       (compact-on-scroll, above), and a fixed h-16 here would overflow it and
-                       throw the underline off the header's own bottom edge. */
+                    /* `h-full`, not a hardcoded `h-16`/`h-20`: the active-state underline is
+                       pinned to `-bottom-px` of THIS box, so it has to track the header row's
+                       real height rather than assume one -- the row steps between resting and
+                       `scrolled` heights (compact-on-scroll, above), and a fixed height here
+                       would overflow it and throw the underline off the header's own bottom edge.
+                       The underline itself is `bg-brand-mark` (teal), not `bg-text`, as of
+                       2026-08-09 -- founder override carrying the logo's accent into the header's
+                       one other stateful control, as asked. The text stays ink: only the mark of
+                       "you are here" takes the accent, same scoping rule Logo.tsx's BrandMark
+                       already uses (tile takes the colour, the letters next to it do not). */
                     className={`relative flex h-full items-center text-meta font-medium transition-colors ${
                       active
-                        ? 'text-text after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-text'
+                        ? 'text-text after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-brand-mark'
                         : 'text-muted hover:text-text'
                     }`}
                   >
@@ -197,11 +215,19 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 the minimum has to be stated explicitly rather than left to padding. `justify-center`
                 keeps the glyph centred once the box is wider than its own content at the widths
                 where the "Search" label is hidden. */}
+            {/* PILL BACKGROUND, 2026-08-09 (`rounded-full` + `bg-surface2`/`hover:bg-surface3`),
+                explicit founder override of §3.4's "ONE RADIUS, 2px, AND NO PILLS" sweep
+                (`tokens.css`) -- that sweep's own text carves out true circles as the one
+                standing exception ("a circle is not a pill"); this is a new one, made for the
+                header's two icon-driven toggle buttons specifically, and applied to both Search
+                and Menu together so the row reads as one system rather than one pill next to one
+                square. `min-h-11 min-w-11` unchanged: the 44px WCAG 2.5.8 floor still comes from
+                the explicit minimum, not from padding, same reasoning as before. */}
             <button
               type="button"
               onClick={openSearch}
               aria-label="Search the catalogue"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Icon name="search" size={18} />
               <span className="hidden lg:inline">Search</span>
@@ -243,8 +269,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                    hides below `lg`), keeping both would give the control two different
                    accessible names and fail WCAG 2.5.3 Label in Name. `Icon.tsx:128` always sets
                    `aria-hidden="true"` on the glyph, so the accessible name here is just the
-                   word. */
-                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                   word.
+
+                   PILL BACKGROUND, 2026-08-09: `rounded-full` + `bg-surface2`/`hover:bg-surface3`,
+                   matching the Search button (see its comment for the §3.4 "no pills" override
+                   this is). Applied to both together so the row reads as one system. */
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 aria-expanded={menuOpen}
                 aria-controls="marketing-menu"
                 onClick={() => setMenuOpen((o) => !o)}
@@ -262,7 +292,9 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               <div className="py-2">
                 {/* Same state, drawn differently, because the drawer has no bottom border for a
                     rule to sit on and every item in it is already full-strength text. A left rule
-                    in the same ink is the equivalent mark on a stacked list. */}
+                    is the equivalent mark on a stacked list -- in `border-l-brand-mark` (teal),
+                    not ink, as of 2026-08-09, matching the desktop underline above so "you are
+                    here" reads the same accent at both widths. */}
                 {MARKETING_NAV.map((item) => {
                   const active = isActivePath(router.pathname, item.href);
                   return (
@@ -272,7 +304,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                       onClick={() => setMenuOpen(false)}
                       aria-current={active ? 'page' : undefined}
                       className={`block py-3 text-body font-medium ${
-                        active ? 'border-l-2 border-l-text pl-3 text-text' : 'text-muted'
+                        active ? 'border-l-2 border-l-brand-mark pl-3 text-text' : 'text-muted'
                       }`}
                     >
                       {item.label}

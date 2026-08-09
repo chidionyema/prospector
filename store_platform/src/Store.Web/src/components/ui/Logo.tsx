@@ -11,8 +11,16 @@ interface LogoProps {
 /**
  * Brand lockup: a strata mark plus the wordmark.
  *
- * ONE colour, ONE weight, no dot (founder decision, 2026-08-06). Those three constraints STAND --
- * the lockup is still a single ink, a single weight, and there is no coloured full stop.
+ * ── v4, 2026-08-09: EXPLICIT FOUNDER OVERRIDE of the v3 "ONE weight" rule below ──────────────
+ * "Mum" now sets `font-bold` (700) against "chimp" at `font-normal` (400) -- see the wordmark
+ * render below. The single objection that produced the ONE-weight rule (2026-08-06) was that the
+ * font loaded then (Geist, static 400/500/600) would SYNTHESISE any heavier ask, smearing a fake
+ * bold onto the one string that is the brand. That objection no longer holds: the sans face is
+ * now self-hosted Switzer, declared `font-weight: 100 900` as a true variable axis
+ * (`tokens.css`, the `@font-face` block), so 700 renders as a real intermediate weight, not a
+ * synthesis. The ink stays single (`text-text`, no second colour) and there is still no dot --
+ * only the "one weight" third of the 2026-08-06 rule is what changes here. Still ONE colour, ONE
+ * name, no punctuation.
  *
  * What changed on 2026-08-07, by founder decision: the "no pictogram" half. Set alone, the
  * wordmark used the same family and weight as an `<h2>`, so in the header it was typographically
@@ -20,11 +28,13 @@ interface LogoProps {
  * the fix, and it is deliberately NOT a decorative flourish of the kind the 2026-08-06 decision
  * threw out: it is drawn in the site's own existing visual language (see `BrandMark` below).
  *
- * What this replaces: "Mum" in ink + "chimp" in grey + a vermillion full stop. Three decisions
- * inside eight characters, and none of them carried meaning -- the split fell mid-word, so the
- * two-tone treatment read as a rendering fault rather than as a lockup, and the coloured period
- * is the single most dated device in tech branding. A name set once, in one weight, with the
- * tracking closed up slightly, is the whole identity. Vercel and Linear do exactly this.
+ * What v3 replaced: "Mum" in ink + "chimp" in grey + a vermillion full stop. That treatment's
+ * failure was never the weight contrast -- it was that three decisions landed inside eight
+ * characters (a colour split, a second muted colour, a coloured period) and the split fell
+ * mid-word, so it read as a rendering fault. v4 keeps v3's fix for two of those three (one ink,
+ * no dot) and reintroduces contrast through weight alone, which is a typographic device, not a
+ * colour one, and does not fall mid-word the way the old grey half did -- it sets each whole
+ * half, "Mum" and "chimp", at its own weight.
  *
  * Size comes from the caller's `className` (e.g. `text-h2` in the header) so one component serves
  * every placement. The wordmark renders from the configurable `BRAND.name` (lib/config) so it
@@ -33,10 +43,15 @@ interface LogoProps {
  * The `onDark` prop is gone with the dark band: v3 has no dark chrome, so there is no ground for
  * an inverted lockup to sit on.
  *
- * `monogramOnly` is the only compact form, kept for tight spots and for favicon parity
- * (public/icon.svg mirrors it). It is now the mark alone rather than a lettered tile, which is
- * also what makes the favicon honest: an "M" in a tab strip is a letter shared with several
- * thousand other sites, whereas the mark is the one this brand actually owns.
+ * `monogramOnly` is the compact form, kept for tight spots and for favicon parity (public/icon.svg
+ * mirrors it) -- and, as of this pass, actually WIRED to a breakpoint: it was declared and
+ * documented but had no call site with `monogramOnly` set anywhere in the app (`grep -rn
+ * monogramOnly src --include='*.tsx'` matched only this file, 2026-08-09), so the full wordmark
+ * lockup rendered at every width including the phone header it was explicitly sized for tight
+ * spots to avoid. `MarketingLayout.tsx` now swaps to this form below `md`. It is the mark alone
+ * rather than a lettered tile, which is also what makes the favicon honest: an "M" in a tab strip
+ * is a letter shared with several thousand other sites, whereas the mark is the one this brand
+ * actually owns.
  */
 /**
  * The brand mark: a stratigraphy tile.
@@ -94,13 +109,24 @@ function BrandMark({ className, standalone = false }: { className?: string; stan
         className,
       )}
     >
-      {/* rx 14, not 22. 22% of the tile is app-icon round, and it became the roundest object on
-          the site the day v3.1 took `--radius-sm` and `--radius-md` to 2px (tokens.css) and
-          squared off 139 of the 187 `rounded-*` call sites. A brand mark is allowed its own
-          geometry, but not a geometry that contradicts the system it is meant to be the ur-form
-          of: at the header's 19.7px, rx 14 renders as 2.8px, which sits with the 2px corners
-          everywhere else instead of against them. */}
-      <rect width="100" height="100" rx="14" fill="currentColor" />
+      {/* CUT CORNER, not a plain rounded rect -- explicit founder override, 2026-08-09, of the
+          rx-14 tile above. A solid rounded square with three knocked-out bars inside it is the
+          generic-app-icon silhouette itself (Slack, Notion, a hundred others), independent of
+          what radius it uses; a reader flagged that read directly ("feels a bit generic and
+          boxed-in") against THIS shape, so tightening the radius alone would not have answered
+          the complaint. The fix gives the tile a feature the generic silhouette does not have: one
+          corner (top-right) is cut at a straight 22-unit diagonal instead of rounded, so the tile
+          itself echoes the funnel narrowing inside it rather than being a neutral frame around it.
+          The other three corners round at `r=2`, which -- unlike the rx-14 this replaces --
+          finally MATCHES the sitewide `--radius-sm`/`--radius-md` (`tokens.css`, "ONE RADIUS, 2px,
+          AND NO PILLS", 2026-08-08) instead of standing out against it; the previous comment's own
+          reasoning ("a brand mark is allowed its own geometry, but not one that contradicts the
+          system") argued for exactly this rounding value, just not for cutting a corner too.
+          Authored as a path, not a rect, since a rect cannot express one straight-cut corner. */}
+      <path
+        d="M 2 0 L 78 0 L 100 22 L 100 98 A 2 2 0 0 1 98 100 L 2 100 A 2 2 0 0 1 0 98 L 0 2 A 2 2 0 0 1 2 0 Z"
+        fill="currentColor"
+      />
       {/* Knocked out in the page background rather than in white, so the mark stays correct if the
           lockup is ever set on a tinted surface.
 
@@ -158,13 +184,19 @@ export function Logo({ className, monogramOnly = false }: LogoProps) {
     // from two config fields, and a screen reader should hear the brand once, not the halves.
     <span
       className={cx(
-        'inline-flex items-center gap-[0.34em] whitespace-nowrap font-sans font-semibold leading-none tracking-[-0.02em] text-text',
+        'inline-flex items-center gap-[0.34em] whitespace-nowrap font-sans leading-none tracking-[-0.02em] text-text',
         className,
       )}
     >
       <span className="sr-only">{BRAND.name}</span>
       <BrandMark />
-      <span aria-hidden="true">{`${first}${second}`}</span>
+      {/* Two spans, not one string: weight is the only thing that differs between them (both
+          stay `text-text`, no colour split), and Tailwind reads utility classes from source text,
+          so `font-bold`/`font-normal` have to sit on their own elements rather than be
+          interpolated. `whitespace-nowrap` + no gap between the spans keeps them reading as one
+          word, exactly as `${first}${second}` did when it was a single string. */}
+      <span aria-hidden="true" className="font-bold">{first}</span>
+      <span aria-hidden="true" className="font-normal">{second}</span>
     </span>
   );
 }
