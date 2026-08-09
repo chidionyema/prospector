@@ -169,7 +169,7 @@ a live-tailing panel.
 
 ## R6 — Requirements tracked ✅ this file
 
-## R7 — Every screen state of the art, seamless, frictionless 🟡 AUDIT DONE, 6 FIXES LIVE
+## R7 — Every screen state of the art, seamless, frictionless 🟡 AUDIT DONE, 8 FIXES LIVE
 
 Founder, 2026-08-09: *"the whole of the ui and navigation and polish needs to be state of the
 art, every screen every component, needs to be super impressive and seamless user experience and
@@ -199,8 +199,16 @@ each verified directly rather than taken from the sweep:
   coordinator verbs — a recovery screen that cannot recover the coordinator). It now trims
   button-by-button in declared priority order, spending the last free slot on `♻️ Restart coord`
   and dropping only `▶️ Start coord`, which `launchctl kickstart -k` (`estate.py:1511`) already
-  covers for a stopped job. Both recovery callbacks are pinned by test. **Open decision for the
-  founder: raise the 8-button cap to 9 for this panel, or accept one hidden verb.**
+  covers for a stopped job. Both recovery callbacks are pinned by test. **Founder decided
+  2026-08-09: "raise it."** The cap is now the named constant `MAX_BUTTONS = 9` (`782d707e35`),
+  restoring the three action slots the panel was designed around. The trim stays and still binds —
+  the point of a cap is that something principled happens at the boundary, not that the number is
+  8 — and `test_every_declared_verb_fits_now_that_the_cap_is_nine` fails loudly if a future spine
+  eats another slot, instead of quietly hiding a verb again. Proven live against the running tree
+  (pid 54384, started 02:27:47, newest source mtime 02:06:52):
+  `MAX_BUTTONS 9 | rendered 9`, rows
+  `[['♻️ Bounce gateway'], ['♻️ Restart coord', '▶️ Start coord'], [6-button spine]]`,
+  `trimmed: False`.
 - ✅ **A read that writes — FIXED** (`194a739f17`). `_save_daily_snapshot` is called from
   `render_otto_health`, and appended to `velocity.jsonl` unconditionally: opening the screen was
   a write. Measured live before the fix — 76 rows across 4 dates, 60 of them `2026-08-02` —
@@ -239,4 +247,4 @@ panel and reading the output is the method; grepping for design never finds thes
 | D1 | Gateway venv missing `python-json-logger`; every card render logged `moat_blind_reason failed`, so a `🔴 moat blind` card would show no reason. Blast radius checked: `moat_blind` itself comes from `provider_health.json` (`status.py:171`), so the 🟢/🔴 verdict was always sound. | ✅ **LIVE.** Installed, gateway restarted, and `moat_blind_reason failed` / `No module named 'pythonjsonlogger'` occur **0** times across all five gateway logs since. |
 | D2 | `brains.py` (628 lines) + `undo_ops.py` (134) untracked in `gateway/operator_shell/`; the shell's own integrity check prints "running UNREVIEWED code" on every render. | ✅ **LANDED** as one commit, `ce8b8270cb` (13 files, +1545/-32), with `undo_ops.py` and its three untracked test files. The integrity banner no longer prints. |
 | D3 | Running checkout dirty. | ✅ **LANDED.** It was the 🤖 Brains feature — finished-but-uncommitted, not broken: 1,293 new lines plus 252 wiring lines, fully wired and reachable. Two `tests/hermes_cli` failures were proven pre-existing by call graph, not assumed: they read `telegram_bot_commands()` (:376) and `slack_native_slashes()` (:324), while the WIP's only production change is `telegram_menu_commands` (`hermes_cli/commands.py:925-937`). Left uncommitted deliberately: `cron/scheduler.py` (unrelated) and `docs/audits/`. |
-| D4 | ~~`set_role_model` honours a replayed `brains_set:approval\|<key>` with no confirmation — the fence lives in the keyboard.~~ **Corrected on re-verification: the fence IS in the writer** (`brains.py:213 fence_check`, called at `:353` before any write, with the docstring *"Enforced in the WRITER, never only in the keyboard"*). The accurate statement is narrower: the fence ships **unarmed**, because `_allowlist_for` (`:191`) returns `None` when no `operator_shell.role_model_allowlist` is configured, and `brains.py:76` records that which models may arbitrate approvals is a founder policy call. | ⚠️ **Founder decision, not a code fix.** Name the models allowed to hold the `approval` role and the allowlist arms itself. |
+| D4 | ~~`set_role_model` honours a replayed `brains_set:approval\|<key>` with no confirmation — the fence lives in the keyboard.~~ **Corrected on re-verification: the fence IS in the writer** (`brains.py:213 fence_check`, called at `:353` before any write, with the docstring *"Enforced in the WRITER, never only in the keyboard"*). The accurate statement is narrower: the fence ships **unarmed**, because `_allowlist_for` (`:191`) returns `None` when no `operator_shell.role_model_allowlist` is configured, and `brains.py:76` records that which models may arbitrate approvals is a founder policy call. | ✅ **DECIDED AND LIVE** (`782d707e35`). Founder 2026-08-09: *"claude code, and needs to self heal when out of credits."* Arming the allowlist alone would **not** have delivered that, and saying it did would have been the fence reporting green while open. Two holes: (i) `fence_check` permits `auto` by design, and `auto` inherits the agent-brain default, which is DeepSeek (`brain.py:51`); (ii) `call_llm` **silently substitutes providers** when the configured one is unhealthy or returns a payment error (`agent/auxiliary_client.py:2981,3028,5571`) — so a selection-time fence fails open at exactly the moment it exists for. Closed at the point of use: `_smart_approve` (`tools/approval.py:1069`) now checks the model that **answered** and returns `escalate` when it is off the list — never auto-approve, never `deny`. That is also the self-heal: escalation parks the decision for a human, and the 600s provider-health TTL (`auxiliary_client.py:2314`) routes the next call back to Claude unattended. Unknown/unreported model ids fail closed; an unreadable fence is a closed fence. One reader (`hermes_cli.config.role_model_allowlist`) for two enforcement points, because a policy with two readers drifts. Live proof: `role_model_allowlist('approval') -> ['opus','sonnet','haiku']`, unfenced roles still `None`, `fence_check('approval','minimax') -> (False, '…refused')`, `deepseek-v4-pro`/`MiniMax-M3`/`''` all `allowed=False`. `approvals.mode` is `manual`, so blast radius today is zero — which is when to build a fence, not a reason to skip it. Pinned by `tests/test_approval_role_fence.py` (8 tests); 907 passed / 5 skipped across the full blast radius of both symbols. |
