@@ -1712,7 +1712,14 @@ export default function Home({ packs, stats, initialState, market, currency, per
               1440x900, until the row was made breakpoint-aware (see `rowHasFeatured`). On mobile
               this slot is not rendered and the pack is simply the first card in the grid. */}
           {featured && (
-            <div className="hidden w-full lg:block">
+            /* `relative z-10 bg-surface`: this slot sits directly over `AmbientKillColumn`
+               (`absolute inset-y-0 right-0 z-0`, this file's hero). The card itself is opaque
+               (`bg-surface`, see PackCard's "mid" branch), but the heading above it and the
+               padding around it were not, so ticker text rendered legibly through the gap --
+               "...Builder  The value would n[ot last]" sitting directly above "New this week"
+               (ss_0456bw1wg, live mumchimp.com/, 2026-08-09). Same token the card already uses,
+               so the panel reads as one surface rather than a heading floating on a new fill. */
+            <div className="relative z-10 hidden w-full rounded-md bg-surface p-4 lg:block">
               {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
                   on the shelf below. It was `uppercase tracking-wide text-caption`, which the
                   house policy forbids (`__tests__/weightAndCasePolicy.test.ts`): CSS caps leave
@@ -1937,7 +1944,15 @@ export default function Home({ packs, stats, initialState, market, currency, per
              `font-bold` headings and four glassy `bg-white/5` pills -- the single loudest surface
              on the site, arguing for a filter, below a shelf whose cards had just stated the same
              six checks in mono. Light, bordered, one column of argument. */}
-      <SectionBand bg="surface2" width="7xl" className="border-y border-border py-16 md:py-24">
+      {/* No explicit `border-y` here any more. `className` on `SectionBand` lands on the INNER,
+          max-w-7xl-and-centred div (blocks.tsx:48), while the band's own outer `<section>`
+          already draws a full-bleed `border-b` by default (blocks.tsx:59) -- and the section
+          above supplies this one's top rule the same way. The explicit `border-y` was a second,
+          narrower pair of rules (1280px, centred) sitting directly against the full-bleed ones
+          from the section system, which is a doubled/offset hairline at any viewport wider than
+          1280px -- one candidate for the "weird lines going across pages" report, confirmed at
+          the code level 2026-08-09. */}
+      <SectionBand bg="surface2" width="7xl" className="py-16 md:py-24">
         <div className="max-w-[46rem]">
           {/*
             "STRESS TESTED" SECTION, email §1.

@@ -406,10 +406,15 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 floor for the scale it belongs to). */}
             <div>
               <h2 className="mb-4 text-caption font-medium text-subtle">Legal</h2>
-              <ul className="flex flex-col gap-2.5">
-                <li><Link href="/terms" className="text-caption text-subtle transition-colors hover:text-text">Terms of Service</Link></li>
-                <li><Link href="/privacy" className="text-caption text-subtle transition-colors hover:text-text">Privacy Policy</Link></li>
-                <li><Link href="/refund" className="text-caption text-subtle transition-colors hover:text-text">Refund Policy</Link></li>
+              {/* Same tap-target fix as the Store column above (`inline-block py-[13px]`,
+                  `gap-0` in trade for the padding), applied here because it was missed the
+                  first time: these anchors carried no padding at all, so the "Store" list-item
+                  fix left its sibling column right below it at the same sub-24px height it was
+                  supposedly fixing site-wide. */}
+              <ul className="flex flex-col gap-0">
+                <li><Link href="/terms" className="inline-block py-[13px] text-caption text-subtle transition-colors hover:text-text">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="inline-block py-[13px] text-caption text-subtle transition-colors hover:text-text">Privacy Policy</Link></li>
+                <li><Link href="/refund" className="inline-block py-[13px] text-caption text-subtle transition-colors hover:text-text">Refund Policy</Link></li>
               </ul>
             </div>
 
@@ -427,7 +432,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 <li>
                   <a
                     href={`mailto:${LEGAL.supportEmail}`}
-                    className="break-words text-meta text-muted transition-colors hover:text-text"
+                    className="inline-block break-words py-[13px] text-meta text-muted transition-colors hover:text-text"
                   >
                     {LEGAL.supportEmail}
                   </a>
