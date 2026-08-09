@@ -169,7 +169,17 @@ a live-tailing panel.
 
 ## R6 — Requirements tracked ✅ this file
 
-## R7 — Every screen state of the art, seamless, frictionless 🟡 AUDIT DONE, 8 FIXES LIVE
+## R7 — Every screen state of the art, seamless, frictionless 🟡 AUDIT DONE, 9 FIXES LIVE
+
+> **One R7 item is left, and it is a product decision, not a wiring fix.**
+> `test_every_button_dispatches.py` quarantines **15 actions** in `_UNBUILT` — `fix_all`,
+> `fix_all_safe`, `onboard`, `score`, `dependencies`, `correlate`, `compliance`, `logs`,
+> `estate_health`, `operator_mode`, `setup_wizard`, `rsi_run`, `rsi_pause`, `rsi_resume`,
+> `deploy` — emitted from **30 literal button sites** (AST count 2026-08-09; runtime-built rows
+> can only add to it). Tapping any of them renders `⚠️ Unknown action`.
+> The quarantine is honest (it is ratcheted, so no new dead button can appear) but it is still
+> 30 places where a cockpit button does nothing. Each needs a build-or-delete call from the
+> founder; a session cannot guess which of the fifteen are wanted.
 
 Founder, 2026-08-09: *"the whole of the ui and navigation and polish needs to be state of the
 art, every screen every component, needs to be super impressive and seamless user experience and
@@ -218,7 +228,32 @@ each verified directly rather than taken from the sweep:
   tmp+replace; reader collapses per date, which repairs history already written without
   rewriting the operator's audit file underneath them. Proven live: 3 consecutive renders left
   the row count at 77 and the trend now draws 5 points for 5 dates.
-- 🟡 **Same thing, two names — MEASURED AND RATCHETED** (`7a83bdcd59`). My earlier claim that
+- ✅ **Same thing, two names — PAID DOWN TO 0, AND THE SCANNER'S BLIND SPOT FOUND**
+  (`7a83bdcd59` measured, `3d268f70de` paid down; gateway pid 70470 restarted 296s after the
+  newest edit, so it serves this code). 81 label rewrites across 23 modules, derived from one
+  canonical name per callback rather than hand-typed, so no site could be missed and none
+  renamed twice. `BASELINE = 0` — the ratchet is absolute now. Four survivors are *declared*
+  rather than renamed (`_DESIGNED`): sdlc.py's four are STAGE names in a pipeline the panel
+  prints and glosses on screen (`*5. Ship* — CI / builds / deploys`), and two client-facing
+  surfaces say Contact/Feedback because a client has never seen an "Inbox".
+  **Then the scanner was taken at its word, and rendering all 46 panels found what it is
+  structurally blind to.** `cockpit.render_run` put **two buttons both labelled `♻️ Restart` on
+  one screen** — one restarting the signal engine, one the Prospector scheduler. Each sits under
+  its own `Group` heading, which reads as unambiguous in the source and is not: headings live in
+  the message TEXT, a Telegram inline keyboard is one flat grid, so on a phone they were two
+  identical adjacent buttons that restart different daemons. The same blind spot hid
+  `💵 Spend` vs `💵 Spend cap` (`cockpit._TUNE_GROUPS` is a **3-tuple**, and the scanner only
+  walks 2-tuples) and `📦 Prospector` for `tune:prospector` colliding with `🔭 Prospector` for
+  the daemon panel. Both guards therefore ship: `test_destination_vocabulary.py` asks whether a
+  destination has one name; `test_no_screen_says_one_word_twice.py` renders the whole cockpit
+  and asks whether a name has one destination — the only one that sees what reaches the phone.
+  Its first version rendered nothing (every call raised) and reported "0 conflicts", so it now
+  carries a floor of 40 rendered panels; a gutted sweep fails instead of going green. Mutation
+  check: restoring the `♻️ Restart` collision fails it with the offender named.
+  Receipts: 671 passed, 5 skipped in `tests/gateway/operator_shell/`.
+  *Method note for the next session: grepping for design never found any of the three worst
+  ones. Rendering every panel and reading the keyboards did.*
+- 🟡 **Same thing, two names — the original measurement** (`7a83bdcd59`). My earlier claim that
   `estate:room:code` is labelled `2️⃣ Board` in the room **did not reproduce** — both call sites
   (`atlas.py:245`, `fleet.py:173`) read `💻 Code room`. The real finding is larger: an AST scan
   of every `(label, "estate:…")` pair finds **39 of 153 callbacks carrying more than one label**,
