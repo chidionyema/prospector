@@ -219,12 +219,21 @@ class _Resp:
 
 
 def test_urls_dead_is_error_transient_is_warning(monkeypatch):
+    # `get` is scripted too because a 404 is no longer taken on a HEAD's word: since
+    # 2026-08-09 `_probe_url` confirms with GET (a server can refuse HEAD with 404 on a live
+    # page) and then tries the slash-toggled variant. Genuinely dead means dead on all three.
     def fake_head(url, **kw):
         if "dead" in url:
             return _Resp(404)
         raise real_requests.ConnectTimeout("boom")
 
+    def fake_get(url, **kw):
+        if "dead" in url:
+            return _Resp(404)
+        raise real_requests.ConnectTimeout("boom")
+
     monkeypatch.setattr(pack_linter.requests, "head", fake_head)
+    monkeypatch.setattr(pack_linter.requests, "get", fake_get)
     probs, n = check_urls({"gtm_plan": "see https://x.test/dead and https://x.test/slow"})
     assert n == 2
     by_sev = {p["severity"] for p in probs}

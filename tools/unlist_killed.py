@@ -4,43 +4,60 @@
 Why this exists
 ----------------
 `decay.py::_queue_unlist` writes an entry here the moment a re-vet turns a published PASS into
-a KILL. It cannot call Store.Api itself (no Fly/network credentials belong inside an unattended
-re-vet sweep), so the queue is inert until something drains it. Found and fixed manually
-2026-08-06: 4 candidates were re-vetted to KILL and kept selling live on mumchimp.com because
-nothing closed this loop. A queue with no drain caller is the exact "no production caller" bug
-decay.py's own docstring describes — do not let this script become the next one. Run it after
-every decay sweep (wire into scheduler/run_scheduled.py's `_decay_pass`, or cron it standalone
-until then).
+a KILL. It cannot call Store.Api itself (no credentials belong inside an unattended re-vet
+sweep), so the queue is inert until something drains it. Found and fixed manually 2026-08-06:
+4 candidates were re-vetted to KILL and kept selling live on mumchimp.com because nothing
+closed this loop. A queue with no drain caller is the exact "no production caller" bug
+decay.py's own docstring describes — do not let this script become the next one.
 
-What it does
-------------
-For each queued candidate_id, checks Store.Api's live catalogue via `fly ssh console` running
-sqlite3 directly against the persistent volume (no admin HTTP endpoint exists yet — see
-store_platform/deploy/fly/api.fly.toml, [mounts] destination = "/data"). Sets IsListed=0 only for
-rows that are currently IsListed=1, in one batched UPDATE, then verifies the row count changed
-matches what was requested. Successfully-processed entries are moved out of the pending queue
-into pending_unlist.done.jsonl; anything the API rejects (e.g. Fly unreachable) stays queued for
-the next run — this script is safe to re-run, it never invents state.
+How it actuates, and why it changed (2026-08-09)
+------------------------------------------------
+It used to shell out to `fly ssh console -C 'sqlite3 /data/store.db "UPDATE Packs …"'`. That
+broke silently in production: the running image no longer ships the `sqlite3` CLI, so every
+drain died with `exec: "sqlite3": executable file not found in $PATH`. Measured that day —
+8 entries queued, 6 of them still IsListed=1 and taking money, some since 2026-08-08. An
+actuator that depends on a debugging binary happening to exist inside someone else's container
+is not an actuator.
+
+The API now has a purpose-built door: `PATCH /internal/catalog/{id}/listing`
+(`store_platform/src/Store.Api/Program.cs:815`), key-gated on `X-Internal-Key`, requiring a
+`reason`, and able to reach ONLY the listing bit. Read its comment before reaching for
+`POST /internal/catalog` instead: that route is an upsert which assigns ProviderProductId,
+ProviderPriceId and DossierRef unconditionally, so withdrawing a pack that way would null its
+Stripe ids — a moderation action destroying the money rail.
+
+Safe in one direction only, which is the direction it runs: every request sends
+`isListed: false`. This script can never list a pack and never charges anyone, so the cost of
+running it too often is a wasted round trip while the cost of not running it is a KILLed pack
+taking money. It is idempotent — unlisting an already-unlisted pack is a 200 — and it never
+invents state: anything the API rejects stays queued for the next run.
 
 Usage:
     python3 tools/unlist_killed.py            # process the whole queue
     python3 tools/unlist_killed.py --dry-run  # print what would be unlisted, touch nothing
+
+Needs STORE_INTERNAL_API_KEY (from the environment or .env). STORE_API_URL overrides the
+target, defaulting to production.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import os
 import sys
 from pathlib import Path
+
+import requests
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from prospector import paths  # noqa: E402
 from prospector.jsonl_atomic import append_jsonl, consume_jsonl, read_jsonl  # noqa: E402
+from prospector.run import _load_dotenv  # noqa: E402
 
-FLY_APP = "prospector-store-api"
+DEFAULT_API_URL = "https://api.mumchimp.com"
+_TIMEOUT_S = 25
 
 
 def _queue() -> Path:
@@ -67,8 +84,10 @@ def _commit(processed: list[dict]) -> int:
 
     `consume_jsonl` takes the file's contents under the same lock the appender holds, so
     nothing can land in the window. Anything it returns that we did NOT just process arrived
-    during the fly round-trip and is put straight back.
+    during the API round-trip and is put straight back.
     """
+    if not processed:
+        return 0
     done = _done()
     done.parent.mkdir(parents=True, exist_ok=True)
     for entry in processed:
@@ -84,25 +103,51 @@ def _commit(processed: list[dict]) -> int:
     return len(processed)
 
 
-def _ssh_sql(sql: str) -> str:
-    """Run one sqlite3 batch against the live /data/store.db over `fly ssh console`.
+def _reason(entry: dict) -> str:
+    """The API rejects an empty reason on purpose — an unexplained delisting reads as a bug."""
+    gate = entry.get("gate_fired") or entry.get("reason") or "re-vet KILL"
+    return f"re-vet KILL ({gate}) — queued {entry.get('queued_at', 'unknown date')}"
 
-    Assumes the sqlite3 CLI is already installed on the running machine (it is not in the base
-    image — `apt-get install -y sqlite3` first if this errors with "not found").
+
+def _unlist_one(session: requests.Session, api_url: str, key: str,
+                entry: dict) -> tuple[bool, str]:
+    """(processed, note). processed=True means this entry may leave the queue.
+
+    A 404 counts as processed: the pack is not in the catalogue at all, so it cannot be
+    selling, and leaving it queued forever would mask the next real failure behind noise.
     """
-    cmd = [
-        "fly", "ssh", "console", "-a", FLY_APP, "-C",
-        f'sqlite3 /data/store.db "{sql}"',
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    if result.returncode != 0:
-        raise RuntimeError(f"fly ssh failed: {result.stderr.strip() or result.stdout.strip()}")
-    return result.stdout
+    cid = entry["candidate_id"]
+    try:
+        resp = session.patch(
+            f"{api_url}/internal/catalog/{cid}/listing",
+            headers={"X-Internal-Key": key, "Content-Type": "application/json"},
+            json={"isListed": False, "reason": _reason(entry)},
+            timeout=_TIMEOUT_S,
+        )
+    except requests.RequestException as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+
+    if resp.status_code == 404:
+        return True, "not in catalogue (never published, or already removed)"
+    if resp.status_code != 200:
+        return False, f"HTTP {resp.status_code}: {resp.text.strip()[:200]}"
+
+    # Verify from the response, not from the fact that the call returned. The endpoint echoes
+    # the row it wrote, so a 200 whose body still says isListed=true is a failure we must see.
+    try:
+        body = resp.json()
+    except ValueError:
+        return False, f"HTTP 200 with unparseable body: {resp.text.strip()[:200]}"
+    if body.get("isListed") is not False:
+        return False, f"HTTP 200 but row still reads isListed={body.get('isListed')!r}"
+    return True, "unlisted"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--api-url", default=None,
+                        help=f"Store.Api base URL (default $STORE_API_URL or {DEFAULT_API_URL})")
     args = parser.parse_args()
 
     entries = _read_queue()
@@ -111,7 +156,6 @@ def main() -> int:
         return 0
 
     ids = [e["candidate_id"] for e in entries]
-    id_list = ",".join(f"'{cid}'" for cid in ids)
     print(f"{len(ids)} queued candidate(s): {', '.join(ids)}")
 
     if args.dry_run:
@@ -120,23 +164,32 @@ def main() -> int:
                   f"(killed on {e.get('gate_fired', '?')})")
         return 0
 
-    before = _ssh_sql(f"SELECT Id,IsListed FROM Packs WHERE Id IN ({id_list});")
-    print("--BEFORE--")
-    print(before)
-
-    _ssh_sql(f"UPDATE Packs SET IsListed=0 WHERE Id IN ({id_list}) AND IsListed=1;")
-
-    after = _ssh_sql(f"SELECT Id,IsListed FROM Packs WHERE Id IN ({id_list});")
-    print("--AFTER--")
-    print(after)
-
-    if "|1" in after:
-        print("ERROR: at least one row is still IsListed=1 after the update — "
-              "leaving the queue untouched, re-run once fixed.", file=sys.stderr)
+    _load_dotenv()
+    api_url = (args.api_url or os.environ.get("STORE_API_URL") or DEFAULT_API_URL).rstrip("/")
+    key = os.environ.get("STORE_INTERNAL_API_KEY")
+    if not key:
+        # Fail closed and LOUD. Silently doing nothing is how the sqlite3 breakage survived.
+        print("ERROR: STORE_INTERNAL_API_KEY unset — cannot unlist; killed pack(s) may still "
+              "be selling. Queue left untouched.", file=sys.stderr)
         return 1
 
-    _commit(entries)
-    print(f"unlisted {len(ids)} pack(s); moved to {_done()}")
+    processed: list[dict] = []
+    failures: list[str] = []
+    with requests.Session() as session:
+        for entry in entries:
+            ok, note = _unlist_one(session, api_url, key, entry)
+            print(f"  {entry['candidate_id']}  {note}")
+            if ok:
+                processed.append(entry)
+            else:
+                failures.append(f"{entry['candidate_id']}: {note}")
+
+    _commit(processed)
+    print(f"unlisted {len(processed)}/{len(ids)} pack(s); moved to {_done()}")
+    if failures:
+        print(f"ERROR: {len(failures)} still queued and possibly still selling: "
+              + "; ".join(failures), file=sys.stderr)
+        return 1
     return 0
 
 

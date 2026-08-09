@@ -46,6 +46,52 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 
 
 # ---------------------------------------------------------------------------
+# 0. URL extraction (shared — one definition, or the two copies disagree)
+# ---------------------------------------------------------------------------
+
+# ')' is deliberately IN the character class. Both previous extractors excluded it
+# (`retrieval.py` and `pack_linter._URL_RE`), which silently truncated any URL that
+# legitimately contains one. Measured 2026-08-09:
+#     stored  https://en.wikipedia.org/wiki/Late_Payment_of_Commercial_Debts_(Interest  -> 404
+#     real    https://en.wikipedia.org/wiki/Late_Payment_of_Commercial_Debts_(Interest)_Act_1998 -> 200
+# The exclusion existed for a real reason -- prose writes "(see https://x.com/a)" -- so the
+# fix is balanced-paren trimming below, not deleting the paren from the class.
+_URL_CHARS_RE = re.compile(r"https?://[^\s<>\]\"'`]+")
+
+#: Punctuation that ends a sentence, never a URL.
+_URL_TRAILING_PUNCT = ".,;:!?"
+
+
+def extract_urls(text: str) -> List[str]:
+    """URLs in `text`, in order of appearance, duplicates preserved.
+
+    Two rules, each paid for by a dead-citation false positive:
+
+    1. A trailing ')' is dropped only while it is UNMATCHED, so `(see https://x.com/a)` loses
+       its paren and `..._(Interest)_Act_1998` keeps both of its own.
+    2. Sentence punctuation is trimmed from the end, repeatedly, because "…/a)." needs both
+       passes.
+
+    Note what is NOT done here: a trailing '/' is left alone. Some servers require it, so
+    stripping it blindly would trade one false 404 for another -- the caller probes the
+    slash-toggled variant instead (`pack_linter._probe_url`).
+    """
+    out: List[str] = []
+    for raw in _URL_CHARS_RE.findall(text or ""):
+        url = raw
+        while url:
+            trimmed = url.rstrip(_URL_TRAILING_PUNCT)
+            if trimmed.endswith(")") and trimmed.count(")") > trimmed.count("("):
+                trimmed = trimmed[:-1]
+            if trimmed == url:
+                break
+            url = trimmed
+        if url and url.lower() not in ("http://", "https://"):
+            out.append(url)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # 1. House dashes
 # ---------------------------------------------------------------------------
 
