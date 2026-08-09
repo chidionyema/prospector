@@ -478,10 +478,28 @@ class EngineBridge:
             return self.stripe
         return self.paddle
 
-    def publish_pass(self, dossier: Dossier) -> bool:
+    def publish_pass(self, dossier: Dossier, *, dry_run: bool = False) -> bool:
         """
         Execute Phase 2 of the Build Plan:
         PASS -> zip bundle -> Paddle API (Product/Price/Upload) -> Store API (Catalog).
+
+        ``dry_run=True`` runs every DETERMINISTIC gate — the guards above, the zip build,
+        ``validate_pack``, ``audit_bundle`` and ``lint_pack`` — writes the usual
+        ``<id>.lint.json`` receipt, and then returns ``content_ok`` WITHOUT minting a
+        provider object, uploading the zip, or touching the catalogue.
+
+        Why this exists. A pack that will not sell is blocked by one of those gates, but
+        the verdict was only ever produced as a side effect of a real publish, so the
+        reason stayed invisible unless you were willing to run the money rail: on
+        2026-08-09, 9 of the 17 republishable PASS dossiers had no lint receipt at all and
+        their blocker was simply unknown. Asking "why is this pack not selling?" must not
+        cost a Stripe object. It can only ever do LESS than a publish — there is no branch
+        below that a dry run reaches and a real publish does not.
+
+        The one network call a dry run still makes is ``entitlements_check`` (:1124), a
+        POST that creates nothing and only answers whether this engine may publish at all.
+        It stays IN on purpose: a rehearsal that skipped it would be clean on a route the
+        real publish can fail.
         """
         if dossier.decision != Decision.PASS:
             logger.warning(f"EngineBridge: Skipping non-PASS dossier {dossier.candidate.candidate_id}")
@@ -818,6 +836,22 @@ class EngineBridge:
         # this is False the pack CANNOT list however provisioning goes, so minting for it
         # would only ever produce an orphan.
         content_ok = pack_complete and bundle_complete and lint_ok
+
+        # GATE-ONLY EXIT. Deliberately placed HERE and not one line later: `price_for` below
+        # is the first step of the money rail, and everything after it — the provider Price
+        # object, the R2 upload, the catalogue row — is outward-facing. Returning on this
+        # line is what makes "a dry run cannot mint an orphan" a property of the control
+        # flow rather than of a caller remembering to pass the right flag.
+        if dry_run:
+            logger.info(
+                f"EngineBridge: DRY RUN for {candidate_id} — content_ok={content_ok} "
+                f"(complete={pack_complete}, bundle={bundle_complete}, lint={lint_ok}); "
+                f"no price minted, no upload, no catalogue write.",
+                extra={"candidate_id": candidate_id, "dry_run": True,
+                       "content_ok": content_ok, "pack_complete": pack_complete,
+                       "bundle_complete": bundle_complete, "lint_ok": lint_ok},
+            )
+            return bool(content_ok)
 
         # 2b. Decide the price ONCE, here (C2). Two things downstream need it — the
         # provider Price object and the catalogue row — and they must not be able to

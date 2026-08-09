@@ -18,13 +18,20 @@ except ImportError:
     pass
 
 
-def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
+def publish(dossier: Any, cfg: Any, *, dry_run: bool = False) -> Dict[str, Any]:
     """
     Publish a dossier on PASS (Part 6, 11).
     Now uses EngineBridge to bundle artifacts and push to the Track 1 Store.
     On success, also writes a local ``store/listings/<id>.json`` receipt so the
     Control Center catalogue can show Pub=Y. Sellable source of truth remains
     the Store Catalog API.
+
+    ``dry_run=True`` asks only "would this pack sell?": it runs the deterministic gate in
+    ``EngineBridge.publish_pass`` and returns ``{"status": "dry_run", "content_ok": ...}``.
+    No in-flight marker and no listing receipt are written, because both of those exist to
+    describe a catalogue push that a dry run never makes — a receipt from a rehearsal would
+    make ``tools/backfill_missing_listings.sh`` and ``decay._queue_unlist`` believe a pack
+    was published when it was not.
     """
     # Handle both Dossier object and dict
     if hasattr(dossier, "decision"):
@@ -46,6 +53,17 @@ def publish(dossier: Any, cfg: Any) -> Dict[str, Any]:
 
     if decision != Decision.PASS:
         return {"status": "skipped", "reason": f"Decision is {decision}"}
+
+    if dry_run:
+        content_ok = EngineBridge(cfg).publish_pass(dossier, dry_run=True)
+        return {
+            "status": "dry_run",
+            "candidate_id": candidate_id,
+            "content_ok": bool(content_ok),
+            "reason": ("would list" if content_ok else
+                       "would publish UNLISTED — see store/dossiers/"
+                       f"{candidate_id}.lint.json"),
+        }
 
     # The catalog push and the local receipt are two writes with a gap between them. A crash
     # or kill inside that gap leaves a pack LIVE in the catalog with no local trace, and the
