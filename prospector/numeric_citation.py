@@ -631,10 +631,16 @@ def _self_text(cfg: Any, cand: Any) -> str:
     """The candidate's own words + every declared price rung, as one haystack.
 
     Rungs are rendered in BOTH the stored unit and the spoken one — `listing.pricing.rungs`
-    holds pence (4900) and a rationale writes "£49" — mirroring
+    holds pence (4999) and a rationale writes "£49.99" — mirroring
     `q4c_claim_level_tracing.price_rungs()` so the live and offline numbers stay the same
     statistic. Anything unreadable yields "", which turns the split OFF for that row rather
     than guessing: a missing haystack must never invent a self-reference.
+
+    The spoken form is pounds-and-pence ("49.99") for a charm-priced rung, or bare pounds
+    ("49") for a whole-pound one — a rationale never writes "£49.00" for a round rung, so
+    only appending the decimal form there would silently reopen the untraceable bucket for
+    the entire back catalogue's rungs. `_contains_number` matches the exact digit string, so
+    both forms must be present for their respective rung shape.
     """
     parts: list[str] = []
     for f in _SELF_FIELDS:
@@ -645,9 +651,12 @@ def _self_text(cfg: Any, cand: Any) -> str:
     try:
         rungs = ((getattr(cfg, "listing", None) or {}).get("pricing", {}).get("rungs") or [])
         for r in rungs:
-            parts.append(str(int(r)))
-            if int(r) % 100 == 0:
-                parts.append(str(int(r) // 100))
+            pence = int(r)
+            parts.append(str(pence))
+            if pence % 100 == 0:
+                parts.append(str(pence // 100))
+            else:
+                parts.append(f"{pence // 100}.{pence % 100:02d}")
     except Exception:  # noqa: BLE001 — an old Config has no listing block; that is fine
         pass
     return " ".join(p for p in parts if p)

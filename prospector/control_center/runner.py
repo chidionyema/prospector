@@ -189,7 +189,18 @@ def _save_jobs_to(path: Path, jobs: list[dict[str, Any]]) -> None:
         jobs = list(by_id.values())
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(jobs, indent=2, default=str), encoding="utf-8")
+    # Atomic, because this file has concurrent readers BY DESIGN: the per-job monitor daemon
+    # thread upserts status here (:388) while the CLI, the tests and the Streamlit cockpit read
+    # it. `write_text` truncates first, so a reader landing in that window gets an empty file —
+    # measured 1636 empty and 8 partial reads out of 20000 against a concurrent writer. The
+    # reader swallows it (`_load_jobs_from` returns [] on JSONDecodeError), so the symptom is
+    # not a crash but jobs silently vanishing from the cockpit for one poll.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        tmp.write_text(json.dumps(jobs, indent=2, default=str), encoding="utf-8")
+        os.replace(tmp, path)  # rename is atomic within a filesystem: readers see old or new
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def _save_jobs(jobs: list[dict[str, Any]]) -> None:

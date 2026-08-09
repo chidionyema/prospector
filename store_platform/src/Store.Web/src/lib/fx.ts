@@ -115,11 +115,11 @@ export function formatPriceForMarket(
   if (!Number.isFinite(gbp)) return price;
 
   if (currency === 'GBP') {
-    return `£${formatNumber(gbp)}`;
+    return `£${formatExact(gbp)}`;
   }
 
   const rate = rates[currency];
-  if (!Number.isFinite(rate)) return `£${formatNumber(gbp)}`; // fallback
+  if (!Number.isFinite(rate)) return `£${formatExact(gbp)}`; // fallback
   const converted = gbp * rate;
   const symbol = currency === 'USD' ? '$' : '€';
   return `${symbol}${formatNumber(converted)}`;
@@ -164,13 +164,23 @@ export function formatApproxNote(currency: Currency): string {
   return currency === 'GBP' ? '' : "approx., at today's rate";
 }
 
-function formatNumber(n: number): string {
-  // Round to the nearest whole unit when the converted value is >= 100, otherwise keep
-  // two decimals. £49.00 → "49"; $62.23 → "62.23"; €57.33 → "57.33".
-  if (n >= 100) return Math.round(n).toString();
-  // toFixed(2) gives "62.23"; trim trailing zeros so "57.30" becomes "57.3".
+// GBP is the exact, charged price (rungs now end in .99, see D1 pricing ladder), never an
+// estimate, so it must never lose cents to rounding regardless of magnitude: £199.99 must
+// render as "199.99", not "200". toFixed(2) gives "199.99"; trim only a genuinely-zero
+// fraction so "57.30" becomes "57.3" and "49.00" becomes "49", while "199.99" is untouched.
+function formatExact(n: number): string {
   const fixed = n.toFixed(2);
   return fixed.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+
+// Foreign-currency amounts are a courtesy FX estimate ("your card issuer sets the final
+// rate", formatChargeNote above), never the actual charge, so once the converted figure
+// clears 100 units showing two decimals would be false precision on a number that was never
+// exact to begin with. Round to the nearest whole unit past that threshold; below it, keep
+// the real cents via formatExact. £49.00 → "49"; $62.23 → "62.23"; €57.33 → "57.33".
+function formatNumber(n: number): string {
+  if (n >= 100) return Math.round(n).toString();
+  return formatExact(n);
 }
 
 /**

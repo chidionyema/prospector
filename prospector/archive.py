@@ -38,8 +38,20 @@ expensive save runs only for URLs with no snapshot at all.
 
 **A 429 stops the batch, not just the request.** Continuing to hammer Save Page Now after it
 has asked us to stop earns a longer block, and the next publish inherits it. One 429 disables
-saving for the rest of the call; availability lookups continue, because they are a different,
-unmetered endpoint.
+saving for the rest of the call.
+
+**The availability API is metered too, and a 429 from it is not an answer.** This module
+originally exempted lookups from that rule, on the stated premise that they hit "a different,
+unmetered endpoint". Measured 2026-08-09, that premise is false: a plain
+`curl 'https://archive.org/wayback/available?url=...'` returned `HTTP 429 Too Many Requests`
+during a backfill sweep. Because `_lookup` collapsed every non-200 to None, the 429 was
+indistinguishable from "this URL was never archived", and three things compounded:
+`existing_snapshot` retried the alternate slash form (a SECOND request, at the exact moment we
+were being told to stop), the caller recorded a negative, and that false negative was cached
+for `_FAILURE_TTL_S`. The visible symptom was a sweep reporting 0 of 18 dead citations
+recoverable, in the same repo whose measured figure is 6 of 14 — with `bbc.co.uk` and
+`gov.uk` among the "unarchived". A rate-limited lookup is now propagated as a distinct state,
+never cached, and stops further lookups for the batch, exactly as a save-side 429 does.
 
 **Successes are cached forever, failures briefly.** A memento URL does not rot, so re-deriving
 it is pure waste and the cache entry never expires. A failure is a statement about today's
@@ -104,36 +116,58 @@ def existing_snapshot(url: str, timeout_s: float = 10.0) -> Optional[str]:
     times. Trying the other form is the difference between "no snapshot" and "not asked
     correctly" — the same distinction `pack_linter._probe_url` draws for the live URL.
     """
-    hit = _lookup(url, timeout_s)
+    return _snapshot(url, timeout_s)[0]
+
+
+def _snapshot(url: str, timeout_s: float) -> tuple[Optional[str], bool]:
+    """`existing_snapshot` plus the rate-limit state the caller must not discard.
+
+    Returns (memento_or_None, rate_limited). The two are NOT interchangeable: None with
+    `rate_limited=False` means the Internet Archive answered and has no capture, which is a
+    fact worth caching; None with `rate_limited=True` means it declined to answer, which is a
+    fact about today's traffic and must never be recorded as a property of the URL.
+    """
+    hit, limited = _lookup(url, timeout_s)
     if hit:
-        return hit
+        return hit, False
+    # Asking again while being rate-limited is what earns a longer block, and the alt form is
+    # a guess at best. Stop here and let the caller retry the whole URL on a later run.
+    if limited:
+        return None, True
     alt = url[:-1] if url.endswith("/") else url + "/"
     if alt.count("/") < 3:          # never degrade "https://host/" to the bare scheme
-        return None
+        return None, False
     return _lookup(alt, timeout_s)
 
 
-def _lookup(url: str, timeout_s: float) -> Optional[str]:
-    """One cheap, unmetered availability request. Never raises."""
+def _lookup(url: str, timeout_s: float) -> tuple[Optional[str], bool]:
+    """One cheap availability request. Returns (memento, rate_limited). Never raises."""
     try:
         resp = requests.get(AVAILABILITY_API, params={"url": url}, timeout=timeout_s,
                             headers={"User-Agent": _UA})
+        # 429 is the Internet Archive declining to answer. Collapsing it into None, as this
+        # did before 2026-08-09, manufactures the claim "never archived" out of our own
+        # traffic — see the module docstring for the sweep that measured it.
+        if resp.status_code == 429:
+            logger.warning("archive: availability API rate-limited; pausing lookups",
+                           extra={"url": url})
+            return None, True
         if resp.status_code != 200:
-            return None
+            return None, False
         closest = (resp.json().get("archived_snapshots") or {}).get("closest") or {}
     except (requests.RequestException, ValueError):
-        return None
+        return None, False
     if not closest.get("available"):
-        return None
+        return None, False
     status = str(closest.get("status") or "200")
     if not status.startswith("2") and not status.startswith("3"):
-        return None
+        return None, False
     memento = closest.get("url")
     if not isinstance(memento, str) or not memento.startswith("http"):
-        return None
+        return None, False
     # The API answers in http:// for historical reasons; the storefront is https-only and a
     # mixed-content link is one a browser may refuse to open.
-    return memento.replace("http://web.archive.org/", "https://web.archive.org/", 1)
+    return memento.replace("http://web.archive.org/", "https://web.archive.org/", 1), False
 
 
 def save_snapshot(url: str, timeout_s: float = 30.0) -> tuple[Optional[str], bool]:
@@ -186,7 +220,9 @@ def archive_urls(urls: Iterable[str], *, cache_path: Optional[Path] = None,
                        max_urls, len(unique), len(unique) - max_urls)
         unique = unique[:max_urls]
 
-    rate_limited = False
+    rate_limited = False        # Save Page Now has asked us to stop
+    lookup_limited = False      # the availability API has asked us to stop
+    deferred = 0
     dirty = False
     for url in unique:
         entry = cache.get(url) or {}
@@ -196,15 +232,30 @@ def archive_urls(urls: Iterable[str], *, cache_path: Optional[Path] = None,
             continue
         if entry and now - float(entry.get("ts") or 0) < _FAILURE_TTL_S:
             continue  # recently failed; do not re-spend the request on this publish
+        if lookup_limited:
+            deferred += 1
+            continue  # see below: an unasked URL is not an unarchived one
 
-        memento = existing_snapshot(url, timeout_s)
-        if memento is None and save_new and not rate_limited:
+        memento, lookup_limited = _snapshot(url, timeout_s)
+        if memento is None and save_new and not rate_limited and not lookup_limited:
             memento, rate_limited = save_snapshot(url, save_timeout_s)
+
+        # A 429 means we never got an answer, so there is nothing here worth remembering.
+        # Writing `{"memento": None}` would pin our own throttling onto the URL for
+        # `_FAILURE_TTL_S`, and every later run would read it back as "already checked, not
+        # archived" without ever asking again.
+        if lookup_limited and memento is None:
+            deferred += 1
+            continue
 
         cache[url] = {"memento": memento, "ts": now}
         dirty = True
         if memento:
             out[url] = memento
+
+    if deferred:
+        logger.warning("archive: rate-limited; %d URL(s) left unchecked and NOT cached as "
+                       "missing, retry on a later run", deferred)
 
     if dirty:
         _cache_save(cache_path, cache)

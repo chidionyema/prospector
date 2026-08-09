@@ -120,7 +120,7 @@ def test_an_unclassified_pack_still_publishes_at_the_flat_catalogue_price(bridge
     candidates. A repoint that silently re-priced 61 live packs on merge is the incident
     this asserts against."""
     minted, catalogued = _publish_and_capture(bridge, _dossier("c2-flat"))
-    assert minted == catalogued == 4900
+    assert minted == catalogued == 4999
 
 
 def test_a_classified_pack_publishes_at_its_ladder_rung_not_the_constant(bridge, cfg):
@@ -129,7 +129,7 @@ def test_a_classified_pack_publishes_at_its_ladder_rung_not_the_constant(bridge,
     expected = price_for(dossier.candidate, dossier.score, cfg).price_pence
     minted, catalogued = _publish_and_capture(bridge, dossier)
     assert minted == catalogued == expected
-    assert expected != 4900, "sanity: the ladder must actually move a venture/us pack"
+    assert expected != 4999, "sanity: the ladder must actually move a venture/us pack"
 
 
 def test_the_price_decision_is_recorded_on_the_candidate(bridge, cfg):
@@ -138,7 +138,7 @@ def test_the_price_decision_is_recorded_on_the_candidate(bridge, cfg):
     dossier = _dossier("c2-record", "growth", "uk")
     _publish_and_capture(bridge, dossier)
     rec = dossier.candidate.tags.get("price_decision")
-    assert rec and rec["price_pence"] == 7900
+    assert rec and rec["price_pence"] == 7999
     assert "growth" in rec["rationale"]
     assert rec["segment"] == {"ambition_tier": "growth", "market": "uk"}
 
@@ -188,4 +188,4 @@ def test_a_config_with_no_ladder_holds_the_flat_price_instead_of_crashing(cfg: C
     c2 = copy.deepcopy(cfg)
     c2.listing["pricing"] = {"rungs": [1900, 4900]}   # default_rung_index missing
     d2 = price_for(Candidate(title="x"), ScoreResult(scores={}, justification={}), c2)
-    assert d2.price_pence == 4900
+    assert d2.price_pence == cfg.listing["price_pence"]  # falls back to the real config's flat price

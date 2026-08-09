@@ -830,6 +830,20 @@ class EngineBridge:
             # normalisation is ever bypassed again, this errors instead of going quiet, and
             # a quiet bypass is exactly how 71 dashes reached 68 of 72 live listings.
             house_fields={"title": nodash(to_plain_text(candidate.title, collapse=True))},
+            # Built AFTER `archive_sources` above has populated the field, so a citation that
+            # died since publish warns (with its memento named) instead of blocking the pack.
+            # Empty when archiving is off or found nothing, which restores the old behaviour
+            # exactly: no memento, no downgrade.
+            archived_urls={
+                s.url: s.archived_url
+                for s in (dossier.all_sources or [])
+                if getattr(s, "url", "") and getattr(s, "archived_url", "")
+            },
+            # Same field, second question: `check_house_dashes` asks whether the title is
+            # punctuated in house style; `check_title` asks whether it is a marketing
+            # headline a buyer can read on a card. Actuator defaults OFF (see check_title).
+            title_max_chars=int(listing_cfg.get("title_max_chars", 60) or 60),
+            title_block_on_breach=bool(listing_cfg.get("title_block_on_breach", False)),
             grammar_enabled=bool(listing_cfg.get("lint_grammar", False)),
             max_grammar_defects_per_1k=float(
                 listing_cfg.get("max_grammar_defects_per_1k", 0.0) or 0.0),

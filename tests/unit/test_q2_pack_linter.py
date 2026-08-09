@@ -325,3 +325,338 @@ def test_listing_gate_every_fence_is_independent(fence):
                   bundle_complete=True, lint_ok=True)
     kwargs[fence] = False
     assert listing_gate(**kwargs) is False
+
+
+# ---------------------------------------------------------------------------
+# A dead citation with a live archived copy (2026-08-09)
+# ---------------------------------------------------------------------------
+# `check_urls` had ZERO references to `archived_url`, so publishing a Wayback memento
+# alongside every citation unblocked nothing: a 404 was an unconditional publish blocker
+# whether or not the evidence was still readable. These pin the downgrade AND its limits.
+
+def _dead_live_probes(monkeypatch, memento_status):
+    """Citation URL is 404 on both HEAD and GET; the memento answers `memento_status`."""
+    def fake_head(url, **kw):
+        return _Resp(200 if "web.archive.org" in url else 404)
+
+    def fake_get(url, **kw):
+        if "web.archive.org" in url:
+            return _Resp(memento_status)
+        return _Resp(404)
+
+    monkeypatch.setattr(pack_linter.requests, "head",
+                        lambda url, **kw: _Resp(memento_status)
+                        if "web.archive.org" in url else fake_head(url, **kw))
+    monkeypatch.setattr(pack_linter.requests, "get", fake_get)
+
+
+def test_a_dead_citation_with_a_live_memento_warns_instead_of_blocking(monkeypatch):
+    _dead_live_probes(monkeypatch, 200)
+    memento = "https://web.archive.org/web/20240101/https://x.test/dead"
+    probs, _ = check_urls({"gtm_plan": "see https://x.test/dead"},
+                          archived={"https://x.test/dead": memento})
+    assert [p["severity"] for p in probs] == ["warning"], \
+        "a citation whose evidence is still readable must not block the publish"
+    assert memento in probs[0]["detail"], "the warning must name the standing-in copy"
+
+
+def test_a_dead_memento_does_not_excuse_a_dead_citation(monkeypatch):
+    """The inverse defect: trusting a stored `archived_url` without probing it would
+    manufacture 'the buyer can verify this' from a field nobody checked."""
+    _dead_live_probes(monkeypatch, 404)
+    probs, _ = check_urls(
+        {"gtm_plan": "see https://x.test/dead"},
+        archived={"https://x.test/dead": "https://web.archive.org/web/1/https://x.test/dead"})
+    assert [p["severity"] for p in probs] == ["error"]
+
+
+def test_an_unreachable_archive_leaves_the_error_standing(monkeypatch):
+    """Asymmetric on purpose: elsewhere an unproven state favours the citation, because the
+    cost is condemning a live source. Here it would EXCUSE an unfollowable one."""
+    import requests as real_requests
+
+    def fake_head(url, **kw):
+        if "web.archive.org" in url:
+            raise real_requests.ConnectTimeout("archive down")
+        return _Resp(404)
+
+    def fake_get(url, **kw):
+        if "web.archive.org" in url:
+            raise real_requests.ConnectTimeout("archive down")
+        return _Resp(404)
+
+    monkeypatch.setattr(pack_linter.requests, "head", fake_head)
+    monkeypatch.setattr(pack_linter.requests, "get", fake_get)
+    probs, _ = check_urls(
+        {"gtm_plan": "see https://x.test/dead"},
+        archived={"https://x.test/dead": "https://web.archive.org/web/1/https://x.test/dead"})
+    assert [p["severity"] for p in probs] == ["error"]
+
+
+def test_no_archived_map_behaves_exactly_as_before(monkeypatch):
+    """The regression control: absent mementos, this path is untouched."""
+    _dead_live_probes(monkeypatch, 200)
+    probs, _ = check_urls({"gtm_plan": "see https://x.test/dead"})
+    assert [p["severity"] for p in probs] == ["error"]
+
+
+# ---------------------------------------------------------------------------
+# The title is the marketing headline (2026-08-09)
+# ---------------------------------------------------------------------------
+# Measured on the 48 live catalogue rows: median title 96.5 chars, 2 of 48 inside the
+# 40-60 band, four separators in use, 4 rows with no descriptor at all — while the SAME
+# packs carried a card_line of min 40 / median 52.5 / max 60. The short form was always
+# writable; `prompts/generate_system.md` just asked for "a short name, then a dash, then
+# what it does" and named no length.
+
+_GOOD = "SwarmHold, income cover for beekeepers in a hive standstill"  # 59 chars
+
+
+def _title_report(title, **kw):
+    """lint_pack over a clean pack, varying only the title."""
+    return _report(house_fields={"title": title}, **kw)
+
+
+def test_a_title_in_the_declared_format_is_clean():
+    assert len(_GOOD) <= pack_linter.TITLE_MAX_CHARS
+    assert [p for p in _title_report(_GOOD)["problems"] if p["check"] == "title"] == []
+
+
+def test_an_over_length_title_is_reported():
+    long = "SwarmHold, statutory income cover for sole-trader beekeepers ordered to " \
+           "stop moving their hives during a foulbrood standstill"
+    assert len(long) > pack_linter.TITLE_MAX_CHARS
+    problems = [p for p in _title_report(long)["problems"] if p["check"] == "title"]
+    assert len(problems) == 1
+    assert f"exceeds the {pack_linter.TITLE_MAX_CHARS} limit" in problems[0]["detail"]
+
+
+def test_a_bare_name_with_no_descriptor_is_reported():
+    # Baymard's listing-page finding, and the 4 live rows that had exactly this shape:
+    # a coined word alone tells a buyer nothing about what they are being sold.
+    problems = [p for p in _title_report("SwarmHold")["problems"] if p["check"] == "title"]
+    assert len(problems) == 1
+    assert "no descriptor" in problems[0]["detail"]
+
+
+def test_a_sentence_before_the_separator_is_not_a_name():
+    # The descriptor-first shape. It is legible, but it is not the declared format, and a
+    # length check alone would wave it through — this one is 58 chars.
+    t = "Income cover for beekeepers in a hive standstill, SwarmHold"
+    assert len(t) <= pack_linter.TITLE_MAX_CHARS
+    problems = [p for p in _title_report(t)["problems"] if p["check"] == "title"]
+    assert len(problems) == 1
+    assert "is a sentence, not a name" in problems[0]["detail"]
+
+
+def test_the_actuator_is_off_by_default_so_a_bad_title_cannot_unlist_a_pack():
+    # The whole reason the check can ship before the catalogue is retitled: on 2026-08-09
+    # this rule would have errored on 46 of 48 live packs.
+    report = _title_report("SwarmHold")
+    assert report["ok"] is True
+    assert all(p["severity"] == "warning"
+               for p in report["problems"] if p["check"] == "title")
+
+
+def test_the_actuator_on_makes_the_same_title_block_the_listing():
+    report = _title_report("SwarmHold", title_block_on_breach=True)
+    assert report["ok"] is False
+    assert any(p["severity"] == "error"
+               for p in report["problems"] if p["check"] == "title")
+
+
+def test_an_empty_title_errors_whatever_the_actuator_says():
+    # Not a format opinion: a pack with no title has nothing to sell on any surface.
+    report = _title_report("")
+    assert report["ok"] is False
+    assert [p["detail"] for p in report["problems"] if p["check"] == "title"] == ["empty"]
+
+
+def test_no_title_in_house_fields_behaves_exactly_as_before():
+    assert [p for p in _report()["problems"] if p["check"] == "title"] == []
+
+
+def test_split_title_takes_the_first_separator_so_a_descriptor_may_contain_commas():
+    name, desc = pack_linter.split_title("SwarmHold, income cover, paid weekly")
+    assert (name, desc) == ("SwarmHold", "income cover, paid weekly")
+
+
+def test_split_title_still_reads_a_raw_dash_title():
+    # `nodash` rewrites the dash to ", " at publish, so the linter normally sees a comma.
+    # It must read the raw form honestly too, or a pre-choke-point title reads as "no
+    # descriptor" and the report blames the wrong defect.
+    assert pack_linter.split_title("SwarmHold — income cover") == ("SwarmHold", "income cover")
+    assert pack_linter.split_title("SwarmHold – income cover") == ("SwarmHold", "income cover")
+    assert pack_linter.split_title("SwarmHold - income cover") == ("SwarmHold", "income cover")
+
+
+def test_a_title_over_length_AND_shapeless_reports_both():
+    t = "Automated statutory income cover for sole-trader beekeepers ordered to stand still"
+    assert len(t) > pack_linter.TITLE_MAX_CHARS
+    details = [p["detail"] for p in _title_report(t)["problems"] if p["check"] == "title"]
+    assert len(details) == 2
+    assert any("exceeds the" in d for d in details)
+    assert any("no descriptor" in d for d in details)
+
+
+# ---------------------------------------------------------------------------
+# The descriptor may only restate what the pack already says (2026-08-09)
+# ---------------------------------------------------------------------------
+# `prompts/retitle.md` carries a TRUTH RULE. A prompt instruction is a request evaluated by
+# the same process that produces the error, so it is not a control. These tests pin the
+# control that replaced it.
+
+_SRC = ["Chases the retention main contractors hold back after practical completion.",
+        "Get every penny of retention released without a solicitor."]
+
+
+def _claims(descriptor, sources=_SRC, market="uk", block=False):
+    return pack_linter.check_title_claims(
+        f"RetainRelease, {descriptor}", sources, market=market, block=block)
+
+
+def _hard(problems):
+    return [p for p in problems if p["check"] == "title_claim"]
+
+
+def _soft(problems):
+    return [p for p in problems if p["check"] == "title_new_word"]
+
+
+def test_a_descriptor_that_only_restates_the_source_is_clean():
+    assert _claims("chases the retention contractors hold back") == []
+
+
+def test_a_figure_the_pack_never_states_is_a_hard_claim():
+    out = _hard(_claims("recovers 40% of retention"))
+    assert len(out) == 1 and "40" in out[0]["detail"]
+
+
+def test_a_figure_the_pack_does_state_is_not_a_claim():
+    assert _hard(_claims("recovers 40% of retention",
+                         sources=_SRC + ["Typically 40% of the sum withheld."])) == []
+
+
+def test_the_declared_market_supports_its_own_name_without_prose():
+    # A pack whose market is `uk` IS a UK pack. Requiring the word in the one-liner would
+    # make the check fire on a true statement, which is how a check gets switched off.
+    assert _hard(_claims("chases retention for UK subcontractors", market="uk")) == []
+
+
+def test_naming_a_market_the_pack_is_not_in_is_a_hard_claim():
+    out = _hard(_claims("chases retention for UK subcontractors", market="us"))
+    assert len(out) == 1 and "declared market" in out[0]["detail"]
+
+
+def test_a_sub_national_place_gets_no_market_credit():
+    # "us" -> "Texas" is a narrowing to one state, not a restatement of the market.
+    out = _hard(_claims("chases retention for Texas subcontractors", market="us"))
+    assert len(out) == 1 and "texas" in out[0]["detail"].lower()
+
+
+def test_an_institution_the_pack_never_names_is_a_hard_claim():
+    out = _hard(_claims("chases retention through the NHS", market="uk"))
+    assert len(out) == 1 and "nhs" in out[0]["detail"].lower()
+
+
+def test_an_absolute_the_pack_never_makes_is_a_hard_claim():
+    out = _hard(_claims("guaranteed retention recovery"))
+    assert len(out) == 1 and "guaranteed" in out[0]["detail"]
+
+
+def test_an_absolute_the_pack_does_make_rides_through():
+    # The rule is "no NEW claim", not "no strong words": the source says "every penny".
+    assert _hard(_claims("gets every penny of retention back")) == []
+
+
+def test_a_timescale_with_no_digit_is_still_caught():
+    out = _hard(_claims("same-day retention recovery"))
+    assert len(out) == 1 and "same-day" in out[0]["detail"]
+
+
+def test_a_proper_noun_the_pack_never_uses_is_a_hard_claim():
+    out = _hard(_claims("chases retention under the Construction Act"))
+    assert any("Construction" in p["detail"] for p in out)
+
+
+def test_the_audience_narrowing_that_prompted_this_check_is_reported_not_silent():
+    # The live smoke test produced "shows what UK creatives are charging" for a pack whose
+    # own copy says freelancers. "creatives" is not a figure, a place or a guarantee, so no
+    # hard rule catches it — and a machine cannot rule on whether it is fair paraphrase.
+    # It must therefore reach the reviewer as a NAMED word, never as prose to diff by eye.
+    src = ["Shows freelancers what their peers are charging, by discipline and region."]
+    out = _claims("shows what UK creatives are charging", sources=src, market="uk")
+    assert _hard(out) == []
+    assert len(_soft(out)) == 1 and "creatives" in _soft(out)[0]["detail"]
+
+
+def test_a_paraphrase_of_a_word_the_source_inflects_differently_is_not_reported():
+    # "charging" in the source supports "charges" in the descriptor; a stemmer that missed
+    # this would flood the reviewer with false new words and get itself ignored.
+    src = ["Shows freelancers what their peers are charging."]
+    assert _soft(_claims("shows what peers charge", sources=src)) == []
+
+
+def test_the_soft_tier_is_a_warning_even_when_the_actuator_is_on():
+    # Blocking a listing on "is this fair paraphrase?" would put a machine in charge of a
+    # judgement it cannot make. Only the hard tier escalates.
+    src = ["Shows freelancers what their peers are charging."]
+    out = _claims("shows what UK creatives are charging", sources=src, block=True)
+    assert [p["severity"] for p in _soft(out)] == ["warning"]
+
+
+def test_the_actuator_promotes_only_the_hard_tier():
+    assert [p["severity"] for p in _hard(_claims("guaranteed recovery"))] == ["warning"]
+    assert [p["severity"] for p in _hard(_claims("guaranteed recovery", block=True))] == ["error"]
+
+
+def test_a_title_with_no_descriptor_is_not_double_reported():
+    # check_title already says the format was not followed; saying it again under a second
+    # check name would make one defect look like two.
+    assert pack_linter.check_title_claims("RetainRelease", _SRC, market="uk") == []
+
+
+def test_each_offending_token_is_reported_once_not_once_per_rule():
+    # "UK" trips both the geography rule and the proper-noun rule.
+    out = _hard(_claims("chases UK retention", market="us"))
+    assert len(out) == 1
+
+
+def test_a_title_cased_descriptor_does_not_read_as_a_wall_of_proper_nouns():
+    # Capitalisation only signals a proper noun in a string that is otherwise plain prose.
+    # In Title Case it signals nothing, and reading it as six claims would flag a true
+    # statement — measured on 5 of the 7 live rows this rule fired on before the guard.
+    out = _hard(pack_linter.check_title_claims(
+        "DLAChild, The Primary Carer's DLA Child Claim Engine", _SRC, market="uk"))
+    assert out == []
+
+
+def test_the_proper_noun_rule_still_applies_to_plain_prose():
+    out = _hard(_claims("chases retention under the Construction Act"))
+    assert any("Construction" in p["detail"] for p in out)
+
+
+def test_a_sentence_opening_verb_is_not_read_as_a_proper_noun():
+    # "See what your peers charge" — 'See' is capitalised by grammar. Measured on the 48 live
+    # rows this exempted 'See' (x3) and 'Run' (x2), every one an opening verb of a headline.
+    out = _hard(pack_linter.check_claims(
+        "See what your peers charge", ["shows what peers charge"],
+        market="uk", where="headline"))
+    assert out == []
+
+
+def test_a_capital_after_a_full_stop_is_also_exempt():
+    out = _hard(pack_linter.check_claims(
+        "Chases retention. Recovers it too.", ["chases retention and recovers it"],
+        market="uk", where="headline"))
+    assert out == []
+
+
+def test_a_proper_noun_mid_sentence_is_still_caught():
+    out = _hard(pack_linter.check_claims(
+        "See what the Construction Act says", ["shows what the rules say"],
+        market="uk", where="headline"))
+    # `d["detail"]`, not `d`: a finding is a dict, so `"Construction" in d` asks whether it is
+    # a KEY and is always False — the assertion could never fail for the right reason, and the
+    # linter it guards was working the whole time.
+    assert any("Construction" in d["detail"] for d in out)

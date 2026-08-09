@@ -288,6 +288,30 @@ class MiniMaxOperator(Operator):
     Correct base URL: https://api.minimax.io/v1 (confirmed from MiniMax platform docs).
     """
 
+    # ---- Rate rails (added 2026-08-09 after a measured 429 storm) -------------------------
+    #
+    # THE INCIDENT: the first run that routed pack PROSE to MiniMax (artifact_operator gained
+    # a minimax tier that night) produced 281 `HTTP Error 429: Too Many Requests` and zero
+    # sellable packs. MiniMax was not the weak link — the same run logged a 34,200-char
+    # ops_plan and a 29,888-char gtm_plan, both coherent. It was pure request pressure:
+    # generate_artifacts and generate_marketing_content each fan out 4 concurrent calls
+    # (artifacts.py:438/634/815) at max_tokens 32768, and when the resulting empties failed
+    # validate_pack the driver retried the WHOLE pack 3x — so the flakiness budget fed the
+    # thing causing the flakiness. 29 packs of that is the 281.
+    #
+    # Two rails, because either alone leaves the hole open:
+    #   * a process-wide SEMAPHORE, since the burst is CONCURRENT, not sequential — a
+    #     per-call sleep cannot bound 8 simultaneous requests; and
+    #   * bounded BACKOFF on 429 specifically, because `classify_exhaustion` already grades
+    #     429 as TRANSIENT backpressure while `complete_json`'s retry loop (:145) catches only
+    #     ParseError/JSONDecodeError/ValueError. A transient signal was reaching a caller that
+    #     had no path to wait it out, so it read as a hard failure.
+    # Only after the backoff is spent does it raise ProviderExhaustedError, which is the
+    # honest verdict at that point: we asked, we waited, it is still saying no.
+    _throttle = threading.Semaphore(int(os.environ.get("PROSPECTOR_MINIMAX_CONCURRENCY", "3")))
+    _RETRY_429_MAX = int(os.environ.get("PROSPECTOR_MINIMAX_429_RETRIES", "4"))
+    _RETRY_429_BASE_S = float(os.environ.get("PROSPECTOR_MINIMAX_429_BACKOFF_S", "5"))
+
     # MiniMax API endpoint (OpenAI-compatible /v1/chat/completions).
     # The flagship reasoning model and the stable non-reasoning option for
     # structured JSON tasks are configured in `config.yaml` under
@@ -349,21 +373,46 @@ class MiniMaxOperator(Operator):
             },
             method="POST",
         )
-        try:
-            # MiniMax M3 completions routinely take 75-115s (measured 2026-07-01: 75.7s and 113.4s
-            # succeeded; calls cut at the old 120s cap failed with "read operation timed out",
-            # zeroing whole generation batches when it was the only live brain). 240s gives the
-            # slow-but-alive path headroom so a slow response is not misread as a dead provider.
-            # timeout=240 is per-recv; total_deadline is the HARD ceiling that a trickled body
-            # cannot defeat (see _urlopen_read_bounded). Beyond it the chain fails over to Ollama.
-            raw = _urlopen_read_bounded(req, timeout=240, total_deadline=300)
-            data = json.loads(raw.decode("utf-8"))
-        except Exception as e:
-            # Shared classifier — same reasoning as the DeepSeek adapter above.
-            from .errors import ProviderExhaustedError, looks_exhausted
-            if looks_exhausted(str(e)):
-                raise ProviderExhaustedError(f"MiniMax quota exhausted: {e}", provider=self.name)
-            raise RuntimeError(f"MiniMax call failed: {e}") from e
+        from .errors import ProviderExhaustedError, looks_exhausted
+        from .telemetry import logger as _log
+
+        data = None
+        for attempt in range(self._RETRY_429_MAX + 1):
+            try:
+                # MiniMax M3 completions routinely take 75-115s (measured 2026-07-01: 75.7s and
+                # 113.4s succeeded; calls cut at the old 120s cap failed with "read operation
+                # timed out", zeroing whole generation batches when it was the only live brain).
+                # 240s gives the slow-but-alive path headroom so a slow response is not misread
+                # as a dead provider. timeout=240 is per-recv; total_deadline is the HARD ceiling
+                # that a trickled body cannot defeat (see _urlopen_read_bounded). Beyond it the
+                # chain fails over to Ollama.
+                #
+                # The semaphore is held only around the REQUEST, never around the backoff sleep:
+                # a waiter that keeps its slot while sleeping converts backpressure into a
+                # deadlock of the whole pool, which is the failure this rail exists to prevent.
+                with self._throttle:
+                    raw = _urlopen_read_bounded(req, timeout=240, total_deadline=300)
+                data = json.loads(raw.decode("utf-8"))
+                break
+            except Exception as e:
+                msg = str(e)
+                # 429 is TRANSIENT backpressure (errors.classify_exhaustion), so it earns a
+                # wait, not a verdict. Matched on a word boundary, never as a bare substring —
+                # a request id or a byte count containing "429" once benched a live brain
+                # (memory: substring-http-codes-bench-a-live-brain).
+                if re.search(r"\b429\b", msg) and attempt < self._RETRY_429_MAX:
+                    delay = self._RETRY_429_BASE_S * (2 ** attempt)
+                    _log.warning(
+                        f"MiniMax 429 backpressure; retrying in {delay:.0f}s "
+                        f"(attempt {attempt + 1}/{self._RETRY_429_MAX})",
+                        extra={"provider": self.name, "delay_s": delay})
+                    time.sleep(delay)
+                    continue
+                # Shared classifier — same reasoning as the DeepSeek adapter above.
+                if looks_exhausted(msg):
+                    raise ProviderExhaustedError(f"MiniMax quota exhausted: {e}",
+                                                 provider=self.name)
+                raise RuntimeError(f"MiniMax call failed: {e}") from e
 
         # Track token usage (OpenAI-compatible usage block)
         usage = data.get("usage") or {}
@@ -495,6 +544,9 @@ class StandardComputeOperator(Operator):
 
     _BASE_URL = "https://api.stdcmpt.com/v1"
     _USER_AGENT = "prospector/1.0"
+    # Upper bound on a body that may be read as an out-of-allowance notice rather than a
+    # completion (see the end of `_raw`). Measured notice: 197 chars.
+    _OUT_OF_CREDIT_MAX_CHARS = 1000
 
     def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None,
                  default_model: Optional[str] = None, base_url: Optional[str] = None):
@@ -584,6 +636,25 @@ class StandardComputeOperator(Operator):
         content = (data.get("choices", [{}])[0].get("message", {})
                    .get("content", "") or "")
         logger.info(f"StandardCompute response: length={len(content)}")
+
+        # A spent allowance arrives here as HTTP 200 with the upsell AS the completion, so the
+        # except-branch above never sees it. Measured 2026-08-09: every layer upstairs read that
+        # as a SUCCESSFUL call — FallbackOperator ran `record_success()` and `_health.clear()`,
+        # which is why store/provider_health_noncritical.json was `{}` and no dead mark could
+        # ever exist; the chain therefore never advanced to claude_cli, and `complete_json`
+        # simply re-asked the same dead brain three times and raised ParseError. Thirteen
+        # consecutive generation ticks produced nothing while the moat's own claude_cli was
+        # answering verdicts normally. Raising is the whole difference between an outage and a
+        # failover.
+        #
+        # The length bound is the false-positive guard: this notice is a short canned body
+        # (197 chars measured), whereas a real completion that merely discusses a spent
+        # allowance is long and structured. Both conditions must hold.
+        from .errors import ProviderExhaustedError, looks_exhausted
+        if len(content) <= self._OUT_OF_CREDIT_MAX_CHARS and looks_exhausted(content):
+            raise ProviderExhaustedError(
+                f"StandardCompute returned an out-of-allowance notice instead of a "
+                f"completion: {content[:200]}", provider=self.name)
         return content
 
 

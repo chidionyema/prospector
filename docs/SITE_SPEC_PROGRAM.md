@@ -47,6 +47,7 @@ owns each fact; every other page links to it.
 | 4a | Core components — **source chip** | P2 | ✅ done | `components/ui/SourceChip.tsx` is the sitewide primitive; `sourceChipIsTheOnlyOne.test.ts` (6 tests) forbids a seventh. It replaced **six** private copies in two visual languages — `Citation.tsx`, `sample.tsx:112`, `HeroDossier.tsx:104`, `Gauntlet.tsx:123`, `DossierPreview.tsx:96`, `kill-log.tsx:477` — plus three separate `domainOf` helpers. Two of the six omitted `rel="nofollow"`. `site_spec_probe.py --section 4a`. |
 | 4b | Core components — QA row, glyph strip | P2 | ❌ not started | Five QA-row shapes (`CheckSequence.tsx:81`, `EvidenceRecordPanel.tsx:49`, `sample.tsx:310`, `pack/[id].tsx:712`, `how-it-works.tsx:179`) and two glyph strips (`HeroEvidenceStrip.tsx:65`, `EvidenceBar.tsx:24`). Unlike the chip these differ **by design** (confidence score, rationale, methodology-only). §4 wants one; that is a visual decision, not a refactor — see the note below. |
 | 5.2 | Vocabulary — one name per thing | P1 | ✅ done | `site_spec_probe.py --section 5.2` → **0 reader-facing instances** of catalog/shot/grounded/gauntlet/dossier. The **previous** ✅ was false: the probe found 12, in `how-it-works.tsx:147,262,270`, `DossierPreview.tsx:40,128`, `DossierExcerptPlate.tsx:57`, `Gauntlet.tsx:163`, `sample.tsx:373`, `pack/[id].tsx:897`, `faqContent.ts:124`, `terms.tsx:36` (×2). It came from a raw grep that could not tell an identifier from a sentence; the probe extracts JSX text nodes + sentence-shaped string literals, so it counts what a **reader** sees, not what the compiler does. All 12 fixed 2026-08-07 — see "the survivor is *evidence record*" below. |
+| 5.4 | Pack title format (`Name, what it does`, ≤60) | P1 | 🟡 rule enforced, catalogue not yet rewritten | Rule: `pack_linter.check_title` + `listing.title_max_chars: 60`, wired at `bridge.py` (publish path), 11 tests in `test_q2_pack_linter.py`, **all 5 mutations of the check fail the suite**. Prompt root cause fixed — `generate_system.md` asked for "a short name, then a **dash**, then what it does" and named no length. Baseline measured over the 48 live rows: title median **96.5**, clean under the rule **1 of 48** (43 too long, 4 no descriptor), separators `", "`×34 / em-dash×7 / none×4 / en-dash×3. Actuator `title_block_on_breach` ships **false** — true would unlist 47 of 48. **Open:** `tools/retitle_catalogue.py --apply` not yet run. |
 | 5.3 | Ownership map (say it once) | P1 | ✅ done | /about, /how-it-works, /faq de-duplicated. Home owns the pack manifest (`index.tsx:1693`), /pricing keeps bare filenames only (`pricing.tsx:123`), a pack page lists its own (`pack/[id].tsx:669`). "What you get, at every price" deleted from home.
 `factOwnership.test.ts` (14 tests) pins six facts, the sixth added 2026-08-07 — see "the founder was
 introduced twice" below. |
@@ -422,6 +423,26 @@ detail was supplied in the response — nothing to act on there; open if the use
   outright rather than shortened; see "the founder was introduced twice" below.
 - ~~`components/marketing/Gauntlet.tsx` — component name carries retired vocabulary~~ **done
   2026-08-07**; four files renamed, see the table under §5.2.
+- **The title had no narrow door until 2026-08-09, and that is why nobody had ever fixed one.**
+  `pack.Title` was written in exactly two places, `Program.cs:466` and `:480`, **both inside the
+  upsert** — the endpoint `CopyPatchRequest.cs` documents as having two silent ways to break a live
+  pack's money rail (null the provider ids, or point the buy button at a freshly minted price while
+  `PricePence` holds the old one). `ListingPatchRequest` is `(bool IsListed, string Reason)` and
+  reaches nothing else. So correcting the most buyer-visible column on the storefront meant routing
+  a pure copy edit through the one endpoint every other copy job is kept away from. `Title` was
+  added to `PATCH /internal/catalog/{id}/copy` (blank refused with 400, as `OneLine` already was,
+  because `Pack.Title` is `required` with no fallback); 14 tests green, both mutations of the
+  handler fail the suite. **Generalisation worth checking before the next copy job:** the narrow
+  door covers a column only because someone once needed it to.
+- **`headline` and `cardLine` are damaged on the live shelf too, and were not fixed in that pass.**
+  Measured over the same 48 rows on 2026-08-09: `headline` is a **truncated copy of the title** on
+  **15** rows, `cardLine` is **empty** on **12**, and **8** rows carry both. Since `cardLine` is
+  what the shelf card actually heads with, an empty one falls back to the title — which is why the
+  title's length was visible on the cards at all. Retitling does not repair these; they need their
+  own pass through the same `PATCH .../copy` door.
+- **10 live rows still carry raw em/en dashes.** They predate the 2026-08-08 `_normalise_catalog_payload`
+  choke point and have not been republished since, so `nodash` has never run on them. The retitle
+  pass fixes this for the title only — the other copy fields on those rows are untouched.
 - **Existing packs on disk are not retroactively publish-passed.** The pass runs at generation time.
   Measured on the 40 newest bundles: 260 `.md` files would change, 4,000,997 → 3,682,764 chars
   (−7.95%). Cleaning the shelf needs a re-render; not done.
@@ -670,6 +691,44 @@ render instantly — non-negotiable. No parallax, no scroll-jacking, no decorati
 | Kill-log explanation | /kill-log | Home, /how-it-works (×2), /about |
 | Honest limits / what you don't get | /pricing | /how-it-works "The honest limits" → link |
 | Email-capture promise | The capture block itself, once | Was stated 4× within the block |
+
+### 5.4 Pack title format — `Name, what it does`, at most 60 characters
+
+Added 2026-08-09. The title is the **only** string every surface shows at once: the shelf card,
+the pack page H1, the `<title>` a search result prints, and the OG image on a shared link.
+Nothing else about the pack travels with it, so it is the marketing headline whether or not
+anyone treats it as one. Until this date nothing bounded it and nothing shaped it.
+
+**The format.** A short name, a comma, then what the buyer gets, in buyer's words:
+
+> `RetainRelease, chases the retention contractors hold back`
+
+- **60 characters total**, name + `, ` + descriptor. Not a target — the linter's number.
+- **The name leads** (founder decision 2026-08-09, chosen over descriptor-first and
+  name-free variants). It keeps brand recall in the SERP and on share cards, and it leaves
+  `splitTitle` (`lib/discovery.ts:626`) semantics unchanged — the pre-separator segment stays
+  the name. Cost accepted: the NN/g finding below says the opening characters are what a
+  scanner reads, and a coined word spends them.
+- **The name is at most 4 words / 30 characters.** Past that it is a sentence, not a name.
+- **A comma, never a dash** — the house rule (`copy_lint.check_house_dashes`), and `nodash`
+  rewrites a dash to `, ` at publish anyway.
+- **The descriptor may not out-claim the description.** It compresses what the pack already
+  says; it never adds a number, a timescale, a guarantee or an institution. A claim invented
+  in a title has no citation behind it, which is the one thing this storefront cannot ship.
+
+**Why 60, measured rather than chosen.** `artifacts.CARD_LINE_MAX` already enforced 60 on
+`card_line`, and the engine hit it comfortably: across the 48 live rows, `card_line` ran
+min 40 / median 52.5 / max 60 on all 36 rows that had one. The same packs' titles ran
+median 96.5. The short form was always writable — it was not being asked for. Supporting
+outside evidence, all correlational and none of it ours: Zyppy (n=80,959) found Google
+rewrites 99.9% of titles over 70 characters, lowest rewrite rate at 51-60; Backlinko
+(n=1.3M) found 40-60 characters correlates with +33% CTR; NN/g (n=80) found comprehension
+of a link is decided by roughly its first 11 characters.
+
+**Where it is enforced.** `pack_linter.check_title` on the publish path, config
+`listing.title_max_chars` / `listing.title_block_on_breach`. The actuator ships **off**: on
+2026-08-09 the rule failed 47 of the 48 live rows, so turning it on before the rewrite would
+have unlisted the shelf. Flip it once `tools/retitle_catalogue.py --apply` has landed.
 
 ---
 

@@ -5,7 +5,7 @@ namespace Store.Catalog.Domain;
 /// </summary>
 public static class Money
 {
-    public const long DefaultPackPricePence = 4900; // £49.00
+    public const long DefaultPackPricePence = 4999; // £49.99
 
     public static long FromDecimal(decimal amount)
     {

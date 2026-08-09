@@ -97,6 +97,72 @@ def test_lookup_failure_is_none_never_raises():
 
 
 # ---------------------------------------------------------------------------
+# A 429 from the availability API is not an answer (2026-08-09)
+# ---------------------------------------------------------------------------
+# The module used to exempt lookups from the rate-limit rule, on the premise that they hit "a
+# different, unmetered endpoint". Live `curl` returned HTTP 429 from that endpoint during a
+# backfill sweep, and because every non-200 collapsed to None, the throttling was recorded as
+# a property of the URL: 0 of 18 dead citations reported unrecoverable, with bbc.co.uk and
+# gov.uk among the supposedly-unarchived.
+
+def test_a_429_is_reported_as_rate_limited_not_as_no_snapshot():
+    with patch.object(archive.requests, "get", return_value=_Resp(status=429)):
+        memento, limited = archive._snapshot("https://x.test/a", 5.0)
+    assert memento is None
+    assert limited is True, "a 429 must be distinguishable from 'never archived'"
+
+
+def test_a_rate_limited_lookup_does_not_retry_the_alt_form():
+    """Asking a second time while being told to stop is what earns a longer block."""
+    asked = []
+
+    def fake_get(url, params=None, **kw):
+        asked.append(params["url"])
+        return _Resp(status=429)
+
+    with patch.object(archive.requests, "get", side_effect=fake_get):
+        archive._snapshot("https://x.test/a", 5.0)
+    assert asked == ["https://x.test/a"], f"retried while rate-limited: {asked}"
+
+
+def test_a_rate_limited_url_is_never_cached_as_missing(tmp_path):
+    """The bug this pins: caching `{"memento": None}` for a URL the archive never answered
+    about pins our own throttling onto it for _FAILURE_TTL_S, and every later run reads it
+    back as 'already checked, not archived' without ever asking again."""
+    cache = tmp_path / "c.json"
+    with patch.object(archive, "_snapshot", return_value=(None, True)), \
+         patch.object(archive, "save_snapshot") as save:
+        out = archive.archive_urls(["https://x.test/a"], cache_path=cache, save_new=True)
+    assert out == {}
+    assert save.call_count == 0, "must not spend the expensive save while rate-limited"
+    assert not cache.exists() or json.loads(cache.read_text()) == {}, \
+        "a URL the archive declined to answer about was cached as unarchived"
+
+
+def test_one_429_stops_lookups_for_the_whole_batch():
+    calls = []
+
+    def fake_snapshot(url, timeout_s):
+        calls.append(url)
+        return None, True
+
+    with patch.object(archive, "_snapshot", side_effect=fake_snapshot), \
+         patch.object(archive, "save_snapshot", return_value=(None, False)):
+        archive.archive_urls([f"https://x.test/{i}" for i in range(5)], save_new=False)
+    assert calls == ["https://x.test/0"], f"kept asking after a 429: {calls}"
+
+
+def test_a_genuine_miss_is_still_cached(tmp_path):
+    """The control for the test above: when the archive DOES answer and has nothing, that is
+    a fact about the URL and must still be remembered, or every run re-spends the request."""
+    cache = tmp_path / "c.json"
+    with patch.object(archive, "_snapshot", return_value=(None, False)), \
+         patch.object(archive, "save_snapshot", return_value=(None, False)):
+        archive.archive_urls(["https://x.test/a"], cache_path=cache)
+    assert json.loads(cache.read_text())["https://x.test/a"]["memento"] is None
+
+
+# ---------------------------------------------------------------------------
 # Save Page Now
 # ---------------------------------------------------------------------------
 
@@ -134,7 +200,7 @@ def test_one_429_stops_saving_for_the_whole_batch(tmp_path):
         saves.append(url)
         return None, True  # rate-limited on the very first save
 
-    with patch.object(archive, "existing_snapshot", return_value=None), \
+    with patch.object(archive, "_snapshot", return_value=(None, False)), \
          patch.object(archive, "save_snapshot", side_effect=fake_save):
         out = archive.archive_urls([f"https://x.test/{i}" for i in range(5)],
                                    cache_path=tmp_path / "c.json")
@@ -143,7 +209,7 @@ def test_one_429_stops_saving_for_the_whole_batch(tmp_path):
 
 
 def test_existing_snapshot_avoids_the_expensive_save():
-    with patch.object(archive, "existing_snapshot", return_value="https://web.archive.org/w/1"), \
+    with patch.object(archive, "_snapshot", return_value=("https://web.archive.org/w/1", False)), \
          patch.object(archive, "save_snapshot") as spn:
         out = archive.archive_urls(["https://x.test/a"])
     assert out == {"https://x.test/a": "https://web.archive.org/w/1"}
@@ -154,7 +220,7 @@ def test_cached_memento_costs_no_network(tmp_path):
     cache = tmp_path / "c.json"
     cache.write_text(json.dumps({
         "https://x.test/a": {"memento": "https://web.archive.org/w/1", "ts": 1}}))
-    with patch.object(archive, "existing_snapshot") as look, \
+    with patch.object(archive, "_snapshot") as look, \
          patch.object(archive, "save_snapshot") as spn:
         out = archive.archive_urls(["https://x.test/a"], cache_path=cache)
     assert out == {"https://x.test/a": "https://web.archive.org/w/1"}
@@ -168,14 +234,14 @@ def test_a_failure_is_retried_later_not_remembered_for_a_week(tmp_path):
     cache = tmp_path / "c.json"
     cache.write_text(json.dumps({
         "https://x.test/a": {"memento": None, "ts": 0}}))  # ancient failure
-    with patch.object(archive, "existing_snapshot", return_value="https://web.archive.org/w/2"), \
+    with patch.object(archive, "_snapshot", return_value=("https://web.archive.org/w/2", False)), \
          patch.object(archive, "save_snapshot", return_value=(None, False)):
         out = archive.archive_urls(["https://x.test/a"], cache_path=cache)
     assert out == {"https://x.test/a": "https://web.archive.org/w/2"}
 
 
 def test_max_urls_is_bounded_and_deduped():
-    with patch.object(archive, "existing_snapshot", return_value="https://web.archive.org/w/1"), \
+    with patch.object(archive, "_snapshot", return_value=("https://web.archive.org/w/1", False)), \
          patch.object(archive, "save_snapshot", return_value=(None, False)):
         out = archive.archive_urls(["https://x.test/a"] * 4 + [f"https://x.test/{i}" for i in range(10)],
                                    max_urls=3)

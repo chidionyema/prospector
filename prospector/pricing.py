@@ -123,7 +123,7 @@ def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
     # the rationale string and the same shape of bug.
     rungs: list[int] = [int(r) for r in (pricing.get("rungs") or [])]
     if not rungs or pricing.get("default_rung_index") is None:
-        flat = int(listing.get("price_pence", 4900))
+        flat = int(listing.get("price_pence", 4999))
         return PriceDecision(
             price_pence=flat,
             rung="flat (no ladder declared)",

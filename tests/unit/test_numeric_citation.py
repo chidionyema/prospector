@@ -517,9 +517,11 @@ def test_record_shadow_splits_the_rung_the_pipeline_itself_handed_the_model(tmp_
     from types import SimpleNamespace
 
     cfg = _cfg(tmp_path, enabled=True)
-    rung = int((cfg.listing or {})["pricing"]["rungs"][2])          # 4900 pence == £49
-    assert rung % 100 == 0, f"this test assumes whole-pound rungs, got {rung}"
-    spoken = rung // 100
+    rung = int((cfg.listing or {})["pricing"]["rungs"][2])          # 4999 pence == £49.99
+    # Charm-priced rungs (D1, 2026-08-09) are never whole pounds, so the spoken form the
+    # model would actually write is pounds-and-pence, not `rung // 100`.
+    assert rung % 100 != 0, f"this test assumes charm-priced (non-whole-pound) rungs, got {rung}"
+    spoken = f"{rung // 100}.{rung % 100:02d}"
     result = SimpleNamespace(
         check_name="payer_solvency",
         rationale=f"A £{spoken} report is inside a discretionary budget.",

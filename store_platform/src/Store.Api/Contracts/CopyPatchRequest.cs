@@ -37,8 +37,8 @@ namespace Store.Api.Contracts;
 /// it, exactly as on publish — a server-side limit added here would 400 on copy that publish
 /// itself would have accepted.
 ///
-/// <see cref="OneLine"/> is the one exception to the clearing rule, and it is an exception
-/// because the column is not like the others. Every other field here is <c>string?</c> on
+/// <see cref="Title"/> and <see cref="OneLine"/> are the exceptions to the clearing rule, and
+/// they are exceptions because those columns are not like the others. Every other field here is <c>string?</c> on
 /// <c>Pack</c> with a designed fallback behind it — a null CardLine means "head the card with the
 /// title", which is a rendering decision. <c>Pack.OneLine</c> is <c>required</c>, is read by the
 /// catalogue projection, the pack page, the basket and llms.txt, and has no fallback that is
@@ -52,8 +52,25 @@ namespace Store.Api.Contracts;
 /// packs at exactly 153 characters and left 32 of those ending part-way through a word — "for a
 /// flat fee per applicat...". Those rows are repaired by rewriting one column, and the only route
 /// that reached that column was the upsert this whole file exists to keep copy jobs away from.
+///
+/// <see cref="Title"/> was added 2026-08-09 for the same reason and after the same discovery.
+/// <c>Pack.Title</c> is the one string every surface shows at once — the shelf card, the pack
+/// page heading, the <c>&lt;title&gt;</c> a search result prints, and the OG image on a shared
+/// link — and until that date it was written in exactly two places, <c>Program.cs</c> lines 466
+/// and 480, BOTH inside the upsert. <c>ListingPatchRequest</c> is <c>(bool IsListed, string
+/// Reason)</c> and reaches nothing else. So the most buyer-visible column on the storefront had
+/// no narrow door at all: correcting a title meant routing a pure copy edit through the exact
+/// endpoint the paragraphs above document as having two silent ways to break a live pack's money
+/// rail. That was found while retitling the catalogue against the new 60-character format
+/// (<c>pack_linter.check_title</c>), which needed to rewrite 47 of 48 live rows.
+///
+/// It follows the OneLine rule, not the CardLine rule, because <c>Pack.Title</c> is
+/// <c>required</c> (<c>Store.Catalog/Domain/Pack.cs:6</c>) and has no fallback: a cleared title
+/// renders as a blank card, a blank H1 and an empty search result. Null leaves it alone; blank
+/// is refused with a 400 rather than written.
 /// </summary>
 public record CopyPatchRequest(
+    string? Title = null,
     string? CardLine = null,
     string? OneLine = null,
     string? Headline = null,

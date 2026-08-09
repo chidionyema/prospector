@@ -27,6 +27,10 @@ the wedge should produce a more concrete sentence, not a denser one — if your 
 of a title or one-liner is longer and more technical than what you were given, you
 have made it worse.
 
+The title keeps its shape through every rewrite: a short name, a COMMA, then what it
+does, in AT MOST 60 CHARACTERS. Sharpening is not licence to grow it. If the sharper
+idea genuinely needs more words, spend them in the one_liner, which has room.
+
 {style_guide}
 
 OUTPUT FORMAT: JSON array of {title, one_liner, hypothesis, who_pays, why_now, tags,
