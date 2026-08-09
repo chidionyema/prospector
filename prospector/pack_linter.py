@@ -76,35 +76,87 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 # Currency consistency (the £/$ defect)
 # ---------------------------------------------------------------------------
 
+# The financial model is MOSTLY Python-rendered — but not all of it.
+# `artifacts._render_financial_model` appends two model-authored lists at the end, and its
+# own source marks them: those lists "are the only FREE TEXT in this artifact — everything
+# above is Python formatting a number."
+FINANCIAL_MODEL_FREE_TEXT_HEADERS = ("### Key Assumptions", "### Model Weaknesses")
+
+
+def split_rendered_free_text(fin_text: str) -> Tuple[str, str]:
+    """Split a financial model into (Python-rendered head, model-authored tail).
+
+    A missing list is legal output (`if assumptions_list:`), so an artifact with neither
+    header is ALL rendered — the fallback has to be "all of it", never "none of it", or the
+    strict half of the currency rule would quietly stop applying to the packs it was
+    written for.
+    """
+    text = fin_text or ""
+    cuts = [text.index(h) for h in FINANCIAL_MODEL_FREE_TEXT_HEADERS if h in text]
+    cut = min(cuts) if cuts else len(text)
+    return text[:cut], text[cut:]
+
+
+def _quoted_comparable_problems(text: str, home_haystack: str, sym: str,
+                                market: str, where: str) -> List[Problem]:
+    """Grade prose that may legitimately quote a foreign price.
+
+    A foreign amount alongside the buyer's own currency is a comparable and rides as a
+    warning; foreign-ONLY — the buyer never sees their own currency — stays an error.
+    `home_haystack` is deliberately wider than `text`: the buyer reads the whole artifact,
+    so a £ in a rendered row above satisfies "they can see their own currency" for a $
+    quoted in the notes below.
+    """
+    problems: List[Problem] = []
+    body = text or ""
+    for w in sorted(_ALL_SYMBOLS - {sym}):
+        if w not in body:
+            continue
+        if sym in (home_haystack or ""):
+            problems.append(_warn(
+                "currency", where,
+                f"'{w}' appears alongside '{sym}' (foreign comparable is fine; check it is one)"))
+        else:
+            problems.append(_err(
+                "currency", where,
+                f"only '{w}' amounts in a '{market}' pack (expected '{sym}')"))
+    return problems
+
+
 def check_currency(fin_text: str, listing_copy: str, market: str) -> List[Problem]:
-    """The financial model must price in the market's currency; it is Python-rendered, so a
-    wrong symbol there is OUR defect, never the model's prose licence — always an error.
-    Listing copy may legitimately cite a foreign comparable, so a wrong symbol alongside the
-    right one is a warning; wrong-only (the buyer never sees their own currency) is an error.
+    """The financial model must price in the market's currency.
+
+    Its RENDERED rows are Python formatting a number, so a wrong symbol there is OUR defect,
+    never the model's prose licence — always an error. That is the whole defect class this
+    check was written for: `_render_financial_model` hardcoded `£` until 091e806, so a `us`
+    pack shipped `- **£295**` in its headline while its own justification said `$295`.
+
+    Its trailing notes are NOT rendered, and grading them by the same rule made a cited
+    comparable unfixable. "PACER charges $0.10 per page (source: pacer.uscourts.gov)" in a
+    `uk` pack is foreign because the SOURCE is foreign, and the only edit that satisfied a
+    whole-artifact rule was rewriting the figure to £0.10 — falsifying a citation on a
+    storefront whose first rule is source-or-die. Measured 2026-08-09: four packs were held
+    off the shelf with ZERO foreign amounts in their rendered region, every one of them
+    quoting a price alongside a £ figure on the same line.
+
+    So the notes are graded by the rule listing copy already gets: foreign alongside home is
+    a warning, foreign-only is an error.
     """
     sym = expected_currency(market)
     if not sym:
         return []
     problems: List[Problem] = []
-    wrong = _ALL_SYMBOLS - {sym}
-    fin = fin_text or ""
-    for w in sorted(wrong):
-        n = fin.count(w)
+    rendered, notes = split_rendered_free_text(fin_text)
+    for w in sorted(_ALL_SYMBOLS - {sym}):
+        n = rendered.count(w)
         if n:
             problems.append(_err(
                 "currency", "financial_model",
                 f"{n} '{w}' amount(s) in a '{market}' pack (expected '{sym}')"))
-    copy = listing_copy or ""
-    for w in sorted(wrong):
-        if w in copy:
-            if sym in copy:
-                problems.append(_warn(
-                    "currency", "listing_page",
-                    f"'{w}' appears alongside '{sym}' (foreign comparable is fine; check it is one)"))
-            else:
-                problems.append(_err(
-                    "currency", "listing_page",
-                    f"only '{w}' amounts in a '{market}' pack (expected '{sym}')"))
+    problems += _quoted_comparable_problems(
+        notes, fin_text, sym, market, "financial_model_notes")
+    problems += _quoted_comparable_problems(
+        listing_copy, listing_copy, sym, market, "listing_page")
     return problems
 
 

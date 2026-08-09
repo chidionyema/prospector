@@ -139,77 +139,102 @@ export default function Faq() {
         )}
       />
 
+      {/* `width="6xl"`, not the default 4xl. FAQ was the only content page on the site left on
+          the 896px column: how-it-works/kill-log/pack-detail run 1152px (6xl), home/sample/ideas
+          run 1280px (7xl). At any desktop width the 896px column sits centred with a visibly
+          wide empty gutter on both sides while every other page's wider column reads as starting
+          near the true left edge -- that gap, not a text-align rule, is what read as "FAQ is
+          centred, the rest of the pages look left-aligned" (confirmed via blocks.tsx:33 BAND_WIDTH
+          + a width audit across all 14 public pages, 2026-08-09). 6xl matches the nearest sibling
+          page type (a single column of list content), not the wider catalogue/showcase pages. */}
       <PageHero
         eyebrow="FAQ"
         title="Common questions."
         lead="What you’re buying, how it arrives, what we do and don’t promise."
+        width="6xl"
       />
 
       {/* Search, filters and the answers they filter, in ONE band.
-          Two things were wrong here (desktop-faq-fold.png, 2026-08-06).
-          - Width: these bands were 6xl while `PageHero` is 4xl (blocks.tsx:83), so the page had two
-            left edges -- headline and lead at x=432, search box and every accordion at x=258 -- and
-            set the answers on a ~110-character measure.
-          - Split: the controls and the list were two `SectionBand`s, and a band always draws
-            `border-b` (blocks.tsx:47). That put a full-bleed rule between the filter chips and the
-            rows they filter, i.e. a page-wide divider announcing a new section directly between a
-            control and its own result. They are one section; the split existed only to get
-            different bottom padding. */}
-      <SectionBand bg="white" width="4xl" className="!pt-0 !pb-16">
-        <SearchInput
-          label="Search FAQs"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search FAQs…"
-        />
+          UPDATE 2026-08-09: the band is back to 6xl, and PageHero above now matches it
+          explicitly (`width="6xl"`), not because the 2026-08-06 fix below was wrong but because
+          it solved the wrong mismatch. FAQ at 4xl was internally consistent (hero and body shared
+          one left edge) but was still the single narrowest column on the site -- every other page
+          runs 6xl or 7xl (see the width audit in `blocks.tsx:33`'s BAND_WIDTH usage) -- so at any
+          desktop viewport FAQ's 896px column sat centred with a wide empty gutter either side
+          while the rest of the site's wider columns read as starting near the true left edge.
+          That, not a `text-align` rule, is what read as "FAQ is centred, the rest of the pages
+          look left-aligned."
+          Widening the band would reopen the exact bug the 2026-08-06 pass fixed -- a ~110-char
+          answer measure -- if the answer text scaled with it, so it doesn't: the search box,
+          filters and accordion are now wrapped in their own `max-w-3xl` below, the same
+          band-decides-the-edge / inner-div-decides-the-line-length split `PageHero` already uses
+          for its own headline (blocks.tsx:88-90). The band sets where the column starts, matching
+          every other page; the inner wrapper keeps the line short enough to read.
+          Split: the controls and the list were two `SectionBand`s, and a band always draws
+          `border-b` (blocks.tsx:47->59). That put a full-bleed rule between the filter chips and
+          the rows they filter, i.e. a page-wide divider announcing a new section directly between
+          a control and its own result. They are one section; the split existed only to get
+          different bottom padding -- still true, still one band. */}
+      <SectionBand bg="white" width="6xl" className="!pt-0 !pb-16">
+        <div className="max-w-3xl">
+          <SearchInput
+            label="Search FAQs"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search FAQs…"
+          />
 
-        {/* Category filters. `chipClasses` -- the same control the kill log and the shelf's facet
-            bar render, which this page used to draw square and tinted instead. */}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveCategory(null)}
-            aria-pressed={!activeCategory}
-            className={chipClasses({ selected: !activeCategory })}
-          >
-            All
-          </button>
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              type="button"
-              onClick={() => setActiveCategory(cat.key)}
-              aria-pressed={activeCategory === cat.key}
-              className={chipClasses({ selected: activeCategory === cat.key })}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-meta text-muted">No questions match &ldquo;{search}&rdquo;.</p>
+          {/* Category filters. `chipClasses` -- the same control the kill log and the shelf's
+              facet bar render, which this page used to draw square and tinted instead. */}
+          <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => { setSearch(''); setActiveCategory(null); }}
-              className={buttonClasses({ variant: 'secondary', className: 'mt-3' })}
+              onClick={() => setActiveCategory(null)}
+              aria-pressed={!activeCategory}
+              className={chipClasses({ selected: !activeCategory })}
             >
-              Clear search
+              All
             </button>
-          </div>
-        ) : (
-          // The list owns the box; each row owns only its bottom rule (see `AccordionItem`).
-          <div className="mt-6 overflow-hidden rounded-md border border-border">
-            {filtered.map((item, i) => (
-              <AccordionItem key={i} item={item} defaultOpen={i === 0} />
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => setActiveCategory(cat.key)}
+                aria-pressed={activeCategory === cat.key}
+                className={chipClasses({ selected: activeCategory === cat.key })}
+              >
+                {cat.label}
+              </button>
             ))}
           </div>
-        )}
+
+          {filtered.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-meta text-muted">No questions match &ldquo;{search}&rdquo;.</p>
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setActiveCategory(null); }}
+                className={buttonClasses({ variant: 'secondary', className: 'mt-3' })}
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
+            // The list owns the box; each row owns only its bottom rule (see `AccordionItem`).
+            <div className="mt-6 overflow-hidden rounded-md border border-border">
+              {filtered.map((item, i) => (
+                <AccordionItem key={i} item={item} defaultOpen={i === 0} />
+              ))}
+            </div>
+          )}
+        </div>
       </SectionBand>
 
-      {/* Support block -- elevated, right after the accordions */}
-      <SectionBand bg="bg" width="4xl" className="!py-12">
+      {/* Support block -- elevated, right after the accordions. `width="6xl"` to match the band
+          above, not because this content needs the room (the card inside is deliberately
+          `mx-auto max-w-md`, a centred call-out, unaffected by the band width) but so the page
+          doesn't reintroduce a second distinct container width of its own. */}
+      <SectionBand bg="bg" width="6xl" className="!py-12">
         <div className="mx-auto max-w-md rounded-md border border-border bg-surface p-6">
           <div className="flex items-center gap-3 mb-4">
             <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-success/10 text-success">
