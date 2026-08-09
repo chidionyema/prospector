@@ -120,9 +120,24 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
         className,
       )}
     >
+      {/*
+        `overflow-x-auto` + `minWidth: SVG_WIDTH` on the svg itself, not just `w-full`.
+        `viewBox` scales the WHOLE svg as one vector -- including the label `fontSize`, which is
+        set in the same user-space units as everything else (see `wrapLabel`'s LABEL_FONT_PX
+        below). At >=720px of container width that upscales cleanly, which is why this looked
+        fine on desktop. At a ~320px mobile container it downscales to ~0.44x, so the 11-unit
+        label rendered at ~5px -- confirmed on the live mumchimp.com/ideas mobile view, 2026-08-09
+        -- with nothing in this file setting a floor. Capping the svg's own width at its native
+        720 keeps every label at its designed, legible size at every viewport; the tradeoff is a
+        horizontal scroll on phones, which is the standard way to keep a diagram legible rather
+        than shrinking it below reading size (the full text list already below this graph on
+        /ideas remains the no-scroll fallback for anyone who does not scroll it).
+      */}
+      <div className="overflow-x-auto">
       <svg
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         className="h-auto w-full"
+        style={{ minWidth: SVG_WIDTH }}
         role="img"
         aria-label="Catalogue categories, sized by pack count"
       >
@@ -185,6 +200,7 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
           );
         })}
       </svg>
+      </div>
       <p className="mt-3 text-center text-caption text-muted">
         Tap a node to filter the catalogue. Node size reflects pack count.
       </p>
