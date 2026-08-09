@@ -20,7 +20,7 @@ import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import requests
 
@@ -313,6 +313,283 @@ def check_truncation(fields: Dict[str, Tuple[str, str]],
 
 
 # ---------------------------------------------------------------------------
+# Title format — the marketing headline, and the only copy every surface shows
+# ---------------------------------------------------------------------------
+
+#: The declared shape: a short name, a comma, then what it does for the buyer.
+#: `TITLE_MAX_CHARS` mirrors `CARD_LINE_MAX` (artifacts.py) deliberately — the storefront
+#: already produces a 40-60 char line for the same pack and renders it well, so the title
+#: has no claim to be 90+.
+TITLE_MAX_CHARS = 60
+
+#: The name may be a coined word, an initialism, or a couple of real words. Past that it is
+#: not a name, it is a sentence, and the format is not being followed. Deliberately loose:
+#: this check exists to catch "no format at all", not to arbitrate good names.
+TITLE_NAME_MAX_WORDS = 4
+TITLE_NAME_MAX_CHARS = 30
+
+#: `, ` first, matching TS `TITLE_SEPARATORS` in store_platform/.../lib/discovery.ts. The
+#: dash forms are recognised so this check reads a RAW title honestly if handed one; the
+#: dash itself is `check_house_dashes`'s finding, never re-reported here.
+_TITLE_SEPARATORS = (", ", " — ", " – ", " - ")
+
+
+def split_title(title: str) -> Tuple[str, str]:
+    """`"RetainRelease, chases the retention contractors hold back"` → name, descriptor.
+
+    First separator wins, so a descriptor may contain further commas. Returns
+    `(title, "")` when no separator is present — i.e. the format was not followed, which
+    is the caller's finding to report, not a reason to guess a split.
+    """
+    t = " ".join((title or "").split())
+    best = len(t)
+    out = (t, "")
+    for sep in _TITLE_SEPARATORS:
+        i = t.find(sep)
+        if 0 < i < best:
+            best, out = i, (t[:i].strip(), t[i + len(sep):].strip())
+    return out
+
+
+def check_title(title: str, *, max_chars: int = TITLE_MAX_CHARS,
+                block: bool = False) -> List[Problem]:
+    """The pack title must read as `Name, what it does` and fit `max_chars`.
+
+    Why this check exists, and why it is not cosmetic. The title is the ONE string that
+    reaches every surface at once — shelf card, pack page H1, `<title>` in search results,
+    the OG image on a shared link — and until 2026-08-09 nothing bounded it or shaped it.
+    Measured on the 48 live catalogue rows that day: median title 96.5 chars, 2 of 48 inside
+    the 40-60 band, 4 rows with no descriptor at all, and four different separators in use
+    (`, ` x34, em-dash x7, none x4, en-dash x3). The engine was meanwhile producing a
+    correctly-sized `card_line` for 36 of those same packs (min 40, median 52.5, max 60),
+    which is the proof that the short form is writable — it just was not being asked for.
+
+    The root cause was a prompt, not a bug: `prompts/generate_system.md` asked for "a short
+    name, then a dash, then what it does" and named no length, so the model obliged on both
+    counts and `nodash` rewrote the mandated dash to `, ` at publish.
+
+    `block` is the ACTUATOR and defaults off. Every breach is reported either way; with
+    `block` false they are warnings, so shipping the check cannot unlist the 46 live packs
+    that predate the rule. Turn it on once the catalogue has been retitled — the same
+    order `max_grammar_defects_per_1k` was introduced in, for the same reason.
+    """
+    mk = _err if block else _warn
+    t = " ".join((title or "").split())
+    if not t:
+        return [_err("title", "title", "empty")]
+
+    problems: List[Problem] = []
+    if len(t) > max_chars:
+        problems.append(mk("title", "title",
+                           f"{len(t)} chars exceeds the {max_chars} limit: {t!r}"))
+
+    name, descriptor = split_title(t)
+    if not descriptor:
+        problems.append(mk(
+            "title", "title",
+            f"no descriptor: expected 'Name, what it does', got {t!r}"))
+        return problems
+
+    words = name.split()
+    if len(words) > TITLE_NAME_MAX_WORDS or len(name) > TITLE_NAME_MAX_CHARS:
+        problems.append(mk(
+            "title", "title",
+            f"the part before the separator is a sentence, not a name "
+            f"({len(words)} words, {len(name)} chars): {name!r}"))
+    return problems
+
+
+# ---------------------------------------------------------------------------
+# Title claims — the descriptor may only restate what the pack already says
+# ---------------------------------------------------------------------------
+#
+# Why this is a function and not a line in a prompt. `prompts/retitle.md` carries a TRUTH
+# RULE telling the model the descriptor may not out-claim the source. A prompt instruction
+# is not a guarantee: it is a request, evaluated by the same process that produces the
+# error. On a storefront whose whole premise is source-or-die, "the reviewer will spot it"
+# is not a control either — it asks a human to diff two paragraphs 48 times and be right
+# every time. So the dangerous classes are checked mechanically here, and the residue that
+# cannot be checked mechanically is NAMED for the reviewer instead of left for them to find.
+#
+# Two tiers, deliberately:
+#   HARD (`check: "title_claim"`) — a figure, a guarantee, a timescale, a place or an
+#     institution that appears nowhere in the pack's own copy. These are not paraphrase
+#     under any reading; they are new facts, and a new fact in a title is unsourced.
+#   SOFT (`check: "title_new_word"`) — content words absent from the source. Most are fair
+#     paraphrase ("chases" for "pursues"); some are a quiet narrowing of the audience
+#     ("creatives" where the pack said "freelancers"). Machines cannot tell those apart, so
+#     this tier reports the WORDS rather than ruling on them: the reviewer reads three words
+#     instead of two paragraphs.
+
+#: Absolutes and guarantees. Each is legal if the pack's own copy already says it — the rule
+#: is "no NEW claim", not "no strong words", so a supported "every" passes untouched.
+_CLAIM_ABSOLUTES = frozenset("""
+guaranteed guarantee guarantees ensures ensure ensuring never always certain certainly
+promise promises promised proven risk-free riskfree instantly instant immediately
+automatically fully entirely completely every all unlimited
+""".split())
+
+#: Timescales that carry no digit, so the figure rule below cannot catch them.
+_CLAIM_TIME_PHRASES = ("same-day", "same day", "overnight", "next-day", "next day",
+                       "within days", "within hours", "in minutes", "in seconds",
+                       "real-time", "real time", "24/7", "round the clock")
+
+#: Nation-level synonyms may be satisfied by the row's DECLARED market rather than its prose:
+#: a pack whose `market` is `uk` is a UK pack whether or not the word appears in its one-liner.
+_GEO_MARKET_SYNONYM = {
+    "uk": "uk", "u.k.": "uk", "britain": "uk", "british": "uk", "gb": "uk",
+    "us": "us", "u.s.": "us", "usa": "us", "america": "us", "american": "us",
+    "eu": "eu", "europe": "eu", "european": "eu",
+}
+
+#: Sub-national places and named institutions get NO market credit. "us" -> "Texas" is a
+#: narrowing to one state and "an NHS claim" is a specific institutional claim; both are new
+#: facts unless the pack's own copy already made them.
+_GEO_PLACES = frozenset("""
+england english scotland scottish wales welsh ireland irish london texas california
+florida canada canadian australia australian germany german france french spain spanish
+""".split())
+_INSTITUTIONS = frozenset("""
+hmrc nhs irs dwp fca sec ftc ofsted ofgem ofcom hse osha eeoc medicare medicaid
+""".split())
+
+_CLAIM_STOPWORDS = frozenset("""
+a an the and or of for to in on at by with from that this your you their they them its it
+as into out up off so if when who what which not no more most than then there here about
+is are was were be been being do does did done have has had will would can could
+""".split())
+
+_TOKEN_RE = re.compile(r"\d+|[A-Za-z][A-Za-z'’.\-]*")
+
+
+def _stem(word: str) -> str:
+    """Crude suffix stripping, enough to see `charging` behind `charges`.
+
+    Deliberately not a real stemmer: a false MATCH here only means a word is treated as
+    supported and therefore not reported, which is the safe direction for the soft tier and
+    irrelevant to the hard tier (whose vocabularies are closed sets of exact words).
+    """
+    w = re.sub(r"[^a-z0-9]", "", word.lower())
+    for suf, repl in (("ings", ""), ("ing", ""), ("ies", "y"), ("ied", "y"),
+                      ("ers", ""), ("es", ""), ("ed", ""), ("er", ""), ("s", ""),
+                      # `charge` -> `charg`, so it meets `charging` -> `charg`. Without this
+                      # the pair reads as unsupported and the soft tier reports a word the
+                      # source plainly contains — a false report per pack is how a reviewer
+                      # learns to skip the list.
+                      ("e", "")):
+        if w.endswith(suf) and len(w) - len(suf) >= 4:
+            return w[: -len(suf)] + repl
+    return w
+
+
+def check_claims(text: str, sources: Iterable[str], *, market: str = "",
+                 block: bool = False, where: str = "title") -> List[Problem]:
+    """Engine-authored copy may restate the pack's own description; it may not add to it.
+
+    Written for the title descriptor and reused verbatim for the headline and the card line,
+    because they are the same question about the same pack. A second implementation for
+    "the same rule, but for the headline" is how two rules come to disagree, and the one a
+    buyer sees is then whichever ran last.
+
+    `sources` is the pack's own description and structured fields. It should NOT include the
+    lines being rewritten: copy that is itself under repair cannot be the evidence that the
+    repair is truthful — 13 live headlines are verbatim copies of their title, so a title
+    checked against its own headline would support itself.
+
+    `market` is the row's declared market, which is what makes "UK" checkable as data rather
+    than as prose.
+    """
+    hard = _err if block else _warn
+
+    blob = " ".join(str(s or "") for s in (sources or [])).lower()
+    blob_stems = {_stem(t) for t in _TOKEN_RE.findall(blob)}
+    mkt = (market or "").strip().lower()
+    low = text.lower()
+    problems: List[Problem] = []
+    seen: set = set()
+
+    def unsupported(tok: str) -> bool:
+        return tok.lower() not in blob and _stem(tok) not in blob_stems
+
+    def report(tok: str, detail: str) -> None:
+        if tok.lower() in seen:
+            return
+        seen.add(tok.lower())
+        problems.append(hard("title_claim", where, detail))
+
+    for num in re.findall(r"\d[\d,.]*%?", text):
+        bare = num.strip(".,")
+        if bare and bare not in blob:
+            report(bare, f"states a figure the pack's own copy does not: {bare!r}")
+
+    for phrase in _CLAIM_TIME_PHRASES:
+        if phrase in low and phrase not in blob:
+            report(phrase, f"promises a timescale the pack's own copy does not: {phrase!r}")
+
+    for tok in _TOKEN_RE.findall(low):
+        if tok in _CLAIM_ABSOLUTES and unsupported(tok):
+            report(tok, f"makes an absolute claim the pack's own copy does not: {tok!r}")
+        code = _GEO_MARKET_SYNONYM.get(tok)
+        if code and code == mkt:
+            # Cleared BY DATA, and recorded as cleared so the proper-noun rule below does not
+            # re-report it: "UK" is a capitalised token that appears in no prose, which is
+            # exactly what that rule looks for. One token, one verdict, or a true statement
+            # gets flagged and the check earns its way into being ignored.
+            seen.add(tok)
+        elif code and unsupported(tok):
+            report(tok, f"names a market ({tok!r}) that is neither the pack's declared "
+                        f"market ({mkt or 'unset'!r}) nor anywhere in its copy")
+        if (tok in _GEO_PLACES or tok in _INSTITUTIONS) and unsupported(tok):
+            report(tok, f"names {tok!r}, which appears nowhere in the pack's own copy — a "
+                        f"place or institution is a specific claim, and gets no market credit")
+
+    # The proper-noun rule INFERS "this is a name" from a capital letter, and that inference
+    # is only valid in a string that is otherwise plain prose — which the declared format is.
+    # In a Title Case legacy title every word is capitalised, so the rule reads
+    # "The Primary Carer's DLA Child Claim Engine" as six unsourced claims. Measured over the
+    # 48 live rows before this guard: 7 rows flagged, 5 of them purely for being title-cased.
+    # A check that fires on a true statement is a check that gets switched off.
+    words = [t for t in _TOKEN_RE.findall(text) if t.isalpha() and len(t) >= 3]
+    capped = sum(1 for t in words if t[:1].isupper())
+    if words and capped / len(words) < 0.6:
+        for m in _TOKEN_RE.finditer(text):
+            tok = m.group(0)
+            # The first word of a sentence is capitalised by grammar, not because it is a
+            # name. Measured on the 48 live rows: this exempts 'See' (x3) and 'Run' (x2),
+            # every one of them the opening verb of a headline.
+            before = text[: m.start()].rstrip()
+            if not before or before[-1] in ".!?":
+                continue
+            if tok[:1].isupper() and unsupported(tok):
+                report(tok, f"introduces the proper noun {tok!r}, which appears nowhere in "
+                            f"the pack's own copy")
+
+    new = sorted({tok for tok in _TOKEN_RE.findall(low)
+                  if tok.isalpha() and len(tok) >= 4 and tok not in _CLAIM_STOPWORDS
+                  and tok.lower() not in seen and unsupported(tok)})
+    if new:
+        problems.append(_warn(
+            "title_new_word", where,
+            "words that are not in the pack's own copy — fair paraphrase, or a new claim? "
+            f"read them: {', '.join(new)}"))
+    return problems
+
+
+def check_title_claims(title: str, sources: Iterable[str], *, market: str = "",
+                       block: bool = False) -> List[Problem]:
+    """`check_claims` applied to the descriptor half of a title.
+
+    Returns [] for a title with no descriptor: `check_title` has already reported that the
+    format was not followed, and adjudicating the claims of a string that is not in the
+    format would report the same defect twice under a second name.
+    """
+    _, descriptor = split_title(" ".join((title or "").split()))
+    if not descriptor:
+        return []
+    return check_claims(descriptor, sources, market=market, block=block, where="title")
+
+
+# ---------------------------------------------------------------------------
 # Citation URLs resolvable (bounded, cached — the one networked check)
 # ---------------------------------------------------------------------------
 
@@ -387,13 +664,44 @@ def _probe_url(url: str, timeout_s: float) -> Tuple[Optional[int], str]:
 _ALT_ALIVE_NOTE = "resolves without/with trailing slash: "
 
 
+def _memento_alive(memento: str, cache: Dict[str, Any], now: float, timeout_s: float) -> bool:
+    """Is this Wayback capture actually servable right now?
+
+    Deliberately strict: only a positively-confirmed live memento downgrades a dead citation,
+    so an unreachable Internet Archive leaves the error standing. That asymmetry is on
+    purpose. Everywhere else in this module an unproven state resolves in the citation's
+    favour, because the alternative is condemning a source on our own outage. Here the
+    unproven state would EXCUSE a citation the buyer cannot follow, which is the more
+    expensive error on a source-or-die storefront.
+    """
+    key = f"v{_PROBE_LOGIC_VERSION}|memento|{memento}"
+    entry = cache.get(key)
+    if entry and now - entry.get("ts", 0) < _URL_CACHE_TTL_S:
+        status = entry.get("status")
+    else:
+        status, note = _probe_url(memento, timeout_s)
+        cache[key] = {"status": status, "note": note, "ts": now}
+    return status is not None and status < 400
+
+
 def check_urls(texts: Dict[str, str], *, cache_path: Optional[Path] = None,
-               timeout_s: float = 5.0, max_urls: int = 20) -> Tuple[List[Problem], int]:
+               timeout_s: float = 5.0, max_urls: int = 20,
+               archived: Optional[Mapping[str, str]] = None) -> Tuple[List[Problem], int]:
     """Probe up to `max_urls` distinct URLs across `texts` ({where: markdown}).
 
     Definitive 404/410 → error (the citation is dead and a buyer will find out).
     Any other failure → warning (our outage or their rate limit is not the citation's
     death — mirrors the engine-wide rule that an exception is never evidence).
+
+    `archived` maps citation URL → Wayback memento (`models.Source.archived_url`). A dead
+    citation that HAS a working memento is downgraded to a warning, because the thing this
+    check exists to protect is the buyer's ability to verify a claim, and that ability
+    survives: the passage text ships with the pack and the memento shows the page it came
+    from. Blocking such a pack withholds evidence that is still checkable.
+
+    The memento is PROBED before it earns that downgrade. Trusting a stored `archived_url`
+    without asking would just invert the defect this module keeps finding — manufacturing
+    "the buyer can verify this" from a field nobody checked.
     """
     cache: Dict[str, Any] = {}
     if cache_path is not None:
@@ -429,7 +737,16 @@ def check_urls(texts: Dict[str, str], *, cache_path: Optional[Path] = None,
                 "citation_urls", where,
                 f"{url} → HTTP {status}, but the source is live — {note}"))
         elif status in _DEAD_STATUSES:
-            problems.append(_err("citation_urls", where, f"{url} → HTTP {status}"))
+            memento = (archived or {}).get(url) or ""
+            if memento and _memento_alive(memento, cache, now, timeout_s):
+                # The pointer rotted; the evidence did not. The buyer still gets the quoted
+                # passage in the QA report and a capture of the page it came from, so this
+                # is a degraded convenience, not an unverifiable claim.
+                problems.append(_warn(
+                    "citation_urls", where,
+                    f"{url} → HTTP {status}, archived copy stands in: {memento}"))
+            else:
+                problems.append(_err("citation_urls", where, f"{url} → HTTP {status}"))
         elif status is not None and status >= 400:
             problems.append(_warn("citation_urls", where, f"{url} → HTTP {status}"))
         elif status is None:
@@ -455,12 +772,18 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               url_cache_path: Optional[Path] = None,
               url_timeout_s: float = 5.0, max_urls: int = 20,
               house_fields: Optional[Dict[str, str]] = None,
+              archived_urls: Optional[Mapping[str, str]] = None,
+              title_max_chars: int = TITLE_MAX_CHARS,
+              title_block_on_breach: bool = False,
               grammar_enabled: bool = False,
               max_grammar_defects_per_1k: float = 0.0) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
 
     `report["ok"]` is False iff any problem has severity "error" — that is the half the
     publish gate ANDs into `is_listed`. Warnings ride along in the report only.
+
+    `archived_urls` maps citation URL -> Wayback memento, so a dead citation whose evidence
+    is still reachable warns instead of blocking. Callers build it from `Source.archived_url`.
 
     `house_fields` carries engine-authored single-line copy that is NOT already in
     `listing_texts` — `title` above all. Its absence was the second half of the 2026-08-08
@@ -485,6 +808,22 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
             house.setdefault(_name, _rendered)
     problems += check_house_dashes(house)
 
+    # The title is read from `house` rather than taking its own parameter: it is already
+    # the field house_fields exists to carry, and a second entry point is how a caller ends
+    # up linting a title the publish path never renders.
+    if "title" in house:
+        problems += check_title(house["title"], max_chars=title_max_chars,
+                                block=title_block_on_breach)
+        # Same actuator, because "the title is bad" is one question with two halves: it can
+        # be the wrong SHAPE, or the right shape carrying a claim the pack never made. The
+        # sources are the pack's other buyer-visible lines — everything in `house` except
+        # the title itself, so the descriptor is graded against copy that has already been
+        # through the same grounding the storefront sells on.
+        problems += check_title_claims(
+            house["title"],
+            [v for k, v in house.items() if k != "title"],
+            market=market, block=title_block_on_breach)
+
     # `is_prose_artifact` is the SINGLE definition of what may be graded as writing; see
     # copy_lint.DATA_ARTIFACT_SUFFIXES for the pack this got wrong. Selecting the corpus by a
     # local `.json` test is what let .csv and .svg through to both copy checks at once.
@@ -506,7 +845,8 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
         url_texts = {name: text for name, text in (artifacts or {}).items() if text}
         url_texts["listing_page"] = listing_copy or ""
         url_problems, urls_seen = check_urls(
-            url_texts, cache_path=url_cache_path, timeout_s=url_timeout_s, max_urls=max_urls)
+            url_texts, cache_path=url_cache_path, timeout_s=url_timeout_s, max_urls=max_urls,
+            archived=archived_urls)
         problems += url_problems
 
     return {

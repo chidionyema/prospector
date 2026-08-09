@@ -221,6 +221,79 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
         Assert.Equal("One line.", doc.RootElement.GetProperty("oneLine").GetString());
     }
 
+    /// <summary>
+    /// The title is the whole shop window — shelf card, page H1, the <c>&lt;title&gt;</c> in a
+    /// search result, the OG image on a shared link — and until 2026-08-09 it was written in
+    /// exactly two places, both inside the upsert (Program.cs 466 and 480). ListingPatchRequest
+    /// is <c>(bool IsListed, string Reason)</c> and reaches nothing else, so a pure copy edit to
+    /// the most visible column on the storefront had to go through the endpoint this whole class
+    /// exists to keep copy jobs away from. This is the narrow door for it.
+    /// </summary>
+    [Fact]
+    public async Task Replaces_a_title_without_touching_the_money_rail()
+    {
+        await PublishAsync("copy-title");
+
+        var response = await Client().PatchAsJsonAsync("/internal/catalog/copy-title/copy", new
+        {
+            title = "BandCheck, challenges a council tax band with the comparables",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = doc.RootElement;
+
+        Assert.Equal("BandCheck, challenges a council tax band with the comparables",
+            root.GetProperty("title").GetString());
+
+        // The invariants this endpoint exists to protect, echoed back and asserted here so a
+        // retitle job can never be the thing that unhooks a live pack from its price.
+        Assert.Equal(4900L, root.GetProperty("pricePence").GetInt64());
+        Assert.Equal(4900L, root.GetProperty("minBillablePence").GetInt64());
+        Assert.Equal("price_real", root.GetProperty("providerPriceId").GetString());
+        Assert.Equal("prod_real", root.GetProperty("providerProductId").GetString());
+        Assert.True(root.GetProperty("isListed").GetBoolean());
+        Assert.Equal("packs/copy-title/oldhash.zip", root.GetProperty("contentKey").GetString());
+    }
+
+    [Fact]
+    public async Task Omitted_title_is_left_alone()
+    {
+        await PublishAsync("copy-title-omitted");
+
+        var response = await Client().PatchAsJsonAsync("/internal/catalog/copy-title-omitted/copy",
+            new { cardLine = "Only the card line is being set here." });
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Pack copy-title-omitted", doc.RootElement.GetProperty("title").GetString());
+    }
+
+    /// <summary>
+    /// Title breaks the "" == clear rule for the same reason oneLine does: it is
+    /// <c>required</c> on Pack (Store.Catalog/Domain/Pack.cs:6) with no fallback behind it, so a
+    /// cleared value is a blank card, a blank H1 and an empty search result. A retitle job that
+    /// sends "" by accident — a generator that returned nothing, say — must fail loudly rather
+    /// than blank 48 live listings one PATCH at a time.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Refuses_to_clear_a_title(string blank)
+    {
+        await PublishAsync("copy-title-blank");
+
+        var response = await Client().PatchAsJsonAsync("/internal/catalog/copy-title-blank/copy",
+            new { title = blank });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // And the live title is still there — the refusal is not merely a status code.
+        var readback = await Client().PatchAsJsonAsync("/internal/catalog/copy-title-blank/copy",
+            new { cardLine = "unrelated" });
+        using var doc = JsonDocument.Parse(await readback.Content.ReadAsStringAsync());
+        Assert.Equal("Pack copy-title-blank", doc.RootElement.GetProperty("title").GetString());
+    }
+
     [Fact]
     public async Task Rejects_a_request_without_the_internal_key()
     {

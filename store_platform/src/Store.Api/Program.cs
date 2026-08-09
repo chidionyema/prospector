@@ -757,6 +757,22 @@ app.MapPatch("/internal/catalog/{id}/copy", async (
         pack.OneLine = request.OneLine;
     }
 
+    // Title is `required` on Pack and has no fallback either — a cleared one renders as a blank
+    // card, a blank H1 and an empty search result — so it takes the OneLine rule, not the
+    // nullable-column rule. Until 2026-08-09 this column had no narrow door at all and a copy
+    // edit to it had to go through the upsert; see CopyPatchRequest for what that costs.
+    if (request.Title is not null && string.IsNullOrWhiteSpace(request.Title))
+    {
+        return Results.Problem(
+            "title cannot be cleared: it is required on every pack and has no fallback. "
+            + "Omit the field to leave it unchanged, or withdraw the pack via PATCH /internal/catalog/{id}/listing.",
+            statusCode: StatusCodes.Status400BadRequest);
+    }
+    if (request.Title is not null)
+    {
+        pack.Title = request.Title;
+    }
+
     pack.CardLine = Applied(request.CardLine, pack.CardLine);
     pack.Headline = Applied(request.Headline, pack.Headline);
     pack.Subhead = Applied(request.Subhead, pack.Subhead);
@@ -782,6 +798,7 @@ app.MapPatch("/internal/catalog/{id}/copy", async (
     return Results.Ok(new
     {
         pack.Id,
+        pack.Title,
         pack.CardLine,
         pack.OneLine,
         pack.Headline,

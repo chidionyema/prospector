@@ -1014,7 +1014,7 @@ personas:
       min_composite_to_pass: 3.4
 
 listing:
-  price_pence: 4900              # The DEFAULT rung. An unclassified pack holds here, forever.
+  price_pence: 4999              # The DEFAULT rung. An unclassified pack holds here, forever.
   publish_on: pass
   # Q2 pack linter (bridge.py publish gate). URL resolution is the linter's only networked
   # check; off = the pure-text checks (currency, arithmetic, truncation, sections) still
@@ -1056,6 +1056,24 @@ listing:
   # Note the rate is least stable exactly where it bites hardest: the worst offenders are
   # 300-800 word packs where a handful of findings dominates the ratio.
   max_grammar_defects_per_1k: 6.0
+  # TITLE FORMAT (pack_linter.check_title). The title is the only string that reaches every
+  # surface at once — shelf card, pack page H1, the <title> in search results, the OG image
+  # on a shared link — and until 2026-08-09 nothing bounded it or shaped it. The declared
+  # format is `Name, what it does`: a short name, a comma, then the outcome in buyer words.
+  #
+  # 60 is not a guess. It is the same ceiling `artifacts.CARD_LINE_MAX` already enforces on
+  # card_line, and the engine hit it comfortably: measured over the 48 live rows, card_line
+  # ran min 40 / median 52.5 / max 60 on all 36 rows that had one, while the TITLE for those
+  # same packs ran median 96.5 with 2 of 48 inside 40-60. The short form is writable; it just
+  # was not being asked for. Supporting outside evidence (all correlational, none ours):
+  # Zyppy n=80,959 — Google rewrites 99.9% of titles over 70 chars, lowest rewrite rate at
+  # 51-60; Backlinko n=1.3M — 40-60 chars correlates with +33% CTR.
+  title_max_chars: 60
+  # The actuator, and it starts OFF on purpose. Every breach is reported either way; false
+  # here makes them warnings, so shipping the rule does not unlist the 46 live packs that
+  # predate it. Flip to true once tools/retitle_catalogue.py has landed the rewrite — the
+  # same sequence max_grammar_defects_per_1k was introduced in, for the same reason.
+  title_block_on_breach: false
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
   exclusivity: true
@@ -1074,16 +1092,21 @@ listing:
     # evidence behind them yet; that is what the price_comparables check (C3) and the
     # storefront events (D2) exist to produce. They are pinned here so the ladder is
     # deterministic and so moving one is a visible, reviewable act.
-    rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
+    # Charm pricing (2026-08-09, founder: "round figure is not right, we should have pence,
+    # cents also"). Every rung now ends in 99p instead of a flat hundred so the storefront
+    # renders £19.99 / £49.99 / £199.99 instead of £19 / £49 / £199. The rung POSITIONS are
+    # unchanged (default_rung_index, tier_rung_index and market_rung_offset below all index
+    # into this same 7-element array), so only the numbers moved, not the ladder shape.
+    rungs: [1999, 2999, 4999, 7999, 9999, 14999, 19999]
 
     # A human-readable label for the ladder below, recorded on every D3 rationale record
     # (prospector/price_rationale.py). It is a LABEL, not the truth: a stale label that
     # nobody bumped after editing `rungs` would misattribute a price. The record also
     # carries the rung numbers themselves plus a `fingerprint` digest over them, and the
     # fingerprint is what proves which ladder actually ran.
-    ladder_version: L1-ladder-2026-08-05
+    ladder_version: L1-ladder-2026-08-09-charm
 
-    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4900: an
+    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4999: an
     # unclassified pack is one we know nothing about, and guessing at its price is
     # strictly worse than holding the price the whole catalogue already sells at.
     default_rung_index: 2

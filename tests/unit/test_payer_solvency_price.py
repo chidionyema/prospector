@@ -42,20 +42,20 @@ def test_a_non_default_check_is_also_untouched(cfg):
 # --- the fix: the stated price is the resolved rung ---------------------------------------
 
 def test_unclassified_pack_is_asked_about_the_default_rung(cfg):
-    """`default_rung_index: 2` over `rungs: [1900, 2900, 4900, ...]` => £49."""
+    """`default_rung_index: 2` over `rungs: [1999, 2999, 4999, ...]` => £49.99."""
     q = _check_question("payer_solvency", _cand(), cfg)
-    assert "£49" in q
+    assert "£49.99" in q
     assert q.startswith(CHECKS["payer_solvency"]), "the original question must survive intact"
     assert "do not substitute a different figure" in q
 
 
 @pytest.mark.parametrize("tier,market,expected", [
-    ("side_hustle", "uk", "£29"),   # index 1, no offset
-    ("smb", "uk", "£49"),           # index 2, no offset
-    ("growth", "uk", "£79"),        # index 3, no offset
-    ("venture", "uk", "£149"),      # index 5, no offset
-    ("venture", "us", "£199"),      # index 5 + 1 us offset = 6
-    ("smb", "us", "£79"),           # index 2 + 1 = 3
+    ("side_hustle", "uk", "£29.99"),   # index 1, no offset
+    ("smb", "uk", "£49.99"),           # index 2, no offset
+    ("growth", "uk", "£79.99"),        # index 3, no offset
+    ("venture", "uk", "£149.99"),      # index 5, no offset
+    ("venture", "us", "£199.99"),      # index 5 + 1 us offset = 6
+    ("smb", "us", "£79.99"),           # index 2 + 1 = 3
 ])
 def test_the_question_follows_the_ladder(cfg, tier, market, expected):
     """The number in the prompt is the ladder's, so a config rung edit moves the prompt."""
@@ -70,7 +70,7 @@ def test_the_price_actually_reaches_the_rendered_prompt(cfg):
                            check_question=q, verdict_bias="",
                            market_scope="", market_verdict_exemplars="",
                            rationale_style="")
-    assert "£49" in user
+    assert "£49.99" in user
 
 
 # --- degradation: a pricing problem must never take the moat down -------------------------

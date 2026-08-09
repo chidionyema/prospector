@@ -289,17 +289,17 @@ def test_anchors_do_not_move_a_price_while_adjustment_is_disabled(cfg: Config):
     loud = [_anchor(19900, url=f"https://{d}.example/p") for d in ("a", "b", "c", "d")]
     baseline = price_for(_candidate("smb"), _score(), cfg)
     with_anchors = price_for(_candidate("smb"), _score(), cfg, anchors=loud)
-    assert with_anchors.price_pence == baseline.price_pence == 4900
+    assert with_anchors.price_pence == baseline.price_pence == 4999
     assert with_anchors.evidence is None
 
 
 def test_enabled_adjustment_moves_at_most_one_rung_up(cfg: Config):
     c = _with_comparables(cfg, rung_adjust_enabled=True)
-    rungs = list(c.listing["pricing"]["rungs"])          # [1900, 2900, 4900, 7900, ...]
-    # smb sits at index 2 (4900). Comparables far above the TOP rung must still move one.
+    rungs = list(c.listing["pricing"]["rungs"])          # [1999, 2999, 4999, 7999, ...]
+    # smb sits at index 2 (4999). Comparables far above the TOP rung must still move one.
     loud = [_anchor(19900, url=f"https://{d}.example/p") for d in ("a", "b", "c", "d")]
     d = price_for(_candidate("smb"), _score(), c, anchors=loud)
-    assert d.price_pence == rungs[3] == 7900
+    assert d.price_pence == rungs[3] == 7999
     assert d.evidence is not None
     assert d.evidence["median_pence"] == 19900
     assert "Adjusted one rung up" in d.rationale
@@ -309,7 +309,7 @@ def test_enabled_adjustment_moves_one_rung_down(cfg: Config):
     c = _with_comparables(cfg, rung_adjust_enabled=True)
     cheap = [_anchor(1900, url=f"https://{d}.example/p") for d in ("a", "b", "c")]
     d = price_for(_candidate("smb"), _score(), c, anchors=cheap)
-    assert d.price_pence == 2900
+    assert d.price_pence == 2999
     assert "Adjusted one rung down" in d.rationale
 
 
@@ -319,18 +319,18 @@ def test_evidence_that_does_not_clear_an_adjacent_rung_leaves_the_ladder_alone(c
     c = _with_comparables(cfg, rung_adjust_enabled=True)
     leaning = [_anchor(5900, url=f"https://{d}.example/p") for d in ("a", "b", "c")]
     d = price_for(_candidate("smb"), _score(), c, anchors=leaning)
-    assert d.price_pence == 4900
+    assert d.price_pence == 4999
     assert d.evidence is None
     assert "did not clear an adjacent rung" in d.rationale
 
 
 def test_an_unclassified_pack_is_never_repriced_by_comparables(cfg: Config):
-    """Holding the back catalogue at 4900 is the ladder's central safety property.
+    """Holding the back catalogue at 4999 is the ladder's central safety property.
     Comparables must not be the side door that re-prices it."""
     c = _with_comparables(cfg, rung_adjust_enabled=True)
     loud = [_anchor(19900, url=f"https://{d}.example/p") for d in ("a", "b", "c", "d")]
     d = price_for(_candidate(tier=""), _score(), c, anchors=loud)
-    assert d.price_pence == 4900
+    assert d.price_pence == 4999
     assert d.evidence is None
 
 

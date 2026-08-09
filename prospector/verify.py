@@ -322,7 +322,11 @@ def _check_question(check_name: str, cand: Candidate, cfg: Config | None) -> str
             f"payer_solvency price lookup failed; asking without a price: {exc}",
             extra={"candidate_id": getattr(cand, "candidate_id", None)})
         return question
-    pounds = f"{price_pence / 100:,.0f}"
+    # Charm-priced rungs (D1, 2026-08-09) end in 99p, so a bare `.0f` would round £49.99 to
+    # "£50" — the exact rounding-away-the-pence bug this fix exists to kill, and it would
+    # contradict the very next sentence's claim that this is "not an estimate". Whole-pound
+    # rungs keep their old bare "£49" form.
+    pounds = f"{price_pence // 100:,}" if price_pence % 100 == 0 else f"{price_pence / 100:,.2f}"
     return (f"{question} The buyer pays £{pounds} once for this pack — that is our actual "
             f"list price, not an estimate. Judge affordability against £{pounds} and do "
             f"not substitute a different figure.")

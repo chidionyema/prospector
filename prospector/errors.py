@@ -143,6 +143,20 @@ _HTTP_PERMANENT_RE = re.compile(r"\b402\b")
 # "billing" was also a bare substring, so "billing address invalid" classified as exhaustion.
 # It only means "out of allowance" next to a word that says so.
 _BILLING_RE = re.compile(r"\bbilling\b[^.\n]{0,60}\b(limit|quota|credits?|plan|upgrade)\b")
+# The upsell shape: a provider that is out of allowance and says so in marketing prose rather
+# than in an error. Measured 2026-08-09 in store/scheduler/launchd.err.log, StandardCompute
+# returned this as an HTTP 200 completion body:
+#     "You've used up your free usage — let's keep going.\n\nContinue at a flat monthly price
+#      — no per-token billing, no surprise charges.\n\nSet up your plan at
+#      https://standardcompute.com/dashboard/billing."
+# Every pattern above misses it: no HTTP code, no "<period> limit", and `_BILLING_RE` needs
+# billing within 60 chars of limit/quota/credits/plan/upgrade while the nearest word here is
+# "no per-token billing, no surprise charges". So `looks_exhausted` returned False, the call
+# never became a ProviderExhaustedError, and 13 consecutive generation ticks died against a
+# provider that could not be marked dead. Bounded to the same clause so prose about a user
+# having "used up" something unrelated ten words later does not match.
+_USED_UP_RE = re.compile(
+    r"\bused up\b[^.\n]{0,40}\b(free\s+)?(usage|credits?|quota|allowance|balance)\b")
 # DELIBERATELY NOT HERE: 401 / "unauthorized". That is a bad or expired credential, not a spent
 # allowance, and marking it exhausted would bury a config error under a silent hour-long
 # failover — the opposite of what this list is for. It should fail loudly on every call.
@@ -160,7 +174,8 @@ def classify_exhaustion(text: str) -> str:
     re-probing it. The caller turns this into a dead-window length (see health.py)."""
     t = (text or "").lower()
     if (any(m in t for m in _PERMANENT_MARKERS) or _HTTP_PERMANENT_RE.search(t)
-            or _BILLING_RE.search(t) or _ALLOWANCE_LIMIT_RE.search(t)):
+            or _BILLING_RE.search(t) or _ALLOWANCE_LIMIT_RE.search(t)
+            or _USED_UP_RE.search(t)):
         return PERMANENT
     if any(m in t for m in _TRANSIENT_MARKERS) or _HTTP_TRANSIENT_RE.search(t):
         return TRANSIENT
@@ -215,7 +230,8 @@ def cause_context(text: str, width: int = 140, limit: int = 3) -> str:
         hits.append(t[start:start + width].strip())
         if len(hits) >= limit:
             break
-    for rx in (_HTTP_PERMANENT_RE, _BILLING_RE, _ALLOWANCE_LIMIT_RE, _HTTP_TRANSIENT_RE):
+    for rx in (_HTTP_PERMANENT_RE, _BILLING_RE, _ALLOWANCE_LIMIT_RE, _USED_UP_RE,
+               _HTTP_TRANSIENT_RE):
         if len(hits) >= limit:
             break
         m = rx.search(low)

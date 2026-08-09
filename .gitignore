@@ -125,3 +125,10 @@ graphify-out/
 
 # Derived HHEM score cache — recomputable from the corpus, not a receipt.
 tools/experiments/_hhem_score_cache.json
+
+/.crew/
+/.crew
+!.crew/artifacts/
+!.crew/graphs/
+!.crew/artifacts/.gitkeep
+!.crew/graphs/.gitkeep

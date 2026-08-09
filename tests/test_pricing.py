@@ -7,7 +7,7 @@ implementation's whole job is to make this pass.
 
 What these tests defend, in order of how badly each would hurt:
 
-1. The DEFAULT is a no-op. An unclassified pack prices at exactly 4900, the price the whole
+1. The DEFAULT is a no-op. An unclassified pack prices at exactly 4999, the price the whole
    catalogue already sells at. Guessing at the price of a pack we know nothing about is
    strictly worse than not moving it, and a ladder that silently re-prices every legacy pack
    the moment it lands is a catalogue-wide incident, not a feature.
@@ -53,21 +53,21 @@ def _rungs(cfg: Config) -> list[int]:
 # about that pack, so market is not evidence either.
 GOLDEN: list[tuple[str, str, int]] = [
     # tier          market   expected pence
-    ("",            "",      4900),
-    ("",            "uk",    4900),
-    ("",            "us",    4900),
-    ("side_hustle", "",      2900),
-    ("side_hustle", "uk",    2900),
-    ("side_hustle", "us",    4900),
-    ("smb",         "",      4900),
-    ("smb",         "uk",    4900),
-    ("smb",         "us",    7900),
-    ("growth",      "",      7900),
-    ("growth",      "uk",    7900),
-    ("growth",      "us",    9900),
-    ("venture",     "",     14900),
-    ("venture",     "uk",   14900),
-    ("venture",     "us",   19900),
+    ("",            "",      4999),
+    ("",            "uk",    4999),
+    ("",            "us",    4999),
+    ("side_hustle", "",      2999),
+    ("side_hustle", "uk",    2999),
+    ("side_hustle", "us",    4999),
+    ("smb",         "",      4999),
+    ("smb",         "uk",    4999),
+    ("smb",         "us",    7999),
+    ("growth",      "",      7999),
+    ("growth",      "uk",    7999),
+    ("growth",      "us",    9999),
+    ("venture",     "",     14999),
+    ("venture",     "uk",   14999),
+    ("venture",     "us",   19999),
 ]
 
 
@@ -75,16 +75,16 @@ GOLDEN: list[tuple[str, str, int]] = [
 
 def test_unclassified_pack_prices_at_exactly_the_current_catalogue_price(cfg: Config) -> None:
     # Candidate.ambition_tier defaults to "" (models.py) and every pack published before the
-    # ambition lanes existed carries it. If this returns anything but 4900, introducing the
+    # ambition lanes existed carries it. If this returns anything but 4999, introducing the
     # ladder silently re-prices the back catalogue.
-    assert price_for(_candidate(), _score(), cfg).price_pence == 4900
+    assert price_for(_candidate(), _score(), cfg).price_pence == 4999
 
 
 def test_unclassified_pack_ignores_market(cfg: Config) -> None:
     # Market is not a tiebreaker for a pack we cannot classify. Without this the two us-market
     # packs in the live catalogue would move on a segment we have no read on.
     for market in ("", "uk", "us", "de", "us-tx"):
-        assert price_for(_candidate(market=market), _score(), cfg).price_pence == 4900
+        assert price_for(_candidate(market=market), _score(), cfg).price_pence == 4999
 
 
 # --- 2. every price is a rung ----------------------------------------------
@@ -109,7 +109,7 @@ def test_score_does_not_move_the_price(cfg: Config) -> None:
     # become a pricing outage.
     prices = {price_for(_candidate("growth", "uk"), _score(c), cfg).price_pence
               for c in (0.0, 1.0, 2.5, 3.4, 4.9, 5.0)}
-    assert prices == {7900}
+    assert prices == {7999}
 
 
 # --- 3. totality ------------------------------------------------------------
@@ -127,12 +127,12 @@ def test_is_total_over_every_combination(cfg: Config, tier: str, market: str) ->
 def test_unknown_tier_is_treated_as_unclassified(cfg: Config) -> None:
     # Fail SAFE, not cheap and not expensive: an unrecognised tier is a pack we cannot classify,
     # which is the default case, not the bottom rung.
-    assert price_for(_candidate("wildcat", "uk"), _score(), cfg).price_pence == 4900
+    assert price_for(_candidate("wildcat", "uk"), _score(), cfg).price_pence == 4999
 
 
 def test_unknown_market_earns_no_offset(cfg: Config) -> None:
     # A market we have declared no position on must not be guessed at either way.
-    assert price_for(_candidate("smb", "de"), _score(), cfg).price_pence == 4900
+    assert price_for(_candidate("smb", "de"), _score(), cfg).price_pence == 4999
 
 
 # --- 4. determinism and provenance -----------------------------------------
@@ -150,7 +150,7 @@ def test_decision_carries_its_own_justification(cfg: Config) -> None:
     # price that moved with no stated cause is indistinguishable from a bug. The decision has to
     # arrive carrying the material for that Reason, or the caller invents one.
     decision = price_for(_candidate("venture", "us"), _score(), cfg)
-    assert decision.price_pence == 19900
+    assert decision.price_pence == 19999
     assert decision.rung
     assert decision.rationale
     assert decision.segment["ambition_tier"] == "venture"
@@ -173,7 +173,7 @@ def test_rungs_are_ascending_and_unique(cfg: Config) -> None:
 
 def test_default_rung_index_resolves_to_the_current_price(cfg: Config) -> None:
     pricing = cfg.listing["pricing"]
-    assert _rungs(cfg)[pricing["default_rung_index"]] == cfg.listing["price_pence"] == 4900
+    assert _rungs(cfg)[pricing["default_rung_index"]] == cfg.listing["price_pence"] == 4999
 
 
 def test_an_out_of_range_rung_index_in_config_degrades_instead_of_crashing(cfg: Config) -> None:
