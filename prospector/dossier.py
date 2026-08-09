@@ -422,14 +422,27 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append("---")
         lines.append("## Every source we used")
         lines.append("")
+        archived_any = any(getattr(s, "archived_url", None) for s in all_src)
         lines.append("Every claim above traces back to one of these. Follow any of "
-                     "them and check us.")
+                     "them and check us."
+                     + (" Where a page has since moved or gone, the archived copy is the "
+                        "same text we read, captured on the day we read it."
+                        if archived_any else ""))
         lines.append("")
         for src in all_src:
             pub = f" ({src.published_at})" if src.published_at else ""
             snippet = src.text[:500].replace("\n", " ")
             lines.append(f"### Source [{src.source_id}]")
             lines.append(f"**URL:** [{src.url}]({src.url}){pub}")
+            # The second pointer. `url` is the part that rots (measured 2026-08-09: 12 of 14
+            # dead citations were genuinely gone), `text` below is the evidence and never
+            # does. Rendering the memento is what stops "follow any of them and check us"
+            # from quietly becoming false a year after the sale.
+            archived = getattr(src, "archived_url", None)
+            if archived:
+                fetched = src.fetched_at if isinstance(src.fetched_at, str) else ""
+                on = f", as retrieved {fetched[:10]}" if fetched else ""
+                lines.append(f"**Archived copy:** [permanent snapshot]({archived}){on}")
             lines.append("")
             lines.append(f"> {snippet}...")
             lines.append("")

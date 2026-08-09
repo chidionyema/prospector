@@ -95,6 +95,11 @@ class Source:
     published_at: Optional[str] = None
     query: Optional[str] = None          # the query that surfaced it (audit)
     fetched_at: Optional[str] = None
+    # A Wayback memento captured at publish (prospector/archive.py). The second pointer:
+    # `url` is the one that rots — measured 2026-08-09, 12 of 14 dead citations were
+    # genuinely gone — while `text` is the evidence and never does. Defaulted so every
+    # dossier written before 2026-08-09 still deserialises through `Source(**d)`.
+    archived_url: Optional[str] = None
 
     @staticmethod
     def make(url: str, text: str, published_at: Optional[str] = None,

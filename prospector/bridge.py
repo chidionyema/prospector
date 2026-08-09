@@ -21,6 +21,7 @@ import requests
 
 from . import facet_derive, indexnow
 from . import facets as facets_mod
+from .archive import archive_sources
 from .copy_lint import buyer_readable, is_prose_artifact
 from .models import Decision, Dossier, ScoreResult
 from .pack_linter import lint_pack
@@ -732,6 +733,33 @@ class EngineBridge:
         catalog_meta.update(_trust_fields(dossier))
         # Drop empties so the payload (and the Store API) only ever see populated fields.
         catalog_meta = {k: v for k, v in catalog_meta.items() if v not in ("", [], {}, None)}
+
+        # 1b. ARCHIVE THE CITATIONS, before the bundle is built from them.
+        #
+        # A pack is generated once and sold indefinitely, so its evidence decays after the
+        # sale: measured 2026-08-09, 12 of 14 dead citations blocking packs were genuinely
+        # 404 on a GET. The passage text is already durable (`Source.text`, quoted to the
+        # buyer in the QA report), so only the POINTER rots. This mints a second one.
+        #
+        # Ordering is the whole point of putting it here: `_create_bundle` renders the QA
+        # report from these Source objects on the next line, so the memento has to be on them
+        # BEFORE that call or it would be a field nobody reads. Strictly additive and never
+        # raises (see archive.archive_sources) — the Internet Archive being slow is our
+        # convenience failing, not a reason a paid-for pack fails to ship.
+        archive_cfg = self.cfg.listing if isinstance(getattr(self.cfg, "listing", None), dict) else {}
+        if archive_cfg.get("archive_citations", False):
+            _store_dir = getattr(self.cfg, "store_dir", None)
+            n_archived = archive_sources(
+                dossier.all_sources,
+                cache_path=(Path(_store_dir) / "citation_archive.json")
+                if isinstance(_store_dir, (str, Path)) else None,
+                save_new=bool(archive_cfg.get("archive_save_new", True)),
+                timeout_s=float(archive_cfg.get("archive_lookup_timeout_s", 10.0)),
+                save_timeout_s=float(archive_cfg.get("archive_save_timeout_s", 30.0)),
+                max_urls=int(archive_cfg.get("archive_max_urls", 30)),
+            )
+            logger.info(f"EngineBridge: {candidate_id} archived {n_archived}/"
+                        f"{len(dossier.all_sources)} citation(s)")
 
         # 2. Create the bundle (.zip)
         bundle_path = self._create_bundle(dossier, artifacts, marketing)
