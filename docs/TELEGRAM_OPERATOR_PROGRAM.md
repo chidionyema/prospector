@@ -239,8 +239,18 @@ Design decisions worth not re-litigating:
   (`audit.py:153`), so ranking by it across the daemon, backfills and manual CLI runs sharing one
   day-file picks whichever process ran longest, not what happened last.
 
-Tests: `prospector/tests/unit/test_subtick_progress_audit.py` (6, engine side),
-`tests/gateway/operator_shell/test_prospector_inflight.py` (19, reader side).
+Tests: `tests/unit/test_subtick_progress_audit.py` (6, engine side),
+`tests/gateway/operator_shell/test_prospector_inflight.py` (19, reader side). Shipped as
+prospector `a28dc70` (POPDD green) and hermes-agent `9c02d68b23` (797 passed, 5 skipped).
+
+**Proved on the daemon, not in pytest.** The engine had to be restarted to pick the writer up —
+the Deployed panel called it (`🔴 scheduler running 776a692b1a3e ≠ disk a9e13187e55c — STALE
+CODE`), which is the R8 panel catching exactly the drift it was built for. After
+`launchctl kickstart -k com.prospector.scheduler`, pid 28904 wrote all three new row types within
+four minutes, e.g.
+`{"event":"check_result","candidate_id":"8dd1c2b4135d22b9","check":"pain_reality","verdict":"unverifiable","confidence":0.73,"idx":6,"total":6}`
+then `{"event":"candidate_done","decision":"kill","gate":"moat_ungrounded","provisional":false}`.
+The panel rendered against that live trail: *🟢 1 candidate(s) in flight · trail 10s ago*.
 
 **Send-path trap found by shipping it:** `render_panel` cannot nest a code span inside italic or
 bold — `parse(render_panel("_a `b.jsonl`_"))` raises `unclosed italic entity`, which Telegram
