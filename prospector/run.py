@@ -357,6 +357,54 @@ def _build_artifact_op(cfg: Config, fallback_op: Operator) -> Operator:
                             cooldown_s=r.breaker_cooldown_s, health=get_noncritical_health())
 
 
+def publish_and_record(dossier: Dossier, cfg: Config, store: Optional[Store] = None) -> str:
+    """Publish a non-provisional PASS and RECORD the outcome on the dossier. Returns the status.
+
+    A publish failure USED to be caught here, logged to `store/prospector.jsonl` (NOT the
+    interactive stream) and swallowed: the dossier came back normally, the exit code never
+    changed, and no field anywhere distinguished "PASS, listed" from "PASS, listing never
+    written". A scheduled batch printed PASS while `store/listings/<id>.json` was never
+    created — the drift class this repo already tracks in
+    `a-listed-pack-had-only-a-kill-dossier`.
+
+    Two failure shapes, both recorded:
+      * the call RAISES (network, provisioning, a crashed bundler); and
+      * the call RETURNS a refusal. `publish()` reports most refusals by return value
+        (`{"status": "error"|"skipped"|"dry_run"|...}`), not by raising, so "did not throw"
+        was never evidence that anything was listed.
+
+    Module-level rather than inline in `vet_candidate` so this is provable without running a
+    full vet — a live vet cannot run offline and the test would skip in CI, which is exactly
+    where the guard most needs to hold.
+    """
+    from . import progress
+    cid = getattr(getattr(dossier, "candidate", None), "candidate_id", "?")
+    try:
+        from publish.publish import publish as _publish
+        res = _publish(dossier, cfg) or {}
+        status = str(res.get("status", "")) if isinstance(res, dict) else ""
+        if status == "published":
+            dossier.publish_status = "published"
+            dossier.publish_error = None
+        else:
+            dossier.publish_status = "failed"
+            dossier.publish_error = f"publish returned status={status or 'unknown'!r}: {res}"
+            logger.error(f"Publication did not list {cid}",
+                         extra={"candidate_id": cid, "status": status})
+            progress.note(f"PUBLISH FAILED for {cid} — status={status or 'unknown'} "
+                          f"(dossier is a PASS, but nothing was listed)")
+    except Exception as e:
+        dossier.publish_status = "failed"
+        dossier.publish_error = f"{type(e).__name__}: {e}"
+        logger.error(f"Publication failed for {cid}", extra={"error": str(e)})
+        progress.note(f"PUBLISH FAILED for {cid} — {type(e).__name__}: {e} "
+                      f"(dossier is a PASS, but nothing was listed)")
+    if store is not None:
+        # Re-save so the PERSISTED dossier carries the publish outcome, not just the verdict.
+        store.save(dossier)
+    return dossier.publish_status
+
+
 def vet_candidate(
     cand: Candidate,
     op: Operator,
@@ -541,11 +589,7 @@ def vet_candidate(
         store.save(dossier)
 
     if publish and dossier.decision == Decision.PASS and not dossier.provisional:
-        try:
-            from publish.publish import publish as _publish
-            _publish(dossier, cfg)
-        except Exception as e:
-            logger.error(f"Publication failed for {cand.candidate_id}", extra={"error": str(e)})
+        publish_and_record(dossier, cfg, store)
     elif publish and dossier.decision == Decision.PASS and dossier.provisional:
         # Provisional PASS: the moat was exhausted and the cheap fallback tail ruled.
         # Real-but-untrusted — never publish. It will auto re-vet on `vet --resume`.
@@ -719,6 +763,12 @@ def run_signal(
     # generator's `avoid` list from the freshest dossier titles so it explores NEW ground.
     prior_titles = store.recent_titles(limit=200)
 
+    # Chain-exhaustion sink. `generate`/`generate_multilane` write `chain_exhausted` here when
+    # the non-critical chain hits its quota wall MID-RUN. The aggregate `if not candidates:`
+    # test below cannot see that case — waves that already produced survivors mask it — so
+    # partial exhaustion used to skip `_save_pending_signal` entirely and lose the signal.
+    _gen_diag: dict = {}
+
     # FIX: MiniMax generation — gen_op (MiniMax) for generation; op (Claude/Gemini) stays
     # for verification.  gen_op falls back to op if MINIMAX_API_KEY is not configured.
     if lanes and len(lanes) > 1:
@@ -735,7 +785,7 @@ def run_signal(
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             prior_titles=prior_titles,
             gen_op=gen_op, grid_priorities=grid_priorities, focus=focus,
-            pass_patterns=patterns)
+            pass_patterns=patterns, diagnostics=_gen_diag)
         # ambition_tier already set inside generate_multilane (c.ambition_tier = tier).
     elif lanes:
         # SINGLE pinned tier (--lane X or config active_lane): generate in that tier, tag it,
@@ -747,7 +797,7 @@ def run_signal(
             op, cfg.for_lane(tier), signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=patterns, prior_titles=prior_titles)
+            pass_patterns=patterns, prior_titles=prior_titles, diagnostics=_gen_diag)
         for c in candidates:
             c.ambition_tier = tier
     else:
@@ -758,7 +808,7 @@ def run_signal(
             op, cfg, signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=patterns, prior_titles=prior_titles,
+            pass_patterns=patterns, prior_titles=prior_titles, diagnostics=_gen_diag,
         )
     if not candidates:
         # Generation chain exhausted — save the signal text so the operator can
@@ -769,6 +819,19 @@ def run_signal(
                        f"`generate --resume` when generation chain recovers.")
         progress.step("generation chain exhausted — signal saved, re-run with generate --resume")
         return []
+    if _gen_diag.get("chain_exhausted"):
+        # PARTIAL exhaustion: some candidates came back, then the chain died. The candidates in
+        # hand are real and are vetted below — but the signal was NOT fully generated, so it is
+        # saved for `generate --resume` exactly as a total exhaustion would be.
+        _save_pending_signal(signal_text, cfg)
+        _errs = "; ".join(str(e) for e in _gen_diag.get("exhaustion_errors", [])[:3])
+        logger.error(
+            f"Generation chain exhausted MID-RUN after producing {len(candidates)} "
+            f"candidate(s) ({'/'.join(_NONCRITICAL_ORDER)}). Signal saved for "
+            f"`generate --resume`. Causes: {_errs}",
+            extra={"chain_exhausted": True, "candidates": len(candidates)})
+        progress.step(f"generation chain exhausted MID-RUN after {len(candidates)} candidate(s) "
+                      f"— signal saved, re-run with generate --resume")
     logger.info(f"Generated {len(candidates)} candidates")
     progress.step(f"generated {len(candidates)} candidates")
 

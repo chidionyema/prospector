@@ -52,7 +52,15 @@ def passing_dossier():
         score=score,
         model_version="test-model",
         created_at="2026-06-13T12:00:00Z",
-        checks=[CheckResult("pain_reality", Verdict.SUPPORTED, 0.9, "OK")]
+        # A LANE-DECISIVE grounded check (`value_durability`) is not decoration here: a PASS with
+        # only incidental supported checks is what `build_dossier` KILLs as `moat_ungrounded`, so
+        # a fixture without one described a dossier the real pipeline cannot emit. It slipped
+        # through before only because the bridge's publish backstop ran a weaker copy of the
+        # source-or-die arithmetic (engine audit finding 8) and never looked at the decisive set.
+        checks=[
+            CheckResult("pain_reality", Verdict.SUPPORTED, 0.9, "OK"),
+            CheckResult("value_durability", Verdict.SUPPORTED, 0.9, "OK"),
+        ]
     )
 
 

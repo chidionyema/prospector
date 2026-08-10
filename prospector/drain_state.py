@@ -158,15 +158,75 @@ def _write(store_dir, data: dict[str, int]) -> None:
         logger.warning("Could not write drain attempt ledger %s: %s", p, exc)
 
 
+class _LedgerLock:
+    """An advisory cross-PROCESS lock around the ledger's read-modify-write.
+
+    `record_unresolved` was `load() -> +1 -> _write()` with no mutex. Each write is
+    crash-atomic on its own, which is not the same property: two processes that read `3`
+    concurrently both write `4`, and one attempt vanishes. Both callers are real and
+    concurrent — the daemon's automatic drain and a manual `vet --resume` against the same
+    store, a pairing CLAUDE.md calls operationally realistic ("this checkout is often shared
+    by two concurrent sessions").
+
+    A lost increment means a genuinely stuck row needs more than `max_resume_attempts` real
+    attempts before it is excluded from the backlog count, quietly re-engaging the very
+    generation freeze the "gate on the rate, not the stock" directive exists to avoid.
+
+    `threading.Lock` cannot fix this (one lock object per process) — the same defect the
+    audit found in `health._claim_probe`. `fcntl.flock` is per-OPEN-FILE and kernel-held, so
+    it works across processes. Degrades to a no-op rather than raising if the platform or the
+    filesystem has no flock: the pre-existing racy behaviour is the floor, never a crash.
+    """
+
+    def __init__(self, store_dir):
+        self._path = ledger_path(store_dir).with_suffix(".lock")
+        self._fh = None
+
+    def __enter__(self):
+        try:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._fh = open(self._path, "a+")
+            import fcntl
+            fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX)
+        except (OSError, ImportError, AttributeError) as exc:
+            logger.debug("Drain ledger lock unavailable (%s); proceeding unlocked", exc)
+            if self._fh is not None:
+                try:
+                    self._fh.close()
+                except OSError:
+                    pass
+                self._fh = None
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        if self._fh is None:
+            return
+        try:
+            import fcntl
+            fcntl.flock(self._fh.fileno(), fcntl.LOCK_UN)
+        except (OSError, ImportError, AttributeError):
+            pass
+        try:
+            self._fh.close()
+        except OSError:
+            pass
+        self._fh = None
+
+
 def record_unresolved(store_dir, candidate_id: str) -> int:
-    """Count one completed re-vet that left `candidate_id` in the backlog. Returns the new total."""
+    """Count one completed re-vet that left `candidate_id` in the backlog. Returns the new total.
+
+    The load/increment/write runs under `_LedgerLock` — see its docstring for why a
+    crash-atomic write alone does not make this safe.
+    """
     cid = str(candidate_id or "")
     if not cid:
         return 0
-    data = load(store_dir)
-    data[cid] = data.get(cid, 0) + 1
-    _write(store_dir, data)
-    return data[cid]
+    with _LedgerLock(store_dir):
+        data = load(store_dir)
+        data[cid] = data.get(cid, 0) + 1
+        _write(store_dir, data)
+        return data[cid]
 
 
 def forget(store_dir, candidate_id: str) -> None:

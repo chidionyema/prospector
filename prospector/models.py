@@ -374,6 +374,16 @@ class Dossier:
     # real-but-untrusted decision: it never publishes on PASS and is auto re-vetted by
     # the moat on the next `vet --resume`.
     provisional: bool = False
+    # Outcome of the publish step, recorded so a PASS that FAILED to publish cannot be
+    # mistaken for a listed one. `None` = publish was never attempted (a plain vet, a KILL,
+    # a held-back provisional PASS); "published" = the listing write succeeded;
+    # "failed" = it was attempted and did not succeed, with `publish_error` carrying why.
+    # Before this existed, `run.vet_candidate` caught the failure, logged it to
+    # `store/prospector.jsonl` (NOT the interactive stream), and returned the dossier
+    # normally — same exit code, same "PASS" on screen, no field anywhere recording that
+    # `store/listings/<id>.json` was never written.
+    publish_status: Optional[str] = None
+    publish_error: Optional[str] = None
 
     @property
     def dense_reward(self) -> float:
@@ -426,6 +436,8 @@ class Dossier:
             "created_at": self.created_at,
             "reverify_due_at": self.reverify_due_at,
             "provisional": self.provisional,
+            "publish_status": self.publish_status,
+            "publish_error": self.publish_error,
             "dense_reward": self.dense_reward,
             "sources": [s.to_dict() for s in self.all_sources],
         }

@@ -120,8 +120,12 @@ def _dossier(facets, automatability=None, structural_form=""):
     return Dossier(
         candidate=cand,
         decision=Decision.PASS,
+        # A PASS needs the LANE'S decisive check grounded, not merely one supported check: dossier.py:167 mints Decision.PASS only when `moat_grounded >= 1` and KILLs `moat_ungrounded` otherwise. This candidate carries ambition_tier="" — the default lane, moat_critical_checks=[value_durability, incumbency] — so a lone non-decisive check described a dossier the engine cannot produce.
         checks=[CheckResult(check_name="buyer_intent", verdict=Verdict.SUPPORTED, confidence=0.8,
                             rationale="Growers search for closure guidance.",
+                            citations=[], sources=[], queries=[]),
+                CheckResult(check_name="value_durability", verdict=Verdict.SUPPORTED,
+                            confidence=0.8, rationale="Closure rules re-issue each season.",
                             citations=[], sources=[], queries=[])],
         created_at="2026-07-31T00:00:00Z",
     )
