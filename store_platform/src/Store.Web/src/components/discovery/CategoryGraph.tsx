@@ -130,6 +130,23 @@ interface GridConfig {
   width: number;
   height: number;
   padding: number;
+  /**
+   * CSS `min-width` floor for the rendered SVG, in px. Only the desktop grid sets this
+   * (to 720, its own native width): its wrapper has `overflow-x-auto`, so on a container
+   * narrower than 720 the diagram scrolls horizontally rather than squashing illegibly.
+   *
+   * The mobile grid MUST leave this unset. `min-width` always wins over `width: 100%`
+   * (`h-auto w-full` below), so a fixed 360 here pinned the mobile SVG to 360px wide
+   * regardless of its actual container -- and the mobile wrapper has no `overflow-x-auto`
+   * (deliberately: see the "no horizontal scroll or zoom" comment on GRID_COLS_MOBILE
+   * above). Measured live on mumchimp.com/ideas 2026-08-10: at 320/360/375px viewports
+   * (a small Android, a common Android, and an iPhone SE -- not edge cases) the card was
+   * 272-327px wide but the SVG stayed pinned at 360px, so up to 4 circles rendered
+   * 20-50px past the card's right/bottom border with nothing to clip or scroll them.
+   * Leaving `minWidth` undefined lets `w-full` actually shrink the SVG (and everything
+   * in its viewBox, proportionally) to fit whatever the container really is.
+   */
+  minWidth?: number;
 }
 
 /**
@@ -150,7 +167,7 @@ function GraphSvg({
   pathFor: (kind: string) => string;
   ariaLabel: string;
 }) {
-  const { cols, rows, width, height, padding } = grid;
+  const { cols, rows, width, height, padding, minWidth } = grid;
   const cellW = (width - padding * 2) / cols;
   const cellH = (height - padding * 2) / rows;
   // Size scale: the smallest category is 24px radius, the largest is 56px.
@@ -175,7 +192,7 @@ function GraphSvg({
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className="h-auto w-full"
-      style={{ minWidth: width }}
+      style={minWidth ? { minWidth } : undefined}
       role="img"
       aria-label={ariaLabel}
     >
@@ -241,13 +258,20 @@ function GraphSvg({
   );
 }
 
-const DESKTOP_GRID: GridConfig = { cols: GRID_COLS, rows: GRID_ROWS, width: SVG_WIDTH, height: SVG_HEIGHT, padding: PADDING };
+const DESKTOP_GRID: GridConfig = {
+  cols: GRID_COLS, rows: GRID_ROWS, width: SVG_WIDTH, height: SVG_HEIGHT, padding: PADDING,
+  // Desktop wrapper below has `overflow-x-auto`: below 720px wide, scroll rather than squash.
+  minWidth: SVG_WIDTH,
+};
 const MOBILE_GRID: GridConfig = {
   cols: GRID_COLS_MOBILE,
   rows: GRID_ROWS_MOBILE,
   width: SVG_WIDTH_MOBILE,
   height: SVG_HEIGHT_MOBILE,
   padding: PADDING_MOBILE,
+  // No minWidth: the mobile wrapper has no overflow-x-auto by design (no horizontal
+  // scroll on a phone), so the SVG must be free to shrink below its native 360px to
+  // whatever the real container is -- see the GridConfig.minWidth comment above.
 };
 
 /**

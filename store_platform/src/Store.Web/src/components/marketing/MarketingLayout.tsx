@@ -154,38 +154,19 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           {/* Left: Brand & Main Nav */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
-              {/* COMPACT LOGO BELOW `md` (wired 2026-08-09). `monogramOnly` existed on `Logo`
-                  and in the favicon-parity contract, but had no call site anywhere in the app
-                  (`grep -rn monogramOnly src --include='*.tsx'` matched only Logo.tsx itself) --
-                  the full wordmark lockup was rendering at every width, including the phone
-                  header `monogramOnly` was built for. Two elements, not one conditional prop,
-                  because Tailwind's responsive classes are static per element, not runtime
-                  branches: `max-md:hidden md:inline-flex` / `inline-flex md:hidden` swap on the
-                  same breakpoint the nav already uses.
-
-                  FIXED 2026-08-10: the first `<Logo>` originally carried plain `hidden`, not
-                  `max-md:hidden`, and that plain (unprefixed) class can never win here. `Logo.tsx`
-                  itself hardcodes an unconditional `inline-flex` in its own base classes (line
-                  ~187), so this element always carries BOTH a bare `.hidden` and a bare
-                  `.inline-flex`. Confirmed by walking the compiled stylesheet's own cascade order
-                  (`@layer utilities`, Playwright + `document.styleSheets`): `.hidden{display:none}`
-                  is declared at rule index 155, `.inline-flex{display:inline-flex}` at index 158 --
-                  later wins at equal specificity, so `.inline-flex` always overrode `.hidden`,
-                  at every viewport, not just below `md`. `getComputedStyle` on the element
-                  confirmed `display: flex` and `offsetParent !== null` (visible) on a real mobile
-                  viewport (Playwright `devices['iPhone 12']`, 390px). The desktop `md:inline-flex`
-                  variant compiles into an `@media` block placed after the base layer, so it always
-                  wins its own range regardless -- which is exactly why this was invisible on
-                  desktop and only ever showed as two overlapping logos on mobile. `md:hidden` on
-                  the second `<Logo>` below was never affected: it has no competing plain `hidden`
-                  class, only the media-scoped one, so it already wins its range on the same
-                  cascade principle. `max-md:hidden` is itself a media-scoped rule (`@media
-                  (max-width: 767.98px)`), so it sits in the same later region as `md:inline-flex`
-                  instead of competing with the base layer's plain `.inline-flex` -- it is the
-                  general fix for "hide a component that hardcodes its own display utility", not a
-                  one-off tweak to this element. */}
-              <Logo className="max-md:hidden text-h2 md:inline-flex" />
-              <Logo monogramOnly className="text-h2 md:hidden" />
+              {/* REVERTED 2026-08-10 (founder: the mobile header must never lose the brand
+                  name -- an icon-only mark with no wordmark next to it read as a missing
+                  logo, not a compact one). The prior state of this block swapped to
+                  `<Logo monogramOnly>` below `md`, which renders ONLY the strata tile SVG
+                  (see Logo.tsx) with no visible text at all -- correctly fixed the double
+                  render (two elements briefly painted at once, see the cascade-order
+                  writeup this replaced) but traded it for a header that shows no company
+                  name whatsoever on any phone-width viewport. One `<Logo>`, unconditional,
+                  no breakpoint split: it is the full wordmark (icon + "Mumchimp", one word
+                  -- see Logo.tsx's `${first}${second}` render) at every width, so there is
+                  exactly one element here and it can never double-render regardless of
+                  cascade order, and mobile keeps the brand name it never should have lost. */}
+              <Logo className="text-h2" />
             </Link>
 
             <nav className="hidden items-center gap-7 md:flex">
