@@ -58,6 +58,16 @@ operator: [claude_cli, standardcompute, minimax]
 # re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
 # To promote it to trusted-final, the gate is the one named below:
 #   python -m prospector.golden --operator standardcompute --fixtures fixtures/golden_fixtures.json --runs 3
+#
+# The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
+# its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
+# not apply here and the head may be the cheapest live brain rather than a trusted one. It lived
+# in `run.py` as a module constant until 2026-08-10, which made the one knob whose entire subject
+# is "what does the ancillary work cost" the only one that needed a source edit and a daemon
+# re-exec to move, while every throughput knob beside it was a config line. Its head changed
+# three times in two weeks (deepseek → claude_cli → standardcompute), each time by editing code
+# to express a billing fact. Blank/absent => the historical default, byte for byte.
+noncritical_operator: [standardcompute, claude_cli, minimax]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.

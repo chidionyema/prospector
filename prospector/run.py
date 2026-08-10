@@ -317,6 +317,30 @@ def _get_verify():
 _NONCRITICAL_ORDER = ("standardcompute", "claude_cli", "minimax")
 
 
+def _noncritical_order(cfg: Config | None = None) -> tuple[str, ...]:
+    """The non-critical chain for THIS config, defaulting to `_NONCRITICAL_ORDER`.
+
+    Why a config key and not the constant it reads: every other lever on this chain — how many
+    candidates it makes, how often, under what spend ceiling — is a config line the operator can
+    move from a phone, while the one that decides what the ancillary work COSTS could only be
+    moved by editing source and re-execing the daemon. That is backwards: the head of this chain
+    has changed three times in two weeks (deepseek → claude_cli → standardcompute), each time by
+    a source edit, and each edit was a code deploy to express a billing fact.
+
+    Deliberately NOT extended to `cfg.operator`: the verdict chain must stay led by a trusted
+    brain, and a config key that can be written from a phone is not where that fence belongs.
+    The tail is still fenced by `is_provisional_provider` (operator.py:1071) regardless of what
+    is configured here — nothing on this chain can finalise a ruling.
+
+    An empty/missing value keeps today's behaviour byte for byte.
+    """
+    raw = getattr(cfg, "noncritical_operator", None) if cfg is not None else None
+    if isinstance(raw, str):
+        raw = [raw]
+    order = tuple(str(k).strip() for k in (raw or ()) if str(k).strip())
+    return order or _NONCRITICAL_ORDER
+
+
 # ---------------------------------------------------------------------------
 # Core vetting unit
 # ---------------------------------------------------------------------------
@@ -652,10 +676,11 @@ def run_signal(
         return chain
 
     # gen_op: divergent candidate generation (non-critical).
-    gen_op = _build_operator_chain(_NONCRITICAL_ORDER, fast=True)
+    _nc_order = _noncritical_order(cfg)
+    gen_op = _build_operator_chain(_nc_order, fast=True)
 
     # fast_op: prescreen / scoring / mechanical JSON (non-critical), same order.
-    fast_op = _build_operator_chain(_NONCRITICAL_ORDER, fast=True)
+    fast_op = _build_operator_chain(_nc_order, fast=True)
 
     # Shadow Moat (Part 16 principal upgrade): optionally load an experimental 
     # operator to run in parallel. Findings are logged for drift analysis.
@@ -764,7 +789,7 @@ def run_signal(
         # Generation chain exhausted — save the signal text so the operator can
         # re-run it later with `generate --resume`.  Never lose a signal.
         _save_pending_signal(signal_text, cfg)
-        logger.warning(f"Generation chain exhausted ({'/'.join(_NONCRITICAL_ORDER)} all "
+        logger.warning(f"Generation chain exhausted ({'/'.join(_noncritical_order(cfg))} all "
                        f"unavailable or quota depleted). Signal saved for retry. Run "
                        f"`generate --resume` when generation chain recovers.")
         progress.step("generation chain exhausted — signal saved, re-run with generate --resume")
@@ -2057,8 +2082,9 @@ def _cmd_operators(args) -> None:
                 return f"{fast_label}: {tiers[0][0]} (single)"
             return f"{fast_label}: {' → '.join(n for n, _ in tiers)}"
 
-        print(f"  {build_chain(_NONCRITICAL_ORDER, 'gen_op')}")
-        print(f"  {build_chain(_NONCRITICAL_ORDER, 'fast_op')}")
+        _nc = _noncritical_order(cfg)
+        print(f"  {build_chain(_nc, 'gen_op')}")
+        print(f"  {build_chain(_nc, 'fast_op')}")
     except Exception as e:
         print(f"  ✗ could not build chains: {e}")
 
@@ -2076,7 +2102,7 @@ def _cmd_operators(args) -> None:
         print(f"  Prompt size: {len(sys_p) + len(usr_p)} chars")
         # Probe the non-critical chain operators only
         gen_ops = [(k, o, b) for k, o, b in available_ops
-                   if o is not None and k in _NONCRITICAL_ORDER]
+                   if o is not None and k in _noncritical_order(cfg)]
         for kind, op, baseline in gen_ops:
             print(f"\n  {kind:15s} (baseline {baseline:.1f}s)...", end="", flush=True)
             t0 = time.monotonic()
