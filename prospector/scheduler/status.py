@@ -259,6 +259,57 @@ def _read_backlog(cfg) -> dict:
     return {"deferred": deferred, "provisional": provisional, "total": total}
 
 
+def _read_last_batch(cfg) -> dict:
+    """The last batch's kill-gate breakdown — WHY the last batch produced what it produced.
+
+    `last_tick` says a batch ran and stocked nothing. That is the symptom. The gate histogram is
+    the diagnosis, and it is the only number that can tell a steering change that worked from one
+    that did not: a tech/AI focus is expected to lower the pass rate at first, so "0 passes" is
+    not evidence either way, while `moat_ungrounded` falling from 7 to 2 is.
+
+    `diagnostics.diagnose_batch()` has computed this since before the daemon existed and
+    `persist_batch_diagnostics` has written it to `batch_diagnostics.jsonl` every batch. Nothing
+    read it: it reached a text file on disk and stopped there.
+
+    Never raises. Every field is None when unreadable — never 0, which reads as "no kills".
+    """
+    out: dict[str, Any] = {"ts": None, "kill_gates": None, "unverifiable_pct": None,
+                           "market": None, "closest": None}
+    try:
+        path = paths.scheduler_dir(cfg, create=False) / "batch_diagnostics.jsonl"
+        if not path.is_file():
+            return out
+        row = None
+        # Last non-blank line only. The file is append-only and grows without bound, so reading
+        # it whole to take one row is a cost that scales with the daemon's uptime.
+        with path.open("r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.strip():
+                    row = line
+        if not row:
+            return out
+        rec = json.loads(row)
+    except Exception:  # noqa: BLE001 — a diagnostics read must never break a status call
+        return out
+    if not isinstance(rec, dict):
+        return out
+    out["ts"] = rec.get("ts")
+    gates = rec.get("kill_gates")
+    if isinstance(gates, dict):
+        # Sorted by count so the caller never has to; the top gate is the whole point.
+        out["kill_gates"] = dict(sorted(gates.items(), key=lambda kv: (-int(kv[1] or 0), kv[0])))
+    pct = rec.get("unverifiable_pct")
+    if isinstance(pct, (int, float)):
+        out["unverifiable_pct"] = float(pct)
+    by_market = rec.get("by_market")
+    if isinstance(by_market, dict) and by_market:
+        out["market"] = ",".join(sorted(str(k) for k in by_market))
+    closest = rec.get("closest_kills")
+    if isinstance(closest, list):
+        out["closest"] = closest[:3]
+    return out
+
+
 def status_snapshot(cfg) -> dict:
     """Read-only engine state, JSON-safe for cross-process transport.
 
@@ -270,6 +321,8 @@ def status_snapshot(cfg) -> dict:
       - providers: {moat_blind, dead, moat_brains, blind_reason}
       - alerts:    {active, active_count}
       - backlog:   {deferred, provisional}
+      - last_batch: {ts, kill_gates, unverifiable_pct, market, closest}
+                   — the last batch's kill-gate histogram; every field None if unreadable
 
     Never raises. On any read failure, the offending field is None and the rest is
     returned. `cfg` must expose `store_dir` (see `prospector/scheduler/paths.py`); the
@@ -300,6 +353,7 @@ def status_snapshot(cfg) -> dict:
         "providers": _read_providers(cfg),
         "alerts": _read_alerts(cfg),
         "backlog": _read_backlog(cfg),
+        "last_batch": _read_last_batch(cfg),
     }
 
 
@@ -375,6 +429,23 @@ def format_status_snapshot(snap: dict) -> str:
     else:
         tick_line = "no tick on record — idle"
 
+    # WHY the batch produced what it produced, placed immediately after the tick line and
+    # before everything else. The digest is truncated from the TAIL at 600 chars, so segment
+    # order is a priority order: on a busy tick the founder keeps the diagnosis and loses the
+    # provider roster, not the other way round. `pass=0` on its own is not a signal — a
+    # steering change is expected to lower the pass rate before it raises it — whereas the top
+    # kill gate moving off `moat_ungrounded` is exactly the evidence steering is working.
+    batch = snap.get("last_batch") or {}
+    gates = batch.get("kill_gates") or {}
+    kills_bits = [f"{k}={v}" for k, v in list(gates.items())[:3]]
+    market = batch.get("market")
+    unverif = batch.get("unverifiable_pct")
+    kills_line = ("kills " + " ".join(kills_bits)) if kills_bits else "kills —"
+    if isinstance(unverif, (int, float)):
+        kills_line += f" unverif={unverif:g}%"
+    if market:
+        kills_line += f" [{market}]"
+
     today = _fmt_money(spend.get("today_usd"))
     cap = _fmt_money(spend.get("daily_cap_usd"))
     sub = _fmt_money(spend.get("today_subscription_usd"))
@@ -407,8 +478,8 @@ def format_status_snapshot(snap: dict) -> str:
                     if deferred is not None or provisional is not None
                     else "backlog —")
 
-    msg = (f"Prospector {phase} ({age} ago{pid_s}) | {tick_line}{cost_s} | {spend_line} | "
-           f"{providers_line} | {backlog_line} | {alerts_line}")
+    msg = (f"Prospector {phase} ({age} ago{pid_s}) | {tick_line}{cost_s} | {kills_line} | "
+           f"{spend_line} | {providers_line} | {backlog_line} | {alerts_line}")
     # Hard cap: tests assert ≤ 600 chars. Truncate with a tail marker so the operator
     # sees a message was cut rather than thinking the snapshot was complete.
     if len(msg) > 600:
