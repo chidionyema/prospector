@@ -171,14 +171,31 @@ class ClaudeOperator(Operator):
 
     @track_latency(name="claude_raw_call")
     def _raw(self, system: str, user: str, temperature: float) -> str:
-        resp = self._client.messages.create(
-            model=self.model, max_tokens=4096, temperature=temperature,
-            system=system, messages=[{"role": "user", "content": user}],
-        )
+        try:
+            resp = self._client.messages.create(
+                model=self.model, max_tokens=4096, temperature=temperature,
+                system=system, messages=[{"role": "user", "content": user}],
+            )
+        except Exception as e:
+            # This had NO try/except at all until 2026-08-10, the one gap `classify_exhaustion`
+            # was built to close. "claude" is one of the two MOAT_PRIMARY names, so a raw
+            # Anthropic SDK error (a genuine 402, a spent monthly allowance) propagated past
+            # FallbackOperator's `hard = isinstance(e, ProviderExhaustedError)` check as an
+            # ordinary failure -- never classified, never reaching `_health.mark_exhausted` --
+            # so the one operator singled out as trusted got NONE of the persisted-dead-mark
+            # protection every other adapter (MiniMax, DeepSeek, StandardCompute) gets here.
+            # Net effect: a dead claude_cli key was retried fresh every tick instead of benched
+            # for the documented 1h/60s. Same tested classifier as every other adapter, not an
+            # ad-hoc substring test — see the marker list in errors.py.
+            from .errors import ProviderExhaustedError, looks_exhausted
+            if looks_exhausted(str(e)):
+                raise ProviderExhaustedError(f"Claude API exhausted: {e}",
+                                              provider=self.name) from e
+            raise RuntimeError(f"Claude API call failed: {e}") from e
         # Track usage
         usage = resp.usage
         from .telemetry import record_usage
-        record_usage(input_tokens=usage.input_tokens, 
+        record_usage(input_tokens=usage.input_tokens,
                      output_tokens=usage.output_tokens,
                      total_tokens=usage.input_tokens + usage.output_tokens,
                      provider=self.name)
@@ -549,7 +566,8 @@ class StandardComputeOperator(Operator):
     _OUT_OF_CREDIT_MAX_CHARS = 1000
 
     def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None,
-                 default_model: Optional[str] = None, base_url: Optional[str] = None):
+                 default_model: Optional[str] = None, base_url: Optional[str] = None,
+                 cfg=None):
         key = api_key or os.environ.get("STANDARDCOMPUTE_API_KEY")
         if not key:
             raise RuntimeError("STANDARDCOMPUTE_API_KEY not set")
@@ -561,6 +579,13 @@ class StandardComputeOperator(Operator):
         self.base_url = (base_url or os.environ.get("STANDARDCOMPUTE_BASE_URL")
                          or self._BASE_URL).rstrip("/")
         self.name = f"standardcompute/{self.model}"
+        # Threaded into every record_usage() call below (audit HIGH finding 4) so that
+        # once a real rate is entered under config.yaml's pricing.standardcompute block,
+        # get_price() can actually see it. `cfg.pricing.standardcompute` currently
+        # defaults to None (config.py) because no rate is publicly known — see the class
+        # docstring; that stays a loud $0 (record_usage's `priced` warning), not a
+        # fabricated number.
+        self._cfg = cfg
 
     @property
     def model_version(self) -> str:
@@ -631,7 +656,7 @@ class StandardComputeOperator(Operator):
         cached = int(((usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0)) or 0)
         from .telemetry import logger, record_usage
         record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
-                     cached_tokens=cached, web=False, provider=self.name)
+                     cached_tokens=cached, web=False, provider=self.name, cfg=self._cfg)
 
         content = (data.get("choices", [{}])[0].get("message", {})
                    .get("content", "") or "")
@@ -1258,6 +1283,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         return StandardComputeOperator(
             model=model,
             default_model=md.standardcompute if md else None,
+            cfg=cfg,
         )
     # cursor_cli was removed here on 2026-08-06 (founder directive). It stays an EXPLICIT
     # error rather than an unknown one, so a stale config or plist fails loudly at startup
