@@ -6,8 +6,7 @@ USER: Signal (optional): {signal_text}   Sector hint (optional): {sector}
   Creativity lens (secondary — the ANGLE): {strategy_lens}
   Target qualities to aim for (NOT gates): {target_qualities}
   Recent failure modes to OUT-THINK: {recent_failure_modes}
-Produce up to {k} DISTINCT opportunities. Range widely; if no signal, generate blue-sky
-ACROSS MANY UNRELATED SECTORS — do not cluster in any single domain.
+{diversity_directive}
 (Generation batch {seed}: structural form = '{structural_form}'. Stay strictly inside
 this form; a different batch owns each other form.)
 Already explored by this engine (prior runs, catalogue, AND past rejections) plus this run so
