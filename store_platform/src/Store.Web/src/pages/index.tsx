@@ -299,14 +299,22 @@ function PackCard({
             )}
           </span>
           {line && <span className="mt-0.5 block truncate text-meta text-muted">{line}</span>}
-          <span className="mt-1.5 flex items-center gap-3">
+          {/* `min-w-0` on the row container, `truncate` on the category, `min-w-0 shrink` on
+              the bar. The {market} rules chip is the only per-row signal that the pack is for
+              a different market -- the section heading states the market once and each row's
+              chip is what stops a buyer buying the wrong pack -- so it stays `flex-none` and
+              fully visible. Yielding width comes from the category (long names like "Care and
+              benefits claims" truncate) and the bar (a 40-tick bar gives way to the chip
+              first; the ticks fade toward the tail so the lost ink is the least informative
+              part). Same idiom as the heading row two spans up. */}
+          <span className="mt-1.5 flex min-w-0 items-center gap-3">
             {cat.tagged && (
-              <span className={cx('flex-none font-mono text-caption', cat.ink)}>{cat.label}</span>
+              <span className={cx('truncate font-mono text-caption', cat.ink)}>{cat.label}</span>
             )}
             {/* Label off: the row already prints a sector in mono beside it, and two mono
                 fragments on one line read as a single run-on string. The bar alone still says
                 "more evidence than its neighbour", which is the comparison the shelf is for. */}
-            <EvidenceBar count={pack.sourceCount} label={false} />
+            <EvidenceBar count={pack.sourceCount} label={false} className="min-w-0 shrink" />
             {pack.market && pack.market !== viewerMarket && (
               <span className="flex-none font-mono text-caption text-warning">
                 {marketLabel(pack.market)} rules
