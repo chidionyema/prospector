@@ -212,8 +212,15 @@ def get_price(provider: str, cfg=None) -> dict:
 def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
                  total_tokens: int = 0, cached_tokens: int = 0,
                  web: bool = False, provider: str = "unknown",
-                 message: str = "", self_correction: bool = False) -> None:
-    """Record one model/search call's token usage against the current phase and provider."""
+                 message: str = "", self_correction: bool = False,
+                 cfg=None) -> None:
+    """Record one model/search call's token usage against the current phase and provider.
+
+    `cfg` is optional and defaults to None, so every existing call site (none of which
+    currently has a Config object in scope) is unaffected. Pass it when the caller does
+    have one (see StandardComputeOperator) so `get_price()` can read a real rate from
+    `cfg.pricing` instead of the module-level fallback.
+    """
     phase = PHASE.get() or "main"
     stage = STAGE.get() or ""
     # Extract root provider (e.g. 'claude-cli/default' -> 'claude-cli')
@@ -242,16 +249,41 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
         p["total"] += int(total_tokens or 0)
         p["cached"] += int(cached_tokens or 0)
 
-        # 3. Log a spend event if there's non-zero pricing
-        price = PRICING.get(root_provider, {"input": 0, "output": 0})
+        # 3. Log a spend event. Routed through get_price() (not a direct PRICING.get())
+        # so a caller that DOES pass `cfg` gets `cfg.pricing`'s real rate, not just the
+        # module-level fallback (audit HIGH finding 4: this hardcoded lookup was the
+        # reason standardcompute, the head of run.py's _NONCRITICAL_ORDER, always
+        # priced at $0/$0 and could never move daily_cap_usd's sum no matter how many
+        # calls it made — the config-aware path existed but nothing here ever called it).
+        #
+        # Only a caller that supplies `cfg` is asking for config-aware, audited pricing
+        # (today that's just StandardComputeOperator — see the class docstring and audit
+        # HIGH finding 4). For that caller, a provider missing from cfg.pricing must be
+        # LOUD: warn, and log the spend event even at cost=0, so a real rate entered later
+        # under config.yaml's pricing: block is the only way to make it stop warning.
+        # Every OTHER call site (the ~19 that don't pass cfg, unchanged by this fix) keeps
+        # the exact old behavior — log a spend event only when cost > 0, no new warnings —
+        # which is what keeps claude_cli (subscription burn, deliberately $0, no PRICING or
+        # cfg.pricing entry at all) from being newly and wrongly counted as a spend event:
+        # tests/unit/test_scheduler_resume_drain.py::test_pricing_claude_cli_would_arm_the_metered_cap.
+        price = get_price(root_provider, cfg=cfg)
         cost = (input_tokens * price["input"] / 1_000_000) + (output_tokens * price["output"] / 1_000_000)
-        if cost > 0:
+        configured = cfg is not None and getattr(cfg, "pricing", None) is not None
+        priced = (not configured) or getattr(cfg.pricing, root_provider, None) is not None
+        if configured and not priced:
+            logger.warning(
+                f"record_usage: no price configured for provider {root_provider!r}; "
+                f"logging spend at $0 rather than dropping the event silently. Add a "
+                f"rate under config.yaml's pricing: block to make this real."
+            )
+        if cost > 0 or (configured and not priced):
             logger.info(
-                f"Spend event: {provider} cost=${cost:.6f}",
+                f"Spend event: {provider} cost=${cost:.6f}" + ("" if priced else " (UNPRICED)"),
                 extra={
                     "event": "spend",
                     "provider": provider,
                     "amount_usd": cost,
+                    "priced": priced,
                     "phase": phase,
                     "stage": stage,
                     "input": input_tokens,

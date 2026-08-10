@@ -20,7 +20,9 @@ which grounding/brain is asked, never what counts as evidence or a verdict.
 """
 from __future__ import annotations
 
+import fcntl
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -130,23 +132,46 @@ class ProviderHealth:
     def _claim_probe(self, name: str) -> bool:
         """Atomically take the single probe slot for `name`, or return False.
 
-        The claim is written to the shared file under the lock, so concurrent vet workers —
-        and a daemon and a `vet --resume` drain running as SEPARATE PROCESSES against the same
-        store/ — cannot each decide they are the prober and stampede a struggling brain. That
-        stampede is not hypothetical: the 2026-08-06 flap happened with exactly those two
-        processes competing for the same subscription CLI."""
+        The claim is written to the shared file under an OS-level lock, so concurrent vet
+        workers — and a daemon and a `vet --resume` drain running as SEPARATE PROCESSES
+        against the same store/ — cannot each decide they are the prober and stampede a
+        struggling brain. That stampede is not hypothetical: the 2026-08-06 flap happened
+        with exactly those two processes competing for the same subscription CLI.
+
+        Until 2026-08-10 the only guard here was `self._lock`, a `threading.Lock()` — real
+        within one process, but each process constructs its OWN `ProviderHealth` with its OWN
+        lock object, so two processes reading the same not-yet-claimed `probe_at` could both
+        pass the check and both return True for the same slot: reproduced directly, two
+        independent `ProviderHealth` instances pointed at one file both claimed the sole probe.
+        `fcntl.flock` on a dedicated lock file is a real mutex machine-wide — kernel-released on
+        close or process death, the same mechanism `cli_governor.py`/`jsonl_atomic.py` already
+        use on this host — so the load-decide-write sequence below is now atomic across
+        processes, not just across threads. `self._lock` stays too: it keeps the fast path
+        (two threads in one process) from taking a syscall for something Python can already
+        serialize."""
         now = self._clock()
+        lock_path = self._path.with_suffix(".lock")
         with self._lock:
-            data = self._load()
-            entry = data.get(name)
-            if not entry:
-                return False
-            if float(entry.get("probe_at", 0) or 0) > now:
-                return False
-            entry["probe_at"] = now + self._probe_spacing(int(entry.get("strikes", 1) or 1))
-            entry["probes"] = int(entry.get("probes", 0) or 0) + 1
-            data[name] = entry
-            self._save(data)
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o644)
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                data = self._load()
+                entry = data.get(name)
+                if not entry:
+                    return False
+                if float(entry.get("probe_at", 0) or 0) > now:
+                    return False
+                entry["probe_at"] = now + self._probe_spacing(int(entry.get("strikes", 1) or 1))
+                entry["probes"] = int(entry.get("probes", 0) or 0) + 1
+                data[name] = entry
+                self._save(data)
+            finally:
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                except OSError:
+                    pass
+                os.close(lock_fd)
         logger.info(
             f"Provider {name!r} half-open: letting one call through to re-probe",
             extra={"provider": name})

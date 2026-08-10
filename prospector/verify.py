@@ -860,7 +860,21 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
         
         # Determine if this gate fired
         gate_fired = False
-        if res.retrieval_failed and name in cfg.gate_map():
+        if res.retrieval_failed:
+            # DEFER on ANY failed retrieval, not just a hard gate's. Restricting this to
+            # `name in cfg.gate_map()` was the actual 2026-08-06 fix ("an exception is never
+            # evidence; a failed call DEFERs") -- but a lane can declare `score_checks` entries
+            # that are NOT its own hard gates (side_hustle's own `hard_gates` replaces the
+            # global six, then lists claims_verifiable/payer_solvency/distribution/pain_reality
+            # only as score_checks — none of which are in ITS gate_map()). A retrieval outage
+            # on one of those checks used to fall through this `and` untouched, land in
+            # `checks` as an ordinary `unverifiable, conf 0.0` claim, and feed straight into
+            # `score.py` (which has zero references to `retrieval_failed`) — able to drag the
+            # composite below `min_composite_to_pass` and KILL on `min_composite`,
+            # indistinguishable from a candidate killed on the merits. Same shape as the
+            # incident this gate exists to prevent (store/dossiers/2102bacc6dd75cf9.kill.json),
+            # surviving for the one class of check the original fix didn't cover. A failed call
+            # is not evidence for a score axis any more than it is evidence for a hard gate.
             gate_fired = True
             if first_failing_gate is None:
                 first_failing_gate = DEFER_GATE
