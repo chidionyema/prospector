@@ -286,6 +286,34 @@ def generate(
         f"an idea that does not fit is INVALID, do not propose it): {focus_text}"
         if focus_text else "")
 
+    # DIVERSITY directive — resolved here because it CONTRADICTS the focus directive above.
+    # generate.md used to hardcode "Range widely; ... ACROSS MANY UNRELATED SECTORS — do not
+    # cluster in any single domain" two lines below {focus_directive}. With a focus set, the
+    # prompt therefore told the model to obey a single-domain constraint and to refuse to
+    # cluster in a single domain, in the same breath. Neither shipped profile was ever active
+    # (`active_profile` did not exist as a config key until 2026-08-10), so the contradiction
+    # had never been exercised — the feature would have silently under-delivered the first
+    # time anyone used it.
+    #
+    # Diversity is still DEMANDED when a focus is set; it is just relocated to inside the
+    # focus. `{k}` is left as a literal here and interpolated at the call site rather than by
+    # render(): render substitutes by iterating a dict, so a placeholder introduced BY a
+    # substitution is only replaced if its key happens to come later — a silent
+    # unsubstituted-`{k}` in the shipped prompt. Interpolating explicitly cannot depend on
+    # that ordering.
+    #
+    # With no focus this renders byte-for-byte as before (golden-safe).
+    _diversity_tpl = (
+        "Produce up to {k} DISTINCT opportunities. Every idea MUST satisfy the TARGETING\n"
+        "CONSTRAINT above — do NOT range outside it. Diversity comes from WITHIN the\n"
+        "constraint: different buyer roles, different trigger events, different workflows,\n"
+        "different deliverables, different evidence sources. Two ideas that differ only in\n"
+        "wording are ONE idea."
+        if focus_text else
+        "Produce up to {k} DISTINCT opportunities. Range widely; if no signal, generate blue-sky\n"
+        "ACROSS MANY UNRELATED SECTORS — do not cluster in any single domain."
+    )
+
     # Automatability HARD FLOOR (Part 16). Optional, opt-in: a profile (or config) may set
     # `generation.automatability_floor` to a 0-1 minimum. When set, candidates whose self-
     # reported automatability falls below it (or is unintelligible) are dropped at generation
@@ -382,6 +410,7 @@ def generate(
             audience_description=aud_desc,
             lane_directive=lane_directive,
             focus_directive=focus_directive,
+            diversity_directive=_diversity_tpl.replace("{k}", str(ask)),
             generation_bias=gen_bias,
             pass_patterns=pass_patterns,
             **market_vars)

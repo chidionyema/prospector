@@ -131,7 +131,33 @@ pinned:
   `prospector_daemon.py:888-896`. Cron run/pause at `:649`.
 - All reachable through `estate_pd.dispatch` with a two-tap confirm on destructive verbs.
 
-## R4 — Node priority per pipeline step + fallbacks ❌ NOT STARTED
+## R4 — Node priority per pipeline step + fallbacks ✅ LIVE (2026-08-10)
+
+**Built:** `🧠 Nodes` (`estate:pd_nodes`, `prospector_daemon.py:961`), 22 tests in
+`tests/gateway/operator_shell/test_prospector_nodes.py` — `22 passed in 8.02s`.
+
+- **All four chains are read, none are invented.** The scanner strips `#` comments before
+  matching, so a chain quoted in prose or commented out is not read as the live one
+  (`test_prose_quoting_a_chain_is_not_read_as_the_chain`). An unreadable config says so rather
+  than rendering a plausible default (`test_an_unreadable_config_says_so…`).
+- **Presets reorder; they never shorten.** `_NODE_ORDERS` preserves the member SET and moves only
+  the order, because a preset that drops a tier silently removes failover
+  (`test_a_preset_reorders_and_never_drops_a_tier`).
+- **The MOAT_PRIMARY fence is in the WRITER, not the keyboard** — the D4 lesson applied before it
+  could repeat: a selection-time fence misses a runtime substitution. Refusal is parametrized over
+  `["minimax", "standardcompute", "deepseek", ""]`; the empty head is refused too.
+- **A write touches one key.** `test_setting_nodes_moves_only_the_generation_chain` re-reads with
+  `yaml.safe_load` and asserts `operator` and `artifact_operator` are byte-identical after a
+  generation-chain write; the trailing comment on the edited line survives.
+- **What the phone writes, the engine parses** (`test_what_the_phone_writes_the_engine_parses`) —
+  the round trip, not just the write.
+
+Prerequisite (a) from the plan below is **done**: `config.yaml:70 noncritical_operator:` exists and
+`_noncritical_order(cfg)` (`run.py:320`) reads it, defaulting to `_NONCRITICAL_ORDER` (`:317`).
+
+> **Correction to the ground truth recorded below** (re-verified on disk 2026-08-10, since line
+> numbers decay): `MOAT_PRIMARY` is `operator.py:1068`, not `:1046`. Both are stated as of their
+> own date; the 2026-08-10 reading is the current one.
 
 Ground truth gathered 2026-08-09 (verify before building — another session is actively editing
 `prospector/operator.py`):
@@ -171,15 +197,47 @@ a live-tailing panel.
 
 ## R7 — Every screen state of the art, seamless, frictionless 🟡 AUDIT DONE, 9 FIXES LIVE
 
-> **One R7 item is left, and it is a product decision, not a wiring fix.**
-> `test_every_button_dispatches.py` quarantines **15 actions** in `_UNBUILT` — `fix_all`,
-> `fix_all_safe`, `onboard`, `score`, `dependencies`, `correlate`, `compliance`, `logs`,
-> `estate_health`, `operator_mode`, `setup_wizard`, `rsi_run`, `rsi_pause`, `rsi_resume`,
-> `deploy` — emitted from **30 literal button sites** (AST count 2026-08-09; runtime-built rows
-> can only add to it). Tapping any of them renders `⚠️ Unknown action`.
-> The quarantine is honest (it is ratcheted, so no new dead button can appear) but it is still
-> 30 places where a cockpit button does nothing. Each needs a build-or-delete call from the
-> founder; a session cannot guess which of the fifteen are wanted.
+> **✅ CLOSED 2026-08-10. `_UNBUILT` is `{}` and its cap is `<= 0`.** All fifteen quarantined
+> actions were built, repointed or deleted; the founder's call was *"the dead buttons are in
+> scope, less cryptic, more user friendly"*.
+>
+> **Correction to the count**: **34** literal button sites, not 30. Re-derived at the pre-change
+> HEAD over `git show HEAD:<file>` for every `gateway/operator_shell/*.py`, matching
+> `"estate:<head>` followed by `:` or `"`. `fix_all` alone was 11 of them. (Runtime-built rows
+> can still only add to it — this is a floor, as the original entry said.)
+>
+> **The disposition, and the principle behind it:** build where a working callable already
+> exists, repoint where the button duplicates a working action under another name, delete where
+> nothing exists. Nothing was wired to a stub.
+>
+> | Action | Sites | Disposition |
+> |---|---|---|
+> | `estate_health`, `dependencies`, `correlate`, `compliance`, `score`, `logs` | 10 | **BUILT** read-only — `estate_intel.py`, six `_PANELS` entries |
+> | `fix_all` | 11 | **BUILT** two-screen confirm; screen one *is* the real `auto_fix_all(dry_run=True)` |
+> | `rsi_run` | 1 | **BUILT** two-screen confirm → `rsi_control.trigger_cycle()` |
+> | `onboard` | 6 | **BUILT** root → discover → confirm → write (`projects.dispatch_onboard`) |
+> | `rsi_pause`, `rsi_resume` | 2 | **REPOINTED** to `arm_learning` / `disarm_learning` |
+> | `fix_all_safe`, `setup_wizard`, `operator_mode`, `deploy`, 3 onboard sub-verbs | 4 | **DELETED** — no implementation existed |
+>
+> **A near-miss worth recording.** A recon subagent reported that `auto_fixer.py`,
+> `cross_project.py`, `predictor.py`, `auto_close_identity.py` and `score_driver.py` "do not
+> exist in the codebase". They do — all five are in `~/.hermes/scripts/`; the agent had searched
+> only inside `hermes-agent`. Taken at face value it would have deleted five buttons that had
+> working code behind them. *An agent's negative result is a claim like any other.*
+>
+> **Why the routing ratchet was not enough.** `test_every_button_dispatches` says of itself: "It
+> is static. It proves an action reaches a branch, not that the branch works." Three of the
+> fifteen mutate, so emptying the quarantine proved routing and nothing else.
+> `test_dead_buttons_now_work.py` (34 tests) covers what it cannot see: **no first tap writes**
+> (asserted on the call to the fixer/runner/registry, not on the rendered words, because a card
+> that says "would restart" while restarting is exactly the defect), a broken report renders a
+> panel naming the failure rather than a generic "Action failed", and the four deleted actions
+> stay deleted.
+>
+> **`fix_all` was also a naming lie.** One label on 11 screens — including the moat-down screen
+> and the incidents panel — promising four problem domains while delivering three daemon
+> restarts. Relabelled **"🛠 Restart stuck jobs"** at all 11 sites, and the card now states what
+> it does *not* cover (credits, incidents, Otto policy, project CI), pinned by test.
 
 Founder, 2026-08-09: *"the whole of the ui and navigation and polish needs to be state of the
 art, every screen every component, needs to be super impressive and seamless user experience and
@@ -210,7 +268,10 @@ each verified directly rather than taken from the sweep:
   button-by-button in declared priority order, spending the last free slot on `♻️ Restart coord`
   and dropping only `▶️ Start coord`, which `launchctl kickstart -k` (`estate.py:1511`) already
   covers for a stopped job. Both recovery callbacks are pinned by test. **Founder decided
-  2026-08-09: "raise it."** The cap is now the named constant `MAX_BUTTONS = 9` (`782d707e35`),
+  2026-08-09: "raise it."** *(Superseded later the same day: the cap on disk is now `MAX_BUTTONS = 10`,
+  `daemons.py:33`, raised by `d7648ea839` "nav spine dropped Tune for 7 days, invisibly" — the spine
+  regained a seventh button, so the three action slots below cost ten, not nine. Verified 2026-08-10.)*
+  The cap is the named constant `MAX_BUTTONS = 9` (`782d707e35`) as of this entry,
   restoring the three action slots the panel was designed around. The trim stays and still binds —
   the point of a cap is that something principled happens at the boundary, not that the number is
   8 — and `test_every_declared_verb_fits_now_that_the_cap_is_nine` fails loudly if a future spine

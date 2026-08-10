@@ -58,6 +58,16 @@ operator: [claude_cli, standardcompute, minimax]
 # re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
 # To promote it to trusted-final, the gate is the one named below:
 #   python -m prospector.golden --operator standardcompute --fixtures fixtures/golden_fixtures.json --runs 3
+#
+# The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
+# its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
+# not apply here and the head may be the cheapest live brain rather than a trusted one. It lived
+# in `run.py` as a module constant until 2026-08-10, which made the one knob whose entire subject
+# is "what does the ancillary work cost" the only one that needed a source edit and a daemon
+# re-exec to move, while every throughput knob beside it was a config line. Its head changed
+# three times in two weeks (deepseek → claude_cli → standardcompute), each time by editing code
+# to express a billing fact. Blank/absent => the historical default, byte for byte.
+noncritical_operator: [standardcompute, claude_cli, minimax]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -909,6 +919,13 @@ generation:
 # so it cannot manufacture a pass. A profile composes over any --lane (its forms/focus win).
 # The `focus` string is injected into the generate prompt as a binding TARGETING CONSTRAINT;
 # `--focus "..."` at the CLI overrides it for one-off experiments.
+#
+# THIS KEY IS THE STEERING WHEEL. Empty => blue-sky generation across unrelated sectors.
+# Set to a profile name below and `load_config` applies it to every run, daemon included
+# (config.py:916-917 calls for_profile at load, so the scheduler needs no argument of its
+# own). It existed only as a dataclass default until 2026-08-10 — declared here so the
+# operator surface has a single scalar to patch, and so the live value is readable on disk.
+active_profile: ""
 profiles:
   # Evidence-steered toward shapes that historically clear the UK moat (store/dossiers
   # PASSes 2026-07): sole-operator / named-regulator compliance packs and statutory
@@ -962,6 +979,127 @@ profiles:
         (4) make money DIRECTLY ONLINE — self-serve signup and online payment, no sales calls,
         no invoicing, no human onboarding. Reject anything requiring per-customer human work,
         offline fulfilment, or a long manual sales cycle.
+
+  # ── TECH & AI FAMILY (founder directive 2026-08-10) ──────────────────────────────────
+  # "Tech and AI" was asked for as ONE steer and is deliberately shipped as THREE, because
+  # the three readings want different business forms, different buyers and different
+  # evidence terrain. Fused into one string they produce mush that the moat then kills as
+  # ungrounded — the top kill gate on the 2026-08-10 09:24 batch was moat_ungrounded, 7 of
+  # 14. So every focus below spends most of its words on WHAT MAKES THE PAIN RETRIEVABLE
+  # (a named platform rule, a published price, a public framework), not on the technology.
+  # A profile still cannot lower a bar: these steer generation only.
+
+  # (1) The AI *is* the product — a model does work a named human role is paid to do today.
+  ai_native:
+    generation:
+      structural_forms:
+        - vertical_tool         # the model doing ONE workflow end-to-end for ONE niche
+        - productized_service   # a fixed-scope outcome delivered by the model, priced as a pack
+        - data_intelligence     # a compounding proprietary corpus the model uniquely reads
+        - picks_and_shovels     # tooling sold to everyone else building with models
+        - transaction_broker    # originate/de-risk a transaction because the model reads it better
+      audience_forms:
+        - smb_owner
+        - software_developer
+        - agency_owner
+        - ops_manager
+        - freelancer_creative
+      focus: >
+        AI-NATIVE products only: the MODEL performs the work, and without it the product
+        does not exist. Each idea MUST name (1) the exact recurring task and the job title
+        that does it manually today, (2) the trigger that makes it recur (a filing date, a
+        ticket, a shift, a renewal, an inbound document), (3) the deliverable the buyer
+        receives, and (4) THE PUBLIC EVIDENCE that this work is currently paid for — an
+        advertised salary or day rate, an agency price list, a published SLA, a job posting.
+        Point 4 is not optional: an idea whose pain cannot be evidenced from the open web is
+        an idea this engine will kill, so do not propose it. REJECT: "AI assistant/copilot
+        for X" with no named workflow; chatbots; thin wrappers over a public API with no
+        proprietary input; "AI-powered" dashboards, summarisers and bulletins; anything whose
+        value proposition is the technology rather than the task.
+
+  # (2) The SECTOR is tech — the buyer builds or runs software. AI optional.
+  tech_vertical:
+    generation:
+      structural_forms:
+        - vertical_tool         # narrow software for ONE workflow inside ONE tech ecosystem
+        - data_intelligence     # proprietary data about a platform/ecosystem others cannot get
+        - picks_and_shovels     # sell inputs to everyone building on one platform
+        - transaction_broker    # take a cut where the ecosystem's money actually changes hands
+        - audience_media        # own a specific technical audience's trust, then monetise access
+      audience_forms:
+        - software_developer
+        - startup_operator
+        - agency_owner
+        - ops_manager
+        - ecommerce_seller
+      focus: >
+        Businesses serving a NAMED software, hardware or infrastructure ECOSYSTEM. Each idea
+        MUST name (1) the specific platform or ecosystem — e.g. Shopify apps, Kubernetes
+        operators, Salesforce ISVs, Unity developers, npm/PyPI maintainers, AWS marketplace
+        sellers, Stripe-billed SaaS, App Store publishers; (2) the platform's OWN PUBLISHED
+        RULE, FEE, LIMIT OR DEADLINE that creates the recurring pain — a review policy, a
+        take rate, a rate limit, a deprecation schedule, a certification requirement; and
+        (3) the concrete deliverable sold. The platform's public documentation IS the
+        evidence terrain, which is why naming the rule is mandatory. REJECT: generic
+        developer-productivity SaaS, another CI tool, another observability dashboard,
+        "the X for Y" analogies, and anything that would read identically for any platform.
+
+  # (3) The PAYER is a tech company — an internal chore with a budget line.
+  sells_to_tech:
+    generation:
+      structural_forms:
+        - productized_service   # a fixed-scope internal chore done for you
+        - vertical_tool         # narrow software for ONE internal workflow
+        - data_intelligence     # proprietary data a tech buyer cannot assemble internally
+        - picks_and_shovels     # tooling every company in this position needs
+        - risk_financing        # underwrite a risk tech buyers carry and hate
+      audience_forms:
+        - startup_operator
+        - ops_manager
+        - software_developer
+        - agency_owner
+        - smb_owner
+      focus: >
+        Sell TO technology companies. The buyer is a NAMED role inside a software business
+        who controls a budget line — founder, head of engineering, ops/finance manager,
+        security lead. Each idea MUST name (1) that role, (2) the RECURRING INTERNAL CHORE
+        it owns, anchored to a PUBLIC framework, contract or deadline — SOC 2 / ISO 27001
+        evidence collection, vendor security questionnaires, DPAs and sub-processor lists,
+        cloud cost commitments and renewals, on-call and incident review, contractor status
+        and payroll compliance, export/licence review, accessibility conformance; and
+        (3) what the buyer receives each cycle. The framework's published control list or
+        the vendor's published pricing IS the evidence, so name it. REJECT: generic B2B
+        SaaS, lead-gen agencies, recruiting marketplaces, and any idea whose buyer is
+        "startups" in general rather than one role with one budget.
+
+  # (4) The union — use when you want the whole space rather than one reading of it.
+  tech_ai_all:
+    generation:
+      structural_forms:
+        - vertical_tool
+        - productized_service
+        - data_intelligence
+        - picks_and_shovels
+        - transaction_broker
+        - audience_media
+      audience_forms:
+        - software_developer
+        - startup_operator
+        - agency_owner
+        - ops_manager
+        - smb_owner
+        - ecommerce_seller
+      focus: >
+        TECHNOLOGY AND AI, in any of three shapes — and each idea must COMMIT to exactly one
+        and say which: (A) AI-NATIVE, where a model does work a named human role is paid for
+        today; (B) TECH-VERTICAL, serving a named software/hardware/infrastructure ecosystem
+        and the platform rule, fee or deadline that hurts; or (C) SELLS-TO-TECH, where the
+        payer is a named budget-holding role inside a software company facing a recurring
+        chore anchored to a public framework. Whichever shape, the idea MUST name the buyer
+        role, the recurring trigger, the deliverable, and THE PUBLIC SOURCE that proves the
+        pain is already paid for. Spread the batch across all three shapes rather than
+        clustering in one. REJECT anything whose pitch is the technology rather than the
+        task, and anything that would read identically for any company in any country.
 
 # Personas (Part 16 — analytical multi-tenancy). A persona provides analytical bias/voice
 # for generation, verdict, and adversarial. It "tints" the entire pipeline.
@@ -1386,9 +1524,21 @@ dedup_token_threshold: 0.34
 # by a real outage un-suppresses itself the moment the outage ends: no state file, no hysteresis,
 # nothing to reset by hand. Fail-closed on generation, because a probe that did not complete is
 # not evidence that retrieval works. The drain runs either way.
+#
+# `market_rotation` — the ONLY way to work more than one market unattended. `active_market` is a
+# single string (config.py:437) and the market block it selects rewrites retrieval and generation
+# framing for a WHOLE batch, so "US as well as UK" has no representation in the schema: setting
+# `active_market` to one code retires the other. Rotation keeps the single-valued contract intact
+# and moves it BETWEEN batches, one market per tick, alternating in the order written here.
+# Empty => off, and `active_market` above is used unchanged (today's behaviour, byte for byte).
+# Comma-separated codes, each of which must resolve (subdivisions inherit their parent, so
+# "us-ca" needs no config beyond "us"). Example: "uk,us-ca".
+# An unresolvable code disables the WHOLE rotation rather than silently rotating over what is
+# left: a typo'd "us-ca" that quietly degrades to UK-only is precisely the failure this exists to
+# prevent, and a rotation the operator believes is running is worse than one plainly refused.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
             revet_provisional_kills: false, gate_generation_on_grounding: true,
-            reload_on_code_change: true }
+            reload_on_code_change: true, market_rotation: "" }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

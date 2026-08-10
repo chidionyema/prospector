@@ -54,7 +54,9 @@ wrong calendar again.
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -62,6 +64,25 @@ from pathlib import Path
 from prospector.scheduler import paths
 
 PAUSE_FILENAME = "PAUSE"
+
+#: Incremental-scan checkpoint for `SchedulerGuard._scan`, written beside the PAUSE switch.
+#: See `_scan` for why re-reading the whole ledger every tick stopped being viable.
+SCAN_CACHE_FILENAME = "spend_scan.cache.json"
+
+#: Bump when the cached shape changes; a mismatch forces a full re-scan rather than a wrong sum.
+_SCAN_CACHE_VERSION = 1
+
+#: How many calendar days of per-day totals the checkpoint retains. Only today's bucket is ever
+#: queried; the rest are kept so a day boundary crossed mid-file needs no re-scan.
+_SCAN_CACHE_DAYS = 30
+
+#: Bytes of the ledger head that identify the file. If these change, the ledger was rotated or
+#: rewritten and every cached byte offset is meaningless — reset and re-scan from zero.
+_HEAD_PROBE_BYTES = 4096
+
+#: Escape hatch: set to 1 to bypass the checkpoint entirely and re-read the whole ledger. This is
+#: a money rail, so there is always a way to get the uncached figure without editing code.
+_FULL_SCAN_ENV = "PROSPECTOR_GUARD_FULL_SCAN"
 
 #: A ledger timestamp whose leading 10 chars are a zero-padded ISO date. Anchored, so a row with
 #: a free-text timestamp contributes nothing to the clock bound rather than a garbage maximum.
@@ -117,11 +138,100 @@ class SchedulerGuard:
         metered, subscription, _ = self._scan()
         return metered, subscription
 
+    @property
+    def scan_cache_path(self) -> Path:
+        return self.scheduler_dir / SCAN_CACHE_FILENAME
+
+    @staticmethod
+    def _head_sig(p: Path) -> str:
+        """Identity of the ledger's first bytes — changes iff the file was rotated/rewritten."""
+        try:
+            with p.open("rb") as f:
+                return hashlib.sha1(f.read(_HEAD_PROBE_BYTES)).hexdigest()
+        except OSError:
+            return ""
+
+    def _load_scan_cache(self, p: Path, head_sig: str) -> tuple[int, str, dict]:
+        """Return (offset, newest, days) to resume from, or (0, "", {}) for a full re-scan.
+
+        Every rejection path is a full re-scan, never a partial sum: a checkpoint that cannot be
+        proven to describe THIS file is worth less than the seconds it saves, because the figure
+        it feeds is a spend ceiling.
+        """
+        if os.environ.get(_FULL_SCAN_ENV) == "1":
+            return 0, "", {}
+        try:
+            raw = json.loads(self.scan_cache_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return 0, "", {}
+        if not isinstance(raw, dict) or raw.get("version") != _SCAN_CACHE_VERSION:
+            return 0, "", {}
+        if raw.get("head_sig") != head_sig or not head_sig:
+            return 0, "", {}          # rotated, rewritten, or unreadable head
+        try:
+            offset = int(raw.get("offset", 0))
+            size = p.stat().st_size
+        except (TypeError, ValueError, OSError):
+            return 0, "", {}
+        if offset < 0 or offset > size:
+            return 0, "", {}          # truncated behind us
+        days_raw = raw.get("days")
+        newest = raw.get("newest")
+        if not isinstance(days_raw, dict) or not isinstance(newest, str):
+            return 0, "", {}
+        days: dict[str, list[float]] = {}
+        for k, v in days_raw.items():
+            try:
+                days[str(k)] = [float(v[0]), float(v[1])]
+            except (TypeError, ValueError, IndexError, KeyError):
+                return 0, "", {}
+        return offset, newest, days
+
+    def _save_scan_cache(self, *, offset: int, newest: str, days: dict, head_sig: str) -> None:
+        """Persist the checkpoint. Best-effort: a failure costs speed, never correctness."""
+        if os.environ.get(_FULL_SCAN_ENV) == "1" or not head_sig:
+            return
+        kept = dict(sorted(days.items(), reverse=True)[:_SCAN_CACHE_DAYS])
+        payload = {"version": _SCAN_CACHE_VERSION, "head_sig": head_sig,
+                   "offset": int(offset), "newest": newest, "days": kept}
+        path = self.scan_cache_path
+        tmp = path.with_suffix(path.suffix + f".tmp{os.getpid()}")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps(payload), encoding="utf-8")
+            # Whole-file state, so tmp+rename is correct here (unlike the append-only tick log):
+            # a racing writer can only replace it with another self-consistent snapshot.
+            os.replace(tmp, path)
+        except OSError:
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
     def _scan(self) -> tuple[float, float, str]:
         """Return (metered_usd, subscription_usd, newest_day_in_ledger) from the persistent ledger.
 
-        One pass, two accumulators, because the ledger is ~350k lines and both figures are read
-        on every tick:
+        INCREMENTAL SINCE 2026-08-10. The pass below is identical in arithmetic to the full-file
+        loop it replaces, but it resumes from a byte offset checkpointed in `spend_scan.cache.json`
+        instead of re-parsing the whole ledger on every tick. The full scan had become the reason
+        the hourly cron guard probe failed: measured on this machine, `store/prospector.jsonl` is
+        158 MB / 560,057 rows, `json.loads` was called 560,017 times per probe, and one
+        `--dry-run` guard eval took 71 s against `prospector-run.sh`'s 110 s `timeout` — so the
+        job died with rc=124 and "prospector: guard probe timed out after 110s" as soon as load or
+        ledger growth pushed it over. Cost per tick is now O(rows appended since last tick).
+
+        Correctness is preserved by construction, not by assumption:
+          * per-day buckets, not a today-only sum, so a day boundary crossed between ticks needs
+            no re-scan and the answer does not depend on WHEN the checkpoint was taken;
+          * `newest` is still a max over every row ever scanned (cached max ∨ new rows), never the
+            last row — the clock-fault gate this feeds must survive out-of-order timestamps;
+          * a row without a terminating newline is a partially-written append: it is not counted
+            and the offset does not advance past it, so it is counted exactly once when complete;
+          * any doubt about the checkpoint's provenance (version bump, ledger rotated, file
+            truncated behind the offset, unparseable cache) falls back to a full re-scan.
+        Set PROSPECTOR_GUARD_FULL_SCAN=1 to force the uncached figure.
+
+        One pass, two accumulators, because both figures are read on every tick:
 
           * metered      — rows tagged `event: "spend"`, summing `amount_usd`. Real billed money
                            from metered API providers. This is what `daily_cap_usd` enforces.
@@ -143,34 +253,52 @@ class SchedulerGuard:
         if not p.exists():
             return 0.0, 0.0, ""
         day = self._today_str()
-        metered = 0.0
-        subscription = 0.0
-        newest = ""
-        with p.open() as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    d = json.loads(line)
-                except Exception:
-                    continue
-                ts = str(d.get("timestamp") or d.get("asctime") or "")
-                if _DAY_RE.match(ts):
+        head_sig = self._head_sig(p)
+        offset, newest, days = self._load_scan_cache(p, head_sig)
+        try:
+            with p.open("rb") as f:
+                f.seek(offset)
+                for raw in f:
+                    if not raw.endswith(b"\n"):
+                        break  # partial append in flight — count it when it is complete
+                    offset += len(raw)
+                    line = raw.strip()
+                    if not line:
+                        continue
+                    try:
+                        d = json.loads(line)
+                    except Exception:
+                        continue
+                    if not isinstance(d, dict):
+                        continue
+                    ts = str(d.get("timestamp") or d.get("asctime") or "")
+                    if not _DAY_RE.match(ts):
+                        # No zero-padded ISO date prefix: it can bound neither the clock nor a
+                        # calendar day, exactly as before.
+                        continue
                     # String max is a date max only because the prefix is zero-padded ISO.
-                    newest = max(newest, ts[:10])
-                if not ts.startswith(day):
-                    continue
-                if d.get("event") == "spend":
-                    try:
-                        metered += float(d.get("amount_usd", 0) or 0)
-                    except (TypeError, ValueError):
+                    row_day = ts[:10]
+                    newest = max(newest, row_day)
+                    if d.get("event") == "spend":
+                        try:
+                            amount = float(d.get("amount_usd", 0) or 0)
+                        except (TypeError, ValueError):
+                            continue
+                        idx = 0
+                    elif d.get("cost_usd") is not None:
+                        try:
+                            amount = float(d.get("cost_usd") or 0)
+                        except (TypeError, ValueError):
+                            continue
+                        idx = 1
+                    else:
                         continue
-                elif d.get("cost_usd") is not None:
-                    try:
-                        subscription += float(d.get("cost_usd") or 0)
-                    except (TypeError, ValueError):
-                        continue
+                    bucket = days.setdefault(row_day, [0.0, 0.0])
+                    bucket[idx] += amount
+        except OSError:
+            return 0.0, 0.0, ""
+        self._save_scan_cache(offset=offset, newest=newest, days=days, head_sig=head_sig)
+        metered, subscription = days.get(day, (0.0, 0.0))
         return round(metered, 6), round(subscription, 6), newest
 
     def today_spend_usd(self) -> float:

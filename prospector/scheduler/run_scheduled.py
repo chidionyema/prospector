@@ -712,6 +712,77 @@ def _decay_pass(cfg, n_decay: int) -> dict | None:
     return out
 
 
+#: Cursor for `schedule.market_rotation`, in the scheduler dir beside the other tick state.
+#: Persisted rather than derived from a tick counter because the daemon re-execs itself whenever
+#: config.yaml or the sources change (`reload_on_code_change`), and an in-memory counter would
+#: restart at 0 on every re-exec — which on a two-code rotation means the FIRST code every time
+#: and the second one never. A file is the only thing that survives the re-exec.
+_MARKET_ROTATION_STATE = "market_rotation.json"
+
+
+def _market_rotation(cfg) -> list[str]:
+    """Validated codes from `schedule.market_rotation`. `[]` => rotation off.
+
+    All-or-nothing on purpose (see the config.yaml prose): one unresolvable code disables the
+    whole rotation and falls back to `active_market`, because a rotation silently reduced to its
+    valid subset is indistinguishable — from the phone, from the logs, from the dossiers — from
+    one that is working.
+    """
+    raw = _sched(cfg, "market_rotation", "") or ""
+    codes = (
+        [str(c).strip().lower() for c in raw]
+        if isinstance(raw, (list, tuple))
+        else [c.strip().lower() for c in str(raw).split(",")]
+    )
+    codes = [c for c in codes if c]
+    if not codes:
+        return []
+    for code in codes:
+        try:
+            cfg.resolve_market(code)
+        except Exception as exc:  # noqa: BLE001 — UnknownMarketError, but never crash a tick
+            logger.warning(
+                "schedule.market_rotation=%r disabled: %r does not resolve (%s). "
+                "Generation falls back to active_market=%r.",
+                raw, code, exc, getattr(cfg, "active_market", ""),
+            )
+            return []
+    return codes
+
+
+def _rotate_market(cfg):
+    """`(cfg, code)` for this batch's market. `code` is None when rotation is off.
+
+    Advances the persisted cursor BEFORE generating, so a batch that dies mid-run does not pin
+    the rotation to one market forever. Any failure to read or write the cursor degrades to
+    "no rotation" and leaves `cfg` untouched — steering must never be able to stop a tick.
+    """
+    codes = _market_rotation(cfg)
+    if not codes:
+        return cfg, None
+    path = paths.scheduler_dir(cfg) / _MARKET_ROTATION_STATE
+    idx = 0
+    try:
+        if path.is_file():
+            idx = int(json.loads(path.read_text(encoding="utf-8")).get("next", 0))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("market rotation cursor unreadable (%s); restarting at 0", exc)
+        idx = 0
+    code = codes[idx % len(codes)]
+    try:
+        path.write_text(
+            json.dumps({"next": (idx + 1) % len(codes), "codes": codes, "last": code}),
+            encoding="utf-8",
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("market rotation cursor unwritable (%s); rotation may repeat", exc)
+    try:
+        return cfg.for_market(code), code
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("market rotation could not apply %r (%s); using active_market", code, exc)
+        return cfg, None
+
+
 def _default_generate(cfg, batch_size: int) -> dict:
     """Run one bounded blue-sky generation batch in-process and publish PASSes.
 
@@ -744,6 +815,11 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # the PASS and all three closest-to-pass kills were "fixed-fee pack for one individual").
     # `_resolve_lanes` honours the same precedence as the CLI (active_lane pins a single tier,
     # else active_lanes); an empty config still yields None => the previous behaviour exactly.
+    # Market rotation applies to GENERATION ONLY, and deliberately after the drain above: a
+    # backlogged candidate was created under the market it was created under, and re-vetting it
+    # through a different market's retrieval and framing would change the question it is being
+    # asked. The drain keeps `active_market`; only the new batch rotates.
+    cfg, rotated_market = _rotate_market(cfg)
     lanes = _resolve_lanes(cfg, argparse.Namespace(lane=None))
     dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes)
 
@@ -764,6 +840,11 @@ def _default_generate(cfg, batch_size: int) -> dict:
            "provisional": provisional}
     if resumed is not None:
         out["resumed"] = resumed
+    # Which market this batch was generated for. Recorded whenever rotation is ON, so the tick
+    # log and the operator's phone can attribute a batch to a market — without it a rotating
+    # daemon produces two populations that are indistinguishable after the fact.
+    if rotated_market:
+        out["market"] = rotated_market
     return out
 
 
