@@ -57,8 +57,20 @@ def _dossier(candidate_id: str, tier: str = "", market: str = "",
     d.candidate = candidate
     d.score = ScoreResult(scores={a: 4 for a in AXES},
                           justification={a: "ok" for a in AXES}, composite=4.2)
-    d.checks = [CheckResult(check_name="pain_reality", verdict=Verdict.SUPPORTED,
-                            confidence=0.8, rationale="grounded")]
+    # A PASS needs the LANE'S decisive check grounded, not merely one supported check:
+    # dossier.py:167 mints Decision.PASS only when `moat_grounded >= 1` and KILLs
+    # `moat_ungrounded` otherwise. This candidate carries ambition_tier="" — the default lane,
+    # moat_critical_checks=[value_durability, incumbency] — so a lone non-decisive check
+    # described a dossier the engine cannot produce.
+    # This helper is parameterised by LANE (`tier`), and `moat_critical_checks` is
+    # lane-declared: default [value_durability, incumbency], side_hustle [buyer_intent],
+    # smb [payer_solvency], growth [payer_solvency, distribution]. A PASS must carry the
+    # decisive evidence of whichever lane it claims, so the fixture grounds all of them —
+    # otherwise `_dossier(tier="growth")` describes a dossier build_dossier would KILL.
+    d.checks = [CheckResult(check_name=name, verdict=Verdict.SUPPORTED,
+                            confidence=0.8, rationale="grounded")
+                for name in ("pain_reality", "value_durability", "incumbency",
+                             "buyer_intent", "payer_solvency", "distribution")]
     d.adversarial = None
     d.gate_fired = None
     d.reason = "Survived all gates."

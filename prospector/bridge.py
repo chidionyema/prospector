@@ -12,7 +12,6 @@ import logging
 import os
 import re
 import zipfile
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Protocol, Tuple
 from urllib.parse import urlparse
@@ -526,18 +525,52 @@ class EngineBridge:
         # still carry decision=PASS with zero grounding. That is exactly the class that put an
         # ungrounded "Probate Locker" pack live (every check unverifiable, conf 0.0, 0 sources).
         # Publishing one ships on silence — forbidden. Fail closed.
-        floor = self.cfg.thresholds.confidence_floor
-        n_supported = sum(
-            1 for c in getattr(dossier, "checks", []) or []
-            if getattr(getattr(c, "verdict", None), "value", None) == "supported"
-            and getattr(c, "confidence", 0.0) >= floor
-        )
-        if n_supported < 1:
+        # This runs the DECISION LAYER'S OWN arithmetic (`dossier.grounded_support`), not a
+        # second, looser copy of it. The looser copy was the bypass: it required only
+        # `n_supported >= 1` and never checked `moat_grounded`, so a hand-fed dossier with one
+        # incidental supported check cleared a backstop the real gate KILLs as
+        # `moat_ungrounded`.
+        from .dossier import grounded_support
+        # LANE RESOLUTION IS PART OF THE ARITHMETIC, not a detail. `moat_critical_checks` is
+        # LANE-DECLARED (config.yaml: [buyer_intent], [payer_solvency], [payer_solvency,
+        # distribution]) and `run.py:942` resolves `cfg.for_lane(cand.ambition_tier)` BEFORE
+        # build_dossier rules. EngineBridge is constructed with the BASE config
+        # (publish/publish.py:58,81), whose default is [value_durability, incumbency] — so
+        # asking `self.cfg` here demands a DIFFERENT lane's evidence than the dossier was ruled
+        # under, and refuses a correctly-grounded smb pack for lacking a check its lane never
+        # runs. That is exactly the structural unreachability config.py:150-154 records for the
+        # decision layer (Martyn's Law, 2026-06-28), reintroduced one layer down. A backstop
+        # must re-ask the SAME question, in the same lane, or it is a second gate wearing the
+        # first one's name. `for_lane("")` returns self unchanged, so the default lane is a
+        # no-op; `getattr` keeps this safe for a cfg stub that predates for_lane.
+        _lane = getattr(getattr(dossier, "candidate", None), "ambition_tier", "") or ""
+        _for_lane = getattr(self.cfg, "for_lane", None)
+        # Only resolve for a real, non-empty lane NAME. `for_lane("")` returns self by
+        # contract (config.py:550), so skipping the call is identical for the default lane —
+        # and it keeps a stubbed cfg, whose `for_lane` returns an unrelated mock, from
+        # silently discarding thresholds the caller set explicitly.
+        lane_cfg = self.cfg
+        if _lane and isinstance(_lane, str) and callable(_for_lane):
+            lane_cfg = _for_lane(_lane)
+        # Fail CLOSED, not loud — the same rule this guard applies to a malformed check
+        # (dossier.grounded_support). A backstop that raises inside the publish path turns a
+        # refusal into a crash, and the caller cannot tell the two apart. Type-tested rather
+        # than coerced, for the reason spelled out in grounded_support: int() succeeds on a
+        # stub, so a try/except would accept a fabricated bar instead of the declared default.
+        _min = getattr(lane_cfg.thresholds, "min_supported_to_pass", 1)
+        min_supported = _min if isinstance(_min, int) and not isinstance(_min, bool) else 1
+        n_supported, moat_grounded, moat_checks = grounded_support(
+            getattr(dossier, "checks", []) or [], lane_cfg)
+        if n_supported < min_supported or moat_grounded < 1:
             logger.error(
                 f"EngineBridge: Refusing to publish {dossier.candidate.candidate_id} "
-                f"({dossier.candidate.title}) — 0 grounded-supported checks (source-or-die). "
+                f"({dossier.candidate.title}) — source-or-die: {n_supported} "
+                f"grounded-supported check(s) (need {min_supported}), {moat_grounded} on the "
+                f"lane's decisive check(s) ({', '.join(moat_checks)}; need 1, lane "
+                f"{_lane or 'default'!r}). "
                 "Ungrounded 'pass'; will NOT list.",
-                extra={"candidate_id": dossier.candidate.candidate_id, "n_supported": 0},
+                extra={"candidate_id": dossier.candidate.candidate_id,
+                       "n_supported": n_supported, "moat_grounded": moat_grounded},
             )
             return False
 
@@ -990,7 +1023,21 @@ class EngineBridge:
                     "dossier_ref": dossier_ref,
                     "candidate_id": candidate_id,
                     "pack_id": candidate_id,
-                    "bundle_version": datetime.utcnow().isoformat()
+                    # DETERMINISTIC per logical publish. This was
+                    # `datetime.utcnow().isoformat()`, and this whole dict is hashed into
+                    # `create_product`'s idempotency-key fingerprint (:1744) — so the key
+                    # differed on every single call and could NEVER repeat, defeating the
+                    # method's own documented purpose ("a publish retry after a network blip
+                    # replays an identical request under the same key and reuses the
+                    # Stripe-side product"). A blip after Stripe accepts create_product but
+                    # before the client sees the response, then a retry, minted a permanently
+                    # orphaned second product.
+                    #
+                    # Excluding it from the fingerprint instead would be WORSE: same key,
+                    # different params is a hard Stripe error, the exact failure that left
+                    # 13795bea31feee47 and 2abc23c3c0d05bab unlistable on 2026-08-08. The
+                    # value has to be stable, so it is derived from the pack, not the clock.
+                    "bundle_version": _bundle_version(dossier, candidate),
                 }
                 provider_product_id = prov.create_product(
                     name=candidate.title,
@@ -1704,6 +1751,27 @@ class PaddleClient:
         except Exception as e:
             logger.error(f"PaddleClient: could not retrieve price {price_id}: {e}")
             return None
+
+
+def _bundle_version(dossier, candidate) -> str:
+    """A bundle version that is stable for the same logical publish of the same pack.
+
+    Feeds Stripe product metadata, which is hashed into the idempotency-key fingerprint, so
+    this MUST NOT be a wall clock. Prefers the dossier's own `created_at` (one dossier = one
+    logical publish; a re-vet mints a new one and correctly earns a new key). Falls back to a
+    content hash of the pack artifacts for dossiers that carry no timestamp — still stable
+    for identical content, still changing when the content does, exactly like the `name` and
+    `description` already in that fingerprint. Nothing downstream reads this value: grep for
+    `bundle_version` finds this write and no reader.
+    """
+    created = str(getattr(dossier, "created_at", "") or "").strip()
+    if created:
+        return created
+    arts = (getattr(candidate, "tags", {}) or {}).get("artifacts", {}) or {}
+    digest = hashlib.sha256(
+        json.dumps(arts, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")
+    ).hexdigest()[:16]
+    return f"sha256:{digest}"
 
 
 class StripeProvisioner:

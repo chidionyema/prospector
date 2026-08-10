@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Optional
@@ -15,6 +16,7 @@ from typing import Any, Optional
 from .config import Config
 from .coverage import plan_cells
 from .critique import critique_revise
+from .errors import ProviderExhaustedError
 from .landscape import incumbent_brief
 from .models import Candidate
 from .operator import Operator
@@ -22,6 +24,10 @@ from .prompts import ALL_MARKET_KEYS, market_kwargs, render
 from .sampling import typicality_directive, typicality_score
 from .telemetry import logger, track_latency
 from .telemetry import stage as telemetry_stage
+
+# Guards the caller-owned `diagnostics` sink: generation batches (and the lanes above them)
+# both fan out through thread pools, so more than one worker can hit the quota wall at once.
+_DIAG_LOCK = threading.Lock()
 
 
 def _parse_candidates(data: Any) -> list[Candidate]:
@@ -183,8 +189,16 @@ def generate(
     focus: str | None = None,
     pass_patterns: str = "",
     prior_titles: Optional[list[str]] = None,
+    diagnostics: Optional[dict[str, Any]] = None,
 ) -> list[Candidate]:
     """Generate k raw Candidate opportunities from a signal.
+
+    diagnostics: optional dict the caller owns; when the non-critical generation chain
+    EXHAUSTS partway through (waves 1-2 produced survivors, wave 3 hits the quota wall),
+    `{"chain_exhausted": True, "exhaustion_errors": [...]}` is written into it. Without this
+    the caller only saw a shorter list: `run.py`'s "chain exhausted, signal saved" path keys
+    off the AGGREGATE `if not candidates:`, so partial exhaustion silently skipped
+    `_save_pending_signal` and the signal was never re-runnable.
 
     gen_op: optional separate operator for generation.  When set (e.g. MiniMax),
     generation calls go through gen_op while verification uses op (Claude/Gemini).
@@ -335,6 +349,20 @@ def generate(
     # FIX #5: seed and avoid are now template variables in generate.md (user section).
     # The static taxonomy/lens/rules live in generate_system.md and are cached by the
     # model.  This cuts per-call tokens from ~2,500 to ~600 — a ~75% reduction.
+    def _note_exhaustion(stage: str, exc: Exception) -> None:
+        """Record chain exhaustion loudly. A fallback chain that works hides its own
+        degradation (CLAUDE.md: "a dead brain must leave a trace") — and swallowing
+        ProviderExhaustedError into the same `except Exception` as a bad-JSON parse made a
+        quota wall indistinguishable from a model having an off wave."""
+        logger.error(
+            f"Generation chain EXHAUSTED during {stage}: {exc}",
+            extra={"stage": stage, "error": str(exc), "chain_exhausted": True})
+        if diagnostics is not None:
+            # Batches (and, above this, lanes) run in thread pools and share one sink.
+            with _DIAG_LOCK:
+                diagnostics["chain_exhausted"] = True
+                diagnostics.setdefault("exhaustion_errors", []).append(f"{stage}: {exc}")
+
     def _one_call(form: str, lens: str, audience: str, ask: int,
                    avoid: str, seed: str) -> list[Candidate]:
         # Persona bias (Part 16 principal upgrade)
@@ -388,6 +416,9 @@ def generate(
             with telemetry_stage("generate"):
                 raw_response = _gen.complete_json(system, user, temperature=0.9)
             cands = _parse_candidates(raw_response)
+        except ProviderExhaustedError as e:
+            _note_exhaustion(f"generation batch {seed}", e)
+            return []
         except Exception as e:
             logger.error(f"Generation batch {seed} failed: {e}", extra={"error": str(e)})
             return []
@@ -523,6 +554,12 @@ def generate(
             # originals sharing a title can never shadow each other out of the wave.
             survivors = refined_out + unconsumed
             return thin + survivors
+        except ProviderExhaustedError as e:
+            # The non-lossy fallback below is still CORRECT — every original survives
+            # unrefined — but the CAUSE must not be lost. Refining is the last chain user in
+            # a run, so this is routinely the first place a quota wall shows up.
+            _note_exhaustion("refinement wave", e)
+            return thin + substantive
         except Exception as e:
             logger.warning(f"Refinement wave failed: {e}")
             return thin + substantive  # Fallback: thin + unrefined substantive
@@ -712,6 +749,7 @@ def generate_multilane(
     focus: str | None = None,
     pass_patterns: str = "",
     prior_titles: Optional[list[str]] = None,
+    diagnostics: Optional[dict] = None,
 ) -> list[Candidate]:
     """Fan generation OUT across ambition lanes for a mixed-ambition catalogue (Part 14).
 
@@ -754,7 +792,8 @@ def generate_multilane(
             strategy_lens=strategy_lens, exploration_level=exploration_level,
             target_qualities=target_qualities, recent_failure_modes=recent_failure_modes,
             k=k, gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=pass_patterns, prior_titles=list(prior_titles or []))
+            pass_patterns=pass_patterns, prior_titles=list(prior_titles or []),
+            diagnostics=diagnostics)
         for c in cands:
             c.ambition_tier = tier
         return tier, cands

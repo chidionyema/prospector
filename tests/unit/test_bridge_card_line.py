@@ -54,9 +54,18 @@ def _dossier(listing: dict, candidate_id: str) -> Dossier:
     dossier.score.composite = 4.2
     dossier.score.scores = {axis: 4 for axis in AXES}
     dossier.score.justification = {axis: "Test justification" for axis in AXES}
+    # A PASS needs the LANE'S decisive check grounded, not merely one supported check:
+    # dossier.py:167 mints Decision.PASS only when `moat_grounded >= 1` and KILLs
+    # `moat_ungrounded` otherwise. This candidate carries ambition_tier="" — the default lane,
+    # moat_critical_checks=[value_durability, incumbency] — so a lone non-decisive check
+    # described a dossier the engine cannot produce.
     dossier.checks = [
         CheckResult(
             check_name="pain_reality", verdict=Verdict.SUPPORTED, confidence=0.8, rationale="grounded"
+        ),
+        CheckResult(
+            check_name="value_durability", verdict=Verdict.SUPPORTED, confidence=0.8,
+            rationale="grounded"
         ),
     ]
     dossier.adversarial = None

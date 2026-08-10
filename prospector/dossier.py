@@ -27,6 +27,63 @@ from .score import passes_composite
 # Assembly
 # ---------------------------------------------------------------------------
 
+def grounded_support(checks, cfg) -> tuple[int, int, tuple[str, ...]]:
+    """The source-or-die arithmetic a PASS must clear: (n_supported, moat_grounded, moat_checks).
+
+    ONE definition, two callers — the decision layer (`build_dossier`, below) and the
+    last-mile publish backstop (`EngineBridge.publish_pass`). They DID disagree: the bridge
+    counted only `n_supported >= 1` against `confidence_floor` and never looked at
+    `moat_grounded` at all. So a dossier hand-fed through `tools/publish_offline.py` — which
+    trusts the `"decision"` string in the file it is given, and whose `reconstruct()`
+    hardcodes `Decision.PASS` — could carry one incidental supported check and clear a guard
+    that the real gate would have KILLed as `moat_ungrounded`. A second, weaker copy of a
+    fence is not a backstop; it is a bypass. Same function, same config, same verdict.
+
+    Deliberately attribute-defensive (`getattr`, not `c.verdict.value`): the bridge's caller
+    may be a dossier rebuilt from stored JSON, where a malformed check must count as
+    ungrounded rather than raise.
+    """
+    floor = getattr(cfg.thresholds, "min_supported_confidence", None)
+    if floor is None:
+        floor = getattr(cfg.thresholds, "confidence_floor", None)
+    # TYPE TEST, not `try: float(...)`. A non-numeric floor is a broken config, not a licence
+    # to crash the publish path — but coercion cannot detect one: `float()` SUCCEEDS on many
+    # stand-ins (a unittest MagicMock defines __float__ and returns 1.0), so try/except
+    # silently invents a 1.0 confidence bar that rejects every real 0.8 check while reporting
+    # a confident "0 grounded-supported check(s)". Only the type answers the question.
+    # 0.0 is the DOCUMENTED default (config.py:143), so this degrades to declared behaviour.
+    if isinstance(floor, bool) or not isinstance(floor, (int, float)):
+        floor = 0.0
+    else:
+        floor = float(floor)
+
+    # An EMPTY decisive set is not "no requirement" — it makes `moat_grounded >= 1`
+    # unsatisfiable, so every candidate KILLs as moat_ungrounded however well grounded it is.
+    # That is precisely the structural unreachability config.py:150-154 records from the
+    # Martyn's Law incident (2026-06-28). A declaration that yields nothing usable falls back
+    # to the documented default, which still enforces source-or-die.
+    declared = getattr(cfg.thresholds, "moat_critical_checks", None)
+    try:
+        moat_checks = tuple(str(x) for x in declared) if declared is not None else ()
+    except TypeError:
+        moat_checks = ()
+    if not moat_checks:
+        moat_checks = ("value_durability", "incumbency")
+
+    def _supported(c) -> bool:
+        if getattr(getattr(c, "verdict", None), "value", None) != "supported":
+            return False
+        try:
+            return float(getattr(c, "confidence", 0.0) or 0.0) >= floor
+        except (TypeError, ValueError):
+            return False
+
+    n_supported = sum(1 for c in checks if _supported(c))
+    moat_grounded = sum(1 for c in checks
+                        if getattr(c, "check_name", None) in moat_checks and _supported(c))
+    return n_supported, moat_grounded, moat_checks
+
+
 def build_dossier(
     cand: Candidate,
     checks: list[CheckResult],
@@ -117,12 +174,8 @@ def build_dossier(
         # confidence clears min_supported_confidence. Decoupled from confidence_floor (the
         # kill-side lever) so tightening passes never loosens kills. Falls back to
         # confidence_floor, then 0.0, for configs that predate the split.
-        floor = getattr(cfg.thresholds, "min_supported_confidence", None)
-        if floor is None:
-            floor = cfg.thresholds.confidence_floor
         min_supported = getattr(cfg.thresholds, "min_supported_to_pass", 1)
-        n_supported = sum(1 for c in checks
-                          if c.verdict.value == "supported" and c.confidence >= floor)
+        n_supported, moat_grounded, moat_checks = grounded_support(checks, cfg)
         # PUBLISH-CRITICAL requirement: at least one lane-declared decisive check must be
         # grounded-supported. The check set is LANE-AWARE (cfg.thresholds.moat_critical_checks)
         # so each lane requires its OWN headline evidence (smb: payer_solvency; side_hustle:
@@ -131,12 +184,7 @@ def build_dossier(
         # value_durability/incumbency (PROVEN 2026-06-28, Martyn's Law composite 2.95 KILLed on
         # moat_ungrounded). This still enforces source-or-die — a candidate cannot publish unless
         # the lane's decisive dimension is grounded in fetched evidence — it asks the RIGHT one.
-        moat_checks = tuple(getattr(cfg.thresholds, "moat_critical_checks",
-                                    ("value_durability", "incumbency")))
-        moat_grounded = sum(1 for c in checks
-                            if c.check_name in moat_checks
-                            and c.verdict.value == "supported"
-                            and c.confidence >= floor)
+        # (both counts come from `grounded_support` above — see its docstring.)
         if n_supported >= min_supported and moat_grounded >= 1:
             decision = Decision.PASS
             reason = (f"Survived all gates; composite {score.composite:.4f}; "

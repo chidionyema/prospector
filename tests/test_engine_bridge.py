@@ -23,8 +23,13 @@ class TestEngineBridge(unittest.TestCase):
         # publish path must be given one explicitly — exactly as production does via env.
         os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
         self.cfg = MagicMock()
-        # Real numeric floor so the source-or-die guard's `confidence >= floor` is a real compare.
+        # Real numeric thresholds so the source-or-die guard runs real comparisons rather than
+        # MagicMock ones. These mirror the REAL Config dataclass defaults (config.py:145, :155);
+        # a mock that omits them let the bridge's guard silently diverge from the decision layer.
         self.cfg.thresholds.confidence_floor = 0.0
+        self.cfg.thresholds.min_supported_confidence = 0.0
+        self.cfg.thresholds.min_supported_to_pass = 1
+        self.cfg.thresholds.moat_critical_checks = ["value_durability", "incumbency"]
         self.bridge = EngineBridge(self.cfg)
         # Point to the local test server
         self.bridge.store_api_url = "http://localhost:5050"
@@ -64,10 +69,16 @@ class TestEngineBridge(unittest.TestCase):
         dossier.score.composite = 4.2
         dossier.score.scores = {axis: 4 for axis in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]}
         dossier.score.justification = {axis: "Test justification" for axis in ["pain_acuity", "money_provability", "automatability", "distribution", "defensibility", "build_feasibility"]}
-        # A real PASS rests on grounded evidence (source-or-die): >=1 supported check.
+        # A real PASS rests on grounded evidence (source-or-die): >=1 supported check AND at
+        # least one of the LANE'S DECISIVE checks grounded. `pain_reality` alone is not decisive
+        # for the venture lane, and a dossier carrying only that is exactly what
+        # dossier.build_dossier KILLs as `moat_ungrounded` — the bridge published it anyway
+        # until the two were made to share one function (ENGINE_AUDIT MEDIUM-HIGH #1).
         dossier.checks = [
             CheckResult(check_name="pain_reality", verdict=Verdict.SUPPORTED,
                         confidence=0.8, rationale="grounded"),
+            CheckResult(check_name="value_durability", verdict=Verdict.SUPPORTED,
+                        confidence=0.8, rationale="grounded on the decisive dimension"),
         ]
         dossier.adversarial = None
         dossier.gate_fired = None
