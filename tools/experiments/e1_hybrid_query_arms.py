@@ -167,8 +167,8 @@ def _resolve_live_path(checks: tuple[str, ...]) -> dict[str, str]:
     cfg = _arm_config(checks, hybrid=False)
 
     # E1 measures VERDICTS, so a provisional brain ruling here would not be a weaker result —
-    # it would be a different experiment. `operator.py:892` stamps anything outside
-    # MOAT_PRIMARY provisional; refuse rather than silently measure that.
+    # it would be a different experiment. `is_provisional_provider` stamps anything outside
+    # MOAT_PRIMARY as provisional; refuse rather than silently measure that.
     #
     # This fence runs BEFORE the constructors, and the order is load-bearing. Every metered
     # adapter raises in `__init__` on a missing key (`operator.py:167/197/305/412/517`) and

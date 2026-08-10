@@ -5,6 +5,10 @@ Per check: query_gen -> retrieve real passages -> verdict (grounded ONLY in thos
 passages). Source-or-die and graceful degradation are enforced here:
   - no passages retrieved  => verdict forced to `unverifiable` (degraded), never killed-by-crash
   - model says supported with no citations => downgraded to unverifiable (anti-hallucination)
+
+Per-check `provider` is attributed on the CheckResult here in verify.py;
+`provider_chain` is set once on the dossier by run.py (not tracked per-call in this
+module).
 """
 from __future__ import annotations
 
@@ -63,23 +67,7 @@ def _coerce_verdict(v: str) -> Verdict:
         return Verdict.UNVERIFIABLE
 
 
-# Deterministic disconfirming queries for cheap decisive gates — skips an LLM
-# query-gen call on the gates that kill most candidates. Phrased to surface the
-# evidence that would FAIL the check (kill-fast wants the negative first).
-_DISCONFIRM_TEMPLATES: dict[str, list[str]] = {
-    "value_durability": ["{q} obsolete OR commoditised OR replaced by free alternative",
-                         "{q} open-source OR built-in OR cheaper substitute"],
-    "legality": ["{q} regulation OR licence required OR banned OR illegal"],
-    "incumbency": ["{q} incumbent market leader dominant competitor"],
-    "payer_solvency": ["{q} budget cuts OR cannot afford OR insolvency"],
-    "distribution": ["{q} customer acquisition channel saturated OR expensive"],
-    "pain_reality": ["{q} not a real problem OR existing workaround"],
-    # Stage-1 pack-intent checks — disconfirm = evidence the demand/route/currency is absent.
-    "buyer_intent": ["{q} no demand OR nobody searching OR no buyers OR niche too small"],
-    "route_to_market": ["{q} no marketing channel OR hard to reach customers OR ads banned"],
-    "currency": ["{q} outdated OR trend over OR declined OR no longer relevant"],
-    "claims_verifiable": ["{q} false OR debunked OR no evidence OR contradicted"],
-}
+
 
 
 def _calc_confidence(sources: list[Source], citations: list[str],
@@ -195,6 +183,9 @@ def _keywords(cand: Candidate, k: int = 12) -> str:
 
 
 # Balanced search templates: disconfirm (kill-fast) + confirm (score-high).
+# Disconfirming queries are deterministic for cheap decisive gates — they skip an LLM
+# query-gen call on the gates that kill most candidates, phrased to surface the
+# evidence that would FAIL the check (kill-fast wants the negative first).
 _DISCONFIRM_TEMPLATES: dict[str, list[str]] = {
     "value_durability": ["{q} obsolete OR commoditised OR replaced by free alternative"],
     "legality": ["{q} regulation OR licence required OR banned OR illegal"],
@@ -202,6 +193,11 @@ _DISCONFIRM_TEMPLATES: dict[str, list[str]] = {
     "payer_solvency": ["{q} budget cuts OR cannot afford OR insolvency"],
     "distribution": ["{q} customer acquisition channel saturated OR expensive"],
     "pain_reality": ["{q} not a real problem OR existing workaround"],
+    # Stage-1 pack-intent checks — disconfirm = evidence the demand/route/currency is absent.
+    "buyer_intent": ["{q} no demand OR nobody searching OR no buyers OR niche too small"],
+    "route_to_market": ["{q} no marketing channel OR hard to reach customers OR ads banned"],
+    "currency": ["{q} outdated OR trend over OR declined OR no longer relevant"],
+    "claims_verifiable": ["{q} false OR debunked OR no evidence OR contradicted"],
 }
 
 _CONFIRM_TEMPLATES: dict[str, list[str]] = {

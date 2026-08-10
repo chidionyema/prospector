@@ -12,6 +12,7 @@ never crashing the run.
 """
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import os
@@ -230,9 +231,13 @@ def resolve_sources(items: list[dict], query: str, max_chars: int, k: int) -> li
     if not cand:
         return []
     from concurrent.futures import ThreadPoolExecutor
+    # A ContextVar set in this thread is NOT visible to threads created by .map()/.submit(),
+    # so _get_timeout would read the DEFAULT empty authority set and drop the per-market
+    # timeout bonus. copy_context() carries the caller's market scope into each worker.
+    ctx = contextvars.copy_context()
     with ThreadPoolExecutor(max_workers=len(cand)) as ex:
         resolved = list(ex.map(
-            lambda it: _resolve(str(it.get("url", "")), timeout=_RESOLVE_TIMEOUT), cand))
+            lambda it: ctx.run(_resolve, str(it.get("url", "")), _RESOLVE_TIMEOUT), cand))
     out: list[Source] = []
     for it, r in zip(cand, resolved):
         if not r:
@@ -448,12 +453,14 @@ class BraveSearchProvider(SearchProvider):
             with urllib.request.urlopen(req, timeout=15) as r:
                 data = json.loads(r.read())
         except Exception as e:
+            # Not "zero evidence" — see ExaSearchProvider.search: a swallowed transport error reads
+            # as a successful empty result and stops the fallback chain.
             logger.warning(f"Brave search failed: {e}")
             audit("search", provider="brave", query=query[:200], k=k,
                   max_chars=max_chars, returned_n=0,
                   latency_ms=int((time.monotonic() - start) * 1000),
                   status="error", error=str(e)[:200])
-            return []
+            raise
 
         results: list[Source] = []
         try:
@@ -948,8 +955,10 @@ class DeepSeekSearchProvider(_LLMSearchProvider):
                         data2 = json.loads(r2.read())
                         synthesis = data2["choices"][0]["message"].get("content", synthesis)
         except Exception as e:
+            # Not "zero evidence" — see ExaSearchProvider.search: a swallowed transport error reads
+            # as a successful empty result and stops the fallback chain.
             logger.warning(f"DeepSeek search failed: {e}")
-            return "", []
+            raise
         return synthesis, []
 
     def _execute_search(self, query: str) -> str:
@@ -1095,8 +1104,10 @@ class MiniMaxSearchProvider(_LLMSearchProvider):
                         data2 = json.loads(r2.read())
                         synthesis = data2["choices"][0]["message"].get("content", synthesis)
         except Exception as e:
+            # Not "zero evidence" — see ExaSearchProvider.search: a swallowed transport error reads
+            # as a successful empty result and stops the fallback chain.
             logger.warning(f"MiniMax search failed: {e}")
-            return "", []
+            raise
         return synthesis, []
 
     def _execute_search(self, query: str) -> str:

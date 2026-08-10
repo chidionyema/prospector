@@ -733,7 +733,7 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
         claude=raw_md.get("claude", "claude-opus-4-8"),
         deepseek=raw_md.get("deepseek", "deepseek-chat"),
         minimax=raw_md.get("minimax", "MiniMax-M3"),
-        minimax_fast=raw_md.get("minimax_fast", "MiniMax-M2.7"),
+        minimax_fast=raw_md.get("minimax_fast", ModelDefaults.minimax_fast),
         ollama=raw_md.get("ollama", "qwen2.5-coder:7b"),
         standardcompute=raw_md.get("standardcompute", "standardcompute"),
         search=search,
@@ -837,6 +837,45 @@ def _validate_markets(raw_markets: dict | None) -> dict:
     return raw_markets
 
 
+def _validate_weights(raw_weights: dict | None) -> dict[str, float]:
+    """Fail LOUDLY on a malformed `weights:` block.
+
+    score.composite() iterates this dict as `scores[ax] * weights[ax]`; a typo'd axis
+    silently contributes 0 to every candidate's score (the unknown key is just skipped),
+    and a block that does not sum to 1.0 silently rescaled the rubric. Both are
+    founder-fatal config errors that must stop the process at startup — a load-time
+    typo that quietly zeroes an axis cannot be detected from a single candidate's
+    score, only from the shape of the rubric across many runs.
+    """
+    if not raw_weights:
+        return {}
+    if not isinstance(raw_weights, dict):
+        raise ValueError(
+            f"config `weights` must be a mapping, got {type(raw_weights).__name__}")
+    # score.py imports config.py at module scope, so the reverse import must be lazy
+    # (function-local) to avoid a circular import on package init.
+    from .score import SCORE_AXES
+    valid = set(SCORE_AXES)
+    for k in raw_weights:
+        if k not in valid:
+            raise ValueError(
+                f"config `weights` has unknown axis {k!r}; valid axes are {sorted(valid)}")
+        try:
+            v = float(raw_weights[k])
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                f"config `weights[{k!r}]` must coerce to float, got "
+                f"{raw_weights[k]!r} ({type(raw_weights[k]).__name__})") from e
+        if v < 0:
+            raise ValueError(
+                f"config `weights[{k!r}]` must be >= 0, got {v}")
+    total = sum(float(v) for v in raw_weights.values())
+    if abs(total - 1.0) > 1e-6:
+        raise ValueError(
+            f"config `weights` must sum to 1.0 within 1e-6, got {total}")
+    return {k: float(v) for k, v in raw_weights.items()}
+
+
 def load_config(path: str | Path | None = None) -> Config:
     p = Path(path) if path else REPO_ROOT / "config.yaml"
     raw = yaml.safe_load(p.read_text()) if p.exists() else {}
@@ -852,7 +891,7 @@ def load_config(path: str | Path | None = None) -> Config:
         thresholds=Thresholds(**(raw.get("thresholds") or {})),
         admissibility=_validate_admissibility(raw.get("admissibility")),
         hard_gates=raw.get("hard_gates") or [],
-        weights=raw.get("weights") or {},
+        weights=_validate_weights(raw.get("weights")),
         lanes=raw.get("lanes") or {},
         active_lane=raw.get("active_lane") or "",
         active_lanes=raw.get("active_lanes") or [],

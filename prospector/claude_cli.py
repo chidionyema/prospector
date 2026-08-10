@@ -142,7 +142,7 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
     #
     # The definition lives in cli_auth, NOT inline here: it also strips ANTHROPIC_BASE_URL,
     # which is a moat-integrity control rather than a billing one (a repointed endpoint means
-    # an untrusted brain answering a call that operator.py:889 still counts as MOAT_PRIMARY).
+    # an untrusted brain answering a call that MOAT_PRIMARY still counts as trusted).
     child_env = subscription_env()
     # STABLE cwd per SLOT — not a fresh dir per call. Two constraints meet here, and the first
     # cut satisfied one by paying the other on every single call:

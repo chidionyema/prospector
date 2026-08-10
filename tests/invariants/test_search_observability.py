@@ -117,9 +117,16 @@ def test_brave_search_increments_web_calls(web_calls_snapshot, monkeypatch):
     monkeypatch.setenv("BRAVE_API_KEY", "test-key")
     fake = {"web": {"results": [
         {"url": "https://example.com/a", "description": "hi", "title": "t"}]}}
-    with patch("requests.get") as mock_get:
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = fake
+    # Patch the transport the provider ACTUALLY uses. This read `patch("requests.get")`
+    # until 2026-08-10, but BraveSearchProvider has never called requests — it uses
+    # urllib.request.urlopen (retrieval.py:453). The mock therefore did nothing: the test
+    # made a LIVE call to the Brave API on every suite run, got HTTP 422 from the dummy
+    # key, and passed anyway because the old `except: return []` swallowed the error
+    # before the assertion. Deleting that swallow (audit finding #11) is what surfaced it.
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps(fake).encode()
+    with patch("urllib.request.urlopen") as mock_urlopen:
+        mock_urlopen.return_value.__enter__.return_value = mock_resp
         with patch("prospector.retrieval._resolve", return_value=("<html>hi</html>", "t")):
             BraveSearchProvider().search("test query", k=2, max_chars=800)
     d = _delta(web_calls_snapshot)

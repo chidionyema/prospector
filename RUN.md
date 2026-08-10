@@ -123,7 +123,7 @@ pytest -v tests/integration  # API, publish, store tests
 python -m prospector.run signal --file signals/$(date +%Y-%m-%d).txt --batch-size 5
 ```
 
-Keep `batch_size` modest to stay inside your Claude Code usage allowance. Each batch writes a timestamped run log to `store/runs/`.
+Keep `batch_size` modest to stay inside your Claude Code usage allowance.
 
 ## Config-driven
 

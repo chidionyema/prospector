@@ -12,6 +12,15 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
+#: Dense-reward shaping. A PASS maps to [_DENSE_REWARD_BASE, _DENSE_REWARD_BASE + _DENSE_REWARD_SPAN].
+#: The divisor is the maximum attainable composite: score.composite() is a weighted sum over the
+#: `weights` block (validated to sum to 1.0 — see _validate_weights in config.py) with each axis
+#: capped 0-5, so the ceiling is 5.0. It read 6.0 until 2026-08-10, which compressed every PASS
+#: reward to a maximum of 0.967 instead of 1.0.
+_DENSE_REWARD_BASE = 0.8
+_DENSE_REWARD_SPAN = 0.2
+_DENSE_REWARD_COMPOSITE_MAX = 5.0
+
 
 class Verdict(str, Enum):
     SUPPORTED = "supported"
@@ -387,17 +396,20 @@ class Dossier:
 
     @property
     def dense_reward(self) -> float:
-        """The Stage 1 continuous training signal: a single [0..1] float 
+        """The Stage 1 continuous training signal: a single [0..1] float
         representing the candidate's quality, even for kills.
-        
-        Formula: 
-          - PASS: 0.8 + (0.2 * composite_score/6.0)
-          - KILL: (sum(gate_confidences) / n_gates) * 0.5 
+
+        Formula:
+          - PASS: _DENSE_REWARD_BASE + (_DENSE_REWARD_SPAN * composite/_DENSE_REWARD_COMPOSITE_MAX)
+          - KILL: (sum(gate_confidences) / n_gates) * 0.5
           - Penalty for early kills or adversarial decisive.
+
+        Scale break 2026-08-10: every dense_reward already written to store/ was computed on the old /6.0 scale and is not comparable to values written after this change; historical values are deliberately not backfilled.
         """
         if self.decision == Decision.PASS:
             comp = self.score.composite if self.score else 3.0
-            return round(0.8 + (0.2 * comp / 6.0), 3)
+            return round(_DENSE_REWARD_BASE
+                         + (_DENSE_REWARD_SPAN * comp / _DENSE_REWARD_COMPOSITE_MAX), 3)
         
         if not self.checks:
             return 0.0
