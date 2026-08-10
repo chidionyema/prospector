@@ -45,38 +45,60 @@ export interface CategoryGraphProps {
  * and Enter activates it. Tab order follows the visual grid, top-left to
  * bottom-right.
  */
+/**
+ * Keyed by the REAL landing slugs (`src/lib/seo/landings.ts`'s `LANDINGS[].slug`), grouped by
+ * `Landing.kind` (payer / commitment / effort / advantage / mechanism / sector) so related
+ * categories sit in adjacent cells -- payer on row 0, advantage spanning rows 1-2, sector on
+ * row 3, etc.
+ *
+ * This replaces a table that was keyed by short, invented names (`b2b`, `developers`,
+ * `full_time`, `b2g`, ...) that never matched a real slug: `comm -12` against the actual 16
+ * `LANDINGS` slugs returned zero overlap, so every render fell through to `positionFor`'s
+ * index-based fallback below. That fallback happened to look reasonable on screen only because
+ * `getServerSideProps` passes categories in `LANDINGS` declaration order, which is itself
+ * kind-grouped -- the apparent clustering was an accident of array order, not this table. Keying
+ * on the real slugs makes the intended grouping the actual mechanism again, so it survives
+ * `LANDINGS` being reordered or a category being added/removed instead of silently reverting to
+ * whatever position the array happens to place it at.
+ */
 const POSITIONS: Record<string, { x: number; y: number }> = {
-  // Buyers (top row, B2B on the left, B2C on the right).
-  b2b: { x: 0, y: 0 },
-  b2c: { x: 1, y: 0 },
-  b2g: { x: 2, y: 0 },
-  // Effort / commitment (second row).
-  evenings: { x: 0, y: 1 },
-  part_time: { x: 1, y: 1 },
-  full_time: { x: 2, y: 1 },
-  // Archetypes (third row, left to right by archetype).
-  'vertical-software': { x: 0, y: 2 },
-  'productised-service': { x: 1, y: 2 },
-  marketplace: { x: 2, y: 2 },
-  red_tape: { x: 3, y: 2 },
-  pay_rights: { x: 3, y: 1 },
-  benefits: { x: 3, y: 0 },
-  // Specialised (bottom row).
-  trades: { x: 0, y: 3 },
-  mostly_automated: { x: 1, y: 3 },
-  part_automated: { x: 2, y: 3 },
-  developers: { x: 0, y: 2 },
-  operators: { x: 1, y: 2 },
-  salespeople: { x: 2, y: 2 },
-  audience: { x: 3, y: 3 },
+  // payer
+  'b2b-business-ideas': { x: 0, y: 0 },
+  'b2c-business-ideas': { x: 1, y: 0 },
+  // commitment
+  'evening-business-ideas': { x: 2, y: 0 },
+  'part-time-business-ideas': { x: 3, y: 0 },
+  // effort
+  'automated-business-ideas': { x: 0, y: 1 },
+  'part-automated-business-ideas': { x: 1, y: 1 },
+  // advantage
+  'business-ideas-for-developers': { x: 2, y: 1 },
+  'business-ideas-for-operators': { x: 3, y: 1 },
+  'business-ideas-for-salespeople': { x: 0, y: 2 },
+  // mechanism
+  'productised-service-ideas': { x: 1, y: 2 },
+  'vertical-software-ideas': { x: 2, y: 2 },
+  'marketplace-and-broker-ideas': { x: 3, y: 2 },
+  // sector
+  'red-tape-and-licensing-ideas': { x: 0, y: 3 },
+  'pay-and-worker-rights-ideas': { x: 1, y: 3 },
+  'care-and-benefits-ideas': { x: 2, y: 3 },
+  'trades-and-construction-ideas': { x: 3, y: 3 },
 };
 
-/** Fallback position for any kind not in the table: bottom-right, scaled by index. */
-function positionFor(kind: string, index: number): { x: number; y: number } {
-  if (POSITIONS[kind]) return POSITIONS[kind];
-  // Distribute unknown kinds across a 4x4 grid by their index.
-  const col = index % 4;
-  const row = Math.floor(index / 4) % 4;
+/** Fallback position for any kind not in the table: distributed by index, so a new category
+ *  added to `LANDINGS` without a matching `POSITIONS` entry still renders somewhere sane instead
+ *  of colliding at (0, 0). */
+function positionFor(kind: string, index: number, cols: number, rows: number): { x: number; y: number } {
+  if (POSITIONS[kind]) {
+    const p = POSITIONS[kind];
+    // A caller with fewer columns than the desktop table (the mobile layout) can't use the
+    // desktop (x, y) pair directly -- re-flow by the same index instead so mobile always gets a
+    // valid, in-bounds cell.
+    if (cols === GRID_COLS && rows === GRID_ROWS) return p;
+  }
+  const col = index % cols;
+  const row = Math.floor(index / cols) % rows;
   return { x: col, y: row };
 }
 
@@ -87,12 +109,50 @@ const SVG_HEIGHT = 480;
 const PADDING = 40;
 
 /**
- * The graph itself. An SVG with 16 nodes, sized by pack count. Each node is
- * a `<Link>` so the keyboard path is identical to the mouse path.
+ * Mobile layout: 3 columns instead of 4. The earlier fix for illegible mobile labels (see the
+ * comment on the wrapper `<div>` below) capped the SVG at its native 720px width and let it
+ * scroll horizontally -- technically legible, but it meant a phone visitor had to pan or zoom to
+ * see the whole graph, which is the complaint this layout exists to fix. Rendering a SEPARATE,
+ * narrower SVG at full native font/circle size (not a scaled-down viewBox of the desktop one)
+ * fits inside a phone's viewport with no horizontal scroll or zoom, at the cost of being taller
+ * -- vertical scroll on a phone is the normal, expected way to see more content, unlike
+ * horizontal scroll on a diagram.
  */
-export default function CategoryGraph({ categories, filterPath, className }: CategoryGraphProps) {
-  const cellW = (SVG_WIDTH - PADDING * 2) / GRID_COLS;
-  const cellH = (SVG_HEIGHT - PADDING * 2) / GRID_ROWS;
+const GRID_COLS_MOBILE = 3;
+const GRID_ROWS_MOBILE = 6;
+const SVG_WIDTH_MOBILE = 360;
+const SVG_HEIGHT_MOBILE = 648;
+const PADDING_MOBILE = 24;
+
+interface GridConfig {
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+  padding: number;
+}
+
+/**
+ * One SVG rendering of the graph at a given grid size. Pulled out of `CategoryGraph` so the
+ * desktop (4x4, native 720px) and mobile (3x6, native 360px) variants share one implementation
+ * instead of two hand-kept-in-sync copies -- both render at their OWN native font/circle sizes
+ * (never a scaled `viewBox` of the other), which is what keeps mobile labels legible without a
+ * `viewBox` downscale shrinking `fontSize` along with everything else.
+ */
+function GraphSvg({
+  categories,
+  grid,
+  pathFor,
+  ariaLabel,
+}: {
+  categories: CategoryNode[];
+  grid: GridConfig;
+  pathFor: (kind: string) => string;
+  ariaLabel: string;
+}) {
+  const { cols, rows, width, height, padding } = grid;
+  const cellW = (width - padding * 2) / cols;
+  const cellH = (height - padding * 2) / rows;
   // Size scale: the smallest category is 24px radius, the largest is 56px.
   const minCount = Math.min(...categories.map((c) => c.count), 1);
   const maxCount = Math.max(...categories.map((c) => c.count), 1);
@@ -111,7 +171,92 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
     return 18 + t * 18;
   };
 
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-auto w-full"
+      style={{ minWidth: width }}
+      role="img"
+      aria-label={ariaLabel}
+    >
+      {categories.map((node, i) => {
+        const pos = positionFor(node.kind, i, cols, rows);
+        const cx = padding + cellW * (pos.x + 0.5);
+        const cy = padding + cellH * (pos.y + 0.5);
+        const r = radiusFor(node.count);
+        return (
+          <Link
+            key={node.kind}
+            href={pathFor(node.kind)}
+            aria-label={`${node.label}, ${node.count} packs`}
+            className="focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-full"
+          >
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="currentColor"
+              fillOpacity={0.08}
+              stroke="currentColor"
+              strokeWidth={1.5}
+              className="transition-all hover:fill-opacity-20"
+            />
+            {/* The COUNT goes inside, the label goes underneath. It used to be the other way
+                around, and the label could not survive it: the widest text a circle of radius
+                r can hold is its chord, about 1.6r, and the font was sized r / 3.2, so the
+                character budget came out at ~9 REGARDLESS of how large the node was. Growing
+                the circle grew the font in step and bought nothing. Every multi-word category
+                therefore rendered clipped -- "Business ideas" as "Busin…" -- on the one page
+                whose entire job is letting a visitor see what the catalogue contains.
+                A count is two or three digits and always fits; a label never did. */}
+            <text
+              x={cx}
+              y={cy + r / 3.4}
+              textAnchor="middle"
+              className="pointer-events-none select-none"
+              fontSize={Math.max(12, r / 2.2)}
+              fontWeight={600}
+              fill="var(--text)"
+            >
+              {node.count}
+            </text>
+            {wrapLabel(node.label, cellW).map((lineText, lineIndex) => (
+              <text
+                key={lineText + lineIndex}
+                x={cx}
+                y={cy + r + 14 + lineIndex * 12}
+                textAnchor="middle"
+                className="pointer-events-none select-none"
+                fontSize={11}
+                fontWeight={500}
+                fill="var(--text-muted, #78716C)"
+              >
+                {lineText}
+              </text>
+            ))}
+          </Link>
+        );
+      })}
+    </svg>
+  );
+}
+
+const DESKTOP_GRID: GridConfig = { cols: GRID_COLS, rows: GRID_ROWS, width: SVG_WIDTH, height: SVG_HEIGHT, padding: PADDING };
+const MOBILE_GRID: GridConfig = {
+  cols: GRID_COLS_MOBILE,
+  rows: GRID_ROWS_MOBILE,
+  width: SVG_WIDTH_MOBILE,
+  height: SVG_HEIGHT_MOBILE,
+  padding: PADDING_MOBILE,
+};
+
+/**
+ * The graph itself. An SVG with one circle per category, sized by pack count. Each circle is
+ * a `<Link>` so the keyboard path is identical to the mouse path.
+ */
+export default function CategoryGraph({ categories, filterPath, className }: CategoryGraphProps) {
   const pathFor = filterPath ?? ((kind: string) => `/?kind=${encodeURIComponent(kind)}`);
+  const ariaLabel = 'Catalogue categories, sized by pack count';
 
   return (
     <div
@@ -121,88 +266,27 @@ export default function CategoryGraph({ categories, filterPath, className }: Cat
       )}
     >
       {/*
-        `overflow-x-auto` + `minWidth: SVG_WIDTH` on the svg itself, not just `w-full`.
-        `viewBox` scales the WHOLE svg as one vector -- including the label `fontSize`, which is
-        set in the same user-space units as everything else (see `wrapLabel`'s LABEL_FONT_PX
-        below). At >=720px of container width that upscales cleanly, which is why this looked
-        fine on desktop. At a ~320px mobile container it downscales to ~0.44x, so the 11-unit
-        label rendered at ~5px -- confirmed on the live mumchimp.com/ideas mobile view, 2026-08-09
-        -- with nothing in this file setting a floor. Capping the svg's own width at its native
-        720 keeps every label at its designed, legible size at every viewport; the tradeoff is a
-        horizontal scroll on phones, which is the standard way to keep a diagram legible rather
-        than shrinking it below reading size (the full text list already below this graph on
-        /ideas remains the no-scroll fallback for anyone who does not scroll it).
+        Two separate SVGs, not one scaled by CSS/viewBox. `viewBox` scales the WHOLE svg as one
+        vector -- including the label `fontSize`, which is set in the same user-space units as
+        everything else (see `wrapLabel`'s LABEL_FONT_PX below). Shrinking the desktop 720-wide
+        svg's viewBox to fit a ~320px mobile container downscaled it to ~0.44x, so the 11-unit
+        label rendered at ~5px -- confirmed on the live mumchimp.com/ideas mobile view,
+        2026-08-09. An intermediate fix capped the svg at its native 720px width and let it
+        scroll horizontally, which kept labels legible but meant a phone visitor had to pan or
+        zoom to see the whole graph. Rendering a SEPARATE, narrower 3-column layout at its own
+        native size (`MOBILE_GRID`, below) fits a phone viewport with no horizontal scroll or
+        zoom -- the same `hidden md:block` / `block md:hidden` breakpoint split already used for
+        `Logo.tsx`'s compact form, so there is no JS viewport check to keep in sync with a CSS
+        breakpoint.
       */}
-      <div className="overflow-x-auto">
-      <svg
-        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-        className="h-auto w-full"
-        style={{ minWidth: SVG_WIDTH }}
-        role="img"
-        aria-label="Catalogue categories, sized by pack count"
-      >
-        {categories.map((node, i) => {
-          const pos = positionFor(node.kind, i);
-          const cx = PADDING + cellW * (pos.x + 0.5);
-          const cy = PADDING + cellH * (pos.y + 0.5);
-          const r = radiusFor(node.count);
-          return (
-            <Link
-              key={node.kind}
-              href={pathFor(node.kind)}
-              aria-label={`${node.label}, ${node.count} packs`}
-              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-full"
-            >
-              <circle
-                cx={cx}
-                cy={cy}
-                r={r}
-                fill="currentColor"
-                fillOpacity={0.08}
-                stroke="currentColor"
-                strokeWidth={1.5}
-                className="transition-all hover:fill-opacity-20"
-              />
-              {/* The COUNT goes inside, the label goes underneath. It used to be the other way
-                  around, and the label could not survive it: the widest text a circle of radius
-                  r can hold is its chord, about 1.6r, and the font was sized r / 3.2, so the
-                  character budget came out at ~9 REGARDLESS of how large the node was. Growing
-                  the circle grew the font in step and bought nothing. Every multi-word category
-                  therefore rendered clipped -- "Business ideas" as "Busin…" -- on the one page
-                  whose entire job is letting a visitor see what the catalogue contains.
-                  A count is two or three digits and always fits; a label never did. */}
-              <text
-                x={cx}
-                y={cy + r / 3.4}
-                textAnchor="middle"
-                className="pointer-events-none select-none"
-                fontSize={Math.max(12, r / 2.2)}
-                fontWeight={600}
-                fill="var(--text)"
-              >
-                {node.count}
-              </text>
-              {wrapLabel(node.label, cellW).map((lineText, lineIndex) => (
-                <text
-                  key={lineText + lineIndex}
-                  x={cx}
-                  y={cy + r + 14 + lineIndex * 12}
-                  textAnchor="middle"
-                  className="pointer-events-none select-none"
-                  fontSize={11}
-                  fontWeight={500}
-                  fill="var(--text-muted, #78716C)"
-                >
-                  {lineText}
-                </text>
-              ))}
-            </Link>
-          );
-        })}
-      </svg>
+      <div className="hidden md:block overflow-x-auto">
+        <GraphSvg categories={categories} grid={DESKTOP_GRID} pathFor={pathFor} ariaLabel={ariaLabel} />
+      </div>
+      <div className="block md:hidden">
+        <GraphSvg categories={categories} grid={MOBILE_GRID} pathFor={pathFor} ariaLabel={ariaLabel} />
       </div>
       <p className="mt-3 text-center text-caption text-muted">
-        Tap a node to filter the catalogue. Node size reflects pack count.
+        Tap a circle to filter the catalogue. Circle size reflects pack count.
       </p>
     </div>
   );

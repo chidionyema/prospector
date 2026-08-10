@@ -190,13 +190,21 @@ export function Logo({ className, monogramOnly = false }: LogoProps) {
     >
       <span className="sr-only">{BRAND.name}</span>
       <BrandMark />
-      {/* Two spans, not one string: weight is the only thing that differs between them (both
-          stay `text-text`, no colour split), and Tailwind reads utility classes from source text,
-          so `font-bold`/`font-normal` have to sit on their own elements rather than be
-          interpolated. `whitespace-nowrap` + no gap between the spans keeps them reading as one
-          word, exactly as `${first}${second}` did when it was a single string. */}
-      <span aria-hidden="true" className="font-bold">{first}</span>
-      <span aria-hidden="true" className="font-normal">{second}</span>
+      {/* One wrapper span, not two loose ones: the outer element is a flex container with
+          `gap-[0.34em]` so the icon sits clear of the wordmark, but flex `gap` lands between
+          EVERY adjacent flex-item sibling, not just the ones a developer meant to space. Two
+          bare spans here were both direct flex children, so the gap opened up between "Mum"
+          and "chimp" too, rendering the wordmark as two words with a visible space -- the
+          opposite of the "reads as one word" comment this replaced. Nesting both halves inside
+          one non-flex span makes them a single flex child again: weight still differs between
+          them (both stay `text-text`, no colour split; Tailwind reads utility classes from
+          source text, so `font-bold`/`font-normal` still need their own elements), but no gap
+          utility can reach between them, so `${first}${second}` reads as one word exactly as it
+          did when it was a single string. */}
+      <span aria-hidden="true">
+        <span className="font-bold">{first}</span>
+        <span className="font-normal">{second}</span>
+      </span>
     </span>
   );
 }

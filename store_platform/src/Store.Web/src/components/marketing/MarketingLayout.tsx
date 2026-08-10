@@ -160,9 +160,31 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                   the full wordmark lockup was rendering at every width, including the phone
                   header `monogramOnly` was built for. Two elements, not one conditional prop,
                   because Tailwind's responsive classes are static per element, not runtime
-                  branches: `hidden md:inline-flex` / `inline-flex md:hidden` swap on the same
-                  breakpoint the nav already uses. */}
-              <Logo className="hidden text-h2 md:inline-flex" />
+                  branches: `max-md:hidden md:inline-flex` / `inline-flex md:hidden` swap on the
+                  same breakpoint the nav already uses.
+
+                  FIXED 2026-08-10: the first `<Logo>` originally carried plain `hidden`, not
+                  `max-md:hidden`, and that plain (unprefixed) class can never win here. `Logo.tsx`
+                  itself hardcodes an unconditional `inline-flex` in its own base classes (line
+                  ~187), so this element always carries BOTH a bare `.hidden` and a bare
+                  `.inline-flex`. Confirmed by walking the compiled stylesheet's own cascade order
+                  (`@layer utilities`, Playwright + `document.styleSheets`): `.hidden{display:none}`
+                  is declared at rule index 155, `.inline-flex{display:inline-flex}` at index 158 --
+                  later wins at equal specificity, so `.inline-flex` always overrode `.hidden`,
+                  at every viewport, not just below `md`. `getComputedStyle` on the element
+                  confirmed `display: flex` and `offsetParent !== null` (visible) on a real mobile
+                  viewport (Playwright `devices['iPhone 12']`, 390px). The desktop `md:inline-flex`
+                  variant compiles into an `@media` block placed after the base layer, so it always
+                  wins its own range regardless -- which is exactly why this was invisible on
+                  desktop and only ever showed as two overlapping logos on mobile. `md:hidden` on
+                  the second `<Logo>` below was never affected: it has no competing plain `hidden`
+                  class, only the media-scoped one, so it already wins its range on the same
+                  cascade principle. `max-md:hidden` is itself a media-scoped rule (`@media
+                  (max-width: 767.98px)`), so it sits in the same later region as `md:inline-flex`
+                  instead of competing with the base layer's plain `.inline-flex` -- it is the
+                  general fix for "hide a component that hardcodes its own display utility", not a
+                  one-off tweak to this element. */}
+              <Logo className="max-md:hidden text-h2 md:inline-flex" />
               <Logo monogramOnly className="text-h2 md:hidden" />
             </Link>
 
