@@ -130,14 +130,32 @@ rows.forEach((r) => {
   LABEL_FOR[r.gate] = r.gateLabel;
 });
 const PUBLISHED_GATES = new Set(rows.map((r) => r.gate));
-const distribution = Object.entries(BY_GATE)
-  .sort((a, b) => b[1] - a[1])
-  .map(([gate, count]) => ({
-    gate,
-    count,
-    label: LABEL_FOR[gate] ?? gate.replace(/_/g, ' '),
-    published: PUBLISHED_GATES.has(gate),
-  }));
+// Grouped by label, same reason as `gateCounts` above: `BY_GATE` is keyed by the engine's internal
+// gate, and the engine has emitted two keys -- `distribution` and `route_to_market` -- for the
+// identical claim "There is no route to reach buyers". Built straight from `Object.entries(BY_GATE)`
+// this chart drew two bars for that one claim (8 and 6, on both breakpoints) sitting side by side
+// under the same label, which is the histogram equivalent of the filter-chip bug the comment above
+// already fixed -- this aggregation just never got it. A reader comparing bar lengths was comparing
+// a real cause against half of itself.
+const distribution = Object.values(
+  Object.entries(BY_GATE)
+    .map(([gate, count]) => ({
+      gate,
+      count,
+      label: LABEL_FOR[gate] ?? gate.replace(/_/g, ' '),
+      published: PUBLISHED_GATES.has(gate),
+    }))
+    .reduce<Record<string, { gate: string; count: number; label: string; published: boolean }>>((acc, d) => {
+      const existing = acc[d.label];
+      if (existing) {
+        existing.count += d.count;
+        existing.published = existing.published || d.published;
+      } else {
+        acc[d.label] = { ...d };
+      }
+      return acc;
+    }, {}),
+).sort((a, b) => b.count - a.count);
 const distributionMax = Math.max(...distribution.map((d) => d.count), 1);
 
 type Sort = 'newest' | 'cause' | 'sources';
@@ -400,8 +418,16 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             the only way 400 rows of four fields are navigable without sight.
 
             `overflow-x-auto` on the wrapper, never on the page. The site's body must not scroll
-            sideways, and a dense table at 360px will exceed it. */}
-        <div className="mt-6 overflow-x-auto border-y border-border">
+            sideways, and a dense table at 360px will exceed it.
+
+            Below `md` the Idea column wraps against the table's own 44rem floor, not the phone's
+            390px viewport, so the first title on the page was cut off mid-word ("...a family
+            carer") with nothing on screen to say the row continues -- a reader saw a truncated
+            sentence, not a scrollable table. The mask is a static fade on the wrapper's right
+            edge, present whenever the table is narrower than its content, that reads as "there is
+            more this way" without needing scroll-position JS. Both the standard and `-webkit-`
+            property are set because this is exactly the iOS Safari path the bug was found on. */}
+        <div className="mt-6 overflow-x-auto border-y border-border max-md:[-webkit-mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] max-md:[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
           <table className="w-full min-w-[44rem] border-collapse text-left">
             <caption className="sr-only">
               Killed ideas, with the check that killed each one, its published sources and the

@@ -188,6 +188,15 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * first two hits are twice the size of the rest reads as relevance ranking, which it is
          * not -- it is still catalogue size. Filtered results are therefore uniform.
          */}
+        {/* Two distinct empty states, not one. `filtered` is empty for two different reasons
+            that read very differently to a buyer: a search with no hits (`search` is set --
+            "Clear search" fixes it), or `categories` itself being empty because the catalog
+            fetch failed or nothing has cleared the checks yet (`search` is still ''). The single
+            branch this replaced rendered `No categories match "".` -- quoting an empty string --
+            with a "Clear search" button that had nothing to clear, whenever the page loaded with
+            zero categories. That is exactly the state a catalog outage produces (getServerSideProps
+            above catches the fetch failure and returns `categories: []`), so it was the visible
+            failure mode of an outage, not a rare edge case. */}
         {filtered.length > 0 ? (
           <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
             {filtered.map((cat, i) => {
@@ -249,7 +258,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               );
             })}
           </ul>
-        ) : (
+        ) : search ? (
           <div className="py-12 text-center">
             <p className="text-meta text-muted">No categories match &ldquo;{search}&rdquo;.</p>
             <button
@@ -259,6 +268,12 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             >
               Clear search
             </button>
+          </div>
+        ) : (
+          <div className="py-12 text-center">
+            <p className="text-meta text-muted">
+              No categories are available right now. Check back shortly.
+            </p>
           </div>
         )}
 
