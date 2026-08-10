@@ -185,7 +185,7 @@ step; (c) writer-side refusal if the verdict head leaves `MOAT_PRIMARY`; (d) mir
 `brains.py` pattern (backup + audit row + undo token) since it already solves this shape for
 hermes' own 13 roles.
 
-## R5 — Extreme visibility, at any moment 🟡 3 OF 4 SOURCES SURFACED (was ❌ NOT STARTED)
+## R5 — Extreme visibility, at any moment ✅ CLOSED 2026-08-10 (was 🟡 3 OF 4 SOURCES SURFACED)
 
 > **Corrected 2026-08-10 18:20Z by re-probing, not by reading this file.** The `❌ NOT STARTED`
 > above was written on 2026-08-09 (`63f1665`) and was still here after the work that invalidated
@@ -203,11 +203,51 @@ Of the four unsurfaced sources named on 2026-08-09, **three are now read**:
 | `store/scheduler/batch_diagnostics.jsonl` | ✅ surfaced | `prospector_daemon.py:985` `_DIAG_JSONL`; engine side `prospector/scheduler/status.py::_read_last_batch` (`cd2ead5`) |
 | `DIAGNOSTICS_LATEST.txt` | ✅ surfaced | `prospector_daemon.py:986` `_DIAG_TEXT` |
 | heartbeat `phase` | ✅ surfaced | `prospector_now.py:144`, `prospector_daemon.py:1379` |
-| `store/scheduler/audit/*.jsonl` | ❌ still unread | no reader in `gateway/operator_shell/` |
+| `store/scheduler/audit/*.jsonl` | ✅ surfaced | `prospector_inflight.py` (new); dispatch `estate_pd.py:76`; button `prospector_daemon.py:1452`; NL `natural_ops.py` |
 
-**What genuinely remains**, and it is the hard half: the sub-tick progress line does not exist to
-be surfaced. No engine writer emits per-candidate / per-check state, so the panel has nothing to
-tail. R5 closes when the engine writes that line, not when another panel is added.
+### The "hard half" was a wrong diagnosis, and the receipt that killed it
+
+This section previously read: *"No engine writer emits per-candidate / per-check state, so the
+panel has nothing to tail."* That was asserted, not probed. Folding the live trail refutes it —
+`store/scheduler/audit/2026-08-10.jsonl`, 4083 rows: `search` 2024, `fallback_resolved` 1013,
+`verify_search` 989, `soft_early_exit` 57, with `candidate_id` present on 1046 rows and
+`verify_search` already carrying `candidate_id` **and** `check`. The engine has been emitting
+per-candidate, per-check state all along.
+
+Three things were actually missing, and all three are now on disk:
+
+| Missing | Fix | Where |
+|---|---|---|
+| the **ruling** — the trail recorded that a check went LOOKING, never what it decided | `check_result` row per check, with verdict, confidence, `retrieval_failed`, `idx/total` | `prospector/verify.py`, inside the `run_order` loop after `on_check` |
+| the **boundaries** — per-check rows alone cannot distinguish "still working" from "abandoned" | `candidate_start` / `candidate_done` bracketing rows | `prospector/run.py::vet_candidate` |
+| the **reader** — nothing in the shell had ever opened the trail | tail + fold + render, 🔬 In flight | `gateway/operator_shell/prospector_inflight.py` |
+
+Design decisions worth not re-litigating:
+
+- **One trail, not a new `progress.jsonl`.** A second file needs its own concurrency story and can
+  disagree with the first. `audit()` already gives one `O_APPEND` write + fsync per row.
+- **No config knob on the new emits.** Every other `audit()` call site is unconditional, and an
+  audit gap is indistinguishable from an idle engine (`audit.py:77-100` — 82 hours lost that way).
+  A switch here would be a switch for turning the evidence off.
+- **No `try/finally` around `vet_candidate`.** A start with no done is resolved by the READER as
+  stalled (dead pid → immediate, else `_STALE_S`), because the case that matters — SIGKILL — is one
+  no writer can cover anyway.
+- **`composite` is omitted, never defaulted.** Kill-fast returns before scoring; a `0.0` default is
+  indistinguishable from a real `0.0`, which is the distinction `models.py:336 score_failed` exists
+  to preserve. Pinned by `test_composite_is_omitted_not_defaulted_when_scoring_never_happened`.
+- **Newest row is `rows[-1]`, not `max(seq)`.** `seq` is a per-PROCESS counter
+  (`audit.py:153`), so ranking by it across the daemon, backfills and manual CLI runs sharing one
+  day-file picks whichever process ran longest, not what happened last.
+
+Tests: `prospector/tests/unit/test_subtick_progress_audit.py` (6, engine side),
+`tests/gateway/operator_shell/test_prospector_inflight.py` (19, reader side).
+
+**Send-path trap found by shipping it:** `render_panel` cannot nest a code span inside italic or
+bold — `parse(render_panel("_a `b.jsonl`_"))` raises `unclosed italic entity`, which Telegram
+answers with HTTP 400, so the panel does not render *at all* (on a phone, identical to the engine
+being down). Diagnosing it with strict `parse()` on the raw panel proves nothing: `panel_stamp`'s
+own output fails that check, and every panel in the shell would. The gate's own pipeline is
+`parse(render_panel(src))`.
 
 ## R8 — See what is deployed, estate-wide, from the phone ✅ LIVE (2026-08-10)
 
@@ -260,7 +300,15 @@ progress — that gap is R5 above and is unchanged by this.
 
 ## R6 — Requirements tracked ✅ this file
 
-## R7 — Every screen state of the art, seamless, frictionless 🟡 AUDIT DONE, 9 FIXES LIVE
+## R7 — Every screen state of the art, seamless, frictionless ✅ CLOSED 2026-08-10 (was 🟡 AUDIT DONE, 9 FIXES LIVE)
+
+> **Header corrected 2026-08-10 by re-probing, not by reading this file.** The 🟡 was written
+> before the two ratchets were paid down and stayed after. Both counters this section is graded
+> on read zero on disk: `tests/gateway/operator_shell/test_destination_vocabulary.py:75`
+> `BASELINE = 0`, and `tests/gateway/operator_shell/test_every_button_dispatches.py:104`
+> `_UNBUILT: dict[str, str] = {}` (empty, kept so the ratchet still runs). Suite: 797 passed,
+> 5 skipped. The 🟡 bullet below is kept as the ORIGINAL measurement and marked superseded —
+> deleting it would erase the method note that found the defects.
 
 > **✅ CLOSED 2026-08-10. `_UNBUILT` is `{}` and its cap is `<= 0`.** All fifteen quarantined
 > actions were built, repointed or deleted; the founder's call was *"the dead buttons are in
@@ -379,7 +427,9 @@ each verified directly rather than taken from the sweep:
   Receipts: 671 passed, 5 skipped in `tests/gateway/operator_shell/`.
   *Method note for the next session: grepping for design never found any of the three worst
   ones. Rendering every panel and reading the keyboards did.*
-- 🟡 **Same thing, two names — the original measurement** (`7a83bdcd59`). My earlier claim that
+- 🟡→✅ **Same thing, two names — the original measurement** (`7a83bdcd59`). *SUPERSEDED by the
+  `BASELINE = 0` bullet above; the closing sentence about "the remaining 39" was true when written
+  and is not now. Kept for the method note.* My earlier claim that
   `estate:room:code` is labelled `2️⃣ Board` in the room **did not reproduce** — both call sites
   (`atlas.py:245`, `fleet.py:173`) read `💻 Code room`. The real finding is larger: an AST scan
   of every `(label, "estate:…")` pair finds **39 of 153 callbacks carrying more than one label**,
@@ -388,8 +438,8 @@ each verified directly rather than taken from the sweep:
   *Self-audit*. Renaming 39 destinations across 30 modules in one change is how a navigation
   regression ships, so `tests/gateway/operator_shell/test_destination_vocabulary.py` ratchets it:
   the count may fall, never rise. Fixed now, being two glyphs for one verb inside a single row:
-  `mission.py:501` `🔄 Restart Coord` → `♻️ Restart coord`. **The remaining 39 are the next
-  session's R7 work, and are mechanical now the scanner exists.**
+  `mission.py:501` `🔄 Restart Coord` → `♻️ Restart coord`. ~~The remaining 39 are the next
+  session's R7 work.~~ **They were paid down to 0 in that same next session — `BASELINE = 0`.**
 - ✅ Destructive verbs are confirmed (daemon stop/start/restart, signal-engine stop, the hot-rail
   two-screen `arm_card`), and `estate:approve:{id}` is deliberately one tap because the
   coordinator already gated it.

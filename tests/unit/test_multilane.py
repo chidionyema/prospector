@@ -12,6 +12,10 @@ They cover the four load-bearing properties of the multi-lane design:
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
+import pytest
+
 from prospector.classify import classify_tier
 from prospector.config import load_config
 from prospector.generate import generate_multilane
@@ -47,7 +51,13 @@ class _TierOp:
 
 # --------------------------------------------------------------------------- 1. for_lane
 def test_for_lane_smb_and_growth_resolve_without_mutating_base():
-    cfg = load_config()
+    # `active_profile` is CLEARED here on purpose. It is an operator steering switch the founder
+    # flips in config.yaml (`8edff52` turned on `tech_ai_all`), and `for_lane` deliberately
+    # re-applies the profile OVER the lane so its forms win (`config.py:569-572`). A test that
+    # reads the steered result is measuring today's steer, not lane resolution: it failed on
+    # `vertical_saas` for exactly that reason. Lane resolution is what this test is named for;
+    # profile-beats-lane is pinned separately below.
+    cfg = replace(load_config(), active_profile="")
     base_min = cfg.thresholds.min_composite_to_pass
     base_gates = cfg.gate_map()
 
@@ -75,6 +85,32 @@ def test_for_lane_smb_and_growth_resolve_without_mutating_base():
     assert cfg.thresholds.min_composite_to_pass == base_min
     assert cfg.gate_map() == base_gates
     assert cfg.active_lane == ""
+
+
+def test_an_active_profile_wins_over_the_lanes_generation_framing():
+    """The property the previous test used to assert by accident, stated on purpose.
+
+    `for_lane` re-applies `active_profile` after resolving the lane (`config.py:569-572`), so a
+    steer the founder flips on in config.yaml overrides the lane's `structural_forms`. Nothing
+    covered that, which is why turning on `tech_ai_all` (`8edff52`) read as a lane-resolution
+    regression instead of as the steer working.
+    """
+    cfg = load_config()
+    profile = next(iter(cfg.profiles), None)
+    if not profile:
+        pytest.skip("no profiles declared in config.yaml")
+
+    steered = replace(cfg, active_profile=profile)
+    unsteered = replace(cfg, active_profile="")
+    forms = steered.for_lane("growth").generation.get("structural_forms")
+    prof_forms = (cfg.profiles[profile].get("generation") or {}).get("structural_forms")
+    if not prof_forms:
+        pytest.skip(f"profile {profile} does not restrict structural_forms")
+
+    assert forms == prof_forms, "the profile did not win over the lane"
+    # And the steer touches GENERATION only — the bar it is judged by is unchanged.
+    assert steered.for_lane("growth").thresholds.min_composite_to_pass == \
+        unsteered.for_lane("growth").thresholds.min_composite_to_pass
 
 
 # --------------------------------------------------------------------------- 2. fan-out
