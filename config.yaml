@@ -1386,9 +1386,21 @@ dedup_token_threshold: 0.34
 # by a real outage un-suppresses itself the moment the outage ends: no state file, no hysteresis,
 # nothing to reset by hand. Fail-closed on generation, because a probe that did not complete is
 # not evidence that retrieval works. The drain runs either way.
+#
+# `market_rotation` — the ONLY way to work more than one market unattended. `active_market` is a
+# single string (config.py:437) and the market block it selects rewrites retrieval and generation
+# framing for a WHOLE batch, so "US as well as UK" has no representation in the schema: setting
+# `active_market` to one code retires the other. Rotation keeps the single-valued contract intact
+# and moves it BETWEEN batches, one market per tick, alternating in the order written here.
+# Empty => off, and `active_market` above is used unchanged (today's behaviour, byte for byte).
+# Comma-separated codes, each of which must resolve (subdivisions inherit their parent, so
+# "us-ca" needs no config beyond "us"). Example: "uk,us-ca".
+# An unresolvable code disables the WHOLE rotation rather than silently rotating over what is
+# left: a typo'd "us-ca" that quietly degrades to UK-only is precisely the failure this exists to
+# prevent, and a rotation the operator believes is running is worse than one plainly refused.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
             revet_provisional_kills: false, gate_generation_on_grounding: true,
-            reload_on_code_change: true }
+            reload_on_code_change: true, market_rotation: "" }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
