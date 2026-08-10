@@ -22,6 +22,7 @@ proves it. A row with no receipt is not DONE, whatever it says.
 | Daemon control + params | `gateway/operator_shell/prospector_daemon.py` |
 | Knob groups / Tune screens | `gateway/operator_shell/cockpit.py` |
 | Callback routing | `gateway/operator_shell/estate.py`, `estate_pd.py` |
+| Estate-wide deployment probe (R8) | `gateway/operator_shell/deployed.py` |
 | Engine state snapshot | `prospector/scheduler/status.py` |
 | Engine config | `~/Documents/code/prospector/config.yaml` |
 
@@ -184,14 +185,78 @@ step; (c) writer-side refusal if the verdict head leaves `MOAT_PRIMARY`; (d) mir
 `brains.py` pattern (backup + audit row + undo token) since it already solves this shape for
 hermes' own 13 roles.
 
-## R5 — Extreme visibility, at any moment ❌ NOT STARTED
+## R5 — Extreme visibility, at any moment 🟡 3 OF 4 SOURCES SURFACED (was ❌ NOT STARTED)
 
-Today's card is a **tick-granularity snapshot**: it shows the last completed batch and the
-heartbeat phase. Between ticks it cannot say which candidate or which of the six checks is in
-flight. Sources that already exist and are not surfaced: `store/scheduler/batch_diagnostics.jsonl`,
-`DIAGNOSTICS_LATEST.txt`, `store/scheduler/audit/*.jsonl`, the heartbeat `phase` field.
-Needs a design pass — likely a per-candidate/per-check progress line written by the engine and
-a live-tailing panel.
+> **Corrected 2026-08-10 18:20Z by re-probing, not by reading this file.** The `❌ NOT STARTED`
+> above was written on 2026-08-09 (`63f1665`) and was still here after the work that invalidated
+> it landed. It is the exact failure this programme exists to prevent — status asserted in prose,
+> drifting from the code. Re-verify at a `file:line` before quoting any row in this table.
+
+Original gap statement (still accurate about the *shape* of what is missing): today's card is a
+**tick-granularity snapshot** — the last completed batch and the heartbeat phase. Between ticks it
+cannot say which candidate or which of the six checks is in flight.
+
+Of the four unsurfaced sources named on 2026-08-09, **three are now read**:
+
+| Source | Status | Where |
+|---|---|---|
+| `store/scheduler/batch_diagnostics.jsonl` | ✅ surfaced | `prospector_daemon.py:985` `_DIAG_JSONL`; engine side `prospector/scheduler/status.py::_read_last_batch` (`cd2ead5`) |
+| `DIAGNOSTICS_LATEST.txt` | ✅ surfaced | `prospector_daemon.py:986` `_DIAG_TEXT` |
+| heartbeat `phase` | ✅ surfaced | `prospector_now.py:144`, `prospector_daemon.py:1379` |
+| `store/scheduler/audit/*.jsonl` | ❌ still unread | no reader in `gateway/operator_shell/` |
+
+**What genuinely remains**, and it is the hard half: the sub-tick progress line does not exist to
+be surfaced. No engine writer emits per-candidate / per-check state, so the panel has nothing to
+tail. R5 closes when the engine writes that line, not when another panel is added.
+
+## R8 — See what is deployed, estate-wide, from the phone ✅ LIVE (2026-08-10)
+
+Founder, 2026-08-10, after having to ask whether that morning's change was live: *"i should not
+even need to be asking … i should be able to see from telegram what exactly is deployed and
+operational"* — then, on scope: *"obviously i need to see deployments across the whole estate"*.
+
+Answering that question by hand took **eight shell calls** comparing a file mtime to a process
+start time. The work was deployed; there was simply no surface that said so — while R5 above was
+asserting `NOT STARTED` about work that had already shipped. Same defect, two places.
+
+**`🚀 Deployed` — one screen, eleven components, every row a probe.**
+
+| Reach it by | How |
+|---|---|
+| Typing | `deployed`, `is it deployed`, `is it live`, `did it ship`, `are we live`, `what is live` → `natural_ops.py:_PATTERNS` |
+| Tapping | 🎛 Command palette → first entry (`command_palette.py:13-18`) |
+| Callback | `estate:deployed` → `estate.py:_PANELS["deployed"]` |
+
+| Group | Components | The probe |
+|---|---|---|
+| ⚙️ Local daemons | gateway, coordinator, otto-server, idle-engine | `launchctl list` pid + `ps -o lstart` vs the mtime of **the code that daemon actually loads** |
+| 🔬 Engines | prospector scheduler | fingerprint logged at startup vs `code_fingerprint('config.yaml')` recomputed on disk |
+| ☁️ Remote | prospector-store-api, prospector-store-web, tie-api, tie-web | `fly apps list --json` **and** an independent live HTTP GET; the HTTP result outranks fly's view |
+| 📦 Repos | hermes-agent, prospector | HEAD, branch, unpushed vs the ref that counts as pushed, uncommitted count |
+
+Receipts: `gateway/operator_shell/deployed.py`; registered `estate.py:_PANELS["deployed"]`; tests
+`tests/gateway/operator_shell/test_deployed_panel.py` (10 passing). Measured **5.1s cold, 2.5s
+warm** for 11 components; wall clock bounded at `_DEADLINE_S = 22.0`, a probe that overruns
+renders `⏱ timed out` and never green.
+
+**Three false readings it produced on its first run, all now fixed and all now tested** — kept
+here because each is a general trap, not a typo:
+
+1. **A probe must call the function exactly as the process under test calls it.**
+   `code_fingerprint()` argless omits `config.yaml`; the daemon passes it (`run_scheduled.py:1416`).
+   Argless gave `033b7d4b1855` against a logged `776a692b1a3e` and painted a *healthy* engine
+   🔴 STALE CODE.
+2. **A code root that is not the code the daemon loads is worse than no row.** Only `gateway` and
+   `otto-server` run the hermes-agent repo; `coordinator` and `idle-engine` run standalone scripts
+   in `~/.hermes/scripts/`. Pointing all four at the repo made an edit to `estate.py` report
+   `coordinator` as stale. The test re-derives all four roots from `launchctl print`.
+3. **An impossible clock reading is a bound, not a fact.** `ps -o lstart` returns `1 Jan 1970` for
+   pids 1705/1732 — before `kern.boottime`. Believing it painted them permanently amber. Boot time
+   is now the floor and those rows read `up ≥26h` with `may be stale` rather than a false verdict.
+
+**What this deliberately does NOT claim.** It proves *what is running and whether it matches disk*.
+It does not prove the running code is *correct*, and it says nothing about sub-tick engine
+progress — that gap is R5 above and is unchanged by this.
 
 ## R6 — Requirements tracked ✅ this file
 
