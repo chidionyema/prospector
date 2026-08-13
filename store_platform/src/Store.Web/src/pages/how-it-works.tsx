@@ -6,7 +6,7 @@ import { Seo } from '@/components/Seo';
 import { buttonClasses, Icon, textLinkClass } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
-import { RESEARCH_STATS } from '@/lib/stats';
+import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
 import CheckSequence from '@/components/marketing/CheckSequence';
 /* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
    check and needs the whole record (reason, citations), so the names file is not enough. The
@@ -137,9 +137,9 @@ export default function HowItWorks() {
 
         `RESEARCH_STATS` is the same source the home page proof strip uses, so the two pages
         cannot disagree. The rates are computed once, in `lib/stats.ts`, and never re-rounded on
-        this page. Read `passRate` for a sentence about survival and `rejectRate` for one about
-        kills: this line said "{rejectRate}% survive", which printed 94% directly under "1,444
-        ideas in. 80 out." and claimed the filter passes almost everything.
+        this page. Read `passRateLabel` for a sentence about survival and `rejectRateLabel` for
+        one about kills: this line once said "{rejectRate}% survive", which printed 94% directly
+        under "1,444 ideas in. 80 out." and claimed the filter passes almost everything.
       */}
       <Section
         bg="bg"
@@ -150,9 +150,13 @@ export default function HowItWorks() {
           <p className="text-body font-semibold leading-relaxed text-text">
             {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in. {RESEARCH_STATS.survived.toLocaleString('en-GB')} out.
           </p>
+          {/* This line promised that EVERY kill ships published with the evidence behind it. It
+              was false, and false about a number this page reads from the same JSON as the page
+              that states it correctly: 400 of the 1,364, which is what /kill-log says in as many
+              words. `killsSummary` is now the only sentence on the site that pairs a kill count
+              with the verb, and `numbersReconcile.test.ts` scans for the absolute form. */}
           <p className="mt-2 max-w-[60ch] text-meta leading-relaxed text-muted">
-            {RESEARCH_STATS.passRate}% survive. Every kill is published with the evidence that
-            made it.
+            {RESEARCH_STATS.passRateLabel} survive. {killsSummary()}.
           </p>
         </div>
       </Section>
@@ -310,9 +314,15 @@ export default function HowItWorks() {
         title="The kill log"
       >
         <div className="max-w-3xl space-y-6">
+          {/* This paragraph used to promise publication in full for the whole kill set. Only 400
+              of the 1,364 are published, and the button directly below prints 1,364, so the false
+              quantifier and the count it was false about sat within 40px of each other.
+              `killsSummary` owns the honest pairing; what is left here describes what a published
+              kill CONTAINS, which is the thing this section is actually for. */}
           <p className="text-body leading-relaxed text-muted">
-            Every kill is published in full, with the check that fired and the sourced argument
-            that killed it.
+            {RESEARCH_STATS.publishedKills.toLocaleString('en-GB')} of the{' '}
+            {RESEARCH_STATS.killed.toLocaleString('en-GB')} kills are published with the check that
+            fired and the argument that killed it, sources included where the kill had them.
           </p>
           <Link
             href="/kill-log"

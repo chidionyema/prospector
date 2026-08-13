@@ -49,11 +49,11 @@ type Entry = {
 };
 
 const entries = killLog.entries as Entry[];
-/* Read through `RESEARCH_STATS`, not off the JSON. This page used to compute `rejectRate` itself
+/* Read through `RESEARCH_STATS`, not off the JSON. This page used to compute its rejection rate itself
    and then describe its denominator as `killed`, so the meta description shipped "We researched
    1168 business ideas" while /how-it-works said 1,313 from the identical file. `researched` is now
    an invariant (killed + survived) that no page can restate wrongly. See lib/stats.ts. */
-const { killed, researched, rejectRate } = RESEARCH_STATS;
+const { killed, researched, rejectRateLabel } = RESEARCH_STATS;
 // How many of the kills are published here, as opposed to how many happened. These are different
 // numbers (400 vs 1,330) and the page has to be straight about which one it is showing.
 const publishedKills = entries.length;
@@ -253,7 +253,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
     <MarketingLayout>
       <Seo
         title="The kill log, the ideas we killed, and the sourced reason why"
-        description={`We researched ${researched.toLocaleString('en-GB')} business ideas and killed ${rejectRate}% of them. Here are ${publishedKills} of the kills, each with the evidence that killed it.`}
+        description={`We researched ${researched.toLocaleString('en-GB')} business ideas and killed ${rejectRateLabel} of them. Here are ${publishedKills} of the kills, each with the evidence that killed it.`}
       />
 
       {/* Left-aligned, one column, no centred hero (spec §7.4). A centred 22ch headline over a
@@ -294,7 +294,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                 uses for one. */}
             <span className="inline-flex items-center gap-2 text-kill">
               <Glyph name="killed" />
-              {rejectRate}% killed
+              {rejectRateLabel} killed
             </span>
             {/* "published" was the wrong noun on the survivor count: more survived than are on the
                 shelf. `survivorsSummary` states the gap rather than printing whichever of the two
