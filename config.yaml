@@ -67,7 +67,13 @@ operator: [claude_cli, standardcompute, minimax]
 # re-exec to move, while every throughput knob beside it was a config line. Its head changed
 # three times in two weeks (deepseek → claude_cli → standardcompute), each time by editing code
 # to express a billing fact. Blank/absent => the historical default, byte for byte.
-noncritical_operator: [standardcompute, claude_cli, minimax]
+# 2026-08-13: head restored to claude_cli, which is the 2026-08-06 founder decision recorded in
+# CLAUDE.md and which this line had drifted away from. standardcompute's free trial is spent —
+# it answers HTTP 200 with a billing pitch — so heading the chain with it buys a guaranteed
+# failed call before every generation, paid in latency on the way to the brain that works. It
+# stays in the chain as a tier, demoted, not deleted: if the account is ever funded it is the
+# cheapest tier again, and a chain of one is not a chain.
+noncritical_operator: [claude_cli, standardcompute, minimax]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -1202,6 +1208,19 @@ listing:
   # Bound on citations archived per pack, so a long bibliography cannot stall a publish.
   # What is dropped is logged: a silent cap reads as "we archived everything".
   archive_max_urls: 30
+  # ARCHIVE AT VET TIME, NOT ONLY AT PUBLISH (prospector/store.py Store.save, 2026-08-13).
+  # The publish-time call above is too late to do the job it exists for: a pack is often
+  # published weeks after it was vetted, and the Internet Archive cannot snapshot a page
+  # that has already gone. Measured across every pack the lint gate was holding off the
+  # shelf that day: 16 dead cited URLs, only 4 with a memento — and those 4 were snapshots
+  # that already existed, not ones we took. The other 12 had nothing, so pack_linter had no
+  # durable copy to accept in place of the dead link and the packs could not list.
+  # Archiving when the PASS dossier is written catches the page while it is provably alive.
+  # PASS dossiers only — a KILL cannot list, so archiving its citations buys nothing.
+  archive_at_vet: true
+  # Separate, tighter bound: this one runs inside the daemon tick, where wall-clock is a
+  # live complaint, so it must be tunable without touching the publish path's budget.
+  archive_at_vet_max_urls: 12
   # Grammar pass (Harper) on the publish path. Runs in-process, fails OPEN: a missing or
   # broken checker records `grammar_check_unavailable` and blocks nothing, because an
   # absent checker must never unlist a good pack.
@@ -1239,6 +1258,30 @@ listing:
   # predate it. Flip to true once tools/retitle_catalogue.py has landed the rewrite — the
   # same sequence max_grammar_defects_per_1k was introduced in, for the same reason.
   title_block_on_breach: false
+
+  # SHELF COPY (pack_linter.check_shelf_copy). The same actuator pattern, for the class of
+  # defect no check in this repo could see until 2026-08-13: copy that is short, sourced,
+  # true, dash-free and inside its cap, and still unreadable to a website visitor. The
+  # founder read "£180 a claim, filed on the platform's own cover" off the live shelf and
+  # asked what kind of headline that is; the audit that followed found 48 of 50 live packs
+  # carrying at least one defect of this class, every one of them caught by his eye rather
+  # than by the engine.
+  #
+  # Measured on those 50 live rows the day the check was written: 33 ERROR findings across
+  # 23 packs — 18 lines addressed to the service's END CUSTOMER rather than to the buyer,
+  # and 15 unexplained initialisms (IEP, ADA, COSHH, ICB, CIS, STRS, DVSA, FOI, IFA). Zero
+  # false positives in that tier once LED, UV and API were recognised as everyday words.
+  #
+  # TRUE, and the sequence that earned it is the point: measured 33 errors across 23 packs,
+  # repaired the live catalogue (26 packs re-copied, 5 titles rewritten, 1 headline), then
+  # re-measured 0 errors and 0 warnings across all 51 live rows before flipping. Turning it
+  # on first would have unlisted 23 packs that were on sale.
+  #
+  # The 51st row is why it is on. It was published by the daemon DURING the repair, carrying
+  # a defect of exactly this class — which is the whole argument in one row: the copy bar
+  # was being held up by the founder reading lines off the live shelf, and the engine keeps
+  # generating faster than a person can read.
+  shelf_copy_block_on_breach: true
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
   exclusivity: true
@@ -1314,17 +1357,52 @@ listing:
       # Aimed at price PAGES. "market size" queries return analyst press releases whose
       # numbers are not prices, which is precisely the failure the bounds rail below
       # exists to catch as a second line of defence.
+      # 2026-08-13: the middle query used to be "{q} price per month subscription plans".
+      # We were spending a third of our retrieval budget MANUFACTURING the one cadence our
+      # own gate throws away. MEASURED: of 361 accepted anchors, 200 were discarded for
+      # `cadence != one_off` — by far the largest single loss, ahead of the 47 lost to the
+      # missing USD rate — while `cadence_eligible` below admits one_off alone. Asking the
+      # web for monthly plans and then binning the monthly answers is not conservatism, it
+      # is a self-inflicted null. The replacement targets the same buyers at the cadence a
+      # one-off pack actually competes with. Monthly anchors still arrive via the first
+      # query and are still recorded as readable dossier evidence; we simply stop paying to
+      # go and find them.
       queries:
         - "{q} pricing how much does it cost"
-        - "{q} price per month subscription plans"
+        - "{q} one-off fee fixed price one time purchase"
         - "{q} course OR template OR toolkit price"
 
       # FX is DECLARED, never inferred. An anchor in a currency absent from this map is
       # kept as readable evidence in the dossier but carries no pence value and can never
       # move a price — a guessed exchange rate is an unsourced number on the money path.
       # Add a rate here only with a dated source next to the commit that adds it.
+      #
+      # 2026-08-13: USD and EUR declared. Until today this map held GBP alone, which was not
+      # a conservative default — it was a silent, structural discard. MEASURED over every
+      # anchor on disk: 361 accepted anchors across 116 packs, of which 146 (40%) were USD
+      # and every one carried `amount_pence_gbp: null`, so it could never be evidence for
+      # anything. That interacted badly with `market_rung_offset: {us: 1}` below: we charged
+      # a US-market pack one rung MORE on a taxonomy rule while being structurally unable to
+      # read a single US price page as evidence for or against it.
+      #
+      # SOURCE (retrievable, dated): US Federal Reserve statistical release H.10, Foreign
+      # Exchange Rates, release date 2026-08-12, rates for 2026-08-07, quoted as U.S. dollars
+      # per currency unit — https://www.federalreserve.gov/releases/h10/current/
+      #     GBP  1.3498 USD per GBP   ->  USD->GBP = 1 / 1.3498      = 0.74085
+      #     EUR  1.1559 USD per EUR   ->  EUR->GBP = 1.1559 / 1.3498 = 0.85635
+      #
+      # THESE RATES ARE A SNAPSHOT AND THEY GO STALE. That is tolerable here and nowhere
+      # else on the money rail: they convert *evidence* for comparison against a 7-rung
+      # ladder whose narrowest gap is +50% (1999->2999), so a few percent of FX drift cannot
+      # move a rung on its own. They must NEVER be used to price a sale or bill a buyer —
+      # packs are charged in GBP (see the `market` note above). Re-date them from the same
+      # H.10 release when they are next touched; `fx_asof` is what makes staleness visible.
+      fx_asof: "2026-08-07"
+      fx_source: "US Federal Reserve H.10, release 2026-08-12"
       fx_to_gbp:
         GBP: 1.0
+        USD: 0.74085
+        EUR: 0.85635
 
       # A monthly SaaS seat is not comparable to a one-off pack, and the multiplier that
       # would make it so is a commercial judgement, not a retrievable fact. Only one_off
