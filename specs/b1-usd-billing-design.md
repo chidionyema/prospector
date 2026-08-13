@@ -57,13 +57,27 @@ have mints orphan Stripe products. Fifty live packs × a new Price each is fifty
 one. `currency_options` keeps `ProviderPriceId` a single opaque string, so **the catalogue row does
 not change at all** and the fulfilment fence's `ProductId` join is untouched.
 
-> **HYPOTHESIS — this is the go/no-go, and it is not yet proven.** Stripe `Price` objects are
-> immutable in `unit_amount`. I have NOT verified that `currency_options` can be *added to an
-> existing* Price via `Price.update`. If it cannot, the 50 live packs need re-minted Prices and D1
-> collapses into the republish trap above — which changes the whole shape of this work.
-> **Exact check, read-only, one call:**
-> `.venv/bin/python -c "import stripe,os; stripe.api_key=os.environ['STRIPE_SECRET_KEY']; p=stripe.Price.list(limit=1).data[0]; print(stripe.Price.modify(p.id, currency_options={'usd':{'unit_amount':4999}}))"`
-> Run against **test mode keys first**. Do not run this against live without founder sign-off.
+> **RESOLVED 2026-08-13 — the hypothesis holds. D1 stands.** Settled from the API reference
+> without writing anything to Stripe, in either mode. `POST /v1/prices/:id`
+> (<https://docs.stripe.com/api/prices/update>) lists exactly seven updatable parameters:
+> `active`, **`currency_options`**, `lookup_key`, `metadata`, `nickname`, `tax_behavior`,
+> `transfer_lookup_key`. `currency_options` is documented as "a map; each key must be a
+> three-letter ISO currency code and a supported currency". `unit_amount` and `currency` are
+> **absent** from that list, which is the same reference confirming their immutability.
+>
+> So a second currency can be added to each of the 50 existing Prices in place. No Price is
+> re-minted, `ProviderPriceId` stays a single opaque string, the catalogue row does not change,
+> and the republish/orphan-product trap is avoided. **Step 7 of the change set is unblocked.**
+>
+> Two things this does NOT prove, and neither should be assumed at implementation time:
+> 1. **Read-back.** `currency_options` is not returned on a Price by default; retrieving it needs
+>    `expand[]=currency_options`. Any verification step that reads a Price back to confirm the
+>    write must expand, or it will report the write as having silently failed.
+> 2. **Backfill behaviour at 50 objects.** Rate limits, partial failure, and re-running after a
+>    partial pass are untested. The backfill must be idempotent and resumable before it runs
+>    against live — `Price.modify` is a write, so a half-finished backfill leaves the catalogue
+>    in a mixed state. Run it against **test mode first**; live still wants founder sign-off,
+>    but the sign-off is now about the backfill script, not about whether the design is possible.
 
 ### D2 — USD amounts come from a declared USD ladder, never from runtime FX.
 
