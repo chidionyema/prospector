@@ -925,7 +925,7 @@ generation:
 # (config.py:916-917 calls for_profile at load, so the scheduler needs no argument of its
 # own). It existed only as a dataclass default until 2026-08-10 — declared here so the
 # operator surface has a single scalar to patch, and so the live value is readable on disk.
-active_profile: ""
+active_profile: "tech_ai_all"
 profiles:
   # Evidence-steered toward shapes that historically clear the UK moat (store/dossiers
   # PASSes 2026-07): sole-operator / named-regulator compliance packs and statutory
@@ -1540,7 +1540,7 @@ dedup_token_threshold: 0.34
 # prevent, and a rotation the operator believes is running is worse than one plainly refused.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
             revet_provisional_kills: false, gate_generation_on_grounding: true,
-            reload_on_code_change: true, market_rotation: "" }
+            reload_on_code_change: true, market_rotation: "uk,us" }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
