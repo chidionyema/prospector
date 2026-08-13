@@ -6,7 +6,7 @@ import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip } from '@/co
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
-import { RESEARCH_STATS, survivorsSummary } from '@/lib/stats';
+import { RESEARCH_STATS } from '@/lib/stats';
 import { fetchCatalog } from '@/lib/api/client';
 import type { GetServerSideProps } from 'next';
 
@@ -262,13 +262,16 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
         <div className="max-w-3xl">
           <p className="text-caption font-medium text-subtle">The kill log</p>
-          {/* THE HERO, TOKENISED (email §7).
-              The previous headline restated the survivors-vs-listed gap in prose, and the
-              long paragraph under it duplicated what the proof strip on the home page now says.
-              The email's form is two counts and one short claim, all from `RESEARCH_STATS`. */}
+          {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
+              the figure the founder cut on 2026-08-13, because the shelf this page links to holds
+              50. The live shelf count is not promoted into the headline to replace it: it is
+              already in the chip row 200px below, and printing one number twice in one block is
+              the defect this page has fixed twice before ("61 live now" / "60 live now"). The
+              count carries the page on its own, and the caveat four lines down is what qualifies
+              it. Nothing here promises a reason for all 1,364: only 400 came with an argument, and
+              that sentence is already in the caveat rather than contradicted by this headline. */}
           <h1 className="mt-3 text-h1 font-semibold text-text md:text-display">
-            {killed.toLocaleString('en-GB')} killed.{' '}
-            {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived.
+            {killed.toLocaleString('en-GB')} ideas killed.
           </h1>
           <p className="mt-5 max-w-[60ch] text-body text-muted">
             Anyone can claim rigour. This is the receipt: every rejected idea, the argument that
@@ -296,13 +299,17 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
               <Glyph name="killed" />
               {rejectRateLabel} killed
             </span>
-            {/* "published" was the wrong noun on the survivor count: more survived than are on the
-                shelf. `survivorsSummary` states the gap rather than printing whichever of the two
-                numbers happens to flatter the page. */}
-            <span className="inline-flex items-center gap-2 text-survive">
-              <Glyph name="survived" />
-              {survivorsSummary(listed ?? undefined)}
-            </span>
+            {/* The green chip counts what is BUYABLE, not what cleared the gates. It has carried
+                "80 survived" and then "80 survived the checks", both against a shelf of 50; the
+                survivor figure is gone from the site (lib/stats.ts, founder directive 2026-08-13)
+                and this is the number the reader can act on anyway. Omitted entirely when the
+                catalogue call failed, because a chip with no number is not a stat. */}
+            {listed ? (
+              <span className="inline-flex items-center gap-2 text-survive">
+                <Glyph name="survived" />
+                {listed.toLocaleString('en-GB')} on the shelf
+              </span>
+            ) : null}
           </div>
         </div>
       </SectionBand>

@@ -53,7 +53,7 @@ import {
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
 import { useCopyVariant } from '@/lib/useCopyVariant';
-import { RESEARCH_STATS, killsSummary, survivorsSummary } from '@/lib/stats';
+import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
 
 interface HomeProps {
   packs: Pack[];
@@ -1749,9 +1749,9 @@ export default function Home({ packs, stats, initialState, market, currency, per
         `RESEARCH_STATS`; nothing here is typed, so a future batch that changes the totals
         updates the page with it.
 
-        `survivorsSummary(listed)` reconciles the surviving-vs-listed gap on the SAME line as
-        the kill total, so a reader who only reads the proof strip still meets the explanation
-        the home page would otherwise need a second card to state.
+        The strip states no survivor count. It used to, and then it spent a week explaining why
+        that number is bigger than the shelf. The founder cut the figure on 2026-08-13: what is
+        left is the research total, the kill count, and a link to the receipts.
 
         The link is the action the strip earns: the kill log is the receipt behind the strip,
         and a curious reader is one click from it. The "Every idea is checked" section below
@@ -1786,29 +1786,28 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <Section bg="bg" width="7xl" outerClassName="order-1 sm:order-none" className="!py-10 md:!py-12">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="max-w-3xl">
+            {/* TWO COUNTS, BOTH ABOUT KILLING, AND NO SURVIVOR FIGURE. This strip has been wrong
+                three ways in one week, and every version failed for the same reason: it printed
+                the survivor count, which is 80, next to a shelf holding 50. First it printed
+                "80 survived. That's a 6% pass rate" (6% of 1,444 is 87). Then it explained the
+                gap. Then it explained the whole partition. The founder cut the figure instead:
+                the strip now states what we researched and what we killed, and the shelf states
+                its own live count where the copy is about the shelf. Nothing left to reconcile. */}
             <p className="text-body font-semibold text-text">
-              {/* "That's X%" has to name the rate it means. It used to print `rejectRate` directly
-                  after the survivor count, so the sentence read "80 survived. That's 94%." -- the
-                  percentage lands on the nearest number, which is the survivors, and 94% of 1,444
-                  is not 80. Naming it "pass rate" fixes the antecedent and the figure at once. */}
               {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
-              {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s a{' '}
-              {RESEARCH_STATS.passRateLabel} pass rate.
+              {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed on cited evidence.
             </p>
-            {/* The full stop is HERE and not inside `survivorsSummary`, and that is deliberate.
-                Without it the home page ran two sentences together -- confirmed live on
-                2026-08-08, `curl https://mumchimp.com/` renders "...49 are packaged and listed so
-                far The other 1,364 are published...". The helper returns a CLAUSE, and its other
-                two callers (LiveKillCard.tsx:175, kill-log.tsx:286) print it as a standalone stat
-                beside a glyph, where a trailing full stop would be wrong. Punctuation belongs to
-                whoever continues the sentence. */}
-            {/* THE KILL CLAUSE IS A HELPER NOW, and the reason is in `killsSummary`'s doc block:
-                this paragraph asserted a partition that did not close (50 + 1,364 against a
-                printed total of 1,444) and put the word "published" next to 1,364 when 400 kills
-                are published. Neither number is written here any more. */}
-            <p className="mt-2 max-w-[64ch] text-meta text-muted">
-              {survivorsSummary(stats?.listed)}. {killsSummary()}.
-            </p>
+            {/* THIS LINE NAMES NO NUMBER, and every number it used to name was wrong or unasked
+                for. What shipped read "80 survived the checks; 50 are packaged and listed so far.
+                The other 1,364 are published, each with the evidence that killed it." -- a
+                partition of 1,414 printed under a total of 1,444, with "published" attached to
+                1,364 when 400 kills are published. The first repair stated all three denominators
+                inline; the founder cut it on 2026-08-13 as a headache the buyer never asked for.
+                So the only figures on this strip are the three in the line above, all from
+                `RESEARCH_STATS`, which no longer exports a survivor count at all, so no page can
+                reprint it. The receipts live on /kill-log, which the link beside this strip
+                opens. */}
+            <p className="mt-2 max-w-[64ch] text-meta text-muted">{killsSummary()}.</p>
           </div>
           <Link
             href="/kill-log"
@@ -1889,10 +1888,10 @@ export default function Home({ packs, stats, initialState, market, currency, per
           it. A reader who has scrolled past a screen of products is exactly the one with a
           question; a reader who has seen nothing yet just wanted to know what you sell. */}
       <Section bg="bg" width="7xl" className="!pt-0 !pb-10">
-        {/* `listed` is the live catalogue count, so the card can reconcile the two survivor
-            numbers the site prints. It said "81 survived" and the shelf said 57, ~600px apart,
-            and nothing on the page ever explained the 24. */}
-        <LiveKillCard listed={stats?.listed} className="w-full lg:mx-auto lg:max-w-2xl" />
+        {/* This passed `listed` so the card could reconcile the survivor count against the shelf
+            count in prose. Cut on 2026-08-13: the card states the research total, the shelf states
+            its own count, and neither needs to explain the queue between them to a buyer. */}
+        <LiveKillCard className="w-full lg:mx-auto lg:max-w-2xl" />
       </Section>
 
       {/* 3. ONE REAL PACK, SHOWN. Format ambiguity is the biggest killer on a digital download
@@ -1972,9 +1971,13 @@ export default function Home({ packs, stats, initialState, market, currency, per
           <h2 className="text-h1 font-semibold text-text">
             Every idea walks into a room built to destroy it.
           </h2>
+          {/* "everything that survived" was an ALL claim about a population, and it was false in
+              the same way the survivor count was: 80 ideas cleared the gates, 50 are on the shelf.
+              A reader cannot check it either way, so it bought nothing and risked the one thing
+              this page is selling. What is left claims only what the shelf can show. */}
           <p className="mt-4 max-w-[60ch] text-body text-muted">
-            A claim without a source dies before it reaches this shelf. What you’re browsing is
-            everything that survived.
+            A claim without a source dies before it reaches this shelf. Every pack you&rsquo;re
+            browsing came through it.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
             <Link
