@@ -85,7 +85,13 @@ def _automatability_score(val: Any) -> Optional[float]:
     """Coerce a self-reported automatability value to a float in [0, 1], or None if
     it cannot be parsed. Tolerant of the schema being loosely specified: accepts a
     0-1 float, a 0-100 number/percentage, or a word ('high', 'fully automated', ...).
-    None is returned for missing/unintelligible values so the caller decides policy."""
+    None is returned for missing/unintelligible values so the caller decides policy.
+
+    NO CALLER IN THIS MODULE, DELIBERATELY KEPT. `sampling.typicality_score` names this
+    function as the rule it mirrors, so the two self-reported fields coerce identically; a
+    future "dead code" sweep that deletes it leaves that contract pointing at nothing. Its
+    only caller was the `automatability_floor` generation drop, removed 2026-08-13
+    (audit finding #13)."""
     if val is None or isinstance(val, bool):
         return None if val is None else (1.0 if val else 0.0)
     if isinstance(val, (int, float)):
@@ -313,16 +319,6 @@ def generate(
         "Produce up to {k} DISTINCT opportunities. Range widely; if no signal, generate blue-sky\n"
         "ACROSS MANY UNRELATED SECTORS — do not cluster in any single domain."
     )
-
-    # Automatability HARD FLOOR (Part 16). Optional, opt-in: a profile (or config) may set
-    # `generation.automatability_floor` to a 0-1 minimum. When set, candidates whose self-
-    # reported automatability falls below it (or is unintelligible) are dropped at generation
-    # time — turning "no human in the loop" from a soft prompt aim into a guarantee. Unset =>
-    # None => no filtering, byte-for-byte today's behaviour (golden-safe). This is a generation
-    # filter, never a verdict gate: it shapes the candidate pool, it does not judge truth.
-    _floor_raw = gen_cfg.get("automatability_floor")
-    automatability_floor: Optional[float] = (
-        float(_floor_raw) if _floor_raw is not None else None)
 
     # The jurisdiction this run generates for (Epic D). Empty when no markets are
     # configured => candidates carry no market => byte-for-byte pre-Epic-D behaviour.
@@ -681,24 +677,6 @@ def generate(
         # FIX: gen_op for generation, else fall back to op.
         _gen = gen_op or op
         refined_wave_cands = _refine_wave(raw_wave_cands, _gen, lane_directive)
-
-        # Automatability hard floor (opt-in): drop wave candidates below the configured
-        # minimum so later waves backfill toward `target` with only automatable ideas.
-        # A candidate with a missing/unintelligible automatability is dropped too — a
-        # "no human in the loop" guarantee cannot be made for an unknown.
-        if automatability_floor is not None:
-            kept = []
-            for c in refined_wave_cands:
-                sc = _automatability_score(c.automatability)
-                if sc is not None and sc >= automatability_floor:
-                    kept.append(c)
-            dropped = len(refined_wave_cands) - len(kept)
-            if dropped:
-                logger.info(
-                    f"Automatability floor {automatability_floor:.2f}: dropped {dropped} "
-                    f"of {len(refined_wave_cands)} wave candidate(s)",
-                    extra={"floor": automatability_floor, "dropped": dropped})
-            refined_wave_cands = kept
 
         # Re-batch the refined candidates for the diversity loop
         # We preserve the (form, aud) grouping by re-distributing refined cands.

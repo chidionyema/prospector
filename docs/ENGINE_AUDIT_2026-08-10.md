@@ -40,9 +40,30 @@ x 12 increments = 72 expected, 22 recorded, 50 lost).
 | 7 | HIGH | `_one_call`/`_refine_wave` catch `ProviderExhaustedError` as bare `Exception` | **Fixed** | this PR — `generate(diagnostics=...)`, mid-run exhaustion reported by `run_signal` |
 | 8 | MEDIUM-HIGH | `moat_grounded` gate bypassable on the manual `publish_offline` path | **Fixed** | this PR — `dossier.grounded_support`, one function, two callers |
 | 9 | MEDIUM-HIGH | `drain_state.record_unresolved` is an unlocked read-modify-write | **Fixed** | this PR — `fcntl.flock` via `_LedgerLock` |
-| 10-17 | MEDIUM | see §2 | Open | — |
-| 18-22 | LOW / LOW-MEDIUM | see §2 | Open | — |
-| §1 | doc drift | CLAUDE.md / RUN.md claims that are currently false | Open | — |
+| 10 | MEDIUM | Duplicate module-level `_DISCONFIRM_TEMPLATES` shadows the Stage-1 templates | **Fixed** | this PR (`90a9eec`) — A1, four Stage-1 keys merged into the surviving dict |
+| 11 | MEDIUM | Three `retrieval.py` siblings still swallow errors to empty | **Fixed** | this PR (`90a9eec`) — A2, Brave / DeepSeek / MiniMax now `raise` |
+| 12 | MEDIUM | `ContextVar` market authority invisible inside the grounding thread pool | **Fixed** | this PR (`90a9eec`) — A3, `contextvars.copy_context()` + `ctx.run` |
+| 13 | MEDIUM | `automatability_floor` is a quality-based drop inside generation | **Fixed — floor DELETED** | this PR — B4; reasoning below the table |
+| 14 | MEDIUM | `MOAT_PRIMARY` provisional-stamping single-operator gap | Open | B2, not started |
+| 15 | MEDIUM | `score.py`'s scoring fail-safe logs nothing at all | **Fixed** | this PR (`90a9eec`) — A4 |
+| 16, 21 | MEDIUM / LOW | `dense_reward` divides by 6.0 against a composite maxing at 5.0; constants unconfigurable | **Fixed** | this PR (`90a9eec`) — A5, `_DENSE_REWARD_*`. **SCALE BREAK:** every `dense_reward` already in `store/` used /6.0 and is not comparable; deliberately not backfilled |
+| 17 | MEDIUM | `config.py`'s two hardcoded `minimax_fast` defaults disagree | **Fixed** | this PR (`90a9eec`) — A6, one literal |
+| 18 | MEDIUM | `weights` block has no schema validation | **Fixed** | this PR (`90a9eec`) — A7, `_validate_weights`; unknown axis / negative / sum≠1.0 all raise, **no silent rescaling** |
+| 19 | LOW-MEDIUM | Currency is a hardcoded Python default on both `create_price` methods | **Superseded — designed, not implemented** | Founder decision 2026-08-10 upgraded this from a config nit to "charge US buyers in USD". Design: `specs/b1-usd-billing-design.md`. Blocked on one Stripe go/no-go (can `currency_options` be added to an existing Price?) |
+| 20 | LOW | `pricing.py`'s no-ladder fallback price is a hardcoded literal | Open | B3, money rail, not started |
+| 22 | LOW | `verify.py` docstring overclaims "tracks provider_chain" | **Fixed** | this PR (`90a9eec`) — A8 |
+| §1 | doc drift | CLAUDE.md / RUN.md claims that are currently false | **Fixed** | this PR (`90a9eec`) — A10 (all five rows). A9 additionally replaced every stale `operator.py:8xx` citation with the **symbol name**, number dropped, so it cannot go stale again — including the three sites outside A9's allowlist (`config.yaml:9`, `config.yaml:56`, `docs/COMMERCIAL_READINESS_PROGRAM.md:1156`) |
+
+**On #13 — the floor was deleted, not fenced.** The founder delegated the call ("use your best
+judgement"). The decisive argument is not the CLAUDE.md invariant ("nothing is killed at generation
+time") but the weights themselves: `config.yaml`'s `weights:` block was re-cut on 2026-06-25
+*because* rewarding automatability "IS trivially easy to clone = no moat" — `automatability` .20 →
+.15, `defensibility` .15 → .25. A hard floor hands `automatability` an **effective veto**, i.e.
+infinite weight, on the exact axis the composite deliberately demoted. It also dropped on a
+self-graded, pre-retrieval number. Nothing of the intent is lost: the same profile still expresses
+"online, no human in the loop" through `structural_forms` + `focus`, which is steering, not killing.
+`_automatability_score` is **kept** despite losing its only caller — `sampling.typicality_score`
+names it as the rule it mirrors.
 
 Fix #6 deliberately did NOT take the obvious route of excluding `bundle_version` from the fingerprint.
 That would produce *same key + different params*, which Stripe rejects as a hard error — the exact

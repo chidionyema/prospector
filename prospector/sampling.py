@@ -53,7 +53,7 @@ def typicality_directive(cfg: Any, k: int) -> str:
 def typicality_score(val: Any) -> float | None:
     """Coerce a self-reported typicality value to a float in [0, 1], or None if unparseable.
 
-    Mirrors `_automatability_score` (generate.py:66) so the two self-reported fields behave
+    Mirrors `_automatability_score` (in `generate.py`) so the two self-reported fields behave
     identically — the diversity meter reads them the same way and a regression in one is a
     regression in both. Tolerates the schema being loosely specified: accepts a 0-1 float,
     a 0-100 number, a percentage string ("85%"), or a stringified float. None for missing

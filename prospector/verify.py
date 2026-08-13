@@ -67,9 +67,6 @@ def _coerce_verdict(v: str) -> Verdict:
         return Verdict.UNVERIFIABLE
 
 
-
-
-
 def _calc_confidence(sources: list[Source], citations: list[str],
                      check_question: str) -> float:
     """Deterministic confidence from evidence, replacing the LLM's self-calibration.
