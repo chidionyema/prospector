@@ -63,15 +63,50 @@ describe('N3 - Bespoke category icons', () => {
     ).toBe(true);
   });
 
-  it('/ideas page renders BespokeIcon in the category rows', () => {
-    // The flat list of categories on /ideas should use the bespoke icons
-    // instead of the generic Lucide set. The page must import or use the
-    // BespokeIcon component.
+  /*
+   * WAS: "/ideas page renders BespokeIcon in the category rows" -- asserting `<BespokeIcon` in
+   * `pages/ideas/index.tsx`. That assertion was green for months against a page on which the
+   * icons never once drew a category shape, and this is the receipt:
+   *
+   *   `ICON_MAP` (BespokeIcon.tsx:132) is keyed on short kinds -- `evenings`, `developers`,
+   *   `marketplace`, `trades`, `b2b`. `/ideas` passed the LANDING SLUG -- `evening-business-ideas`,
+   *   `business-ideas-for-developers`, `marketplace-and-broker-ideas` (landings.ts:67-242). Not one
+   *   of the 16 slugs is a key in that map, so every call took `?? DefaultIcon` (BespokeIcon.tsx:166)
+   *   and all 14 rendered tiles drew the SAME mark. The test could not see it because it looked for
+   *   the tag, and the tag was there.
+   *
+   * Fixing the keys would not rescue the feature either: the map's 19 kinds resolve to 9 shapes,
+   * so `vertical-software` and `developers` are both the triangle, `marketplace` and `operators`
+   * both the hexagon, `red_tape` and `part_time` both the cross. A shape shared by two unrelated
+   * categories does not identify a category; it decorates one. N3 asked for these icons so the
+   * site would stop leaning on a generic set for category identification, and a generic set is
+   * what a 9-into-16 mapping is.
+   *
+   * So the category rows carry no icon, and the honest assertion is the one below: the component
+   * and its shapes are intact and still tested (the three cases above), and the page does not claim
+   * an identification it cannot make. Flagged to the founder rather than removed quietly, per the
+   * no-silent-feature-removal rule -- the shapes are still here the day a designer draws the
+   * missing seven and the map is keyed on something `/ideas` actually passes.
+   */
+  it('/ideas does not decorate its rows with an icon that cannot identify a category', () => {
     if (!componentExists) return;
-    const usesBespoke = /<BespokeIcon\b/.test(page) || /import\s+BespokeIcon/.test(page);
+    const iconSource = readSource('../components/marketing/BespokeIcon.tsx');
+    const mapBody = iconSource.slice(iconSource.indexOf('const ICON_MAP'));
+    const shapes = new Set(
+      Array.from(mapBody.matchAll(/:\s*([A-Z]\w*Icon)\b/g), (m) => m[1]),
+    );
+    const keys = Array.from(mapBody.matchAll(/^\s*'?([\w-]+)'?:\s*[A-Z]\w*Icon/gm), (m) => m[1]);
     expect(
-      usesBespoke,
-      'pages/ideas/index.tsx must render <BespokeIcon> in the category rows',
+      shapes.size < keys.length,
+      'if every kind ever gets its OWN shape, revisit this: the icons could then identify a row',
     ).toBe(true);
+
+    const landings = readSource('../lib/seo/landings.ts');
+    const slugs = Array.from(landings.matchAll(/slug:\s*'([\w-]+)'/g), (m) => m[1]);
+    const mapped = slugs.filter((s) => keys.includes(s));
+    expect(
+      mapped,
+      'no landing slug is a key in ICON_MAP -- every one would fall through to DefaultIcon',
+    ).toEqual([]);
   });
 });

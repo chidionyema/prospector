@@ -1,10 +1,14 @@
 """`tools/retitle_catalogue.py` — the parts that stand between a bad draft and the live shelf.
 
 The tool rewrites copy on packs that are already on sale, so the interesting behaviour is not
-"does it call the model" but what it does with what the model returns: the title format is
-ASSEMBLED here rather than asked for, every draft goes through the real publish-path checks,
-and a pack that never converges must be skipped rather than truncated. All of it runs against
-a stub operator — no network, no CLI.
+"does it call the model" but what it does with what the model returns: every draft goes
+through the real publish-path checks, and a pack that never converges must be skipped rather
+than truncated. All of it runs against a stub operator — no network, no CLI.
+
+The title is asked for as ONE field. Until 2026-08-13 it was assembled here from `name` and
+`does`, because the format was `Name, what it does` and a model could not be trusted with the
+separator. The format no longer has a name in it (`pack_linter.check_title`), so there is
+nothing to assemble and the composer is gone.
 """
 from __future__ import annotations
 
@@ -49,9 +53,12 @@ ROW = {
 # real rules at once: 'every' is in `_CLAIM_ABSOLUTES`, and '5' is a figure ROW's copy never
 # states. A fixture that cannot pass the gate under test makes the tool look broken when the
 # tool is the only thing behaving.
-GOOD = {"name": "RetainRelease", "does": "chases retention for subbies",
+GOOD = {"title": "Retention chasing for subbies",
         "headline": "You stop writing off the last of the job",
         "card_line": "Retention chased without a solicitor"}
+
+#: 83 chars, and the shape a rejection must survive: too long, but truthful.
+LONG_TITLE = "Retention chasing for building subcontractors owed money after practical completion"
 
 
 def _propose(payloads, needs=None, row=None, **kw):
@@ -62,37 +69,26 @@ def _propose(payloads, needs=None, row=None, **kw):
     return fields, trail, op, notes
 
 
-# --- the title format is assembled, never requested -------------------------------------
+# --- the title arrives as one field and is punctuated in house style ---------------------
 
-def test_the_separator_is_inserted_here_so_the_model_cannot_get_it_wrong():
-    assert retitle._compose("RetainRelease", "chases retention") == \
-        "RetainRelease, chases retention"
-
-
-def test_a_model_that_punctuates_anyway_does_not_produce_a_double_separator():
-    assert retitle._compose("RetainRelease,", ", chases retention") == \
-        "RetainRelease, chases retention"
-
-
-def test_a_dash_smuggled_into_either_field_is_removed_by_nodash():
-    out = retitle._compose("RetainRelease", "chases retention — fast")
+def test_a_dash_smuggled_into_the_title_is_removed_by_nodash():
+    # The same `nodash` the publish path runs, for the same reason: 68 of 72 live listings
+    # once carried an em dash into the catalogue because nothing between the model and the
+    # column removed it.
+    out = retitle._clean("Retention chasing — for subbies")
     assert "—" not in out and "–" not in out
 
 
-def test_a_trailing_full_stop_is_dropped():
-    assert retitle._compose("RetainRelease", "chases retention.").endswith("retention")
-
-
-@pytest.mark.parametrize("name,does", [("", "chases retention"), ("RetainRelease", ""),
-                                       ("", ""), ("  ", " ")])
-def test_a_missing_half_composes_to_empty_rather_than_a_stray_comma(name, does):
-    assert retitle._compose(name, does) == ""
+def test_a_trailing_full_stop_is_dropped_without_spending_a_second_draft():
+    fields, trail, _, _ = _propose([dict(GOOD, title="Retention chasing for subbies.")])
+    assert fields["title"] == "Retention chasing for subbies"
+    assert "accepted" in trail[0]
 
 
 # --- which lines are actually defective -------------------------------------------------
 
 def test_a_row_whose_copy_is_sound_is_left_alone_entirely():
-    row = dict(ROW, title="RetainRelease, chases retention for contractors",
+    row = dict(ROW, title="Retention chasing for building subcontractors",
                headline="You stop writing off the last of the job",  # 'every' is an absolute
                cardLine="Retention chased without a solicitor")
     assert retitle.assess(row) == {}
@@ -100,7 +96,10 @@ def test_a_row_whose_copy_is_sound_is_left_alone_entirely():
 
 def test_an_empty_card_line_is_a_defect_on_its_own():
     # 12 of the 48 live rows have none, which leaves the shelf card to speak for itself.
-    assert list(retitle.assess(ROW)) == ["cardLine"]
+    # ROW's own title is a legacy one and defective in its own right, so it is replaced
+    # here: this test is about the card line being enough on its own.
+    row = dict(ROW, title="Retention chasing for building subcontractors")
+    assert list(retitle.assess(row)) == ["cardLine"]
 
 
 def test_a_headline_that_repeats_the_title_is_a_defect():
@@ -174,7 +173,7 @@ def test_dash_repair_changes_punctuation_and_not_wording():
 
 def test_an_accepted_title_satisfies_the_same_check_the_publish_gate_runs():
     fields, trail, _, _ = _propose([GOOD])
-    assert fields == {"title": "RetainRelease, chases retention for subbies"}
+    assert fields == {"title": GOOD["title"]}
     assert check_title(fields["title"]) == []
     assert "accepted" in trail[0]
 
@@ -186,25 +185,24 @@ def test_only_the_defective_lines_are_returned_so_sound_copy_is_left_alone():
 
 
 def test_an_over_length_draft_is_rejected_and_re_asked_with_the_breach_verbatim():
-    long_does = "chases the retention that main contractors hold back after practical completion"
-    fields, trail, op, _ = _propose([dict(GOOD, does=long_does), GOOD])
-    assert fields["title"] == "RetainRelease, chases retention for subbies"
+    fields, trail, op, _ = _propose([dict(GOOD, title=LONG_TITLE), GOOD])
+    assert fields["title"] == GOOD["title"]
     assert "rejected" in trail[0] and "accepted" in trail[1]
     assert "REJECTED" in op.users[1]
     # The count, verbatim: a vague "too long" gets a draft one character shorter.
-    assert str(len(f"RetainRelease, {long_does}")) in op.users[1]
+    assert str(len(LONG_TITLE)) in op.users[1]
 
 
 def test_a_draft_that_invents_a_figure_is_rejected_not_merely_noted():
     fields, trail, _, _ = _propose(
-        [dict(GOOD, does="recovers 40% of retention"), GOOD])
-    assert fields["title"] == "RetainRelease, chases retention for subbies"
+        [dict(GOOD, title="40% retention chasing for subbies"), GOOD])
+    assert fields["title"] == GOOD["title"]
     assert "40" in trail[0]
 
 
 def test_a_headline_that_still_echoes_the_proposed_title_is_rejected():
     fields, trail, _, _ = _propose(
-        [dict(GOOD, headline="RetainRelease, chases retention for subbies"), GOOD],
+        [dict(GOOD, headline=GOOD["title"]), GOOD],
         needs={"title": ["x"], "headline": ["empty"]})
     assert fields["headline"] == GOOD["headline"]
     assert "repeats the title" in trail[0]
@@ -219,8 +217,7 @@ def test_a_headline_is_graded_against_the_new_title_not_the_broken_one():
 
 
 def test_a_pack_that_never_converges_is_skipped_not_truncated():
-    over = dict(GOOD, does="chases the retention that main contractors hold back after "
-                           "practical completion")
+    over = dict(GOOD, title=LONG_TITLE)
     fields, trail, op, _ = _propose([over, over, over])
     assert fields is None
     assert len(trail) == 3 and all("rejected" in t for t in trail)
@@ -229,20 +226,20 @@ def test_a_pack_that_never_converges_is_skipped_not_truncated():
 
 def test_a_non_dict_response_is_re_asked_rather_than_crashing():
     fields, trail, _, _ = _propose([["not", "a", "dict"], GOOD])
-    assert fields["title"] == "RetainRelease, chases retention for subbies"
+    assert fields["title"] == GOOD["title"]
     assert "operator returned list" in trail[0]
 
 
-def test_an_empty_field_is_re_asked_rather_than_written_as_a_stray_comma():
-    fields, trail, _, _ = _propose([dict(GOOD, does=""), GOOD])
-    assert fields["title"] == "RetainRelease, chases retention for subbies"
+def test_an_empty_field_is_re_asked_rather_than_written_to_the_live_row():
+    fields, trail, _, _ = _propose([dict(GOOD, title=""), GOOD])
+    assert fields["title"] == GOOD["title"]
     assert "empty" in trail[0]
 
 
 def test_max_chars_is_honoured_so_a_narrower_run_is_actually_narrower():
-    fields, _, _, _ = _propose([GOOD, dict(GOOD, name="RR", does="chases retention")],
+    fields, _, _, _ = _propose([GOOD, dict(GOOD, title="Retention for subbies")],
                                max_chars=25)
-    assert fields["title"] == "RR, chases retention"
+    assert fields["title"] == "Retention for subbies"
 
 
 def test_a_word_the_source_never_uses_is_reported_and_does_not_block():

@@ -7,7 +7,7 @@ import { Seo } from '@/components/Seo';
 import { productJsonLd } from '@/lib/productJsonLd';
 import { absolute, breadcrumbNode, graph } from '@/lib/seo/schema';
 import { packOgImagePath } from '@/lib/seo/ogImage';
-import { buttonClasses, Glyph, Icon, ErrorState, Breadcrumbs, SourcedLine, CitationList } from '@/components/ui';
+import { buttonClasses, Glyph, Icon, ErrorState, Breadcrumbs, SourcedLine, CitationList, PriceText } from '@/components/ui';
 import { parseCitations } from '@/lib/citations';
 import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
@@ -310,7 +310,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           sentence looking for the catch. */}
       <span className="text-caption text-subtle">One-time price</span>
       <div className="mt-1">
-        <span className="font-mono text-h2 font-semibold text-text">{priceLabel}</span>
+        <PriceText className="text-h2 font-semibold text-text">{priceLabel}</PriceText>
       </div>
       {/* The hedge sits with the number it hedges. The old note ("£49 at today's rate") named
           the wrong figure -- £49 is the catalogue's source price, the converted one is what the

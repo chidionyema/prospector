@@ -49,8 +49,8 @@ export type { BadgeProps } from './Badge';
 
 export { Breadcrumbs } from './Breadcrumbs';
 
-export { Money } from './Money';
-export type { MoneyProps } from './Money';
+export { Money, PriceText, tightDecimal } from './Money';
+export type { MoneyProps, PriceTextProps } from './Money';
 
 export { MoneyHero } from './MoneyHero';
 export type { MoneyHeroProps } from './MoneyHero';

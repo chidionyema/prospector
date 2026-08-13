@@ -240,9 +240,14 @@ export default function Faq() {
             <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-success/10 text-success">
               <Icon name="mail" size={14} />
             </span>
-            <h4 className="font-semibold text-meta text-text">A human reads every email</h4>
+            {/* `h2`, not `h4`. This is the last top-level section of the page and its heading sits
+                at the same rank as the accordion questions above it; as an `h4` under an `h1` and a
+                run of `h2`s it made the page's outline jump 2 -> 4, which a screen reader announces
+                as two missing levels of structure that a sighted reader never sees. Measured on the
+                rendered page 2026-08-13. Its size is set by `text-meta`, so nothing on screen moves. */}
+            <h2 className="font-semibold text-meta text-text">A human reads every email</h2>
           </div>
-     <div className="space-y-3 text-caption">
+          <div className="space-y-3 text-caption">
             <div className="flex flex-col border-b border-border pb-3">
               <span className="text-muted font-semibold tracking-tight mb-1">Email</span>
               <a href={`mailto:${LEGAL.supportEmail}`} className="inline-block break-all py-[13px] font-medium text-accent transition-colors hover:text-accent-hover">{LEGAL.supportEmail}</a>

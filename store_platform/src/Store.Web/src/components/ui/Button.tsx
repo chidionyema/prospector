@@ -63,7 +63,16 @@ const BASE = cx(
 );
 
 const SIZES: Record<ButtonSize, string> = {
-  md: 'h-10 px-4 text-meta',
+  /*
+   * 44px on touch, 40px from `sm` up. `h-10` everywhere put the site's PRIMARY actions -- "Browse
+   * the catalogue", the newsletter's "Tell me when one survives", the shelf pager's "Next" -- at
+   * 40px on a 390px screen, 4px under the 44x44 minimum this codebase already enforces explicitly
+   * on the header's Search and Menu buttons (`min-h-11 min-w-11`), on `chipClasses`, and on both
+   * footer link columns. Measured by DOM probe at 390px on 2026-08-13. `sm:h-10` means the desktop
+   * rendering is unchanged to the pixel; only the touch viewport grows, which is the only viewport
+   * the floor is about. `lg` (48px) already cleared it.
+   */
+  md: 'h-11 px-4 text-meta sm:h-10',
   lg: 'h-12 px-6 text-body',
 };
 
@@ -130,7 +139,17 @@ export function chipClasses({
   className,
 }: { selected?: boolean; removable?: boolean; className?: string } = {}) {
   return cx(
-    'inline-flex h-8 items-center rounded-sm border text-meta font-medium',
+    /*
+     * 44px on touch, 32px from `sm` up. `h-8` everywhere put the shelf's facet chips, the kill
+     * log's gate filters and the FAQ's category filters at 32px tall on a 390px screen -- measured
+     * on all three pages 2026-08-13 -- which is under the 44x44 minimum Apple's HIG and WCAG 2.5.5
+     * both publish, on the primary control of each of those pages. It is not a contrast or a
+     * labelling problem, so nothing on screen reads as wrong; it just misses, and a filter that
+     * misses reads to the buyer as a filter that does not work. The desktop height is unchanged:
+     * a pointer does not need the target and a 44px chip rail would dominate a page it only
+     * qualifies.
+     */
+    'inline-flex h-11 items-center rounded-sm border text-meta font-medium sm:h-8',
     removable ? 'gap-1.5 pl-3 pr-2' : 'px-3',
     'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',

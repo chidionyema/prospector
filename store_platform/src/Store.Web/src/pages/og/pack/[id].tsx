@@ -152,7 +152,10 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
               display: 'flex',
               backgroundColor: INK,
               color: '#FFFFFF',
-              borderRadius: 8,
+              // The storefront's whole radius scale is 2px (`--radius-sm`/`--radius-md`,
+              // tokens.css:544-545). An 8px pill here made the social card the only surface
+              // in the system with a soft corner. Raw number because Satori cannot read CSS vars.
+              borderRadius: 2,
               padding: '16px 36px',
               fontSize: 32,
               fontWeight: 600,

@@ -98,7 +98,7 @@ export function Seo({
       <link key="icon-svg" rel="icon" href="/icon.svg" type="image/svg+xml" />
       <link key="icon-ico" rel="icon" href="/favicon.ico" sizes="any" />
       <link key="apple-touch-icon" rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      <meta key="theme-color" name="theme-color" content="#0A0A0A" />
+      <meta key="theme-color" name="theme-color" content="#171717" />
       {canonical && <link key="canonical" rel="canonical" href={canonical} />}
       <meta key="og:site_name" property="og:site_name" content={SITE} />
       <meta key="og:type" property="og:type" content={ogType} />
