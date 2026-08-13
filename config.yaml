@@ -1202,6 +1202,19 @@ listing:
   # Bound on citations archived per pack, so a long bibliography cannot stall a publish.
   # What is dropped is logged: a silent cap reads as "we archived everything".
   archive_max_urls: 30
+  # ARCHIVE AT VET TIME, NOT ONLY AT PUBLISH (prospector/store.py Store.save, 2026-08-13).
+  # The publish-time call above is too late to do the job it exists for: a pack is often
+  # published weeks after it was vetted, and the Internet Archive cannot snapshot a page
+  # that has already gone. Measured across every pack the lint gate was holding off the
+  # shelf that day: 16 dead cited URLs, only 4 with a memento — and those 4 were snapshots
+  # that already existed, not ones we took. The other 12 had nothing, so pack_linter had no
+  # durable copy to accept in place of the dead link and the packs could not list.
+  # Archiving when the PASS dossier is written catches the page while it is provably alive.
+  # PASS dossiers only — a KILL cannot list, so archiving its citations buys nothing.
+  archive_at_vet: true
+  # Separate, tighter bound: this one runs inside the daemon tick, where wall-clock is a
+  # live complaint, so it must be tunable without touching the publish path's budget.
+  archive_at_vet_max_urls: 12
   # Grammar pass (Harper) on the publish path. Runs in-process, fails OPEN: a missing or
   # broken checker records `grammar_check_unavailable` and blocks nothing, because an
   # absent checker must never unlist a good pack.

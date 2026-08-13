@@ -10,6 +10,7 @@ All SQL uses parameterised queries. Schema creation is idempotent
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,6 +18,8 @@ from typing import Iterator, Optional
 
 from .config import Config
 from .models import Decision, Dossier
+
+logger = logging.getLogger(__name__)
 
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS dossiers (
@@ -69,6 +72,9 @@ class Store:
 
     def __init__(self, cfg: Config) -> None:
         self._root: Path = cfg.store_dir
+        # Kept so `save()` can archive a PASS dossier's citations at vet time; see the long
+        # note there for why publish time was far too late.
+        self._cfg: Config = cfg
         self._root.mkdir(parents=True, exist_ok=True)
         self._dossier_dir: Path = self._root / "dossiers"
         self._dossier_dir.mkdir(parents=True, exist_ok=True)
@@ -169,6 +175,38 @@ class Store:
     # Public API
     # ------------------------------------------------------------------
 
+    def _archive_citations(self, dossier: Dossier) -> None:
+        """Mint a durable pointer for each citation on a PASS dossier. Never raises.
+
+        Gated on `listing.archive_citations` (the same master switch the publish-time call
+        uses, so archiving is one decision, not two that can disagree) plus its own
+        `listing.archive_at_vet`, and bounded by its own `archive_at_vet_max_urls` — this
+        runs inside the daemon tick, so its cost has to be tunable without touching the
+        publish path's budget.
+        """
+        listing = self._cfg.listing if isinstance(getattr(self._cfg, "listing", None), dict) else {}
+        if not listing.get("archive_citations", False) or not listing.get("archive_at_vet", True):
+            return
+        try:
+            from .archive import archive_sources
+            n = archive_sources(
+                dossier.all_sources,
+                cache_path=self._root / "citation_archive.json",
+                save_new=bool(listing.get("archive_save_new", True)),
+                timeout_s=float(listing.get("archive_lookup_timeout_s", 10.0)),
+                save_timeout_s=float(listing.get("archive_save_timeout_s", 30.0)),
+                max_urls=int(listing.get("archive_at_vet_max_urls",
+                                         listing.get("archive_max_urls", 30))),
+            )
+            if n:
+                logger.info("archived %d citation(s) at vet time for %s", n,
+                            dossier.candidate.candidate_id, extra={"archived_at_vet": n})
+        except Exception:
+            # `archive_sources` does not raise by contract; this is belt-and-braces so that a
+            # ruled verdict can never be lost to an archiving problem.
+            logger.warning("citation archiving at vet time failed; dossier saved regardless",
+                           exc_info=True)
+
     def save(self, dossier: Dossier) -> Path:
         """Persist dossier JSON and upsert the index row. Returns the JSON path.
 
@@ -179,6 +217,43 @@ class Store:
         cid = dossier.candidate.candidate_id
         dec = dossier.decision.value  # "pass" | "kill" | "defer"
         path = self._dossier_dir / f"{cid}.{dec}.json"
+
+        # Snapshot the citations NOW, while the pages are provably alive.
+        # ------------------------------------------------------------------------------
+        # `archive_sources` used to run in exactly ONE place — `bridge.py:813`, at PUBLISH
+        # time. A pack is often published weeks or months after it was vetted, and the
+        # Internet Archive cannot snapshot a page that is already gone. So publish-time
+        # archiving preserved only the citations that did not need preserving.
+        #
+        # Measured 2026-08-13 across every pack the lint gate was holding off the shelf:
+        #
+        #     dead cited URLs across blocked packs : 16
+        #       ...that DO have a Wayback memento  :  4   (pre-existing snapshots `_lookup`
+        #                                                  happened to find — not ours)
+        #       ...with no archive at all          : 12
+        #
+        # `pack_linter` is already built to accept a memento in place of a dead link and
+        # downgrade the error to a warning (`pack_linter.py:854-861`). It had nothing to
+        # accept, so 16 of the 19 lint failures blocking the storefront were dead URLs and
+        # the shelf sat at 50 listed packs.
+        #
+        # This is the same defect shape as the other findings of that day: the safeguard ran
+        # where the damage was MEASURED instead of where the evidence was CREATED. A dossier
+        # is saved in the same run that fetched its sources, so this is the last moment the
+        # page is guaranteed to be as alive as it will ever be.
+        #
+        # It runs BEFORE `to_json()` deliberately — `archive_sources` sets `Source.archived_url`
+        # in place, so archiving after serialisation would write a field nobody ever reads
+        # (the identical ordering constraint `bridge.py` documents against `_create_bundle`).
+        #
+        # PASS only, and never fatal. A KILL cannot list, so paying the archive for its
+        # citations buys nothing; and `archive_sources` swallows its own failures by
+        # contract — the Internet Archive being slow must never be why a verdict fails to
+        # persist. Bounded by its own config key rather than the publish-time one because
+        # this runs inside the daemon tick, where latency is a live complaint.
+        if dec == "pass":
+            self._archive_citations(dossier)
+
         # Atomic write: temp → rename. A SIGKILL mid-write leaves the temp file
         # orphaned (never at the target path); only a completed write lands.
         tmp = path.with_suffix(path.suffix + ".tmp")
