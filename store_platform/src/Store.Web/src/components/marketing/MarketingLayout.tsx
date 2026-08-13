@@ -385,6 +385,12 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 Business ideas that survived the filter. Fully sourced, ready to build.
               </p>
             </div>
+            {/* THE WIDEST-REACHING COPY ON THE SITE, and it printed the survivor count: this
+                footer renders on every page, so "survived 80" sat under a shelf of 50 on all of
+                them, including the pack pages where someone is deciding whether to pay. Pairing
+                killed with RESEARCHED states a subset of a total, which is verifiable and needs no
+                caveat; pairing it with survivors stated a population we could not show. Founder
+                directive, 2026-08-13; the figure is not exported any more (lib/stats.ts). */}
             <dl className="m-0 flex flex-none items-end gap-10">
               <div>
                 <dt className="text-caption text-kill">killed</dt>
@@ -393,9 +399,9 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 </dd>
               </div>
               <div>
-                <dt className="text-caption text-survive">survived</dt>
+                <dt className="text-caption text-subtle">researched</dt>
                 <dd className="m-0 mt-1 font-mono text-h2 font-semibold leading-none tracking-tight text-text">
-                  {RESEARCH_STATS.survived.toLocaleString('en-GB')}
+                  {RESEARCH_STATS.researched.toLocaleString('en-GB')}
                 </dd>
               </div>
             </dl>

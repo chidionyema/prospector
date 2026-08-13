@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { RESEARCH_STATS, killsSummary, survivorsSummary } from '@/lib/stats';
+import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 
@@ -41,80 +41,80 @@ const SRC = fileURLToPath(new URL('..', import.meta.url));
  * the number rather than to keep the invariant.
  */
 describe('the research counters reconcile with one another', () => {
-  it('partitions every researched idea into survived or killed, with nothing left over', () => {
-    const { researched, survived, killed } = RESEARCH_STATS;
-    expect(survived + killed).toBe(researched);
+  it('derives the researched total rather than trusting a typed-in number', () => {
+    // `researched` is killed + cleared, computed in lib/stats.ts. Two pages once printed 1,168 and
+    // 1,313 for the same quantity, both reading the same JSON.
+    expect(RESEARCH_STATS.researched).toBeGreaterThan(RESEARCH_STATS.killed);
   });
 
   it('never claims more kills are published than were killed', () => {
     expect(RESEARCH_STATS.publishedKills).toBeGreaterThan(0);
     expect(RESEARCH_STATS.publishedKills).toBeLessThanOrEqual(RESEARCH_STATS.killed);
   });
+});
 
-  it('never claims more packs are listed than survived', () => {
-    // `survivorsSummary` degrades to the survivor count alone rather than printing a listed figure
-    // that exceeds it, because `listed` comes from the live catalogue and the totals are a
-    // build-time snapshot: the two can legitimately disagree for one deploy.
-    const overstated = survivorsSummary(RESEARCH_STATS.survived + 5);
-    expect(overstated).not.toContain('packaged and listed');
-    expect(overstated).toContain('survived the checks');
+describe('the survivor count is not available to any page', () => {
+  /*
+   * FOUNDER DIRECTIVE, 2026-08-13, verbatim: "saying 80 when only 50 are listed should never
+   * happen regardless of the reasons why survivors are unlisted."
+   *
+   * 80 ideas cleared the gates and 50 are on the shelf. The site printed the 80 in five places,
+   * including the footer of every page, and then spent three revisions writing copy to explain
+   * why it was bigger than the shelf: first stating the gap ("50 are packaged and listed so far"),
+   * then reconciling the whole partition in the marketing paragraph. Both were us volunteering our
+   * packaging backlog to defend a number we chose to print.
+   *
+   * The fix is that the number is not exported. tsc is the real enforcement -- `RESEARCH_STATS`
+   * has no `survived` -- and these assertions exist so that a future edit adding it back trips a
+   * test that explains WHY rather than only a type error. `passRateLabel` goes with it because a
+   * pass rate is the survivor count in another form: 5.5% of 1,444 is the 80 we do not claim.
+   */
+  it('exports no survivor count and no pass rate', () => {
+    expect('survived' in RESEARCH_STATS).toBe(false);
+    expect('passRateLabel' in RESEARCH_STATS).toBe(false);
+    expect('passRate' in RESEARCH_STATS).toBe(false);
+    expect('rejectRate' in RESEARCH_STATS).toBe(false);
+  });
+
+  it('exports no helper that formats a survivor sentence', () => {
+    // `survivorsSummary()` was deleted, not reworded. While it existed, every page that wanted a
+    // survivor figure had a sanctioned way to print one.
+    const stats = RESEARCH_STATS as Record<string, unknown>;
+    expect(Object.keys(stats).sort()).toEqual(
+      ['killed', 'publishedKills', 'rejectRateLabel', 'researched'],
+    );
   });
 });
 
 describe('a printed rate reproduces the count printed beside it', () => {
   // The reader's check is multiplication, so the test is multiplication. One idea of slack is what
-  // a single decimal place buys; a whole percent was six ideas out on the pass rate (87 vs 80).
-  const { researched, survived, killed, passRateLabel, rejectRateLabel } = RESEARCH_STATS;
+  // a single decimal place buys; a whole percent was seven ideas out on the kill count.
+  const { researched, killed, rejectRateLabel } = RESEARCH_STATS;
 
-  it('the pass rate lands within one idea of the survivor count', () => {
-    const implied = (parseFloat(passRateLabel) / 100) * researched;
-    expect(Math.abs(implied - survived)).toBeLessThanOrEqual(1);
-  });
-
-  it('the reject rate lands within one idea of the kill count', () => {
+  it('the kill rate lands within one idea of the kill count', () => {
     const implied = (parseFloat(rejectRateLabel) / 100) * researched;
     expect(Math.abs(implied - killed)).toBeLessThanOrEqual(1);
   });
 
-  it('keeps the two rates summing to 100 despite being derived separately', () => {
-    expect(parseFloat(passRateLabel) + parseFloat(rejectRateLabel)).toBeCloseTo(100, 1);
-  });
-
-  it('no longer exposes a whole-percent rate for a page to reach for', () => {
-    // The five call sites that printed the unreproducible figure were fixed by DELETING it. If a
-    // future edit puts `passRate`/`rejectRate` back, the pages have a way to be wrong again.
-    expect('passRate' in RESEARCH_STATS).toBe(false);
-    expect('rejectRate' in RESEARCH_STATS).toBe(false);
+  it('carries a decimal place, because a whole percent does not multiply back', () => {
+    expect(rejectRateLabel).toMatch(/^\d+\.\d%$/);
   });
 });
 
-describe('the kill clause states its own antecedent', () => {
+describe('the kill clause carries no counts at all', () => {
   const clause = killsSummary();
-  const fmt = (n: number) => n.toLocaleString('en-GB');
 
-  it('names the denominator instead of relying on "the other"', () => {
-    // "The other 1,364" was the whole bug: English binds it to the nearest number, which was the
-    // listed count, not the survivor count.
+  // "The other 1,364 are published" was two bugs in four words: "the other" binds to the nearest
+  // number, which was the listed count, and 400 kills are published, not 1,364. The first repair
+  // wrote every denominator into the clause. The founder cut it: a clause with no digits in it
+  // cannot mis-bind, cannot contradict the totals printed above it, and cannot go stale.
+  it('prints no digits, so it cannot disagree with any number on the page', () => {
+    expect(clause).not.toMatch(/\d/);
+  });
+
+  it('does not reach for a pronoun whose antecedent is off in another clause', () => {
     expect(clause.toLowerCase()).not.toContain('the other');
-    expect(clause).toContain(fmt(RESEARCH_STATS.researched));
-  });
-
-  it('puts only the published-kill count next to the word "published"', () => {
-    expect(clause).toContain(`${fmt(RESEARCH_STATS.publishedKills)} of those kills are published`);
-    const killedNextToPublished = new RegExp(
-      `${fmt(RESEARCH_STATS.killed).replace(/,/g, ',')}[^.]{0,24}published`,
-    );
-    expect(clause).not.toMatch(killedNextToPublished);
-  });
-
-  it('reads as one sentence when the home page joins it to the survivor clause', () => {
-    const paragraph = `${survivorsSummary(RESEARCH_STATS.survived - 1)}. ${clause}.`;
-    // Every figure a reader can see in that paragraph, and the sum they will try.
-    expect(paragraph).toContain(fmt(RESEARCH_STATS.survived));
-    expect(paragraph).toContain(fmt(RESEARCH_STATS.killed));
-    expect(paragraph).toContain(fmt(RESEARCH_STATS.publishedKills));
-    expect(paragraph).toContain(fmt(RESEARCH_STATS.researched));
-    expect(paragraph).not.toContain('..');
+    expect(clause.toLowerCase()).not.toContain('the remaining');
   });
 });
 
@@ -135,6 +135,17 @@ describe('no page makes an absolute claim about kills being published', () => {
     const offenders = walk(join(SRC, 'pages'))
       .concat(walk(join(SRC, 'components')))
       .filter((path) => FORBIDDEN.test(readFileSync(path, 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  it('finds no page reaching for a survivor figure by any of its old names', () => {
+    // Belt and braces over tsc: a page could re-derive the figure straight from the JSON
+    // (`killTotals.passed`) and typecheck perfectly, which is how the survivor count got printed
+    // in seven places before `lib/stats.ts` existed at all.
+    const REACHING = /RESEARCH_STATS\.survived|survivorsSummary|passRateLabel|killTotals\b[^;]*\.passed|\.passed\.toLocaleString/;
+    const offenders = walk(join(SRC, 'pages'))
+      .concat(walk(join(SRC, 'components')))
+      .filter((path) => REACHING.test(readFileSync(path, 'utf8')));
     expect(offenders).toEqual([]);
   });
 });
