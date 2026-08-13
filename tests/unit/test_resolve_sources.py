@@ -41,3 +41,29 @@ def test_truncates_passage_to_max_chars(monkeypatch):
     _patch_resolve(monkeypatch, {"https://a.com"})
     out = R.resolve_sources(items, query="q", max_chars=100, k=4)
     assert len(out) == 1 and len(out[0].text) == 100
+
+
+def test_concurrent_resolves_do_not_share_one_context(monkeypatch):
+    """The workers must each get their OWN copy_context().
+
+    Regression for a bug live from 2026-06-15 (5f95ca7) to 2026-08-13: resolve_sources
+    shared ONE contextvars.Context across its ThreadPoolExecutor. Context.run() raises
+    RuntimeError("cannot enter context ... is already entered") on concurrent entry, so
+    the claude_cli grounding backstop raised on every query returning 2+ URLs.
+
+    The tests above could never catch it: their _resolve stub returns instantly, so the
+    workers never overlap and the violation is unreachable. This one forces the overlap
+    with a real Barrier — it measures the VIOLATION, not the property.
+    """
+    import threading
+
+    bar = threading.Barrier(3, timeout=10)
+
+    def _blocking_resolve(url, timeout=5.0):
+        bar.wait()          # nobody leaves until all three are inside ctx.run()
+        return url
+
+    monkeypatch.setattr(R, "_resolve", _blocking_resolve)
+    items = [{"url": f"https://s{i}.com", "text": f"t{i}"} for i in range(3)]
+    out = R.resolve_sources(items, query="q", max_chars=1500, k=3)
+    assert [s.url for s in out] == ["https://s0.com", "https://s1.com", "https://s2.com"]

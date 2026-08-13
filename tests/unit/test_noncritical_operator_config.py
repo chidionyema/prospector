@@ -65,13 +65,15 @@ def test_bare_string_is_a_one_tier_chain_not_one_tier_per_character():
 
 
 def test_entries_are_stripped_and_blanks_dropped():
-    cfg = SimpleNamespace(noncritical_operator=["  minimax ", "", "   ", "claude_cli"])
-    assert _noncritical_order(cfg) == ("minimax", "claude_cli")
+    # NOT claude_cli: it is barred from this chain since 2026-08-14 and would be stripped,
+    # which would make this test about the ban rather than about whitespace handling.
+    cfg = SimpleNamespace(noncritical_operator=["  minimax ", "", "   ", "standardcompute"])
+    assert _noncritical_order(cfg) == ("minimax", "standardcompute")
 
 
 def test_order_is_preserved_because_a_chain_is_an_order():
-    cfg = SimpleNamespace(noncritical_operator=["minimax", "claude_cli", "standardcompute"])
-    assert _noncritical_order(cfg) == ("minimax", "claude_cli", "standardcompute")
+    cfg = SimpleNamespace(noncritical_operator=["minimax", "deepseek", "standardcompute"])
+    assert _noncritical_order(cfg) == ("minimax", "deepseek", "standardcompute")
 
 
 def test_the_verdict_chain_is_not_reachable_from_this_key():
@@ -100,5 +102,5 @@ def test_loader_omitting_the_key_is_byte_for_byte_the_old_behaviour(tmp_path):
 
 
 def test_loader_honours_a_declared_chain(tmp_path):
-    got = _load_with(tmp_path, lambda r: r.update(noncritical_operator=["minimax", "claude_cli"]))
-    assert got == ("minimax", "claude_cli")
+    got = _load_with(tmp_path, lambda r: r.update(noncritical_operator=["minimax", "deepseek"]))
+    assert got == ("minimax", "deepseek")

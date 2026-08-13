@@ -234,10 +234,19 @@ def resolve_sources(items: list[dict], query: str, max_chars: int, k: int) -> li
     # A ContextVar set in this thread is NOT visible to threads created by .map()/.submit(),
     # so _get_timeout would read the DEFAULT empty authority set and drop the per-market
     # timeout bonus. copy_context() carries the caller's market scope into each worker.
-    ctx = contextvars.copy_context()
+    #
+    # ONE COPY PER WORKER, never one shared copy. Context.run() raises
+    # RuntimeError("cannot enter context ... is already entered") when the SAME Context
+    # object is entered concurrently, and these workers overlap by construction. A single
+    # shared ctx made this function raise 20/20 on 3 URLs the moment _resolve took real time
+    # (measured 2026-08-13) — i.e. ALWAYS in production, NEVER in a test whose _resolve stub
+    # returns instantly. That is why tests/unit/test_resolve_sources.py stayed green from
+    # 2026-06-15 (5f95ca7) while the claude_cli grounding backstop raised on every query
+    # that returned 2+ URLs. The regression test forces the overlap with a Barrier.
+    pairs = [(contextvars.copy_context(), it) for it in cand]
     with ThreadPoolExecutor(max_workers=len(cand)) as ex:
         resolved = list(ex.map(
-            lambda it: ctx.run(_resolve, str(it.get("url", "")), _RESOLVE_TIMEOUT), cand))
+            lambda p: p[0].run(_resolve, str(p[1].get("url", "")), _RESOLVE_TIMEOUT), pairs))
     out: list[Source] = []
     for it, r in zip(cand, resolved):
         if not r:
@@ -246,6 +255,159 @@ def resolve_sources(items: list[dict], query: str, max_chars: int, k: int) -> li
         out.append(Source.make(url=r, text=str(it.get("text", ""))[:max_chars],
                                published_at=it.get("published_at"), query=query))
     return out
+
+
+def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
+                    max_bytes: int = 400_000) -> Optional[str]:
+    """GET a grounding URL and return its readable text, or None.
+
+    THE DEFECT THIS CLOSES. `_resolve()` above sends a HEAD: it proves the host is real and
+    deliberately never reads the body. Every provider then stored the SEARCH ENGINE'S SNIPPET
+    as the passage — `DuckDuckGoSearchProvider` does exactly this at the `item.get("body")`
+    line below. Measured over 11,857 passages from 2026-08-08 onward: mean 222 chars, median
+    217, p90 281, 94.7% under 300. The engine has never read a web page; it ruled every verdict
+    on a search blurb, which is why 67.5% of checks came back `unverifiable` and why we cite
+    pages nobody opened (a URL that 404s is only discovered by the linter months later).
+
+    NEVER RAISES and never returns a worse passage than it was given — the caller keeps the
+    snippet whenever this returns None. A grounding fetch failing is our convenience failing;
+    it must not cost a source, and it must not turn into a false `unverifiable` (this repo has
+    already paid once for an outage that presented as a reasoned kill).
+    """
+    try:
+        import requests
+        from lxml import etree
+        from lxml import html as lxml_html
+    except Exception:                       # noqa: BLE001 — no requests/lxml => keep snippets
+        return None
+
+    resp = None
+    try:
+        resp = requests.get(url, timeout=timeout_s, allow_redirects=True, stream=True,
+                            headers={"User-Agent": _RESOLVE_UA})
+        if resp.status_code >= 400:
+            return None
+        # A PDF/image/zip is not something lxml can turn into prose. An absent Content-Type
+        # is treated as HTML rather than skipped: the parse below is the real gate, and
+        # dropping a page for a missing header would re-introduce the false-drop that the
+        # HEAD-based `_resolve` docstring above spent so long getting rid of.
+        ctype = (resp.headers.get("Content-Type") or "").lower()
+        if ctype and not ("html" in ctype or "xml" in ctype or "text/plain" in ctype):
+            return None
+        buf = bytearray()
+        for chunk in resp.iter_content(8192):
+            if not chunk:
+                continue
+            buf.extend(chunk)
+            if len(buf) >= max_bytes:
+                break
+        if not buf:
+            return None
+        raw = bytes(buf).decode(resp.encoding or "utf-8", errors="replace")
+    except Exception:                       # noqa: BLE001 — network/decode: keep the snippet
+        return None
+    finally:
+        if resp is not None:
+            try:
+                resp.close()
+            except Exception:               # noqa: BLE001
+                pass
+
+    try:
+        doc = lxml_html.fromstring(raw)
+        # Strip the page furniture BEFORE reading any text. Script/style bodies are not prose,
+        # and neither is the nav bar. Leaving either in feeds the verdict brain boilerplate
+        # that dilutes the passage AND inflates the question/passage word overlap that
+        # `verify.py:138` scores confidence on — i.e. it makes grounding look better while
+        # making it worse, which is the one outcome worse than the snippet we started with.
+        # Proven necessary on the first live run: a bare `text_content()` returned
+        # "Skip Navigation Personal Business Find a store Ver en español Shop Deals ..." as
+        # the single longest "upgraded" passage of the batch.
+        etree.strip_elements(doc, "script", "style", "noscript", "nav", "header", "footer",
+                             "aside", "form", "svg", "iframe", "button", "select", "template",
+                             with_tail=False)
+        # Prefer the region the page itself declares as its content. Falling back to the whole
+        # document is deliberate — plenty of real pages (gov.uk guidance among them) use none
+        # of these landmarks, and refusing those would re-create the false-drop problem.
+        text = ""
+        for xp in ("//main", "//article", "//*[@role='main']", "//*[@id='content']"):
+            nodes = doc.xpath(xp)
+            if not nodes:
+                continue
+            candidate = " ".join(nodes[0].text_content().split())
+            if len(candidate) >= 200:
+                text = candidate
+                break
+        if not text:
+            text = " ".join(doc.text_content().split())
+    except Exception:                       # noqa: BLE001 — unparseable markup
+        return None
+    return text[:max_chars] or None
+
+
+class PageTextEnricher(SearchProvider):
+    """Replaces search-result snippets with the actual page text, in place.
+
+    Sits between the provider chain and the DiskCache (see `make_provider`), for two reasons.
+    It must wrap the SINGLE-provider case as well as `FallbackSearchProvider` — `make_provider`
+    skips the fallback wrapper entirely when only one provider is configured, so wiring this
+    into the fallback would have silently done nothing on a one-provider config. And sitting
+    INSIDE the cache means the fetched text is what gets cached, so the page is fetched once
+    per grounding key rather than on every repeat vet.
+
+    A fetch that fails leaves the original snippet untouched: this layer can only ever add.
+    """
+    def __init__(self, inner: SearchProvider, *, timeout_s: float = 8.0,
+                 max_workers: int = 8, min_gain_chars: int = 400,
+                 max_bytes: int = 400_000) -> None:
+        self._inner = inner
+        self._timeout_s = timeout_s
+        self._max_workers = max(1, int(max_workers))
+        self._min_gain = max(0, int(min_gain_chars))
+        self._max_bytes = max_bytes
+
+    @track_latency(name="page_fetch")
+    def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        sources = self._inner.search(query, k=k, max_chars=max_chars)
+        if not sources:
+            return sources
+        start = time.monotonic()
+        from concurrent.futures import ThreadPoolExecutor
+        # The per-market timeout scope lives in a ContextVar that worker threads do not
+        # inherit, so the caller's context has to be carried in explicitly.
+        #
+        # ONE COPY PER WORKER, not one shared copy. `Context.run()` raises
+        # RuntimeError("cannot enter context ... already entered") when the SAME Context
+        # object is entered concurrently, so a single `copy_context()` shared across the pool
+        # fails every fetch the moment two run at once. Proven live 2026-08-13: the first
+        # real-web run logged `page fetch pool failed (RuntimeError); keeping snippets` and
+        # upgraded 0 of 3 passages — the enrichment silently degraded to exactly the snippet
+        # behaviour it exists to replace, while still reporting success.
+        pairs = [(contextvars.copy_context(), s) for s in sources]
+
+        def _one(pair) -> Optional[str]:
+            ctx, s = pair
+            return ctx.run(fetch_page_text, s.url, timeout_s=self._timeout_s,
+                           max_chars=max_chars, max_bytes=self._max_bytes)
+
+        try:
+            with ThreadPoolExecutor(max_workers=min(self._max_workers, len(sources))) as ex:
+                pages = list(ex.map(_one, pairs))
+        except Exception as e:              # noqa: BLE001 — enrichment is strictly optional
+            logger.warning(f"page fetch pool failed ({type(e).__name__}); keeping snippets")
+            return sources
+
+        upgraded = 0
+        for s, page in zip(sources, pages):
+            if page and len(page) >= len(s.text or "") + self._min_gain:
+                s.text = page
+                upgraded += 1
+        audit("page_fetch", query=query[:200], n_sources=len(sources),
+              upgraded=upgraded, latency_ms=int((time.monotonic() - start) * 1000),
+              status="ok" if upgraded else "no_gain")
+        logger.info(f"page fetch: upgraded {upgraded}/{len(sources)} passages",
+                    extra={"upgraded": upgraded, "n_sources": len(sources)})
+        return sources
 
 
 class GeminiGroundingProvider(SearchProvider):
@@ -1580,6 +1742,23 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
         else FallbackSearchProvider(built,
                                     failure_threshold=r.breaker_failure_threshold,
                                     cooldown_s=r.breaker_cooldown_s))
+    # Fetch the PAGE rather than ruling on the search snippet. Wrapped here, not inside
+    # FallbackSearchProvider, because the line above skips that wrapper entirely on a
+    # single-provider config. Never wrapped when fixtures are pinned: the golden-set harness
+    # exists to attribute results to the BRAIN rather than to search variance, and reaching
+    # the live web from it would destroy exactly that property (and make the suite depend on
+    # the network).
+    # `fixtures is None`, NOT `not fixtures`: an EMPTY dict still means fixture mode, and
+    # truthiness let `make_provider(cfg, fixtures={})` wrap a FixtureProvider chain — which
+    # would GET the fixtures' fake URLs over the real network from inside the suite.
+    # `"fixture" in names` covers a config that names the provider without passing a dict.
+    _pinned = fixtures is not None or "fixture" in names
+    if getattr(r, "fetch_pages", False) and not _pinned:
+        base = PageTextEnricher(base,
+                                timeout_s=getattr(r, "fetch_timeout_s", 8.0),
+                                max_workers=getattr(r, "fetch_max_workers", 8),
+                                min_gain_chars=getattr(r, "fetch_min_gain_chars", 400),
+                                max_bytes=getattr(r, "fetch_max_bytes", 400_000))
     if not cfg.retrieval.cache:
         return base
     return DiskCache(base, ttl_s=cfg.retrieval.cache_ttl_s,

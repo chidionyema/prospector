@@ -46,6 +46,24 @@ class Retrieval:
     results_per_query: int = 4
     max_passage_chars: int = 1500
     cache: bool = True
+    # FETCH THE PAGE, don't rule on the search snippet (2026-08-13).
+    # MEASURED over 11,857 grounding passages since 2026-08-08: mean 222 chars, median 217,
+    # p90 281, and 94.7% under 300 — because `_resolve()` sends a HEAD and every provider
+    # stores the search engine's ~220-char RESULT SNIPPET as the passage. `max_passage_chars`
+    # (1500) has therefore never once bound. The verdict prompt already budgets 600 chars per
+    # passage (`verify.VERDICT_PASSAGE_TRUNCATE`), so we were filling 37% of a budget that was
+    # already there. 67.5% of checks ruled `unverifiable`, and grounding failures
+    # (moat_ungrounded + source_or_die) became 54.6% of all kills.
+    # Default OFF so fixtures, golden-set runs and any directly-constructed Retrieval() keep
+    # their current byte-for-byte behaviour; config.yaml turns it on for the live engine.
+    fetch_pages: bool = False
+    fetch_timeout_s: float = 8.0        # per page; a slow page must not extend a vet
+    fetch_max_workers: int = 8          # pages are fetched concurrently, like _resolve
+    # Only REPLACE a snippet when the page yields materially more than we already had.
+    # Without this a bot-walled page returning a 200 + "enable JavaScript" shim would
+    # overwrite a genuinely informative snippet with less than it replaced.
+    fetch_min_gain_chars: int = 400
+    fetch_max_bytes: int = 400_000      # stop reading; some pages are tens of MB
     # DiskCache freshness: cached grounding passages older than this are treated as a
     # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
     # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,
@@ -430,8 +448,11 @@ class Config:
     # whole purpose is "what does the ancillary work cost" could only be moved by editing
     # source and re-execing the daemon, while every throughput knob beside it was a config
     # line. Empty => the historical default below, byte for byte.
+    # claude_cli removed 2026-08-14 (founder: "claude should never be used for non-critical").
+    # Must stay equal to run.py::_NONCRITICAL_ORDER — test_noncritical_operator_config.py pins
+    # the two together, and caught this default drifting when the constant moved.
     noncritical_operator: "str | list[str]" = field(
-        default_factory=lambda: ["standardcompute", "claude_cli", "minimax"])
+        default_factory=lambda: ["minimax", "standardcompute"])
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
     admissibility: Admissibility = field(default_factory=Admissibility)
@@ -901,8 +922,11 @@ def load_config(path: str | Path | None = None) -> Config:
         model_fast=raw.get("model_fast", ""),
         model_version_tag=raw.get("model_version_tag", ""),
         artifact_operator=raw.get("artifact_operator") or ["claude_cli"],
+        # Fourth and last place this chain is declared (dataclass default, run.py's
+        # _NONCRITICAL_ORDER, config.yaml, here). claude_cli removed 2026-08-14 — a default
+        # is a decision, and this one silently outvoted the config every time the key was absent.
         noncritical_operator=(raw.get("noncritical_operator")
-                              or ["standardcompute", "claude_cli", "minimax"]),
+                              or ["minimax", "standardcompute"]),
         retrieval=_validate_retrieval(raw.get("retrieval")),
         thresholds=Thresholds(**(raw.get("thresholds") or {})),
         admissibility=_validate_admissibility(raw.get("admissibility")),

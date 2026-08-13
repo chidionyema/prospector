@@ -147,12 +147,23 @@ def test_make_provider_applies_the_market_salt(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_ddg_provider_receives_the_market_region():
+    """The region must survive whatever wraps the provider.
+
+    `retrieval.fetch_pages` (on since 2026-08-13) puts a PageTextEnricher between
+    make_provider's return value and the DDG provider, so asserting the TOP-LEVEL type
+    pins the chain's shape rather than the region this test is named for. Unwrap
+    explicitly and assert both: the shape AND the region, so neither can drift silently.
+    """
     cfg = load_config().for_market("us")
     cfg.retrieval.provider = "ddg"
     cfg.retrieval.cache = False
     provider = make_provider(cfg)
-    assert isinstance(provider, DuckDuckGoSearchProvider)
-    assert provider.region == "us-en"
+    assert isinstance(provider, retrieval.PageTextEnricher), (
+        "config.yaml retrieval.fetch_pages is on; make_provider must wrap the chain"
+    )
+    inner = provider._inner
+    assert isinstance(inner, DuckDuckGoSearchProvider)
+    assert inner.region == "us-en"
 
 
 def test_ddg_region_is_passed_to_the_library(monkeypatch):

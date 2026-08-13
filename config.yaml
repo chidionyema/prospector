@@ -67,13 +67,20 @@ operator: [claude_cli, standardcompute, minimax]
 # re-exec to move, while every throughput knob beside it was a config line. Its head changed
 # three times in two weeks (deepseek → claude_cli → standardcompute), each time by editing code
 # to express a billing fact. Blank/absent => the historical default, byte for byte.
-# 2026-08-13: head restored to claude_cli, which is the 2026-08-06 founder decision recorded in
-# CLAUDE.md and which this line had drifted away from. standardcompute's free trial is spent —
-# it answers HTTP 200 with a billing pitch — so heading the chain with it buys a guaranteed
-# failed call before every generation, paid in latency on the way to the brain that works. It
-# stays in the chain as a tier, demoted, not deleted: if the account is ever funded it is the
-# cheapest tier again, and a chain of one is not a chain.
-noncritical_operator: [claude_cli, standardcompute, minimax]
+# 2026-08-14 — claude_cli REMOVED, not demoted (founder: "we are over using claude cli and we
+# have Minimax, claude should never be used for non-critical"). This line had it at the HEAD as
+# of 2026-08-13. A failover still runs: measured on the 2026-08-08 republish of 34 packs,
+# claude_cli took 36 calls and 3227s of CLI wall-clock, ~90s each, at full moat price, for work
+# that never rules a verdict. `prospector/run.py::_noncritical_order` also STRIPS claude_cli when
+# it builds the chain, so editing this line back cannot quietly reinstate it.
+#
+# minimax heads it because standardcompute is out of allowance on disk right now —
+# store/provider_health_noncritical.json: strikes 6, last_error "You've used up your free trial".
+# standardcompute stays as the failover tier: a chain of one is not a chain, and it is the
+# cheapest tier again the day the account is funded.
+# NOTE: the moat (`operator:`) and the pack prose (`artifact_operator:`) are UNCHANGED — this
+# directive is about ancillary work, and the £49 deliverable is not ancillary.
+noncritical_operator: [minimax, standardcompute]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -158,6 +165,27 @@ retrieval:
   queries_per_check: 2              # LLM query-gen: 2 distinct queries per check for grounding depth
   results_per_query: 3             # 3 sources per query (~6 passages/check) so checks can reach 'supported'
   max_passage_chars: 1500
+  # FETCH THE PAGE, DON'T RULE ON THE SNIPPET (2026-08-13).
+  # `_resolve()` sends a HEAD — it proves the host is real and never reads the body — so every
+  # provider stored the search engine's ~220-char result blurb as "the passage". MEASURED over
+  # 11,857 grounding passages since 2026-08-08: mean 222 chars, median 217, p90 281, 94.7%
+  # under 300 chars. `max_passage_chars: 1500` above has therefore NEVER ONCE BOUND, and
+  # `verify.VERDICT_PASSAGE_TRUNCATE = 600` means we were filling 37% of a per-passage budget
+  # that was already sitting there. Consequence, from the dossiers: 67.5% of all checks ruled
+  # `unverifiable`; grounding failures (moat_ungrounded + source_or_die) rose from 43.9% to
+  # 54.6% of every kill; the PASS rate fell from ~19% (2026-08-01) to ~1% (2026-08-13). The
+  # engine had never read a web page.
+  # This can only ADD: a failed fetch keeps the snippet, so it cannot cost a source and cannot
+  # manufacture an `unverifiable`. Uses `requests` + `lxml`, both already in the venv — no new
+  # dependency. Never runs under fixtures (golden-set determinism).
+  fetch_pages: true
+  fetch_timeout_s: 8.0
+  fetch_max_workers: 8
+  # Only replace a snippet when the page yields materially more than we already had, so a
+  # bot-wall answering 200 with an "enable JavaScript" shim cannot overwrite a real snippet
+  # with less than it replaced.
+  fetch_min_gain_chars: 400
+  fetch_max_bytes: 400000
   cache: true
   cache_ttl_s: 1209600   # 14 days; cached grounding older than this is re-fetched (0 = never expire)
   # BATCHED LLM query-gen on the fast/non-critical tier (deepseek→minimax). ONE call per

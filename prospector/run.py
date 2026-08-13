@@ -314,7 +314,85 @@ def _get_verify():
 # `cfg.artifact_operator` (the pack prose) are untouched, and claim-check still runs on
 # the moat: a truth gate that vetoes ungrounded copy is not an ancillary call, and this repo
 # holds those on MOAT_PRIMARY.
-_NONCRITICAL_ORDER = ("standardcompute", "claude_cli", "minimax")
+#
+# claude_cli REMOVED ENTIRELY 2026-08-14 (founder directive: "we are over using claude cli and we
+# have Minimax, claude should never be used for non-critical"). Demoting it to failover in 08-08
+# was not enough: a failover still RUNS, and it ran at ~90s and full moat price every time
+# standardcompute so much as blinked. "Never" is only true if the name is absent from the chain,
+# so it is absent here AND stripped in `_noncritical_order` — the rule is enforced where the chain
+# is BUILT, not merely where it is configured.
+#
+# minimax takes the HEAD rather than standardcompute, which the 2026-08-08 directive gave it,
+# because standardcompute is measurably out of allowance — store/provider_health_noncritical.json
+# carries strikes: 6 and last_error "StandardCompute returned an out-of-allowance notice instead
+# of a completion: You've used up your free trial". Heading with it would buy a guaranteed failed
+# call before every generation. It stays as the failover tier: a chain of one is not a chain, and
+# it is the cheapest tier again the day the account is funded.
+_NONCRITICAL_ORDER = ("minimax", "standardcompute")
+
+#: Providers that may never appear on the non-critical chain, whatever config.yaml says.
+_NONCRITICAL_FORBIDDEN = frozenset({"claude_cli", "claude"})
+
+#: How many times the publish path will generate a pack's content before giving up on it.
+#: Mirrors `tools/publish_passes.py:53 MAX_GEN_ATTEMPTS`, deliberately — see
+#: `_generate_pack_content` for why the daemon needs the discipline the repair tool has
+#: always had.
+_MAX_PACK_GEN_ATTEMPTS = 3
+
+
+def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score):
+    """The pack's prose and marketing copy, generated until it is actually sellable.
+
+    Generate, then CHECK, then retry. `generate_artifacts` reports an operator outage as an
+    EMPTY STRING rather than an exception — `artifacts.py:452` turns every per-artifact
+    failure into `results[t] = ""` so that one dead artifact cannot lose the other three.
+    That is defensible inside the fan-out and indefensible at the call site: with no check, a
+    transient provider failure was written to disk as a finished PASS whose build_spec /
+    gtm_plan / ops_plan were empty, published UNLISTED because `pack_complete` is false, and
+    then revisited by nothing, ever.
+
+    Measured 2026-08-13 against the live catalogue: of 24 engine passes not on the shelf, 12
+    are exactly this, and the same three artifacts fail every time — "generation produced
+    nothing" x10 build_spec, x10 ops_plan, x9 gtm_plan. Not one is a bad candidate. Each is a
+    provider hiccup fossilised into a permanently unsellable pack, because the one call that
+    could still have fixed it cheaply — this one, with the candidate and its checks already
+    in memory — did not look at what it got back.
+
+    `tools/publish_passes.py:228` has had this loop since it was written; the daemon's own
+    path never got it, and the daemon is what produces packs. That asymmetry, not the outage,
+    is why the shelf sat at 50 for three days.
+
+    Returns `(artifacts, marketing)` whether or not the pack came out complete: an incomplete
+    pack still publishes UNLISTED, exactly as before, because an unsellable row is still the
+    record that this candidate passed. What changes is that it now says so at ERROR with the
+    gaps named, instead of looking like a success.
+    """
+    from .artifacts import generate_artifacts, generate_marketing_content
+    from .pack_validation import validate_pack
+
+    artifacts: dict = {}
+    marketing: list = []
+    problems: list = []
+    for attempt in range(1, _MAX_PACK_GEN_ATTEMPTS + 1):
+        artifacts = generate_artifacts(
+            op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg, score=score)
+        marketing = generate_marketing_content(
+            op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op, cfg=cfg)
+        complete, problems = validate_pack(artifacts, marketing)
+        if complete:
+            return artifacts, marketing
+        logger.warning(
+            "Pack content incomplete on attempt %d/%d for %s: %s",
+            attempt, _MAX_PACK_GEN_ATTEMPTS, cand.candidate_id, problems,
+            extra={"candidate_id": cand.candidate_id, "attempt": attempt,
+                   "problems": problems})
+
+    logger.error(
+        "Pack content STILL incomplete after %d attempts for %s; it will publish UNLISTED "
+        "and needs `tools/publish_passes.py <dossier>` once the operator is healthy: %s",
+        _MAX_PACK_GEN_ATTEMPTS, cand.candidate_id, problems,
+        extra={"candidate_id": cand.candidate_id, "problems": problems})
+    return artifacts, marketing
 
 
 def _noncritical_order(cfg: Config | None = None) -> tuple[str, ...]:
@@ -338,7 +416,19 @@ def _noncritical_order(cfg: Config | None = None) -> tuple[str, ...]:
     if isinstance(raw, str):
         raw = [raw]
     order = tuple(str(k).strip() for k in (raw or ()) if str(k).strip())
-    return order or _NONCRITICAL_ORDER
+    # Strip Claude, loudly. A config key that can be written from a phone is exactly where a
+    # "never use Claude for ancillary work" rule gets undone by accident, so the fence lives at
+    # the point the chain is BUILT rather than in the file that declares it. Dropping is
+    # deliberate over raising: this runs inside the unattended daemon, and a stale config must
+    # cost a degraded chain and a WARNING, never a dead engine.
+    kept = tuple(k for k in order if k not in _NONCRITICAL_FORBIDDEN)
+    if len(kept) != len(order):
+        logger.warning(
+            "noncritical_operator names %s, which is barred from the non-critical chain "
+            "(founder directive 2026-08-14); using %s",
+            "/".join(k for k in order if k in _NONCRITICAL_FORBIDDEN),
+            "/".join(kept or _NONCRITICAL_ORDER))
+    return kept or _NONCRITICAL_ORDER
 
 
 # ---------------------------------------------------------------------------
@@ -594,7 +684,7 @@ def vet_candidate(
             # parallelized internally (ThreadPoolExecutor) — 4 threads instead of
             # sequential, cutting PASS-survivor latency by ~50%.
             logger.info("Generating publish-time artifacts + marketing content...")
-            from .artifacts import generate_artifacts, generate_marketing_content
+            from .artifacts import generate_artifacts, generate_marketing_content  # noqa: F401
             # The £49 deliverable's prose runs on the quality CLI chain (Gemini CLI -> Claude
             # CLI), not flash-lite. The financial model (Python-computed) and ancillary
             # marketing stay on fast_op; claim-check runs on the moat `op` (a verification gate
@@ -603,12 +693,9 @@ def vet_candidate(
             # `score` (computed just above) is passed explicitly because this call runs
             # BEFORE `build_dossier` below — without it the pack's scorecard artifact ships
             # `score_available: false` (register §27.2 item 4).
-            cand.tags["artifacts"] = generate_artifacts(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg,
+            cand.tags["artifacts"], cand.tags["marketing"] = _generate_pack_content(
+                op, cand, checks, query_op=query_op, quality_op=quality_op, cfg=cfg,
                 score=score)
-            cand.tags["marketing"] = generate_marketing_content(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op, check_op=op,
-                cfg=cfg)
 
     now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -966,8 +1053,36 @@ def run_signal(
     # Instead of vetting ALL prescreened candidates, we select the most diverse 
     # and high-quality subset. This prevents spending moat tokens on near-duplicates.
     from .novelty import select_diverse_candidates
-    target_k = k or getattr(cfg.generation, "candidates_per_signal", 5)
+    # `cfg.generation` is a DICT (config.py builds it from the YAML block verbatim), so the
+    # `getattr(cfg.generation, "candidates_per_signal", 5)` that stood here could never find
+    # the key and silently returned the hardcoded 5 — on EVERY unattended tick, for as long as
+    # the line has existed. Measured 2026-08-13 on the live config: `config.yaml:798` declares
+    # `candidates_per_signal: 50` and this expression evaluated to `5`. The batch funnels agree
+    # (`store/scheduler/batch_diagnostics.jsonl`, five ticks that day): `prescreen_in: 15` and
+    # `novelty_selected: 5` every time. Ten of every fifteen candidates the engine had already
+    # paid to generate, dedup and prescreen were thrown away one step before the moat, and
+    # nothing logged it, because a default is not an error.
+    #
+    # `generate.py:218` reads the same key CORRECTLY (`gen_cfg.get(...)`). That asymmetry is the
+    # whole bug: generation honoured the founder's number and vetting quietly did not, so raising
+    # `candidates_per_signal` bought more candidates and vetted exactly as many as before.
+    #
+    # Read it the way the rest of the codebase reads a config section, and tolerate an object in
+    # case the shape ever changes — never `getattr` alone on something that is a dict today.
+    _gen_cfg = cfg.generation or {}
+    _declared_k = (_gen_cfg.get("candidates_per_signal", 5) if isinstance(_gen_cfg, dict)
+                   else getattr(_gen_cfg, "candidates_per_signal", 5))
+    target_k = k or int(_declared_k)
     kept = select_diverse_candidates(op, prescreened_data, k=target_k)
+    if len(kept) < len(prescreened_data):
+        # Say it out loud. The silent version of this line is why a 3x throughput cut went
+        # unnoticed: the funnel recorded the drop in a JSON file nobody reads per-tick.
+        logger.info(
+            "Novelty selection vetting %d of %d prescreened candidate(s) (cap k=%d from %s)",
+            len(kept), len(prescreened_data), target_k,
+            "--candidates" if k else "config generation.candidates_per_signal",
+            extra={"novelty_selected": len(kept), "prescreened": len(prescreened_data),
+                   "target_k": target_k})
 
     workers = _vet_workers(cfg)
     progress.step(f"vetting {len(kept)} candidate(s) diverse subset live (max {workers} in parallel)…")
