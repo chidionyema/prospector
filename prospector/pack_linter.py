@@ -316,17 +316,54 @@ def check_truncation(fields: Dict[str, Tuple[str, str]],
 # Title format — the marketing headline, and the only copy every surface shows
 # ---------------------------------------------------------------------------
 
-#: The declared shape: a short name, a comma, then what it does for the buyer.
+#: The declared shape (founder decision 2026-08-13, superseding "the name leads" of
+#: 2026-08-09): `<what the business does> for <who pays>`. The trade comes first, in the
+#: words a stranger already knows, because the reader is a person deciding whether to START
+#: this business, not the end customer of the service it sells.
 #: `TITLE_MAX_CHARS` mirrors `CARD_LINE_MAX` (artifacts.py) deliberately — the storefront
 #: already produces a 40-60 char line for the same pack and renders it well, so the title
 #: has no claim to be 90+.
 TITLE_MAX_CHARS = 60
 
-#: The name may be a coined word, an initialism, or a couple of real words. Past that it is
-#: not a name, it is a sentence, and the format is not being followed. Deliberately loose:
-#: this check exists to catch "no format at all", not to arbitrate good names.
+#: Kept for the LEGACY reading of a `Name, descriptor` title (see `split_title`). They no
+#: longer gate `check_title`: under the current format there is no name in the title at all.
 TITLE_NAME_MAX_WORDS = 4
 TITLE_NAME_MAX_CHARS = 30
+
+#: A coined product name — an intercapped word: `HoursBack`, `ScopeDrift`, `CareFeeRefund`,
+#: `SwarmHold`, `SpatWindow`. This is the shape the founder called cryptic on 2026-08-13:
+#: it is the first thing a scanner reads and it means nothing until you already own the pack,
+#: while spending up to half the character budget. All-caps initialisms (`NHS`, `HMRC`, `FSA`)
+#: do NOT match — they are words a reader already knows, which is the whole distinction.
+_TITLE_COINAGE = re.compile(r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b")
+
+#: Openers that are a register breach rather than a wording preference. The imperative
+#: ("Sell …", "Run …") was rejected by the founder as "overused and too blunt" for a £149
+#: pack; the article ("A …", "The …") spends the two characters a scanner reads first.
+#: Deliberately EXCLUDES verbs that are also ordinary nouns in this position — price, cover,
+#: track, harvest, audit, claim — because "Price data for …" and "Standstill cover for …" are
+#: correct titles. A false positive here would block a good line, which is worse than missing
+#: a bad one the prompt already discourages.
+_TITLE_IMPERATIVES = frozenset("""
+    sell run start build launch get find turn earn make grow become stop reverse chase
+    reclaim recover win create own
+""".split())
+_TITLE_ARTICLES = frozenset({"a", "an", "the"})
+
+#: Third-person verbs seen leading the descriptor of live titles on 2026-08-09 ("HoursBack,
+#: finds the pay …", "ScopeDrift, prices the extra work …", "CareFeeRefund, recovers care
+#: fees …"). Under the current format nothing follows a comma except a qualifying phrase.
+_TITLE_THIRD_PERSON = frozenset("""
+    finds prices recovers reverses chases tracks turns gets helps pays sells runs builds
+    makes reclaims wins delivers provides
+""".split())
+
+_TITLE_TRIM = " \t’'\"“”‘’.,;:!?"
+
+
+def _title_word(text: str) -> str:
+    """The first word of `text`, lower-cased and stripped of quoting/punctuation."""
+    return text.strip().split(" ")[0].strip(_TITLE_TRIM).lower() if text.strip() else ""
 
 #: `, ` first, matching TS `TITLE_SEPARATORS` in store_platform/.../lib/discovery.ts. The
 #: dash forms are recognised so this check reads a RAW title honestly if handed one; the
@@ -353,7 +390,7 @@ def split_title(title: str) -> Tuple[str, str]:
 
 def check_title(title: str, *, max_chars: int = TITLE_MAX_CHARS,
                 block: bool = False) -> List[Problem]:
-    """The pack title must read as `Name, what it does` and fit `max_chars`.
+    """The pack title must name the TRADE and its BUYER, and fit `max_chars`.
 
     Why this check exists, and why it is not cosmetic. The title is the ONE string that
     reaches every surface at once — shelf card, pack page H1, `<title>` in search results,
@@ -364,14 +401,34 @@ def check_title(title: str, *, max_chars: int = TITLE_MAX_CHARS,
     correctly-sized `card_line` for 36 of those same packs (min 40, median 52.5, max 60),
     which is the proof that the short form is writable — it just was not being asked for.
 
-    The root cause was a prompt, not a bug: `prompts/generate_system.md` asked for "a short
-    name, then a dash, then what it does" and named no length, so the model obliged on both
-    counts and `nodash` rewrote the mandated dash to `, ` at publish.
+    The 2026-08-09 rule fixed the LENGTH and left the register wrong, because it kept the
+    coined name in front: `SITE_SPEC §5.4` wrote the cost down at the time — "the opening
+    characters are what a scanner reads, and a coined word spends them". On 2026-08-13 the
+    founder read the bill: "the title tells me nothing, it feels cryptic". The deeper defect
+    that surfaced with it is an AUDIENCE error, not a wording one. This storefront sells a
+    business to someone weighing up whether to start it; the titles were addressing the
+    end customer of the service instead — `HoursBack` (id b94760e86e62585a) is sold to a
+    prospective owner for £79.99 and its copy speaks to an NHS doctor about their own rota.
+
+    So the shape is now `<what the business does> for <who pays>`, and what is checked is
+    what can be checked mechanically:
+
+      * it fits `max_chars` and does not end in a full stop;
+      * it carries no coined product name (`_TITLE_COINAGE`);
+      * it does not open with an imperative or an article (`_TITLE_IMPERATIVES`);
+      * nothing after a comma opens with a third-person verb (`_TITLE_THIRD_PERSON`);
+      * it names a buyer at all — " for " or a qualifying clause after a comma.
+
+    What it deliberately does NOT check: whether the trade named is the right one, and
+    whether a multi-word Title Case brand ("Freelance Rate Compass") is a brand or a
+    description. Neither is decidable without judgement, and a false positive blocks a good
+    title, so both stay the prompt's job (`prompts/retitle.md`). This function catches
+    "the format was not followed", never "this is a weak title".
 
     `block` is the ACTUATOR and defaults off. Every breach is reported either way; with
-    `block` false they are warnings, so shipping the check cannot unlist the 46 live packs
-    that predate the rule. Turn it on once the catalogue has been retitled — the same
-    order `max_grammar_defects_per_1k` was introduced in, for the same reason.
+    `block` false they are warnings, so shipping the check cannot unlist packs that predate
+    the rule. Turn it on once the catalogue has been retitled — the same order
+    `max_grammar_defects_per_1k` was introduced in, for the same reason.
     """
     mk = _err if block else _warn
     t = " ".join((title or "").split())
@@ -382,20 +439,262 @@ def check_title(title: str, *, max_chars: int = TITLE_MAX_CHARS,
     if len(t) > max_chars:
         problems.append(mk("title", "title",
                            f"{len(t)} chars exceeds the {max_chars} limit: {t!r}"))
+    if t.endswith("."):
+        problems.append(mk("title", "title", f"ends in a full stop: {t!r}"))
 
-    name, descriptor = split_title(t)
-    if not descriptor:
+    coined = _TITLE_COINAGE.search(t)
+    if coined:
         problems.append(mk(
             "title", "title",
-            f"no descriptor: expected 'Name, what it does', got {t!r}"))
-        return problems
+            f"leads with a coined product name {coined.group(0)!r}, which means nothing to a "
+            f"reader who does not own the pack: say the trade instead — {t!r}"))
 
-    words = name.split()
-    if len(words) > TITLE_NAME_MAX_WORDS or len(name) > TITLE_NAME_MAX_CHARS:
+    opener = _title_word(t)
+    if opener in _TITLE_ARTICLES:
         problems.append(mk(
             "title", "title",
-            f"the part before the separator is a sentence, not a name "
-            f"({len(words)} words, {len(name)} chars): {name!r}"))
+            f"opens with the article {opener!r}, spending the characters a scanner reads "
+            f"first: {t!r}"))
+    elif opener in _TITLE_IMPERATIVES:
+        problems.append(mk(
+            "title", "title",
+            f"opens with the imperative {opener!r}; the register is a noun phrase naming the "
+            f"business, not an instruction to the reader: {t!r}"))
+
+    head, sep, tail = t.partition(", ")
+    if sep:
+        after = _title_word(tail)
+        if after in _TITLE_THIRD_PERSON:
+            problems.append(mk(
+                "title", "title",
+                f"the part after the comma opens with the verb {after!r}; the title says what "
+                f"the business IS, and a comma qualifies it: {t!r}"))
+    elif " for " not in f" {t.lower()} ":
+        problems.append(mk(
+            "title", "title",
+            f"names no buyer: expected '<what the business does> for <who pays>', got {t!r}"))
+    return problems
+
+
+# ---------------------------------------------------------------------------
+# Shelf copy — the short buyer-visible lines, graded as writing a stranger reads
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS. On 2026-08-13 the founder read a live card line back — "£180 a claim,
+# filed on the platform's own cover" — and asked whether it made sense to a website
+# visitor. It did not, and it passed every check in this file: short, sourced, true, in
+# register, dash-free, inside its cap. An audit of the 50 live packs that afternoon found
+# 48 carrying at least one copy defect of a class nothing here could see, and every one of
+# them had been caught by the founder's eye rather than by the engine. A quality bar held
+# up by one person reading every line is not a business operation, which is the whole
+# reason these are functions and not another paragraph in `prompts/style/voice.md`: a
+# prompt is a request evaluated by the same process that produces the error.
+#
+# SCOPE IS THE SHORT LINES ONLY, named explicitly in `SHELF_FIELDS`. Body prose is graded
+# by `check_grammar`; these rules assume a single line written to a stranger and would
+# misfire on a paragraph. Selecting a corpus by shape instead of by name is how
+# `check_identifier_leak` once graded a .csv as writing.
+#
+# WHAT IS MECHANICAL AND WHAT IS NOT. Five classes below are decidable — an ellipsis, a
+# duplicate, our own filing vocabulary, an unexplained initialism, and copy addressed to
+# the end customer. The sixth, "this line does not parse to a stranger", is not: the
+# founder's own example carries a verb, cites a real number and is grammatical. It is
+# reported at `warning` with a stated false-positive rate, following the same doctrine as
+# the title checks below — name the residue for the reviewer rather than pretend a regex
+# ruled on it.
+
+#: Every field this grades, by NAME. Both spellings of each are listed because the
+#: catalogue row uses camelCase (`cardLine`) and the pack model uses snake (`card_line`),
+#: and a field that reaches the gate under the other spelling is silently ungraded.
+SHELF_FIELDS = frozenset({
+    "title", "headline", "subhead",
+    "cardLine", "card_line", "oneLine", "one_liner", "one_line",
+})
+
+#: Initialisms a capable adult outside the sector already knows, so they cost the reader
+#: nothing. Everything else must be spelled out: `prompts/style/voice.md` puts it as "they
+#: have never heard of any acronym you are about to use". The 14 live packs that failed
+#: this on 2026-08-13 used FSA, CIS, IEP, COSHH, FOI, ICB, DVSA, HSE, ADA and CalSTRS —
+#: each one a word the trade says to itself. Adding to this list is a claim that a stranger
+#: knows the term; make it deliberately.
+#: Measured against the 50 live packs on 2026-08-13: with this list, every remaining hit
+#: was a real defect (IEP, ADA, COSHH, ICB, CIS, STRS, DVSA, FOI, IFA) and none was a false
+#: positive. LED, UV and API are here because they are everyday words to a general reader,
+#: which is the only test that matters — not because they are short.
+KNOWN_INITIALISMS = frozenset("""
+NHS HMRC DWP DVLA MOT PAYE VAT ISA GP GPS CV DIY PDF CSV TV CCTV PPE LED UV
+UK US USA EU EEA IRS DMV FBI FDA CDC EPA USDA
+AI IT HR API CEO CFO CTO MP MPs PhD BBC
+""".split())
+
+#: Words, for the lexicon tests. Apostrophes stay inside the token so "you're" survives as
+#: one word; hyphens split, so "unpaid-hours" tests as "unpaid" and "hours".
+_SHELF_WORD_RE = re.compile(r"[a-z][a-z'’]*")
+
+#: A run of two or more capitals inside a word. Catches the bare initialism (`FSA`) and the
+#: one hiding in a mixed-case token (`CalSTRS` → `STRS`) with the same rule, which matters
+#: because the second shape reads as a proper noun and slips past a token-equality test.
+_CAPS_RUN_RE = re.compile(r"[A-Z]{2,}")
+
+#: Our filing system, leaking onto the shelf. `voice.md`: "a reader who meets one of these
+#: words has been handed our filing system by mistake". `pack` and `dossier` are NOT here —
+#: the storefront sells a thing it calls a pack, so that is the reader's word too.
+INTERNAL_VOCAB = frozenset("""
+lens lenses wedge wedges moat moats prescreen taxonomy candidate candidates
+""".split())
+
+#: Any snake_case token is ours by construction — `risk_financing`, `durable_wedge_type`,
+#: `weak_monetisation`, `ambition_tier`. No line written for a buyer contains an underscore.
+_TAXONOMY_TOKEN_RE = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+
+#: Trade shorthand and register breaches from `voice.md`'s "prefer the everyday word".
+#: These are warnings, not errors: each is legitimate ONCE the plain description has been
+#: given first ("no assessor and no argument (the trade calls this 'parametric')"), and
+#: whether that gloss is present is not decidable here.
+TRADE_SHORTHAND = frozenset("""
+parametric indemnify indemnifies indemnified indemnity procure procures procurement
+thereby ceases cease aforementioned herein utilise utilises heretofore
+""".split())
+
+#: Second person on the shelf, in ANY direction. The rule is stated as register — these
+#: lines describe the business in the third person — because that is the decidable test,
+#: and the two cases behind it cannot be told apart by a machine. 18 of the 19 live
+#: instances on 2026-08-13 were copy written to the END CUSTOMER of the service:
+#: "calculates your holiday pay entitlement" talks to the worker, when the buyer is the
+#: person deciding whether to run holiday-pay audits at all. `voice.md` calls that "the
+#: most expensive mistake available here, because it reads fluently and is aimed at nobody
+#: who can buy". The 19th ("setting yourself up to certify other electricians' wiring")
+#: did address the buyer, and was still shorter and better in the third person.
+_SECOND_PERSON_RE = re.compile(r"\b(you|your|yours|you're|yourself|yourselves)\b", re.I)
+
+#: Finite verbs, for the residue check only. THE BARE INFINITIVES ARE DELIBERATELY ABSENT
+#: and this is the whole precision of the check: `cover`, `claim`, `check`, `file`, `pay`,
+#: `work`, `run` and `list` are all nouns in shelf copy, and including them scored a verb
+#: for "£180 a claim, filed on the platform's own cover" — the exact line the founder
+#: rejected. Only third-person-singular and copula/modal forms count, because a shelf line
+#: that says something is a present-tense statement about the business.
+#: This warns rather than errors because the lexicon cannot be complete: "the platform
+#: already bought" is finite, absent here, and a perfectly good line.
+_FINITE_VERBS = frozenset("""
+is are was were has have had does did can will would should must may might
+pays recovers reclaims refunds covers claims files reads finds tells shows builds
+makes checks audits chases tracks matches flags sells runs writes sends turns takes
+gives works costs saves charges earns owes wins proves names lists ranks scores sorts
+handles prepares drafts submits appeals spots catches stops starts keeps holds
+lets helps needs wants gets puts sits comes goes means counts
+""".split())
+
+#: Dedup attribution order: the title is the canonical line, so when a headline or card
+#: line repeats it the finding is reported against the REPEAT, not against the title. Any
+#: field not named here sorts after these, alphabetically.
+_SHELF_DEDUP_ORDER = ("title", "headline", "subhead", "cardLine", "card_line",
+                      "oneLine", "one_liner", "one_line")
+
+#: Normalisation for the duplicate test: case, punctuation and spacing all differ between
+#: the three lines without the reader gaining anything, so "Unpaid-hours audits for NHS
+#: doctors" and "unpaid hours audits for nhs doctors." are the same line said twice.
+_DEDUP_STRIP_RE = re.compile(r"[^a-z0-9 ]+")
+
+
+def _dedup_key(text: str) -> str:
+    return " ".join(_DEDUP_STRIP_RE.sub(" ", (text or "").lower()).split())
+
+
+def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
+                     report_residue: bool = False) -> List[Problem]:
+    """Grade the short buyer-visible lines the way a website visitor reads them.
+
+    `fields` is the same `house` mapping the other house checks take; only the names in
+    `SHELF_FIELDS` are graded, so passing a whole pack is safe.
+
+    `block` is the actuator, exactly like `check_title`'s: off, every finding is a
+    `warning` and the receipt accrues on live packs; on, the mechanical five become
+    `error`, which `lint_pack` turns into `ok=False` and the publish path ANDs into
+    `is_listed`.
+
+    `report_residue` adds the "reads as a fragment" check, which is a reviewer's tool and
+    never an actuator: it warns under either `block` setting, and it is off by default
+    because it cannot be complete. Measured on the 50 live packs of 2026-08-13 it named all
+    four card lines the founder rejected, at a cost of 43 findings over 200 fields.
+    """
+    problems: List[Problem] = []
+    mk = _err if block else _warn
+    graded = {k: v for k, v in sorted(fields.items())
+              if k in SHELF_FIELDS and isinstance(v, str) and v.strip()}
+
+    for name, raw in graded.items():
+        text = raw.strip()
+
+        # 1. A shelf line that trails off. `check_truncation` fires only where it can PROVE
+        #    the cut landed mid-word against a source; on the shelf the line IS the whole of
+        #    the copy, so an ellipsis is a defect whether or not the cut was clean. 29 of the
+        #    50 live one-liners ended this way on 2026-08-13.
+        if text.endswith("…") or text.endswith("..."):
+            problems.append(mk("shelf_copy", name,
+                               f"trails off on the shelf, where the line is all the reader gets: ...{text[-40:]!r}"))
+
+        # 2. Our filing system on the shelf.
+        lowered = text.lower()
+        vocab_hits = sorted({w for w in _SHELF_WORD_RE.findall(lowered) if w in INTERNAL_VOCAB})
+        taxonomy_hits = sorted(set(_TAXONOMY_TOKEN_RE.findall(text)))
+        if vocab_hits or taxonomy_hits:
+            problems.append(mk("shelf_copy", name,
+                               f"uses our internal vocabulary, not the reader's: "
+                               f"{', '.join(vocab_hits + taxonomy_hits)} in {text!r}"))
+
+        # 3. An initialism the reader has never met.
+        unknown = sorted({run for run in _CAPS_RUN_RE.findall(text)
+                          if run not in KNOWN_INITIALISMS})
+        if unknown:
+            problems.append(mk("shelf_copy", name,
+                               f"unexplained initialism(s) {', '.join(unknown)} — spell it out in full; "
+                               f"the reader has never heard of it: {text!r}"))
+
+        # 4. Written to the wrong reader.
+        second = _SECOND_PERSON_RE.search(text)
+        if second:
+            problems.append(mk("shelf_copy", name,
+                               f"second person on the shelf: {second.group(0)!r} — these lines describe "
+                               f"the business in the third person, and copy written to the service's "
+                               f"end customer is aimed at nobody who can buy: {text!r}"))
+
+        # 5. Trade shorthand, and the residue. Both advisory under either setting.
+        shorthand = sorted({w for w in _SHELF_WORD_RE.findall(lowered) if w in TRADE_SHORTHAND})
+        if shorthand:
+            problems.append(_warn("shelf_copy", name,
+                                  f"trade shorthand {', '.join(shorthand)} — give the plain description "
+                                  f"first, then the term: {text!r}"))
+        # The residue, OFF unless a reviewer asks for it. `title` is exempt under either
+        # setting, and that is not a concession to the false-positive rate:
+        # `prompts/retitle.md` requires a noun phrase there ("write a noun phrase that
+        # names the trade the way a professional would say it"), so a title with no finite
+        # verb is the declared shape. It stays off by default because `lint_pack`'s receipt
+        # is asserted empty for a clean pack (`test_lint_pack_clean_is_ok_and_json_
+        # serializable`), and a check that cannot be complete has no business spending that
+        # contract. The copy-review sweep turns it on; the publish path does not.
+        if (report_residue and name != "title"
+                and not any(w in _FINITE_VERBS for w in _SHELF_WORD_RE.findall(lowered))):
+            problems.append(_warn("shelf_copy", name,
+                                  f"reads as a fragment, with no finite verb — a short line is still a "
+                                  f"sentence: {text!r}"))
+
+    # 6. The same line twice. The shelf shows title and card line together and the pack page
+    #    shows title and headline together, so a repeat spends the page's most valuable line
+    #    saying nothing new. 13 of 48 live packs repeated their title as their headline.
+    keys: Dict[str, str] = {}
+    ordered = sorted(graded.items(),
+                     key=lambda kv: (_SHELF_DEDUP_ORDER.index(kv[0])
+                                     if kv[0] in _SHELF_DEDUP_ORDER
+                                     else len(_SHELF_DEDUP_ORDER), kv[0]))
+    for name, raw in ordered:
+        k = _dedup_key(raw)
+        if not k:
+            continue
+        if k in keys:
+            problems.append(mk("shelf_copy", name,
+                               f"repeats `{keys[k]}` verbatim; the reader learns nothing new: {raw.strip()!r}"))
+        else:
+            keys[k] = name
     return problems
 
 
@@ -577,16 +876,23 @@ def check_claims(text: str, sources: Iterable[str], *, market: str = "",
 
 def check_title_claims(title: str, sources: Iterable[str], *, market: str = "",
                        block: bool = False) -> List[Problem]:
-    """`check_claims` applied to the descriptor half of a title.
+    """`check_claims` applied to the WHOLE title.
 
-    Returns [] for a title with no descriptor: `check_title` has already reported that the
-    format was not followed, and adjudicating the claims of a string that is not in the
-    format would report the same defect twice under a second name.
+    It used to read the descriptor half only, and return [] when there was no separator: a
+    title with no descriptor was already reported by `check_title`, and adjudicating the
+    claims of a string that is not in the format reported one defect twice.
+
+    That exemption became a hole on 2026-08-13, when the format stopped carrying a name.
+    Under `<what the business does> for <who pays>` there is no separator to find, so the
+    truth rule — the reason this storefront can say source-or-die — was silently inert on
+    every correctly-formatted title. The half it used to skip was a coined product name,
+    which no longer appears in a title at all, so there is nothing left worth exempting and
+    the whole string is judged.
     """
-    _, descriptor = split_title(" ".join((title or "").split()))
-    if not descriptor:
+    t = " ".join((title or "").split())
+    if not t:
         return []
-    return check_claims(descriptor, sources, market=market, block=block, where="title")
+    return check_claims(t, sources, market=market, block=block, where="title")
 
 
 # ---------------------------------------------------------------------------
@@ -595,6 +901,18 @@ def check_title_claims(title: str, sources: Iterable[str], *, market: str = "",
 
 _DEAD_STATUSES = frozenset({404, 410})
 _URL_CACHE_TTL_S = 7 * 86400
+
+#: "Come back later", not an answer about the resource. Only the memento probe treats these
+#: specially: a live citation that 503s is already handled (anything not in `_DEAD_STATUSES`
+#: passes), while a memento that 503s was silently failing the pack.
+_THROTTLED_STATUSES = frozenset({429, 503})
+
+#: Retry ladder for a throttled memento probe. Short on purpose — this runs inside a publish.
+_MEMENTO_BACKOFF_S = (3.0, 9.0)
+
+#: Wayback PLAYBACK reassembles a stored page, so it is seconds slower than probing a live URL.
+#: The citation probe's 5s default was timing mementos out and reading that as "not servable".
+_MEMENTO_TIMEOUT_S = 20.0
 
 #: Bumped whenever the probe's VERDICT LOGIC changes, and mixed into the cache key. Without
 #: it, the 7-day TTL would keep serving verdicts a fixed probe would no longer reach:
@@ -677,11 +995,29 @@ def _memento_alive(memento: str, cache: Dict[str, Any], now: float, timeout_s: f
     key = f"v{_PROBE_LOGIC_VERSION}|memento|{memento}"
     entry = cache.get(key)
     if entry and now - entry.get("ts", 0) < _URL_CACHE_TTL_S:
-        status = entry.get("status")
-    else:
-        status, note = _probe_url(memento, timeout_s)
-        cache[key] = {"status": status, "note": note, "ts": now}
-    return status is not None and status < 400
+        return bool(entry.get("status") is not None and entry["status"] < 400)
+
+    # Neither a throttle nor a timeout is a probe RESULT; both are the archive declining to
+    # answer, and both were reading as "not alive". Measured 2026-08-13 on
+    # `5e8f3b69369be3a8`: replaying the same lint with a longer budget turned its one blocking
+    # error into a warning and the pack lints clean, so the escape hatch was being shut on a
+    # pack whose evidence WAS archived. Two causes, both here — web.archive.org PLAYBACK is far
+    # slower than the citation probe this timeout was sized for (a live 404 answers instantly),
+    # and it 503s a caller that has just walked its index.
+    #
+    # Neither outcome is ever cached: a 7-day entry would pin our own throttling onto the
+    # memento long after the archive recovered, which is the same defect this module has now
+    # found three times.
+    budget = max(timeout_s, _MEMENTO_TIMEOUT_S)
+    for backoff in (*_MEMENTO_BACKOFF_S, None):
+        status, note = _probe_url(memento, budget)
+        if status is not None and status not in _THROTTLED_STATUSES:
+            cache[key] = {"status": status, "note": note, "ts": now}
+            return status < 400
+        if backoff is None:
+            break
+        time.sleep(backoff)
+    return False        # unproven, so the citation's error stands — see the docstring
 
 
 def check_urls(texts: Dict[str, str], *, cache_path: Optional[Path] = None,
@@ -775,6 +1111,7 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               archived_urls: Optional[Mapping[str, str]] = None,
               title_max_chars: int = TITLE_MAX_CHARS,
               title_block_on_breach: bool = False,
+              shelf_copy_block_on_breach: bool = False,
               grammar_enabled: bool = False,
               max_grammar_defects_per_1k: float = 0.0) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
@@ -807,6 +1144,13 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
         if _rendered:
             house.setdefault(_name, _rendered)
     problems += check_house_dashes(house)
+
+    # Same corpus as the dash check, graded as writing rather than as characters. It takes
+    # the whole of `house` and selects `SHELF_FIELDS` itself, so a caller that starts
+    # passing another short line gets it graded without a second wiring change — which is
+    # how `cardLine`, the field the founder's 2026-08-13 complaint was actually about, came
+    # to be linted by nothing at all.
+    problems += check_shelf_copy(house, block=shelf_copy_block_on_breach)
 
     # The title is read from `house` rather than taking its own parameter: it is already
     # the field house_fields exists to carry, and a second entry point is how a caller ends

@@ -664,10 +664,36 @@ class EngineBridge:
         # that, and that is a money-rail operation with its own hazards. The storefront repairs
         # what it is handed (`store_platform/src/Store.Web/src/lib/copy.ts`); this stops any
         # further row being written broken in the first place.
-        if len(one_liner) > 150:
-            head = one_liner[:150].rstrip()
-            cut = head.rsplit(" ", 1)[0] if " " in head else head
-            one_liner = cut.rstrip(" ,;:-–—") + "…"
+        # CUT ON A SENTENCE, AND ONLY WHEN THE STRING IS GENUINELY LONG.
+        #
+        # The word-boundary fix above stopped the cut landing mid-word, but it left the far more
+        # common defect in place: a product description that stops mid-SENTENCE and trails off.
+        # Audited on 2026-08-13, 29 of the 50 live packs ended in `…`, and the live page prints
+        # that string three times ("…into a priced, dated change note the client…"). Median full
+        # length is 154 characters, so a 150 cap truncated most of the shelf by one or two words.
+        #
+        # 150 was never a display constraint. The card that renders this already clamps to two
+        # lines in CSS (`store_platform/src/Store.Web/src/components/discovery/DossierCard.tsx:57`,
+        # `line-clamp-2`), so the browser was going to elide it anyway. Truncating in the DATA
+        # bought nothing and mutilated the pack page, where the same string is the lead paragraph
+        # and has room for all of it. Clamp visually, store whole.
+        #
+        # 280 rather than "no limit" because a payload field still needs a bound. At 280 only 5
+        # of 50 exceeded it, all single runaway sentences that were rewritten by hand.
+        if len(one_liner) > 280:
+            kept = ""
+            for sentence in re.split(r"(?<=[.!?])\s+", one_liner):
+                if len(kept) + len(sentence) + 1 > 280:
+                    break
+                kept = f"{kept} {sentence}".strip()
+            if kept:
+                one_liner = kept
+            else:
+                # No sentence boundary inside the cap: fall back to the word-boundary cut, which
+                # is the only case that may still ship a `…`.
+                head = one_liner[:280].rstrip()
+                cut = head.rsplit(" ", 1)[0] if " " in head else head
+                one_liner = cut.rstrip(" ,;:-–—") + "…"
 
         # Per-pack catalog metadata: the structured listing fields + a safe sample excerpt +
         # the Python-computed economics teaser + moat trust signals. This is what lets the
@@ -869,7 +895,17 @@ class EngineBridge:
             # point. That makes this a regression guard on the choke point itself: if the
             # normalisation is ever bypassed again, this errors instead of going quiet, and
             # a quiet bypass is exactly how 71 dashes reached 68 of 72 live listings.
-            house_fields={"title": nodash(to_plain_text(candidate.title, collapse=True))},
+            house_fields={
+                "title": nodash(to_plain_text(candidate.title, collapse=True)),
+                # `cardLine` is the whole of the shelf card and was linted by NOTHING until
+                # 2026-08-13: it has no truncation source to pair with, so it never entered
+                # `listing_texts`, and no check took it by name. That is how "£180 a claim,
+                # filed on the platform's own cover" reached the live shelf. It ships the
+                # value AFTER `_card_field`, so what is graded is what a visitor reads.
+                "cardLine": catalog_meta.get("cardLine", ""),
+            },
+            shelf_copy_block_on_breach=bool(
+                listing_cfg.get("shelf_copy_block_on_breach", False)),
             # Built AFTER `archive_sources` above has populated the field, so a citation that
             # died since publish warns (with its memento named) instead of blocking the pack.
             # Empty when archiving is off or found nothing, which restores the old behaviour
