@@ -23,7 +23,8 @@ export default function PrivacyPage() {
     <LegalDoc title="Privacy Policy">
 
       <LegalText>
-        {LEGAL.entity} (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is the data
+        {LEGAL.entity}{' '}
+        (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is the data
         controller for personal data collected through this storefront. This policy explains
         what personal data we collect, why we collect it, how long we keep it, who we share it
         with, and the rights you have under UK data-protection law (UK GDPR and the Data

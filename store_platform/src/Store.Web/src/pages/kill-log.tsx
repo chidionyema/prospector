@@ -6,6 +6,7 @@ import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip } from '@/co
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
+import { tightDecimal } from '@/components/ui/Money';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { fetchCatalog } from '@/lib/api/client';
 import type { GetServerSideProps } from 'next';
@@ -328,23 +329,40 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
           </p>
-          <ul className="mt-6 list-none space-y-2 p-0">
+          {/* The label column is fixed at 15rem so the bars share one baseline and the chart
+              compares -- but 15rem plus a bar plus a count does not fit 390px, and measured on
+              2026-08-13 at that width the row rendered "The defensibility claim was not
+              evidence-b...". Truncating the CAUSE of a rejection is the one thing this chart
+              cannot do: the label IS the finding. So below `sm` the label takes the full row on
+              its own and wraps, and the bar and count drop to a second line under it; the fixed
+              column and the single-line row return the moment there is width for them. */}
+          {/* `space-y-4` below `sm` because the row is two lines there: at `space-y-2` a label sat
+              21px from its own bar and 25px from the next label, so the pairing was ambiguous at
+              exactly the width where the pairing is the only thing holding the chart together. On
+              `sm` and up each row is one line again and 8px is the right rhythm. */}
+          <ul className="mt-6 list-none space-y-4 p-0 sm:space-y-2">
             {distribution.map((d) => (
-              <li key={d.gate} className="flex items-center gap-3">
-                <span className="w-[15rem] flex-none truncate text-caption text-muted" title={d.label}>
+              <li
+                key={d.gate}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[15rem_minmax(0,1fr)_auto]"
+              >
+                <span
+                  className="col-span-2 text-caption leading-snug text-muted sm:col-span-1 sm:truncate"
+                  title={d.label}
+                >
                   {d.label}
                 </span>
                 {/* The bar is drawn against the LARGEST cause, not against the total. Against the
                     total every bar but one is a sliver and the chart shows nothing; against the
                     max, the comparison the reader came for is the one the picture makes. */}
-                <span className="h-3 min-w-0 flex-1 bg-surface3">
+                <span className="block h-3 min-w-0 bg-surface3">
                   <span
                     className={d.published ? 'block h-3 bg-kill' : 'block h-3 bg-subtle/35'}
                     style={{ width: `${Math.max((d.count / distributionMax) * 100, 0.6)}%` }}
                   />
                 </span>
-                <span className="w-14 flex-none text-right font-mono text-caption tabular-nums text-text">
-                  {d.count.toLocaleString('en-GB')}
+                <span className="w-14 text-right font-mono text-caption tabular-nums text-text">
+                  {tightDecimal(d.count.toLocaleString('en-GB'))}
                 </span>
               </li>
             ))}
@@ -414,7 +432,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             {/* The live count of what the controls are currently showing. Without it, filtering a
                 400-row table gives no feedback that anything happened until you scroll. */}
             <p className="font-mono text-caption tabular-nums text-subtle">
-              {shown.length.toLocaleString('en-GB')} shown
+              {tightDecimal(shown.length.toLocaleString('en-GB'))} shown
             </p>
           </div>
         </div>

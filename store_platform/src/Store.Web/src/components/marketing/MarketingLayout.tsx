@@ -6,6 +6,7 @@ import { CartButton } from '@/components/cart/CartButton';
 import { LEGAL, BRAND } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 import { RESEARCH_STATS } from '@/lib/stats';
+import { tightDecimal } from '@/components/ui/Money';
 import { useDisclosure } from '@/lib/useDisclosure';
 
 /**
@@ -152,8 +153,20 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
           }`}
         >
           {/* Left: Brand & Main Nav */}
-          <div className="flex items-center gap-10">
-            <Link href="/" className="flex items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
+          {/* `h-full` here and on the `<nav>` below is load-bearing, not decoration: the active
+              nav item draws its "you are here" rule with `after:-bottom-px` on its OWN box, so
+              every box between that link and this 64/80px row has to carry the row's height or the
+              rule lands under the text instead of on the header's bottom border. Measured on /faq
+              at 1440 on 2026-08-13 before this fix: row 81px, link box 19.6px, rule drawn 31px
+              short. `items-center` is unchanged, so nothing moves vertically. */}
+          <div className="flex h-full items-center gap-10">
+            {/* `min-h-11` (44px, WCAG 2.5.8), same explicit floor the Search and Menu buttons
+                beside it already state. `<Logo className="text-h2" />` is a 24px text line, and
+                this link had no padding, so the one control that takes a visitor home measured
+                24px tall on a phone -- verified by DOM probe at 390px on 2026-08-13, the only
+                sub-40px target left in the header. The header row is 64-80px and the link is
+                centred in it, so growing the box to 44px moves nothing on the page. */}
+            <Link href="/" className="flex min-h-11 items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
               {/* REVERTED 2026-08-10 (founder: the mobile header must never lose the brand
                   name -- an icon-only mark with no wordmark next to it read as a missing
                   logo, not a compact one). The prior state of this block swapped to
@@ -169,7 +182,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               <Logo className="text-h2" />
             </Link>
 
-            <nav className="hidden items-center gap-7 md:flex">
+            <nav className="hidden h-full items-center gap-7 md:flex">
               {MARKETING_NAV.map((item) => {
                 const active = isActivePath(router.pathname, item.href);
                 return (
@@ -394,14 +407,20 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
             <dl className="m-0 flex flex-none items-end gap-10">
               <div>
                 <dt className="text-caption text-kill">killed</dt>
+                {/* `tightDecimal`, not the bare string. These are the two biggest numbers on the
+                    site and they render on every page: in the house mono face every glyph gets the
+                    same advance, so the thousands comma sat in a full cell and the footer read
+                    `1 , 364` -- measured in the served /terms HTML on 2026-08-13. See the note on
+                    the function in `ui/Money.tsx`; digit advances are untouched, so these two still
+                    align. */}
                 <dd className="m-0 mt-1 font-mono text-h1 font-semibold leading-none tracking-tight text-text">
-                  {RESEARCH_STATS.killed.toLocaleString('en-GB')}
+                  {tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'))}
                 </dd>
               </div>
               <div>
                 <dt className="text-caption text-subtle">researched</dt>
                 <dd className="m-0 mt-1 font-mono text-h2 font-semibold leading-none tracking-tight text-text">
-                  {RESEARCH_STATS.researched.toLocaleString('en-GB')}
+                  {tightDecimal(RESEARCH_STATS.researched.toLocaleString('en-GB'))}
                 </dd>
               </div>
             </dl>
@@ -447,15 +466,20 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 floor for the scale it belongs to). */}
             <div>
               <h2 className="mb-4 text-caption font-medium text-subtle">Legal</h2>
-              {/* Same tap-target fix as the Store column above (`inline-block py-[13px]`,
-                  `gap-0` in trade for the padding), applied here because it was missed the
-                  first time: these anchors carried no padding at all, so the "Store" list-item
-                  fix left its sibling column right below it at the same sub-24px height it was
-                  supposedly fixing site-wide. */}
+              {/* Same tap-target fix as the Store column above (`inline-block py-[N]`, `gap-0`
+                  in trade for the padding), applied here because it was missed the first time:
+                  these anchors carried no padding at all, so the "Store" list-item fix left its
+                  sibling column right below it at the same sub-24px height it was supposedly
+                  fixing site-wide.
+
+                  `py-[14px]`, not the Store column's `py-[13px]`: these links are `text-caption`,
+                  whose line box is 16px rather than the 18px that column's arithmetic assumes, so
+                  the copied padding landed them at 42px -- 2px under the floor the comment above
+                  claims. 16 + 14 + 14 = 44. Measured by DOM probe at 390px on 2026-08-13. */}
               <ul className="flex flex-col gap-0">
-                <li><Link href="/terms" className="inline-block py-[13px] text-caption text-subtle transition-colors hover:text-text">Terms of Service</Link></li>
-                <li><Link href="/privacy" className="inline-block py-[13px] text-caption text-subtle transition-colors hover:text-text">Privacy Policy</Link></li>
-                <li><Link href="/refund" className="inline-block py-[13px] text-caption text-subtle transition-colors hover:text-text">Refund Policy</Link></li>
+                <li><Link href="/terms" className="inline-block py-[14px] text-caption text-subtle transition-colors hover:text-text">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="inline-block py-[14px] text-caption text-subtle transition-colors hover:text-text">Privacy Policy</Link></li>
+                <li><Link href="/refund" className="inline-block py-[14px] text-caption text-subtle transition-colors hover:text-text">Refund Policy</Link></li>
               </ul>
             </div>
 
@@ -473,7 +497,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 <li>
                   <a
                     href={`mailto:${LEGAL.supportEmail}`}
-                    className="inline-block break-words py-[13px] text-meta text-muted transition-colors hover:text-text"
+                    className="inline-flex min-h-11 items-center break-words py-2 text-meta text-muted transition-colors hover:text-text"
                   >
                     {LEGAL.supportEmail}
                   </a>

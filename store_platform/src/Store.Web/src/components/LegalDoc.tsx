@@ -121,8 +121,14 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = false
                     answer that until they decode it. The version identifier stays, because it is
                     what the account's consent record stores and a customer disputing a term needs
                     to be able to match the two. */}
-                <p className="font-mono text-caption text-subtle">
-                  {inForce ? `in force since ${inForce} · version ${version}` : `version ${version}`}
+                {/* Each half is its own non-wrapping span with the middot as the only break point.
+                    As one string this line broke inside the identifier at 390px -- measured on
+                    /terms 2026-08-13, it rendered "version 2026-06-" / "15" -- and a version a
+                    customer is meant to match against their consent record cannot be split across
+                    two lines mid-token. `flex-wrap` lets the two halves stack instead. */}
+                <p className="flex flex-wrap gap-x-2 font-mono text-caption text-subtle">
+                  {inForce && <span className="whitespace-nowrap">in force since {inForce} &middot;</span>}
+                  <span className="whitespace-nowrap">version {version}</span>
                 </p>
               </div>
               {interim && (
