@@ -67,7 +67,11 @@ export const FAQS: FaqItem[] = [
     answer: [
       // Per email §6: short, plain. The previous answer named the engine check list and the
       // adversarial review, which the buyer has not earned the vocabulary for yet on the FAQ.
-      'Every claim links to a source you can open. Anything the engine couldn’t verify is marked absent, never invented. The QA report inside the pack is the audit trail.',
+      // "never invented" was removed 2026-08-13: the figure trace measured 15 of 50 selling packs
+      // asserting a number found in no retrieved passage (programme doc §33). What IS enforced is
+      // that every verdict publishes the passages it was ruled on, and that an unverifiable check
+      // is labelled rather than dropped. Say only that until 33-A gates the shelf.
+      'Every verdict ships with the sources it was ruled on, so you can open them and judge the evidence yourself. Anything the engine could not verify is marked unverifiable rather than quietly dropped. The QA report inside the pack is the audit trail.',
     ],
   },
   { category: 'payment',

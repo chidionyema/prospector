@@ -474,7 +474,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             The pack&rsquo;s own model puts month one at {payback.multiple}× what the pack costs
             {payback.paybackMonths ? `, and payback at ${tidyMonths(payback.paybackMonths)}` : ''}.
           </span>{' '}
-          Every input behind that is sourced, and the workings are the fourth document.
+          {/* Was "Every input behind that is sourced". It is not: `_render_financial_model`
+              (artifacts.py:152) receives the `claims` list and never reads it, and the inputs are
+              rendered as bare numbers (artifacts.py:190, 227-228). The workings ARE exact and ARE
+              in the pack -- that is the claim worth making, and it is the one we can prove. */}
+          The workings are the fourth document, and its arithmetic is computed rather than written.
         </p>
       )}
 
@@ -483,8 +487,11 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             a promise the reader gets rather than as a confession of what we could not do. The
             page had eleven negations before this one; this is the cheapest to invert without
             losing a word of its meaning. */}
-        The numbers are in the pack. Pricing mechanics and unit economics, every input sourced,
-        and anything the research could not stand up is marked so.
+        {/* "every input sourced" removed 2026-08-13 for the same reason as the line above: the
+            financial model's inputs are assumptions, listed as assumptions, with no per-input
+            citation (artifacts.py:152). What survives is true and is still the selling point. */}
+        The numbers are in the pack. Pricing mechanics and unit economics, the assumptions behind
+        them listed in full, and anything the research could not stand up is marked so.
       </p>
 
       <p className="mt-6 text-caption leading-relaxed text-subtle">

@@ -1174,6 +1174,13 @@ personas:
 listing:
   price_pence: 4999              # The DEFAULT rung. An unclassified pack holds here, forever.
   publish_on: pass
+  # THE FIGURE FENCE (§33, item 33-G). On = a pack may list only when the post-verdict figure
+  # trace has RUN and either flagged nothing (`clean`) or every flag carries a human decision
+  # (`verified`). Off = the trace still runs and still writes its receipt; it just does not gate.
+  # Kept off because turning it on delists the ~30% of the shelf measured as carrying a figure
+  # found in no retrieved passage, and that is a revenue decision. Review queue:
+  # `python -m tools.review_figures list` / `... decide`.
+  require_figure_verification: false
   # Q2 pack linter (bridge.py publish gate). URL resolution is the linter's only networked
   # check; off = the pure-text checks (currency, arithmetic, truncation, sections) still
   # run. A definitive 404/410 blocks listing; a timeout is only a warning — our outage is

@@ -78,7 +78,10 @@ def claim_safe_marketing(
                 "Blueprint / build spec",
                 "Go-to-market plan",
                 "Operations plan",
-                "Financial model (Python-computed from verified inputs)",
+                # Not "from verified inputs": `_render_financial_model` (artifacts.py:152) takes
+                # the `claims` list and never reads it, so the inputs are assumptions, printed as
+                # assumptions. The arithmetic IS Python and IS exact; that is the whole claim.
+                "Financial model (arithmetic computed in Python, assumptions listed)",
             ],
             # `bullets` are markdown list items (`- **buyer intent:** ...`). proof_point is
             # rendered by the storefront as literal text, so the markup has to come off here

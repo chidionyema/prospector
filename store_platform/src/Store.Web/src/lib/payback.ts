@@ -5,8 +5,11 @@ import type { FinancialSnapshot } from '@/lib/api/client';
  *
  * This adds NO new engine field and invents NO number. Every value below is either the price
  * the buyer is about to pay or a figure already present in `financialSnapshot`, which the
- * engine computes in Python from the pack's verified inputs (`prospector/artifacts.py`,
- * `_financial_snapshot`). The only new thing on the page is the division, and it is shown.
+ * engine computes in Python from the pack's stated assumptions (`prospector/artifacts.py`,
+ * `_financial_snapshot`). NOT "verified inputs": `_render_financial_model` (artifacts.py:152)
+ * receives the `claims` list and never reads it, so no input here carries a citation. The
+ * arithmetic is exact; the assumptions are assumptions. The only new thing on the page is the
+ * division, and it is shown.
  *
  * It exists because "£49" sitting alone next to a buy button is a cost with nothing to weigh it
  * against, while the numbers that would answer "is this worth £49?" were already on the page,

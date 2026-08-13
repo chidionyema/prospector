@@ -188,7 +188,13 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               <h3 className="text-meta font-semibold text-text">Every claim cited</h3>
             </div>
             <p className="mt-2 text-meta leading-relaxed text-muted">
-              Every figure in every pack links to a retrievable source. Open
+              {/* Was "Every figure in every pack links to a retrievable source." Our own zero-LLM
+                  probe falsifies that sentence: 15 of the 50 packs then on sale asserted at least
+                  one figure that appears in NO passage the run retrieved (programme doc §33). The
+                  claim now states what the engine actually enforces -- every verdict ships the
+                  passages it was ruled on -- rather than a per-figure guarantee nothing checked.
+                  Do not restore an "every figure" promise until 33-A gates the shelf on it. */}
+              Every verdict ships with the sources it was ruled on. Open
               the QA report inside the pack and trace any claim to its{' '}
               {/* Was the literal "1,080". Every other kill count on the site reads
                   `kill-log-totals.json`, so this one number drifted the moment the engine ran
