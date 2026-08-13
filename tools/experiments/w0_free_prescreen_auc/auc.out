@@ -1,0 +1,65 @@
+labelled usable: 1904  (pass=73, kill=1831)
+empty-text docs: 0
+median tokens/doc: 268
+
+--- TEMPORAL fit<2026-08-05 test>=2026-08-05: train n=1095 (pass=40)  test n=809 (pass=33)
+    AUC 0.556   metadata only (tier/market/len)
+    AUC 0.613   tfidf logreg (|V|=8000)
+    AUC 0.449   tfidf kNN centroid (k=15)
+    AUC 0.567   tfidf + metadata
+
+--- TEMPORAL fit<2026-07-22 test>=2026-07-22: train n=781 (pass=0)  test n=1123 (pass=73)
+    TOO FEW POSITIVES — AUC unreadable, skipping
+
+--- TEMPORAL fit<2026-07-15 test>=2026-07-15: train n=781 (pass=0)  test n=1123 (pass=73)
+    TOO FEW POSITIVES — AUC unreadable, skipping
+
+=== REGIME-RESTRICTED (>= 2026-07-01: n=1180, pass=73) ===
+
+--- post-regime, fit<2026-08-05 test>=2026-08-05: train n=371 (pass=40)  test n=809 (pass=33)
+    AUC 0.610   metadata only (tier/market/len)
+    AUC 0.502   tfidf logreg (|V|=8000)
+    AUC 0.417   tfidf kNN centroid (k=15)
+    AUC 0.615   tfidf + metadata
+
+=== STRATIFIED 5-FOLD (all data, ignores time) ===
+
+--- fold 1/5: train n=1522 (pass=58)  test n=382 (pass=15)
+    AUC 0.624   metadata only (tier/market/len)
+    AUC 0.750   tfidf logreg (|V|=8000)
+    AUC 0.665   tfidf kNN centroid (k=15)
+    AUC 0.637   tfidf + metadata
+
+--- fold 2/5: train n=1523 (pass=58)  test n=381 (pass=15)
+    AUC 0.713   metadata only (tier/market/len)
+    AUC 0.766   tfidf logreg (|V|=8000)
+    AUC 0.684   tfidf kNN centroid (k=15)
+    AUC 0.734   tfidf + metadata
+
+--- fold 3/5: train n=1523 (pass=58)  test n=381 (pass=15)
+    AUC 0.650   metadata only (tier/market/len)
+    AUC 0.719   tfidf logreg (|V|=8000)
+    AUC 0.642   tfidf kNN centroid (k=15)
+    AUC 0.685   tfidf + metadata
+
+--- fold 4/5: train n=1524 (pass=59)  test n=380 (pass=14)
+    AUC 0.682   metadata only (tier/market/len)
+    AUC 0.777   tfidf logreg (|V|=8000)
+    AUC 0.629   tfidf kNN centroid (k=15)
+    AUC 0.713   tfidf + metadata
+
+--- fold 5/5: train n=1524 (pass=59)  test n=380 (pass=14)
+    AUC 0.861   metadata only (tier/market/len)
+    AUC 0.835   tfidf logreg (|V|=8000)
+    AUC 0.683   tfidf kNN centroid (k=15)
+    AUC 0.879   tfidf + metadata
+
+=== 5-FOLD MEAN AUC ===
+    0.706  +/- 0.083   metadata only (tier/market/len)
+    0.770  +/- 0.038   tfidf logreg (|V|=8000)
+    0.661  +/- 0.022   tfidf kNN centroid (k=15)
+    0.730  +/- 0.082   tfidf + metadata
+
+=== DECISION RULE (from the war plan) ===
+  AUC ~= 0.5  -> the proxy carries no signal; admission ordering loses its funding.
+  AUC >  0.75 -> admission ORDERING becomes a headline item (never KILLING).

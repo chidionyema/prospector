@@ -218,6 +218,25 @@ headless `claude -p` runs whose counters came straight from the API, never from 
   concurrent suites across sessions is the cost item, and the honest fix is the raised ceiling
   plus a note that gate timings taken under load are not measurements. Do NOT quote the 2.25x as
   a test-suite regression until that re-run exists.
+- **CORRECTION to commit `be1e65c`'s message, 2026-08-13.** That message says the `llama-server`
+  holding `nomic-embed-text` (pid 53648) was "left resident by the W0.1 dense arm whose client had
+  already died". **The clause is false.** Its client — `dense.py`, pid 53637 — was alive and
+  progressing when the server was killed, and it went on to finish (`w0_free_prescreen_auc/dense.out`,
+  3805 vectors cached, both arms reported). No work was lost, because Ollama transparently reloaded
+  the server as pid 72343 and the embedding pass continued 400 → 1600/1904. Recorded here rather
+  than amended into the commit, because an amend costs another full gate run and the message is
+  already in the branch's history; a correction that is cheap to write is a correction that gets
+  written. The CPU figure in that message is also two different samples of a decaying average
+  (429% then 124%) — both real, and it was the largest single consumer at either reading.
+- **$/vetted now has a standing measurement, not an estimate.**
+  `tools/experiments/w02_standing_receipt.py` prints it over a stated window from
+  `SchedulerGuard.spend_by_day()` — a new method on the production reader, added precisely so that
+  no caller writes the second ledger parse memory `never-hand-parse-the-spend-ledger` records
+  ($0.00 on a day with real spend, no error). First baseline, 2026-08-07..13 over 577 dossiers:
+  **metered $0.0088/vetted, subscription-equivalent $2.82/vetted** ($5.09 and $1628.05 over the
+  window). Both legs, always — metered alone reads as total consumption and is 0.3% of the truth
+  here. Absent days are reported as UNKNOWN when they predate the guard's 30-day scan checkpoint
+  and as $0.00 only inside its span, so the window cannot silently sum short.
 
 ## 5. Decisions needed from the founder
 

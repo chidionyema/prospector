@@ -46,6 +46,15 @@ exclude = [
     "graphify-out",
     "store_platform",
     "**/node_modules",
+    # ARCHIVED EVIDENCE, not maintained code. `tools/experiments/w0_free_prescreen_auc/` holds the
+    # six throwaway scripts that produced the committed `auc.out` / `dense.out` behind W0.1's
+    # negative verdict. They are committed so the AUC numbers can be re-derived rather than
+    # believed, which means the file that runs must be the file that ran — reformatting them for
+    # E401/E702/I001 (57 findings, all style) would leave a script that is no longer the one whose
+    # output sits beside it, and that is the only property they have. Excluding them keeps the
+    # ratchet above honest: they are not counted as debt because nobody will pay it down and no
+    # import reaches them (the runner globs `*.py` one level up, never into subdirectories).
+    "tools/experiments/w0_free_prescreen_auc",
 ]
 
 [lint]

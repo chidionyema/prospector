@@ -114,6 +114,10 @@ class SchedulerGuard:
         self.daily_cap_usd = float(daily_cap_usd)
         self.daily_subscription_cap_usd = float(daily_subscription_cap_usd or 0.0)
         self._today_override = today  # 'YYYY-MM-DD' injection point for tests
+        # The per-day accumulator `_scan` already builds, kept instead of discarded so that a
+        # caller wanting spend over a WINDOW does not have to parse the ledger a second time.
+        # See `spend_by_day`.
+        self._days: dict[str, list[float]] = {}
 
     @property
     def scheduler_dir(self) -> Path:
@@ -137,6 +141,35 @@ class SchedulerGuard:
         """Today's (metered_usd, subscription_usd). See `_scan` — this drops the clock signal."""
         metered, subscription, _ = self._scan()
         return metered, subscription
+
+    def spend_by_day(self) -> dict[str, tuple[float, float]]:
+        """Every day this scan covers, as {'YYYY-MM-DD': (metered_usd, subscription_usd)}.
+
+        WHY THIS IS A METHOD ON THE GUARD and not arithmetic in the caller: memory
+        `never-hand-parse-the-spend-ledger`. A hand-rolled sum over `store/prospector.jsonl`
+        returns a confident **$0.00 on a day with real spend**, because the rows are keyed
+        `timestamp` (not `date`) and the metered leg is `event: "spend"` + `amount_usd` — a
+        wrong key matches nothing, raises nothing, and fails in the safe-LOOKING direction.
+        Anything reporting spend over a WINDOW rather than today (a batch receipt, a weekly
+        $/vetted) had no reader and would have written that second parse. `_scan` already
+        accumulates this exact mapping in the single pass it makes for the cap, so this hands
+        it back rather than throwing it away and there is still only ONE parser in the repo.
+
+        BOTH LEGS, ALWAYS, and callers must print both: `metered` is billed money and is what
+        `daily_cap_usd` enforces; `subscription` is Claude Code CLI burn (`cost_usd`, no `event`
+        key), API-equivalent and not invoiced. They differ by orders of magnitude — $2.71 vs
+        $340 on 2026-08-06 — so reporting metered alone reads as total consumption.
+
+        HORIZON, which a caller MUST state rather than assume: the incremental scan resumes from
+        a checkpoint that keeps only the newest `_SCAN_CACHE_DAYS` (30) days, so days older than
+        that are absent after a resume even though the ledger still holds their rows. Absent is
+        not zero. For a full history set `PROSPECTOR_GUARD_FULL_SCAN=1`, which forces the
+        uncached pass over the whole file (measured 108s on the 157 MB ledger).
+        """
+        if not self.ledger_path.exists():
+            return {}
+        self._scan()
+        return {day: (round(v[0], 6), round(v[1], 6)) for day, v in self._days.items()}
 
     @property
     def scan_cache_path(self) -> Path:
@@ -298,6 +331,7 @@ class SchedulerGuard:
         except OSError:
             return 0.0, 0.0, ""
         self._save_scan_cache(offset=offset, newest=newest, days=days, head_sig=head_sig)
+        self._days = days
         metered, subscription = days.get(day, (0.0, 0.0))
         return round(metered, 6), round(subscription, 6), newest
 

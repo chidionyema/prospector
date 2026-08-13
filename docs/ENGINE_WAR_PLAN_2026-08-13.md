@@ -97,6 +97,50 @@ from a slow experiment.
 **Gate:** AUC reported with its train/test split · receipt committed as baseline · token fields
 reconcile · `PAUSE` refuses a manual mutation · watchdog shows a live PID.
 
+### Wave 0 status ledger — updated 2026-08-13, and it is the only place Wave 0 status lives
+
+Prose elsewhere saying an item is done is a lead, not state; this table is the record and every row
+names the artefact that proves it. **Wave 0 is CLOSED.**
+
+| Item | Status | The receipt |
+|---|---|---|
+| **W0.1** | **CLOSED, negative** | `tools/experiments/w0_free_prescreen_auc/` — README + `auc.out` + `dense.out` and the six scripts that produced them. |
+| **W0.2** | **DONE, baseline committed** | `tools/experiments/w02_standing_receipt.py`, output in `w02_standing_receipt_receipts.json`. |
+| **W0.3** | **DONE** | token ledger reconciles; `tests/unit/test_token_ledger_reconciles.py`, commit `64495ed`. |
+| **W0.4** | **DONE** | merge landed, `3917ea4`. |
+| **W0.5** | **DONE** | `PAUSE` on the CLI (`tests/scheduler/test_pause_blocks_manual_cli.py`, `64495ed`); tick bound already shipped as `_TICK_HARD_DEADLINE_S = 10800`; heartbeat refresh inside long phases + atomic write (`tests/scheduler/test_working_phases_keep_beating.py`). |
+
+**W0.1 answered the plan's own question with the plan's own decision rule, and the answer is
+`AUC ≈ 0.5`: revolution loses its funding mechanism.** On the regime-restricted temporal split the
+lexical arm reaches **0.502** and every `nomic-embed-text` variant lands **0.375–0.411** — the dense
+arm being the feature this section named, so it was run rather than ruled on by proxy. The
+unrestricted split's 0.61–0.66 must not be quoted: June 2026 contributed 724 candidates and zero
+passes, so a model fitted across that boundary scores by learning "June-era phrasing ⇒ kill". The
+stratified 5-fold figure of **0.770 ± 0.038** *clears* the 0.75 headline bar above and is worthless
+for the same reason, one step worse — shuffling folds across the June boundary puts the regime label
+in train and test. Full argument and the surviving free lever (US 14.2% [8.8, 22.0] vs UK 4.6%
+[3.4, 6.2] within 2026-08) in that directory's README.
+
+**W0.2's first baseline already pays for itself: it independently confirms the Wave 1 "Confidence
+polarity" diagnosis below, and shows it is worse than stated.** Over 2026-08-07..13, 577 dossiers,
+2704 checks: mean confidence is **supported 0.577 / refuted 0.564 / unverifiable 0.607** — a ruled-
+minus-unverifiable gap of **−0.033**. The plan says confidence has "no polarity branch"; the
+measurement says the field is mildly *inverted*, so the engine is at its most confident precisely
+where it ruled on nothing. Also from that run: unverifiable **63.7%** of checks (worst
+`payer_solvency` 78.8%, best `currency` 44.6%) against only 19 `retrieval_failed` and 19 `degraded`,
+so this is the web lacking passages and not our retrieval breaking; PASS rate **18/577 = 3.1%**
+[2.0, 4.9]; composite mean 2.062 against a bar of 2.5 with 26/141 scored dossiers at or above it;
+**$/vetted $0.0088 metered, $2.82 subscription-equivalent.**
+
+**DEVIATION ON W0.2, FLAGGED FOR OVERRULE.** This section says "extend `e15_hhem_groundedness.py`,
+do not rebuild it", and W0.2 shipped as a new module instead. The instruction's force — do not write
+a second corpus reader — is obeyed exactly: every dossier is read through `tools/experiments/_corpus.py`,
+the same accessors E15 uses, and the spend leg goes through `SchedulerGuard.spend_by_day()` rather
+than any new parse of `store/prospector.jsonl`. What is not reused is E15's body, because E15 loads a
+neural entailment model and samples a few hundred ruled checks: folding a whole-corpus dashboard into
+it would make printing a PASS rate depend on a model download, and would overwrite E15's receipts,
+which are a measurement of record.
+
 ---
 
 ## Wave 1 — Free levers that need no experiment
