@@ -135,7 +135,15 @@ leading dash). Cross-check with `batching-compliance.py`; a <2% gap is scope, no
 | date | priced req | day total | $/req | opus share | sonnet counterfactual | note |
 |---|---|---|---|---|---|---|
 | 2026-08-06 | 7,774 | **$927.00** | $0.1192 | ~94% | $344.51/day (37.2%) | corrected, dedup by `message.id` |
-| _(next day after relaunch)_ | | | | | | **the proof L1 shipped** |
+| 2026-08-10 (partial, to 18:2x UTC) | 2,514 | **$281.75** | $0.1121 | 66.0% of $ / 53.8% of req | $207.33 (−26.4%) | **L1 is shipped and visible** |
+
+L1 receipt, `cost-baseline.py --date=2026-08-10` run 2026-08-10: opus 1,352 req / $186.05 / $0.1376,
+sonnet 1,162 req / $95.70 / $0.0824. Sonnet is now 46% of requests where it was ~6% on 08-06, and
+$/req fell $0.1192 → $0.1121. Two caveats, stated so the row is not over-read: this is a **partial
+day** (not comparable to a full 08-06 day on volume), and the remaining opus share is Opus sessions
+the founder escalated deliberately, not drift — the 26.4% counterfactual is the size of that
+deliberate spend, not a regression. Cache read is 82.9% (opus) / 78.0% (sonnet), consistent with
+context transport, not thinking, being the bill.
 
 **Retired numbers — DO NOT QUOTE.** These circulated before the dedup fix and are ~1.9x too high:
 `$1,749.36/day`, `$654.22/day`, `14,398 priced requests`, `$1,765.71`, and the batching compliance
@@ -168,6 +176,48 @@ headless `claude -p` runs whose counters came straight from the API, never from 
   programmes.
 - **The probe is not wired to anything.** It exits 1 correctly today, but nothing runs it; a lever
   can silently stop being live between manual runs.
+- **The spend ledger has outgrown its own reader — this is now the top unfixed item.**
+  `store/prospector.jsonl` is **159,680,009 bytes** (`ls -la`, 2026-08-10 18:21) and `evaluate()`
+  measured **108s** on it against the state probe's 30s budget, so the probe prints a *tick
+  snapshot* and says "live read failed" instead of the live number. Two consequences, both
+  already real: the daily-cap rail (`spend.daily_cap_usd`) is evaluated per daemon tick on a
+  full-file re-read, and the founder's only live view of spend is stale by up to one tick.
+  This is a full-scan-per-read problem, not a volume problem — the fix is an index/rollup
+  (append-only day totals) so neither the rail nor the probe re-reads 159 MB. Untouched.
+- **CLOSED by measurement, not by a fix: `graphify_sweep.py --check-hooks` is not slow.** The
+  carried-over claim was 16-39s against the probe's 12s budget; measured twice on 2026-08-10 it
+  ran **6.2s and 5.5s, rc=0, "hooks WIRED — all triggers present"**. Either the earlier timing was
+  taken while the orphaned recursive greps were walking 169,226 files, or under a cold graph. Do
+  not re-open it without a fresh timing.
+- **The suite now runs at 397-567s against a 600s gate kill — a 5.5% margin.** Six signed POPDD
+  runs on 2026-08-10 (`.lux/receipts/2026-08-10.jsonl`): 397.5 / 566.7 / 488.5 / 498.4 / 422.2s,
+  all PASS, 2,910 tests. A gate that times out costs a *full* re-run (~9 min of a paid session
+  waiting), so the margin is a cost item, not just an annoyance. The measured numbers are now on
+  disk at `.popdd/last_verify.json`, which the state probe reads, so a session sizes ONE blocking
+  wait instead of polling.
+- **That margin went negative on 2026-08-13, and the ceiling is now 2400s.** The python lane
+  measured **2968 passed, 3 skipped, 1279.27s (21m19s)** — 2.1x the 600s kill — so *every* commit
+  in this repo blocked with verdict `TIMEOUT` regardless of its diff, and sessions were papering
+  over it with a per-invocation `POPDD_TEST_TIMEOUT=1800` that an unset variable undoes.
+  `scripts/popdd_verify.py:72` now defaults to **2400**. The raise unblocks commits; it does not
+  explain the number: 2,910 → 2,968 tests is +2.0% while wall time went 567s → 1279s, i.e.
+  **2.25x for 2% more tests**.
+- **That 2.25x is most likely MACHINE CONTENTION, not slower tests — and if so the ceiling, not
+  the suite, was the bug.** Two pieces of evidence from the 08-13 run itself. (1) `--durations=15`
+  sums to **218.5s of 1279.27s (17.1%)** — no test dominates, the cost is spread thin across 2,968
+  tests, which is the signature of every test paying a scheduling tax rather than of a new slow
+  test. A single regressed test would show up at the top of that list; the top entry is
+  `test_live_ollama_backend_discriminates_paraphrase_from_unrelated` at 56.4s, which is a
+  pre-existing live-model test. (2) At 09:45 on 2026-08-13 this machine was running **three
+  concurrent pytest suites** — the prospector gate (pid 64758) plus two hermes runs from other
+  Claude sessions (30784, 61463) — with `llama-server` resident holding `nomic-embed-text`
+  (53648) for a W0.1 embedding arm. Four CPU-saturating jobs, one laptop.
+  **HYPOTHESIS, not yet proven.** The check is one command and costs nothing but wall time:
+  re-run `.venv/bin/python -m pytest -q --durations=15` with nothing else running and compare the
+  total against 1279s. If it lands near 567s, the suite is fine, the estate's habit of running
+  concurrent suites across sessions is the cost item, and the honest fix is the raised ceiling
+  plus a note that gate timings taken under load are not measurements. Do NOT quote the 2.25x as
+  a test-suite regression until that re-run exists.
 
 ## 5. Decisions needed from the founder
 

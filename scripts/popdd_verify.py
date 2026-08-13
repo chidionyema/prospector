@@ -69,7 +69,16 @@ DOTNET_TEST_PROJ = "store_platform/src/Store.Tests/Store.Tests.csproj"
 # 2026-07-30: python 679 tests, 168.81s pytest-internal / 174.65s process. The previous
 # 180s ceiling left 3% headroom, so commits failed non-deterministically under load once
 # the control-center detach tests (+58 tests) landed. Override with POPDD_TEST_TIMEOUT.
-TEST_TIMEOUT_SECONDS = int(os.environ.get("POPDD_TEST_TIMEOUT", "600"))
+#
+# Raised 600 -> 2400 on 2026-08-13. The 600s ceiling had stopped being a hang detector and
+# become a blanket commit block: the python lane measured 2968 passed, 3 skipped, 1279.27s
+# (21m19s), i.e. 2.1x the limit, so EVERY commit in this repo failed with verdict TIMEOUT
+# regardless of its diff. Sessions were working around it with a per-invocation
+# POPDD_TEST_TIMEOUT=1800, which is not a fix — an unset variable put the block straight
+# back. Note the suite time itself is the real anomaly (567s from the signed receipts of
+# 2026-08-10 for 2910 tests -> 1279s for 2968), tracked separately; this constant must not
+# be the thing that hides it, so the ceiling stays finite and a genuine hang still dies.
+TEST_TIMEOUT_SECONDS = int(os.environ.get("POPDD_TEST_TIMEOUT", "2400"))
 
 # Extensions that must be covered by SOME lane. A file with one of these that matches no
 # lane blocks the commit rather than sailing through unproven.
