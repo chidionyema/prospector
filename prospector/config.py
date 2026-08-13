@@ -402,6 +402,12 @@ def _validate_block(name: str, raw: Any) -> dict[str, Any]:
 # defect shape of finding #17, and a price is the field where that drift charges a buyer.
 LISTING_DEFAULTS: dict[str, Any] = {
     "price_pence": 4999,
+    # §33 / item 33-G. When true, `bridge.listing_gate` refuses to list a pack whose figures were
+    # never traced, or whose flagged figures have no human decision (`human_review.SELLABLE`).
+    # DEFAULT FALSE, and the default is a decision: 15 of the 50 packs on sale carry an untraceable
+    # figure, so switching it on is a ~30% delisting. The honest copy shipped regardless of the
+    # flag, so nothing here is load-bearing for a promise.
+    "require_figure_verification": False,
 }
 
 

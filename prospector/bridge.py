@@ -40,12 +40,19 @@ logger = logging.getLogger("prospector.bridge")
 
 
 def listing_gate(*, uploaded: bool, pack_complete: bool, priced: bool,
-                 bundle_complete: bool, lint_ok: bool) -> bool:
+                 bundle_complete: bool, lint_ok: bool,
+                 figures_verified: bool = True) -> bool:
     """The single AND that decides sellability. Each operand is an independent fence
     computed in publish_pass (upload, completeness, price, bundle audit, content lint);
     keeping the composition in one named function makes the seam testable without the
-    whole publish machinery."""
-    return bool(uploaded and pack_complete and priced and bundle_complete and lint_ok)
+    whole publish machinery.
+
+    `figures_verified` is the §33 figure fence (item 33-D/33-G) and defaults to True — i.e. OFF —
+    because barring untraceable packs is a revenue action on up to 30% of the catalogue and is the
+    founder's decision, not the engine's. `publish_pass` computes it only when
+    `config.yaml listing.require_figure_verification` is on; see `human_review.py`."""
+    return bool(uploaded and pack_complete and priced and bundle_complete and lint_ok
+                and figures_verified)
 
 
 # ---------------------------------------------------------------------------
@@ -1105,9 +1112,32 @@ class EngineBridge:
                 f"({provider_price_id!r}); publishing UNLISTED."
             )
 
+        # 4b. THE FIGURE FENCE (§33 / items 33-D, 33-G). Default OFF, and the default is a
+        # decision, not an oversight: 15 of the 50 packs on sale carry a figure found in no
+        # retrieved passage, so switching this on delists ~30% of the catalogue. That is the
+        # founder's call. What the engine owes is the switch, the receipt and the honest copy —
+        # which is why `pricing.tsx` and `faqContent.ts` no longer promise per-figure sourcing
+        # regardless of whether this flag is on.
+        figures_verified = True
+        _listing_cfg = getattr(self.cfg, "listing", None) or {}
+        if bool(_listing_cfg.get("require_figure_verification") or False):
+            from . import human_review
+            _fig_status, _outstanding = human_review.status_for_checks(
+                candidate_id, getattr(dossier, "checks", []) or [],
+                root=human_review.root_for(self.cfg))
+            figures_verified = _fig_status in human_review.SELLABLE
+            if not figures_verified:
+                logger.error(
+                    f"EngineBridge: {candidate_id} figure verification is "
+                    f"{_fig_status!r} ({len(_outstanding)} outstanding); publishing UNLISTED. "
+                    f"Run the review queue, or turn off listing.require_figure_verification.",
+                    extra={"candidate_id": candidate_id, "figure_status": _fig_status,
+                           "outstanding": _outstanding})
+
         is_listed = listing_gate(
             uploaded=uploaded, pack_complete=pack_complete, priced=priced,
             bundle_complete=bundle_complete, lint_ok=lint_ok,
+            figures_verified=figures_verified,
         )
 
         # The content version is the STORE's counter, and we send one only when we can actually
@@ -1355,16 +1385,27 @@ class EngineBridge:
                 written["03_Operations_Plan.md"] = ops_md
 
                 # 4. Financial Model — its own file, with a provenance banner. The arithmetic is
-                # Python-computed from verified inputs (no LLM math), which is a real trust
-                # differentiator, so we say so where the buyer reads it.
+                # Python-computed (no LLM math), which is a real trust differentiator, so we say so
+                # where the buyer reads it.
+                #
+                # The banner said "from verified inputs" until 2026-08-13. It is not true and the
+                # receipt is one line: `_render_financial_model` (artifacts.py:152) takes the
+                # `claims` list as a parameter and never reads it, and every input is rendered as a
+                # bare number (artifacts.py:190, 227-228). The inputs are ASSUMPTIONS, printed as
+                # assumptions further down the same document. Claiming provenance the code does not
+                # provide is the §33 failure in miniature — an exact calculation over an unsourced
+                # input is exactly as wrong as the input, and saying "verified" invites the buyer to
+                # skip the assumptions section that is the honest disclosure.
                 # The prose around the arithmetic is engine-authored; the arithmetic itself is
                 # Python-computed and the pass never touches a number that is not a stray
                 # confidence float attached to a gate name.
                 financials = prose_pass_document(artifacts.get("financial_model", ""))
                 if financials:
                     financials = (
-                        "> All figures below are computed by Python from verified inputs. No "
-                        "language model performed any calculation, so the arithmetic is exact.\n\n"
+                        "> Every figure below is computed by Python from the assumptions listed at "
+                        "the end of this document. No language model performed any calculation, so "
+                        "the arithmetic is exact — the arithmetic, not the assumptions. Read those "
+                        "before you rely on any number here.\n\n"
                         + financials
                     )
                 else:

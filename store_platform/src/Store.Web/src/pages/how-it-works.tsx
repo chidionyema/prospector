@@ -200,9 +200,9 @@ export default function HowItWorks() {
             One sentence, before the first check, because a reader who learns this after reading
             six verdicts has been told late. */}
         <p className="mb-10 max-w-3xl text-body leading-relaxed text-muted">
-          Every check below is run by an AI agent rather than by a person forming an opinion: the
-          agent may rule only on passages it fetched from the open web, and the sources it used are
-          published with the verdict.
+          Every check below is run by an AI agent rather than by a person forming an opinion: it is
+          instructed to rule only on passages it fetched from the open web, and the sources it used
+          are published with the verdict so you can hold the reasoning against them yourself.
         </p>
         {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
             content. Keeping both stacked 88px between the lede and step 1. */}

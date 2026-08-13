@@ -3265,3 +3265,240 @@ prose.
 | 5 | **L2** | **STILL BLOCKED on traffic.** The "172 / 90 days" figure is retired as a quotable number (§32.4) |
 | 6 | **E15/E17** | mechanism shipped (§32.6); the frozen matched pair is the remaining run |
 
+
+## 33. The product-and-communication failure: a figure-level promise our own probe falsifies (2026-08-13)
+
+Founder directive, verbatim: *"this is a product failure and a communication failure also… time for
+product owners and managers to take real responsibility."* It arrived attached to a six-persona
+critique of the storefront. A critique is a set of claims, so every one of them is ruled below
+against disk — including the ones that are wrong about us. Taking responsibility means owning the
+true finding *and* refusing to build against a false one.
+
+### 33.1 The finding that outranks everything else in this programme
+
+Re-run 2026-08-13 (`tools/experiments/q4c_claim_level_tracing.py`, read-only, zero LLM):
+
+| scope | figures | untraceable | items carrying ≥1 |
+|---|---|---|---|
+| **live shelf (catalogue fetch)** | 180 | **19 (10.6%)** | **15 of 50 (30%)** |
+| current moat | 1,402 | 158 (11.3%) | — |
+| all dossiers (1,925) | 2,106 | 259 (12.3%) | — |
+
+Receipts: `q4c_claim_level_tracing_receipts{,_live,_current_moat}.json`. `truncated = 0.0%` in all
+three scopes is the validity check, not a null result — the probe is sound because `verify.py:376`
+builds the prompt as `s.text[:VERDICT_PASSAGE_TRUNCATE]` with the constant `600` at `verify.py:477`,
+so the stored passages **are** the model's entire grounding input. A figure absent from them was
+never retrieved.
+
+Set against that number, three live strings:
+
+| where | verbatim | status |
+|---|---|---|
+| `Store.Web/src/pages/pricing.tsx:191` | "Every figure in every pack links to a retrievable source." | **FALSE, quantitatively.** It is a claim about *figures*; 10.6% of live figures link to nothing |
+| `Store.Web/src/lib/faqContent.ts:70` | "Every claim links to a source you can open. Anything the engine couldn't verify is marked absent, never invented." | **FALSE.** "never invented" is the exact thing measured at 19 occurrences |
+| `Store.Web/src/pages/how-it-works.tsx:202-206` | "the agent may rule only on passages it fetched from the open web" | **FALSE.** This is our *AI-disclosure* sentence, and it contains a false claim of its own |
+
+`pricing.tsx:191` is the worst string on the site: the most precise promise we make, on the page
+whose whole subject is what the money buys, in the one dimension we have an instrument for.
+
+### 33.2 Root cause — one missing function, not a systemic rot
+
+`price_comparables.py:103` defines `_appears_in(amount, text)`, which requires a cited number to
+appear literally in the passage, with digit boundaries so that "49 must not match inside 149 or
+4,900" (`:121-122`), enforced at `:211`. **Nothing equivalent exists for the six moat checks.**
+`rg -n "_appears_in" prospector/` returns three hits, all inside `price_comparables.py`.
+`verify.py:401` instructs the model to "Rule ONLY from the provided passages" and then trusts it.
+
+So the seventh check — the one that can never kill — is the only check that verifies its own
+arithmetic against evidence. The six that *can* kill do not. That asymmetry is the defect.
+
+The fix is already written, in the wrong place: the probe's matcher **is** a deterministic
+post-verdict check. Promoting it into `verify.py` costs zero tokens per verdict and zero network.
+
+### 33.3 Where the critique is wrong about us — ruled, and not to be built against
+
+- **"Path A: hide the AI, hope nobody notices."** Refuted. `pages/terms.tsx:36,99,104` sells the
+  product as an "AI-generated, evidence-backed set of documents"; `components/Disclaimer.tsx:16`
+  ("AI-generated content may contain errors, omissions, or outdated…") renders site-wide via
+  `MarketingLayout.tsx:502`; `how-it-works.tsx:202` discloses it in prose before the first check.
+  The real defect is **altitude and accuracy**, not concealment: disclosure sits at legal/footer
+  tier and the one prose sentence is itself false (§33.1).
+- **"No sample pack — Critical."** Refuted. `pages/sample.tsx:144` already ships a complete free
+  unredacted report, no card, no email, no signup.
+- **"Add a confidence score to every claim."** Already shipped. `dossier.py:402` renders
+  `"**{verdict}.** Confidence {chk.confidence:.2f}"`; `bridge.py:1388` writes the QA report with
+  `keep_confidence_figures=True`; `dossier.py:417-422` renders the quoted passage and URL beneath
+  each. Do not rebuild it. What is missing is a *threshold*, not a display.
+- **"Audit 10% of source links; if >10% are dead, do not launch."** The test **passes.**
+  `store/lint_url_cache.json`, 2,093 entries: 1,819 × 200, 34 × 404, 1 × 410 (1.7% definitively
+  rotted; 8.7% non-200 once bot-blocking 403/400 are counted). And the HEAD-only trap that used to
+  inflate this is **fixed** — `pack_linter.py:644-660` now retries with GET on any `_DEAD_STATUSES`
+  and mixes `_PROBE_LOGIC_VERSION = 2` (`:603`) into the cache key. Link rot is not our problem.
+  **Numbers that never had a link are.**
+
+### 33.4 The financial-model concern, sized correctly
+
+`bridge.py:1365-1369` prepends to `04_Financial_Model.md`: *"All figures below are computed by
+Python from verified inputs. No language model performed any calculation, so the arithmetic is
+exact."* The arithmetic half is true and worth keeping. **"verified inputs" is the falsified half**,
+and it fails in the worst possible check:
+
+- `payer_solvency` is the single worst offender — 181 of 802 figures untraceable corpus-wide
+  (22.6%), 12 of the 19 live ones.
+- Its failure mode is not vagueness, it is invention *of our own price*: live examples read
+  `payer_solvency/supported figures=['49']` on four separate packs. `config.yaml
+  listing.pricing.rungs` is `[1999, 2999, 4999, 7999, 9999, 14999, 19999]` — **£49 is not a rung**
+  (£49.99 is), and £39 is not on the ladder at all. The check that decides whether the buyer can
+  afford it is reasoning about a price we do not charge.
+
+This confirms §25.5's earlier read that the payer_solvency bucket is an **off-ladder pricing bug
+wearing a grounding bug's clothes**, and it must be fixed as a pricing bug, separately, or it will
+contaminate the grounding metric permanently.
+
+The highest-liability single row on the shelf is not financial, though: it is
+`08dbe23f7be7af97 legality/supported figures=['53601']` — an invented figure inside a **legality**
+verdict, on a pack that is on sale.
+
+### 33.5 Owned work, in dependency order
+
+Owner is this engineering seat unless named otherwise. Every item ships with the receipt that
+proves it, or it is not done.
+
+| # | item | gate that proves it |
+|---|---|---|
+| 33-A | **SHIPPED** as `prospector/figure_check.py` + `CheckResult.untraceable_figures` + the trace block in `verify.py::verdict_for`. **Observability only — the verdict is NOT demoted.** See §33.7 for why the first draft of this row (demote to `unverifiable`) was wrong | `tests/unit/test_figure_check.py`, incl. an equivalence test against the independent probe |
+| 33-B | Fix payer_solvency's invented price: the check must be handed the candidate's **actual rung** from `config.yaml listing.pricing`, never left to supply one | no live example with a figure off the rung ladder |
+| 33-C | Build `tools/audit_live_citations.py` — the end-to-end audit that does not exist today: for every selling pack, re-fetch each citation *and* re-check the quoted passage still appears in the body. This is the gap `tools/verify_selling_catalogue.py` leaves (it only checks a PASS dossier exists) | one clean run over 50 packs, committed receipts |
+| 33-D | Gate the shelf on 33-A + 33-C — a pack with an untraceable figure may not be listed. `bridge.py:437` already refuses to list what we cannot deliver; this is the same fence, one dimension out | a pack with a seeded untraceable figure is refused listing, in a test |
+| 33-E | **Copy comes down or becomes true — never stays false while we fix it.** Until 33-A lands, `pricing.tsx:191`, `faqContent.ts:70` and `how-it-works.tsx:202-206` must be rewritten to what is measurably true. Cross-ref `docs/SITE_SPEC_PROGRAM.md` | the three strings, and the register line that says which claim each rests on |
+| 33-F | Raise AI disclosure from footer/legal tier to value-prop tier, and make it the *position* rather than the apology. The critique's one genuinely strategic point: the engine is the product, the packs are its output | founder sign-off on the new above-fold line |
+
+33-E is deliberately not last. A false promise is cheaper to withdraw than to keep.
+
+### 33.6 Founder decisions this seat will not make
+
+1. **The 15 dirty packs.** Delist now and re-vet (costs 30% of the shelf), or keep them selling
+   behind a corrected promise while 33-A/33-B land. There is no third option in which the current
+   copy and the current shelf are both allowed to stand.
+2. **33-F's positioning.** "AI-generated, human-verified" is the critique's recommendation; we have
+   no human verification layer and building one contradicts *"no human in the loop"* (2026-06-20).
+   Either that decision is revisited or the tagline cannot say "human-verified".
+
+### 33.7 33-A shipped, and the correction to its own design
+
+`prospector/figure_check.py` (new) · `CheckResult.untraceable_figures` (`models.py`) · the trace block
+in `verify.py::verdict_for` · `tests/unit/test_figure_check.py` (22 tests, green).
+
+**The row as first written in §33.5 was wrong, and the error is worth recording** because it is the
+recurring one in this codebase: *"an untraceable figure downgrades the check to `unverifiable`."*
+`kill_filter` can hard-fail on an `unverifiable` hard gate, so that design would let OUR OWN
+extraction bug kill a sound idea — the same failure class as
+`store/dossiers/2102bacc6dd75cf9.kill.json`, a candidate killed by our own outage inside a dossier
+that reads as fully reasoned. The shipped design **observes and never demotes**: the verdict, the
+confidence and the kill gates are untouched, and the flag's consumers (the listing fence, the
+human-verification queue) both sit after the ruling. `test_verdict_for_records_untraceable_figures_
+without_touching_the_ruling` pins that, so a later "tighten it up" fails loudly.
+
+Consequence for the shelf: **this is why 33-D is a founder decision and not an engineering one.**
+Barring untraceable packs from the shelf is a revenue action on up to 30% of the catalogue, so the
+detector deliberately stops one step short and hands over a switch plus a worklist.
+
+**Two measurement facts the tests now encode, both making every count a LOWER bound:**
+
+1. `figure_check.contains` and `price_comparables._appears_in` **disagree on purpose** and must not
+   be unified. `_appears_in` rejects "49" against a passage reading "49.99" because it decides
+   whether to ACCEPT an anchor, where a near-miss launders a fabrication. `contains` accepts it
+   because it decides whether to ACCUSE our own output, where a false accusation is the worse error.
+   Same rail, opposite directions, both conservative.
+2. **Bare numbers under 1,000 are invisible to the trace.** Without a unit, only numbers ≥ 1000
+   count, so an invented "320 carers" is not flagged while "£320" is. Bare small integers are
+   overwhelmingly prose ("3 suppliers"), and flagging them would drown the signal. So the 30% figure
+   is a floor twice over — do not quote it as a ceiling.
+
+### 33.8 33-G — the human verification layer (founder decision, 2026-08-13)
+
+Founder: *"then we need to build one."* Ruling on the apparent contradiction first: **there is none.**
+The 2026-06-20 decision is scoped in `CLAUDE.md` to *generation* — "Generation may run continuously
+and unattended (founder decision 2026-06-20: no human in the loop)". A gate on the **publish** path
+is a different loop. Unattended generation and human-verified listing are compatible, and nothing in
+the daemon's rails has to change.
+
+**The design constraint that actually matters: the reviewer is one person.** A layer that asks a human
+to read 50 packs will not happen, and a promise resting on a review nobody performs is worse than no
+promise. So the human step must be bounded by the detector, not by the catalogue:
+
+- 33-A's output is a worklist of **specific figures**, not documents — 19 figures across 15 packs at
+  the last measurement. That is ~20 decisions (repair, drop the sentence, or accept with a source),
+  not 50 document reads.
+- Each decision is recorded per pack, so "human-verified" becomes a **per-pack fact with a receipt**,
+  not a site-wide adjective. A pack with no receipt does not carry the badge.
+- Verification is therefore **incremental and durable**: the queue drains, and only newly-generated
+  packs re-enter it.
+
+Sequenced after 33-C (the audit tool produces the queue's input) and gated with 33-D (the fence reads
+the receipt). Until a receipt exists for a pack, no surface may say "human-verified" about it —
+which is the §33.1 failure repeating itself one level up, and the reason 33-E does not wait for this.
+
+### 33.9 What shipped, what it measured, and the one fix that clears most of the queue
+
+**Shipped and green (`exit=0` on every run quoted below).**
+
+| Piece | File | Proof |
+|---|---|---|
+| The detector | `prospector/figure_check.py` | `tests/unit/test_figure_check.py` — 23 passed, incl. equivalence with the independent probe |
+| The field | `prospector/models.py:270` `untraceable_figures: Optional[list[str]] = None` | `test_checkresult_defaults_to_None_not_empty_and_serialises_for_the_audit_trail` |
+| The wiring | the trace block in `verify.py::verdict_for` | `test_verdict_for_records_untraceable_figures_without_touching_the_ruling` — flag recorded, verdict still SUPPORTED |
+| The human layer | `prospector/human_review.py` | `tests/unit/test_human_review.py` — 26 passed |
+| The fence | `bridge.py::listing_gate(..., figures_verified=True)` + `config.yaml listing.require_figure_verification: false` | `test_listing_gate_default_leaves_the_figure_fence_OFF`; 264 passed across every bridge/publish/artifact suite |
+| The reviewer's surface | `tools/review_figures.py` (`backfill`/`list`/`show`/`decide`) | ran live, offline, zero LLM calls — output below |
+
+**`None` vs `[]` is the design decision worth remembering.** The field was `list[str] = field(default_factory=list)` for its first hour. That default would have made all 73 PASS dossiers on disk read as figure-clean, because a check that never ran the trace is indistinguishable from one that ran and found nothing. It is now `Optional`, `None` means nobody looked, `human_review.is_traced` reads it, and `status()` fails closed to `untraced` — which is NOT in `SELLABLE`. A mechanism built to end the "promise nothing enforces" failure came within one default value of reproducing it.
+
+**The measurement, over the FULL set (aggregated in code, not read off a truncated print):**
+
+```
+PASS dossiers with checks: 73   with >=1 untraceable figure: 28
+payer_solvency    27 figures across 23 packs
+claims_verifiable  4 across 4      distribution 2 across 2
+pain_reality       2 across 1      legality 1     route_to_market 1
+most repeated figure: "49" (6 times), then "149" (3)
+```
+
+**So 33-B is not a side quest, it is the main lever.** `payer_solvency` produces **27 of the 37**
+flagged figures (73%) and touches **23 of the 28** dirty packs (82%). The most repeated single
+figure is `49` — a price that is not on the ladder (`config.yaml listing.pricing.rungs` has 4999,
+i.e. £49.99; £49 is not a rung). The check is inventing a price to reason about affordability
+against, because nothing hands it the candidate's actual rung. **Handing `payer_solvency` its real
+rung is one change that should clear roughly four fifths of the review queue**, which reorders the
+remaining work: 33-B before 33-D, and the human queue only has to absorb the residue.
+
+**Two decisions still the founder's, stated so they are not mistaken for engineering blockers:**
+
+1. **`review_figures.py backfill --write`** recomputes the trace for the 73 dossiers already on
+   disk and writes the field into them. It is offline, deterministic and derived from each
+   record's own content — but `store/` is tracked, so it is a 73-file diff to an audit artifact.
+   Not run. The dry run above IS the receipt; the write is a one-command switch.
+2. **`listing.require_figure_verification: true`** is the delisting. 28 of 73 PASS dossiers would
+   go unlisted until reviewed or repaired. The copy no longer depends on that switch either way —
+   which was the point of doing 33-E first.
+
+### 33.10 33-E extended: the falsified promise had five surfaces, not three
+
+The audit found two more instances of the same class after the first three were corrected, both
+about the financial model rather than the verdicts, and both settled by one receipt:
+`_render_financial_model` (`artifacts.py:152`) takes the `claims` list as a parameter **and never
+reads it**; every input is rendered as a bare number (`artifacts.py:190`, `227-228`).
+
+| Surface | Was | Now |
+|---|---|---|
+| `pricing.tsx:191` | "Every figure in every pack links to a retrievable source." | "Every verdict ships with the sources it was ruled on." |
+| `faqContent.ts:70` | "…marked absent, never invented." | "…marked unverifiable rather than quietly dropped." |
+| `how-it-works.tsx:203` | "the agent **may rule only** on passages it fetched" | "it is **instructed to** rule only on passages it fetched" |
+| `pack/[id].tsx:477,486` | "Every input behind that is sourced" / "every input sourced" | the assumptions are named as assumptions |
+| `bridge.py:1396` (ships INSIDE the pack) | "computed by Python from **verified inputs**" | "computed by Python from the assumptions listed at the end of this document… the arithmetic, not the assumptions" |
+| `pack_floors.py:81` | "Financial model (Python-computed from verified inputs)" | "(arithmetic computed in Python, assumptions listed)" |
+
+The pattern across all six: the TRUE half was always adjacent to the false one. The arithmetic
+really is exact; the sources really are published; the unverifiable checks really are labelled.
+Nothing here required weakening the product's actual claim — only deleting the part of the sentence
+that generalised it into a guarantee. `npx tsc --noEmit` exit 0; 264 python tests green.

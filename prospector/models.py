@@ -261,6 +261,19 @@ class CheckResult:
     # ruling keeps throughput up but is NOT trusted as final: it never publishes on PASS
     # and is auto re-vetted by the moat on the next `vet --resume`.
     provisional: bool = False
+    # Claim-bearing figures in `rationale` that appear in NO passage this run retrieved — the model
+    # supplied them (programme doc §33; measured on 30% of the packs then on sale).
+    # OBSERVED ONLY. It must never demote the verdict and never trip a kill gate: an absent number
+    # is OUR extraction failure, and `kill_filter` can hard-fail on an `unverifiable` hard gate, so
+    # demoting here would let our own bug kill a sound idea. Its consumers are the listing fence and
+    # the human-verification queue, both of which sit AFTER the verdict. See figure_check.py.
+    #
+    # `None` and `[]` MEAN DIFFERENT THINGS, and the distinction is load-bearing: `None` = the trace
+    # never ran (every dossier written before 2026-08-13, and any run where tracing itself raised),
+    # `[]` = it ran and found nothing. Defaulting to `[]` would make 2,011 pre-existing dossiers
+    # read as figure-clean, certifying the exact packs §33 measured as dirty. The default is the
+    # honest one, and `human_review.is_traced` is what reads it.
+    untraceable_figures: Optional[list[str]] = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

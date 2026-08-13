@@ -522,16 +522,48 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
             confidence = 0.0
             data = {**data, "rationale": _reason + " Original rationale: "
                     + str(data.get("rationale", ""))}
+    # Sentence-aware, not `[:600]`. The bare slice put 726 of 7,265 stored rationales on disk
+    # ending mid-word (measured 2026-08-06), and this is the field a kill dossier renders as
+    # its whole argument. See prospector/trimming.py.
+    _rationale = clip_to_sentence(str(data.get("rationale", "")), RATIONALE_MAX)
+    # Programme doc §33: does every claim-bearing number in the rationale come from a passage the
+    # model was actually shown? `price_comparables._appears_in` has enforced exactly this for PRICES
+    # since the seventh check shipped, and the six checks that CAN kill never did — 30% of the packs
+    # then on sale asserted a figure found in no retrieved text, against copy promising the opposite.
+    # Traced on the CLIPPED rationale because that is the text that ships to the buyer.
+    # RECORDED, NEVER ACTED ON HERE: see CheckResult.untraceable_figures for why demoting the verdict
+    # would let our own extraction bug kill a sound idea.
+    # `None` until the trace has actually run: `[]` is a positive claim that nothing was flagged,
+    # and only the trace may make it.
+    _untraceable: Optional[list[str]] = None
+    try:
+        from . import figure_check
+        _rungs = figure_check.price_rung_forms(
+            ((cfg.listing.get("pricing") or {}).get("rungs") or []) if cfg is not None else [])
+        _untraceable = figure_check.trace_figures(
+            _rationale, sources, citations,
+            self_text=json.dumps(cand.to_dict()), price_rungs=_rungs,
+            truncate=VERDICT_PASSAGE_TRUNCATE).untraceable
+        if _untraceable:
+            logger.warning(
+                f"Untraceable figures in {check_name}: {_untraceable} — asserted but in no "
+                f"retrieved passage. Verdict UNCHANGED; this gates listing, not ruling.",
+                extra={"check": check_name, "untraceable_figures": _untraceable,
+                       "candidate_id": getattr(cand, "candidate_id", None)})
+    except Exception as e:
+        # An instrument must never take down the thing it measures.
+        logger.warning(f"Figure tracing failed for {check_name} (non-fatal): {e}")
+        # NOT `[]`. A trace that raised has not certified anything; leaving None means the pack
+        # reads `untraced` at the listing fence rather than clean, which is the honest answer.
+        _untraceable = None
     return CheckResult(
         check_name=check_name, verdict=verdict,
         confidence=confidence,
-        # Sentence-aware, not `[:600]`. The bare slice put 726 of 7,265 stored rationales on disk
-        # ending mid-word (measured 2026-08-06), and this is the field a kill dossier renders as
-        # its whole argument. See prospector/trimming.py.
-        rationale=clip_to_sentence(str(data.get("rationale", "")), RATIONALE_MAX),
+        rationale=_rationale,
         citations=citations,
         sources=[s for s in sources if s.source_id in citations] or sources,
-        provider=_provider_used, provisional=_provisional)
+        provider=_provider_used, provisional=_provisional,
+        untraceable_figures=_untraceable)
 
 
 # Truncation budget for verdict call: the model needs enough context to cite a
