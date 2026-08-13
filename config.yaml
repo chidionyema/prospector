@@ -771,7 +771,25 @@ markets:
         - "company registry filings volume Southeast Asia startups"
 
 generation:
-  candidates_per_signal: 20
+  # k=50 — founder directive 2026-08-13, raised from 20. Reachable inside the existing
+  # batching rails: ceil(50 / max_per_call 10) = 5 rounds, under max_rounds 6.
+  #
+  # WHAT THIS IS *NOT* FUNDED BY. The war plan's k=100 proposal rests on a FREE pre-ranker
+  # concentrating the paid budget. W0.1 measured that ranker on 1904 labelled dossiers and it
+  # is at chance out-of-time: TF-IDF logreg AUC 0.502 on the regime-restricted temporal split
+  # (0.613 unrestricted, but that arm learns "June-era phrasing = kill" — June is 724
+  # candidates and 0 passes). A chance ranker cannot make admitting 15 of 50 differ in
+  # distribution from admitting 15 of 20.
+  #
+  # WHAT IT COULD BE FUNDED BY, UNMEASURED. `schedule.batch_size` (15) bounds how many
+  # candidates reach the PAID moat per tick, so k only widens the pool that `prescreen.py`
+  # selects those 15 from. Prescreen is an LLM triage gate, not a free proxy, so W0.1 says
+  # nothing about it. If prescreen discriminates better than chance, k=50 concentrates the
+  # verdict budget and yield rises; if it does not, this buys generation cost and no passes.
+  # UNPROVEN either way — prescreen-rejected candidates never get a dossier, so the retro
+  # corpus cannot answer it. The measurement is forward: pass rate per VETTED candidate
+  # before vs after this change, at fixed batch_size.
+  candidates_per_signal: 50
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
   max_rounds: 6         # max batching rounds to hit the requested candidate count
   # Default archetype when no lane pin / --archetype. Lane defaults below override per tier
