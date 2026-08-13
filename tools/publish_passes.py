@@ -268,36 +268,65 @@ def main(argv: list[str]) -> int:
     # inside a single pack (artifacts.py:438/634/815 use ThreadPoolExecutor), so the operators,
     # the breaker and the spend ledger are on a path that is exercised concurrently today.
     # Fanning out across packs widens an existing pattern; it does not introduce one.
-    if jobs > 1:
-        with ThreadPoolExecutor(max_workers=jobs) as ex:
-            prepared = list(ex.map(_prepare, paths))
-    else:
-        prepared = [_prepare(p) for p in paths]
+    # WHY THIS IS A LAZY ITERATOR AND NOT A LIST (2026-08-13, measured)
+    # --------------------------------------------------------------------------------
+    # `_prepare` persists NOTHING. It fills `cand.tags["artifacts"]` in memory; only
+    # `publish()` writes the dossier, the bundle and the catalogue row. So while this read
+    # `prepared = list(ex.map(_prepare, paths))`, the `list()` was a BARRIER: not one pack
+    # could reach the shelf until all N had generated, and any interruption before that
+    # discarded every artifact the run had paid for.
+    #
+    # What that cost, from this repo's own logs on 2026-08-13: two publish runs (PIDs 6920
+    # and 10768) were stopped during generation and listed exactly zero packs between them,
+    # after ~90 minutes of paid model calls each. A third run (PID 19308) had 3 of 20 packs
+    # through the completeness gate at the 95-minute mark with nothing on disk and nothing
+    # on the shelf — roughly five more hours of all-or-nothing exposure ahead of it. The
+    # storefront sat at 50 listed packs through all of it. The engine was not failing to
+    # produce; the tool was throwing the production away.
+    #
+    # `ex.map` ALREADY yields in submission order as each result completes — `list()` was
+    # the only thing forcing the wait. Consuming it lazily publishes pack 1 while pack 20
+    # is still generating, so an interrupted run keeps everything it had already listed.
+    #
+    # The serial-publish rule above is UNCHANGED, and is exactly why this stays `ex.map`
+    # rather than `as_completed`: publish() still runs one at a time on this thread, in
+    # submission order. The money rail sees the identical sequence it saw before. Only the
+    # barrier is gone.
+    ex = ThreadPoolExecutor(max_workers=jobs) if jobs > 1 else None
+    prepared = ex.map(_prepare, paths) if ex is not None else (_prepare(p) for p in paths)
 
     ok = 0
     held_back = 0
-    for p, dossier, complete, problems in prepared:
-        if dossier is None:
-            print(f"SKIP (not pass): {p}")
-            continue
-        cid = dossier.candidate.candidate_id
+    try:
+        for p, dossier, complete, problems in prepared:
+            if dossier is None:
+                print(f"SKIP (not pass): {p}")
+                continue
+            cid = dossier.candidate.candidate_id
 
-        # An incomplete pack is SKIPPED on the real path (nothing to gain from bundling
-        # something that cannot list) but GATED on the dry path — the lint report for a pack
-        # that fails validate_pack still names its currency, citation and truncation defects,
-        # and those are the ones a human has to fix by hand. Reporting only "incomplete"
-        # would hide every blocker behind the first one.
-        if not complete and not dry_run:
-            print(f"{cid}: HELD BACK (not sellable after {MAX_GEN_ATTEMPTS} attempts): {problems}")
-            held_back += 1
-            continue
+            # An incomplete pack is SKIPPED on the real path (nothing to gain from bundling
+            # something that cannot list) but GATED on the dry path — the lint report for a
+            # pack that fails validate_pack still names its currency, citation and truncation
+            # defects, and those are the ones a human has to fix by hand. Reporting only
+            # "incomplete" would hide every blocker behind the first one.
+            if not complete and not dry_run:
+                print(f"{cid}: HELD BACK (not sellable after {MAX_GEN_ATTEMPTS} attempts): "
+                      f"{problems}")
+                held_back += 1
+                continue
 
-        res = publish(dossier, cfg, dry_run=dry_run) if dry_run else publish(dossier, cfg)
-        print(f"{cid}: {'gate' if dry_run else 'publish'} -> {res}")
-        if res.get("status") == "published" or res.get("content_ok"):
-            ok += 1
-        elif dry_run:
-            held_back += 1
+            res = publish(dossier, cfg, dry_run=dry_run) if dry_run else publish(dossier, cfg)
+            print(f"{cid}: {'gate' if dry_run else 'publish'} -> {res}", flush=True)
+            if res.get("status") == "published" or res.get("content_ok"):
+                ok += 1
+            elif dry_run:
+                held_back += 1
+    finally:
+        # On the happy path the map is exhausted and there is nothing left to wait for. On an
+        # interrupt, cancel the packs that have not started rather than blocking the exit on
+        # generation whose output we are about to discard anyway.
+        if ex is not None:
+            ex.shutdown(wait=False, cancel_futures=True)
 
     if dry_run:
         print(f"\nDRY RUN — nothing was minted, uploaded or listed. "
