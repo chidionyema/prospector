@@ -404,3 +404,26 @@ def guard_check(cfg) -> tuple[bool, str]:
         return True, "no daily cap configured (spend rail disabled; PAUSE switch still applies)"
     decision = guard.evaluate()
     return decision.can_run, decision.reason
+
+
+def pause_block_reason(cfg) -> str | None:
+    """The kill switch alone, for callers that are not the daemon. `None` == not paused.
+
+    WHY NOT `guard_check`: it also evaluates the daily ceiling, which re-scans
+    `store/prospector.jsonl`. That ledger reached 157 MB and `evaluate()` measured 108s on
+    it — a preflight that slow in front of every manual command would be removed by the
+    first person it inconvenienced, and a rail nobody keeps is not a rail. The kill switch
+    is a single `stat`, so it can sit in front of everything unconditionally.
+
+    WHY NO OVERRIDE FLAG: CLAUDE.md — "PAUSE is the liability rail: it halts the ENTIRE
+    tick, generation and re-vet drain together, because a rail with exceptions is not a
+    rail." The half-stops that deliberately leave the drain running are separate files
+    (`PAUSE_GENERATION`, and the automatic backlog brake), not a flag on this one.
+    """
+    guard = guard_from_config(cfg)
+    if not guard.is_paused():
+        return None
+    return (f"PAUSED — {guard.pause_file} is present, so this command will not run.\n"
+            f"        The kill switch halts manual runs as well as the daemon: a batch "
+            f"started by hand spends from the same rails and writes to the same store.\n"
+            f"        Resume with:  rm {guard.pause_file}")

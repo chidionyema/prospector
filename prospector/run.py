@@ -2916,6 +2916,23 @@ def main() -> None:
     from . import progress
     progress.note(f"audit log → {log_path}")
 
+    # THE KILL SWITCH APPLIES TO THIS PROCESS TOO. Until 2026-08-13 `PAUSE` was read only by
+    # `scheduler/run_scheduled.py` — `rg -c PAUSE prospector/run.py` returned 0 — so the
+    # documented way to stop the engine ("touch store/scheduler/PAUSE") stopped the daemon and
+    # nothing else. A manual `generate` / `vet` / `signal` spends from the same rails, writes
+    # the same dossiers and grows the same backlog, so a switch that misses them is a switch
+    # that does not stop the engine.
+    #
+    # Only the model-calling, store-mutating commands are gated. `report` / `diagnose` /
+    # `operators` / `lanes` / `markets` are how an operator finds out WHY it is paused, and a
+    # kill switch that blinds you while it holds is worse than none.
+    if args.command in {"vet", "signal", "generate", "discover", "replicate"}:
+        from .scheduler.guard import pause_block_reason
+        _paused = pause_block_reason(cfg_for_log)
+        if _paused:
+            print(f"Refusing: {_paused}", file=sys.stderr)
+            sys.exit(3)
+
     if args.command == "vet":
         # Conditional requiredness — see the `--title` declaration for why argparse cannot
         # carry it. A single-candidate vet with no title is still a usage error, and it must
