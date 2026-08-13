@@ -34,7 +34,7 @@ ANTHROPIC_BASE_URL is stripped too, and that one is NOT about billing
 ---------------------------------------------------------------------
 `ANTHROPIC_BASE_URL` repoints the CLI at a different inference endpoint. If it ever leaked
 into the engine's environment, `claude -p` would be answered by whatever sits at that URL
-while `operator.py:889` still counts the result as `MOAT_PRIMARY` — a trusted, publishable
+while `MOAT_PRIMARY` still counts the result as trusted — a publishable
 verdict served by an untrusted brain. That is precisely the fence `MOAT_PRIMARY` exists to
 hold, so the strip is a MOAT-INTEGRITY control, not a cost control, and it must not be
 removed on the grounds that "the key is dead anyway".

@@ -6,7 +6,7 @@
 # minimax RE-ADDED 2026-08-08 (founder directive: "veridt should also have fallback", after
 # being shown the 2026-08-06 arithmetic below and reaffirming). It is the "guardrailed
 # emergency tail": a ruling it serves is stamped `provisional` by `is_provisional_provider`
-# (operator.py:888), is refused by the publish gate (`run.py:528`, `not dossier.provisional`),
+# (`prospector/operator.py`), is refused by the publish gate (`run.py:528`, `not dossier.provisional`),
 # and is auto re-vetted by the drain. Nothing untrusted can ever reach a customer.
 #
 # The 2026-08-06 arithmetic that removed it is UNCHANGED and still true — it is now an
@@ -53,7 +53,7 @@
 operator: [claude_cli, standardcompute, minimax]
 # standardcompute inserted ahead of minimax 2026-08-08 (founder directive: "fall back for claude
 # ahead of minimax"). It is a TAIL, not a head — claude_cli still leads, per the standing rule that
-# the chain must stay led by a trusted brain. It is NOT in MOAT_PRIMARY (operator.py:885), so a
+# the chain must stay led by a trusted brain. It is NOT in MOAT_PRIMARY (`prospector/operator.py`), so a
 # ruling it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto
 # re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
 # To promote it to trusted-final, the gate is the one named below:
@@ -956,10 +956,12 @@ profiles:
         demand are GOOD. Prefer UK evidence terrain unless --market says otherwise.
   online_autonomous_predator:
     generation:
-      # Hard floor: "no human in the loop" is a GUARANTEE here, not a preference. Candidates
-      # whose self-reported automatability is below this (or unstated) are dropped at
-      # generation time, before the moat ever sees them. Generation-only — never a verdict gate.
-      automatability_floor: 0.8
+      # NO automatability_floor here (removed 2026-08-13, audit finding #13). A hard floor gave
+      # `automatability` an effective VETO on the one axis the weights deliberately demoted on
+      # 2026-06-25 for making generic AI-wrappers the global maximum (see the note at `weights:`
+      # — automatability .20 -> .15, defensibility .15 -> .25), and it dropped on a self-graded,
+      # pre-retrieval number. "No human in the loop" is STEERED below by structural_forms +
+      # focus; generation steers, only verification kills.
       # Restrict to ONLINE / software-deliverable forms — drop physical_ops (atoms) and
       # productized_service / risk_financing (human-labour or capital-heavy, not "no human
       # in the loop"). These five can all run as automated online businesses.

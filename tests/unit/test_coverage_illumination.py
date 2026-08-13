@@ -196,7 +196,7 @@ def test_equal_elites_leave_the_ranking_untouched_at_any_weight(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_a_provisional_row_never_sets_the_elite(tmp_path):
-    """A provisional composite comes from a brain that may not rule (operator.py:892).
+    """A provisional composite comes from a brain that may not rule (`is_provisional_provider`).
     Letting it set the elite would let a non-ruling model steer generation."""
     db = _db(tmp_path, [
         {"audience": "alpha", "decision": "pass", "composite": 9.0, "provisional": 1},

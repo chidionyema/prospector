@@ -315,7 +315,7 @@ def _exemplar_eligible(store: Store, rows: list[dict]) -> list[dict]:
        #3 of all 154 pass rows, inside the top-3 slice taken below.
 
     2. PROVISIONAL. A provisional ruling came from the cheap tail after the moat was exhausted;
-       it never publishes and is auto re-vetted (operator.py:878). Teaching the generator from
+       it never publishes and is auto re-vetted (`is_provisional_provider`). Teaching the generator from
        one promotes an unverified verdict into every future batch through the back door.
        71 of the 154 `pass` rows are provisional and every one was exemplar-eligible.
 

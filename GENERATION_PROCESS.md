@@ -165,12 +165,14 @@ with `fast=True` (`run.py:483–486`). The trusted moat (`claude_cli`/`gemini`) 
 verdicts. If all three cheap tiers exhaust → `ProviderExhaustedError` → DEFER (never falls back
 to the moat). This is by design (CLAUDE.md: "non-critical chains never touch the moat").
 
-### 2.4 Optional hard floors at generation (profile-gated)
+### 2.4 Profile-gated steering at generation
 
-- `automatability_floor` (e.g. 0.8 in the `online_autonomous_predator` profile, `config.yaml:385`)
-  drops low-automatability candidates *at generation time* (`generate.py:454–470`).
-- `focus` directive (profile-set) injects a binding "every idea MUST satisfy this" constraint
-  (`generate.py:239–242`).
+- `focus` directive (profile-set) injects a binding "every idea MUST satisfy this" constraint.
+- There is **no hard floor here, by design.** `automatability_floor` used to drop
+  low-automatability candidates at generation time; removed 2026-08-13 (audit finding #13)
+  because it handed `automatability` an effective veto on the axis the scoring weights
+  deliberately demoted, on a self-graded pre-retrieval number. Generation steers; only
+  verification kills.
 
 > **Optimisation note:** generation is feature-rich and is **not** today's bottleneck — the funnel
 > in §0 shows candidates are *minted fine and die at VERIFY on `unverifiable`*. The one generation

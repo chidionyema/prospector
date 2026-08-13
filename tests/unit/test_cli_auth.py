@@ -48,8 +48,8 @@ def test_subscription_env_is_a_denylist_and_keeps_everything_else():
 
 
 def test_base_url_is_stripped_because_it_hijacks_the_BRAIN_not_the_bill():
-    """A repointed endpoint means an untrusted brain answers a call that operator.py:889
-    still counts as MOAT_PRIMARY. This assertion is the fence, not a style preference."""
+    """A repointed endpoint means an untrusted brain answers a call that MOAT_PRIMARY
+    still counts as trusted. This assertion is the fence, not a style preference."""
     assert "ANTHROPIC_BASE_URL" in SUBSCRIPTION_HIJACK_VARS
     assert "ANTHROPIC_BASE_URL" not in subscription_env({"ANTHROPIC_BASE_URL": "http://evil"})
 

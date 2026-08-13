@@ -12,6 +12,7 @@ from .config import Config
 from .models import SCORE_AXES, Candidate, CheckResult, ScoreResult
 from .operator import Operator
 from .prompts import render
+from .telemetry import logger
 from .telemetry import stage as telemetry_stage
 
 
@@ -40,10 +41,12 @@ def score_candidate(op: Operator, cfg: Config, cand: Candidate,
         scores = {ax: max(0, min(5, v)) for ax, v in scores.items()}
         justification = {ax: str((data.get("justification", {}) or {}).get(ax, ""))
                          for ax in SCORE_AXES}
-    except Exception:
+    except Exception as e:
         # P1-9 — the all-zero scores below are a FAIL-SAFE, not a real 0/5 verdict.
         # Flag it so the publish gate never reads a scoring outage as a genuine low
         # composite (which would silently bury a possibly-passing idea).
+        logger.warning("Scoring call failed; falling back to all-zero scores with "
+                       "score_failed=True (this is NOT a real 0/5 verdict): %s", e)
         score_failed = True
         scores = {ax: 0 for ax in SCORE_AXES}
         justification = {ax: "scoring failed; fail-safe zero" for ax in SCORE_AXES}

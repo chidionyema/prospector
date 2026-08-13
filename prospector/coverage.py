@@ -64,7 +64,7 @@ looked like weak generation and its modal kill gate was `moat_ungrounded`, a RET
 outcome).
 
 Both statistics are computed over rows that were actually RULED and not provisional: a
-provisional composite comes from a brain that may not rule (`operator.py:892`), and a DEFER
+provisional composite comes from a brain that may not rule (`is_provisional_provider`), and a DEFER
 has no composite to speak for the cell.
 """
 
@@ -327,7 +327,7 @@ def measure(
                     recent[key] = recent.get(key, 0) + 1
             # G7 elites. Restricted to rows that were actually RULED and not provisional:
             # a provisional composite comes from a brain that may not rule
-            # (`operator.py:892`) and would let a non-ruling model steer generation, and a
+            # (`is_provisional_provider`) and would let a non-ruling model steer generation, and a
             # DEFER has no composite that speaks for the cell at all.
             elite: dict[str, float] = {}
             ruled: dict[str, int] = {}

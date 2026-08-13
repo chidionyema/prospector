@@ -288,7 +288,7 @@ def _get_verify():
 # NON-DETERMINISTIC on the classify call at temperature 0.0 (4 of 6 candidates returned a
 # different tier across 3 repeat runs), while claude_cli returned the identical answer 18/18.
 #
-# claude_cli is in MOAT_PRIMARY (operator.py:875), so this does put a moat brain on the
+# claude_cli is in MOAT_PRIMARY, so this does put a moat brain on the
 # non-critical chain. That is a deliberate, founder-directed change to the rule in CLAUDE.md,
 # and it is not unprecedented: `_build_artifact_op` below has always generated the customer-
 # facing pack prose on the CLI operators. The rule that still binds absolutely is the one about
@@ -329,7 +329,7 @@ def _noncritical_order(cfg: Config | None = None) -> tuple[str, ...]:
 
     Deliberately NOT extended to `cfg.operator`: the verdict chain must stay led by a trusted
     brain, and a config key that can be written from a phone is not where that fence belongs.
-    The tail is still fenced by `is_provisional_provider` (operator.py:1071) regardless of what
+    The tail is still fenced by `is_provisional_provider` regardless of what
     is configured here — nothing on this chain can finalise a ruling.
 
     An empty/missing value keeps today's behaviour byte for byte.
