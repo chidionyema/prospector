@@ -1239,6 +1239,30 @@ listing:
   # predate it. Flip to true once tools/retitle_catalogue.py has landed the rewrite — the
   # same sequence max_grammar_defects_per_1k was introduced in, for the same reason.
   title_block_on_breach: false
+
+  # SHELF COPY (pack_linter.check_shelf_copy). The same actuator pattern, for the class of
+  # defect no check in this repo could see until 2026-08-13: copy that is short, sourced,
+  # true, dash-free and inside its cap, and still unreadable to a website visitor. The
+  # founder read "£180 a claim, filed on the platform's own cover" off the live shelf and
+  # asked what kind of headline that is; the audit that followed found 48 of 50 live packs
+  # carrying at least one defect of this class, every one of them caught by his eye rather
+  # than by the engine.
+  #
+  # Measured on those 50 live rows the day the check was written: 33 ERROR findings across
+  # 23 packs — 18 lines addressed to the service's END CUSTOMER rather than to the buyer,
+  # and 15 unexplained initialisms (IEP, ADA, COSHH, ICB, CIS, STRS, DVSA, FOI, IFA). Zero
+  # false positives in that tier once LED, UV and API were recognised as everyday words.
+  #
+  # TRUE, and the sequence that earned it is the point: measured 33 errors across 23 packs,
+  # repaired the live catalogue (26 packs re-copied, 5 titles rewritten, 1 headline), then
+  # re-measured 0 errors and 0 warnings across all 51 live rows before flipping. Turning it
+  # on first would have unlisted 23 packs that were on sale.
+  #
+  # The 51st row is why it is on. It was published by the daemon DURING the repair, carrying
+  # a defect of exactly this class — which is the whole argument in one row: the copy bar
+  # was being held up by the founder reading lines off the live shelf, and the engine keeps
+  # generating faster than a person can read.
+  shelf_copy_block_on_breach: true
   surfaces: [own_store, syndicate]
   tiers: [scout, operator, founder_investor]
   exclusivity: true
