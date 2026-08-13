@@ -3,7 +3,7 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, Icon, textLinkClass } from '@/components/ui';
+import { buttonClasses, Icon } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';

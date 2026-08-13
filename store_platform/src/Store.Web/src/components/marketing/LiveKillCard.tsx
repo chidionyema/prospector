@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui';
+import { tightDecimal } from '@/components/ui/Money';
 import { cx } from '@/components/ui/cx';
 import killTotals from '@/data/kill-log-totals.json';
 import killNames from '@/data/kill-log-names.json';
@@ -142,7 +143,7 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
             The survivor figure is not dropped, it moved to the footer, where there is room to say
             what makes it different from the shelf count. */}
         <span className="truncate font-mono text-caption text-danger">
-          {killed.toLocaleString('en-GB')} killed
+          {tightDecimal(killed.toLocaleString('en-GB'))} killed
         </span>
       </div>
 

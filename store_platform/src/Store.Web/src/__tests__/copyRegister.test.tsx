@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import LiveKillCard from '@/components/marketing/LiveKillCard';
-import { AmbientKillColumn } from '@/components/marketing/AmbientKillColumn';
 import EvidenceExcerptPlate, { recordReference } from '@/components/marketing/EvidenceExcerptPlate';
 import { CheckSequence } from '@/components/marketing/CheckSequence';
 import killNames from '@/data/kill-log-names.json';
@@ -93,10 +92,10 @@ describe('rendered copy carries no engine vocabulary', () => {
     expect(found, found.join('\n')).toEqual([]);
   });
 
-  it('the ambient kill column names the reason, not the gate id', () => {
-    const found = offences(renderToStaticMarkup(<AmbientKillColumn />));
-    expect(found, found.join('\n')).toEqual([]);
-  });
+  /* The hero's ambient kill column was the second component rendering `gateLabel` and is gone
+     (replaced by `PopulationField`, which renders no per-idea copy at all, so a copy-register
+     assertion over it would pass whatever it did). `LiveKillCard` above is now the only surface
+     that prints a gate's name, and the raw-data guard below still covers the file both read. */
 
   it('the evidence plate shows a record id without the wire type prefix', () => {
     const markup = renderToStaticMarkup(<EvidenceExcerptPlate pack={PACK} />);

@@ -694,9 +694,43 @@ export interface CardHeadingInput {
   cardLine?: string;
 }
 
+/** A coined product name: an intercapped word (`HoursBack`, `ScopeDrift`). Mirrors
+ *  `_TITLE_COINAGE` in `prospector/pack_linter.py`. All-caps initialisms (`NHS`, `HMRC`) do
+ *  not match, which is the point: they are words the reader already knows. */
+const COINED_NAME = /\b[A-Z][a-z]+[A-Z][A-Za-z]*\b/;
+
+/**
+ * Is this title written in the business-first format (founder decision 2026-08-13)?
+ *
+ * `<what the business does> for <who pays>`: no coined name, inside the card budget, and
+ * naming a buyer either with "for" or with a qualifying clause after a comma. The three
+ * conditions are exactly what `pack_linter.check_title` enforces on the way in, so the two
+ * ends agree by construction rather than by comment.
+ *
+ * It has to be a test rather than an assumption because the catalogue is mixed while the
+ * rewrite lands: a legacy title still leads with a name a first-time visitor cannot use, and
+ * for those the pre-existing hierarchy (short `cardLine` as the heading, brand demoted to an
+ * eyebrow) is still the right call. A business-first title IS the useful line, so promoting
+ * it and demoting the card line is not a preference: it is the same rule applied to a title
+ * that now carries the information.
+ */
+export function isBusinessFirstTitle(title: string): boolean {
+  const t = (title ?? '').trim();
+  if (!t || t.length > CARD_HEADING_MAX || COINED_NAME.test(t)) return false;
+  return / for /i.test(t) || t.includes(', ');
+}
+
 export function cardHeading(pack: CardHeadingInput): CardHeading {
   const { name, descriptor } = splitTitle(pack.title, pack.headline);
   const card = pack.cardLine?.trim();
+
+  const title = (pack.title ?? '').trim();
+  if (isBusinessFirstTitle(title)) {
+    const sub = card && card.toLowerCase() !== title.toLowerCase()
+      ? card
+      : pack.headline?.trim() || null;
+    return { name: title, heading: title, eyebrow: null, sub: sub || null };
+  }
 
   if (card && card.length <= CARD_HEADING_MAX) {
     return {

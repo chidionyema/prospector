@@ -149,6 +149,19 @@ export const FAQS: FaqItem[] = [
     ],
   },
   { category: 'process',
+    // THE OBJECTION THE SITE HAD NO ANSWER FOR (2026-08-13). Being quiet about AI was never an
+    // ethics decision, it was this question going unanswered: in 2026 a buyer has already had
+    // free business ideas from a chatbot and already knows it invents numbers, so naming the AI
+    // without answering "why pay" reads as an admission. Answered here, next to the kill log
+    // question it sets up, because the two together are the whole argument.
+    question: 'Why not just ask a chatbot?',
+    answer: [
+      'Because it will agree with you. Ask a chatbot about your idea and you get an encouraging answer full of numbers it invented on the spot. Every figure here links to the page it came from, and the ideas that failed are published too, in the ',
+      { text: 'kill log', href: '/kill-log' },
+      '. No chatbot will ever show you that, because it costs nothing to tell you yes.',
+    ],
+  },
+  { category: 'process',
     question: 'What happens to ideas that don’t survive?',
     answer: [
       // Per email §6: short, link to the log.

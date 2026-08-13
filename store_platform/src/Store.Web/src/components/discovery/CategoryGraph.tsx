@@ -3,358 +3,181 @@ import Link from 'next/link';
 import { cx } from '@/components/ui/cx';
 
 export interface CategoryNode {
-  /** Category slug used in the catalogue filter (?kind=b2b or similar). */
+  /** The landing slug. Passed to `filterPath` to build the href. */
   kind: string;
   /** Buyer-facing label. */
   label: string;
   /** Number of packs in this category. */
   count: number;
-  /** One-line description shown on hover. */
+  /** One line about what the category is. */
   description?: string;
+  /**
+   * `Landing.kind` -- payer / commitment / effort / advantage / mechanism / sector. This is the
+   * "relatedness" US-7 asked the graph to make visible; see the note on GROUPS below.
+   */
+  group?: string;
+  /** Pre-formatted GBP range for the packs behind this category, or null when none parses. */
+  price?: string | null;
 }
 
 export interface CategoryGraphProps {
   categories: CategoryNode[];
   /**
-   * Optional: the path to navigate to when a node is clicked. The query string
-   * `?kind=<kind>` is appended so the home page's filter state picks the
-   * category up automatically. Default: `/?kind={kind}`.
+   * The path a category navigates to. Default: `/?kind=<slug>` so the home page's filter picks
+   * it up.
    */
   filterPath?: (kind: string) => string;
-  /** Optional className for the SVG container. */
+  /**
+   * Group the rows by facet, with a caption per group. Off while a search is running: once a
+   * query is typed the facet a result belongs to is no longer what is being looked at, and
+   * captions over one-row groups read as noise.
+   */
+  grouped?: boolean;
   className?: string;
 }
 
 /**
- * 2D graph of categories. Each node is a circle sized by pack count, placed
- * at a deterministic position derived from the kind. Tapping a node navigates
- * to the catalogue filtered by that category.
+ * The catalogue's categories, grouped by facet, each with its packs drawn one mark per pack.
  *
- * US-7 (audit §4.5): the /ideas page used to render 16 identical-feeling
- * category cards in a flat list. The graph makes the relationships visible
- * (operators cluster with trades, developers cluster with productised
- * services), and the size of each node is a visual proxy for "how many packs
- * are in this category" without the buyer having to read the count.
+ * WHAT THIS REPLACED, AND WHY (US-7, audit §4.5)
+ * ----------------------------------------------
+ * This component was a 4x4 grid of grey circles in an SVG, sized by pack count, with the label
+ * wrapped underneath. Two things were wrong with it, and only one of them was fixable by tuning.
  *
- * The position is a 4x4 grid keyed by the category kind, so the layout is
- * deterministic across renders. A buyer who lands on /ideas twice sees the
- * same graph twice; the cognitive map they form on the first visit still
- * applies on the second.
+ *  1. IT WAS THE SECOND OF TWO OBJECTS LISTING THE SAME 14 CATEGORIES. `/ideas` rendered this
+ *     graph under "Browse the shape of the catalogue" and then rendered every one of the same
+ *     categories again under "All categories", with a description and a price range the graph
+ *     did not have. Measured at 1440x900 on 2026-08-13 the two objects together ran from y=576
+ *     to y=3980, and the first 950px of that was the circles: one navigation, twice, on the page
+ *     whose whole job is showing a visitor what the catalogue contains.
+ *  2. THE "RELATEDNESS" IT CLAIMED TO SHOW WAS INVISIBLE. The 4x4 POSITIONS table encoded the
+ *     facet family (payer on row 0, mechanism on row 2, sector on row 3) -- and nothing on
+ *     screen said so. No caption, no rule, no grouping cue. A visitor saw fourteen grey circles
+ *     in a ragged grid whose last row held two of four, with two-line captions running into the
+ *     row beneath. The information was in the source, not on the page.
  *
- * Keyboard: each node is a `<Link>` (renders as `<a>`), so it is focusable
- * and Enter activates it. Tab order follows the visual grid, top-left to
- * bottom-right.
+ * So the two objects are now ONE object, and the grouping is stated rather than encoded: a
+ * caption per facet family ("Who pays for it", "Hours it needs from you", ...), taken from the
+ * section headings `lib/seo/landings.ts` already organises itself by. US-7's requirements all
+ * survive -- one node per category, size carries the pack count, every node is a `<Link>` so the
+ * keyboard path equals the mouse path -- but they are carried by a row, not a circle, which is
+ * what lets the description and the price range live in the same object instead of a second one.
+ *
+ * WHY MARKS AND NOT A BAR. One mark per pack is the same figure the home page draws for the whole
+ * population (`PopulationField`, "one mark each") and the same one a pack's sources are drawn with
+ * (`EvidenceBar`), in the same green that means "on the shelf" there. A category with 28 packs is
+ * 28 marks: countable, not a length the eye has to trust. A bar of arbitrary scale would have been
+ * a fifth way of drawing a quantity on a site that already has one.
  */
-/**
- * Keyed by the REAL landing slugs (`src/lib/seo/landings.ts`'s `LANDINGS[].slug`), grouped by
- * `Landing.kind` (payer / commitment / effort / advantage / mechanism / sector) so related
- * categories sit in adjacent cells -- payer on row 0, advantage spanning rows 1-2, sector on
- * row 3, etc.
- *
- * This replaces a table that was keyed by short, invented names (`b2b`, `developers`,
- * `full_time`, `b2g`, ...) that never matched a real slug: `comm -12` against the actual 16
- * `LANDINGS` slugs returned zero overlap, so every render fell through to `positionFor`'s
- * index-based fallback below. That fallback happened to look reasonable on screen only because
- * `getServerSideProps` passes categories in `LANDINGS` declaration order, which is itself
- * kind-grouped -- the apparent clustering was an accident of array order, not this table. Keying
- * on the real slugs makes the intended grouping the actual mechanism again, so it survives
- * `LANDINGS` being reordered or a category being added/removed instead of silently reverting to
- * whatever position the array happens to place it at.
- */
-const POSITIONS: Record<string, { x: number; y: number }> = {
-  // payer
-  'b2b-business-ideas': { x: 0, y: 0 },
-  'b2c-business-ideas': { x: 1, y: 0 },
-  // commitment
-  'evening-business-ideas': { x: 2, y: 0 },
-  'part-time-business-ideas': { x: 3, y: 0 },
-  // effort
-  'automated-business-ideas': { x: 0, y: 1 },
-  'part-automated-business-ideas': { x: 1, y: 1 },
-  // advantage
-  'business-ideas-for-developers': { x: 2, y: 1 },
-  'business-ideas-for-operators': { x: 3, y: 1 },
-  'business-ideas-for-salespeople': { x: 0, y: 2 },
-  // mechanism
-  'productised-service-ideas': { x: 1, y: 2 },
-  'vertical-software-ideas': { x: 2, y: 2 },
-  'marketplace-and-broker-ideas': { x: 3, y: 2 },
-  // sector
-  'red-tape-and-licensing-ideas': { x: 0, y: 3 },
-  'pay-and-worker-rights-ideas': { x: 1, y: 3 },
-  'care-and-benefits-ideas': { x: 2, y: 3 },
-  'trades-and-construction-ideas': { x: 3, y: 3 },
-};
-
-/** Fallback position for any kind not in the table: distributed by index, so a new category
- *  added to `LANDINGS` without a matching `POSITIONS` entry still renders somewhere sane instead
- *  of colliding at (0, 0). */
-function positionFor(kind: string, index: number, cols: number, rows: number): { x: number; y: number } {
-  if (POSITIONS[kind]) {
-    const p = POSITIONS[kind];
-    // A caller with fewer columns than the desktop table (the mobile layout) can't use the
-    // desktop (x, y) pair directly -- re-flow by the same index instead so mobile always gets a
-    // valid, in-bounds cell.
-    if (cols === GRID_COLS && rows === GRID_ROWS) return p;
-  }
-  const col = index % cols;
-  const row = Math.floor(index / cols) % rows;
-  return { x: col, y: row };
-}
-
-const GRID_COLS = 4;
-const GRID_ROWS = 4;
-const SVG_WIDTH = 720;
-const SVG_HEIGHT = 480;
-const PADDING = 40;
 
 /**
- * Mobile layout: 3 columns instead of 4. The earlier fix for illegible mobile labels (see the
- * comment on the wrapper `<div>` below) capped the SVG at its native 720px width and let it
- * scroll horizontally -- technically legible, but it meant a phone visitor had to pan or zoom to
- * see the whole graph, which is the complaint this layout exists to fix. Rendering a SEPARATE,
- * narrower SVG at full native font/circle size (not a scaled-down viewBox of the desktop one)
- * fits inside a phone's viewport with no horizontal scroll or zoom, at the cost of being taller
- * -- vertical scroll on a phone is the normal, expected way to see more content, unlike
- * horizontal scroll on a diagram.
+ * The facet families, in the order `LANDINGS` declares them, with the captions that file already
+ * uses as its own section headings. Anything whose `group` is not one of these still renders --
+ * see `rest` below -- because a category silently vanishing from the page that exists to list
+ * every category is the one failure this component must not have.
  */
-const GRID_COLS_MOBILE = 3;
-const GRID_ROWS_MOBILE = 6;
-const SVG_WIDTH_MOBILE = 360;
-const SVG_HEIGHT_MOBILE = 648;
-const PADDING_MOBILE = 24;
+const GROUPS: { key: string; label: string }[] = [
+  { key: 'payer', label: 'Who pays for it' },
+  { key: 'commitment', label: 'Hours it needs from you' },
+  { key: 'effort', label: 'How much is automated' },
+  { key: 'advantage', label: 'Skills you already have' },
+  { key: 'mechanism', label: 'How it makes money' },
+  { key: 'sector', label: 'Sector' },
+];
 
-interface GridConfig {
-  cols: number;
-  rows: number;
-  width: number;
-  height: number;
-  padding: number;
-  /**
-   * CSS `min-width` floor for the rendered SVG, in px. Only the desktop grid sets this
-   * (to 720, its own native width): its wrapper has `overflow-x-auto`, so on a container
-   * narrower than 720 the diagram scrolls horizontally rather than squashing illegibly.
-   *
-   * The mobile grid MUST leave this unset. `min-width` always wins over `width: 100%`
-   * (`h-auto w-full` below), so a fixed 360 here pinned the mobile SVG to 360px wide
-   * regardless of its actual container -- and the mobile wrapper has no `overflow-x-auto`
-   * (deliberately: see the "no horizontal scroll or zoom" comment on GRID_COLS_MOBILE
-   * above). Measured live on mumchimp.com/ideas 2026-08-10: at 320/360/375px viewports
-   * (a small Android, a common Android, and an iPhone SE -- not edge cases) the card was
-   * 272-327px wide but the SVG stayed pinned at 360px, so up to 4 circles rendered
-   * 20-50px past the card's right/bottom border with nothing to clip or scroll them.
-   * Leaving `minWidth` undefined lets `w-full` actually shrink the SVG (and everything
-   * in its viewBox, proportionally) to fit whatever the container really is.
-   */
-  minWidth?: number;
-}
+/** Marks stop growing past this many; beyond it the run would outgrow its column. */
+const MAX_MARKS = 40;
 
-/**
- * One SVG rendering of the graph at a given grid size. Pulled out of `CategoryGraph` so the
- * desktop (4x4, native 720px) and mobile (3x6, native 360px) variants share one implementation
- * instead of two hand-kept-in-sync copies -- both render at their OWN native font/circle sizes
- * (never a scaled `viewBox` of the other), which is what keeps mobile labels legible without a
- * `viewBox` downscale shrinking `fontSize` along with everything else.
- */
-function GraphSvg({
-  categories,
-  grid,
-  pathFor,
-  ariaLabel,
-}: {
-  categories: CategoryNode[];
-  grid: GridConfig;
-  pathFor: (kind: string) => string;
-  ariaLabel: string;
-}) {
-  const { cols, rows, width, height, padding, minWidth } = grid;
-  const cellW = (width - padding * 2) / cols;
-  const cellH = (height - padding * 2) / rows;
-  // Size scale: the smallest category is 24px radius, the largest is 56px.
-  const minCount = Math.min(...categories.map((c) => c.count), 1);
-  const maxCount = Math.max(...categories.map((c) => c.count), 1);
-  const range = Math.max(maxCount - minCount, 1);
-  /**
-   * 18-36px, down from 24-56px, because the label now sits BELOW the circle and has to fit in
-   * the same cell.
-   *
-   * The old radius could not be kept. The cell is 100px tall ((480 - 80) / 4), so a 56px radius
-   * was already a 112px circle in a 100px cell, and adding a label under it would have run the
-   * label straight through the row beneath. At 36px the circle is 72px and leaves 28px for the
-   * caption. Size still encodes count, over a smaller but honest range.
-   */
-  const radiusFor = (count: number): number => {
-    const t = (count - minCount) / range;
-    return 18 + t * 18;
-  };
-
+function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
+  const marks = Math.min(node.count, MAX_MARKS);
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="h-auto w-full"
-      style={minWidth ? { minWidth } : undefined}
-      role="img"
-      aria-label={ariaLabel}
-    >
-      {categories.map((node, i) => {
-        const pos = positionFor(node.kind, i, cols, rows);
-        const cx = padding + cellW * (pos.x + 0.5);
-        const cy = padding + cellH * (pos.y + 0.5);
-        const r = radiusFor(node.count);
-        return (
-          <Link
-            key={node.kind}
-            href={pathFor(node.kind)}
-            aria-label={`${node.label}, ${node.count} packs`}
-            className="focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-full"
-          >
-            <circle
-              cx={cx}
-              cy={cy}
-              r={r}
-              fill="currentColor"
-              fillOpacity={0.08}
-              stroke="currentColor"
-              strokeWidth={1.5}
-              className="transition-all hover:fill-opacity-20"
-            />
-            {/* The COUNT goes inside, the label goes underneath. It used to be the other way
-                around, and the label could not survive it: the widest text a circle of radius
-                r can hold is its chord, about 1.6r, and the font was sized r / 3.2, so the
-                character budget came out at ~9 REGARDLESS of how large the node was. Growing
-                the circle grew the font in step and bought nothing. Every multi-word category
-                therefore rendered clipped -- "Business ideas" as "Busin…" -- on the one page
-                whose entire job is letting a visitor see what the catalogue contains.
-                A count is two or three digits and always fits; a label never did. */}
-            <text
-              x={cx}
-              y={cy + r / 3.4}
-              textAnchor="middle"
-              className="pointer-events-none select-none"
-              fontSize={Math.max(12, r / 2.2)}
-              fontWeight={600}
-              fill="var(--text)"
-            >
-              {node.count}
-            </text>
-            {wrapLabel(node.label, cellW).map((lineText, lineIndex) => (
-              <text
-                key={lineText + lineIndex}
-                x={cx}
-                y={cy + r + 14 + lineIndex * 12}
-                textAnchor="middle"
-                className="pointer-events-none select-none"
-                fontSize={11}
-                fontWeight={500}
-                fill="var(--text-muted, #78716C)"
-              >
-                {lineText}
-              </text>
+    <li>
+      <Link
+        href={href}
+        aria-label={`${node.label}, ${node.count} pack${node.count === 1 ? '' : 's'}${node.price ? `, ${node.price}` : ''}`}
+        className={cx(
+          'group -mx-3 grid gap-x-8 gap-y-3 rounded-md px-3 py-4',
+          'border-t border-border',
+          'transition-colors duration-[140ms] ease-[cubic-bezier(0.2,0,0,1)] hover:bg-surface2',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+          'md:grid-cols-[minmax(0,1fr)_auto] md:items-baseline',
+        )}
+      >
+        <span className="min-w-0">
+          <span className="block text-body font-semibold leading-snug text-text transition-colors group-hover:text-accent">
+            {node.label}
+          </span>
+          {node.description && (
+            <span className="mt-1 block max-w-[64ch] text-meta leading-relaxed text-muted">
+              {node.description}
+            </span>
+          )}
+        </span>
+
+        <span className="flex items-center gap-4 md:justify-end">
+          {/* Presentational: the count is spelled out immediately to the right of it, and the
+              link's own aria-label carries both. A screen reader must not walk 28 pickets. */}
+          <span aria-hidden className="flex items-end gap-[1.5px]">
+            {Array.from({ length: marks }, (_, i) => (
+              <span key={i} className="block h-3 w-[1.5px] bg-survive" />
             ))}
-          </Link>
-        );
-      })}
-    </svg>
+          </span>
+          <span className="w-[3ch] text-right font-mono text-caption tabular-nums text-text">
+            {node.count}
+          </span>
+          {/* The price shows at every width. It was `hidden sm:block` and that dropped the one
+              fact a buyer is scanning for on the narrowest screen, where the choice is hardest --
+              measured at 390px on 2026-08-13, the row used ~110px of 326 and had the room. Only
+              the fixed 18ch column is held back to `sm`, because a fixed column is what makes the
+              prices line up, and below `sm` there is nothing to line them up against. */}
+          {node.price && (
+            <span className="font-mono text-caption tabular-nums text-subtle sm:w-[18ch] sm:text-right">
+              {node.price}
+            </span>
+          )}
+        </span>
+      </Link>
+    </li>
   );
 }
 
-const DESKTOP_GRID: GridConfig = {
-  cols: GRID_COLS, rows: GRID_ROWS, width: SVG_WIDTH, height: SVG_HEIGHT, padding: PADDING,
-  // Desktop wrapper below has `overflow-x-auto`: below 720px wide, scroll rather than squash.
-  minWidth: SVG_WIDTH,
-};
-const MOBILE_GRID: GridConfig = {
-  cols: GRID_COLS_MOBILE,
-  rows: GRID_ROWS_MOBILE,
-  width: SVG_WIDTH_MOBILE,
-  height: SVG_HEIGHT_MOBILE,
-  padding: PADDING_MOBILE,
-  // No minWidth: the mobile wrapper has no overflow-x-auto by design (no horizontal
-  // scroll on a phone), so the SVG must be free to shrink below its native 360px to
-  // whatever the real container is -- see the GridConfig.minWidth comment above.
-};
-
-/**
- * The graph itself. An SVG with one circle per category, sized by pack count. Each circle is
- * a `<Link>` so the keyboard path is identical to the mouse path.
- */
-export default function CategoryGraph({ categories, filterPath, className }: CategoryGraphProps) {
+export default function CategoryGraph({ categories, filterPath, grouped = true, className }: CategoryGraphProps) {
   const pathFor = filterPath ?? ((kind: string) => `/?kind=${encodeURIComponent(kind)}`);
-  const ariaLabel = 'Catalogue categories, sized by pack count';
+
+  const sections = React.useMemo(() => {
+    if (!grouped) return [{ key: 'all', label: null as string | null, rows: categories }];
+    const known = new Set(GROUPS.map((g) => g.key));
+    const out = GROUPS.map((g) => ({
+      key: g.key,
+      label: g.label as string | null,
+      rows: categories.filter((c) => c.group === g.key),
+    })).filter((s) => s.rows.length > 0);
+    const rest = categories.filter((c) => !c.group || !known.has(c.group));
+    if (rest.length > 0) out.push({ key: 'rest', label: 'Everything else', rows: rest });
+    return out;
+  }, [categories, grouped]);
 
   return (
-    <div
-      className={cx(
-        'rounded-md border border-border bg-surface p-4 md:p-6',
-        className,
-      )}
-    >
-      {/*
-        Two separate SVGs, not one scaled by CSS/viewBox. `viewBox` scales the WHOLE svg as one
-        vector -- including the label `fontSize`, which is set in the same user-space units as
-        everything else (see `wrapLabel`'s LABEL_FONT_PX below). Shrinking the desktop 720-wide
-        svg's viewBox to fit a ~320px mobile container downscaled it to ~0.44x, so the 11-unit
-        label rendered at ~5px -- confirmed on the live mumchimp.com/ideas mobile view,
-        2026-08-09. An intermediate fix capped the svg at its native 720px width and let it
-        scroll horizontally, which kept labels legible but meant a phone visitor had to pan or
-        zoom to see the whole graph. Rendering a SEPARATE, narrower 3-column layout at its own
-        native size (`MOBILE_GRID`, below) fits a phone viewport with no horizontal scroll or
-        zoom -- the same `hidden md:block` / `block md:hidden` breakpoint split already used for
-        `Logo.tsx`'s compact form, so there is no JS viewport check to keep in sync with a CSS
-        breakpoint.
-      */}
-      <div className="hidden md:block overflow-x-auto">
-        <GraphSvg categories={categories} grid={DESKTOP_GRID} pathFor={pathFor} ariaLabel={ariaLabel} />
-      </div>
-      <div className="block md:hidden">
-        <GraphSvg categories={categories} grid={MOBILE_GRID} pathFor={pathFor} ariaLabel={ariaLabel} />
-      </div>
-      <p className="mt-3 text-center text-caption text-muted">
-        Tap a circle to filter the catalogue. Circle size reflects pack count.
-      </p>
+    <div className={cx('grid gap-10', className)}>
+      {sections.map((section) => (
+        <section key={section.key}>
+          {/* `.toUpperCase()` on the VALUE, not `uppercase` in the class. House policy (asserted by
+              `weightAndCasePolicy.test.ts`): CSS-only caps leave the accessible name in sentence
+              case, so a screen reader and the screen disagree about what the caption says, and the
+              caps cannot be undone per-locale. The label stays sentence-case in `GROUPS` because
+              that is the string, and the caps are the voice. */}
+          {section.label && (
+            <h3 className="text-caption font-medium tracking-[0.08em] text-subtle">
+              {section.label.toUpperCase()}
+            </h3>
+          )}
+          <ul className={cx('list-none p-0', section.label && 'mt-2')}>
+            {section.rows.map((node) => (
+              <CategoryRow key={node.kind} node={node} href={pathFor(node.kind)} />
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
-}
-
-/** Label font size, and the average glyph width it produces. Used to turn a pixel budget into a
- *  character budget. 0.55em is the usual approximation for a humanist sans at small sizes; it is
- *  deliberately pessimistic, so the estimate errs towards wrapping early rather than overflowing. */
-const LABEL_FONT_PX = 11;
-const LABEL_GLYPH_RATIO = 0.55;
-const LABEL_MAX_LINES = 2;
-
-/**
- * Break a category label across at most two lines that fit the cell width.
- *
- * Wraps on word boundaries, so "Productised service" becomes two whole words rather than
- * "Productised s\u2026". Only when a single word is itself wider than the cell does this fall back to
- * cutting, and then it marks the cut. With a 160px cell (720 - 80 padding, over 4 columns) the
- * budget is ~26 characters per line against the ~9 the old in-circle label had.
- */
-export function wrapLabel(label: string, cellWidth: number): string[] {
-  const maxChars = Math.max(6, Math.floor(cellWidth / (LABEL_FONT_PX * LABEL_GLYPH_RATIO)));
-  const words = label.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-
-  const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length <= maxChars) {
-      current = candidate;
-      continue;
-    }
-    if (current) lines.push(current);
-    if (lines.length === LABEL_MAX_LINES) break;
-    // A single word longer than the whole budget is the only case that still has to be cut.
-    current = word.length > maxChars ? `${word.slice(0, maxChars - 1)}\u2026` : word;
-  }
-  if (current && lines.length < LABEL_MAX_LINES) lines.push(current);
-
-  // Anything that did not fit in two lines is signalled, never dropped silently.
-  const rendered = lines.join(' ').replace(/\u2026$/, '');
-  if (rendered.length < label.trim().length && !lines[lines.length - 1].endsWith('\u2026')) {
-    lines[lines.length - 1] = `${lines[lines.length - 1]}\u2026`;
-  }
-  return lines;
 }

@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import report from '@/data/sample-report.json';
-import killTotals from '@/data/kill-log-totals.json';
 import { SourceChip, sourceHost } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 
@@ -52,7 +51,6 @@ checks.forEach((check) => {
 
 const SURVIVED = checks.filter((check) => check.verdict === 'supported').length;
 const PUSHED_BACK = checks.length - SURVIVED;
-const KILLED = (killTotals as { killed: number }).killed;
 
 export function HeroEvidenceStrip({ className }: { className?: string }) {
   return (
@@ -106,22 +104,21 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
         </Link>
       </div>
 
-      {/* The kill total lives HERE, attached to the record, because the two facts only mean
-          something together: the checks have teeth (one just failed, above) and they have been
-          applied at scale (this line). Split across the page they read as two boasts; adjacent
-          they read as one method. The struck names drifting behind this column are the same
-          records. */}
-      <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-subtle">
-        <span>
-          {KILLED.toLocaleString('en-GB')} ideas were killed by these same checks.
-        </span>
-        <Link
-          href="/kill-log"
-          className="font-medium text-accent underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
-        >
-          Read the kill log
-        </Link>
-      </p>
+      {/* THE KILL TOTAL AND ITS "Read the kill log" LINK USED TO CLOSE THIS COMPONENT, and the
+          argument for putting them here was right: the checks have teeth (one just failed, above)
+          and they have been applied at scale, and those two facts only mean something adjacent.
+
+          What made it wrong was arithmetic, not reasoning. Measured on the rendered page at
+          1440x900, "1,364" appeared at y=735 here and again at y~1180 in the proof strip, each
+          under an identically-worded link to the same page: one number, twice, on one screen, on a
+          site whose entire pitch is that it keeps track of its numbers.
+
+          The bridge itself is not lost, it MOVED ONTO THE PICTURE. `PopulationField` renders
+          immediately below this component and its caption reads "Every idea put through these same
+          checks, one mark each" over 1,444 marks -- the same sentence, doing the same work, said
+          once, beside the population it is about instead of 445px above a restatement of it. The
+          prose statement of both totals stays in the proof strip, which is the only one of the
+          three that a phone ever sees. */}
     </div>
   );
 }
