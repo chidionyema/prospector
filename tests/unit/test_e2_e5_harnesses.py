@@ -49,10 +49,21 @@ def e5(monkeypatch):
 # --------------------------------------------------------------------------- E2
 
 def test_e2_reads_the_persona_vocabulary_from_a_dict_config(e2):
-    """`cfg.generation` is a plain dict. getattr on it returns None and reads as 'not in config'."""
+    """`cfg.generation` is a plain dict. getattr on it returns None and reads as 'not in config'.
+
+    Asserted against the config the harness ACTUALLY loads, not against a word list. The reader
+    bug this test exists to catch produces an EMPTY vocabulary (getattr on a dict -> None), so
+    non-empty + equal-to-config is the whole property. The old form asserted `len >= 8` and
+    `smb_owner in vocab`, which pinned the founder's steering state instead: turning on the
+    `tech_ai_all` profile (`8edff52`) narrows `audience_forms` to six operator personas, and a
+    green suite went red on a config knob with no code change behind it.
+    """
+    from prospector.config import load_config
+
+    expected = (load_config().generation or {}).get("audience_forms") or []
     vocab = e2._config_personas()
-    assert len(vocab) >= 8, vocab
-    assert "smb_owner" in vocab and "startup_operator" in vocab
+    assert vocab, "empty vocabulary is the reader bug this test exists to catch"
+    assert list(vocab) == list(expected), (vocab, expected)
 
 
 def test_e2_refuses_an_empty_vocabulary_rather_than_flagging_every_persona(e2, monkeypatch):
