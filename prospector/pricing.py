@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from prospector.config import Config
+from prospector.config import LISTING_DEFAULTS, Config
 from prospector.models import Candidate, PriceAnchor, ScoreResult
 
 
@@ -123,7 +123,11 @@ def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
     # the rationale string and the same shape of bug.
     rungs: list[int] = [int(r) for r in (pricing.get("rungs") or [])]
     if not rungs or pricing.get("default_rung_index") is None:
-        flat = int(listing.get("price_pence", 4999))
+        # The fallback is the DECLARED default, not a second literal: `cfg.listing` normally
+        # carries `price_pence` (config.yaml wins, merged in `config.load`), and a cfg built
+        # by hand — `tests/unit/test_payer_solvency_price.py` — degrades to that same single
+        # source rather than to a number that can silently drift from it (finding #20).
+        flat = int(listing.get("price_pence", LISTING_DEFAULTS["price_pence"]))
         return PriceDecision(
             price_pence=flat,
             rung="flat (no ladder declared)",
