@@ -168,13 +168,23 @@ def _clean(value: Any) -> str:
     return nodash(to_plain_text(" ".join(str(value or "").split()), collapse=True)).strip()
 
 
-def _compose(name: str, does: str) -> str:
-    """The one place a title is assembled. `nodash` for the same reason publish runs it."""
-    name = " ".join(str(name or "").split()).strip().rstrip(",").strip()
-    does = " ".join(str(does or "").split()).strip().lstrip(",").strip().rstrip(".")
-    if not name or not does:
-        return ""
-    return nodash(to_plain_text(f"{name}, {does}", collapse=True))
+#: Why a row is rewritten under `--rewrite-all`. The register change is an AUDIENCE fix, and
+#: no linter can see an audience: "HoursBack, finds the pay your NHS rota says you are owed"
+#: is a well-formed sentence addressed to the wrong person. So the migration cannot be driven
+#: by `assess`, which only reports what is mechanically wrong.
+REGISTER_MIGRATION = ("register migration 2026-08-13: business-first, no product name, "
+                      "addressed to the person deciding whether to start it")
+
+#: The same migration, for the two lines that were NOT swept with the titles. `--from-plan`
+#: patches the approved title and returns, so on 2026-08-13 fifty titles moved to the new
+#: register while fifty headlines and card lines stayed in the old one. The result is a shelf
+#: card whose heading talks to the reader and whose second line talks to the customer of the
+#: service: `Injury claim service for delivery riders, fixed fee` above `A fixed £180 fee
+#: covers the whole claim` (pack 224578cd860491c9, live). Like the title migration this is
+#: invisible to `assess` — that card line is short, dash-free, sourced and does not repeat the
+#: title, so every mechanical check passes it.
+LINE_MIGRATION = ("line migration 2026-08-13: headline and card line still address the "
+                  "customer of the service, not the reader deciding whether to run it")
 
 
 def _norm(value: Any) -> str:
@@ -258,7 +268,7 @@ def _validate(kind: str, value: str, row: Dict[str, Any], *, max_chars: int
     market = row.get("market") or ""
     if kind == "title":
         if not value:
-            return ["`name` or `does` was empty; both are required"], []
+            return ["`title` was empty"], []
         problems = check_title(value, max_chars=max_chars)
         claims = check_title_claims(value, src, market=market)
         return [p["detail"] for p in problems] + _hard(claims), _soft(claims)
@@ -312,13 +322,20 @@ def propose(op, row: Dict[str, Any], *, max_chars: int, attempts: int,
             feedback = "Your output was not a JSON object. Output ONLY the four named fields."
             continue
 
-        drafts = {"title": _compose(data.get("name", ""), data.get("does", ""))}
+        # One field, not `name` + `does` joined here: since 2026-08-13 the title carries no
+        # product name at all, so there is nothing to compose and no separator to get wrong.
+        drafts = {"title": _clean(data.get("title", "")).rstrip(".").strip()}
         drafts["headline"] = _clean(data.get("headline", ""))
         drafts["cardLine"] = _clean(data.get("card_line", ""))
         # The headline and card line are graded against the title this same draft proposes,
         # not the broken one on the row: otherwise a good headline is rejected for echoing a
         # title that is about to be replaced.
-        graded = dict(row, _new_title=drafts["title"] or row.get("title") or "")
+        # ...but only when the title is actually being replaced. Under --rewrite-lines the
+        # model still emits a title it was not asked for and that will not ship, and grading
+        # the two lines against that phantom rejects a good headline for echoing a string
+        # nobody will ever see.
+        proposed = drafts["title"] if "title" in wanted else ""
+        graded = dict(row, _new_title=proposed or row.get("title") or "")
 
         breaches: List[str] = []
         notes: List[str] = []
@@ -383,12 +400,72 @@ def main() -> int:
     ap.add_argument("--max-chars", type=int, default=TITLE_MAX_CHARS)
     ap.add_argument("--from-file", default="",
                     help="read the catalogue from a JSON file instead of the API")
+    ap.add_argument("--from-plan", default="",
+                    help="TSV of ALREADY-APPROVED titles (id<TAB>before<TAB>after), one per "
+                         "line. A row named here is patched with that exact string and the "
+                         "model is never called for it. This exists because --apply otherwise "
+                         "RE-GENERATES: without a plan the titles that ship are not the titles "
+                         "that were reviewed, which makes the review meaningless.")
+    ap.add_argument("--rewrite-all", action="store_true",
+                    help="rewrite every title, not only the ones that fail the linter "
+                         "(the 2026-08-13 register migration: a title can be well-formed "
+                         "and still be addressed to the wrong reader)")
+    ap.add_argument("--plan-out", default="",
+                    help="write every proposed line to this TSV as id<TAB>field<TAB>value. "
+                         "A dry run with --plan-out and an apply with --from-lines ship "
+                         "EXACTLY what was reviewed, for one model run instead of two.")
+    ap.add_argument("--from-lines", default="",
+                    help="TSV of ALREADY-APPROVED lines (id<TAB>field<TAB>value). A field "
+                         "named here is patched with that exact string and the model is "
+                         "never called for it. The field-grain twin of --from-plan.")
+    ap.add_argument("--rewrite-lines", action="store_true",
+                    help="rewrite every headline and card line, leaving the title to the "
+                         "linter. This is the other half of --rewrite-all: --from-plan "
+                         "patches an approved title and returns, so a plan sweep moves the "
+                         "titles and leaves the other two lines in the old register.")
     args = ap.parse_args()
 
     if args.apply and not os.environ.get("STORE_INTERNAL_API_KEY"):
         print("--apply needs STORE_INTERNAL_API_KEY; refusing.", file=sys.stderr)
         return 2
     internal_key = os.environ.get("STORE_INTERNAL_API_KEY", "")
+
+    # Parsed BEFORE the catalogue is fetched: a malformed plan should cost nothing.
+    approved: Dict[str, str] = {}
+    if args.from_plan:
+        for lineno, line in enumerate(
+                Path(args.from_plan).read_text(encoding="utf-8").splitlines(), 1):
+            if not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) < 3 or not parts[0].strip() or not parts[-1].strip():
+                print(f"--from-plan line {lineno}: expected id<TAB>before<TAB>after",
+                      file=sys.stderr)
+                return 2
+            approved[parts[0].strip()] = parts[-1].strip()
+        print(f"approved plan       : {len(approved)} titles from {args.from_plan}")
+
+    # The same idea at field grain. --from-plan carries one string per pack because a title is
+    # one line; a headline-and-card-line sweep proposes two, so the plan has to name which.
+    approved_lines: Dict[str, Dict[str, str]] = {}
+    if args.from_lines:
+        for lineno, line in enumerate(
+                Path(args.from_lines).read_text(encoding="utf-8").splitlines(), 1):
+            if not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) != 3 or not all(p.strip() for p in parts[:2]):
+                print(f"--from-lines line {lineno}: expected id<TAB>field<TAB>value",
+                      file=sys.stderr)
+                return 2
+            pack_id, field, value = (p.strip() for p in parts)
+            if field not in _FIELD_KEY:
+                print(f"--from-lines line {lineno}: unknown field {field!r}", file=sys.stderr)
+                return 2
+            approved_lines.setdefault(pack_id, {})[field] = value
+        print(f"approved lines      : "
+              f"{sum(len(v) for v in approved_lines.values())} fields across "
+              f"{len(approved_lines)} packs from {args.from_lines}")
 
     rows = (json.loads(Path(args.from_file).read_text()) if args.from_file
             else _fetch_catalogue(args.api_url))
@@ -401,6 +478,16 @@ def main() -> int:
         return 1
 
     plan = [(r, assess(r, max_chars=args.max_chars), dash_repairs(r)) for r in rows]
+    if args.rewrite_all:
+        for _row, needs, _fixes in plan:
+            needs.setdefault("title", [REGISTER_MIGRATION])
+    if args.rewrite_lines:
+        # Deliberately NOT title: the fifty live titles were reviewed one by one and approved,
+        # and re-rolling them here would quietly replace strings a human signed off. A title
+        # that genuinely breaches still arrives through `assess` above.
+        for _row, needs, _fixes in plan:
+            needs.setdefault("headline", [LINE_MIGRATION])
+            needs.setdefault("cardLine", [LINE_MIGRATION])
     todo = [(r, n, d) for r, n, d in plan if n]
     dash_only = [(r, d) for r, n, d in plan if not n and d]
     clean = len(plan) - len(todo) - len(dash_only)
@@ -420,7 +507,17 @@ def main() -> int:
         patches.append((row, fixes))
 
     skipped: List[Tuple[Dict[str, Any], List[str]]] = []
-    if todo:
+    op = None
+    # Only when at least one row still needs a model. A fully-approved plan must not depend on
+    # a brain being reachable: the thinking already happened and was reviewed.
+    def _covered(row: Dict[str, Any], needs: Dict[str, List[str]]) -> bool:
+        """Is every line this row needs already an approved string?"""
+        if row.get("id") in approved:
+            return True
+        have = approved_lines.get(row.get("id") or "", {})
+        return bool(needs) and all(k in have for k in needs)
+
+    if any(not _covered(r, n) for r, n, _f in todo):
         cfg = load_config(args.config)
         op = build_operator(cfg)
     store_dir = Path(args.store)
@@ -435,6 +532,21 @@ def main() -> int:
         # institutions and guarantees; this line is what the residue is judged against.
         print(f"  source       {(row.get('oneLine') or '')[:160]}")
         print(f"  title  before ({len(old):3d}) {old}")
+        if row.get("id") in approved:
+            # No model call, no re-validation against a linter the approver has already
+            # overruled: an approved string is a decision, not a draft.
+            value = approved[row["id"]]
+            print(f"  title        ({len(value):3d}) {value}   [from plan]")
+            patches.append((row, dict({"title": value}, **fixes)))
+            continue
+        have = approved_lines.get(row.get("id") or "", {})
+        if have and all(k in have for k in needs):
+            # Same rule as --from-plan, one grain finer: an approved line is a decision.
+            chosen = {k: have[k] for k in needs}
+            for kind, value in chosen.items():
+                print(f"  {kind:12s} ({len(value):3d}) {value}   [from plan]")
+            patches.append((row, dict(chosen, **fixes)))
+            continue
         try:
             fields, trail, notes = propose(op, row, max_chars=args.max_chars,
                                            attempts=args.attempts, needs=needs)
@@ -461,6 +573,21 @@ def main() -> int:
     print(f"\n{'=' * 72}")
     print(f"rows to patch : {len(patches)}")
     print(f"skipped       : {len(skipped)}")
+
+    if args.plan_out:
+        # Written from `patches`, the same object the apply path patches from, so the plan
+        # cannot describe something other than what would have shipped. Tabs and newlines are
+        # stripped because the plan is TSV and a line that re-parses wrong is worse than one
+        # that fails to parse: it would ship silently truncated.
+        out = Path(args.plan_out)
+        with out.open("w", encoding="utf-8") as fh:
+            written_rows = 0
+            for row, fields in patches:
+                for kind, value in fields.items():
+                    flat = " ".join(str(value).split())
+                    fh.write(f"{row['id']}\t{kind}\t{flat}\n")
+                    written_rows += 1
+        print(f"plan written  : {written_rows} lines to {out}")
 
     if not args.apply:
         print("\nDRY RUN — nothing written. Re-run with --apply "

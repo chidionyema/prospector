@@ -393,6 +393,87 @@ def test_an_unreachable_archive_leaves_the_error_standing(monkeypatch):
     assert [p["severity"] for p in probs] == ["error"]
 
 
+def test_a_throttled_memento_is_retried_before_it_is_believed(monkeypatch):
+    """Measured 2026-08-13: web.archive.org served 503 for a memento CDX had just named, and
+    503 fell through as 'not alive' — so a pack whose evidence WAS archived stayed blocked, and
+    17 such refusals sat in `store/lint_url_cache.json`. A throttle is the archive declining to
+    answer, not an answer."""
+    monkeypatch.setattr(pack_linter.time, "sleep", lambda _s: None)
+    seen = []
+
+    def probe(url, **kw):
+        if "web.archive.org" not in url:
+            return _Resp(404)
+        seen.append(url)
+        return _Resp(503 if len(seen) < 3 else 200)
+
+    monkeypatch.setattr(pack_linter.requests, "head", probe)
+    monkeypatch.setattr(pack_linter.requests, "get", probe)
+    memento = "https://web.archive.org/web/20240101/https://x.test/dead"
+    probs, _ = check_urls({"gtm_plan": "see https://x.test/dead"},
+                          archived={"https://x.test/dead": memento})
+    assert [p["severity"] for p in probs] == ["warning"], \
+        f"gave up on a memento that answered on the third try: {probs}"
+
+
+def test_a_slow_memento_gets_more_than_the_citation_budget(monkeypatch):
+    """Wayback playback reassembles a stored page; a live 404 answers instantly. Sized for the
+    latter, the probe timed the former out and read that as 'not servable' — which is how
+    `5e8f3b69369be3a8` stayed blocked with its evidence sitting in the archive."""
+    monkeypatch.setattr(pack_linter.time, "sleep", lambda _s: None)
+    budgets = []
+
+    def probe(url, **kw):
+        if "web.archive.org" not in url:
+            return _Resp(404)
+        budgets.append(kw.get("timeout"))
+        return _Resp(200)
+
+    monkeypatch.setattr(pack_linter.requests, "head", probe)
+    monkeypatch.setattr(pack_linter.requests, "get", probe)
+    check_urls({"gtm_plan": "see https://x.test/dead"}, timeout_s=5.0,
+               archived={"https://x.test/dead": "https://web.archive.org/web/1/x"})
+    assert budgets and min(budgets) >= pack_linter._MEMENTO_TIMEOUT_S, \
+        f"memento probed on the citation budget: {budgets}"
+
+
+def test_an_unreachable_memento_is_not_cached_either(tmp_path, monkeypatch):
+    """A timeout is our outage, not a verdict on the capture. Caching it would strand the pack
+    for `_URL_CACHE_TTL_S` on a network blip."""
+    monkeypatch.setattr(pack_linter.time, "sleep", lambda _s: None)
+
+    def probe(url, **kw):
+        if "web.archive.org" in url:
+            raise real_requests.ReadTimeout("slow playback")
+        return _Resp(404)
+
+    monkeypatch.setattr(pack_linter.requests, "head", probe)
+    monkeypatch.setattr(pack_linter.requests, "get", probe)
+    cache_path = tmp_path / "lint_url_cache.json"
+    check_urls({"gtm_plan": "see https://x.test/dead"}, cache_path=cache_path,
+               archived={"https://x.test/dead": "https://web.archive.org/web/1/x"})
+    written = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+    assert not [k for k in written if "web.archive.org" in k], \
+        f"cached our own timeout as a verdict: {written}"
+
+
+def test_a_throttled_memento_is_never_cached_as_dead(tmp_path, monkeypatch):
+    """The compounding half: a 503 written into the 7-day URL cache pins our own throttling
+    onto the memento long after the archive recovers."""
+    monkeypatch.setattr(pack_linter.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(pack_linter.requests, "head",
+                        lambda url, **kw: _Resp(503 if "web.archive.org" in url else 404))
+    monkeypatch.setattr(pack_linter.requests, "get",
+                        lambda url, **kw: _Resp(503 if "web.archive.org" in url else 404))
+    cache_path = tmp_path / "lint_url_cache.json"
+    memento = "https://web.archive.org/web/20240101/https://x.test/dead"
+    check_urls({"gtm_plan": "see https://x.test/dead"}, cache_path=cache_path,
+               archived={"https://x.test/dead": memento})
+    written = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+    assert not [k for k in written if "web.archive.org" in k], \
+        f"cached a throttle as a verdict: {written}"
+
+
 def test_no_archived_map_behaves_exactly_as_before(monkeypatch):
     """The regression control: absent mementos, this path is untouched."""
     _dead_live_probes(monkeypatch, 200)
@@ -409,7 +490,7 @@ def test_no_archived_map_behaves_exactly_as_before(monkeypatch):
 # writable; `prompts/generate_system.md` just asked for "a short name, then a dash, then
 # what it does" and named no length.
 
-_GOOD = "SwarmHold, income cover for beekeepers in a hive standstill"  # 59 chars
+_GOOD = "Standstill income cover for beekeepers"  # 38 chars, business-first
 
 
 def _title_report(title, **kw):
@@ -417,41 +498,81 @@ def _title_report(title, **kw):
     return _report(house_fields={"title": title}, **kw)
 
 
+def _title_details(title, **kw):
+    return [p["detail"] for p in _title_report(title, **kw)["problems"]
+            if p["check"] == "title"]
+
+
 def test_a_title_in_the_declared_format_is_clean():
     assert len(_GOOD) <= pack_linter.TITLE_MAX_CHARS
-    assert [p for p in _title_report(_GOOD)["problems"] if p["check"] == "title"] == []
+    assert _title_details(_GOOD) == []
+
+
+def test_a_comma_may_carry_the_revenue_model_instead_of_for():
+    # The second accepted shape: when HOW the business earns is the interesting fact, it
+    # qualifies the trade after a comma rather than naming the payer with "for".
+    assert _title_details("NHS care-fee reclaim service, paid on commission") == []
 
 
 def test_an_over_length_title_is_reported():
-    long = "SwarmHold, statutory income cover for sole-trader beekeepers ordered to " \
-           "stop moving their hives during a foulbrood standstill"
+    long = "Statutory standstill income cover for sole-trader beekeepers ordered to " \
+           "stop moving their hives"
     assert len(long) > pack_linter.TITLE_MAX_CHARS
-    problems = [p for p in _title_report(long)["problems"] if p["check"] == "title"]
-    assert len(problems) == 1
-    assert f"exceeds the {pack_linter.TITLE_MAX_CHARS} limit" in problems[0]["detail"]
+    details = _title_details(long)
+    assert len(details) == 1
+    assert f"exceeds the {pack_linter.TITLE_MAX_CHARS} limit" in details[0]
 
 
-def test_a_bare_name_with_no_descriptor_is_reported():
-    # Baymard's listing-page finding, and the 4 live rows that had exactly this shape:
-    # a coined word alone tells a buyer nothing about what they are being sold.
-    problems = [p for p in _title_report("SwarmHold")["problems"] if p["check"] == "title"]
-    assert len(problems) == 1
-    assert "no descriptor" in problems[0]["detail"]
+def test_a_coined_product_name_is_reported():
+    # The 2026-08-13 finding, in the founder's words: "the title tells me nothing, it feels
+    # cryptic". An intercapped word is the first thing a scanner reads and it means nothing
+    # until you already own the pack.
+    details = _title_details("SwarmHold, income cover for beekeepers in a standstill")
+    assert len(details) == 1
+    assert "coined product name 'SwarmHold'" in details[0]
 
 
-def test_a_sentence_before_the_separator_is_not_a_name():
-    # The descriptor-first shape. It is legible, but it is not the declared format, and a
-    # length check alone would wave it through — this one is 58 chars.
-    t = "Income cover for beekeepers in a hive standstill, SwarmHold"
-    assert len(t) <= pack_linter.TITLE_MAX_CHARS
-    problems = [p for p in _title_report(t)["problems"] if p["check"] == "title"]
-    assert len(problems) == 1
-    assert "is a sentence, not a name" in problems[0]["detail"]
+def test_an_initialism_a_reader_already_knows_is_not_a_coined_name():
+    # The distinction the check turns on. NHS is all-caps, so it must not match the
+    # intercaps pattern — flagging it would block the most informative titles we have.
+    assert _title_details("Unpaid-hours audits for NHS doctors and nurses") == []
+
+
+def test_an_imperative_opener_is_reported():
+    # Rejected by the founder on 2026-08-13: "sell/run is overused and too blunt for
+    # 149 pack".
+    details = _title_details("Sell unpaid-hours audits to NHS doctors")
+    assert any("imperative 'sell'" in d for d in details)
+
+
+def test_a_noun_that_is_also_a_verb_is_not_read_as_an_imperative():
+    # "Price", "cover" and "track" open correct titles. A false positive here blocks a good
+    # line, which is why the imperative set deliberately excludes them.
+    assert _title_details("Price data for UK freelance creatives") == []
+
+
+def test_an_article_opener_is_reported():
+    details = _title_details("The appeal service for refused carers")
+    assert any("article 'the'" in d for d in details)
+
+
+def test_a_title_that_names_no_buyer_is_reported():
+    details = _title_details("Unpaid-hours audits")
+    assert len(details) == 1
+    assert "names no buyer" in details[0]
+
+
+def test_a_third_person_verb_after_the_comma_is_reported():
+    # The dominant live shape on 2026-08-09: "HoursBack, finds the pay …". The comma may
+    # qualify the trade; it may not turn the title back into a sentence about the customer.
+    details = _title_details("Rota audits, finds the pay your trust has not paid")
+    assert any("verb 'finds'" in d for d in details)
 
 
 def test_the_actuator_is_off_by_default_so_a_bad_title_cannot_unlist_a_pack():
     # The whole reason the check can ship before the catalogue is retitled: on 2026-08-09
-    # this rule would have errored on 46 of 48 live packs.
+    # this rule would have errored on 46 of 48 live packs, and the register change of
+    # 2026-08-13 puts every remaining name-first title in breach again.
     report = _title_report("SwarmHold")
     assert report["ok"] is True
     assert all(p["severity"] == "warning"
@@ -490,13 +611,13 @@ def test_split_title_still_reads_a_raw_dash_title():
     assert pack_linter.split_title("SwarmHold - income cover") == ("SwarmHold", "income cover")
 
 
-def test_a_title_over_length_AND_shapeless_reports_both():
-    t = "Automated statutory income cover for sole-trader beekeepers ordered to stand still"
+def test_a_title_over_length_AND_name_first_reports_both():
+    t = "SwarmHold, automated statutory income cover for sole-trader beekeepers"
     assert len(t) > pack_linter.TITLE_MAX_CHARS
     details = [p["detail"] for p in _title_report(t)["problems"] if p["check"] == "title"]
     assert len(details) == 2
     assert any("exceeds the" in d for d in details)
-    assert any("no descriptor" in d for d in details)
+    assert any("coined product name" in d for d in details)
 
 
 # ---------------------------------------------------------------------------
@@ -511,8 +632,11 @@ _SRC = ["Chases the retention main contractors hold back after practical complet
 
 
 def _claims(descriptor, sources=_SRC, market="uk", block=False):
-    return pack_linter.check_title_claims(
-        f"RetainRelease, {descriptor}", sources, market=market, block=block)
+    # No name prefix: since 2026-08-13 a title has none, and `check_title_claims` judges the
+    # whole string. Prepending "RetainRelease, " here would have every case report the
+    # coinage as a word the source never uses, and the assertions would be measuring the
+    # fixture rather than the rule.
+    return pack_linter.check_title_claims(descriptor, sources, market=market, block=block)
 
 
 def _hard(problems):
@@ -610,10 +734,15 @@ def test_the_actuator_promotes_only_the_hard_tier():
     assert [p["severity"] for p in _hard(_claims("guaranteed recovery", block=True))] == ["error"]
 
 
-def test_a_title_with_no_descriptor_is_not_double_reported():
-    # check_title already says the format was not followed; saying it again under a second
-    # check name would make one defect look like two.
-    assert pack_linter.check_title_claims("RetainRelease", _SRC, market="uk") == []
+def test_a_title_with_no_separator_is_still_claim_checked():
+    # The regression that shipped hidden inside the 2026-08-13 register change. This check
+    # used to read only the half after a separator and return [] when there was none — which
+    # was safe while every title was `Name, descriptor`, and became a hole the moment the
+    # format stopped having a name in it: EVERY correctly-formatted title would have been
+    # exempt from the truth rule, on a storefront whose whole claim is source-or-die.
+    out = pack_linter.check_title_claims(
+        "Guaranteed retention recovery for subcontractors", _SRC, market="uk")
+    assert _hard(out), "a business-first title must still answer to the claim rules"
 
 
 def test_each_offending_token_is_reported_once_not_once_per_rule():
