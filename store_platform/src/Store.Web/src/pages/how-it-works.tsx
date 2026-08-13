@@ -15,7 +15,6 @@ import CheckSequence from '@/components/marketing/CheckSequence';
    example each check picks is unchanged, while the 452 KB full log stays out of this bundle. A
    static JSON import is one value and cannot be tree-shaken. */
 import killLog from '@/data/kill-log-examples.json';
-import killTotals from '@/data/kill-log-totals.json';
 
 /** One entry from the kill log picked to illustrate a specific gate. */
 interface KillExample {
@@ -113,7 +112,6 @@ function firstSentences(reason: string, budget: number): string {
 
 export default function HowItWorks() {
   const { variant } = useCopyVariant();
-  const totals = killTotals as { killed: number; passed: number };
   return (
     <MarketingLayout>
       <Seo
@@ -136,10 +134,11 @@ export default function HowItWorks() {
         had not met the single fact the page exists to prove.
 
         `RESEARCH_STATS` is the same source the home page proof strip uses, so the two pages
-        cannot disagree. The rates are computed once, in `lib/stats.ts`, and never re-rounded on
-        this page. Read `passRateLabel` for a sentence about survival and `rejectRateLabel` for
-        one about kills: this line once said "{rejectRate}% survive", which printed 94% directly
-        under "1,444 ideas in. 80 out." and claimed the filter passes almost everything.
+        cannot disagree. The rate is computed once, in `lib/stats.ts`, and never re-rounded here.
+        There is only ONE rate now, the kill rate: this line read "1,444 ideas in. 80 out." over
+        "5.5% survive", and both halves stated a survivor population of 80 against a shelf of 50.
+        The founder cut the figure on 2026-08-13 rather than have the copy keep explaining it, so
+        the thesis is stated from the kill side, which is the side we can show you.
       */}
       <Section
         bg="bg"
@@ -148,15 +147,15 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl">
           <p className="text-body font-semibold leading-relaxed text-text">
-            {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in. {RESEARCH_STATS.survived.toLocaleString('en-GB')} out.
+            {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in.{' '}
+            {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed.
           </p>
-          {/* This line promised that EVERY kill ships published with the evidence behind it. It
-              was false, and false about a number this page reads from the same JSON as the page
-              that states it correctly: 400 of the 1,364, which is what /kill-log says in as many
-              words. `killsSummary` is now the only sentence on the site that pairs a kill count
-              with the verb, and `numbersReconcile.test.ts` scans for the absolute form. */}
+          {/* This line promised that EVERY kill ships published with the evidence behind it, which
+              was false about a number this page reads from the same JSON as the page that states it
+              correctly: 400 of the 1,364, per /kill-log. The replacement claims no quantity at all,
+              and `numbersReconcile.test.ts` scans every page for the absolute form. */}
           <p className="mt-2 max-w-[60ch] text-meta leading-relaxed text-muted">
-            {RESEARCH_STATS.passRateLabel} survive. {killsSummary()}.
+            {RESEARCH_STATS.rejectRateLabel} died on cited evidence. {killsSummary()}.
           </p>
         </div>
       </Section>
@@ -314,21 +313,20 @@ export default function HowItWorks() {
         title="The kill log"
       >
         <div className="max-w-3xl space-y-6">
-          {/* This paragraph used to promise publication in full for the whole kill set. Only 400
-              of the 1,364 are published, and the button directly below prints 1,364, so the false
-              quantifier and the count it was false about sat within 40px of each other.
-              `killsSummary` owns the honest pairing; what is left here describes what a published
-              kill CONTAINS, which is the thing this section is actually for. */}
+          {/* This paragraph used to promise publication in full for the whole kill set, 40px above
+              a button that then printed 1,364 while the page it opens shows 400. Both are gone: no
+              quantity is claimed here, and the button no longer names a count it cannot deliver.
+              What is left describes what a published kill CONTAINS, which is what this section is
+              for. */}
           <p className="text-body leading-relaxed text-muted">
-            {RESEARCH_STATS.publishedKills.toLocaleString('en-GB')} of the{' '}
-            {RESEARCH_STATS.killed.toLocaleString('en-GB')} kills are published with the check that
-            fired and the argument that killed it, sources included where the kill had them.
+            Each published kill carries the check that fired and the argument that killed it, with
+            the sources where the kill had them.
           </p>
           <Link
             href="/kill-log"
             className={buttonClasses({ size: 'lg' })}
           >
-            See the {totals.killed.toLocaleString()} we killed{' '}
+            Read the kill log{' '}
             <Icon name="arrowRight" size={15} />
           </Link>
         </div>

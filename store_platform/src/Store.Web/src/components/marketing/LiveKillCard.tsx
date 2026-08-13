@@ -4,7 +4,6 @@ import { Icon } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import killTotals from '@/data/kill-log-totals.json';
 import killNames from '@/data/kill-log-names.json';
-import { survivorsSummary } from '@/lib/stats';
 
 /**
  * US-3 - The hero's demonstration of the moat.
@@ -90,10 +89,9 @@ export interface LiveKillCardProps {
    * Packs on the shelf right now, from the live catalogue. Optional: a caller with no catalogue
    * to hand gets the survivor count on its own, which is a historical total and cannot go stale.
    */
-  listed?: number;
 }
 
-export default function LiveKillCard({ className, listed }: LiveKillCardProps) {
+export default function LiveKillCard({ className }: LiveKillCardProps) {
   /*
    * No timer, and no "LIVE" badge.
    *
@@ -169,10 +167,15 @@ export default function LiveKillCard({ className, listed }: LiveKillCardProps) {
       </div>
 
       <div className="flex flex-col gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* The two survivor numbers, reconciled in one line, once on the page. `listed` is the
-            live catalogue count and `survived` is a historical total, so they are never equal and
-            the difference is the packaging queue, not a mistake. */}
-        <span className="font-mono text-caption text-subtle">{survivorsSummary(listed)}</span>
+        {/* NO COUNT HERE AT ALL. This slot has held, in order: "81 survived" (against a shelf of
+            57), then the survivor count reconciled against the live `listed` prop, then the
+            survivor count alone. All three printed a population the buyer cannot see. What the
+            card can promise without a number is the thing that matters to someone about to buy:
+            the packs on the shelf are the ones that came through these checks. The `listed` prop
+            went with the reconciliation, so this card needs no catalogue call. */}
+        <span className="font-mono text-caption text-subtle">
+          Every pack on the shelf came through this
+        </span>
         <Link
           href="/kill-log"
           className="inline-flex items-center gap-1 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"

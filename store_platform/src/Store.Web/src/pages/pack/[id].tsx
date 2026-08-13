@@ -749,20 +749,21 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
              * buying. `RESEARCH_STATS` is the shared derivation, so this cannot drift from
              * /kill-log or /how-it-works the way the hand-rolled versions did (lib/stats.ts:9-21).
              *
-             * `survived`, deliberately NOT the number listed: this pack is one of the ideas that
-             * cleared the gates, which is a verdict, not a state of packaging. Conflating the two
-             * is the exact error `survivorsSummary` exists to prevent, so neither figure is
-             * written into copy here and the listed count is not claimed at all.
+             * The plate used to lead with "1 / 80", the survivor count. That figure is gone from
+             * the site (lib/stats.ts, founder directive 2026-08-13): 80 ideas cleared the gates
+             * and 50 are on the shelf, so printing 80 anywhere obliged the copy to explain the
+             * difference. The argument for buying does not need it. "94.5% of 1,444 died on cited
+             * evidence, and this one did not" is the same fact from the end we can prove, and both
+             * figures come from `RESEARCH_STATS`, so it cannot drift from /kill-log.
              */}
             <div className="mt-8 flex flex-col gap-x-6 gap-y-3 rounded-md border border-border bg-surface p-6 sm:flex-row sm:items-center">
               <p className="flex-none font-mono text-h1 font-semibold leading-none text-text">
-                1<span className="text-muted"> / </span>
-                {RESEARCH_STATS.survived.toLocaleString('en-GB')}
+                {RESEARCH_STATS.rejectRateLabel}
               </p>
               <p className="max-w-[52ch] text-meta leading-relaxed text-muted">
-                <span className="font-medium text-text">One of the ideas that survived.</span>{' '}
-                {RESEARCH_STATS.researched.toLocaleString('en-GB')} went through the filter and{' '}
-                {RESEARCH_STATS.rejectRateLabel} died on cited evidence.{' '}
+                <span className="font-medium text-text">This one came through the filter.</span>{' '}
+                {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through it and the
+                rest died on cited evidence.{' '}
                 <Link
                   href="/kill-log"
                   className="text-accent underline underline-offset-2 hover:text-accent-hover"

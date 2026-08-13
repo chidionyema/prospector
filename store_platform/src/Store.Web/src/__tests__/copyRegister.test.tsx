@@ -89,7 +89,7 @@ const PACK: PackDetails = {
 
 describe('rendered copy carries no engine vocabulary', () => {
   it('the home page kill card names the reason, not the gate id', () => {
-    const found = offences(renderToStaticMarkup(<LiveKillCard listed={57} />));
+    const found = offences(renderToStaticMarkup(<LiveKillCard />));
     expect(found, found.join('\n')).toEqual([]);
   });
 
