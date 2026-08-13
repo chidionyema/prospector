@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Button, Icon, Dropdown, chipClasses, textLinkClass, buttonClasses } from '@/components/ui';
+import { Button, Icon, Dropdown, chipClasses, textLinkClass, buttonClasses, PriceText } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
-import { SectionBand, Section, CtaBand } from '@/components/marketing/blocks';
+// No `CtaBand` here any more: this page's closing band is hand-composed (argument left, purchase
+// terms right) rather than the shared title/lead/two-buttons shape. See the note above it.
+import { SectionBand, Section } from '@/components/marketing/blocks';
 // The home page OWNS the pack manifest (§5.3 of docs/SITE_SPEC_PROGRAM.md, founder-confirmed
 // 2026-08-07). `PACK_CONTENTS` for the count beside the prices, `PackContentsSection` for the
 // manifest itself. /pricing keeps bare filenames only (`pricing.tsx:123`), which is the same
@@ -15,7 +17,7 @@ import { PACK_CONTENTS, PackContentsSection } from '@/components/marketing/PackC
 import { EvidenceRecordPanel } from '@/components/marketing/EvidenceRecordPanel';
 import LiveKillCard from '@/components/marketing/LiveKillCard';
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
-import AmbientKillColumn from '@/components/marketing/AmbientKillColumn';
+import PopulationField from '@/components/marketing/PopulationField';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
@@ -33,7 +35,6 @@ import { track } from '@/lib/analytics';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 import { allCategories, categoryFor, type Category } from '@/lib/category';
 import type { Sector } from '@/lib/facets';
-import { checkVerdicts } from '@/lib/checks';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
   cardHeading,
@@ -316,7 +317,7 @@ function PackCard({
         </span>
 
         <span className="flex flex-none items-center gap-3 sm:gap-4">
-          <span className="font-mono text-body font-semibold tabular-nums text-text">{price}</span>
+          <PriceText className="text-body font-semibold text-text">{price}</PriceText>
           <Icon
             name="arrowRight"
             size={15}
@@ -339,7 +340,13 @@ function PackCard({
       <Link
         href={`/pack/${pack.id}`}
         className={cx(
-          'group flex flex-col overflow-hidden rounded-md border border-border bg-surface lg:flex-row',
+          /* `w-full` is load-bearing and was missing. The card is a flex ITEM (its wrapper in the
+             shelf is `flex animate-rise`), so with no width it sizes to its content: measured at
+             1440x900 the lead card ran x=120..1020 inside a 1200px container, while the row list
+             directly beneath it ran the full 120..1320. Two right edges 300px apart in one shelf
+             is not an editorial choice, it is a card that looks unfinished next to the list under
+             it -- and the "poster" claim this treatment makes is a claim about WIDTH. */
+          'group flex w-full flex-col overflow-hidden rounded-md border border-border bg-surface lg:flex-row',
           'transition-[border-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
           'hover:border-border-strong',
           focusRing,
@@ -347,7 +354,15 @@ function PackCard({
       >
         <span
           className={cx(
-            'relative h-36 w-full flex-none overflow-hidden sm:h-44 lg:h-auto lg:w-[34%]',
+            /* `lg:max-w-[20rem]` CAPS THE CARD'S HEIGHT, which is not obvious from the class list
+               and is why it is written down. `PackMark` is an SVG with a `0 0 1 1` viewBox at
+               `h-full w-full`; inside a `h-auto` flex item that resolves to its 1:1 intrinsic
+               ratio, so this column is a SQUARE and its width sets the whole card's height.
+               Measured: at the card's old content-sized 900px the column was 305x305; giving the
+               card the full 1200px it should have had made it 407x407, and the text column --
+               whose content is 271px tall -- absorbed the difference as a 162px hole above the
+               price. The cap keeps the proportion that was already working at any card width. */
+            'relative h-36 w-full flex-none overflow-hidden sm:h-44 lg:h-auto lg:w-[34%] lg:max-w-[20rem]',
             cat.tint,
             cat.ink,
           )}
@@ -377,12 +392,22 @@ function PackCard({
           )}
         </span>
 
-        <span className="flex flex-1 flex-col p-6 sm:p-8">
-          <span className="block text-h2 font-semibold text-text">{heading}</span>
-          {line && <span className="mt-2 block max-w-[58ch] text-body text-muted">{line}</span>}
-          <EvidenceBar className="mt-4" count={pack.sourceCount} />
-          <span className="mt-auto flex items-end justify-between gap-4 pt-6">
-            <span className="font-mono text-h1 font-semibold tabular-nums text-text">{price}</span>
+        {/* THREE COLUMNS AT `lg`, NOT TWO: mark / what it is / what it costs.
+            Stacked, the price sat at the bottom of the text column under `mt-auto`, so a card that
+            is 322px tall because its mark is square left a 74px hole between the source bar and
+            the price, while the copy (capped at 58ch) used ~500px of an 848px column and the rest
+            of the width was blank. Making the price and its button a vertically-centred right rail
+            spends the width on the two things a shelf card is for -- the claim and the number --
+            and the hole closes because nothing is being pushed to a bottom any more.
+            Below `lg` this is untouched: one column, price row last, price left, button right. */}
+        <span className="flex flex-1 flex-col p-6 sm:p-8 lg:flex-row lg:items-center lg:gap-10">
+          <span className="flex flex-1 flex-col">
+            <span className="block text-h2 font-semibold text-text">{heading}</span>
+            {line && <span className="mt-2 block max-w-[58ch] text-body text-muted">{line}</span>}
+            <EvidenceBar className="mt-4" count={pack.sourceCount} />
+          </span>
+          <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
+            <PriceText className="text-h1 font-semibold text-text">{price}</PriceText>
             <span
               className={cx(
                 'inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2.5',
@@ -452,9 +477,7 @@ function PackCard({
               inherited body size with only `font-semibold` distinguishing it. Mono because a price
               is a checkable quantity, which is exactly the rule the house style already states,
               and `tabular-nums` so £49 and £149 align on the decimal down a column. */}
-          <span className="font-mono text-h2 font-semibold tabular-nums tracking-tight text-text">
-            {price}
-          </span>
+          <PriceText className="text-h2 font-semibold text-text">{price}</PriceText>
           <span
             className={cx(
               'inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2',
@@ -1267,14 +1290,44 @@ function CatalogBrowser({
                 const rank = new Map(tailPacks.map((p, i) => [p.id, i]));
                 const beyondFold = (p: Pack) => (rank.get(p.id) ?? 0) >= shown;
                 const leads = tailPacks.filter((p) => packWeight(p) === 'lead');
-                const mids = tailPacks.filter((p) => packWeight(p) === 'mid');
+                const allMids = tailPacks.filter((p) => packWeight(p) === 'mid');
                 const rows = tailPacks.filter((p) => packWeight(p) === 'row');
+
+                /*
+                  AN ODD MID BAND LEAVES A HOLE, so the odd one is promoted instead.
+
+                  The mid band is `lg:grid-cols-2`. Measured on the live shelf at 1440x900 the
+                  band held exactly ONE card: a 590px card at x=120 with 610px of empty white
+                  beside it, directly under a full-bleed lead card -- which does not read as an
+                  editorial choice, it reads as a card that failed to load. Any odd count does the
+                  same thing to its last row.
+
+                  So when the count is odd the first mid (the highest-ranked one, keeping the
+                  band's order intact) renders with the `lead` treatment and joins the row above,
+                  leaving an even number to fill the grid. The tier still decides ORDER and which
+                  band a pack belongs to; what it stops deciding, in the one case where it cannot
+                  be honoured, is a layout that would be visibly broken. The alternative --
+                  stretching the odd card across both columns -- gives a mid card the width of a
+                  lead card anyway, but with a treatment drawn for half of it.
+
+                  PARITY IS COUNTED OVER THE VISIBLE CARDS, NOT THE ARRAY. Cards past the fold are
+                  rendered `hidden` rather than unmounted (see the note on `beyondFold`), so
+                  `allMids.length` is the count AFTER "Show the other N packs" is pressed, not the
+                  count on screen. The first attempt at this fix used it and changed nothing: two
+                  mids, one of them hidden, reads as even and leaves the same hole. Both figures
+                  recompute on every render, so pressing the button re-evaluates the promotion for
+                  the expanded shelf.
+                */
+                const visibleMids = allMids.filter((pack) => !beyondFold(pack));
+                const promoted = visibleMids.length % 2 === 1 ? visibleMids.slice(0, 1) : [];
+                const mids = allMids.filter((pack) => !promoted.includes(pack));
+                const leadRow = [...leads, ...promoted];
 
                 return (
                   <>
-                    {leads.length > 0 && (
+                    {leadRow.length > 0 && (
                       <div className="flex flex-col gap-6">
-                        {leads.map((pack) => (
+                        {leadRow.map((pack) => (
                           <div
                             key={pack.id}
                             /* `hidden`, not unmounted. Dropping the nodes would strip internal
@@ -1297,7 +1350,7 @@ function CatalogBrowser({
                       <div
                         className={cx(
                           'grid grid-cols-1 gap-6 lg:grid-cols-2',
-                          leads.length > 0 && 'mt-6',
+                          leadRow.length > 0 && 'mt-6',
                         )}
                       >
                         {mids.map((pack) => (
@@ -1323,7 +1376,7 @@ function CatalogBrowser({
                       <div
                         className={cx(
                           'divide-y divide-border border-y border-border',
-                          (leads.length > 0 || mids.length > 0) && 'mt-8',
+                          (leadRow.length > 0 || mids.length > 0) && 'mt-8',
                         )}
                       >
                         {rows.map((pack) => (
@@ -1514,10 +1567,15 @@ export default function Home({ packs, stats, initialState, market, currency, per
      the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
      card in the grid. */
   const featured = packs[0];
-  /* The hero's kill total moved into `HeroEvidenceStrip`, which reads the SAME `kill-log-totals.json`
-     this page still reads for the panel below the shelf. That shared source is the point: a
-     "1,168 killed" figure repeated across components is exactly how one of them goes stale, so no
-     component is allowed to hold its own copy of the number. */
+  /* THE KILL TOTAL IS STATED ONCE ON THIS PAGE, in the proof strip below the hero. It was in
+     `HeroEvidenceStrip` as well until 2026-08-13, which put "1,364" and an identically-worded
+     "Read the kill log" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
+     is the copy that stayed because it is the only one a phone ever reaches: `HeroEvidenceStrip`
+     is `hidden md:block` and `PopulationField` is desktop-and-tall only.
+
+     The old rule still stands and is the reason the number is not typed anywhere: every surface
+     reads `kill-log-totals.json` or `RESEARCH_STATS`, never its own copy, because a "1,168 killed"
+     figure duplicated across components is exactly how one of them goes stale. */
   return (
     // One drawer for the whole shelf. Inside MarketingLayout so the drawer's own Modal renders
     // above the header, and so a card anywhere on the page can reach it without prop threading.
@@ -1582,12 +1640,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
         {/* Two columns on lg+: the claim on the left, the evidence for it on the right. The
             filter-log card is the argument -- it is the only thing above the fold that a
             sceptical stranger can check. */}
-        {/* `relative` so the ambient kill column can be positioned against the hero rather than
-            the viewport, and `z-10` on the content so the drifting names stay behind the headline
-            at every scroll position. The column is desktop-only and `pointer-events-none`, so it
-            cannot touch the measured phone fold budget or intercept a tap on the CTA. */}
+        {/* The `relative` wrapper and the `z-10` on the row below are the last of the positioning
+            scaffolding that `AmbientKillColumn` needed (it was `absolute inset-y-0 right-0 z-0`
+            behind this row). The column is gone -- see `PopulationField` below for what replaced
+            it and the measurement that condemned it -- and the stacking context is kept only
+            because the featured card's opaque fill still relies on it. */}
         <div className="relative">
-        <AmbientKillColumn />
         <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-start lg:gap-12">
           <div className="w-full min-w-0">
             {/* Mono because both halves are quantities. This replaces an uppercase
@@ -1712,13 +1770,15 @@ export default function Home({ packs, stats, initialState, market, currency, per
               1440x900, until the row was made breakpoint-aware (see `rowHasFeatured`). On mobile
               this slot is not rendered and the pack is simply the first card in the grid. */}
           {featured && (
-            /* `relative z-10 bg-surface`: this slot sits directly over `AmbientKillColumn`
-               (`absolute inset-y-0 right-0 z-0`, this file's hero). The card itself is opaque
+            /* `relative z-10 bg-surface` was added because this slot sat directly over
+               `AmbientKillColumn` (`absolute inset-y-0 right-0 z-0`): the card itself is opaque
                (`bg-surface`, see PackCard's "mid" branch), but the heading above it and the
                padding around it were not, so ticker text rendered legibly through the gap --
                "...Builder  The value would n[ot last]" sitting directly above "New this week"
-               (ss_0456bw1wg, live mumchimp.com/, 2026-08-09). Same token the card already uses,
-               so the panel reads as one surface rather than a heading floating on a new fill. */
+               (ss_0456bw1wg, live mumchimp.com/, 2026-08-09). That column is gone, so nothing
+               shows through any more; the fill stays because `--surface` and `--bg` are the same
+               white (tokens.css:80,81) and removing it would be a no-op edit on a card whose
+               background is otherwise inherited from whatever band it is dropped into. */
             <div className="relative z-10 hidden w-full rounded-md bg-surface p-4 lg:block">
               {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
                   on the shelf below. It was `uppercase tracking-wide text-caption`, which the
@@ -1737,6 +1797,27 @@ export default function Home({ packs, stats, initialState, market, currency, per
             </div>
           )}
         </div>
+        {/* THE POPULATION, AT FULL WIDTH AND UNDER THE CLAIM IT SUPPORTS.
+
+            AFTER the two-column row in DOM order, not behind it. The h1 is this page's LCP
+            element (see the `animate-settle` note on the band above, F-005), and the field is
+            ~1,400 elements: putting it first would make the browser lay all of them out before it
+            painted the headline. Here it costs the LCP nothing.
+
+            THE HEIGHT GATE IS A FOLD DECISION AND USES THE SAME THRESHOLD AS THE BAND PADDING
+            ABOVE. The field costs ~150px including its captions. At 1280x720 -- Playwright's
+            Desktop Chrome and a real 720p laptop -- the first pack card already sits within ~50px
+            of the fold after the padding trim documented on the SectionBand, so 150px there would
+            put the product back off-screen, which is the exact regression that trim exists to
+            undo. `min-height:821px` is the complement of that `max-height:820px` query: on a tall
+            display the hero has the room, on a short one the shop keeps its product.
+
+            `lg:` because below it the layout is one column and every pixel here pushes the first
+            card down directly -- the same reason `HeroEvidenceStrip` beside it is `hidden md:block`. */}
+        <PopulationField
+          shelfCount={packs.length}
+          className="mt-10 hidden [@media(min-height:821px)]:lg:block"
+        />
         </div>
       </SectionBand>
 
@@ -1953,7 +2034,29 @@ export default function Home({ packs, stats, initialState, market, currency, per
           from the section system, which is a doubled/offset hairline at any viewport wider than
           1280px -- one candidate for the "weird lines going across pages" report, confirmed at
           the code level 2026-08-09. */}
+      {/* THE PAGE NOW CLOSES ONCE. Measured on the rendered page at 1440x900 before this merge,
+          the last 1,300px were three consecutive full-width bands:
+
+            y=6980  this band            "Every idea walks into a room built to destroy it."
+                                          -> /how-it-works, -> /kill-log ("See the 1,364 it rejected")
+            y=7400  TrustGuaranteesRow   three terms + "1,364 ideas were killed to list these 50"
+            y=7620  CtaBand              "Find your next business from GBP 29.99."
+                                          -> #catalog, -> /how-it-works
+
+          Two closing CTA bands, 640px apart, both linking to /how-it-works, with "1,364" stated in
+          each of the first two 200px from each other -- and each band left-aligned inside a 1200px
+          container, so all three had an empty right half. That is the "same paragraph four times"
+          defect at page scale, in the last thing a reader sees.
+
+          One band now. The argument keeps the left column (it is the better line, and a closing
+          statement should give a reason, not repeat the offer), the purchase terms take the right
+          column so the width is actually used, and the primary button is the commercial one that
+          the deleted `CtaBand` carried -- browse the shelf -- with the method as the secondary. The
+          kill figure is stated once here, by the terms column, and the standalone
+          "Find your next business" band is REMOVED from this page (it survives on /how-it-works,
+          /ideas and /ideas/[slug], which is where `CtaBand` is still the right closing shape). */}
       <SectionBand bg="surface2" width="7xl" className="py-16 md:py-24">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">
           {/*
             "STRESS TESTED" SECTION, email §1.
@@ -1979,19 +2082,20 @@ export default function Home({ packs, stats, initialState, market, currency, per
             A claim without a source dies before it reaches this shelf. Every pack you&rsquo;re
             browsing came through it.
           </p>
+          {/* The kill figure left this row with the second band: the terms column beside it now
+              states it once, in a sentence that also says what the log actually contains. A link
+              whose label is a number, 200px above a sentence containing the same number, was the
+              near-duplicate that made the tail read as a page arguing with itself. */}
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
-            <Link
-              href="/how-it-works"
-              className={buttonClasses({ size: 'lg' })}
-            >
-              See how the filter works
+            <Link href="#catalog" className={buttonClasses({ size: 'lg' })}>
+              Browse the packs
               <Icon name="arrowRight" size={14} />
             </Link>
             <Link
-              href="/kill-log"
+              href="/how-it-works"
               className="inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
             >
-              See the {RESEARCH_STATS.killed.toLocaleString('en-GB')} it rejected
+              See how the filter works
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
@@ -2000,6 +2104,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
               behind this" in full and which the link directly above reaches. Rendering the bio
               here as well meant a stranger met the same person twice in two lengths, and the
               homepage's job is the product. */}
+        </div>
+
+        {/* N1: the purchase terms, once, as the closing band's right column. Same component and
+            same live `stats.listed` it had as a standalone band -- only its container changed
+            (`layout="stack"`), so the counts still cannot drift from the kill log. */}
+        <TrustGuaranteesRow layout="stack" listed={stats?.listed} price={range ?? undefined} className="lg:pt-2" />
         </div>
       </SectionBand>
 
@@ -2014,24 +2124,13 @@ export default function Home({ packs, stats, initialState, market, currency, per
           how it surfaced at all. The contextual asks win: they sit where the shelf actually runs
           out, and their `source` tags keep shelf-end and empty-state signups tellable apart in the
           ledger. One ask per state, enforced by `oneEmailAskPerScreen` in e2e/discovery.spec.ts. */}
-      {/* N1: the single trust-and-guarantees row above the CtaBand. Three purchase terms,
-          one place. The buyer who scrolls the page from top to bottom sees the terms of the sale
-          once, definitively. */}
-      {/* `price` computed from the packs this render already has, never a constant -- the shelf
-          stopped being one price when the segment ladder shipped (lib/priceRange.ts). */}
-      <TrustGuaranteesRow listed={stats?.listed} price={range ?? undefined} />
-
-      {/* `lead` was "One payment. Every claim sourced. 14 day money back guarantee." -- the same
-          three terms a third time, and directly under `TrustGuaranteesRow`, which had just said
-          them. A closing band should give the reader a reason to scroll back up, not re-read the
-          row immediately above it. */}
-      <CtaBand
-        width="7xl"
-        title={range ? `Find your next business from ${formatGbp(range.min)}.` : 'Find your next business.'}
-        lead={`${packs.length} packs. Research done, every claim sourced.`}
-        primary={{ href: '#catalog', label: 'Browse the packs' }}
-        secondary={{ href: '/how-it-works', label: 'How it works' }}
-      />
+      {/* THE TRUST ROW AND THE CLOSING `CtaBand` STOOD HERE and are both accounted for above:
+          the row moved into the closing band as its right column (`layout="stack"`, same live
+          `listed` prop), and the band was removed from this page. Its two links now exist there --
+          "Browse the packs" as the primary, "See how the filter works" as the secondary -- so
+          nothing a reader could reach from here became unreachable; what went is the second copy.
+          `price` is still computed from the packs this render already has, never a constant, since
+          the shelf stopped being one price when the segment ladder shipped (lib/priceRange.ts). */}
     </MarketingLayout>
     </BuyDrawerProvider>
   );

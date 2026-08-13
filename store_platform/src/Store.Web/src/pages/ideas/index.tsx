@@ -3,15 +3,13 @@ import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
 
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
+import { PageHero, Section } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
-import { SearchInput, buttonClasses, textLinkClass } from '@/components/ui';
+import { Icon, SearchInput, buttonClasses, textLinkClass } from '@/components/ui';
 import { fetchCatalog } from '@/lib/api/client';
 import { eligibleLandings, packMatchesLanding } from '@/lib/seo/landings';
 import { priceRange, formatGbp } from '@/lib/priceRange';
-import { cx } from '@/components/ui/cx';
 import CategoryGraph, { type CategoryNode } from '@/components/discovery/CategoryGraph';
-import BespokeIcon from '@/components/marketing/BespokeIcon';
 import { resolveVariant } from '@/lib/getCopyVariant';
 import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
@@ -39,12 +37,36 @@ interface Category {
   count: number;
   low: number | null;
   high: number | null;
+  /**
+   * `Landing.kind` -- payer / commitment / effort / advantage / mechanism / sector. It was always
+   * in the data and never on the page: the old category graph encoded it as a position in a 4x4
+   * grid with nothing on screen to say what the rows meant. It is now the caption over each group.
+   */
+  group: string;
 }
 
 interface Props {
   categories: Category[];
   total: number;
   variant: VariantKey;
+}
+
+/**
+ * The first sentence of a landing's `metaDescription`.
+ *
+ * These strings are written for `<meta name="description">`, where each one has to stand alone in
+ * a search result -- so every one of them restates the purchase terms at the end. Stacked fourteen
+ * deep on this page that reads as a stutter, which is why only the opening sentence (the part
+ * written about THIS category) reaches the screen. `landings.ts` is left untouched, so the tag a
+ * crawler reads still says everything.
+ *
+ * Splits on `. ` rather than `.` so a decimal or an abbreviation mid-sentence cannot cut the line
+ * short, and returns the whole string unchanged when there is no sentence break to find.
+ */
+function firstSentence(text: string): string {
+  const trimmed = text.trim();
+  const end = trimmed.search(/\.\s/);
+  return end === -1 ? trimmed : trimmed.slice(0, end + 1);
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
@@ -68,6 +90,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
             slug: landing.slug,
             h1: landing.h1,
             description: landing.metaDescription,
+            group: landing.kind,
             count,
             low: range ? range.min : null,
             high: range ? range.max : null,
@@ -141,52 +164,43 @@ export default function IdeasHub({ categories, total, variant }: Props) {
           className="mb-8"
         />
 
-        {/* US-7: the 2D category graph. Sized by pack count, placed by relatedness.
-            Tapping a node navigates to that category's landing page. Below the
-            graph, the existing flat list stays as the text fallback (some buyers
-            scan text, some scan visuals - keep both). */}
-        {!search && categories.length > 0 && (
-          <div className="mb-10">
-            <h2 className="text-meta font-semibold text-text mb-4">Browse the shape of the catalogue</h2>
-            <CategoryGraph
-              categories={categories.map((c) => ({
-                kind: c.slug,
-                label: VARIANTS[variant].categoryH1[c.slug] ?? c.h1,
-                count: c.count,
-                description: c.description,
-              })) as CategoryNode[]}
-              filterPath={(kind) => `/ideas/${kind}`}
-            />
-            <div className="mt-6 border-t border-border pt-6">
-              <h2 className="text-meta font-semibold text-text">All categories</h2>
-            </div>
-          </div>
+        {/*
+         * ONE OBJECT, NOT TWO. This page used to render the category graph under "Browse the
+         * shape of the catalogue" and then every one of the SAME 14 categories again under
+         * "All categories" -- one navigation, twice, on the page whose only job is showing a
+         * visitor what the catalogue holds. Measured at 1440x900 on 2026-08-13, the pair ran
+         * y=576 to y=3980 and the first 950px of it was grey circles carrying strictly less
+         * than the list below them (no description, no price).
+         *
+         * `CategoryGraph` is now that single object: a row per category, grouped by facet with
+         * the caption the grouping never had, the pack count drawn one mark per pack, and the
+         * description and price range that used to force a second list. What US-7 asked for is
+         * all still here -- see the component's own note -- and the duplicate is gone.
+         */}
+        {filtered.length > 0 && (
+          <h2 className="mb-4 text-meta font-semibold text-text">
+            {search ? `${filtered.length} matching categor${filtered.length === 1 ? 'y' : 'ies'}` : 'All categories'}
+          </h2>
         )}
 
         {/*
-         * THE MOSAIC, not a link list.
+         * THE MOSAIC IS GONE, and this is what it was for and what replaced it.
          *
-         * What was here: `grid gap-4 sm:grid-cols-2` of identical bordered cards, every category
-         * the same size whether it held 5 packs or 30. That is the catalogue's own object rendered
-         * with category names in it, which made this page indistinguishable from the shelf at a
-         * glance and gave a visitor no reason to be on it. A taxonomy page's job is to show the
-         * SHAPE of the catalogue, and shape means some things are bigger than others.
+         * It was a two-step ladder of tiles: the two biggest categories took a full row, the rest
+         * paired up, so size stated the hierarchy. The idea was right and the execution could not
+         * work at the width. Measured at 1440x900 on 2026-08-13: a lead tile ran the full 1200px
+         * with its name and description capped at 62ch on the left and its count and range flush
+         * right, which put ~600px of nothing through the middle of the two most important rows on
+         * the page -- and every tile spent a 40-48px square on `BespokeIcon`, which draws the same
+         * generic mark for all 14 slugs.
          *
-         * Weight is assigned by rank, not by a continuous function of count. Three reasons:
-         * a 30-pack category is not six times more interesting than a 5-pack one, so area
-         * proportional to count would hand almost the whole page to one tile; ranks give a stable
-         * layout that cannot collapse when the daemon publishes overnight and the counts shift;
-         * and a two-step ladder (wide, then standard) is legible as a hierarchy, where five
-         * gradations read as noise. `rank < 2` takes the full row on `sm`, everything else pairs.
+         * The rows above carry the same three facts (count, real price range, the facet's own
+         * description) with the hierarchy expressed by the mark run rather than by tile area, so
+         * a 28-pack category is visibly 28 and a 5-pack one is visibly 5 -- a thing the ladder
+         * could only say twice, in two sizes. Nothing that was on a tile is missing from a row.
          *
-         * Every tile carries three real facts and no adjectives: the count, the actual price range
-         * of the packs behind the link, and the description written for that facet. The count and
-         * the range are set in mono because they are quantities; the name is the only prose.
-         *
-         * Search collapses the hierarchy on purpose. Once a query is typed the ranking that
-         * produced the mosaic is no longer the thing being looked at, and a result set where the
-         * first two hits are twice the size of the rest reads as relevance ranking, which it is
-         * not -- it is still catalogue size. Filtered results are therefore uniform.
+         * Search still collapses the grouping, for the reason the mosaic collapsed its ladder:
+         * once a query is typed, the facet a result sits in is not what is being looked at.
          */}
         {/* Two distinct empty states, not one. `filtered` is empty for two different reasons
             that read very differently to a buyer: a search with no hits (`search` is set --
@@ -198,66 +212,37 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             above catches the fetch failure and returns `categories: []`), so it was the visible
             failure mode of an outage, not a rare edge case. */}
         {filtered.length > 0 ? (
-          <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-            {filtered.map((cat, i) => {
-              const lead = !search && i < 2;
-              return (
-                <li key={cat.slug} className={cx(lead && 'sm:col-span-2')}>
-                  <Link
-                    href={`/ideas/${cat.slug}`}
-                    className={cx(
-                      'group flex h-full flex-col justify-between gap-4 rounded-md bg-surface p-5',
-                      'transition-[background-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
-                      'hover:bg-surface2',
-                      lead && 'sm:flex-row sm:items-end sm:p-7',
-                    )}
-                  >
-                    <span className="flex min-w-0 items-start gap-4">
-                      <span
-                        className={cx(
-                          'flex flex-none items-center justify-center rounded-sm bg-surface2',
-                          lead ? 'h-12 w-12' : 'h-10 w-10',
-                        )}
-                      >
-                        <BespokeIcon kind={cat.slug} size={lead ? 22 : 18} className="text-muted" />
-                      </span>
-                      <span className="min-w-0">
-                        {/* The one place on this page where type size carries meaning. A lead
-                            tile's name is a step up because its shelf is bigger, which is the
-                            fact the mosaic exists to communicate. */}
-                        <h2
-                          className={cx(
-                            'font-semibold leading-snug text-text',
-                            lead ? 'text-h2' : 'text-body',
-                          )}
-                        >
-                          {VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1}
-                        </h2>
-                        <p className="mt-1.5 max-w-[62ch] text-meta leading-relaxed text-muted">
-                          {cat.description}
-                        </p>
-                      </span>
-                    </span>
-
-                    {/* Count and range, in the data voice. `low === high` prints one figure
-                        rather than "£49 to £49", which reads as a bug in a price ladder. */}
-                    <span className="flex flex-none items-baseline gap-2 font-mono text-caption text-subtle sm:flex-col sm:items-end sm:gap-1">
-                      <span className="text-text">
-                        {cat.count} pack{cat.count !== 1 ? 's' : ''}
-                      </span>
-                      {cat.low !== null && cat.high !== null && (
-                        <span>
-                          {cat.low === cat.high
-                            ? formatGbp(cat.low)
-                            : `${formatGbp(cat.low)} to ${formatGbp(cat.high)}`}
-                        </span>
-                      )}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <CategoryGraph
+            grouped={!search}
+            filterPath={(slug) => `/ideas/${slug}`}
+            categories={
+              filtered.map((cat) => ({
+                kind: cat.slug,
+                label: VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1,
+                count: cat.count,
+                group: cat.group,
+                /* THE FIRST SENTENCE, not the whole meta description. These strings are written
+                   for `<meta name="description">`, where every one has to restate the offer to
+                   stand alone in a search result -- so 14 of them stacked on one page ended
+                   ". Every claim sourced, one payment per pack." / ". One payment per researched
+                   pack." / ". Every claim cited, one payment per pack." The purchase terms are
+                   stated once on this site, on the home page's closing band; repeating them
+                   fourteen times down a category list is the exact defect the US-7 audit opened
+                   with ("the descriptions were repetitive") and did not fix. The first sentence
+                   is the part written about THIS category, and it is left untouched in
+                   `landings.ts` so the meta tag a crawler reads still says everything. */
+                description: firstSentence(cat.description),
+                /* `low === high` prints one figure rather than "£49 to £49", which reads as a
+                   bug in a price ladder. */
+                price:
+                  cat.low !== null && cat.high !== null
+                    ? cat.low === cat.high
+                      ? formatGbp(cat.low)
+                      : `${formatGbp(cat.low)} to ${formatGbp(cat.high)}`
+                    : null,
+              })) as CategoryNode[]
+            }
+          />
         ) : search ? (
           <div className="py-12 text-center">
             <p className="text-meta text-muted">No categories match &ldquo;{search}&rdquo;.</p>
@@ -277,21 +262,28 @@ export default function IdeasHub({ categories, total, variant }: Props) {
           </div>
         )}
 
-        <p className="mt-10 text-meta leading-relaxed text-muted">
-          Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
-          <Link href="/kill-log" className={textLinkClass('font-medium')}>
-            kill log
-          </Link>{' '}
-          with the sourced reason why.
-        </p>
+        {/*
+         * THE CLOSING `CtaBand` WAS DELETED AND ITS ACTION MOVED HERE. It was a full-width band
+         * titled "Or see everything at once." with an EMPTY lead and one button, and measured at
+         * 1440x900 on 2026-08-13 it spent 350px of page height to say that -- a heading and a
+         * button alone in the left third, nothing in the other two. The page already ends on a
+         * sentence about what the catalogue does and does not contain; the way out of a category
+         * list is a control on that sentence, not a second screen restating it.
+         */}
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-x-10 gap-y-5 border-t border-border pt-8">
+          <p className="max-w-[62ch] text-meta leading-relaxed text-muted">
+            Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
+            <Link href="/kill-log" className={textLinkClass('font-medium')}>
+              kill log
+            </Link>{' '}
+            with the sourced reason why.
+          </p>
+          <Link href="/" className={buttonClasses({})}>
+            Browse every pack
+            <Icon name="arrowRight" size={14} />
+          </Link>
+        </div>
       </Section>
-
-      <CtaBand
-        width="7xl"
-        title="Or see everything at once."
-        lead=""
-        primary={{ href: '/', label: 'Browse every pack' }}
-      />
     </MarketingLayout>
   );
 }

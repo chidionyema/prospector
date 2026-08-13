@@ -191,40 +191,68 @@ body::before {
 
 
 /*
-  The hero's ambient kill column (`components/marketing/AmbientKillColumn.tsx`).
+  The hero's population field (`components/marketing/PopulationField.tsx`): one mark per idea the
+  engine has researched, with the packs on the shelf standing out of the stubble.
 
-  Travels exactly -50% because the component renders its list TWICE: at the wrap the second copy
-  is pixel-for-pixel where the first began, so the loop has no seam. Any other distance snaps.
+  IT LIVES IN CSS, NOT IN TAILWIND CLASSES, FOR A MEASURABLE REASON. The field is ~1,400 elements,
+  and every class byte is paid 1,400 times in the SSR payload of the site's most important screen.
+  Two rules here cost 4 bytes an element (`<i></i>`) instead of ~40; the whole field serialises to
+  roughly 6 KB of HTML rather than 60 KB. This is the same trade the `.kill-drift` rule it replaces
+  made, for the same reason.
 
-  The duration is deliberately absurd. 240s over ~120 rows is roughly 12px/second, which is below
-  the speed at which peripheral motion pulls the eye off the headline -- the column has to read as
-  drift, not as a ticker. A marquee beside an h1 is a competing animation; this is a slow tide.
-
-  `linear`, not `ease`: an eased infinite loop accelerates and decelerates once per cycle, which
-  is a rhythm, and a rhythm is noticeable. Constant velocity disappears.
+  `align-items: end` is the design. Every mark sits on one floor, so a survivor reads as the stalk
+  left standing rather than as a mark that happens to be drawn taller. `auto-fill` at a 3px pitch
+  means the row length is a function of the viewport and never of a number we hardcoded, so the
+  field reflows without any of the marks changing meaning.
 */
-@keyframes killDrift {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
+.pop-field {
+  display: grid;
+  /* THE GUTTER IS WIDER THAN THE MARK, AND THAT IS THE WHOLE LEGIBILITY OF THE THING. At a 1.5px
+     mark on a 1.5px gutter the field is a 50% duty cycle, which on a 2x display resolves to four
+     solid grey rules with green ticks on them -- a divider, not a population (measured at
+     1440x900, screenshot 2026-08-13). 1.5 on 2.5 separates the marks; the row gap is 8px for the
+     same reason, because at 4px a 14px survivor visually joined the row above it. */
+  grid-template-columns: repeat(auto-fill, 1.5px);
+  gap: 8px 2.5px;
+  align-items: end;
+  align-content: start;
+  justify-content: start;
+  /* The last row is partial by definition (1,444 does not divide by the column count). Without
+     this, a mark clipped by the container edge would still claim a whole column of layout. */
+  overflow: hidden;
 }
 
-.kill-drift {
-  animation: killDrift 240s linear infinite;
-  /* Promotes the column to its own layer so 120 rows of text are not repainted every frame while
-     the reader is trying to read the headline in front of them. */
-  will-change: transform;
+.pop-field > i {
+  width: 1.5px;
+  height: 3px;
+  background: var(--faint);
+}
+
+.pop-field > i.on {
+  height: 14px;
+  background: var(--survive);
 }
 
 /*
-  Reduced motion STOPS it, and does not merely shorten it. The global catch-all below sets
-  `animation-duration: 0.01ms`, which on an infinite loop means the column teleports through its
-  whole cycle 100,000 times a second -- strictly worse than the animation it was meant to
-  suppress. The column still renders, still says what it says, and simply holds still.
+  The resolve. The survivors rise out of the stubble left to right, once, over ~1s -- the engine's
+  verdict replayed at a glance, which is the one gesture SITE_SPEC §3.5 asks this site for.
+
+  It animates `height` on 50 elements and nothing else. `transform: scaleY` would be the cheaper
+  property in general, but each mark is 1.5px wide with no transform-box of its own, so scaling
+  from the baseline needs a `transform-origin` on a 4px box and lands sub-pixel; the elements are
+  tiny and there are 50 of them, so the layout cost is real but bounded, and the result is exact.
+
+  The per-element delay is an inline `--d` set only on the 50 lit marks. The other ~1,394 carry no
+  style attribute at all, which is what keeps the payload argument above true.
 */
-@media (prefers-reduced-motion: reduce) {
-  .kill-drift {
-    animation: none !important;
-    transform: none !important;
+@keyframes popRise {
+  from { height: 3px; background: var(--faint); }
+  to   { height: 14px; background: var(--survive); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pop-field > i.on {
+    animation: popRise 0.5s cubic-bezier(0.2, 0, 0, 1) var(--d, 0s) backwards;
   }
 }
 

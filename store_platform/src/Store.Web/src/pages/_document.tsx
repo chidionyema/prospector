@@ -40,7 +40,10 @@ export default function Document() {
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon.svg" />
-        <meta name="theme-color" content="#0A0A0A" />
+        {/* Brand v3 ink (`--text: #171717`). #0A0A0A was the v2 value and outlived the ramp.
+            This declaration is the one browsers use: _document's <Head> renders before the page's,
+            and the first theme-color wins -- so editing only components/Seo.tsx changes nothing. */}
+        <meta name="theme-color" content="#171717" />
         {/* Search-console ownership tokens. Empty until the operator sets the env vars, which is
             why they are data-driven rather than pasted here: a token is per-property, and a wrong
             one silently fails verification. See `lib/seo/verification.ts`. */}

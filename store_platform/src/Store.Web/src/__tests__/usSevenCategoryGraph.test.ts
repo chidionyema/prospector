@@ -79,9 +79,18 @@ describe('US-7 — Category graph on /ideas', () => {
     // can navigate; or it must have role="button" + tabIndex on the nodes.
     if (!graphExists) return;
     const source = readSource('../components/discovery/CategoryGraph.tsx');
+    /*
+     * `<Link` was added to this list on 2026-08-13. The component was rewritten from an SVG circle
+     * grid, whose nodes were `<a>` elements inside the `<svg>`, into a row list whose nodes are
+     * `next/link` -- which RENDERS an `<a>` and is the more focusable of the two (an `<a>` inside
+     * an SVG is reachable but does not take the app router's prefetch or its focus ring). The
+     * property this test exists to protect is unchanged and still held; the substring it happened
+     * to look for was an artefact of how the old nodes were spelled.
+     */
     const isKeyboardAccessible =
       /<button\b/.test(source) ||
       /<a\b/.test(source) ||
+      /<Link\b/.test(source) ||
       /role=["']button["']/.test(source);
     expect(
       isKeyboardAccessible,

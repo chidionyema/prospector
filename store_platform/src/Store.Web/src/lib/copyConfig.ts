@@ -86,16 +86,20 @@ const CATEGORY_H1_B: Record<string, string> = {
   'business-ideas-for-salespeople': 'For people who can sell',
 };
 
+// DE-JARGONED 2026-08-13, same reason as the C prose block below. These are page headings a
+// stranger arrives on from a search result: "Fractional capacity models" and "Asynchronous
+// operations" are our filing system, not their words, and a heading nobody recognises is a
+// bounce. C stays the precise, evidence-first variant; precise is not the same as Latinate.
 const CATEGORY_H1_C: Record<string, string> = {
   ...CATEGORY_H1_A,
-  'automated-business-ideas': 'High-leverage operations',
-  'b2b-business-ideas': 'B2B markets',
-  'b2c-business-ideas': 'B2C markets',
-  'evening-business-ideas': 'Asynchronous operations',
-  'part-time-business-ideas': 'Fractional capacity models',
-  'business-ideas-for-developers': 'Technical execution models',
-  'business-ideas-for-operators': 'Operational execution models',
-  'business-ideas-for-salespeople': 'Go‑to‑market execution models',
+  'automated-business-ideas': 'Businesses that grow without more of your hours',
+  'b2b-business-ideas': 'Businesses whose customers are businesses',
+  'b2c-business-ideas': 'Businesses whose customers are people',
+  'evening-business-ideas': 'Businesses you can run around a job',
+  'part-time-business-ideas': 'Businesses that fit the hours you have',
+  'business-ideas-for-developers': 'Businesses built on code you write',
+  'business-ideas-for-operators': 'Businesses built on running things well',
+  'business-ideas-for-salespeople': 'Businesses built on selling',
 };
 
 /** Every variant, every slot, one source of truth. */
@@ -114,8 +118,16 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     // phone's opening screen contained no product at all. What it listed -- buyer, price, unit
     // economics, go-to-market -- is the pack's contents page, and the pack's contents page belongs
     // in "What you get", not in the subhead. The subhead's job is one sentence of what this is.
+    // THE MECHANISM MOVED INTO THE SUBHEAD (2026-08-13, 33-F). AI was disclosed on three
+    // surfaces and every one of them was defensive: a warranty exclusion in the terms, a
+    // liability line in the footer, and a correction of an assumption on /how-it-works. A fact
+    // that appears only where a company manages its risk reads as a fact it wishes were
+    // otherwise, which is exactly how the founder read it. It is not a volume problem, so the
+    // fix is not a fourth mention: it is one clause, in the sentence that already says what
+    // this is, written as a reason to buy. No new line, because the 175-to-80 cut above was
+    // measured against the fold and a third paragraph would spend that back.
     globalHookDescription:
-      'The buyer, the price, the margins and the plan. Every claim links to its source.',
+      'The buyer, the price, the margins and the plan, put through an AI built to kill the idea first.',
 
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea faces checks built to kill it.',
@@ -138,7 +150,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   b: {
     globalHookLead: 'Business ideas with the economics already verified.',
     globalHookDescription:
-      'The buyer, the price, the unit economics and the plan. Every number links to its source.',
+      'The buyer, the price, the unit economics and the plan, checked by an AI paid to find the flaw.',
 
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea is tested to destruction.',
@@ -165,21 +177,29 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   c: {
     globalHookLead: 'Business ideas with a source behind every number.',
     globalHookDescription:
-      'The buyer, the price, the margins and the plan. Every number links to the page it came from.',
+      'The buyer, the price, the margins and the plan. An AI checked every number against a page you can open.',
 
+    // VARIANT C DE-JARGONED (2026-08-13). C is the proof-hungry reader, and its copy had been
+    // reading that as Latinate abstraction: "regulatory friction", "margin compression",
+    // "fragmented incumbents", "high-leverage operations", "the core unit of delivery is
+    // machine-executable". Precision is not the same thing as vocabulary. B carried the SAME
+    // content in words a reader already owns ("a real problem, proven value, room to compete,
+    // buyers who can pay, a clear way to reach them, and no legal red tape"), which is the proof
+    // that the register was a choice and not a limit of the material. C keeps its distinct
+    // promise, evidence first, and now states it in English.
     howItWorksEyebrow: 'The methodology',
-    howItWorksTitle: 'An adversarial review process.',
+    howItWorksTitle: 'We try to prove every idea wrong first.',
     howItWorksLead:
-      'Before publication, every concept is subjected to the checks, run by AI agents programmed to invalidate the business model. They assess regulatory friction, market saturation, and margin compression. Validated models are published; failed models are documented in the Kill Log.',
+      'Before an idea is listed, AI agents go looking for the thing that kills it: rules that make it illegal, buyers who cannot pay, competitors already doing it, or margins too thin to live on. What survives is published with its sources. What does not is published in the kill log, with the evidence that killed it.',
     howItWorksSeoDescription:
-      'How Mumchimp works: every pack is subjected to an adversarial review by AI agents before it can be listed.',
+      'How Mumchimp works: AI agents hunt for the reason each idea fails, and the ideas that fail are published too, with the evidence.',
 
-    sixChecksTitle: 'The rigid criteria',
+    sixChecksTitle: 'The same bar, every time',
     sixChecksDescription:
-      'Every pack is held to the same rigid criteria: verified market pain, quantifiable value, fragmented incumbents, a solvent payer base, viable acquisition channels, and regulatory compliance. The criteria applied depend on the model under review, and each pack records which were run.',
+      'Every pack clears the same bar: a real problem, value that lasts, room to compete, buyers with money to spend, a way to reach them, and nothing illegal about it. Which checks ran depends on the idea, and each pack page lists the ones it cleared.',
 
     automatedIdeasIntro:
-      'High-leverage operations. The core unit of delivery in these models is machine-executable: data parsing, document generation, and compliance checks. This decouples revenue from billable hours. Each pack explicitly outlines the operational bottlenecks that still require human oversight.',
+      'Businesses where software does the work. Reading data, producing documents, running checks: that is the part that scales, and it is why the income stops tracking the hours you put in. Each pack is explicit about the steps that still need you.',
 
     categoryH1: CATEGORY_H1_C,
     categoryMetaTitle: CATEGORY_H1_C,

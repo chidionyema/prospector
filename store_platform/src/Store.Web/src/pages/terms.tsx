@@ -23,10 +23,17 @@ export default function TermsPage() {
   return (
     <LegalDoc title="Terms of Service">
 
+      {/* `{' '}` after `{LEGAL.entity}`, not a typed space. JSX trims the leading whitespace of
+          EVERY line in a multi-line text child, including the first, so the space typed between
+          `{LEGAL.entity}` and `(` was compiled away: verified in the served HTML on 2026-08-13,
+          `and <!-- -->Mumchimp<!-- -->(“we”`, which reads on the page as `Mumchimp(“we”, “us”,
+          “our”)` in the sentence that names the parties to the contract. The same trim is why this
+          note sits OUTSIDE `<LegalText>` -- a comment placed between two lines of prose splits the
+          text node in two and eats the newline between them the same way. */}
       <LegalText>
         These Terms of Service (&ldquo;Terms&rdquo;) form a legally binding contract between you
-        (&ldquo;you&rdquo;, &ldquo;buyer&rdquo;) and {LEGAL.entity} (&ldquo;we&rdquo;,
-        &ldquo;us&rdquo;, &ldquo;our&rdquo;). By completing a purchase you confirm that you have
+        (&ldquo;you&rdquo;, &ldquo;buyer&rdquo;) and {LEGAL.entity}{' '}
+        (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By completing a purchase you confirm that you have
         read, understood, and agree to these Terms. If you do not agree, do not purchase.
       </LegalText>
 
@@ -42,7 +49,8 @@ export default function TermsPage() {
         Some Packs research an opportunity in a jurisdiction other than the United Kingdom (for
         example, the United States). This is research and informational content only, sold to you
         wherever you are purchasing from; it does not make us subject to that jurisdiction&rsquo;s
-        law, and it does not change the governing law of these Terms, which remains {LEGAL.governingLaw}
+        law, and it does not change the governing law of these Terms, which remains{' '}
+        {LEGAL.governingLaw}{' '}
         (clause&nbsp;10).
       </LegalText>
 

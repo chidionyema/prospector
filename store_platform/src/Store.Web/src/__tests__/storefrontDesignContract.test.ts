@@ -336,7 +336,14 @@ describe('Design contract — primary CTAs', () => {
     expect(button, 'one radius on every button').toMatch(/rounded-md/);
     // Sizes are heights, not paddings: `py-3` on a text-meta button and `py-3` on a text-body
     // button produce two different control heights, which is why the CTAs never lined up.
-    expect(button, 'md is a 40px control').toMatch(/md:\s*['"]h-10/);
+    // `md` became 44px on touch and 40px from `sm` up on 2026-08-13: measured at 390px, the
+    // primary CTAs ("Browse the catalogue", "Tell me when one survives") sat at 40px while the
+    // header's own buttons, `chipClasses` and both footer link columns all state a 44px floor
+    // explicitly. The desktop control is unchanged, and the assertion still pins HEIGHTS rather
+    // than paddings, which is the contract this line exists to hold.
+    expect(button, 'md is an explicit height: 44px on touch, 40px from sm up').toMatch(
+      /md:\s*['"]h-11[^'"]*sm:h-10/,
+    );
     expect(button, 'lg is a 48px control').toMatch(/lg:\s*['"]h-12/);
   });
 

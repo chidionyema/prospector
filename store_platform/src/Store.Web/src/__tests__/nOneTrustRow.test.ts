@@ -77,18 +77,25 @@ describe('N1 — Persistence of trust', () => {
     ).toBe(true);
   });
 
-  it('home page renders TrustGuaranteesRow above the CtaBand', () => {
-    // The audit: "a single 'Trust & guarantees' row above the CtaBand."
-    // The row must come before <CtaBand in the source. The JSX usage is
-    // `<TrustGuaranteesRow />` (with the leading `<`), so we look for that
-    // rather than the import statement which would also match.
+  it('the home page states the purchase terms exactly once, in the closing band', () => {
+    /*
+     * WAS "renders TrustGuaranteesRow above the CtaBand", which pinned an arrangement that no
+     * longer exists: the page closed with three consecutive bands (this row between two CTA
+     * bands), so the terms and the offer were stated twice within 640px. The closing `CtaBand`
+     * was removed and the row became that band's right-hand column.
+     *
+     * What the audit actually asked for survives, and is what is asserted now: ONE rendering of
+     * the row, on the page, and no second closing CTA band under it to restate the offer. The
+     * count is the assertion -- an arrangement can change again, "said once" cannot.
+     */
     if (!trustRowExists) return;
-    const trustRowIdx = page.indexOf('<TrustGuaranteesRow');
-    const ctaBandIdx = page.indexOf('<CtaBand');
+    const usages = page.match(/<TrustGuaranteesRow(?![\w-])/g) ?? [];
+    expect(usages.length, 'index.tsx must render <TrustGuaranteesRow> exactly once').toBe(1);
+    const ctaBands = page.match(/<CtaBand(?![\w-])/g) ?? [];
     expect(
-      trustRowIdx > 0 && ctaBandIdx > 0 && trustRowIdx < ctaBandIdx,
-      'index.tsx must render <TrustGuaranteesRow> above <CtaBand>',
-    ).toBe(true);
+      ctaBands.length,
+      'the home page closes with its own band; a <CtaBand> under the terms is the duplicate ask that was removed',
+    ).toBe(0);
   });
 
   /*
