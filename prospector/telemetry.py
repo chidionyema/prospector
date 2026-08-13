@@ -163,7 +163,20 @@ _USAGE_LOCK = threading.Lock()
 _USAGE: Dict[str, Dict[str, int]] = {}
 _USAGE_BY_PROVIDER: Dict[str, Dict[str, int]] = {}
 
-_USAGE_KEYS = ("calls", "web_calls", "input", "output", "total", "cached", "self_corrections")
+#: `cache_write` is the FIFTH term of `total`, and its absence is why the token ledger read
+#: as broken. `claude_cli.py:78` computes
+#:     total = input + output + cache_read + cache_creation
+#: and until 2026-08-13 only four of those five had a column here, so the batch of
+#: 2026-08-13T06:23:14 reported `input 420,082 + output 308,297 = 728,379` against a `total`
+#: of `1,990,168` and looked corrupt. It was not: 420,082 + 308,297 + 647,108 (cached) +
+#: 614,681 (cache_creation) = 1,990,168 exactly. The missing column WAS the discrepancy.
+#:
+#: These four token columns are NOT interchangeable units — they are billed at different
+#: rates (cache_read ~0.1x an input token, cache_write ~1.25x). Any $/phase or $/vetted
+#: figure computed from `total` is therefore wrong by construction, which is what
+#: `reconcile()` below exists to keep visible.
+_USAGE_KEYS = ("calls", "web_calls", "input", "output", "total", "cached", "cache_write",
+               "self_corrections")
 
 # Pricing per 1M tokens in USD (2026 typical rates). This is the FALLBACK
 # when no config is provided; the canonical source is `config.yaml`'s
@@ -211,6 +224,7 @@ def get_price(provider: str, cfg=None) -> dict:
 
 def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
                  total_tokens: int = 0, cached_tokens: int = 0,
+                 cache_write_tokens: int = 0,
                  web: bool = False, provider: str = "unknown",
                  message: str = "", self_correction: bool = False,
                  cfg=None) -> None:
@@ -238,7 +252,8 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
         u["output"] += int(output_tokens or 0)
         u["total"] += int(total_tokens or 0)
         u["cached"] += int(cached_tokens or 0)
-        
+        u["cache_write"] += int(cache_write_tokens or 0)
+
         # 2. Update by provider
         p = _USAGE_BY_PROVIDER.setdefault(root_provider, {k: 0 for k in _USAGE_KEYS})
         p["calls"] += 1
@@ -248,6 +263,7 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
         p["output"] += int(output_tokens or 0)
         p["total"] += int(total_tokens or 0)
         p["cached"] += int(cached_tokens or 0)
+        p["cache_write"] += int(cache_write_tokens or 0)
 
         # 3. Log a spend event. Routed through get_price() (not a direct PRICING.get())
         # so a caller that DOES pass `cfg` gets `cfg.pricing`'s real rate, not just the
@@ -301,6 +317,29 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
             })
 
 
+def reconcile(u: Dict[str, int]) -> Dict[str, int]:
+    """Does this counter's `total` equal the four columns that are supposed to compose it?
+
+    Returns `{"expected": ..., "total": ..., "residual": ...}`. `residual == 0` means the
+    ledger is closed: every token in `total` is attributed to a priced dimension.
+
+    WHY A RESIDUAL AND NOT AN ASSERTION. Providers do not agree on what `total_tokens` means.
+    `claude_cli.py:78` builds it from four parts we can name; MiniMax, DeepSeek, Ollama,
+    StandardCompute and OpenRouter each hand back their OWN `usage.total_tokens`
+    (`operator.py:459`, `:554`, `:1061`, `:677`, `:956`) which may include routing or padding
+    we never see. Raising would turn one provider's accounting quirk into a crashed batch;
+    a non-zero residual makes it VISIBLE and attributable instead, which is the whole point —
+    an unexplained 1.26M read as corruption for as long as nothing computed this number.
+
+    Not a cost figure, on purpose. These four columns bill at different rates, so summing
+    them is meaningless as money; this only answers "is anything unaccounted for?".
+    """
+    expected = int(u.get("input", 0)) + int(u.get("output", 0)) + \
+        int(u.get("cached", 0)) + int(u.get("cache_write", 0))
+    total = int(u.get("total", 0))
+    return {"expected": expected, "total": total, "residual": total - expected}
+
+
 def get_usage_summary() -> Dict[str, Any]:
     """Return {'total': {...}, 'by_phase': {phase: {...}}, 'by_provider': {...}}."""
     with _USAGE_LOCK:
@@ -318,11 +357,16 @@ def get_usage_summary() -> Dict[str, Any]:
             total_cost += cost
             p_data = dict(u)
             p_data["cost_usd"] = round(cost, 6)
+            # Per-provider, because a residual is only actionable when it names the adapter
+            # whose accounting we cannot reproduce. The aggregate hides that: one provider's
+            # quirk shows up as a mystery number spread across the whole batch.
+            p_data["reconcile"] = reconcile(u)
             provider_stats[prov] = p_data
 
         return {
-            "total": agg, 
+            "total": agg,
             "total_cost_usd": round(total_cost, 4),
+            "reconcile": reconcile(agg),
             "by_phase": {k: dict(v) for k, v in _USAGE.items()},
             "by_provider": provider_stats
         }

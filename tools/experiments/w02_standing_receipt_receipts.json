@@ -1,0 +1,276 @@
+{
+  "window": {
+    "start": "2026-08-07",
+    "end": "2026-08-13",
+    "days": 7,
+    "mode": "created_at within window"
+  },
+  "corpus": {
+    "n_dossiers": 2011,
+    "newest_mtime_utc": "2026-08-13T09:17:08.917161+00:00",
+    "sha256": "0e2d78c426ec0cef",
+    "frozen": false,
+    "corpus_dir": "/Users/chidionyema/Documents/code/prospector/store/dossiers",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+  },
+  "volume": {
+    "dossiers_on_disk": 2011,
+    "dossiers_in_window": 577,
+    "undated": 86,
+    "by_decision": {
+      "kill": 545,
+      "defer": 14,
+      "pass": 18
+    },
+    "gates_fired": {
+      "moat_ungrounded": 222,
+      "min_composite": 123,
+      "incumbency": 53,
+      "source_or_die": 45,
+      "value_durability": 41,
+      "payer_solvency": 21,
+      "distribution": 13,
+      "legality": 11,
+      "route_to_market": 5,
+      "currency": 4,
+      "pain_reality": 4,
+      "buyer_intent": 3
+    },
+    "provisional": 9
+  },
+  "pass_rate": {
+    "passes": 18,
+    "n": 577,
+    "rate": 0.0312,
+    "ci95": [
+      0.0198,
+      0.0488
+    ]
+  },
+  "unverifiable": {
+    "checks": 2704,
+    "unverifiable": 1722,
+    "rate": 0.6368,
+    "ci95": [
+      0.6185,
+      0.6548
+    ],
+    "by_verdict": {
+      "supported": 758,
+      "unverifiable": 1722,
+      "refuted": 224
+    },
+    "retrieval_failed": 19,
+    "degraded": 19,
+    "note": "retrieval_failed and degraded are printed beside the rate because an unverifiable check means either the web has no passage or OUR retrieval broke, and those call for opposite responses.",
+    "per_check": {
+      "buyer_intent": {
+        "n": 277,
+        "unverifiable": 151,
+        "unverifiable_rate": 0.5451,
+        "ci95": [
+          0.4863,
+          0.6028
+        ],
+        "supported": 121,
+        "refuted": 5
+      },
+      "claims_verifiable": {
+        "n": 102,
+        "unverifiable": 61,
+        "unverifiable_rate": 0.598,
+        "ci95": [
+          0.501,
+          0.688
+        ],
+        "supported": 35,
+        "refuted": 6
+      },
+      "currency": {
+        "n": 157,
+        "unverifiable": 70,
+        "unverifiable_rate": 0.4459,
+        "ci95": [
+          0.3703,
+          0.524
+        ],
+        "supported": 75,
+        "refuted": 12
+      },
+      "distribution": {
+        "n": 390,
+        "unverifiable": 258,
+        "unverifiable_rate": 0.6615,
+        "ci95": [
+          0.6132,
+          0.7067
+        ],
+        "supported": 117,
+        "refuted": 15
+      },
+      "incumbency": {
+        "n": 256,
+        "unverifiable": 159,
+        "unverifiable_rate": 0.6211,
+        "ci95": [
+          0.5603,
+          0.6783
+        ],
+        "supported": 20,
+        "refuted": 77
+      },
+      "legality": {
+        "n": 425,
+        "unverifiable": 317,
+        "unverifiable_rate": 0.7459,
+        "ci95": [
+          0.7024,
+          0.7849
+        ],
+        "supported": 94,
+        "refuted": 14
+      },
+      "pain_reality": {
+        "n": 283,
+        "unverifiable": 151,
+        "unverifiable_rate": 0.5336,
+        "ci95": [
+          0.4754,
+          0.5909
+        ],
+        "supported": 127,
+        "refuted": 5
+      },
+      "payer_solvency": {
+        "n": 411,
+        "unverifiable": 324,
+        "unverifiable_rate": 0.7883,
+        "ci95": [
+          0.7463,
+          0.8251
+        ],
+        "supported": 57,
+        "refuted": 30
+      },
+      "route_to_market": {
+        "n": 102,
+        "unverifiable": 61,
+        "unverifiable_rate": 0.598,
+        "ci95": [
+          0.501,
+          0.688
+        ],
+        "supported": 35,
+        "refuted": 6
+      },
+      "value_durability": {
+        "n": 301,
+        "unverifiable": 170,
+        "unverifiable_rate": 0.5648,
+        "ci95": [
+          0.5083,
+          0.6196
+        ],
+        "supported": 77,
+        "refuted": 54
+      }
+    }
+  },
+  "confidence_separation": {
+    "by_verdict": {
+      "supported": {
+        "n": 758,
+        "mean": 0.5768,
+        "median": 0.6,
+        "p10": 0.38,
+        "p90": 0.712,
+        "min": 0.15,
+        "max": 0.767
+      },
+      "refuted": {
+        "n": 224,
+        "mean": 0.5638,
+        "median": 0.588,
+        "p10": 0.35,
+        "p90": 0.712,
+        "min": 0.0,
+        "max": 0.74
+      },
+      "unverifiable": {
+        "n": 1722,
+        "mean": 0.6069,
+        "median": 0.7,
+        "p10": 0.37,
+        "p90": 0.73,
+        "min": 0.0,
+        "max": 0.79
+      }
+    },
+    "ruled_minus_unverifiable_mean": -0.033,
+    "note": "if this gap is ~0 the confidence field carries no polarity information and no threshold on it can discriminate."
+  },
+  "composite": {
+    "weights": {
+      "pain_acuity": 0.2,
+      "money_provability": 0.2,
+      "automatability": 0.15,
+      "distribution": 0.15,
+      "defensibility": 0.25,
+      "build_feasibility": 0.05
+    },
+    "min_composite_to_pass": 2.5,
+    "distribution": {
+      "n": 141,
+      "mean": 2.0617,
+      "median": 2.1,
+      "p10": 1.55,
+      "p90": 2.6,
+      "min": 0.0,
+      "max": 3.0
+    },
+    "at_or_above_bar": 26,
+    "note": "recomputed with prospector.score.composite over the live weights, not read from the dossier's prose reason, so it tracks a weight change."
+  },
+  "spend": {
+    "ledger": "/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl",
+    "days_requested": 7,
+    "days_covered": [
+      "2026-08-07",
+      "2026-08-08",
+      "2026-08-09",
+      "2026-08-10",
+      "2026-08-11",
+      "2026-08-12",
+      "2026-08-13"
+    ],
+    "days_with_rows": [
+      "2026-08-07",
+      "2026-08-08",
+      "2026-08-09",
+      "2026-08-10",
+      "2026-08-11",
+      "2026-08-13"
+    ],
+    "days_unknown_dropped_by_checkpoint": [],
+    "scan_span_oldest_day": "2026-06-27",
+    "metered_usd": 5.091443,
+    "subscription_usd": 1628.045775,
+    "complete": true,
+    "note": "metered is billed money and is what daily_cap_usd enforces; subscription is Claude Code CLI burn (cost_usd, no event key), API-equivalent and not invoiced. They differ by orders of magnitude \u2014 report both or neither."
+  },
+  "per_vetted": {
+    "metered_usd_per_vetted": 0.008824,
+    "subscription_usd_per_vetted": 2.82157
+  },
+  "_meta": {
+    "experiment": "W02",
+    "module": "w02_standing_receipt.py",
+    "run_at_utc": "2026-08-13T09:23:05+00:00",
+    "argv": [
+      "--days",
+      "7"
+    ],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

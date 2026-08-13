@@ -1,0 +1,41 @@
+embedding one-liners ...
+    embedded 200/1904
+    embedded 401/1904
+    embedded 601/1904
+    embedded 801/1904
+    embedded 1001/1904
+    embedded 1202/1904
+    embedded 1402/1904
+    embedded 1603/1904
+    embedded 1803/1904
+embedding full candidate text ...
+    embedded 200/1904
+    embedded 400/1904
+    embedded 600/1904
+    embedded 800/1904
+    embedded 1000/1904
+    embedded 1200/1904
+    embedded 1400/1904
+    embedded 1600/1904
+    embedded 1800/1904
+cached vectors: 3805  dim=768
+
+=== PRE-REGISTERED TEMPORAL SPLIT (all data) ===
+
+--- fit<2026-08-05 test>=2026-08-05: train n=1095 (pass=40)  test n=809 (pass=33)
+    AUC 0.653   nomic one-liner logreg
+    AUC 0.478   nomic one-liner kNN(15)
+    AUC 0.655   nomic one-liner PASS/KILL centroid
+    AUC 0.624   nomic full text logreg
+    AUC 0.399   nomic full text kNN(15)
+    AUC 0.627   nomic full text PASS/KILL centroid
+
+=== REGIME-RESTRICTED CONTROL (>= 2026-07-01) ===
+
+--- post-regime fit<2026-08-05 test>=2026-08-05: train n=371 (pass=40)  test n=809 (pass=33)
+    AUC 0.411   nomic one-liner logreg
+    AUC 0.404   nomic one-liner kNN(15)
+    AUC 0.409   nomic one-liner PASS/KILL centroid
+    AUC 0.382   nomic full text logreg
+    AUC 0.375   nomic full text kNN(15)
+    AUC 0.383   nomic full text PASS/KILL centroid

@@ -75,7 +75,12 @@ def _record_claude_usage(data: dict, web: bool) -> None:
     inp = int(u.get("input_tokens", 0) or 0)
     out = int(u.get("output_tokens", 0) or 0)
     cached = int(u.get("cache_read_input_tokens", 0) or 0)
-    total = inp + out + cached + int(u.get("cache_creation_input_tokens", 0) or 0)
+    # Named and banked, not folded away. This term used to exist only inside the `total`
+    # expression below, so it had no column in telemetry._USAGE_KEYS and its 614,681 tokens
+    # in the 2026-08-13T06:23:14 batch surfaced as an unexplained gap between
+    # `input + output = 728,379` and `total = 1,990,168`, which read as a broken instrument.
+    cache_write = int(u.get("cache_creation_input_tokens", 0) or 0)
+    total = inp + out + cached + cache_write
     cost = float(data.get("total_cost_usd", 0) or 0)
     # `provider=` matters: without it record_usage defaults to "unknown" (telemetry.py:194), so
     # every call through the moat's PRIMARY brain was filed under a bucket named after nothing
@@ -89,11 +94,13 @@ def _record_claude_usage(data: dict, web: bool) -> None:
     # daemon within about two hours of every day for spend that is never invoiced". The
     # subscription leg is already tracked separately, from the "Claude CLI usage" row below.
     record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
-                 cached_tokens=cached, web=web, provider="claude_cli")
+                 cached_tokens=cached, cache_write_tokens=cache_write,
+                 web=web, provider="claude_cli")
     # cost_usd here is the CLI's own billed figure (more accurate than an estimate);
     # costs_report sums it into spend.
     logger.info("Claude CLI usage", extra={"web": web, "input": inp, "output": out,
-                                           "total": total, "cached": cached, "cost_usd": cost})
+                                           "total": total, "cached": cached,
+                                           "cache_write": cache_write, "cost_usd": cost})
 
 
 def _safe_record(data: dict, web: bool) -> None:

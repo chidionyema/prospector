@@ -20,6 +20,7 @@ Under launchd the job is KeepAlive, so a crash restarts the daemon automatically
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import logging
@@ -167,10 +168,30 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
         # — a heuristic that is wrong in both directions (an uncommitted edit is invisible; a
         # commit touching only tests reads as a stale daemon).
         beat.setdefault("code", _RUNNING_CODE_FP[:12])
+    # ATOMIC, and this is load-bearing rather than tidiness. `write_text` truncates and then
+    # writes, so every reader has a window in which the file is 0 bytes or half a JSON object —
+    # and the readers do not treat that as "try again". `_watchdog_liveness` catches
+    # `json.JSONDecodeError` and returns `(False, "unreadable heartbeat")`, which `_kill_stale_
+    # daemon` turns into a SIGKILL: a torn read is a dead daemon as far as the watchdog is
+    # concerned. Proven by this file's own tests — sampling the heartbeat from inside a tick hit
+    # `JSONDecodeError: Expecting value: line 1 column 1 (char 0)`, i.e. an EMPTY read, not corrupt
+    # JSON, which is the signature of reading mid-truncate.
+    #
+    # The window used to be one write per phase and is now one per `_WORK_HEARTBEAT_REFRESH_S`
+    # across the daemon's longest phases, so the refresh above would have multiplied a real kill
+    # risk by ~120 per tick had this stayed a truncating write. `os.replace` is atomic on POSIX:
+    # a reader sees either the whole previous beat or the whole new one, never a partial file.
+    path = _heartbeat_path(cfg)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
-        _heartbeat_path(cfg).write_text(json.dumps(beat, default=str), encoding="utf-8")
+        tmp.write_text(json.dumps(beat, default=str), encoding="utf-8")
+        os.replace(tmp, path)
     except OSError as exc:
         logger.error("Failed to write heartbeat: %s", exc)
+        # A failed replace leaves the temp behind; it is named per-pid so it can never collide
+        # with another daemon's, and leaving it would accumulate one file per failed write.
+        with contextlib.suppress(OSError):
+            tmp.unlink()
 
 
 def _resume_per_tick(cfg) -> int:
@@ -867,6 +888,62 @@ _TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "10800"
 # never be more than a minute old, instead of one that is legitimately two hours old.
 _SLEEP_HEARTBEAT_REFRESH_S = 60
 
+#: How often a long WORKING phase (`generating`, `draining`) re-stamps the heartbeat. Same 60s as
+#: the sleep refresh, for the same reason and against the same defect — the sleep loop was fixed in
+#: isolation, and the two phases where the daemon spends its actual hours were left stamped once.
+_WORK_HEARTBEAT_REFRESH_S = 60
+
+
+@contextlib.contextmanager
+def _beating(cfg, phase: str, **extra):
+    """Re-stamp `phase`'s heartbeat every `_WORK_HEARTBEAT_REFRESH_S` for the life of the block.
+
+    WHAT WAS BROKEN. `generating` and `draining` were each stamped exactly ONCE, on the way in, and
+    a batch legitimately runs 15-30+ min (the drain, ~5.5 min/candidate x 15 rows, ~82 min). So the
+    age of that heartbeat answered "how far has the wall clock moved since one write?" — not "is the
+    loop still turning?". Those are different questions, and only the second one is liveness. This
+    is the identical defect already fixed for `sleeping` (see the refresh loop in `run_daemon` and
+    the 47 SIGKILLs of demonstrably-live daemons it was written for); the fix simply never reached
+    the two phases where the daemon spends most of its wall time.
+
+    WHAT THIS DELIBERATELY DOES NOT DO: move any budget. `_watchdog_liveness` still judges
+    `generating`/`draining` against `_TICK_HARD_DEADLINE_S / 60 + 10`, and that file's own comment
+    fences the narrowing off — a real 8.5h wedge on 2026-07-01 is why the kill exists, and
+    tightening on the (still unproven) wall-clock-artefact hypothesis would trade 47 false criticals
+    for a missed real stall. What changes here is what the EXISTING budget measures: against a
+    once-stamped beat, a 190-minute age could mean a healthy long batch; against a beat refreshed
+    every 60s it can only mean the loop stopped writing. Same threshold, a signal instead of noise.
+
+    Known gap, stated rather than left implied: `beat_every_s` is written by this helper and by the
+    sleep loop and is read by NOTHING (`rg beat_every_s prospector/` -> two write sites, no reader).
+    Making it load-bearing means deriving a budget from it, which IS the narrowing the paragraph
+    above fences off, so it stays a marker until that hypothesis is settled.
+
+    The thread is a daemon thread and is joined on exit, so a caller that returns or raises always
+    stops the beating before the tick writes its terminal `idle` beat — a refresher outliving its
+    phase would overwrite that and report work still in flight.
+    """
+    _write_heartbeat(cfg, phase=phase, beat_every_s=_WORK_HEARTBEAT_REFRESH_S, **extra)
+    stop = threading.Event()
+
+    def _refresh() -> None:
+        while not stop.wait(_WORK_HEARTBEAT_REFRESH_S):
+            # `_write_heartbeat` already swallows OSError; anything else here must not take the
+            # tick down, because a failure to REPORT work is not a failure to DO it.
+            try:
+                _write_heartbeat(cfg, phase=phase, beat_every_s=_WORK_HEARTBEAT_REFRESH_S, **extra)
+            except Exception as exc:  # noqa: BLE001 — liveness reporting is never fatal
+                logger.error("Heartbeat refresh failed in phase %s: %s", phase, exc)
+
+    beater = threading.Thread(target=_refresh, name=f"heartbeat-{phase}", daemon=True)
+    beater.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        beater.join(timeout=_WORK_HEARTBEAT_REFRESH_S)
+
+
 # After an unproductive tick (error or 0 dossiers despite the guard allowing spend) retry soon
 # instead of burning the full 2h cadence idle — one provider blip cost days of ~$0 barren ticks.
 _RETRY_BACKOFF_S = 300  # 5 min
@@ -1044,7 +1121,6 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         tick["generation_suppressed"] = suppressed
         tick["batch_size"] = 0
         tick["reason"] = f"{decision.reason}; {suppressed}"
-        _write_heartbeat(cfg, phase="draining")
         # CRITICAL for the same reason as the moat-blind skip: logging below CRITICAL never
         # reaches launchd.err.log (verified 2026-08-05), and a daemon that has quietly stopped
         # generating is precisely the invisible degradation this change is about.
@@ -1060,18 +1136,24 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         #     "alive" — so the watchdog reported a hung drain healthy, indefinitely.
         # That is the 2026-07-01 failure mode exactly (a trickled LLM response body defeating
         # per-recv socket timeouts, 34+ min hung, watched dead for 8.5h), re-opened on a new path.
-        deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
-                                   args=(0, cfg, tick), kwargs={"phase": "the drain"})
-        deadline.daemon = True
-        deadline.start()
-        try:
-            resumed = _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
-            # Inside the deadline guard, for the reason spelled out above it: this branch is the
-            # daemon's entire workload while the brake is engaged, and `_decay_pass` swallows
-            # every exception by design, so an uncovered sweep could wedge the tick invisibly.
-            decayed = _decay_pass(cfg, _decay_per_tick(cfg))
-        finally:
-            deadline.cancel()
+        # `_beating` replaces the single `phase="draining"` stamp this branch wrote on the way in.
+        # A drain-only pass is long BY DESIGN — 15 rows at the measured ~5.5 min/candidate is
+        # ~82 min — so a once-stamped beat spent most of a HEALTHY pass looking stale, which is
+        # precisely the reading that produced 47 SIGKILLs of live daemons in the sleeping phase.
+        with _beating(cfg, "draining"):
+            deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
+                                       args=(0, cfg, tick), kwargs={"phase": "the drain"})
+            deadline.daemon = True
+            deadline.start()
+            try:
+                resumed = _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
+                # Inside the deadline guard, for the reason spelled out above it: this branch is
+                # the daemon's entire workload while the brake is engaged, and `_decay_pass`
+                # swallows every exception by design, so an uncovered sweep could wedge the tick
+                # invisibly.
+                decayed = _decay_pass(cfg, _decay_per_tick(cfg))
+            finally:
+                deadline.cancel()
         tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed}
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
@@ -1080,37 +1162,43 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         return tick
 
     gen = generate_fn or _default_generate
-    _write_heartbeat(cfg, phase="generating", batch_size=batch_size)
-    # Hard wall-clock guard: if generation hangs past _TICK_HARD_DEADLINE_S the timer force-exits
-    # the process (launchd relaunches it). Cancelled the instant generation returns.
-    deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
-                               args=(batch_size, cfg, tick))
-    deadline.daemon = True
-    deadline.start()
     halt = False
-    try:
-        logger.info("Tick: generating %d candidates (%s)", batch_size, decision.reason)
-        tick["result"] = gen(cfg, batch_size)
-        # After generation, inside the same deadline guard. The SLA sweep is re-vet work of the
-        # same class as the drain, and it must run on a normal tick too — a decay rail that only
-        # fired while the generation brake was engaged would be as good as unwired for any week
-        # the brake never engages, which is the failure this whole change exists to fix.
-        decayed = _decay_pass(cfg, _decay_per_tick(cfg))
-        if isinstance(tick.get("result"), dict) and decayed is not None:
-            tick["result"]["decayed"] = decayed
-        logger.info("Tick complete: %s", tick["result"])
-    except GroundingInfrastructureError as exc:
-        # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent exit here
-        # leaves no tick row and no alert, so the founder never learns the daemon died.
-        tick["error"] = f"GroundingInfrastructureError: {exc}"
-        halt = True
-        logger.critical("GROUNDING LAYER COLLAPSE: all search providers dead. "
-                        "Halting daemon to prevent runaway LLM spend.")
-    except Exception as exc:  # noqa: BLE001 — daemon must survive any single batch failing
-        tick["error"] = f"{type(exc).__name__}: {exc}"
-        logger.error("Tick generation failed (daemon continues): %s", tick["error"])
-    finally:
-        deadline.cancel()
+    # `_beating` replaces the single `phase="generating"` stamp this branch wrote on the way in.
+    # A grounded batch runs 15-30+ min, so the old beat was a full batch stale by the time the
+    # batch finished normally, and its age measured the wall clock rather than the loop.
+    #
+    # Hard wall-clock guard, unchanged and INSIDE the beating: if generation hangs past
+    # _TICK_HARD_DEADLINE_S the timer force-exits the process (launchd relaunches it). Cancelled
+    # the instant generation returns. The refresher stops with the block, so the terminal `idle`
+    # beat written after this is never overwritten by a straggler.
+    with _beating(cfg, "generating", batch_size=batch_size):
+        deadline = threading.Timer(_TICK_HARD_DEADLINE_S, _force_exit_hung_tick,
+                                   args=(batch_size, cfg, tick))
+        deadline.daemon = True
+        deadline.start()
+        try:
+            logger.info("Tick: generating %d candidates (%s)", batch_size, decision.reason)
+            tick["result"] = gen(cfg, batch_size)
+            # After generation, inside the same deadline guard. The SLA sweep is re-vet work of the
+            # same class as the drain, and it must run on a normal tick too — a decay rail that
+            # only fired while the generation brake was engaged would be as good as unwired for any
+            # week the brake never engages, which is the failure this whole change exists to fix.
+            decayed = _decay_pass(cfg, _decay_per_tick(cfg))
+            if isinstance(tick.get("result"), dict) and decayed is not None:
+                tick["result"]["decayed"] = decayed
+            logger.info("Tick complete: %s", tick["result"])
+        except GroundingInfrastructureError as exc:
+            # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent exit here
+            # leaves no tick row and no alert, so the founder never learns the daemon died.
+            tick["error"] = f"GroundingInfrastructureError: {exc}"
+            halt = True
+            logger.critical("GROUNDING LAYER COLLAPSE: all search providers dead. "
+                            "Halting daemon to prevent runaway LLM spend.")
+        except Exception as exc:  # noqa: BLE001 — daemon must survive any single batch failing
+            tick["error"] = f"{type(exc).__name__}: {exc}"
+            logger.error("Tick generation failed (daemon continues): %s", tick["error"])
+        finally:
+            deadline.cancel()
 
     _append_tick(cfg, tick)
     _emit_tick_alerts(cfg, tick)

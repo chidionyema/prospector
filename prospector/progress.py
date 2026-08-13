@@ -87,8 +87,16 @@ def usage_line(usage: Dict[str, Any]) -> None:
     _emit(
         f"  tokens: {_fmt_tok(t.get('total', 0))} total "
         f"({t.get('calls', 0)} calls, {t.get('web_calls', 0)} web) "
-        f"· cached {_fmt_tok(t.get('cached', 0))}"
+        f"· in {_fmt_tok(t.get('input', 0))} · out {_fmt_tok(t.get('output', 0))} "
+        f"· cache r/w {_fmt_tok(t.get('cached', 0))}/{_fmt_tok(t.get('cache_write', 0))}"
     )
+    # Printed ONLY when the ledger fails to close. Reading `total` without its composition is
+    # what made a correct instrument look broken (see telemetry.reconcile); reading a clean
+    # residual every batch would train the operator to skim past the one line that matters.
+    residual = (usage.get("reconcile") or {}).get("residual", 0)
+    if residual:
+        _emit(f"  ⚠ {_fmt_tok(abs(residual))} tokens in `total` are unattributed "
+              f"— per-provider breakdown in the batch diagnostic")
 
 
 def summary(n_pass: int, n_kill: int, usage: Optional[Dict[str, Any]] = None,
