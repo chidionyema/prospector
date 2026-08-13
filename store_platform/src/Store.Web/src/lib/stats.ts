@@ -32,31 +32,38 @@ import killTotals from '@/data/kill-log-totals.json';
  */
 const totals = killTotals as { killed: number; passed: number; shown: number };
 
+const researchedTotal = totals.killed + totals.passed;
+
 export const RESEARCH_STATS = {
   /** Ideas the filter rejected, over all time. */
   killed: totals.killed,
   /** Ideas that cleared every hard gate. NOT the same as the number on sale, see `published`. */
   survived: totals.passed,
   /** Ideas researched. An invariant, never a typed-in number. */
-  researched: totals.killed + totals.passed,
+  researched: researchedTotal,
   /** Kills published on /kill-log. Far smaller than `killed`, and the page must say so. */
   publishedKills: totals.shown,
-  /** Whole percent, rounded once, here. Pages that re-rounded this drifted by a point. */
-  rejectRate: Math.round((totals.killed / (totals.killed + totals.passed)) * 100),
   /**
-   * The share that CLEARED every gate, as a whole percent, rounded once for the same reason.
+   * THE RATES CARRY A DECIMAL, AND THAT IS THE WHOLE POINT OF THESE TWO FIELDS.
    *
-   * It exists because there was no survival figure to read, so pages filling a sentence about
-   * survival reached for `rejectRate` and printed its inverse. On 2026-08-08 `how-it-works.tsx`
-   * rendered "94% survive" two lines under "1,444 ideas in. 80 out.", and the home page rendered
-   * "80 survived. That's 94%.", which attaches the kill rate to the survivor count. Both read as
-   * the filter passing almost everything, when it kills almost everything.
+   * A whole percent fails the one check a sceptic actually performs, which is to multiply it back.
+   * The home page shipped "1,444 ideas researched. 80 survived. That's a 6% pass rate." and 6% of
+   * 1,444 is 87, not 80. The rounding was correct (5.54% -> 6%); the printed figure was still one
+   * the reader could not reproduce from the two counts sitting beside it, on the page whose entire
+   * argument is that our arithmetic checks out. The kill side had it too: 94% of 1,444 is 1,357,
+   * not 1,364, a seven-idea gap stated three times across the site.
    *
-   * Kept as its own rounded figure rather than `100 - rejectRate`: the two are derived from the
-   * same totals, so they sum to 100 here, but subtracting a rounded number is how a page ends up
-   * a point out the first time the totals move.
+   * Both survive as their own derivation rather than one being `100 - other`: they sum to 100 here,
+   * but subtracting a rounded number is how a page ends up a point out the first time the totals
+   * move. `numbersReconcile.test.ts` pins the PROPERTY (the rate must reproduce the count beside it
+   * to within one idea), never the digits, so a regeneration cannot silently break it.
+   *
+   * These are pre-formatted strings, and the whole-percent numbers they replaced are deliberately
+   * GONE rather than kept alongside: a page reaching for the unreproducible figure was not a
+   * hypothetical, it was five call sites.
    */
-  passRate: Math.round((totals.passed / (totals.killed + totals.passed)) * 100),
+  passRateLabel: `${((totals.passed / researchedTotal) * 100).toFixed(1)}%`,
+  rejectRateLabel: `${((totals.killed / researchedTotal) * 100).toFixed(1)}%`,
 } as const;
 
 /**
@@ -84,4 +91,38 @@ export function survivorsSummary(listed?: number): string {
     return `${survived.toLocaleString('en-GB')} survived the checks`;
   }
   return `${survived.toLocaleString('en-GB')} survived the checks; ${listed.toLocaleString('en-GB')} are packaged and listed so far`;
+}
+
+/**
+ * The kill side of the same partition, in one clause, because the home page got it wrong twice at
+ * once and the founder had to be the one to notice.
+ *
+ * WHAT SHIPPED, live on 2026-08-13, one paragraph under "1,444 ideas researched. 80 survived.":
+ *
+ *   "80 survived the checks; 50 are packaged and listed so far.
+ *    The other 1,364 are published, each with the evidence that killed it."
+ *
+ * Two falsehoods in fourteen words:
+ *
+ * 1. "The other" attaches to the nearest number, which is 50. So the sentence asserts a partition
+ *    of 50 + 1,364 = 1,414 against a total of 1,444 printed one line above it, quietly losing the
+ *    30 survivors that are not packaged yet. The antecedent it needed was 80, four words further
+ *    back, and English will not reach that far.
+ *
+ * 2. 1,364 kills are NOT published. 400 are. That is `totals.shown`, it is what /kill-log itself
+ *    says one click away ("This page publishes 400 of those kills, not all 1,364"), and it is what
+ *    the field comment on `publishedKills` above has warned about since the day it was written.
+ *    The home page contradicted the kill log about a number both read from the same JSON.
+ *
+ * So this clause states its own denominator instead of trusting "other" to point somewhere, and the
+ * only count it will ever place next to the word "published" is `publishedKills`. Callers supply
+ * the punctuation, as with `survivorsSummary`.
+ */
+export function killsSummary(): string {
+  const { killed, researched, publishedKills } = RESEARCH_STATS;
+  return (
+    `The remaining ${killed.toLocaleString('en-GB')} of ${researched.toLocaleString('en-GB')} ` +
+    `were killed, and ${publishedKills.toLocaleString('en-GB')} of those kills are published ` +
+    `with the evidence that killed them`
+  );
 }

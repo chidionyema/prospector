@@ -762,7 +762,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               <p className="max-w-[52ch] text-meta leading-relaxed text-muted">
                 <span className="font-medium text-text">One of the ideas that survived.</span>{' '}
                 {RESEARCH_STATS.researched.toLocaleString('en-GB')} went through the filter and{' '}
-                {RESEARCH_STATS.rejectRate}% died on cited evidence.{' '}
+                {RESEARCH_STATS.rejectRateLabel} died on cited evidence.{' '}
                 <Link
                   href="/kill-log"
                   className="text-accent underline underline-offset-2 hover:text-accent-hover"

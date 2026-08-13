@@ -53,7 +53,7 @@ import {
 import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
 import { useCopyVariant } from '@/lib/useCopyVariant';
-import { RESEARCH_STATS, survivorsSummary } from '@/lib/stats';
+import { RESEARCH_STATS, killsSummary, survivorsSummary } from '@/lib/stats';
 
 interface HomeProps {
   packs: Pack[];
@@ -1793,7 +1793,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
                   is not 80. Naming it "pass rate" fixes the antecedent and the figure at once. */}
               {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
               {RESEARCH_STATS.survived.toLocaleString('en-GB')} survived. That&apos;s a{' '}
-              {RESEARCH_STATS.passRate}% pass rate.
+              {RESEARCH_STATS.passRateLabel} pass rate.
             </p>
             {/* The full stop is HERE and not inside `survivorsSummary`, and that is deliberate.
                 Without it the home page ran two sentences together -- confirmed live on
@@ -1802,10 +1802,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 two callers (LiveKillCard.tsx:175, kill-log.tsx:286) print it as a standalone stat
                 beside a glyph, where a trailing full stop would be wrong. Punctuation belongs to
                 whoever continues the sentence. */}
+            {/* THE KILL CLAUSE IS A HELPER NOW, and the reason is in `killsSummary`'s doc block:
+                this paragraph asserted a partition that did not close (50 + 1,364 against a
+                printed total of 1,444) and put the word "published" next to 1,364 when 400 kills
+                are published. Neither number is written here any more. */}
             <p className="mt-2 max-w-[64ch] text-meta text-muted">
-              {survivorsSummary(stats?.listed)}. The other{' '}
-              {RESEARCH_STATS.killed.toLocaleString('en-GB')} are published, each with the evidence
-              that killed it.
+              {survivorsSummary(stats?.listed)}. {killsSummary()}.
             </p>
           </div>
           <Link
