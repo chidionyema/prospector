@@ -469,6 +469,25 @@ def vet_candidate(
     logger.info(f"Vetting candidate: {cand.title!r} (full_vet={full_vet}, persona={cfg.active_persona})")
 
     from . import progress
+    from .audit import audit
+
+    # SUB-TICK PROGRESS (R5): the boundary rows. Per-check rows alone cannot say whether a
+    # candidate is still being worked or was abandoned, so a reader would call a crashed vet
+    # "in flight" forever. Emitted HERE rather than at submission in run_signal because this
+    # runs in the worker thread — it marks the moment work actually started, and it covers
+    # every caller (single vet, `vet --resume`, the daemon), not just the batch pool.
+    #
+    # Deliberately NOT wrapped in try/finally: vet_candidate has exactly one return
+    # (`return dossier`), and re-indenting ~160 lines to catch the raise path would be a far
+    # larger diff than the case warrants. A start with no done is instead resolved by the
+    # READER, which must handle it regardless — a SIGKILLed daemon can never emit its own
+    # `candidate_done`, so staleness has to be the reader's rule, not the writer's promise.
+    audit("candidate_start",
+          candidate_id=cand.candidate_id,
+          title=(cand.title or "")[:120],
+          tier=getattr(cand, "ambition_tier", "") or "",
+          full_vet=bool(full_vet),
+          label=label or "")
 
     def _check_line(res, prefix: str = "") -> str:
         v = res.verdict.value
@@ -622,8 +641,23 @@ def vet_candidate(
             f"(ruled by emergency fallback; awaiting moat re-vet via `vet --resume`).",
             extra={"candidate_id": cand.candidate_id, "provider_chain": _provider_chain})
 
-    logger.info(f"Vetting complete: {dossier.decision.value.upper()}", 
+    logger.info(f"Vetting complete: {dossier.decision.value.upper()}",
                 extra={"decision": dossier.decision.value, "gate": gate})
+    # SUB-TICK PROGRESS (R5): the closing boundary. `provisional` is carried because a
+    # provisional row is not a finished answer — it is scheduled for re-vet — and a panel that
+    # showed it as settled would report the drain as shorter than it is.
+    _sc = getattr(dossier, "score", None)
+    audit("candidate_done",
+          candidate_id=cand.candidate_id,
+          decision=dossier.decision.value,
+          gate=gate or "",
+          provisional=bool(getattr(dossier, "provisional", False)),
+          # `composite` is OMITTED, not defaulted, when the candidate never reached scoring
+          # (kill-fast returns before score_candidate) or when scoring itself failed. A
+          # default of 0.0 here would be indistinguishable from a real 0.0 composite, which
+          # is the `score_failed` distinction models.py:336 exists to preserve.
+          **({} if _sc is None or getattr(_sc, "score_failed", False)
+             else {"composite": round(float(_sc.composite or 0.0), 3)}))
     return dossier
 
 
