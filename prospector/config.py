@@ -395,6 +395,16 @@ def _validate_block(name: str, raw: Any) -> dict[str, Any]:
     return dict(raw)
 
 
+# Defaults for the raw `listing:` block. config.yaml WINS for every key it declares; these
+# only fill what it omits, so the flat catalogue price is declared in exactly ONE place in
+# Python instead of as a literal on the money path (audit finding #20 — `pricing.py`'s
+# `int(listing.get("price_pence", 4999))`). Two hardcoded fallbacks for one field is the
+# defect shape of finding #17, and a price is the field where that drift charges a buyer.
+LISTING_DEFAULTS: dict[str, Any] = {
+    "price_pence": 4999,
+}
+
+
 @dataclass
 class Config:
     # str (single brain) or list[str] (ordered failover chain, Part 9).
@@ -903,7 +913,9 @@ def load_config(path: str | Path | None = None) -> Config:
         active_profile=raw.get("active_profile") or "",
         personas=raw.get("personas") or {},
         active_persona=raw.get("active_persona") or "",
-        listing=raw.get("listing") or {},
+        # Defaults first, config.yaml second: a declared key always wins, an omitted one
+        # falls back to LISTING_DEFAULTS rather than to a literal buried in pricing.py.
+        listing={**LISTING_DEFAULTS, **(raw.get("listing") or {})},
         dedup_threshold=float(raw.get("dedup_threshold", 0.85)),
         dedup_token_threshold=(
             None if raw.get("dedup_token_threshold", 0.34) is None

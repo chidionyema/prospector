@@ -98,9 +98,28 @@ class Operator(ABC):
 
     name = "operator"
 
+    # The CONFIG TIER name this operator was built for ("claude_cli", "claude", "minimax",
+    # ...), stamped by `make_operator`. It is deliberately NOT `self.name`: instance names
+    # carry the model ("claude/claude-opus-4-8"), while MOAT_PRIMARY is a set of tier names,
+    # so keying trust off `name` would mark a trusted `operator: claude` config provisional.
+    # Empty for operators constructed directly (tests, fixtures), which keeps those on their
+    # existing non-provisional behaviour.
+    tier_name: str = ""
+
     @abstractmethod
     def _raw(self, system: str, user: str, temperature: float) -> str:
         ...
+
+    def served_is_provisional(self) -> bool:
+        """True if a ruling served by THIS operator must be stamped provisional.
+
+        A single-tier config returns a bare operator with no chain to fail over to, so
+        before this existed only `FallbackOperator` could answer the question and
+        `verify._served_is_provisional` fell back to `False` — meaning a config of
+        `operator: minimax` (a form `cfg.operator` explicitly supports) ruled as though a
+        trusted moat brain had, and could publish on PASS. Audit finding #14.
+        """
+        return bool(self.tier_name) and is_provisional_provider(self.tier_name)
 
     def embed(self, text: str) -> list[float]:
         """Generate an embedding for the given text. Default returns empty list."""
@@ -1341,7 +1360,13 @@ def make_operator(cfg, fast: bool = False) -> Operator:
         raise RuntimeError(
             f"no operator in {kinds!r} could be constructed — check API keys and credentials.")
     if len(built) == 1:
-        return built[0][1]
+        # A one-tier config gets the bare operator — there is no chain to fail over to, so
+        # wrapping it in a FallbackOperator would buy nothing and would rename it. But it
+        # must still be able to answer "did a TRUSTED brain rule this?", so stamp the tier
+        # name it was built from; `Operator.served_is_provisional` reads it. Audit #14.
+        kind, op = built[0]
+        op.tier_name = kind
+        return op
     r = cfg.retrieval
     return FallbackOperator(built, failure_threshold=r.breaker_failure_threshold,
                             cooldown_s=r.breaker_cooldown_s)

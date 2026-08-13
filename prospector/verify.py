@@ -54,9 +54,16 @@ def _served_provider(op: Operator) -> str:
 
 
 def _served_is_provisional(op: Operator) -> bool:
-    """True if the most recent ruling was served by the cheap emergency tail (outside
-    MOAT_PRIMARY) rather than a trusted moat brain. Always False for a single operator
-    (no fallback tail can have engaged), so pinned/test configs never mark provisional."""
+    """True if the most recent ruling was served by a brain outside MOAT_PRIMARY rather
+    than a trusted moat one.
+
+    For a `FallbackOperator` that is the tier which actually served this thread's last
+    call. For a SINGLE-tier config it is the tier the operator was built from
+    (`Operator.tier_name`, stamped by `make_operator`); this used to be hardcoded False, so
+    a config of `operator: minimax` ruled as though a trusted brain had and could publish
+    on PASS (audit finding #14). Operators constructed directly in tests carry no tier
+    name and stay non-provisional, which is what keeps fixture-driven publish tests
+    exercising the publish path at all."""
     return bool(getattr(op, "served_is_provisional", lambda: False)())
 
 
