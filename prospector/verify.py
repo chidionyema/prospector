@@ -850,7 +850,26 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
         checks.append(res)
         if on_check:
             on_check(res)
-        
+
+        # SUB-TICK PROGRESS (R5). `verify_search` already recorded that this check went
+        # LOOKING (candidate_id + check, 989 rows on 2026-08-10); nothing recorded what it
+        # RULED, so a reader could see the engine searching and never see it decide. This is
+        # the ruling half, on the same trail, with the same writer — a second progress file
+        # would need its own concurrency story and could disagree with this one.
+        #
+        # No config knob on purpose: every other audit() call site is unconditional, and an
+        # audit gap is indistinguishable from an idle engine (audit.py:77-100 — 82 hours lost
+        # that way). A switch here would be a switch for turning the evidence off.
+        audit("check_result",
+              candidate_id=getattr(cand, "candidate_id", "") or "",
+              check=name,
+              verdict=getattr(res.verdict, "value", str(res.verdict)),
+              confidence=round(float(res.confidence or 0.0), 3),
+              retrieval_failed=bool(getattr(res, "retrieval_failed", False)),
+              idx=idx + 1,
+              total=len(run_order))
+
+
         # Determine if this gate fired
         gate_fired = False
         if res.retrieval_failed:
