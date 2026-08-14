@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { PACK_CONTENTS } from '../PackContents';
+import { PACK_CONTENTS, PACK_EXTRAS } from '../PackContents';
 
 /**
  * The storefront's deliverable list and the engine's bundle manifest are one claim in two deploy
@@ -67,12 +67,32 @@ describe('deliverable list agreement with prospector/bridge.py', () => {
   });
 
   it('does not advertise a bonus file as one of the deliverables', () => {
-    // `BUNDLE_BONUS_FILES` (index.html, manifest.jsonld) ship in the zip but are not promised, so
-    // a missing one cannot block a listing. Listing one here would reverse that: it would become a
-    // promise, and `audit_bundle` — which only iterates BUNDLE_FILES — would not enforce it.
+    // `BUNDLE_BONUS_FILES` ships in the zip but is not promised, so a missing one cannot block a
+    // listing. Listing one in PACK_CONTENTS would reverse that: it would become a promise, and
+    // `audit_bundle` — which only iterates BUNDLE_FILES — would not enforce it. They are shown to
+    // buyers via PACK_EXTRAS instead, which is a description of the archive, not a contract.
     const bonus = bonusFilesFromPython();
     expect(bonus.length, 'guards the regex: an empty tuple makes this vacuous').toBeGreaterThan(0);
     expect(PACK_CONTENTS.map((c) => c.filename).filter((f) => bonus.includes(f))).toEqual([]);
+  });
+
+  it('shows every bonus file the bundle carries, and invents none', () => {
+    // The other half of the same drift, and the one that actually bit: the bundle grew a typeset
+    // PDF, a printable first-fortnight sheet, an assumptions CSV and an evidence document (commit
+    // 40212a3) while the shelf went on describing eight Markdown files. Buyers were shipped the
+    // one answer to "markdown files is not the one" and never told it was there.
+    //
+    // Compared as a SET, not in order: BUNDLE_BONUS_FILES is ordered by when each renderer landed,
+    // and the page orders by what a buyer cares about first (the PDF), which is a legitimate
+    // difference. Membership is the claim that must not drift.
+    expect([...PACK_EXTRAS.map((c) => c.filename)].sort()).toEqual([...bonusFilesFromPython()].sort());
+  });
+
+  it('gives every extra a title and a description', () => {
+    for (const item of PACK_EXTRAS) {
+      expect(item.title.trim(), `title for ${item.filename}`).not.toBe('');
+      expect(item.desc.trim().length, `description for ${item.filename}`).toBeGreaterThan(40);
+    }
   });
 
   it('attaches the per-pack source count to the QA report and nothing else', () => {
