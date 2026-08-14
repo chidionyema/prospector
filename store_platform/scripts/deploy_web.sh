@@ -149,9 +149,33 @@ fi
 
 echo "==> Deploying Store.Web"
 cd "$WEB_DIR"
-exec flyctl deploy . --config ../../deploy/fly/web.fly.toml \
+# NOT `exec`. This line used to be `exec flyctl deploy …`, and `exec` replaces the process image,
+# which meant that by construction nothing could ever run after a deploy. Every gate in this
+# script fires BEFORE shipping — clean tree, five build args, a live Stripe key — and nothing
+# fired after, so the only instrument ever pointed at production was somebody opening the site on
+# a phone. That is the mechanism behind defects recurring: a fix is proven on localhost, shipped,
+# and never measured again.
+flyctl deploy . --config ../../deploy/fly/web.fly.toml \
   --build-arg "NEXT_PUBLIC_API_URL=$API_URL" \
   --build-arg "NEXT_PUBLIC_SITE_URL=$SITE_URL" \
   --build-arg "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$PK" \
   --build-arg "NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=$GOOGLE_VERIFY" \
   --build-arg "NEXT_PUBLIC_BING_SITE_VERIFICATION=$BING_VERIFY"
+deploy_status=$?
+
+if [ "$deploy_status" -ne 0 ]; then
+  red "==> flyctl deploy failed (exit $deploy_status) — not measuring; nothing new is live"
+  exit "$deploy_status"
+fi
+
+# The other half of the rail: measure what buyers now get. This cannot block the deploy (it has
+# already happened) but it must be impossible to ship and walk away without a verdict on the
+# result, printed at the end where the operator is already looking.
+echo "==> Measuring what just went live"
+python3 "$SCRIPT_DIR/prove_live.py" --site "$SITE_URL" --api "$API_URL"
+live_status=$?
+if [ "$live_status" -ne 0 ]; then
+  red "==> DEPLOYED, but the live storefront is not clean (prove_live.py exit $live_status)"
+  red "    The deploy itself succeeded. Read the failures above and decide: fix forward or roll back."
+fi
+exit "$deploy_status"
