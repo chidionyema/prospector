@@ -42,7 +42,12 @@ class _FakeProvisioner:
     def create_product(self, name, description, metadata):
         return "prod_real_123"
 
-    def create_price(self, product_id, amount_pence, currency="gbp"):
+    # `usd_cents` is part of the ProductProvisioner protocol from 2026-08-14 (the same rung
+    # in US cents, added to the SAME provider price as a currency option). A fake that omits
+    # it does not fail as a signature error — the provisioning call raises inside the bridge's
+    # try/except, publish falls through to UNLISTED, and the test fails several assertions
+    # later on something that reads like a facet bug.
+    def create_price(self, product_id, amount_pence, currency="gbp", usd_cents=None):
         return "price_real_123"
 
 
