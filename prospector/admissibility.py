@@ -59,15 +59,32 @@ ACADEMIC_HOSTS = {
     "pmc.ncbi.nlm.nih.gov", "ncbi.nlm.nih.gov", "sciencedirect.com", "nature.com",
     "bmj.com", "thelancet.com", "springer.com", "jstor.org", "arxiv.org",
 }
+# Both sets were 13-of-15 and 12-of-12 UK when the market rotation moved to US 8/10
+# (config.yaml schedule.market_rotation, 2026-08-14). A US ruling's best available source
+# therefore landed in the `other` tier while its UK equivalent tiered as media — the same
+# evidence graded differently for no reason but which country wrote it.
+#
+# US REGULATORS ARE DELIBERATELY ABSENT from REGULATORS above, and that is not an oversight:
+# `.gov` is already in GOV_SUFFIXES, so every US federal and state board tiers `government`
+# by suffix and is corroboration-exempt. Adding `calbar.ca.gov`-style hosts one at a time
+# would be redundant. The gap was never the regulators; it was the press and the org sector.
 MEDIA = {
     "bbc.co.uk", "bbc.com", "theguardian.com", "ft.com", "reuters.com", "telegraph.co.uk",
     "thetimes.co.uk", "economist.com", "independent.co.uk", "news.sky.com", "standard.co.uk",
     "inews.co.uk", "mirror.co.uk", "nytimes.com", "wsj.com",
+    # US national and state-of-record press, to match the rotation's eight states.
+    "apnews.com", "washingtonpost.com", "npr.org", "bloomberg.com", "cnbc.com",
+    "politico.com", "axios.com", "latimes.com", "chicagotribune.com", "texastribune.org",
 }
 ESTABLISHED_ORG = {
     "citizensadvice.org.uk", "carersuk.org", "ageuk.org.uk", "which.co.uk",
     "moneysavingexpert.com", "moneyhelper.org.uk", "mind.org.uk", "scope.org.uk",
     "shelter.org.uk", "acas.org.uk", "unison.org.uk", "rcn.org.uk",
+    # US equivalents by ROLE, not by fame: consumer advice, small-business representation,
+    # health/ageing policy and non-profit investigative reporting — the four functions the
+    # UK list already covers.
+    "consumerreports.org", "aarp.org", "kff.org", "pewresearch.org",
+    "uschamber.com", "nfib.com", "bbb.org", "propublica.org",
 }
 
 # Low-quality FOR THE PURPOSE OF RULING A VERDICT. Not "bad websites" — user-generated and
