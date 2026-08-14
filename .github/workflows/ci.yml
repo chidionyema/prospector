@@ -76,6 +76,48 @@ jobs:
       # ────────────────────────────────────────────────────────────
 
   # ──────────────────────────────────────────────────────────────────
+  # Engine — the crown jewel's own gate.
+  #
+  # Born from 9089ebc (2026-08-13), which raised generation.candidates_per_signal 5 → 50 in
+  # config.yaml. Nothing anywhere checked it: `.yaml` matched no lane in the local POPDD gate
+  # AND — proven on 2026-08-14 — the main checkout had no .git/hooks/pre-commit installed at
+  # all. Every tick afterwards force-exited at the 3h deadline mid-generation and the engine
+  # produced nothing for 21 consecutive ticks. The founder found it by asking.
+  #
+  # This job is the backstop for exactly that: a local hook can be uninstalled, bypassed with
+  # --no-verify, or (as here) never installed. A required check cannot. It runs on EVERY PR,
+  # not behind a paths filter, because a paths filter is one more thing that can be wrong
+  # about which files steer the daemon — and the job is ~1 minute.
+  # ──────────────────────────────────────────────────────────────────
+  engine:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv pip install --system -r requirements.txt
+
+      # --no-tick: a runner has no .env and no spend ledger, so the dry-run tick would fail on
+      # its environment instead of on the change. Checks 1, 2 and 4 still run, and the script
+      # prints what it skipped rather than implying full coverage.
+      - name: Engine verification (import + lint + generation budget)
+        run: ./scripts/verify_engine_change.sh --no-tick
+
+      # The gate's own map. If lanes_for() stops routing config.yaml to the engine lane, this
+      # goes red — the hole cannot be reopened quietly.
+      - name: The lane map still guards the engine
+        run: python -m pytest tests/unit/test_popdd_gate_lanes.py -q --tb=short -p no:warnings
+
+  # ──────────────────────────────────────────────────────────────────
   # .NET — Store tests
   # ──────────────────────────────────────────────────────────────────
   dotnet:

@@ -577,13 +577,28 @@ class MiniMaxOperator(Operator):
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            # 32768 is REQUIRED, not generous: M3 emits its reasoning in <think>…</think> BEFORE
-            # the JSON, and generation reasoning runs 16k–28k tokens (measured 2026-07-02). A cap
-            # of 16000 truncated the response mid-<think> — 0 JSON, 0 candidates, and the claude_cli
-            # backstop can't catch it (a truncated body is an HTTP success that fails PARSING, which
-            # retries MiniMax rather than failing over). So we keep the full budget and let the rare
-            # runaway call hit the 240s timeout → THAT exception does fail over to claude_cli.
-            "max_tokens": 32768,
+            # This is REQUIRED headroom, not generosity: M3 emits its reasoning in <think>…</think>
+            # BEFORE the JSON, and generation reasoning ran 16k–28k tokens (measured 2026-07-02). A
+            # cap of 16000 truncated the response mid-<think> — 0 JSON, 0 candidates, and the
+            # claude_cli backstop can't catch it (a truncated body is an HTTP success that fails
+            # PARSING, which retries MiniMax rather than failing over).
+            #
+            # RAISED 32768 → 65536 on 2026-08-14. The 2026-07-02 measurement went stale: M3's think
+            # length grew until the cap itself became the failure. Median MiniMax response measured
+            # 4,181 chars on 08-13 (n=177) and 47,602 chars on 08-14 (n=360), and a truncated call
+            # that day burned ~34k think-tokens against the 32768 ceiling — i.e. the ceiling WAS the
+            # truncation. That mattered more than usual because commit d704595 had just taken
+            # claude_cli off the non-critical chain (founder: "claude should never be used for
+            # non-critical") and standardcompute's free trial expired the same day, leaving MiniMax
+            # alone on generation with nothing to fail over to: 231 `Generation chain EXHAUSTED`
+            # lines and 22 consecutive ticks recording dossiers=0.
+            #
+            # 40960 and 65536 were both probed live against api.minimax.io on 2026-08-14 and
+            # returned finish_reason=stop, so the ceiling is ours to set, not the endpoint's. This
+            # raises the cost of a RUNAWAY call, not of a normal one — max_tokens bills what is
+            # emitted, and a truncated call today bills its full budget for an unusable body.
+            # Env-overridable so it can be walked back without a deploy.
+            "max_tokens": int(os.environ.get("PROSPECTOR_MINIMAX_MAX_TOKENS", "65536")),
             # STREAMED so the socket timeout measures silence rather than total generation time
             # (`_read_sse_bounded` carries the measurement). `include_usage` is not optional: an
             # OpenAI-compatible stream omits the usage block entirely without it, and every
