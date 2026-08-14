@@ -257,8 +257,183 @@ def resolve_sources(items: list[dict], query: str, max_chars: int, k: int) -> li
     return out
 
 
+# ---------------------------------------------------------------------------
+# RELEVANCE — rank what search returned; do not just take the first k.
+# ---------------------------------------------------------------------------
+_RELEVANCE_STOP = frozenset("""
+a an and are as at be been by for from how in is it its of on or that the their them
+they this to was were what when where which who why will with you your site
+""".split())
+
+
+def _relevance_terms(text: str) -> set[str]:
+    """Content words of a query or a passage. Deliberately crude — this ranks candidates
+    against EACH OTHER; it never rules on anything and never drops a source."""
+    return {w for w in re.findall(r"[a-z0-9']+", (text or "").lower())
+            if len(w) > 3 and w not in _RELEVANCE_STOP}
+
+
+def relevance_score(query: str, text: str) -> float:
+    """Fraction of the QUERY's content words that appear in `text` (0.0-1.0)."""
+    q = _relevance_terms(query)
+    if not q:
+        return 0.0
+    return len(q & _relevance_terms(text)) / len(q)
+
+
+def _mean_coverage(query: str, sources: list) -> float:
+    return (sum(relevance_score(query, s.text) for s in sources) / len(sources)
+            if sources else 0.0)
+
+
+#: The verdict prompt reads only the first `VERDICT_PASSAGE_TRUNCATE` chars of each passage
+#: (`verify.py`). Anchoring the stored passage on a window of exactly that size is what makes
+#: the selection pay: optimising the 1500-char window instead and slicing its head made what
+#: the verdict reads WORSE by 3.5 points (measured 2026-08-14, n=26 live pages).
+#: `tests/unit/test_relevance_ranking.py` pins this against verify's constant — one
+#: discipline, one number.
+PASSAGE_ANCHOR_CHARS = 600
+
+
+def _best_window_start(query: str, lowered: str, anchor: int) -> int:
+    """Start offset of the `anchor`-char window containing the most DISTINCT query terms.
+
+    Scans term OCCURRENCES rather than every offset: a 400,000-char page has 4,000 candidate
+    offsets and re-tokenising a 600-char slice at each is seconds of CPU on the grounding
+    path. Two pointers over the match list is milliseconds. Ties take the EARLIEST window,
+    so a page whose terms are evenly spread keeps today's head slice.
+    """
+    terms = _relevance_terms(query)
+    if not terms:
+        return 0
+    hits: list[tuple[int, str]] = []
+    for t in terms:
+        hits.extend((m.start(), t) for m in re.finditer(r"\b" + re.escape(t), lowered))
+    if not hits:
+        return 0
+    hits.sort()
+    best_start, best_n = 0, 0
+    counts: dict[str, int] = {}
+    lo = 0
+    for hi in range(len(hits)):
+        counts[hits[hi][1]] = counts.get(hits[hi][1], 0) + 1
+        while hits[hi][0] - hits[lo][0] >= anchor:
+            counts[hits[lo][1]] -= 1
+            if not counts[hits[lo][1]]:
+                del counts[hits[lo][1]]
+            lo += 1
+        if len(counts) > best_n:
+            best_n, best_start = len(counts), hits[lo][0]
+    return best_start
+
+
+def select_passage(text: str, max_chars: int, *, query: Optional[str] = None,
+                   anchor: int = PASSAGE_ANCHOR_CHARS) -> str:
+    """Return the `max_chars` of `text` most likely to answer `query`.
+
+    THE DEFECT THIS CLOSES. `fetch_page_text` returned `text[:max_chars]` — the TOP of the
+    page — and the verdict then read the first `VERDICT_PASSAGE_TRUNCATE` chars of that. On a
+    median 6,334-char page that is the masthead and the cookie banner, and it is why the
+    page-fetch fix bought real page text and no yield.
+
+    MEASURED 2026-08-14 over 61 live pages sampled from post-fix dossier citations, scoring
+    what the VERDICT reads (the first 600 chars of the stored passage):
+        head slice   26.9%  of the query's content words
+        anchored     40.3%  (+13.5 points)
+    1 page of 61 was made worse; 9 pages whose head slice had ZERO query overlap gained some.
+    Anchors on `anchor`, not on `max_chars`, and the window start is snapped back to a word
+    boundary so a passage never opens mid-word.
+    """
+    if len(text) <= max_chars or not query:
+        return text[:max_chars]
+    start = _best_window_start(query, text.lower(), anchor)
+    start = min(start, max(0, len(text) - max_chars))
+    if start:
+        # Snap back to a word boundary; a passage opening "...ation of the Act" reads as
+        # corrupt evidence to a verdict brain and to a buyer reading the dossier.
+        space = text.rfind(" ", max(0, start - 60), start)
+        start = space + 1 if space != -1 else start
+    return text[start:start + max_chars]
+
+
+def _resolve_urls(urls: list[str], timeout: Optional[float] = None) -> list[Optional[str]]:
+    """Resolve many URLs CONCURRENTLY, preserving order and the per-domain tiered timeout.
+
+    Over-fetching multiplies the HEAD probes a provider makes per query, and DuckDuckGo
+    and Exa both resolved theirs in a serial `for` loop — ten unresponsive hosts at the
+    4s timeout would have added ~40s to one check. `timeout=None` keeps `_get_timeout`'s
+    authority-domain patience, which a fixed timeout would silently discard.
+
+    ONE `copy_context()` PER WORKER, never one shared: `Context.run()` raises when the
+    same Context is entered concurrently. That is the defect that made `resolve_sources`
+    raise 20/20 on 3 URLs from 2026-06-15 (5f95ca7) until 2026-08-13.
+    """
+    if not urls:
+        return []
+    from concurrent.futures import ThreadPoolExecutor
+    pairs = [(contextvars.copy_context(), u) for u in urls]
+    with ThreadPoolExecutor(max_workers=min(len(urls), 10)) as ex:
+        return list(ex.map(lambda pr: pr[0].run(_resolve, pr[1], timeout), pairs))
+
+
+class RelevanceRankedProvider(SearchProvider):
+    """Over-fetch, then hand the verdict the k passages that actually answer the query.
+
+    THE DEFECT THIS CLOSES. Every provider in this file asks the search engine for
+    exactly `k` results and keeps them in the engine's own order (`raw[:k]`). Relevance
+    was therefore something this engine MEASURED at the verdict — as `unverifiable` —
+    and never once enforced where the sources are produced.
+
+    MEASURED 2026-08-14 over the 450 grounding passages written since the page-fetch fix
+    went live (`store/dossiers/*.json` -> `checks[].sources[]`): a source under a
+    `supported` verdict contains 42.8% of its own query's content words; under
+    `unverifiable`, 25.1% — and 47.2% of those contain under 20%. Half the pages we
+    fetched were off-topic outright (a `distribution` check grounded on vk.com and
+    fire.ca.gov; an `AATF WEEE resale` query grounded on gamblingcommission.gov.uk).
+    Re-running ten of those exact queries with `max_results=10`: the first 3 average
+    25.9% coverage, the BEST 3 average 36.8% (+10.8 points). The relevant pages were
+    already in the result list and were being discarded unread.
+
+    Ranks on the SNIPPET, which search returned for free, and is wrapped INSIDE
+    PageTextEnricher so only the surviving k are ever fetched. Cost: one wider search
+    call per query. No extra page fetch, no LLM call, no change to any verdict rule.
+
+    CANNOT STARVE A CHECK. It returns the same COUNT it was asked for — only a different
+    choice of which — so `retrieval_failed`, the DEFER gate and every downstream count
+    are untouched. Ties keep the provider's own order (`sorted` is stable), so at
+    `overfetch=1` this is a byte-for-byte no-op.
+    """
+
+    def __init__(self, inner: SearchProvider, *, overfetch: int = 3,
+                 max_k: int = 10) -> None:
+        self._inner = inner
+        self.overfetch = max(1, int(overfetch))
+        self.max_k = max_k
+
+    @track_latency(name="relevance_rank")
+    def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        if self.overfetch <= 1:
+            return self._inner.search(query, k=k, max_chars=max_chars)
+        # `max_k` mirrors the `min(k, 10)` cap every provider already applies, so asking
+        # for more than a provider will ever return cannot look like a shortfall.
+        want = min(max(k, 1) * self.overfetch, self.max_k)
+        results = self._inner.search(query, k=want, max_chars=max_chars)
+        if len(results) <= k:
+            return results
+        before = results[:k]
+        kept = sorted(results, key=lambda s: -relevance_score(query, s.text))[:k]
+        cov_before, cov_after = _mean_coverage(query, before), _mean_coverage(query, kept)
+        logger.info("Relevance rank: kept %d of %d for %r (query coverage %.0f%% -> %.0f%%)",
+                    len(kept), len(results), query[:80], 100 * cov_before, 100 * cov_after)
+        audit("search_rank", query=query[:200], asked_k=k, fetched_n=len(results),
+              kept_n=len(kept), cov_before=round(cov_before, 3),
+              cov_after=round(cov_after, 3),
+              swapped_n=sum(1 for s in kept if s not in before))
+        return kept
+
+
 def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
-                    max_bytes: int = 400_000) -> Optional[str]:
+                    max_bytes: int = 400_000, query: Optional[str] = None) -> Optional[str]:
     """GET a grounding URL and return its readable text, or None.
 
     THE DEFECT THIS CLOSES. `_resolve()` above sends a HEAD: it proves the host is real and
@@ -342,7 +517,9 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
             text = " ".join(doc.text_content().split())
     except Exception:                       # noqa: BLE001 — unparseable markup
         return None
-    return text[:max_chars] or None
+    # Select the passage that answers the query rather than the top of the page. `query=None`
+    # (any caller predating 2026-08-14) still gets the head slice, byte for byte.
+    return select_passage(text, max_chars, query=query) or None
 
 
 class PageTextEnricher(SearchProvider):
@@ -388,7 +565,7 @@ class PageTextEnricher(SearchProvider):
         def _one(pair) -> Optional[str]:
             ctx, s = pair
             return ctx.run(fetch_page_text, s.url, timeout_s=self._timeout_s,
-                           max_chars=max_chars, max_bytes=self._max_bytes)
+                           max_chars=max_chars, max_bytes=self._max_bytes, query=query)
 
         try:
             with ThreadPoolExecutor(max_workers=min(self._max_workers, len(sources))) as ex:
@@ -681,12 +858,10 @@ class ExaSearchProvider(SearchProvider):
             from exa_py import Exa
             exa = Exa(api_key=key)
             result = exa.search(query, num_results=min(k, 10))
+            pairs = [(it, getattr(it, "url", None) or "") for it in (result.results or [])]
+            pairs = [(it, u) for it, u in pairs if u]
             results: list[Source] = []
-            for item in (result.results or []):
-                url = getattr(item, "url", None) or ""
-                if not url:
-                    continue
-                resolved = _resolve(url)
+            for (item, _), resolved in zip(pairs, _resolve_urls([u for _, u in pairs])):
                 if not resolved:
                     continue
                 # Use full page text (exceeds max_chars, caller/truncate handles it)
@@ -897,12 +1072,12 @@ class DuckDuckGoSearchProvider(SearchProvider):
                                 f"{type(e).__name__}: {str(e)[:120]}")
             if last_exc is not None:
                 raise last_exc
+            # Resolve CONCURRENTLY: over-fetching for relevance ranking multiplies these
+            # HEAD probes, and a serial loop would spend the saving on latency.
+            pairs = [(it, it.get("href", "") or it.get("url", "")) for it in raw]
+            pairs = [(it, u) for it, u in pairs if u]
             results: list[Source] = []
-            for item in raw:
-                url = item.get("href", "") or item.get("url", "")
-                if not url:
-                    continue
-                resolved = _resolve(url)
+            for (item, _), resolved in zip(pairs, _resolve_urls([u for _, u in pairs])):
                 if not resolved:
                     continue
                 text = (item.get("body", "") or item.get("description", "") or "").strip()[:max_chars]
@@ -1753,6 +1928,11 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
     # would GET the fixtures' fake URLs over the real network from inside the suite.
     # `"fixture" in names` covers a config that names the provider without passing a dict.
     _pinned = fixtures is not None or "fixture" in names
+    # Rank BEFORE the page fetch, so only the k survivors are ever fetched. Never under
+    # fixtures, for the same reason PageTextEnricher is not: the golden set attributes
+    # results to the BRAIN, and re-ordering its passages would move that baseline.
+    if not _pinned and int(getattr(r, "relevance_overfetch", 1) or 1) > 1:
+        base = RelevanceRankedProvider(base, overfetch=int(r.relevance_overfetch))
     if getattr(r, "fetch_pages", False) and not _pinned:
         base = PageTextEnricher(base,
                                 timeout_s=getattr(r, "fetch_timeout_s", 8.0),

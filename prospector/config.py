@@ -64,6 +64,17 @@ class Retrieval:
     # overwrite a genuinely informative snippet with less than it replaced.
     fetch_min_gain_chars: int = 400
     fetch_max_bytes: int = 400_000      # stop reading; some pages are tens of MB
+    # RANK WHAT SEARCH RETURNED (2026-08-14). Every provider asks for exactly
+    # `results_per_query` results and keeps the search engine's own first k, so relevance
+    # was measured at the verdict (as `unverifiable`) and never enforced at the source.
+    # MEASURED over the 450 passages written since the page-fetch fix: `supported` sources
+    # contain 42.8% of their own query's content words, `unverifiable` sources 25.1%.
+    # Re-running ten of the offending queries at max_results=10, the first 3 average 25.9%
+    # coverage and the best 3 average 36.8%. `k * relevance_overfetch` results are fetched
+    # (capped at the 10 every provider already caps at) and the best k kept.
+    # Default 1 = OFF, a byte-for-byte no-op, so fixtures, the golden set and any directly
+    # constructed Retrieval() keep their behaviour; config.yaml turns it on for the engine.
+    relevance_overfetch: int = 1
     # DiskCache freshness: cached grounding passages older than this are treated as a
     # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
     # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,

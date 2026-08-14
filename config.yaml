@@ -198,6 +198,11 @@ retrieval:
   # with less than it replaced.
   fetch_min_gain_chars: 400
   fetch_max_bytes: 400000
+  # Rank what search returned instead of taking DuckDuckGo's first 3 (2026-08-14).
+  # 3 x 3 = 9 results fetched per query, best 3 by query-term coverage kept. One wider
+  # search call; no extra page fetch (ranking runs on the snippet, before the fetch) and
+  # no LLM call. Measured lift on the ten worst live queries: 25.9% -> 36.8% coverage.
+  relevance_overfetch: 3
   cache: true
   cache_ttl_s: 1209600   # 14 days; cached grounding older than this is re-fetched (0 = never expire)
   # BATCHED LLM query-gen on the fast/non-critical tier (deepseek→minimax). ONE call per
