@@ -1441,6 +1441,22 @@ listing:
     # into this same 7-element array), so only the numbers moved, not the ladder shape.
     rungs: [1999, 2999, 4999, 7999, 9999, 14999, 19999]
 
+    # The SAME ladder in US cents, for buyers billed in USD (founder decision 2026-08-14:
+    # "as a us buyer you want to be charged in usd"; these rungs approved 2026-08-14).
+    # Element i is the same rung POSITION as rungs[i], so every index above and below
+    # (default_rung_index, tier_rung_index, market_rung_offset) selects into both arrays
+    # identically: a US buyer and a UK buyer of the same pack sit on the same rung, each
+    # priced in their own currency.
+    #
+    # DECLARED, NOT CONVERTED. These are charm-ended figures within ±7% of the repo's own
+    # declared rate (comparables.fx_to_gbp.USD = 0.74085, US Federal Reserve H.10 released
+    # 2026-08-12, i.e. GBP→USD 1.3498) — but the rate is how they were CHOSEN, not how they
+    # are computed. A price converted at charge time makes the charged amount depend on which
+    # rate the process happened to read, so a buyer who paid exactly the price they were shown
+    # gets refused by the fulfilment fence whenever the rate moved in between. Moving a rung
+    # is a deliberate edit here, exactly like the GBP ladder.
+    usd_rungs: [2499, 3999, 6999, 10999, 13999, 19999, 26999]
+
     # A human-readable label for the ladder below, recorded on every D3 rationale record
     # (prospector/price_rationale.py). It is a LABEL, not the truth: a stale label that
     # nobody bumped after editing `rungs` would misattribute a price. The record also

@@ -649,6 +649,35 @@ def generate_artifacts(
                              extra={"type": t, "error": str(e)})
                 results[t] = ""
 
+    # One artifact empty while its three siblings generated is not "the model had nothing to
+    # say" — it is the CHEAP chain failing where the prose chain did not. `financial_model` is
+    # the only type routed to `cheap_op` (:633), and on 2026-08-14 it came back 0 bytes on
+    # three consecutive publish attempts for 25363e54b649587a while build_spec, gtm_plan and
+    # ops_plan all generated on the same run, from the same evidence. An empty artifact fails
+    # the completeness gate, so the pack is HELD BACK entirely: the cheap chain's saving costs
+    # the whole sale, which is not a trade anyone chose.
+    #
+    # Retried on the prose chain, and LOUDLY: a fallback that works in silence hides its own
+    # degradation, so the cheap chain would go on failing this artifact forever with nothing in
+    # the log to say a pack was rescued rather than generated.
+    if not results.get("financial_model") and prose_op is not cheap_op:
+        logger.warning(
+            "financial_model came back empty on the cheap chain; retrying on the prose chain",
+            extra={"candidate_id": getattr(cand, "candidate_id", ""),
+                   "type": "financial_model"})
+        try:
+            _, content, raw, _ = _gen_one_artifact(
+                prose_op, cand_json, claims_json, "financial_model", market_vars,
+                length_rule, op if claim_check_on else None, claims)
+            results["financial_model"] = content
+            if isinstance(raw, dict):
+                financial_assumptions = raw
+        except Exception as e:
+            # Still fatal to the pack — the completeness gate refuses an empty artifact — but
+            # the reason is now on the record instead of a silent zero-byte file.
+            logger.error(f"financial_model prose-chain retry also failed: {e}",
+                         extra={"type": "financial_model", "error": str(e)})
+
     # The measurement that decides whether this becomes a listing gate. Recorded rather
     # than enforced on purpose: the house rollout doctrine is to ship the check, measure
     # the live rate, repair, and only then flip an actuator. A threshold chosen before the
