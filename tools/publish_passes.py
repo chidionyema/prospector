@@ -44,7 +44,13 @@ from prospector.models import (
 from prospector.operator import make_operator
 from prospector.pack_floors import ensure_marketing_floor
 from prospector.pack_validation import validate_pack
-from prospector.run import _NONCRITICAL_ORDER, _build_artifact_op, _load_dotenv
+from prospector.run import (
+    _NONCRITICAL_ORDER,
+    _build_artifact_op,
+    _build_marketing_op,
+    _load_dotenv,
+    _shelf_copy_breaches,
+)
 from publish.publish import publish
 
 # Generation flakiness budget: regenerate the whole pack this many times before giving up
@@ -180,14 +186,20 @@ def main(argv: list[str]) -> int:
     if cheap:
         cfg.operator = ["minimax"]          # claim-check + ancillary JSON + gen_op
         cfg.artifact_operator = ["minimax"]  # the £49 prose
+        cfg.marketing_operator = ["minimax"]  # ...and the shelf copy that sells it
         noncritical_order = ["minimax"]
     op = make_operator(cfg)
     quality_op = _build_artifact_op(cfg, op)
+    marketing_op = _build_marketing_op(cfg, op)
     saved_operator = cfg.operator
     cfg.operator = noncritical_order
     fast_op = make_operator(cfg, fast=True)
     cfg.operator = saved_operator
-    print(f"artifact chain: {cfg.artifact_operator}  noncritical: {noncritical_order}"
+    # getattr, for the same reason `_build_marketing_op` uses it: a Config predating the
+    # 2026-08-14 split has no such attribute, and a banner line must never be what raises.
+    print(f"artifact chain: {cfg.artifact_operator}  marketing chain: "
+          f"{getattr(cfg, 'marketing_operator', None) or cfg.artifact_operator}  "
+          f"noncritical: {noncritical_order}"
           f"{'  [--cheap: no subscription CLI in the generation path]' if cheap else ''}")
 
     def _prepare(p: str):
@@ -225,6 +237,13 @@ def main(argv: list[str]) -> int:
         # the incomplete packs are exactly the ones you most want a free verdict on, and
         # regenerating them here would turn a "free rehearsal" into the most expensive
         # command in the tool for precisely those packs.
+        # Same guardrail as the daemon's `_generate_pack_content`, for the same reason: the
+        # cheap chain writes the shelf copy, and copy the publish gate would refuse is
+        # rewritten by the deliverable chain rather than shipped UNLISTED. One escalation per
+        # pack — a chain that just failed this bar has no claim on the remaining attempts.
+        copy_op = marketing_op
+        escalated = copy_op is quality_op
+        breaches: list = []
         for attempt in range(1, 1 if dry_run else MAX_GEN_ATTEMPTS + 1):
             if complete:
                 break
@@ -237,7 +256,7 @@ def main(argv: list[str]) -> int:
                 op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, cfg=cfg,
                 dossier=dossier)
             cand.tags["marketing"] = generate_marketing_content(
-                op, cand, dossier.checks, fast_op=fast_op, quality_op=quality_op, check_op=op,
+                op, cand, dossier.checks, fast_op=fast_op, quality_op=copy_op, check_op=op,
                 cfg=cfg)
             # Epic C lite: if LLM listing_page fails claim-check, fill a claim-safe
             # floor from dossier fields only (same helper EngineBridge already uses).
@@ -249,10 +268,22 @@ def main(argv: list[str]) -> int:
             log.append(f"  marketing pieces: {[m.get('type') for m in cand.tags['marketing']]}")
 
             complete, problems = validate_pack(cand.tags["artifacts"], cand.tags["marketing"])
+            # A breach is a FAILURE of this attempt, not a note on it: publishing here would
+            # register the pack UNLISTED (bridge.py:927), which is the outcome the retry
+            # exists to avoid.
+            breaches = _shelf_copy_breaches(cand, cand.tags["marketing"], cfg)
+            if breaches:
+                complete = False
+                problems = list(problems) + [f"marketing 'shelf copy' {b}" for b in breaches]
             if complete:
                 log.append("  completeness gate: PASS")
                 break
             log.append(f"  completeness gate: FAIL -> {problems}")
+            if not escalated and any(str(pb).startswith("marketing '") for pb in problems):
+                escalated = True
+                copy_op = quality_op
+                log.append("  shelf copy escalated to the deliverable chain "
+                           "(cheap chain breached the publish-time bar)")
 
         print("\n".join(log), flush=True)
         return p, dossier, complete, problems

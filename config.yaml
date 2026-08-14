@@ -90,6 +90,18 @@ model_version_tag: ""            # filled at runtime for audit
 # and the storefront listing_page). Subscription CLIs first, cheap tail behind them.
 # Falls back to the moat operator if none are available.
 artifact_operator: [claude_cli, minimax]
+
+# Shelf and marketing copy — SPLIT off artifact_operator 2026-08-14 (founder: "isplit it but we
+# needd strong guardrails to keep minimax. in check"). Measured live on 2026-08-13 the daemon ran
+# four concurrent `claude -p` calls at ~90s each and three were writing listing/marketing copy: a
+# card line and a headline, billed at the price of the £49 deliverable itself.
+#
+# THE GUARDRAIL IS NOT THIS LINE. `run.py::_generate_pack_content` grades what this chain writes
+# against the SAME shelf bar `bridge.py` applies at publish time (`pack_linter.check_shelf_copy`,
+# gated by `listing.shelf_copy_block_on_breach`), and a breach REGENERATES the copy on
+# `artifact_operator` instead of publishing the pack UNLISTED. Cheap gets first refusal, never the
+# last word — and a breach costs a rewrite, not a dead pack.
+marketing_operator: [minimax, claude_cli]
                                   # cursor_cli removed 2026-08-06 (founder directive; it was at
                                   # its usage limit per the probe above, so it answered none of
                                   # the pack prose and every artifact call paid its failure
