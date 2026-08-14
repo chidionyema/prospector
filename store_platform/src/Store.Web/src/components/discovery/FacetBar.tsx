@@ -593,6 +593,30 @@ export function FilterFab({
     return () => io.disconnect();
   }, [anchorRef]);
 
+  /* THE OCCLUDER RESERVES ITS OWN SPACE (2026-08-14, founder review at 390px).
+     This button is `fixed` and portalled to <body>, so no page that mounts it can know it is
+     there, and none of them padded for it: at the bottom of the shelf it sat on top of the last
+     row -- hiding that pack's PRICE -- and on top of the "Show the other N packs" button, which
+     is the one control the whole tail of the page exists to offer. A floating element that
+     covers content is a bug wherever it floats, so the fix belongs here rather than in each
+     page's list, which is also the only version that stays true when a third page mounts one.
+
+     Padding on <body> lands at the END of the document, which is exactly the reachability
+     property wanted: every element can now be scrolled clear of the button. 4.5rem is the
+     button's own box (h-10 = 2.5rem) plus its `bottom-4` inset (1rem) plus 1rem of air, and the
+     safe-area inset matches the one the button itself applies so the two cannot disagree on a
+     notched phone. Restored on unmount, so scrolling back up returns the page to its own
+     geometry rather than leaving a permanent gap under the footer. */
+  React.useEffect(() => {
+    if (!scrolledPast || open) return;
+    const { body } = document;
+    const previous = body.style.paddingBottom;
+    body.style.paddingBottom = 'calc(4.5rem + env(safe-area-inset-bottom))';
+    return () => {
+      body.style.paddingBottom = previous;
+    };
+  }, [scrolledPast, open]);
+
   if (!scrolledPast || open) return null;
 
   return createPortal(

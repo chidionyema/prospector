@@ -152,7 +152,12 @@ export function formatChargeNote(price: string, currency: Currency): string {
   const gbp = parseGbp(price);
   // No `£` prefix on the fallback: an unparseable price already carries its own symbol from the
   // API, and prefixing it produced "££49.00".
-  const amount = Number.isFinite(gbp) ? `£${formatNumber(gbp)}` : price;
+  // `formatExact`, NOT `formatNumber`. This sentence states the amount the card will actually
+  // be debited, and `formatNumber` rounds anything at or above 100 to a whole unit -- correct
+  // for the courtesy FX estimate it was written for, wrong here, where it would disclose
+  // "Charged £200 GBP" for a £199.99 charge. The rounding rule exists because an estimate must
+  // not claim false precision; a charge has no such excuse.
+  const amount = Number.isFinite(gbp) ? `£${formatExact(gbp)}` : price;
   return `Charged ${amount} GBP. Your card issuer sets the final rate.`;
 }
 
@@ -166,11 +171,18 @@ export function formatApproxNote(currency: Currency): string {
 
 // GBP is the exact, charged price (rungs now end in .99, see D1 pricing ladder), never an
 // estimate, so it must never lose cents to rounding regardless of magnitude: £199.99 must
-// render as "199.99", not "200". toFixed(2) gives "199.99"; trim only a genuinely-zero
-// fraction so "57.30" becomes "57.3" and "49.00" becomes "49", while "199.99" is untouched.
+// render as "199.99", not "200".
+//
+// THE TRIMMING IS GONE (2026-08-14, founder review). It used to strip a genuinely-zero
+// fraction, so "49.00" rendered "£49" and "57.30" rendered "£57.3". That is defensible for
+// ONE price in isolation and indefensible on a shelf, which is where these actually appear:
+// the D1 ladder has rungs ending .00 and rungs ending .99, so a phone column printed "£49"
+// directly above "£49.99". Two different notations for the same kind of fact, one row apart,
+// reads as a mistake in the cheaper one -- and on a storefront whose entire pitch is that its
+// numbers are careful, a price that looks carelessly formatted is the most expensive possible
+// place to save two characters. Prices are always 2dp now; "57.3" is not a price.
 function formatExact(n: number): string {
-  const fixed = n.toFixed(2);
-  return fixed.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  return n.toFixed(2);
 }
 
 // Foreign-currency amounts are a courtesy FX estimate ("your card issuer sets the final

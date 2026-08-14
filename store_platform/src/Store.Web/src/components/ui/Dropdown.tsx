@@ -121,7 +121,7 @@ export function Dropdown<T extends string>({
             openList();
           }
         }}
-        className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface px-3 text-meta font-medium text-text transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)] hover:border-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border-control bg-surface px-3 text-meta font-medium text-text transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)] hover:border-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <span className="truncate">{current?.label}</span>
         <span

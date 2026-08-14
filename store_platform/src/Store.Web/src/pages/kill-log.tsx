@@ -357,7 +357,14 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                     max, the comparison the reader came for is the one the picture makes. */}
                 <span className="block h-3 min-w-0 bg-surface3">
                   <span
-                    className={d.published ? 'block h-3 bg-kill' : 'block h-3 bg-subtle/35'}
+                    /* NEUTRAL BOTH WAYS (2026-08-14 colour audit, finding 2). These bars were
+                       `bg-kill` when published and grey when not, on the one page that defines
+                       red as "killed" -- so red here encoded PUBLICATION STATUS, and the
+                       largest cause of death on the chart (624) was drawn in decoration grey
+                       because nothing was published under it. A reader taking the page at its
+                       word read the ranking backwards. Ink weight now carries "listed below"
+                       and red goes back to meaning exactly one thing. */
+                    className={d.published ? 'block h-3 bg-text' : 'block h-3 bg-subtle/35'}
                     style={{ width: `${Math.max((d.count / distributionMax) * 100, 0.6)}%` }}
                   />
                 </span>
@@ -371,7 +378,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
               "not shown below" and leave a reader hunting the table for rows that are not in it. */}
           <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-subtle">
             <span className="inline-flex items-center gap-2">
-              <span className="inline-block h-2 w-4 bg-kill" aria-hidden />
+              <span className="inline-block h-2 w-4 bg-text" aria-hidden />
               listed in the table below
             </span>
             <span className="inline-flex items-center gap-2">

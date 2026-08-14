@@ -58,7 +58,7 @@ export function RadioGroup<T extends string>({
             className={cx(
               'flex cursor-pointer items-start gap-3 rounded-md border bg-surface p-4',
               'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
-              'hover:border-border-strong',
+              'hover:border-border-control',
               // The selected row is marked by an ink border and the sunken surface, not by a 5%
               // wash of --primary: ink at 5% on white is #F7F7F7, one step off --surface2 and
               // indistinguishable from it, so "selected" was unrenderable.
@@ -78,7 +78,7 @@ export function RadioGroup<T extends string>({
             <span
               aria-hidden="true"
               className={cx(
-                'relative mt-0.5 h-5 w-5 shrink-0 rounded-full border border-border-strong bg-surface transition-colors',
+                'relative mt-0.5 h-5 w-5 shrink-0 rounded-full border border-border-control bg-surface transition-colors',
                 'after:absolute after:inset-1.5 after:rounded-full after:bg-primary after:opacity-0 after:transition-opacity',
                 'peer-checked:border-text peer-checked:after:opacity-100',
               )}

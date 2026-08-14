@@ -82,7 +82,21 @@
                                 a tint -- that is what makes the shelf read as a document. */
   --surface2: #FAFAFA;      /* Sunken/tinted panels: plate headers, table heads, footer, code. */
   --border: #E4E4E7;        /* Hairline. The default border everywhere. */
-  --border-strong: #D4D4D8; /* Input borders, hover borders, dividers that must actually read. */
+  --border-strong: #D4D4D8; /* Hover borders and dividers that must actually read. 1.48:1 on
+                               --bg: DECORATION ONLY. It is not legal on a control -- see
+                               --border-control, which exists because this one was being used
+                               for both and only one of the two jobs has a contrast floor. */
+  --border-control: #8E8E96; /* The border of an INTERACTIVE control: input, select, checkbox,
+                                radio, secondary button. 3.25:1 on --bg, clearing WCAG 1.4.11's
+                                3:1 for non-text UI. Added 2026-08-14 after the colour audit
+                                measured the entire border system: --border #E4E4E7 is 1.27:1
+                                and --border-strong #D4D4D8 is 1.48:1, so NOTHING in it reached
+                                3:1 anywhere, and `input.h-11`'s own edge -- the thing that says
+                                "this is a field you can type in" -- was among the failures.
+                                Deliberately a separate token rather than a darkened
+                                --border-strong: the same value on a divider would put a 3.25:1
+                                rule through pages designed around hairlines, which is a
+                                different decision and not one this fix is entitled to make. */
   --text: #171717;          /* Primary text. 17.93:1 on --bg, 17.18:1 on --surface2. */
   --muted: #52525B;         /* Secondary text: descriptions, nav. 7.73:1 on --bg. AA. */
   --subtle: #71717A;        /* Tertiary text: meta rows, counts, timestamps. 4.83:1 on --bg. AA.
@@ -154,7 +168,16 @@
      teal/green left, so this is the closest available fit, not a clean one. The header now sits
      in the same colour family as the "survived" verdict mark; nothing in this codebase has
      confirmed that's an acceptable read. */
-  --brand-mark: #0F766E;         /* = --cat-care-benefits. 4.75:1 on white. */
+  --brand-mark: #0F766E;         /* = --cat-care-benefits. 5.47:1 on white (MEASURED 2026-08-14;
+                                    this said 4.75:1, which was never right, and the separation
+                                    from --survive stated nearby as "~12deg" measures 20.78deg in
+                                    OKLCH / 22.09deg in Lab, dE76 15.90 -- so it fails BOTH limbs
+                                    of the admission rule this sheet sets for itself, >=38 dE and
+                                    >=25deg. Under deuteranopia it simulates to #62656F, dE2000
+                                    6.82 from --muted: the mark becomes mid-grey. Left at this
+                                    value on purpose -- promoting it to a real accent or dropping
+                                    the mark to monochrome is a brand decision, not a bug fix --
+                                    but the numbers here are now the measured ones. */
 
   /* SEMANTICS. Red and green are reserved for exactly one meaning on this site: killed and
      survived. They are never decoration and never a brand colour.
@@ -384,6 +407,7 @@
   --color-surface2: var(--surface2);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-border-control: var(--border-control);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-subtle: var(--subtle);
