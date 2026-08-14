@@ -127,17 +127,25 @@ same as being sophisticated.
 {style_guide}
 
 Applied to these fields specifically:
-  - title: a short name, a COMMA, then what it does in words a buyer would use.
-    HARD LIMIT 60 CHARACTERS, counted as characters, not words. This is the shop
-    window: it is the whole of the shelf card, the page heading, and the line that
-    shows in a search result. Nothing else about the idea travels with it.
-      "SwarmHold, income cover for beekeepers in a hive standstill"   (59) — yes
+  - title: what the business DOES, then who PAYS for it — `<what it does> for <who
+    pays>`. HARD LIMIT 60 CHARACTERS, counted as characters, not words. This is the
+    shop window: it is the whole of the shelf card, the page heading, and the line
+    that shows in a search result. Nothing else about the idea travels with it. And
+    the person reading it is deciding whether to START this business, not whether to
+    buy what it sells — so name the trade, in the words a stranger already knows.
+      "Standstill income cover for beekeepers"                        (38) — yes
+      "SwarmHold, income cover for beekeepers in a hive standstill"   (59) — no: the
+       coined name is read first and means nothing to anyone yet
       "SwarmHold — The Sole-Trader Beekeeper's Statutory Foulbrood
        Standstill Income Bond"                                       (82) — no
-    The name goes first and stays SHORT: at most four words before the comma. Use a
-    comma, never a dash. Never stack three or more nouns. If you cannot say what it
-    does in the characters left over, the idea is too vague to name yet — say the
-    plainer thing. Do not buy room by abbreviating into insider shorthand.
+    NO INVENTED PRODUCT NAME in the title, ever; name the idea in the one_liner if it
+    needs a name. Do not open with an instruction to the reader ("Sell…", "Run…",
+    "Start…", "Get…") or with "A"/"An"/"The": write the noun phrase a professional
+    would use — an audit, a service, a desk, a practice, a cover, a report. Real
+    proper nouns a reader knows (NHS, HMRC, Blue Badge) are welcome. Use a comma,
+    never a dash. Never stack three or more nouns. If you cannot say what it does in
+    the characters left over, the idea is too vague to name yet — say the plainer
+    thing. Do not buy room by abbreviating into insider shorthand.
   - one_liner: ONE sentence, under 30 words. What it is, who it is for, and what they
     get. Save the mechanism, the pricing and the data moat for the hypothesis.
   - hypothesis: several short paragraphs, not one dense block. Lead with the plain

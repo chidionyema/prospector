@@ -39,7 +39,14 @@ export default function Document() {
         <link rel="preconnect" href="https://js.stripe.com" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
+        {/* NO apple-touch-icon here, deliberately (removed 2026-08-14). This file declared
+            `rel="apple-touch-icon" href="/icon.svg"` while `components/Seo.tsx` declared the same
+            rel pointing at `/apple-touch-icon.png`, and both shipped: _document's <Head> and the
+            page's <Head> are separate trees, so next/head's `key` dedupe cannot see across them
+            (the theme-color comment below turns on exactly that fact). iOS does not support SVG
+            for a home-screen tile at all, so the declaration here was inert at best and, being
+            first in tree order, a coin-flip at worst. One declaration, in Seo.tsx, pointing at a
+            real PNG. */}
         {/* Brand v3 ink (`--text: #171717`). #0A0A0A was the v2 value and outlived the ramp.
             This declaration is the one browsers use: _document's <Head> renders before the page's,
             and the first theme-color wins -- so editing only components/Seo.tsx changes nothing. */}

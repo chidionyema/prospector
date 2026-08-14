@@ -46,6 +46,55 @@ class Retrieval:
     results_per_query: int = 4
     max_passage_chars: int = 1500
     cache: bool = True
+    # FETCH THE PAGE, don't rule on the search snippet (2026-08-13).
+    # MEASURED over 11,857 grounding passages since 2026-08-08: mean 222 chars, median 217,
+    # p90 281, and 94.7% under 300 — because `_resolve()` sends a HEAD and every provider
+    # stores the search engine's ~220-char RESULT SNIPPET as the passage. `max_passage_chars`
+    # (1500) has therefore never once bound. The verdict prompt already budgets 600 chars per
+    # passage (`verify.VERDICT_PASSAGE_TRUNCATE`), so we were filling 37% of a budget that was
+    # already there. 67.5% of checks ruled `unverifiable`, and grounding failures
+    # (moat_ungrounded + source_or_die) became 54.6% of all kills.
+    # Default OFF so fixtures, golden-set runs and any directly-constructed Retrieval() keep
+    # their current byte-for-byte behaviour; config.yaml turns it on for the live engine.
+    fetch_pages: bool = False
+    fetch_timeout_s: float = 8.0        # per page; a slow page must not extend a vet
+    fetch_max_workers: int = 8          # pages are fetched concurrently, like _resolve
+    # Only REPLACE a snippet when the page yields materially more than we already had.
+    # Without this a bot-walled page returning a 200 + "enable JavaScript" shim would
+    # overwrite a genuinely informative snippet with less than it replaced.
+    fetch_min_gain_chars: int = 400
+    fetch_max_bytes: int = 400_000      # stop reading; some pages are tens of MB
+    # RANK WHAT SEARCH RETURNED (2026-08-14). Every provider asks for exactly
+    # `results_per_query` results and keeps the search engine's own first k, so relevance
+    # was measured at the verdict (as `unverifiable`) and never enforced at the source.
+    # MEASURED over the 450 passages written since the page-fetch fix: `supported` sources
+    # contain 42.8% of their own query's content words, `unverifiable` sources 25.1%.
+    # Re-running ten of the offending queries at max_results=10, the first 3 average 25.9%
+    # coverage and the best 3 average 36.8%. `k * relevance_overfetch` results are fetched
+    # (capped at the 10 every provider already caps at) and the best k kept.
+    # Default 1 = OFF, a byte-for-byte no-op, so fixtures, the golden set and any directly
+    # constructed Retrieval() keep their behaviour; config.yaml turns it on for the engine.
+    relevance_overfetch: int = 1
+    # RANKING CANNOT SAVE A RESULT SET THAT IS ENTIRELY OFF-TOPIC. `relevance_overfetch`
+    # above picks the best k of what ONE provider returned; when that provider answered a
+    # precise query with the topic's head pages, the best of nine is still junk.
+    # MEASURED 2026-08-14 over the 1,622 grounding passages written since the page-fetch fix
+    # (`store/dossiers/*.json`): 183 of them (11.3%) contain ZERO of their own query's
+    # content words — `4A's ANA agency members AI content guidelines California 2024 2025`
+    # was grounded on fire.ca.gov (a CAL FIRE hiring page), `insider risk detection startup
+    # funding round Series A 2026 offboarding` on theins.press (a Russian politics
+    # magazine). Mean query coverage by verdict: supported 0.488, refuted 0.447,
+    # unverifiable 0.300 — the checks that fail are the checks whose pages were off-topic.
+    # A below-floor result set is therefore treated as a SOFT failure: try the next provider
+    # in the chain and keep whichever set covers the query best. Paired replay of the 15
+    # worst real queries through the identical stack (rank + page fetch, cache off):
+    # ddg 0.359 -> exa 0.525 mean coverage, exa better on 12 of 15.
+    # This can only ADD: the best set seen is always returned, never fewer sources than the
+    # first provider gave, so it cannot starve a check, cannot empty `sources` and cannot
+    # reach the DEFER gate. It costs one extra (metered) search on a below-floor query.
+    # 0.0 = OFF, a byte-for-byte no-op for fixtures, the golden set and any directly
+    # constructed Retrieval().
+    min_relevance: float = 0.0
     # DiskCache freshness: cached grounding passages older than this are treated as a
     # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
     # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,
@@ -376,6 +425,12 @@ _BLOCK_KEYS: dict[str, frozenset[str]] = {
     # F1-F4 — deterministic buyer-facing data artifacts (scorecard, financials,
     # comparables, radar SVG, XLSX, PDF). Zero LLM calls.
     "pack_data": frozenset({"enabled", "formats", "chrome_path"}),
+    # The pack's length contract, derived from the evidence it holds rather than asserted
+    # as a constant. See prospector/evidence_budget.py for the measurement that set it.
+    "artifacts": frozenset({
+        "enforce_length_budget", "claim_check", "base_words",
+        "words_per_evidence_word", "floor_words", "ceiling_words",
+    }),
 }
 
 
@@ -424,14 +479,23 @@ class Config:
     # CLI-based, in-subscription operators (AGY CLI primary -> Claude CLI failover) so the
     # product's own copy isn't generated by the cheap non-critical tail. Empty => the moat op.
     artifact_operator: "str | list[str]" = field(default_factory=lambda: ["claude_cli"])
+    # Shelf/marketing copy, split off the deliverable chain 2026-08-14 (founder: "isplit it but
+    # we needd strong guardrails to keep minimax. in check"). Cheap chain first; the guardrail
+    # is in run.py::_generate_pack_content, which grades the copy against the shelf bar and
+    # ESCALATES a breach to artifact_operator rather than shipping the pack UNLISTED.
+    marketing_operator: "str | list[str]" = field(
+        default_factory=lambda: ["minimax", "claude_cli"])
     # The cheap chain: generation, prescreen, scoring. Never rules a verdict — anything of its
     # that reaches a ruling is stamped `provisional` by `is_provisional_provider`
     # (operator.py:1071). It was a module constant in `run.py`, which meant the one knob whose
     # whole purpose is "what does the ancillary work cost" could only be moved by editing
     # source and re-execing the daemon, while every throughput knob beside it was a config
     # line. Empty => the historical default below, byte for byte.
+    # claude_cli removed 2026-08-14 (founder: "claude should never be used for non-critical").
+    # Must stay equal to run.py::_NONCRITICAL_ORDER — test_noncritical_operator_config.py pins
+    # the two together, and caught this default drifting when the constant moved.
     noncritical_operator: "str | list[str]" = field(
-        default_factory=lambda: ["standardcompute", "claude_cli", "minimax"])
+        default_factory=lambda: ["minimax", "standardcompute"])
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
     admissibility: Admissibility = field(default_factory=Admissibility)
@@ -509,6 +573,9 @@ class Config:
     # F1-F4 — deterministic buyer-facing data artifacts. The comparables in particular are
     # already fetched today and then DISCARDED; the buyer never sees the price evidence.
     pack_data: dict[str, Any] = field(default_factory=dict)
+    # The £49 deliverable's length contract. Empty means the shipped defaults in
+    # `evidence_budget.artifacts_cfg` apply, which leave the old prompt behaviour intact.
+    artifacts: dict[str, Any] = field(default_factory=dict)
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
@@ -901,8 +968,12 @@ def load_config(path: str | Path | None = None) -> Config:
         model_fast=raw.get("model_fast", ""),
         model_version_tag=raw.get("model_version_tag", ""),
         artifact_operator=raw.get("artifact_operator") or ["claude_cli"],
+        marketing_operator=raw.get("marketing_operator") or ["minimax", "claude_cli"],
+        # Fourth and last place this chain is declared (dataclass default, run.py's
+        # _NONCRITICAL_ORDER, config.yaml, here). claude_cli removed 2026-08-14 — a default
+        # is a decision, and this one silently outvoted the config every time the key was absent.
         noncritical_operator=(raw.get("noncritical_operator")
-                              or ["standardcompute", "claude_cli", "minimax"]),
+                              or ["minimax", "standardcompute"]),
         retrieval=_validate_retrieval(raw.get("retrieval")),
         thresholds=Thresholds(**(raw.get("thresholds") or {})),
         admissibility=_validate_admissibility(raw.get("admissibility")),
@@ -934,6 +1005,7 @@ def load_config(path: str | Path | None = None) -> Config:
             "meta_shape_monitor", raw.get("meta_shape_monitor")),
         claim_lock=_validate_block("claim_lock", raw.get("claim_lock")),
         pack_data=_validate_block("pack_data", raw.get("pack_data")),
+        artifacts=_validate_block("artifacts", raw.get("artifacts")),
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},

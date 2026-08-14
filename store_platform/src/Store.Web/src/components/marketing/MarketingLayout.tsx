@@ -231,19 +231,35 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 the minimum has to be stated explicitly rather than left to padding. `justify-center`
                 keeps the glyph centred once the box is wider than its own content at the widths
                 where the "Search" label is hidden. */}
-            {/* PILL BACKGROUND, 2026-08-09 (`rounded-full` + `bg-surface2`/`hover:bg-surface3`),
-                explicit founder override of §3.4's "ONE RADIUS, 2px, AND NO PILLS" sweep
-                (`tokens.css`) -- that sweep's own text carves out true circles as the one
-                standing exception ("a circle is not a pill"); this is a new one, made for the
-                header's two icon-driven toggle buttons specifically, and applied to both Search
-                and Menu together so the row reads as one system rather than one pill next to one
-                square. `min-h-11 min-w-11` unchanged: the 44px WCAG 2.5.8 floor still comes from
-                the explicit minimum, not from padding, same reasoning as before. */}
+            {/* SURFACE CHIP AT THE SYSTEM RADIUS, 2026-08-14. This keeps the BACKGROUND half of
+                the 2026-08-09 override (`bg-surface2`/`hover:bg-surface3`, so the two toggles read
+                as controls rather than as more nav text) and drops the RADIUS half
+                (`rounded-full` -> `rounded-md`, 2px).
+
+                Why the radius half could not stand: the 2026-08-09 override justified itself on
+                §3.4's standing carve-out that "a circle is not a pill", and described these as
+                "icon-driven toggle buttons". Neither button is a circle at the width it actually
+                renders. This one shows the word "Search" from `lg` up, and Menu (below) always
+                shows "Menu"/"Close" -- measured 2026-08-14 at 1440, Search is 100x44 with
+                `border-radius: 3.36e7px`, i.e. a 22px lozenge, which is the exact shape §3.4
+                bans, not the exception it claimed. Every other control on the row computes 0px or
+                2px, so the two chips were the only curved objects in the header, sitting beside a
+                brand mark deliberately re-cut to r=2 on 2026-08-09 to stop standing out against
+                that same system.
+
+                Rounding both to 2px rather than making one a true circle: below `md` this button
+                IS icon-only and could take the circle exception, but Menu beside it never can
+                (it is always labelled), and a circle next to a squared chip is precisely the
+                "one pill next to one square" the 2026-08-09 note wrote the override to avoid.
+                One radius for both is the only value that reads as one system at every width.
+
+                `min-h-11 min-w-11` unchanged: the 44px WCAG 2.5.8 floor still comes from the
+                explicit minimum, not from padding, same reasoning as before. */}
             <button
               type="button"
               onClick={openSearch}
               aria-label="Search the catalogue"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Icon name="search" size={18} />
               <span className="hidden lg:inline">Search</span>
@@ -287,10 +303,14 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                    `aria-hidden="true"` on the glyph, so the accessible name here is just the
                    word.
 
-                   PILL BACKGROUND, 2026-08-09: `rounded-full` + `bg-surface2`/`hover:bg-surface3`,
-                   matching the Search button (see its comment for the §3.4 "no pills" override
-                   this is). Applied to both together so the row reads as one system. */
-                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                   SURFACE CHIP AT THE SYSTEM RADIUS, 2026-08-14: `rounded-md` (2px) +
+                   `bg-surface2`/`hover:bg-surface3`, matching the Search button -- see its comment
+                   for why the 2026-08-09 `rounded-full` half was reversed while the background
+                   half was kept. This button is the reason BOTH are squared rather than one being
+                   a true circle: it always carries the word "Menu"/"Close", so it can never take
+                   §3.4's "a circle is not a pill" exception. Applied to both together so the row
+                   reads as one system. */
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 aria-expanded={menuOpen}
                 aria-controls="marketing-menu"
                 onClick={() => setMenuOpen((o) => !o)}

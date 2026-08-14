@@ -182,6 +182,22 @@ describe('the untagged pack renders no sector marker', () => {
     );
 
     /*
+     * THE ASSERTION BELOW WAS `toMatch(/category\.tagged \?[\s\S]*?\) : null\}/)` and is replaced
+     * (2026-08-14) by one that pins the SAME rule against the cover that now exists. That regex
+     * required the untagged branch to be spelled `) : null}`, i.e. it pinned a JSX spelling: the
+     * cover's category line is now a single always-rendered slot whose CONTENT is the branch
+     * (`{category.tagged ? category.label : null}`), which satisfies the rule exactly -- an
+     * untagged pack draws no marker -- while failing the old pattern by a bracket.
+     *
+     * The rule this file exists to enforce is "a marker with no name beside it is decoration
+     * pretending to be information". The cover draws no glyphs AT ALL now, tagged or not: the
+     * sector's 72px icon went with the pastel tint when the cover became the pack's evidence run
+     * on the instrument plate. So the guard below is strictly stronger than the one it replaces
+     * -- the old rule allowed a glyph on the tagged branch and forbade it only on the untagged
+     * one; this forbids it on both, which is what makes the untagged branch unable to regress.
+     */
+
+    /*
      * THE UNTAGGED BRANCH IS EMPTY. This assertion previously required the opposite -- a
      * `monogram` of the printed heading's initials -- and that requirement is withdrawn, not
      * relaxed, on founder review of the deployed shelf (2026-08-06).
@@ -211,7 +227,7 @@ describe('the untagged pack renders no sector marker', () => {
     );
     expect(cover.length, 'PackCoverArt must be locatable for this assertion').toBeGreaterThan(0);
     expect(cover, 'the untagged branch must render nothing').toMatch(
-      /category\.tagged \?[\s\S]*?\) : null\}/,
+      /category\.tagged \? category\.label : null/,
     );
     // Comments stripped first: the cover's own docblock explains at length why the monogram was
     // removed, and a rule that forbids naming the thing you removed forbids recording why.
@@ -220,6 +236,7 @@ describe('the untagged pack renders no sector marker', () => {
       .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')
       .replace(/\/\/[^\n]*/g, '');
     expect(coverCode, 'no monogram may come back to the cover').not.toMatch(/monogram/i);
+    expect(coverCode, 'the cover draws no glyph on either branch').not.toMatch(/<Icon\b/);
   });
 
   it('UNLABELLED is still not in the rendered sector vocabulary', () => {

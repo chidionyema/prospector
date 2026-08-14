@@ -155,8 +155,17 @@ _BILLING_RE = re.compile(r"\bbilling\b[^.\n]{0,60}\b(limit|quota|credits?|plan|u
 # never became a ProviderExhaustedError, and 13 consecutive generation ticks died against a
 # provider that could not be marked dead. Bounded to the same clause so prose about a user
 # having "used up" something unrelated ten words later does not match.
+# 2026-08-13: MISSED AGAIN, one word wide. The live body that killed generation all day said
+#     "You've used up your free TRIAL — let's keep going."
+# where the 2026-08-09 sample said "free USAGE". `trial` was not in the alternation, so the same
+# provider, with the same upsell, in the same clause shape, classified NOT_EXHAUSTION for a second
+# time: 8 consecutive barren ticks, three signals parked to signals/pending/, and no dead mark,
+# because a 200 OK carrying prose is not an error anyone re-probes. The lesson is that this list
+# is a list of a VENDOR'S NOUNS, and vendors rename them — so the alternation covers the whole
+# family a metered account can run out of, not just the two spellings observed so far.
 _USED_UP_RE = re.compile(
-    r"\bused up\b[^.\n]{0,40}\b(free\s+)?(usage|credits?|quota|allowance|balance)\b")
+    r"\bused up\b[^.\n]{0,40}"
+    r"\b(free\s+)?(usage|credits?|quota|allowance|balance|trial|tokens?|minutes?)\b")
 # DELIBERATELY NOT HERE: 401 / "unauthorized". That is a bad or expired credential, not a spent
 # allowance, and marking it exhausted would bury a config error under a silent hour-long
 # failover — the opposite of what this list is for. It should fail loudly on every call.

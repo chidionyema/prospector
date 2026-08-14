@@ -1,0 +1,12 @@
+{
+  "source": "public/icon.svg",
+  "sha256": "8c04105c5f615052f81984230c589e3b522f36aa8d08e637471253fb5e8670a4",
+  "generates": [
+    "public/icon-192.png",
+    "public/icon-512.png",
+    "public/apple-touch-icon.png",
+    "public/favicon.ico",
+    "public/og.png"
+  ],
+  "regenerate": "node scripts/gen-brand-assets.mjs"
+}

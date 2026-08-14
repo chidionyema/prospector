@@ -758,29 +758,59 @@ render instantly — non-negotiable. No parallax, no scroll-jacking, no decorati
 | Honest limits / what you don't get | /pricing | /how-it-works "The honest limits" → link |
 | Email-capture promise | The capture block itself, once | Was stated 4× within the block |
 
-### 5.4 Pack title format — `Name, what it does`, at most 60 characters
+### 5.4 Pack title format — `<what the business does> for <who pays>`, at most 60 characters
 
-Added 2026-08-09. The title is the **only** string every surface shows at once: the shelf card,
-the pack page H1, the `<title>` a search result prints, and the OG image on a shared link.
-Nothing else about the pack travels with it, so it is the marketing headline whether or not
-anyone treats it as one. Until this date nothing bounded it and nothing shaped it.
+Added 2026-08-09 as `Name, what it does`. **Superseded 2026-08-13** (founder decision): the name
+no longer appears in the title at all. The title is the **only** string every surface shows at
+once: the shelf card, the pack page H1, the `<title>` a search result prints, and the OG image
+on a shared link. Nothing else about the pack travels with it, so it is the marketing headline
+whether or not anyone treats it as one. Until 2026-08-09 nothing bounded it and nothing shaped
+it; until 2026-08-13 nothing had asked who was reading it.
 
-**The format.** A short name, a comma, then what the buyer gets, in buyer's words:
+**The format.** What the business does, then who pays for it:
 
-> `RetainRelease, chases the retention contractors hold back`
+> `Unpaid-hours audits for NHS doctors and nurses`
+> `Scope-creep pricing desk for freelance studios`
+> `NHS care-fee reclaim service, paid on commission`   ← a comma may carry the revenue model
 
-- **60 characters total**, name + `, ` + descriptor. Not a target — the linter's number.
-- **The name leads** (founder decision 2026-08-09, chosen over descriptor-first and
-  name-free variants). It keeps brand recall in the SERP and on share cards, and it leaves
-  `splitTitle` (`lib/discovery.ts:626`) semantics unchanged — the pre-separator segment stays
-  the name. Cost accepted: the NN/g finding below says the opening characters are what a
-  scanner reads, and a coined word spends them.
-- **The name is at most 4 words / 30 characters.** Past that it is a sentence, not a name.
+- **60 characters total.** Not a target — the linter's number. Dropping the name buys the room.
+- **No coined product name.** `HoursBack`, `ScopeDrift`, `SwarmHold` mean nothing to a reader
+  who does not already own the pack, and they spend the characters a scanner reads first. The
+  name stays on the pack itself and in the dossier; it is not shop-window copy. Initialisms a
+  reader already knows — NHS, HMRC, Blue Badge — are welcome and often carry the whole line.
+- **A noun phrase, never an instruction.** No `Sell…`, `Run…`, `Start…`, `Get…`, and no
+  opening `A`/`An`/`The`. The register is how a professional names a trade: an audit, a
+  service, a desk, a practice, a cover, a report, a data set.
+- **Name the payer as concretely as the sources allow** — "for NHS doctors and nurses", not
+  "for professionals". The payer comes from the pack's own cited `whoPays`.
 - **A comma, never a dash** — the house rule (`copy_lint.check_house_dashes`), and `nodash`
   rewrites a dash to `, ` at publish anyway.
-- **The descriptor may not out-claim the description.** It compresses what the pack already
-  says; it never adds a number, a timescale, a guarantee or an institution. A claim invented
-  in a title has no citation behind it, which is the one thing this storefront cannot ship.
+- **The title may not out-claim the description.** It compresses what the pack already says;
+  it never adds a number, a timescale, a guarantee or an institution. A claim invented in a
+  title has no citation behind it, which is the one thing this storefront cannot ship.
+
+**Why the name-first rule lasted four days.** The 2026-08-09 decision chose name-first over
+descriptor-first and name-free, for brand recall in the SERP, and wrote its own cost down:
+*"the opening characters are what a scanner reads, and a coined word spends them."* On
+2026-08-13 the founder read the bill — *"the title tells me nothing, it feels cryptic"* — and
+with it surfaced the defect underneath, which is an **audience** error rather than a wording
+one. This storefront sells a business to someone weighing up whether to start it. The titles
+were addressing the end customer of the service instead: `HoursBack` (id `b94760e86e62585a`)
+is sold for £79.99 to a prospective owner, and its copy talks to an NHS doctor about their own
+rota. A title cannot be fixed at the level of the verb when the reader is wrong.
+
+**Where the viability fact goes.** The headline, not the title. The title says what the
+business is; the headline says why anyone would pay for it, taken verbatim in substance from
+the pack's own cited fields — e.g. *"NHS medics can lose an estimated £500 to £5,000 a year to
+unpaid hours, and nobody checks a rota for them"*, whose figure and hedge both come from that
+pack's `whoPays`.
+
+**What the front end does with it.** `cardHeading` (`lib/discovery.ts`) promotes a
+business-first title to the card's heading and demotes the card line to the sub, because the
+title now carries the information. Legacy `Name, descriptor` rows keep the old hierarchy
+(short `cardLine` as heading, brand as eyebrow) — `isBusinessFirstTitle` decides which, using
+the same three conditions `pack_linter.check_title` enforces, so the two ends agree by
+construction rather than by comment.
 
 **Why 60, measured rather than chosen.** `artifacts.CARD_LINE_MAX` already enforced 60 on
 `card_line`, and the engine hit it comfortably: across the 48 live rows, `card_line` ran

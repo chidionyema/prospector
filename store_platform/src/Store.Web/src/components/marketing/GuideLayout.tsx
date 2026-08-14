@@ -38,7 +38,7 @@ export function GuideLayout({
               Guides
             </Link>
           </p>
-          <h1 className="text-balance text-display font-semibold text-text">{heading}</h1>
+          <h1 className="text-balance text-h1 font-semibold text-text">{heading}</h1>
           <p className="mt-5 text-pretty text-h2 font-normal leading-relaxed text-muted">{lead}</p>
           <div className="mt-10 space-y-8">{children}</div>
         </article>

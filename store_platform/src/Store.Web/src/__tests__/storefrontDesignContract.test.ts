@@ -114,10 +114,17 @@ describe('Design contract — global tokens (globals.css)', () => {
     expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.02em/);
   });
 
-  it('sets display at 48px desktop, the largest step there is', () => {
-    // Clamped for the same reason as h1 (spec §3.2: display "mobile: 2.25"). 3rem is still the
-    // ceiling, and `--text-mega` (6rem) is deleted rather than unused -- see tokens.css.
-    expect(css).toMatch(/--text-display:\s*clamp\([^)]*3rem\s*\)/); // 48px at >=1000px
+  it('sets display at 72px desktop, the largest step there is', () => {
+    // Clamped for the same reason as h1 (spec §3.2: display "mobile: 2.25"). `--text-mega` (6rem)
+    // is deleted rather than unused -- see tokens.css.
+    //
+    // 3rem -> 4.5rem (2026-08-14). This is NOT the seventh step returning: display used to be
+    // worn by eight surfaces as "h1, but bigger at desktop", so it could not be sized for the
+    // hero without resizing seven page titles. Those seven moved to `text-h1` in the same commit
+    // and display now has exactly one consumer (`pages/index.tsx`'s hero), which is what the spec
+    // said it was for all along. The step COUNT is unchanged, which is what the deletions below
+    // actually guard.
+    expect(css).toMatch(/--text-display:\s*clamp\([^)]*4\.5rem\s*\)/); // 72px at >=1000px
     expect(css).not.toMatch(/--text-mega:/);
     // A seventh step cannot be reached for: --text-hero/-h3/-small are deleted, not unused.
     expect(css).not.toMatch(/--text-hero:/);
@@ -671,7 +678,7 @@ describe('Design contract — favicon (public/icon.svg)', () => {
     expect(box![1]).toBe(box![2]);
   });
 
-  it('has an ink background matching the monogram tile', () => {
+  it('is drawn in ink, not the old teal', () => {
     // Was the #042F2E teal -- a colour that appears nowhere in the v3 palette, on the one mark
     // that sits in a tab strip beside every other site the buyer has open.
     expect(svg).toMatch(/fill="#171717"/);
@@ -683,14 +690,19 @@ describe('Design contract — favicon (public/icon.svg)', () => {
   it('carries the strata mark, not a letter', () => {
     // This replaces "has a white letter M centred" (founder decision, 2026-08-07). A single
     // capital in a rounded tile is the most-copied favicon on the web and identifies nothing; the
-    // strata tile is the one shape this brand owns, and it is the same shape the 57 pack marks are
-    // drawn from. The assertion is therefore inverted: no glyph, three knocked-out bands.
+    // strata mark is the shape this brand owns, and it is the same alphabet the pack marks are
+    // drawn from. The assertion is therefore inverted: no glyph, three strata.
+    //
+    // Counted as PATHS since 2026-08-14: the strata used to be `<rect>`s knocked out of a tile in
+    // white, and are now three solid slabs with no container at all (option D of six). The
+    // property under test did not change with the shape -- a favicon that falls back to a letter,
+    // or that loses a stratum, still fails here.
     expect(svg, 'a favicon must not fall back to a letterform').not.toMatch(/<text[\s>]/);
-    const bands = svg.match(/<rect[^>]*fill="#ffffff"[^>]*\/>/g) ?? [];
-    expect(bands).toHaveLength(3);
+    const strata = svg.match(/<path[^>]*fill="#171717"[^>]*\/>/g) ?? [];
+    expect(strata).toHaveLength(3);
   });
 
-  it('mirrors BrandMark in Logo.tsx band for band', () => {
+  it('mirrors BrandMark in Logo.tsx stratum for stratum', () => {
     // The favicon and the header lockup are the same object seen at two sizes. They are separate
     // files -- one hand-authored SVG, one React component -- so nothing but this test stops them
     // drifting into two different marks for one brand, which is the exact failure the lettered
@@ -703,20 +715,17 @@ describe('Design contract — favicon (public/icon.svg)', () => {
       new RegExp(`viewBox="0 0 ${logoBox![1]} ${logoBox![2]}"`),
     );
 
-    // `{ y: 19, x: 10, w: 80 }, ...` in the component, `x="10" y="19" width="80"` in the file.
-    // `x` is compared too, and that is the point of the 2026-08-08 revision: the bands used to
-    // share one hardcoded `x`, so a parser reading only y/w could not see a horizontal shift at
-    // all. The mark is now centred -- x carries the whole difference between a funnel and the
-    // left-aligned list glyph it was mistaken for -- so a favicon that drifted in x only would
-    // have passed the old comparison while showing a visibly different mark in the tab strip.
-    const logoBands = [...logo.matchAll(/\{\s*y:\s*(\d+),\s*x:\s*(\d+),\s*w:\s*(\d+)\s*\}/g)].map(
-      (m) => `${m[1]}/${m[2]}/${m[3]}`,
-    );
-    const svgBands = [
-      ...svg.matchAll(/<rect[^>]*x="(\d+)"[^>]*y="(\d+)"[^>]*width="(\d+)"[^>]*\/>/g),
-    ].map((m) => `${m[2]}/${m[1]}/${m[3]}`);
-    expect(logoBands.length, 'BrandMark band list must be readable').toBe(3);
-    expect(svgBands).toEqual(logoBands);
+    // The whole path data is compared, not a parsed summary of it. Until 2026-08-14 this pulled
+    // `x`/`y`/`width` out of three `<rect>`s on each side and compared those triples, which was as
+    // much as could be extracted from a band list written as `{ y: 19, x: 10, w: 80 }` in the
+    // component and as attributes in the file. The two files now carry the SAME literal `d`
+    // strings (deliberately: the geometry is written out in both rather than derived twice), so
+    // the strings can be compared directly, and any drift at all -- a moved vertex, a changed
+    // taper, a dropped `Z` -- fails here instead of only the three numbers a parser looked at.
+    const logoStrata = [...logo.matchAll(/<path d="([^"]+)" fill="currentColor"/g)].map((m) => m[1]);
+    const svgStrata = [...svg.matchAll(/<path d="([^"]+)" fill="#171717"/g)].map((m) => m[1]);
+    expect(logoStrata.length, 'BrandMark slab paths must be readable').toBe(3);
+    expect(svgStrata).toEqual(logoStrata);
   });
 
   it('contains no monkey/ape imagery (brand name in aria-label is not imagery)', () => {

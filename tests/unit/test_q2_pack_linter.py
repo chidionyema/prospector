@@ -168,13 +168,28 @@ def test_arithmetic_rounding_tolerance_not_a_false_positive():
 # ---------------------------------------------------------------------------
 
 def test_sections_all_present_and_empty_model_skipped():
+    # GOOD_FIN is a PRE-2026-08-14 render: its revenue section is "### Revenue", the name the
+    # renderer used before the plain-speech rewrite. It must still lint clean, because every
+    # pack already on the shelf reads like this and a `sections` error unlists a pack.
     assert check_sections(GOOD_FIN) == []
     assert check_sections("") == []  # emptiness is validate_pack's finding, not ours
 
 
 def test_sections_missing_revenue_is_error():
+    # Neither the current name nor the legacy alias is present, so the section really is gone.
+    # The complaint names what the renderer emits TODAY, not the alias that happens to be
+    # missing — a pack author reading this needs the header they are expected to produce.
     probs = check_sections(GOOD_FIN.replace("### Revenue", "### Rev"))
-    assert any("### Revenue" in p["detail"] for p in probs)
+    assert any("### What it earns" in p["detail"] for p in probs)
+
+
+def test_the_current_renderer_header_also_satisfies_the_revenue_section():
+    """The other half of the alias: a pack rendered today must lint clean too.
+
+    Without this, the alias could be read as "legacy only" and quietly deleted, which would
+    fail every NEW pack for missing a section it does emit under its current name.
+    """
+    assert check_sections(GOOD_FIN.replace("### Revenue", "### What it earns")) == []
 
 
 # ---------------------------------------------------------------------------

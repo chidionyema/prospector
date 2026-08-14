@@ -218,6 +218,19 @@ headless `claude -p` runs whose counters came straight from the API, never from 
   concurrent suites across sessions is the cost item, and the honest fix is the raised ceiling
   plus a note that gate timings taken under load are not measurements. Do NOT quote the 2.25x as
   a test-suite regression until that re-run exists.
+- **RESOLVED 2026-08-13 12:01 — the hypothesis is CONFIRMED and the 2.25x is REFUTED.** The
+  re-run above was executed on an idle machine: **3032 passed, 3 skipped, 316.89s** (`real
+  320.10 / user 215.72 / sys 54.71`), `PYTEST_EXIT=0`, load average 4.78 at start with no other
+  suite running. That is **more** tests than the 1279.27s run (3,032 vs 2,968) in **a quarter of
+  the wall time**, and the slowest single test is 12.37s
+  (`tests/unit/test_dotenv_fence.py::test_every_load_dotenv_in_the_repo_honours_the_guard`)
+  against the 56.4s live-model entry that headed the contended run's list — i.e. even the tail
+  was contention, not a slow test. **There is no test-suite regression.** The cost item is the
+  estate's habit of running concurrent pytest suites from several Claude sessions on one laptop,
+  which inflates a gate timing by ~4x and then gets recorded as a code fact. The 2400s ceiling
+  stays, because it is sized for the contended case that will keep happening; but the honest
+  baseline for the suite is **~320s**, and any future gate timing taken while another suite is
+  resident is not a measurement of this suite. Retire the 1279.27s and 2.25x figures.
 - **CORRECTION to commit `be1e65c`'s message, 2026-08-13.** That message says the `llama-server`
   holding `nomic-embed-text` (pid 53648) was "left resident by the W0.1 dense arm whose client had
   already died". **The clause is false.** Its client — `dense.py`, pid 53637 — was alive and

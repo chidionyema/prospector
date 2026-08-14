@@ -71,6 +71,9 @@ import requests
 from .telemetry import logger
 
 AVAILABILITY_API = "https://archive.org/wayback/available"
+#: The CDX index — same captures, independent throttle. Leads the lookup since 2026-08-13; see
+#: `_lookup` for the head-to-head that put it there.
+CDX_API = "https://web.archive.org/cdx/search/cdx"
 SAVE_API = "https://web.archive.org/save/"
 
 #: A real browser UA, matching retrieval._RESOLVE_UA and pack_linter._PROBE_UA.
@@ -81,6 +84,34 @@ _UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
 #: network today, so it is retried on the next publish rather than remembered for a week —
 #: the mistake `pack_linter`'s 7-day URL cache made with a wrong dead verdict.
 _FAILURE_TTL_S = 6 * 3600
+
+#: Minimum gap between availability requests, process-wide. A publish batch fires up to 30 of
+#: them back to back and archive.org answers a burst with 429; measured 2026-08-13, three
+#: unspaced requests were refused and the same three spaced 3s apart all returned 200. This is
+#: politeness that buys throughput, not a throttle we are forced to accept.
+_MIN_INTERVAL_S = 1.5
+
+#: The 429 retry ladder. Bounded on purpose: `archive_citations` runs inside `publish_pass`,
+#: upstream of the money rail, so the worst case must stay in the tens of seconds per URL.
+_BACKOFF_S = (4.0, 12.0, 30.0)
+
+#: CDX is an index SCAN, not a key lookup, so it is legitimately slower than the availability
+#: API. Measured 2026-08-13: a 30s read timeout fired on a long `.pdf` URL that CDX had answered
+#: with a capture minutes earlier. The old 10s budget turned "slow" into "never archived".
+_CDX_TIMEOUT_S = 40.0
+
+#: Monotonic stamp of the last availability call, so pacing spans URLs and packs in one process.
+_last_call = 0.0
+
+#: Set once the availability API has exhausted the retry ladder in this process. It is the
+#: FALLBACK, so paying 46s of backoff for it on every CDX miss is a cost with no upside — one
+#: 42-citation pack ran past twenty minutes inside `publish_pass` before this fuse existed.
+#: Deliberately per-process, not persisted: a fresh publish run is entitled to try again.
+_avail_blocked = False
+
+#: Consecutive Save Page Now timeouts that end saving for a batch, and the running count.
+_SAVE_TIMEOUT_FUSE = 2
+_save_timeouts = 0
 
 
 def _cache_load(path: Optional[Path]) -> Dict[str, Any]:
@@ -141,33 +172,151 @@ def _snapshot(url: str, timeout_s: float) -> tuple[Optional[str], bool]:
 
 
 def _lookup(url: str, timeout_s: float) -> tuple[Optional[str], bool]:
-    """One cheap availability request. Returns (memento, rate_limited). Never raises."""
-    try:
-        resp = requests.get(AVAILABILITY_API, params={"url": url}, timeout=timeout_s,
-                            headers={"User-Agent": _UA})
-        # 429 is the Internet Archive declining to answer. Collapsing it into None, as this
-        # did before 2026-08-09, manufactures the claim "never archived" out of our own
-        # traffic — see the module docstring for the sweep that measured it.
-        if resp.status_code == 429:
-            logger.warning("archive: availability API rate-limited; pausing lookups",
-                           extra={"url": url})
-            return None, True
-        if resp.status_code != 200:
-            return None, False
-        closest = (resp.json().get("archived_snapshots") or {}).get("closest") or {}
-    except (requests.RequestException, ValueError):
-        return None, False
+    """The most recent successful capture of `url`. Returns (memento, rate_limited).
+
+    2026-08-13 — WE WERE ASKING THE WRONG SERVICE, and that is why published packs sit unlisted.
+    `/wayback/available` is throttled to near-uselessness for a publish batch: a run logged
+    `archived 0/22 citation(s)` and `archived 0/46` because the FIRST 429 sets `rate_limited`
+    and `archive_citations` then skips every remaining URL. The lint blocks a definitive 404/410
+    unless a memento corroborates it, so the escape hatch existed and never once fired.
+
+    Backing off does not fix it. Measured head-to-head the same day, on the dead citations of
+    the stranded packs, after a full `_BACKOFF_S` ladder (4s/12s/30s) had already been spent:
+
+        availability=429  cdx=200 captures=1  20260218062023  aol.com/news/2013-01-29-security…
+        availability=429  cdx=200 captures=1  20260103025511  oconnors.law/people/kathryn-howard/
+        availability=429  cdx=200 captures=1  20260609174442  scanbaby.co.uk/is-the-nhs-wait-too…
+        availability=429  cdx=200 captures=1  20241203032333  ulh.nhs.uk/wp-content/…IRMER-2017.pdf
+
+    4 for 4, identical timestamps to what the availability API returns when it deigns to answer.
+    The CDX index is a different service on a different limit, so it leads now and the
+    availability API is the fallback. `filter=statuscode:[23]..` reproduces the invariant this
+    function has always enforced — never hand a buyer a memento OF an error page — and
+    `limit=-1` takes the most recent capture, which is what "closest" meant.
+
+    Calls are still paced (`_MIN_INTERVAL_S`) and still climb `_BACKOFF_S` on a 429, because
+    politeness is what keeps CDX answering. `rate_limited=True` is reserved for BOTH services
+    declining the whole ladder — the only state that justifies abandoning a batch.
+    """
+    global _avail_blocked
+    memento, cdx_unanswered = _paced_get(_cdx_memento, CDX_API, url, timeout_s)
+    if memento:
+        return memento, False
+    # Fall through on a miss, not only on a refusal: the two endpoints index the same captures
+    # but disagree at the edges (the availability API's near-literal URL key is why `_snapshot`
+    # tries the trailing-slash form at all), and a second request is cheap next to a pack that
+    # cannot be sold.
+    #
+    # Cheap ONLY while that endpoint is answering. Timed on a real 42-citation pack: the
+    # availability API 429s on essentially every call right now, so each miss cost the whole
+    # 4s+12s+30s ladder and one pack's archiving ran past twenty minutes — inside `publish_pass`,
+    # upstream of the money rail. So the fallback is fused: once the ladder has been exhausted
+    # against it, this process stops asking for the rest of the batch. CDX is unaffected.
+    if not _avail_blocked:
+        memento, avail_unanswered = _paced_get(_availability_memento, AVAILABILITY_API, url,
+                                               timeout_s)
+        if memento:
+            return memento, False
+        if avail_unanswered:
+            _avail_blocked = True
+            logger.warning("archive: availability API fused off for this run; CDX only")
+    else:
+        avail_unanswered = True
+    # `unanswered` is True only if NEITHER service answered — a definitive "no captures" from
+    # either one is a fact about the URL and may be cached.
+    return None, cdx_unanswered and avail_unanswered
+
+
+def _cdx_memento(resp: "requests.Response") -> Optional[str]:
+    """Parse a CDX reply into a memento URL. The body is `[[header], [ts, original], …]`, or
+    empty (not `[]`) when nothing was ever captured."""
+    body = resp.text.strip()
+    if not body:
+        return None
+    rows = resp.json()
+    if not isinstance(rows, list) or len(rows) < 2 or len(rows[-1]) < 2:
+        return None
+    ts, original = str(rows[-1][0]), str(rows[-1][1])
+    if not ts.isdigit() or not original.startswith("http"):
+        return None
+    return f"https://web.archive.org/web/{ts}/{original}"
+
+
+def _availability_memento(resp: "requests.Response") -> Optional[str]:
+    """Parse an availability-API reply into a memento URL."""
+    closest = (resp.json().get("archived_snapshots") or {}).get("closest") or {}
     if not closest.get("available"):
-        return None, False
+        return None
     status = str(closest.get("status") or "200")
     if not status.startswith("2") and not status.startswith("3"):
-        return None, False
+        return None
     memento = closest.get("url")
     if not isinstance(memento, str) or not memento.startswith("http"):
-        return None, False
+        return None
     # The API answers in http:// for historical reasons; the storefront is https-only and a
     # mixed-content link is one a browser may refuse to open.
-    return memento.replace("http://web.archive.org/", "https://web.archive.org/", 1), False
+    return memento.replace("http://web.archive.org/", "https://web.archive.org/", 1)
+
+
+def _paced_get(parse, endpoint: str, url: str, timeout_s: float) -> tuple[Optional[str], bool]:
+    """One paced, 429-retried GET against `endpoint`, parsed by `parse`. Never raises.
+
+    Returns (memento_or_None, unanswered). The two are NOT interchangeable: None with
+    `unanswered=False` means the service answered and has no capture, which is a fact worth
+    caching; None with `unanswered=True` means we never got an answer, which is a fact about
+    today's traffic and must never be recorded as a property of the URL.
+
+    **A read timeout is an unanswered call, not a "no".** Before 2026-08-13 a `RequestException`
+    returned `(None, False)`, so the caller wrote `{"memento": None}` and every later publish
+    read it back as "already checked, not archived". Measured that day: CDX read-timed out at
+    30s on `ulh.nhs.uk/...IRMER-2017.pdf`, a URL CDX had answered with a capture minutes
+    earlier — the index is a scan and long/rare URLs are genuinely slow, which is why CDX gets
+    `_CDX_TIMEOUT_S` rather than the availability API's budget. Timeouts now climb the same
+    ladder as a 429 and end in `unanswered=True`.
+    """
+    global _last_call
+    is_cdx = endpoint == CDX_API
+    params = ({"url": url, "output": "json", "limit": "-1", "fl": "timestamp,original",
+               "filter": "statuscode:[23].."} if is_cdx else {"url": url})
+    timeout_s = max(timeout_s, _CDX_TIMEOUT_S) if is_cdx else timeout_s
+    name = "cdx" if is_cdx else "availability"
+    for attempt, backoff in enumerate((*_BACKOFF_S, None)):
+        gap = _MIN_INTERVAL_S - (time.monotonic() - _last_call)
+        if gap > 0:
+            time.sleep(gap)
+        try:
+            _last_call = time.monotonic()
+            resp = requests.get(endpoint, params=params, timeout=timeout_s,
+                                headers={"User-Agent": _UA})
+            if resp.status_code == 429:
+                if backoff is None:                      # the ladder is spent; give up honestly
+                    logger.warning("archive: %s API rate-limited after %d retries", name,
+                                   attempt, extra={"url": url})
+                    return None, True
+                # A server-stated Retry-After outranks our guess, but never by more than a
+                # minute — a publish must not park on the money rail waiting for archive.org.
+                try:
+                    wait = min(60.0, max(float(resp.headers.get("Retry-After", 0) or 0), backoff))
+                except (TypeError, ValueError):
+                    wait = backoff
+                logger.info("archive: %s API 429; retrying in %.0fs", name, wait,
+                            extra={"url": url})
+                time.sleep(wait)
+                continue
+            if resp.status_code != 200:
+                return None, False
+            return parse(resp), False
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            # Never reached us / never came back. Retry, then admit we do not know.
+            if backoff is None:
+                logger.warning("archive: %s API unreachable after %d retries (%s)", name,
+                               attempt, type(exc).__name__, extra={"url": url})
+                return None, True
+            time.sleep(backoff)
+            continue
+        except (requests.RequestException, ValueError, IndexError):
+            return None, False                           # a real, malformed answer: that IS a no
+    return None, True                                    # the ladder ends in None; unreachable
 
 
 def save_snapshot(url: str, timeout_s: float = 30.0) -> tuple[Optional[str], bool]:
@@ -175,12 +324,25 @@ def save_snapshot(url: str, timeout_s: float = 30.0) -> tuple[Optional[str], boo
 
     `rate_limited` is the signal the caller uses to stop saving for the rest of the batch.
     """
+    global _save_timeouts
     try:
         resp = requests.get(SAVE_API + url, timeout=timeout_s, allow_redirects=True,
                             headers={"User-Agent": _UA})
+    except (requests.Timeout, requests.ConnectionError) as exc:
+        # Save Page Now is either taking captures right now or it is not; a read timeout is the
+        # slow way it says no. Each one costs the full `save_timeout_s`, and a 30-URL batch of
+        # them is fifteen minutes inside `publish_pass`. Two in a row and this batch stops
+        # asking — measured 2026-08-13, that is exactly how it fails when it fails.
+        _save_timeouts += 1
+        logger.warning("archive: save failed", extra={"url": url, "err": type(exc).__name__})
+        if _save_timeouts >= _SAVE_TIMEOUT_FUSE:
+            logger.warning("archive: Save Page Now unresponsive; skipping saves for this batch")
+            return None, True
+        return None, False
     except requests.RequestException as exc:
         logger.warning("archive: save failed", extra={"url": url, "err": type(exc).__name__})
         return None, False
+    _save_timeouts = 0                                   # it answered; the streak is broken
 
     if resp.status_code == 429:
         logger.warning("archive: Save Page Now rate-limited; skipping saves for this batch")
@@ -201,12 +363,15 @@ def save_snapshot(url: str, timeout_s: float = 30.0) -> tuple[Optional[str], boo
 
 def archive_urls(urls: Iterable[str], *, cache_path: Optional[Path] = None,
                  save_new: bool = True, timeout_s: float = 10.0,
-                 save_timeout_s: float = 30.0, max_urls: int = 30) -> Dict[str, str]:
+                 save_timeout_s: float = 30.0, save_budget_s: float = 60.0,
+                 max_urls: int = 30) -> Dict[str, str]:
     """{url: memento} for as many of `urls` as can be archived. Never raises.
 
     Bounded by `max_urls` so a pack with a long bibliography cannot stall a publish. What is
     dropped is LOGGED — a silent cap reads as "we archived everything" when it did not.
     """
+    global _save_timeouts
+    _save_timeouts = 0          # the SPN fuse is per batch, so each pack gets its own two tries
     cache = _cache_load(cache_path)
     now = time.time()
     out: Dict[str, str] = {}
@@ -224,6 +389,14 @@ def archive_urls(urls: Iterable[str], *, cache_path: Optional[Path] = None,
     lookup_limited = False      # the availability API has asked us to stop
     deferred = 0
     dirty = False
+
+    # Two passes, and the order is load-bearing. Only a LOOKUP can list a pack today: the lint's
+    # escape hatch needs a capture that already exists, and a dead 404 URL cannot be captured
+    # now in any case. Saving is durability for the NEXT publish, and Save Page Now takes tens
+    # of seconds per URL because it really fetches the page. Interleaved (the shape until
+    # 2026-08-13) one slow save delayed every lookup behind it, and a 30-URL pack spent a
+    # quarter of an hour inside `publish_pass`, upstream of the money rail.
+    misses: list[str] = []
     for url in unique:
         entry = cache.get(url) or {}
         memento = entry.get("memento")
@@ -237,25 +410,43 @@ def archive_urls(urls: Iterable[str], *, cache_path: Optional[Path] = None,
             continue  # see below: an unasked URL is not an unarchived one
 
         memento, lookup_limited = _snapshot(url, timeout_s)
-        if memento is None and save_new and not rate_limited and not lookup_limited:
-            memento, rate_limited = save_snapshot(url, save_timeout_s)
 
         # A 429 means we never got an answer, so there is nothing here worth remembering.
         # Writing `{"memento": None}` would pin our own throttling onto the URL for
         # `_FAILURE_TTL_S`, and every later run would read it back as "already checked, not
         # archived" without ever asking again.
-        if lookup_limited and memento is None:
+        if memento is None and lookup_limited:
             deferred += 1
             continue
+        if memento:
+            out[url] = memento
+            cache[url] = {"memento": memento, "ts": now}
+            dirty = True
+        else:
+            misses.append(url)
 
+    # Pass 2: best-effort, and hard-stopped by the clock. What the budget drops is LOGGED, and
+    # a URL we never tried to save is left OUT of the cache so a later run still tries it.
+    started = time.monotonic()
+    for url in misses:
+        out_of_budget = time.monotonic() - started >= save_budget_s
+        if save_new and not rate_limited and not out_of_budget:
+            memento, rate_limited = save_snapshot(url, save_timeout_s)
+        elif save_new:
+            # We meant to save and were stopped by the clock or a 429, so we do not know whether
+            # this URL is archivable. Caching it as missing would pin our own budget onto it.
+            deferred += 1
+            continue
+        else:
+            memento = None      # caller never wanted a save: the lookup miss IS the answer
         cache[url] = {"memento": memento, "ts": now}
         dirty = True
         if memento:
             out[url] = memento
 
     if deferred:
-        logger.warning("archive: rate-limited; %d URL(s) left unchecked and NOT cached as "
-                       "missing, retry on a later run", deferred)
+        logger.warning("archive: %d URL(s) left unchecked (rate limit or save budget) and NOT "
+                       "cached as missing; retry on a later run", deferred)
 
     if dirty:
         _cache_save(cache_path, cache)
@@ -264,7 +455,8 @@ def archive_urls(urls: Iterable[str], *, cache_path: Optional[Path] = None,
 
 def archive_sources(sources: Sequence[Any], *, cache_path: Optional[Path] = None,
                     save_new: bool = True, timeout_s: float = 10.0,
-                    save_timeout_s: float = 30.0, max_urls: int = 30) -> int:
+                    save_timeout_s: float = 30.0, save_budget_s: float = 60.0,
+                    max_urls: int = 30) -> int:
     """Populate `source.archived_url` in place for each `models.Source`. Returns how many.
 
     Wrapped in a blanket except on purpose. This runs inside `publish_pass`, upstream of the
@@ -276,6 +468,7 @@ def archive_sources(sources: Sequence[Any], *, cache_path: Optional[Path] = None
         by_url = archive_urls((getattr(s, "url", "") for s in sources),
                               cache_path=cache_path, save_new=save_new,
                               timeout_s=timeout_s, save_timeout_s=save_timeout_s,
+                              save_budget_s=save_budget_s,
                               max_urls=max_urls)
         n = 0
         for src in sources:

@@ -57,7 +57,16 @@ export function SectionBand({
 }) {
   return (
     <section className={cx(BAND_BG[bg], "border-b border-border last:border-b-0", outerClassName)}>
-      <div className={`mx-auto ${BAND_WIDTH[width]} overflow-hidden px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
+      {/*
+        `overflow-clip`, NEVER `overflow-hidden`. The two clip identically, but `hidden` makes this
+        div a SCROLL CONTAINER, and a scroll container is the containing block for every descendant
+        `position: sticky`. That silently disabled the pack page's buy rail: `sticky top-24` computed
+        as `sticky`, so it read as correct in the DOM, while the rail scrolled away at 2,200px of a
+        5,190px page and left the money off screen (probed 2026-08-14: railTop -2007 inside a parent
+        4,082px tall). `clip` does not create a scroll container, so the clipping stays and sticky
+        works. Anything inside a band that must stay put depends on this word.
+      */}
+      <div className={`mx-auto ${BAND_WIDTH[width]} overflow-clip px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
         {children}
       </div>
     </section>
@@ -111,12 +120,21 @@ export function PageHero({
   // fades in from opacity 0 -- which is not LCP-eligible. Measured: /how-it-works 1824ms and
   // /ideas 1860ms LCP against 164ms and 208ms first paint (F-005).
   return (
-    <SectionBand bg={bg} width={width} className="pt-10 pb-12 md:pt-14 md:pb-16 animate-settle">
+    /* `page-hero` on the BAND, not the measure: `globals.css` uses it as an adjacent-sibling hook
+       to stop the section below opening with a full 96px on top of this band's own closing space.
+       See the note there for the measurement. `pb` comes down with it -- 64px under a lead, above
+       a rule, above another 96px, was the larger half of a 160px gap. */
+    <SectionBand
+      bg={bg}
+      width={width}
+      outerClassName="page-hero"
+      className="pt-10 pb-10 md:pt-14 md:pb-12 animate-settle"
+    >
       <div className="max-w-[46rem]">
         {eyebrow && (
           <p className="mb-3 text-caption font-medium text-subtle">{eyebrow}</p>
         )}
-        <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text md:text-display">{title}</h1>
+        <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text">{title}</h1>
         {lead && (
           <div className="mt-4 max-w-[60ch] text-body text-muted">
             {lead}

@@ -145,7 +145,12 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
       />
 
       <Section bg="white" width="7xl">
-        <PackGrid packs={packs} />
+        {/* The landing's own selection rule, handed to the grid so no card repeats it. This page
+            IS `payer === 'b2c'`; printing `B2C` on all 31 cards spends the first chip slot on the
+            one fact the visitor already has, and pushes a facet that varies off the end of the
+            row. `landing.kind`/`landing.value` are the same two fields `packMatchesLanding` filters
+            on, so the chip that disappears is exactly the chip the page guarantees. */}
+        <PackGrid packs={packs} omitFacet={{ kind: landing.kind, value: landing.value }} />
 
         <p className="mt-10 text-meta leading-relaxed text-muted">
           Every pack on this page faced the same checks: {checksSentence()}. Each then survived an

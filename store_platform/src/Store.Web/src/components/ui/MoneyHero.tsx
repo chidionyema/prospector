@@ -70,7 +70,7 @@ export function MoneyHero({ cents, currency, state, label, caption, action, clas
             />
             <span>{statusLabel}</span>
           </div>
-          <Money cents={cents} currency={currency} className="block text-display text-text" />
+          <Money cents={cents} currency={currency} className="block text-h1 text-text" />
           {caption && <p className="max-w-[60ch] text-meta text-muted">{caption}</p>}
         </div>
         {action && <div className="shrink-0 sm:pb-1">{action}</div>}

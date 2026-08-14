@@ -96,11 +96,31 @@ describe('US-2 — Pack cards with pack art', () => {
     expect(page, 'the card must open on the generated cover').toMatch(
       /<PackCoverArt\b[\s\S]{0,120}category=\{cat\}/,
     );
-    expect(page, 'the cover tint must be category-derived, not a fixed hue').toMatch(
-      /category\.tint/,
+    /*
+     * THE TINT AND THE ICON: WITHDRAWN 2026-08-14, and this is the second withdrawal on this
+     * cover, so the reasoning is kept rather than the assertion. Two assertions stood here:
+     *
+     *   toMatch(/category\.tint/)              // the cover ground is the sector's pastel
+     *   toMatch(/name=\{category\.icon\}/)     // the mark is the sector's glyph at 72px
+     *
+     * They were the surviving half of "identity comes from the category", and they were right
+     * that the cover must be deterministic and not decorative-random. What they pinned was a
+     * sector drawn TWICE -- once as a hue, once as a pictogram -- on a card whose only
+     * pack-specific fact (the source count) was pushed into the body. A pastel rectangle with a
+     * 14%-opacity briefcase in it is stock furniture, and this shop sells audited evidence.
+     *
+     * The cover is now the pack's evidence run on the instrument plate. The determinism rule is
+     * not withdrawn and is asserted below in its stronger form: the cover renders `sourceCount`,
+     * a fact of the pack, and nothing derived from a hash, a random, or the render order.
+     */
+    expect(page, 'the cover must draw the pack\'s own evidence run').toMatch(
+      /<EvidenceBar\b[^>]*count=\{pack\.sourceCount\}[^>]*tone="instrument"/,
     );
-    expect(page, 'the cover mark must be the category icon').toMatch(
-      /name=\{category\.icon\}/,
+    expect(page, 'the cover must sit on the instrument ground, not a per-sector tint').toMatch(
+      /border-ins-line bg-ins-bg/,
+    );
+    expect(page, 'the sector stays on the cover, as a fact rather than a picture').toMatch(
+      /category\.tagged \? category\.label : null/,
     );
     /*
      * PER-PACK JITTER: WITHDRAWN, NOT RELAXED (2026-08-06, internal design review).
@@ -135,9 +155,11 @@ describe('US-2 — Pack cards with pack art', () => {
     const withoutComments = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(withoutComments, 'the cover must not be random').not.toMatch(/Math\.random\(/);
     // Tailwind scans source text, so an interpolated `bg-[image:...${n}...]` compiles to nothing.
-    // The weave must therefore be one literal class string, not built at runtime.
+    // The cover's one arbitrary-value class must therefore be a full literal, not built at
+    // runtime. It used to be `COVER_WEAVE`, a repeating-linear-gradient; it is now the plate's
+    // radial lift. The RULE is what this pins, not the gradient.
     expect(page, 'the cover texture must be a full literal class string').toMatch(
-      /COVER_WEAVE =\s*\n?\s*'bg-\[image:repeating-linear-gradient\(/,
+      /'bg-\[image:radial-gradient\([^']*\)\]'/,
     );
     expect(page, 'the cover must state the listing market in words').toMatch(
       /For \{marketLabel\(pack\.market\)\} rules/,

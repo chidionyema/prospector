@@ -244,17 +244,47 @@ class TestCostsData:
 
 
 class TestTodaySpend:
-    """today_spend() must compute today's spend from the audit log."""
+    """today_spend() must compute today's spend from the audit log.
 
-    def test_returns_dict_with_keys(self):
-        audit = readers.load_audit_log()
+    These two tests used to call `readers.load_audit_log()` bare, which is the ONE reader that
+    reads the operator's real `store/prospector.jsonl` — exactly what this file's header says
+    nothing here does. It cost 2400s of gate time on 2026-08-13: the ledger had reached 171 MB /
+    604,599 lines (78.7s to parse ONCE, measured, and several GB of dicts held live), so two
+    calls plus the memory pressure exceeded `POPDD_TEST_TIMEOUT` and the commit was reported as
+    a hang. Nothing was hanging; the suite was reading production and production had grown.
+
+    `load_audit_log`'s own docstring already warns it is expensive and that callers should
+    prefer `today_spend`. A test asserting the SHAPE of the return value needs three rows, not
+    the estate's entire spend history.
+    """
+
+    @pytest.fixture
+    def audit(self, tmp_path, monkeypatch):
+        ledger = tmp_path / "prospector.jsonl"
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        ledger.write_text("\n".join(json.dumps(r) for r in [
+            {"ts": f"{today}T09:00:00Z", "phase": "generate", "cost_usd": 0.25},
+            {"ts": f"{today}T10:00:00Z", "phase": "verify", "cost_usd": 0.75},
+            {"ts": "2020-01-01T00:00:00Z", "phase": "verify", "cost_usd": 99.0},
+        ]) + "\n", encoding="utf-8")
+
+        real = readers.paths.store_path
+        monkeypatch.setattr(
+            readers.paths, "store_path",
+            lambda *p: ledger if p == ("prospector.jsonl",) else real(*p))
+        readers.load_audit_log.clear()          # st.cache_data persists across tests
+        try:
+            yield readers.load_audit_log()
+        finally:
+            readers.load_audit_log.clear()      # never leave production rows in the cache
+
+    def test_returns_dict_with_keys(self, audit):
         spend = readers.today_spend(audit)
         assert isinstance(spend, dict)
         assert "total_usd" in spend
         assert "by_phase" in spend
 
-    def test_total_is_non_negative(self):
-        audit = readers.load_audit_log()
+    def test_total_is_non_negative(self, audit):
         spend = readers.today_spend(audit)
         assert spend["total_usd"] >= 0
 

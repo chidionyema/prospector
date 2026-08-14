@@ -147,12 +147,30 @@ def test_make_provider_applies_the_market_salt(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_ddg_provider_receives_the_market_region():
+    """The region must survive whatever wraps the provider.
+
+    `retrieval.fetch_pages` (on since 2026-08-13) puts a PageTextEnricher between
+    make_provider's return value and the DDG provider, and `relevance_overfetch`
+    (2026-08-14) added a RelevanceRankedProvider below that. Unwrapping a FIXED number of
+    layers pins the chain's SHAPE rather than the region this test is named for — which
+    is exactly how it broke on 2026-08-14 while the region was still correct. Walk to the
+    DDG provider however deep it sits, then assert the region; the wrappers that must be
+    present are asserted by name, so a wrapper silently disappearing still fails.
+    """
     cfg = load_config().for_market("us")
     cfg.retrieval.provider = "ddg"
     cfg.retrieval.cache = False
     provider = make_provider(cfg)
-    assert isinstance(provider, DuckDuckGoSearchProvider)
-    assert provider.region == "us-en"
+    seen, node = [], provider
+    while node is not None and not isinstance(node, DuckDuckGoSearchProvider):
+        seen.append(type(node).__name__)
+        node = getattr(node, "_inner", None) or getattr(node, "inner", None)
+    assert isinstance(node, DuckDuckGoSearchProvider), f"no DDG provider in chain: {seen}"
+    assert "PageTextEnricher" in seen, (
+        "config.yaml retrieval.fetch_pages is on; make_provider must wrap the chain")
+    assert "RelevanceRankedProvider" in seen, (
+        "config.yaml retrieval.relevance_overfetch > 1; results must be ranked")
+    assert node.region == "us-en"
 
 
 def test_ddg_region_is_passed_to_the_library(monkeypatch):

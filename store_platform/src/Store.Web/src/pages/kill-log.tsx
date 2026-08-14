@@ -271,7 +271,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
               count carries the page on its own, and the caveat four lines down is what qualifies
               it. Nothing here promises a reason for all 1,364: only 400 came with an argument, and
               that sentence is already in the caveat rather than contradicted by this headline. */}
-          <h1 className="mt-3 text-h1 font-semibold text-text md:text-display">
+          <h1 className="mt-3 text-h1 font-semibold text-text">
             {killed.toLocaleString('en-GB')} ideas killed.
           </h1>
           <p className="mt-5 max-w-[60ch] text-body text-muted">

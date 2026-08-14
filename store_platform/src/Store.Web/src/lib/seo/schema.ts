@@ -1,4 +1,5 @@
 import { BRAND, LEGAL, SITE_URL } from '@/lib/config';
+import { DEFAULT_OG_IMAGE_PATH } from './ogImage';
 
 /**
  * schema.org node builders, shared by every page.
@@ -59,7 +60,10 @@ export function organizationNode(description: string): Record<string, unknown> |
     legalName: LEGAL.legalName,
     url: SITE_URL,
     logo: { '@type': 'ImageObject', url: `${SITE_URL}/icon.svg` },
-    image: `${SITE_URL}/og.png`,
+    // Same card the `og:image` meta nominates, from the one module that owns the path -- these
+    // were two independent `/og.png` literals until 2026-08-14, so a change to one silently left
+    // the Organization node describing a different image from the page's own preview.
+    image: `${SITE_URL}${DEFAULT_OG_IMAGE_PATH}`,
     description,
     contactPoint: {
       '@type': 'ContactPoint',

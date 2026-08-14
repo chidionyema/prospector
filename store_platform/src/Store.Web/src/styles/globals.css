@@ -291,6 +291,29 @@ h1, h2, h3 {
   letter-spacing: -0.01em;
 }
 
+/* ...and this is what makes "the finer control" true (2026-08-14). Every rule in this file is
+   UNLAYERED, and unlayered CSS beats everything Tailwind emits into `@layer utilities` regardless
+   of specificity. So the element rule above was silently winning over the scale tokens: the
+   homepage h1 wearing `text-display` measured font-weight 560 / letter-spacing -0.01em in the
+   browser, not the 640 / -0.032em the token declares, and `font-semibold` on the same element was
+   inert too. A display step tuned at 72px and then rendered at the 16px body tracking is not the
+   type it was drawn as.
+   The fix stays unlayered and wins on specificity (0,1,1 over 0,0,1) rather than re-layering the
+   whole file, which would change the outcome of every element rule in it at once. Only the three
+   heading steps are named -- a heading wearing no scale token still takes the floor above. */
+:is(h1, h2, h3).text-display {
+  font-weight: var(--text-display--font-weight);
+  letter-spacing: var(--text-display--letter-spacing);
+}
+:is(h1, h2, h3).text-h1 {
+  font-weight: var(--text-h1--font-weight);
+  letter-spacing: var(--text-h1--letter-spacing);
+}
+:is(h1, h2, h3).text-h2 {
+  font-weight: var(--text-h2--font-weight);
+  letter-spacing: var(--text-h2--letter-spacing);
+}
+
 /*
   Geist Mono is the DATA voice, and only that (founder decision, 2026-08-05): amounts, IDs and
   refs, filenames, scores, source hostnames, keyboard keys, kill-gate tags. Every decorative use
@@ -423,6 +446,36 @@ section {
   whoever edits the hero. The one rule worth keeping is the mobile headline clamp, and it is
   expressed as a utility there rather than as an `!important` override here.
 */
+
+/*
+  THE HERO/CONTENT DEAD BAND.
+
+  Measured at 1440x900 on 2026-08-14 (`fold-idx.png`, `fold-slug.png`): `PageHero` closes with
+  `md:pb-16` (64px) and the `Section` under it opens with `md:py-24` (96px), so 160px of white
+  plus the band's own `border-b` rule sat between a page's headline and the thing that headline
+  introduces. On /ideas the search field started at y=495 and the first category row at y=639, on
+  a 900px viewport; on /ideas/b2c-business-ideas the first card cleared the fold by 90px. Every
+  route with a hero paid it, because both numbers live in `blocks.tsx`.
+
+  The two paddings were never meant to add up -- each is right on its own, one closing a band and
+  one opening an unrelated one. They only stack where a section DIRECTLY follows the hero, which
+  is the one place the two bands are a single thought rather than two. So the rule is scoped to
+  exactly that adjacency, and every other section on every page keeps the 96px rhythm untouched.
+
+  Written here rather than as a prop on 14 call sites for the usual reason: a prop that must be
+  passed on every page to avoid a defect is a defect that comes back with the next page. `globals`
+  is unlayered, so this beats the utility regardless of specificity order (see the note at the top
+  of this file); `.page-hero` is set by `PageHero` itself, on the band, so nothing else can claim
+  it by accident.
+*/
+.page-hero + section > div {
+  padding-top: 1.75rem;
+}
+@media (min-width: 768px) {
+  .page-hero + section > div {
+    padding-top: 2.5rem;
+  }
+}
 
 @media print {
   header, footer { display: none; }
