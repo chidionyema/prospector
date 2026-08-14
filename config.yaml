@@ -929,8 +929,33 @@ generation:
   # UNPROVEN either way — prescreen-rejected candidates never get a dossier, so the retro
   # corpus cannot answer it. The measurement is forward: pass rate per VETTED candidate
   # before vs after this change, at fixed batch_size.
+  #
+  # THIS KEY IS INERT ON THE DAEMON PATH, and reading it as the daemon's k has already cost
+  # one wrong diagnosis. `run_scheduled.py` calls `run_signal(..., k=batch_size, ...)` and
+  # `generate.py` only falls back to this value `if k is None`, so the scheduler never reads
+  # it — raising it 5 -> 50 (9089ebc, 2026-08-13) changed nothing about what the daemon
+  # generated, and neither did cutting it back. The daemon's real k is `schedule.batch_size`
+  # below. This value still governs `vet`/`generate` invoked directly from the CLI, which is
+  # why it is left at 50 rather than deleted.
+  #
+  # The 2026-08-14 barren streak (21 ticks, 0 dossiers) was NOT caused by this number. Cause:
+  # d704595 took claude_cli off `noncritical_operator` (correctly — founder directive), then
+  # standardcompute's free trial expired at 05:17Z, leaving MiniMax alone on generation with
+  # a `max_tokens` ceiling its reasoning had outgrown. See prospector/operator.py.
   candidates_per_signal: 50
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
+  # FLOOR on ideas requested per call (2026-08-14). The old wave formula floored the CALL
+  # count at the lens count instead, so the daemon's per-lane remainder (batch_size 15 over
+  # 4 lanes = 3-5) always fanned out as 5 calls of ask=1 — every "Produce up to N DISTINCT"
+  # line in the 2026-08-14 log reads 1, and each such call paid MiniMax-M3's full reasoning
+  # preamble for one idea (median response that day: 47,602 chars). Live calls with the
+  # daemon's exact rendered prompt at ask=4 (2026-08-14, scratchpad ab_ask): 193.8s wall /
+  # 115,017 think-chars / 3 ideas returned, i.e. the reasoning preamble dominates the call
+  # whatever the ask, so asking for one idea per call multiplies the preamble by the idea
+  # count. (Full ask 1-vs-5-vs-10 A/B: ab_ask_results.json.) min_ask concentrates a wave into
+  # ceil(remaining/ask) calls. 1 restores the legacy one-idea-per-call fan-out exactly
+  # (prospector/generate.py::plan_wave keeps the old formula on that branch).
+  min_ask: 5
   max_rounds: 6         # max batching rounds to hit the requested candidate count
   # Default archetype when no lane pin / --archetype. Lane defaults below override per tier
   # (side_hustle→solo_agent, smb→small_team, growth/venture→startup). Moat/gates untouched.
@@ -1827,9 +1852,18 @@ dedup_token_threshold: 0.34
 # (markets.uk.readiness_ref is deliberately empty for that reason) and retiring it would
 # leave the thresholds unanchored. Order alternates the big states rather than grouping them
 # so that any window of a few ticks is already mixed.
+# `gen_budget_frac: 0.35` — the generation phase's share of the tick hard deadline
+# (PROSPECTOR_TICK_DEADLINE_S, 10800s => 63 min). Added 2026-08-14: the force-exited tick
+# that day (alerts.jsonl 20:48:25Z "tick_hard_deadline: exceeded 10800s") had spent hours
+# inside a degraded generation chain; a healthy generation phase measures ~3 min for k=15
+# (launchd.err.log 2026-08-11), so this budget only ever bites during degradation — which
+# is exactly when generation used to eat the phases that run after it. Enforced at run
+# time by run_scheduled._default_generate -> generate()'s wave loop (no new wave starts
+# past the deadline), and projected at commit time by scripts/gen_budget_guard.py against
+# the same fraction. 0 disables the rail.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
             revet_provisional_kills: false, gate_generation_on_grounding: true,
-            reload_on_code_change: true,
+            reload_on_code_change: true, gen_budget_frac: 0.35,
             market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
 
 spend:

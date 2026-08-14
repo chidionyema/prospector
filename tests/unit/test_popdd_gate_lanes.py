@@ -175,6 +175,44 @@ class TestTheLaneMapCoversEachSourceKind:
         assert lanes == []
         assert unclassified == ["pi-governance/src/index.ts"]
 
+    def test_the_daemons_config_selects_the_engine_lane(self, runner):
+        """The exact hole 9089ebc came through, and the most expensive one this gate has had.
+
+        `.yaml` is in no extension set, so config.yaml matched no lane AND was not reported
+        unclassified — `main` printed "nothing to prove" and exited 0. That commit raised
+        `generation.candidates_per_signal` 5 → 50; every tick afterwards force-exited at the
+        3h hard deadline mid-generation and the engine produced nothing for 21 ticks
+        (store/scheduler/alerts.jsonl, 18 `barren_streak` criticals 11:23–15:57Z on
+        2026-08-14). Nothing in the repo noticed. The founder did.
+        """
+        lanes, unclassified = runner.lanes_for(["config.yaml"])
+        assert lanes == ["engine"], "the file that steers the live daemon must be proven"
+        assert unclassified == []
+
+    def test_scheduler_code_selects_the_engine_lane_AND_python(self, runner):
+        """Both, not either. pytest proves the code; the dry-run tick proves the daemon can
+        still complete a tick with it — a green suite over a scheduler that no longer starts
+        is exactly the shape that reads healthy while the engine is down."""
+        lanes, _ = runner.lanes_for(["prospector/scheduler/run_scheduled.py"])
+        assert lanes == ["engine", "python"], lanes
+
+    def test_the_engine_lane_proof_is_a_tick_not_a_test_run(self, runner):
+        """A suite cannot speak to a config value. The engine lane's proof must be the
+        daemon's own dry-run tick, or this lane is decoration."""
+        engine = runner.LANES["engine"]
+        commands = [" ".join(argv) for _, argv in engine.steps]
+        assert any("verify_engine_change.sh" in c for c in commands), commands
+        script = runner.ROOT / "scripts" / "verify_engine_change.sh"
+        assert script.exists() and os.access(script, os.X_OK), f"{script} must exist and be executable"
+        body = script.read_text()
+        assert "--dry-run" in body, "the tick must be a dry run — a commit hook may not spend budget"
+        assert "candidates_per_signal" in body, "the budget ratio check is the point of this lane"
+        # Fail-closed: a missing script must block the commit, not skip the lane.
+        assert script in engine.preflight, engine.preflight
+
+    def test_the_engine_lane_runs_before_the_expensive_ones(self, runner):
+        assert runner.LANE_ORDER[0] == "engine", runner.LANE_ORDER
+
     def test_a_mixed_commit_runs_every_lane_cheapest_first(self, runner):
         lanes, _ = runner.lanes_for([
             "prospector/run.py",
@@ -221,16 +259,22 @@ class TestTheGateDecidesBeforeItSpendsAnything:
 
 class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
     def test_the_installed_hook_is_the_tracked_one(self):
-        # `.git/hooks/` is not part of the repository, and actions/checkout populates it
-        # with `*.sample` only — so on CI this asserts an artifact that cannot exist, and
-        # it failed there for that reason and no other.
+        # ABSENT is a legitimate state, and this test used to deny it twice over.
         #
-        # The skip is deliberately narrow: absent file AND a CI runner. On a developer
-        # machine an absent hook still FAILS, because there the gate genuinely is not
-        # installed. A hook that exists but is a plain file — the stale second copy this
-        # class was written to catch — fails everywhere, which is the point.
-        if os.environ.get("CI") and not INSTALLED_HOOK.exists():
-            pytest.skip("no .git/hooks/pre-commit on a CI checkout — nothing installed to compare")
+        # `.git/hooks/` is not part of the repository — actions/checkout populates it with
+        # `*.sample` only — so on CI this asserted an artifact that cannot exist. That was
+        # first patched with a CI-only skip, which still FAILED on a developer machine with
+        # no hook. Then the founder deliberately removed the local hook (2026-08-14,
+        # "the POPDD gate is now installed — no, this should be disabled"), and a green
+        # suite started reporting a red on a decision, not a defect.
+        #
+        # Whether the gate is INSTALLED is the operator's call and is enforced elsewhere:
+        # the `engine` job in .github/workflows/ci.yml runs the same verification on every
+        # PR, so a disabled local hook does not mean unverified code. What this class exists
+        # to catch is narrower and is still asserted below for every checkout that has a
+        # hook at all: a SECOND COPY whose content has diverged from the tracked file.
+        if not INSTALLED_HOOK.exists() and not INSTALLED_HOOK.is_symlink():
+            pytest.skip(f"no pre-commit hook at {INSTALLED_HOOK} — nothing installed to compare")
         assert INSTALLED_HOOK.is_symlink(), (
             f"{INSTALLED_HOOK} must be a symlink to the tracked .lux/hooks/pre-commit, "
             "or the file under review is not the file that runs."

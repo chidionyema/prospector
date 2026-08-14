@@ -264,7 +264,15 @@ _HERMES_ALERT_PATH = Path.home() / ".hermes" / "scripts" / "estate_alert.py"
 #: channel muted, and a muted rail is an unwired rail with extra steps. `moat_blind` IS here:
 #: every trusted brain dead at once is dominated by permanent exhaustion (402 / spent allowance),
 #: which only a human funding an account can clear — and while it holds, nothing can be vetted.
-TELEGRAM_KEYS = frozenset({"liveness", "tick_error", "zero_yield", "barren_streak", "moat_blind"})
+#: `stranded_passes` qualifies on exactly that principle and is the clearest case of it: a PASS
+#: that is not on the shelf stays off it forever on its own — the engine has no retry that
+#: republishes, so the state is permanent until a human runs a republish. It is also the state
+#: with money already spent and nothing to show, and on 2026-08-14 it was discovered only
+#: because the founder asked. Throttled at 6h in the emitter, so a long-lived strand cannot
+#: mute the channel.
+TELEGRAM_KEYS = frozenset({
+    "liveness", "tick_error", "zero_yield", "barren_streak", "moat_blind", "stranded_passes",
+})
 
 
 def _load_hermes_sender():

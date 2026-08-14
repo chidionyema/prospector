@@ -876,6 +876,7 @@ def run_signal(
     lanes: Optional[list] = None,
     focus: Optional[str] = None,
     board_personas: Optional[list[str]] = None,
+    gen_time_budget_s: Optional[float] = None,
 ) -> list[Dossier]:
     """Generate candidates from a signal, dedup, prescreen, vet each, return dossiers.
 
@@ -884,6 +885,12 @@ def run_signal(
     generate listing artifacts and publish PASSes. ``signal_text=""`` runs
     blue-sky generation. ``exploration`` overrides the adaptive exploration level
     when provided (e.g. the ``generate`` CLI's ``--exploration``).
+
+    ``gen_time_budget_s``: wall-clock budget for the GENERATION phase only. The scheduler
+    passes a fraction of its tick deadline (schedule.gen_budget_frac x
+    PROSPECTOR_TICK_DEADLINE_S) so a degraded generation chain can never spend the whole
+    tick generating and force-exit before vetting runs (the 2026-08-14 failure). None (the
+    CLI default) leaves generation unbounded, exactly as before.
 
     ``lanes`` (Part 14 — multi-lane-by-default): the ambition tiers this run spans.
       - None         => no lane engaged; byte-for-byte today's single-default behaviour.
@@ -1025,6 +1032,11 @@ def run_signal(
     # partial exhaustion used to skip `_save_pending_signal` entirely and lose the signal.
     _gen_diag: dict = {}
 
+    # ONE absolute deadline for the whole generation phase, converted here so multi-lane
+    # (concurrent lanes) and single-lane paths share the same wall-clock bound.
+    import time as _time
+    _gen_deadline = (_time.monotonic() + gen_time_budget_s) if gen_time_budget_s else None
+
     # FIX: MiniMax generation — gen_op (MiniMax) for generation; op (Claude/Gemini) stays
     # for verification.  gen_op falls back to op if MINIMAX_API_KEY is not configured.
     if lanes and len(lanes) > 1:
@@ -1041,7 +1053,7 @@ def run_signal(
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             prior_titles=prior_titles,
             gen_op=gen_op, grid_priorities=grid_priorities, focus=focus,
-            pass_patterns=patterns, diagnostics=_gen_diag)
+            pass_patterns=patterns, diagnostics=_gen_diag, deadline_mono=_gen_deadline)
         # ambition_tier already set inside generate_multilane (c.ambition_tier = tier).
     elif lanes:
         # SINGLE pinned tier (--lane X or config active_lane): generate in that tier, tag it,
@@ -1053,7 +1065,8 @@ def run_signal(
             op, cfg.for_lane(tier), signal_text=signal_text, k=k,
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
-            pass_patterns=patterns, prior_titles=prior_titles, diagnostics=_gen_diag)
+            pass_patterns=patterns, prior_titles=prior_titles, diagnostics=_gen_diag,
+            deadline_mono=_gen_deadline)
         for c in candidates:
             c.ambition_tier = tier
     else:
@@ -1065,6 +1078,7 @@ def run_signal(
             strategy_lens=lenses, exploration_level=expl, recent_failure_modes=fails,
             gen_op=gen_op, grid_priorities=priorities, focus=focus,
             pass_patterns=patterns, prior_titles=prior_titles, diagnostics=_gen_diag,
+            deadline_mono=_gen_deadline,
         )
     if not candidates:
         # Generation chain exhausted — save the signal text so the operator can

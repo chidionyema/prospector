@@ -176,8 +176,14 @@ def _stub_generate(tmp_path, monkeypatch, rotation):
     cfg = _cfg(tmp_path, rotation)
     seen: dict = {}
 
-    def _fake_run_signal(_signal, *, cfg, k, publish, lanes):  # noqa: A002
+    # `gen_time_budget_s` is named rather than swallowed by `**_extra`: `_default_generate`
+    # must keep passing the generation deadline through, and a stub that absorbs every
+    # keyword would let it be dropped without a single test going red. `**_extra` then
+    # covers the keywords this file genuinely does not care about, so adding one more
+    # does not re-break three market-rotation tests.
+    def _fake_run_signal(_signal, *, cfg, k, publish, lanes, gen_time_budget_s=None, **_extra):  # noqa: A002
         seen["generation_market"] = cfg.active_market
+        seen["gen_time_budget_s"] = gen_time_budget_s
         return []
 
     def _fake_drain(drain_cfg, _n):

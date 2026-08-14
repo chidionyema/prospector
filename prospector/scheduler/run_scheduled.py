@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -217,6 +218,19 @@ def _sched(cfg, key: str, default):
     if isinstance(schedule, dict):
         return schedule.get(key, default)
     return getattr(schedule, key, default)
+
+
+def _gen_budget_frac(cfg) -> float:
+    """`schedule.gen_budget_frac` — the share of the tick deadline generation may spend.
+
+    Default 0.35: generous against the measured healthy phase (~3 min of a 41-66 min k=15
+    tick, launchd.err.log 2026-08-11) and still leaves ~2h of a 3h tick for vetting,
+    artifacts and publish when the chain is degraded. 0 disables the budget entirely.
+    """
+    try:
+        return max(0.0, float(_sched(cfg, "gen_budget_frac", 0.35)))
+    except (TypeError, ValueError):
+        return 0.35
 
 
 def _backlog_size(cfg) -> int | None:
@@ -842,7 +856,16 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # asked. The drain keeps `active_market`; only the new batch rotates.
     cfg, rotated_market = _rotate_market(cfg)
     lanes = _resolve_lanes(cfg, argparse.Namespace(lane=None))
-    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes)
+    # GENERATION TIME BUDGET (the rail behind the 2026-08-14 force-exit): generation gets
+    # at most `schedule.gen_budget_frac` (default 0.35) of the tick's hard deadline, then
+    # returns whatever it has so vetting/artifacts/publish still run. 0 disables the rail.
+    # 0.35 x 10800s = 63 min, against a measured healthy generation phase of ~3 min
+    # (launchd.err.log 2026-08-11 ticks: 2.9 min for k=15) — the budget only bites when
+    # the chain is degraded, which is exactly when the old behaviour ate the whole tick.
+    frac = _gen_budget_frac(cfg)
+    budget = (frac * _TICK_HARD_DEADLINE_S) if frac > 0 else None
+    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes,
+                          gen_time_budget_s=budget)
 
     def _decision(d) -> str:
         # Dossier carries `.decision` (a Decision enum) — NOT `.verdict`. Reading the wrong
@@ -1273,6 +1296,13 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
         resolve_alert,
     )
 
+    # FIRST, and deliberately above every early return below: a PASS the buyer cannot reach is
+    # the engine's most expensive silent state — the work is done and paid for, and the shelf is
+    # empty anyway. It is also orthogonal to whether THIS tick went well, so it must not be
+    # gated on the recovery path's eligibility test. Its own guards (dry run / not allowed) live
+    # inside the function.
+    _emit_stranded_pass_alert(cfg, tick)
+
     specs = alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg))
     for spec in specs:
         try:
@@ -1314,6 +1344,98 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
         reconcile_alert_txt(cfg)
     except Exception:  # noqa: BLE001 — see above
         logger.exception("Failed to reconcile ALERT.txt")
+
+
+#: Budget for the shelf-coverage subprocess. It reads the live catalogue over the network and the
+#: local dossier index; the session probe gives it 12s and it fits. 30s here because a tick is
+#: 2h and being slow is not a reason to stop checking whether the shop has stock.
+_COVERAGE_TIMEOUT_S = 30
+
+
+def _run_coverage_check() -> "subprocess.CompletedProcess | None":
+    """Run `tools/verify_pass_shelf_coverage.py`, or return None if it must not run.
+
+    UNDER PYTEST THIS ALWAYS RETURNS None, for the same reason `alerts._load_hermes_sender`
+    refuses to load: the script reads the LIVE catalogue over the network and the production
+    dossier index. Wiring it into `_emit_tick_alerts` immediately dragged three unrelated
+    suites into doing exactly that — test_alert_resolution.py and test_tick_hard_deadline.py
+    went red on 2026-08-14 with a REAL finding about three real production packs. A test that
+    reaches production is a defect even when it passes; this repo has the scars
+    (tests-polluted-the-production-audit-log, test-suite-called-stripe-for-real).
+
+    Tests that need the branches monkeypatch THIS function, which is why it is a seam and not
+    an inline subprocess call.
+    """
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return None
+    script = Path(__file__).resolve().parents[2] / "tools" / "verify_pass_shelf_coverage.py"
+    if not script.exists():
+        return None
+    try:
+        return subprocess.run(  # noqa: S603 — our own script, fixed argv, no shell
+            [sys.executable, str(script)],
+            capture_output=True, text=True, timeout=_COVERAGE_TIMEOUT_S,
+        )
+    except Exception as exc:  # noqa: BLE001 — a monitoring check must never break the daemon
+        logger.warning("Shelf-coverage check did not run: %s", exc)
+        return None
+
+
+def _emit_stranded_pass_alert(cfg, tick: dict) -> None:
+    """Alert when the engine has produced a PASS that no buyer can reach.
+
+    WHY THIS IS SEPARATE FROM `alerts_for_tick`. That function is pure over the tick dict, and
+    this condition is not in the tick: a pack strands at PUBLISH time, from a lint error or a
+    failed upload, and the tick that made it reports a perfectly healthy `passes: 1`. So the
+    engine's own success metric cannot see it.
+
+    WHY IT EXISTS AT ALL (2026-08-14). Three PASSes sat unbuyable — `25363e54b649587a` blocked on
+    a title initialism, plus `3d20db251950c20a` and `5b8720247589ae96` — and NOTHING alerted. The
+    only reader of `tools/verify_pass_shelf_coverage.py` was the session-start probe, i.e. it
+    reported to whoever happened to open a session, and the founder found out by asking. A check
+    that runs only when a human is already looking is not monitoring.
+
+    Exit codes are the tool's contract: 0 clean, 1 stranded, 2 shelf unreadable. A 2 must NOT
+    alert — "could not look" is not "found something", and turning it red trains the reader to
+    ignore the line. It resolves itself: a later clean run clears the key.
+    """
+    from prospector.scheduler.alerts import emit_alert, resolve_alert
+
+    if not tick.get("allowed") or tick.get("dry_run"):
+        return
+    proc = _run_coverage_check()
+    if proc is None:
+        return
+
+    if proc.returncode == 2:
+        logger.info("Shelf-coverage UNKNOWN (catalogue unreadable); not alerting")
+        return
+    if proc.returncode == 0:
+        try:
+            resolve_alert(cfg, key="stranded_passes",
+                          reason=f"every PASS is on the shelf at {tick.get('ts')}")
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to resolve stranded_passes")
+        return
+
+    lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("[")]
+    count = next((ln.split(":", 1)[1].strip() for ln in proc.stdout.splitlines()
+                  if ln.startswith("stranded passes")), str(len(lines)))
+    try:
+        emit_alert(
+            cfg,
+            severity="critical",
+            key="stranded_passes",
+            title=f"{count} PASS(es) stranded off the shelf",
+            message=("The engine produced packs no one can buy. "
+                     + " | ".join(lines[:3])
+                     + (f" (+{len(lines) - 3} more)" if len(lines) > 3 else "")
+                     + " — fix: .venv/bin/python tools/verify_pass_shelf_coverage.py"),
+            throttle_s=21600,   # 6h: it is a standing condition, not an event
+            stranded=len(lines),
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to emit stranded_passes alert")
 
 
 def _emit_tick_digest(cfg, tick: dict) -> None:
