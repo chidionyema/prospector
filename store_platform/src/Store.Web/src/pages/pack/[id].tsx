@@ -31,6 +31,7 @@ import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { LEGAL } from '@/lib/config';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
+import { FounderPreviewLink } from '@/components/founder/FounderPreviewLink';
 import { similarPacks } from '@/lib/discovery';
 
 // Loaded on demand, not on every page hit: `@stripe/react-stripe-js` only renders once
@@ -452,6 +453,10 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           </p>
         </>
       )}
+
+      {/* Outside the canCheckout branch on purpose: the pack most worth opening is the one that
+          cannot be sold yet. Renders nothing for every visitor who is not the founder. */}
+      <FounderPreviewLink packId={pack.id} className="mt-4" />
 
       {/*
        * THE NUMBERS LIVE IN THE PACK (email §4, Option A -- recommended).

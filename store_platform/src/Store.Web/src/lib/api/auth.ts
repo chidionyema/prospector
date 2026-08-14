@@ -215,6 +215,28 @@ export const auth = {
     call<void>(`/auth/sessions/${encodeURIComponent(familyId)}`, { method: 'DELETE' }),
 };
 
+export const founder = {
+  /**
+   * Whether the signed-in account may read a pack's contents without buying it.
+   *
+   * Asked of the server, never decided here: the allowlist is a server-side secret and a
+   * storefront that decided this for itself would be advertising the answer to everyone. This
+   * only chooses whether to RENDER the affordance — the endpoint below re-checks the same fence,
+   * so a visitor who forces the flag on gets a 404 and nothing else.
+   */
+  me: () => call<{ founder: boolean }>('/founder/me'),
+
+  /**
+   * A same-origin URL that redirects to a short-lived presigned download.
+   *
+   * Must be NAVIGATED to (an `<a href>`), not fetched. The session is an HttpOnly SameSite=Strict
+   * cookie, which the same-origin proxy carries; and the response is a 302 to object storage, so
+   * fetching it would either be blocked by CSP connect-src or leave us holding bytes the browser
+   * should be saving to disk.
+   */
+  downloadHref: (packId: string) => `${PROXY_BASE}/founder/packs/${encodeURIComponent(packId)}/download`,
+};
+
 export const social = {
   /** Only providers the API actually has credentials for; an empty list means hide the section. */
   providers: () => call<{ providers: Provider[] }>('/auth/external/providers'),
