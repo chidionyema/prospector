@@ -619,6 +619,18 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 'bg-ins-bg text-ins-dim',
               )}
             >
+              {/* THE PLATE IS LIT EVERYWHERE ELSE. Every other instrument surface on the site --
+                  the shelf's lead card and `DossierCard`'s cover -- carries this exact radial, so
+                  the ground reads as a plate under a light rather than as a flat fill. This
+                  masthead is the one that did not, which is why the widest instrument band on the
+                  site was also the deadest looking. Same gradient, same origin, no new token. */}
+              <div
+                aria-hidden
+                className={cx(
+                  'pointer-events-none absolute inset-0',
+                  'bg-[image:radial-gradient(120%_80%_at_12%_100%,rgb(250_250_250/0.07),transparent_60%)]',
+                )}
+              />
               {/* `axis="down"` because this box is 704x96 -- the one WIDE box the mark lands in.
                   Left `across`, the bands stretch into ragged-width horizontal lines, which is the
                   text-skeleton idiom (`components/ui/Skeleton.tsx`), so the masthead reads as an
@@ -777,9 +789,20 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
              * evidence, and this one did not" is the same fact from the end we can prove, and both
              * figures come from `RESEARCH_STATS`, so it cannot drift from /kill-log.
              */}
+            {/* THE FIGURE IS LABELLED, because unlabelled it said the opposite of the truth.
+                `94.5%` sat alone, in the largest type on the page, immediately left of the words
+                "This one came through the filter" -- and a number read next to that sentence reads
+                as the share that came THROUGH. It is the share that was killed. The caption is not
+                decoration on a big number; it is the difference between a 94.5% pass rate and a
+                94.5% kill rate, and the second one is the argument. */}
             <div className="mt-8 flex flex-col gap-x-6 gap-y-3 rounded-md border border-border bg-surface p-6 sm:flex-row sm:items-center">
-              <p className="flex-none font-mono text-h1 font-semibold leading-none text-text">
-                {RESEARCH_STATS.rejectRateLabel}
+              <p className="flex-none">
+                <span className="block font-mono text-h1 font-semibold leading-none text-text">
+                  {RESEARCH_STATS.rejectRateLabel}
+                </span>
+                <span className="mt-2 block font-mono text-caption text-subtle">
+                  killed on evidence
+                </span>
               </p>
               <p className="max-w-[52ch] text-meta leading-relaxed text-muted">
                 <span className="font-medium text-text">This one came through the filter.</span>{' '}
@@ -886,40 +909,55 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                     "Effort to build" used to print the legacy `effortTag` string, which was never
                     defined to mean how much of delivery is machine-doable (spec 2.3). */}
                 <FacetChips pack={pack} className="mt-4" />
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {/*
+                 * ONE SPEC SHEET, NOT THREE CARDS.
+                 *
+                 * These were three bordered boxes in a `sm:grid-cols-3` where two carried
+                 * `sm:col-span-3`, so on any desktop width the grid was a lie: Market and Who pays
+                 * each sat alone in a 976px box holding a label and one line, and the third took a
+                 * third of a row on its own. Measured at 1440 on 2026-08-14, the block spent ~390px
+                 * of height and three borders to state three fields.
+                 *
+                 * They are three fields OF ONE THING -- the business behind the research -- so they
+                 * are a description list with the labels in their own column, which is the idiom
+                 * this page already uses for the economics table below. A reader scanning for
+                 * "who pays" now finds it down a rule of aligned labels instead of by reading three
+                 * card headers of different widths.
+                 */}
+                <dl className="mt-6 divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
                   {pack.market && (
-                    <div className="flex flex-col rounded-md border border-border bg-surface p-5 sm:col-span-3">
-                      <span className="text-caption font-medium text-subtle">
-                        Market
-                      </span>
-                      <span className="mt-1.5 text-meta font-semibold text-text">
-                        {marketLabel(pack.market)}
-                      </span>
-                      {/* State it plainly: the research is about this jurisdiction, and the
-                          pack is still sold in GBP. Leaving that implicit invites a refund. */}
-                      <span className="mt-1.5 text-caption leading-relaxed text-muted">
-                        The opportunity, its evidence and its economics are researched for this
-                        market. The pack itself is priced and sold in GBP.
-                      </span>
+                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
+                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Market</dt>
+                      <dd className="min-w-0">
+                        <span className="text-meta font-semibold text-text">
+                          {marketLabel(pack.market)}
+                        </span>
+                        {/* State it plainly: the research is about this jurisdiction, and the
+                            pack is still sold in GBP. Leaving that implicit invites a refund. */}
+                        <span className="mt-1.5 block max-w-[62ch] text-caption leading-relaxed text-muted">
+                          The opportunity, its evidence and its economics are researched for this
+                          market. The pack itself is priced and sold in GBP.
+                        </span>
+                      </dd>
                     </div>
                   )}
                   {pack.whoPays && (
-                    <div className="flex flex-col rounded-md border border-border bg-surface p-5 sm:col-span-3">
-                      <span className="text-caption font-medium text-subtle">
-                        Who pays
-                      </span>
-                      <span className="mt-1.5 text-meta leading-relaxed text-muted">{pack.whoPays}</span>
+                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
+                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Who pays</dt>
+                      <dd className="min-w-0 max-w-[62ch] text-meta leading-relaxed text-muted">
+                        {pack.whoPays}
+                      </dd>
                     </div>
                   )}
                   {pack.timeToFirstRevenue && (
-                    <div className="flex flex-col rounded-md border border-border bg-surface p-5">
-                      <span className="text-caption font-medium text-subtle">
-                        Time to first revenue
-                      </span>
-                      <span className="mt-1.5 text-meta font-semibold text-text">{pack.timeToFirstRevenue}</span>
+                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
+                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Time to first revenue</dt>
+                      <dd className="min-w-0 text-meta font-semibold text-text">
+                        {pack.timeToFirstRevenue}
+                      </dd>
                     </div>
                   )}
-                </div>
+                </dl>
               </div>
             )}
 
@@ -1233,9 +1271,27 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             <ShareRow title={pack.title} path={`/pack/${pack.id}`} />
           </div>
 
-          {/* Right: Checkout (desktop sticky) */}
+          {/* Right: Checkout (desktop sticky).
+              THIS RAIL ONLY STARTED STICKING ON 2026-08-14. `sticky top-24` had been here for
+              months and computed as `sticky`, but `SectionBand`'s inner div was `overflow-hidden`,
+              which made it a scroll container and therefore the containing block for this rail --
+              so the Buy button scrolled away at 2,200px of a 5,190px page and the right half of
+              the money page was white for 3,400px. The band is `overflow-clip` now (see the note
+              in `blocks.tsx`); clipping is identical, no scroll container is created.
+
+              The cap is the second half of that fix. Pinned at `top-24` on a 900px viewport the
+              rail has 804px and the panel measures 840, so its last line was cut with no way to
+              reach it while pinned -- and on a 768px laptop 168px would be. It scrolls inside
+              itself instead, which costs nothing: the buy button sits in the panel's top third,
+              so what scrolls is the trailing prose. macOS overlay scrollbars mean no permanent
+              gutter appears. */}
           <div className="hidden w-full shrink-0 lg:block lg:w-80">
-            <div className="sticky top-24 rounded-md border border-border bg-surface p-7">
+            <div
+              className={cx(
+                'sticky top-24 rounded-md border border-border bg-surface p-7',
+                'max-h-[calc(100svh-7rem)] overflow-y-auto overscroll-contain [scrollbar-width:thin]',
+              )}
+            >
               {checkoutBody}
             </div>
           </div>

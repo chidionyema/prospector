@@ -57,7 +57,16 @@ export function SectionBand({
 }) {
   return (
     <section className={cx(BAND_BG[bg], "border-b border-border last:border-b-0", outerClassName)}>
-      <div className={`mx-auto ${BAND_WIDTH[width]} overflow-hidden px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
+      {/*
+        `overflow-clip`, NEVER `overflow-hidden`. The two clip identically, but `hidden` makes this
+        div a SCROLL CONTAINER, and a scroll container is the containing block for every descendant
+        `position: sticky`. That silently disabled the pack page's buy rail: `sticky top-24` computed
+        as `sticky`, so it read as correct in the DOM, while the rail scrolled away at 2,200px of a
+        5,190px page and left the money off screen (probed 2026-08-14: railTop -2007 inside a parent
+        4,082px tall). `clip` does not create a scroll container, so the clipping stays and sticky
+        works. Anything inside a band that must stay put depends on this word.
+      */}
+      <div className={`mx-auto ${BAND_WIDTH[width]} overflow-clip px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
         {children}
       </div>
     </section>
