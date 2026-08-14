@@ -1,5 +1,11 @@
 import type { GetServerSideProps } from 'next';
 
+// The document count is COUNTED, never typed. This page said "eight documents" in prose until
+// 2026-08-14 while every other surface derived it from `PACK_CONTENTS`, which is pinned to the
+// engine's `bridge.BUNDLE_FILES`. A hand-typed count on the one page written for machines is the
+// worst place for it to drift: an assistant quoting this file would repeat the wrong number with
+// the site's own authority behind it. §1 of the fact-ownership contract: one source per fact.
+import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
 import { checksSentence } from '@/lib/checks';
 import { priceRange, formatGbp } from '@/lib/priceRange';
@@ -92,9 +98,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
 > idea that passed an automated kill-first filter: ${checksSentence()}. It then survived an
 > adversarial review. Each claim in a pack cites a retrievable source.
 
-A pack is a zip of plain Markdown (5,000+ words), eight documents: an executive summary, a build
+A pack is a zip of ${PACK_CONTENTS.length} documents (5,000+ words): an executive summary, a build
 spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing
-assets, and a QA report with a source behind every claim. It is delivered instantly on payment and
+assets, and a QA report with a source behind every claim. Each document is Markdown, and the whole
+pack ships again as Complete_Pack.pdf, a typeset edition. It is delivered instantly on payment and
 carries a 14-day, no-questions refund.
 
 Every pack also ships manifest.jsonld, a JSON-LD document written for the agent rather than the

@@ -10,7 +10,7 @@ import zipfile
 
 import pytest
 
-from prospector.bridge import _SECTION_TITLES, BUNDLE_FILES, EngineBridge
+from prospector.bridge import _SECTION_TITLES, BUNDLE_BONUS_FILES, BUNDLE_FILES, EngineBridge
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict
 
 
@@ -70,7 +70,11 @@ class TestIndexHtmlShipsAlongsideTheEightFiles:
         # DELIVERABLE had gone missing — which is the opposite of what this test is for. Naming
         # them keeps the real guarantee (nothing unexpected enters a bundle, and nothing promised
         # leaves it) while letting the bonus set grow deliberately.
-        assert set(entries) - set(BUNDLE_FILES) == {"index.html", "manifest.jsonld"}
+        # Read from BUNDLE_BONUS_FILES rather than a literal, for the same reason the literal
+        # replaced a count: a third bonus file (Evidence_and_Constraints.md, P4) failed here as
+        # though a DELIVERABLE had gone missing. The guarantee kept is the real one — nothing
+        # promised leaves the bundle, and nothing UNDECLARED enters it.
+        assert set(entries) - set(BUNDLE_FILES) == set(BUNDLE_BONUS_FILES)
 
     def test_index_html_is_not_part_of_the_sellability_contract(self):
         """BUNDLE_FILES is the drift-tested contract with the storefront's PackContents.tsx —
@@ -107,8 +111,21 @@ class TestIndexHtmlShipsAlongsideTheEightFiles:
             "03_Operations_Plan.md": publish_pass_document(artifacts.get("ops_plan", "") or _held_back_md("Operations plan")),
             "QA_Report.md": publish_pass_document(render_markdown(d), keep_confidence_figures=True),
             "00_Executive_Summary.md": publish_pass_document(exec_summary_md(d.candidate, d.checks)),
-            "05_First_Week_Checklist.md": publish_pass_document(first_week_checklist_md(d.candidate)),
         }
+        # The action document is the one deliverable NOT reconstructed from its floor. The
+        # derived fortnight plan (`pack_checklist`, 2026-08-13) replaced the six-line template,
+        # and it deliberately skips the publish pass so a pack rebuilt by the backfill — which
+        # cannot make a model call at all — carries byte-identical text to a freshly generated
+        # one. `first_week_checklist_md` stays the fallback for a pack that gives the renderer
+        # nothing to point at. What this test still pins is unchanged: index.html is not what
+        # changes any of these bytes.
+        from prospector import pack_checklist
+        docs = {n: expected[n] for n in
+                ("01_Blueprint_BuildSpec.md", "02_Marketing_Plan_GTM.md", "03_Operations_Plan.md")}
+        docs["04_Financial_Model.md"] = entries["04_Financial_Model.md"].decode()
+        expected["05_First_Week_Checklist.md"] = (
+            pack_checklist.render(d, docs)
+            or publish_pass_document(first_week_checklist_md(d.candidate)))
         for name, text in expected.items():
             assert entries[name] == text.encode(), f"{name} bytes changed"
 

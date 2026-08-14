@@ -671,8 +671,21 @@ lanes:
 
 # ---- Markets (Epic D) ----
 # A market is the JURISDICTION an opportunity lives in. It is orthogonal to BOTH the
-# ambition lane (which sets the bar) and the buyer's locale — a Texas-arbitrage pack is
-# still sold in GBP through the existing Stripe rail (opportunity-market != buyer-market).
+# ambition lane (which sets the bar) and the buyer's locale — a Texas-arbitrage pack is an
+# opportunity in Texas whoever buys it (opportunity-market != buyer-market).
+#
+# THIS COMMENT USED TO SAY the pack is "still sold in GBP through the existing Stripe rail".
+# Founder, 2026-08-14: that is WRONG, and it had been read as a design statement rather than
+# the description of a gap. The standing decision (2026-08-10) is that a US buyer's CARD IS
+# BILLED IN USD, not merely shown a converted price. Today the storefront already displays
+# USD (Store.Web/src/lib/fx.ts:70-74, verified live) while the rail still charges GBP — a US
+# buyer sees $190 and is billed £149. That is the defect, not the intent.
+#
+# Nothing in this markets block controls it: `currency_hint` below is the OPPORTUNITY's
+# money — what the evidence is denominated in — never the buyer's. The charge-side change is
+# a design job before it is an edit (a second Stripe Price or currency_options, a currency
+# column on the catalogue row, and a USD rung set, with the fulfilment fence matching on
+# price). See memory `us-buyers-billed-in-usd-decision.md`.
 #
 # A market configures the EVIDENCE TERRAIN (authority domains, search region, legality
 # corpus) and the PROMPT FRAMING. It may NOT configure the bar: hard_gates / thresholds /

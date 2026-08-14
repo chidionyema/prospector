@@ -95,55 +95,79 @@ describe('US-3 - Hero with a demonstration of the moat', () => {
     );
   });
 
-  it('home page mounts LiveKillCard exactly once, after the shelf, at every width', () => {
-    if (!liveCardExists) return;
-    // THE HISTORY, because this assertion has now been three different things and each change
-    // was made for a measured reason:
+  it('the home page states the kill total exactly once, and the panel that duplicated it is gone', () => {
+    // THE HISTORY, because this assertion has now been four different things and each change was
+    // made for a measured reason:
     //
-    //  1. "exactly ONE" -- both breakpoint copies mounted and both ran a polling interval. The
-    //     interval is what made that a defect, and it is independently forbidden by `no polling
-    //     timer behind a static snapshot` above, which reads LiveKillCard's own source.
+    //  1. "exactly ONE mount" -- both breakpoint copies mounted and both ran a polling interval.
+    //     The interval is what made that a defect, and it is independently forbidden by `no
+    //     polling timer behind a static snapshot` above, which reads LiveKillCard's own source.
     //  2. "exactly TWO, breakpoint-complementary" -- the panel was the hero's right column on
-    //     lg+, and stacking it on a phone put the first pack card 1.23 screens down at 390x844
-    //     (1.37 at 360x780, 1.08 at 430x932). The mobile copy moved below the shelf; the desktop
-    //     copy stayed in the hero.
-    //  3. "exactly ONE, after the shelf" -- 2026-08-06. Both of those positions were the same
-    //     mistake at two widths. A shop's first screen has to show the thing you can buy, and on
-    //     desktop the largest and only coloured object above the fold was a ledger of ideas we had
-    //     thrown away. With the panel below the shelf at every width, the breakpoint pair has
-    //     nothing left to solve: one mount, no `hidden`/`lg:block` split to keep in sync, and one
-    //     fewer way for a class typo to render the same panel twice.
+    //     lg+, and stacking it on a phone put the first pack card 1.23 screens down at 390x844.
+    //  3. "exactly ONE, after the shelf" -- 2026-08-06. A shop's first screen has to show the
+    //     thing you can buy, so the ledger moved below the products at every width.
+    //  4. NO MOUNT AT ALL -- founder, 2026-08-14. The panel was removed from this page as a
+    //     DUPLICATE, not as a mistake: the strip at index.tsx:2066-2081 already prints the same
+    //     kill total in the page's own voice with the /kill-log link beside it, so the panel
+    //     restated a number the reader had just been given, in a larger box, further down.
     //
-    // The panel is NOT deleted. It is the only claim on the page a sceptic can check without
-    // leaving it; what changed is that the reader meets it after seeing the products, i.e. once
-    // they have a reason to interrogate the shelf rather than before they know what is on it.
-    const mounts = page.match(/<LiveKillCard\b[^>]*>/g) ?? [];
-    expect(mounts.length, 'index.tsx must render exactly one <LiveKillCard>').toBe(1);
+    // So the guarantee this test defends is no longer "where does the panel sit" -- it is that
+    // THE PAGE STATES ITS KILL TOTAL ONCE. A count printed twice is the failure mode this file
+    // has been circling since 2026-08-05 (two mounts, two intervals, two ledgers); scoping the
+    // assertion to the figure rather than to one component is what makes it survive the panel's
+    // deletion. The component itself is NOT deleted -- the three assertions above still hold it
+    // to its provenance and its freshness claims, so it can be re-mounted anywhere without first
+    // re-earning them. /kill-log is where the full ledger lives now.
+    const source = stripComments(page);
+
     expect(
-      mounts[0],
-      'the single mount must not be breakpoint-gated -- it shows at every width now',
-    ).not.toMatch(/\bhidden\b|\blg:block\b|\blg:hidden\b/);
-    // Position, not just presence: this is the whole point of the change. `<CatalogBrowser>` is
-    // the shelf, so the panel's offset in the source must be after it.
-    const shelf = page.indexOf('<CatalogBrowser');
-    expect(shelf, 'the shelf (<CatalogBrowser>) must exist to position against').toBeGreaterThan(-1);
+      source.match(/<LiveKillCard\b/g) ?? [],
+      'the kill ledger panel is removed from this page; /kill-log carries it',
+    ).toHaveLength(0);
+    expect(source, 'and its import goes with it, or the bundle still pays for it').not.toMatch(
+      /import\s+[^;]*LiveKillCard/,
+    );
+
+    // The figure itself, stated once. `RESEARCH_STATS.killed` is the only route to it -- the
+    // survivor count is not exported at all (lib/stats.ts) precisely so no page can reprint it.
     expect(
-      page.indexOf('<LiveKillCard'),
-      'the kill ledger must render AFTER the shelf, never above the first product',
-    ).toBeGreaterThan(shelf);
+      source.match(/RESEARCH_STATS\.killed/g) ?? [],
+      'index.tsx must state the kill total exactly once',
+    ).toHaveLength(1);
+
+    // SCOPE, stated so the next reader does not "fix" a failure this test cannot see. This
+    // assertion owns index.tsx's own body and nothing else. Two components mounted by this page
+    // also reach the same total, and both are deliberate: `MarketingLayout.tsx:472`, the
+    // site-wide footer ledger that renders on every route, and `PopulationField.tsx:132`, which
+    // names it inside an `aria-label` because the field is a graphic and a screen reader needs
+    // the figure it depicts. `TrustGuaranteesRow` printed a third ("N ideas were killed to list
+    // these M") until the founder cut it on 2026-08-14. Counting renders across components would
+    // make this test fail on another component's copy decision, which is how a guard test starts
+    // being deleted rather than read.
+    const shelf = source.indexOf('<CatalogBrowser');
+    expect(shelf, 'the shelf (<CatalogBrowser>) must still be on the page').toBeGreaterThan(-1);
   });
 
-  it('home page renders LiveKillCard inside the hero', () => {
-    // The audit: "Replace the single text stack with a 2-column hero."
-    // The LiveKillCard must appear inside the hero section, not elsewhere.
-    if (!liveCardExists) return;
-    // The hero <SectionBand> contains the eyebrow + headline + sub + CTA.
-    // The LiveKillCard must be inside it, after the CTA, on the right.
-    const usesLiveCard = /<LiveKillCard\b/.test(page);
-    expect(
-      usesLiveCard,
-      'index.tsx must render <LiveKillCard> in the hero',
-    ).toBe(true);
+  it('the kill total on the home page is read, never typed in', () => {
+    // The panel's removal must not turn a derived figure into a literal. A hardcoded "1,364"
+    // freezes at the moment it is typed and then contradicts /kill-log the next time
+    // `tools/make_kill_log.py` runs -- the exact class of drift lib/stats.ts exists to end
+    // (two pages disagreed about the same JSON on 2026-08-06; see its docblock).
+    const source = stripComments(page);
+
+    expect(source, 'no typed-in thousands figure anywhere in the page body').not.toMatch(
+      /\b\d{1,3},\d{3}\b/,
+    );
+    expect(source, 'the page must not import the kill log JSON and re-derive its own totals').not.toMatch(
+      /from ['"]@\/data\/kill-log[^'"]*['"]/,
+    );
+    expect(source, 'the totals must come from the shared derivation').toMatch(
+      /from ['"]@\/lib\/stats['"]/,
+    );
+    // The receipt stays one click away: the strip that states the total carries the link.
+    expect(source, 'the kill log must remain reachable from the home page').toMatch(
+      /href="\/kill-log"/,
+    );
   });
 
   it('hero copy remains on the left of the live card (2-column layout)', () => {

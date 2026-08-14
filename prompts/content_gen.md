@@ -30,12 +30,37 @@ self-reported figure, confidence near 0.4). So:
   (f) an incumbent existing or having traction is evidence the PROBLEM is real, NOT
       evidence the reader's new venture will succeed or that its route is "proven" —
       never project a named competitor's scale onto the reader's outcome.
-Describe what the buyer GETS (the plan, the method, the deliverables) rather than
-asserting the venture's success; deliverables need no market-proof to be true.
+On the listing_page, describe what the buyer GETS (the plan, the method, the
+deliverables) rather than asserting the venture's success; deliverables need no
+market-proof to be true. On the other three pieces there is no plan and no pack to
+describe: you are the business, talking to the people it sells to.
 
 {currency_rule}
 USER: Opportunity: {candidate_json}   Verified claims/benchmarks: {claims_json}
-Type: {one of: listing_page | teaser_social | seo_preview | launch_email}
+Type: {type}
+
+Write ONLY the piece named on the Type line. The four pieces are four DIFFERENT documents
+with different readers, not four drafts of the same paragraph.
+
+WHO EACH PIECE IS WRITTEN FOR — get this wrong and the piece is worthless however true it is:
+
+- listing_page — for the person buying THIS PACK from our storefront. They are deciding
+  whether the opportunity is worth their evenings and their money. Second person, addressed
+  to them. This is the only piece that may mention the pack, the evidence or the sources.
+- teaser_social — for the BUSINESS'S OWN CUSTOMERS, written as the business, on the day it
+  launches. 2 to 4 short lines a person would stop scrolling for. No hashtags-as-filler.
+- seo_preview — for someone SEARCHING for the thing the business sells. Output a page title
+  of at most 60 characters, then a blank line, then a meta description of at most 155
+  characters, in the words a searcher would type.
+- launch_email — an email FROM THE BUSINESS TO ITS FIRST CUSTOMERS. It must open with a
+  `Subject:` line, then a blank line, then the body, and end with a single clear ask. Not a
+  description of the business in the third person.
+
+For teaser_social, seo_preview and launch_email you are writing AS THE BUSINESS, to its
+customers. Never mention this pack, this plan, the opportunity, the research, the evidence,
+the claims or their sources; never address the reader as someone starting a business. The
+buyer of the pack is not the reader of these three, and copy addressed to the wrong person
+cannot be sent as it is, which is the only reason these files exist.
 
 For teaser_social, seo_preview, launch_email — output ONLY: {"type":"...", "copy":"..."}
 

@@ -10,8 +10,9 @@ dossiers render their cited reason prominently (a cited KILL is first-class).
 from __future__ import annotations
 
 import re
-from typing import Optional
+from typing import Any, Optional
 
+from . import admissibility, trimming
 from .models import (
     DEFER_GATE,
     AdversarialResult,
@@ -20,6 +21,7 @@ from .models import (
     Decision,
     Dossier,
     ScoreResult,
+    Verdict,
 )
 from .score import passes_composite
 
@@ -304,6 +306,211 @@ _DECISION_GLOSS = {
 }
 
 
+def _verdict_of(chk: Any) -> str:
+    """A check's verdict as a plain lowercase string, whichever shape it arrived in.
+
+    Two loaders reach this renderer: `run.py` builds `CheckResult` with a `Verdict` enum,
+    while `pack_manifest.dossier_from_dict` leaves the raw string. `chk.verdict.value`
+    raises `AttributeError` on the second — so a caller that loaded a stored dossier could
+    not render it at all, and any code that fell back to a default would silently grade
+    every check as unknown. One reader, both shapes.
+    """
+    return str(getattr(chk.verdict, "value", chk.verdict) or "").strip().lower()
+
+
+def check_label(name: str) -> str:
+    """The buyer-facing question a check answers. Public because `pack_reference` renders the
+    same checks into the consolidated evidence document, and two label maps is how the QA
+    report and the reference document come to call the same check different things."""
+    return _CHECK_LABEL.get(str(name or ""), str(name or "").replace("_", " ").strip().capitalize())
+
+
+def _pass_gloss(dossier: Dossier) -> str:
+    """The PASS banner, counted from the verdicts rather than asserted.
+
+    Fixed 2026-08-14. The banner used to read "This cleared every check we hold it to" on
+    every PASS, unconditionally — and pack `8d5e24fbe6c1f5d3` shipped that sentence three
+    screens above `❌ Is the problem real? No — the sources contradict this`. The claim was
+    false in every lane that RUNS more checks than it GATES on, which is by design: the
+    `side_hustle` lane gates on four checks (`config.yaml:447-451`) and scores the rest
+    (`:538-541`). The lane held it to four and the page claimed eight.
+
+    We do not resolve that by hiding the negatives. The store's whole proposition is that
+    the checks are real and published, so a buyer who finds a ❌ under a blanket PASS has
+    caught us overselling — and the kill log, the best asset we have, becomes a joke. The
+    banner now states the split and points at the dissent, which is the version the founder
+    approved on sight (2026-08-13): "Two of eight checks came back against this idea. We
+    are still selling you the kit."
+    """
+    checks = list(dossier.checks or [])
+    if not checks:
+        return _DECISION_GLOSS[Decision.PASS]
+    total = len(checks)
+    against = [c for c in checks if _verdict_of(c) == Verdict.REFUTED.value]
+    unclear = [c for c in checks if _verdict_of(c) == Verdict.UNVERIFIABLE.value]
+    passed = total - len(against) - len(unclear)
+    if passed == total:
+        return ("This cleared every one of the "
+                f"{total} checks we hold it to, on evidence we fetched and cited below.")
+
+    def _names(items: list[Any]) -> str:
+        labels = [f"“{_CHECK_LABEL.get(c.check_name, c.check_name)}”" for c in items]
+        if len(labels) == 1:
+            return labels[0]
+        return ", ".join(labels[:-1]) + " and " + labels[-1]
+
+    def _count(n: int, verb_one: str, verb_many: str) -> str:
+        return f"One {verb_one}" if n == 1 else f"{n} {verb_many}"
+
+    parts = [f"**Passed {passed} of {total} checks.**"]
+    if against:
+        parts.append(f"{_count(len(against), 'came', 'came')} back against it "
+                     f"— {_names(against)}.")
+    if unclear:
+        parts.append(f"{_count(len(unclear), 'could', 'could')} not be settled either way "
+                     f"— {_names(unclear)}.")
+    parts.append("We are listing it anyway, and every verdict below is shown in full, so "
+                 "you can disagree with us before you spend anything.")
+    return " ".join(parts)
+
+
+def _source_index(dossier: Dossier) -> dict[str, Any]:
+    """Every retrieved Source in the dossier, keyed by the id the checks cite it as.
+
+    Built dossier-wide rather than per-check because the adversarial pass carries
+    `citations` and no `sources` of its own (`models.py:286-295`) — its ids are only
+    resolvable against the checks' passages.
+    """
+    index: dict[str, Any] = {}
+    for chk in (dossier.checks or []):
+        for src in (getattr(chk, "sources", None) or []):
+            sid = getattr(src, "source_id", "")
+            if sid and sid not in index:
+                index[sid] = src
+    return index
+
+
+def _host(url: str) -> str:
+    from urllib.parse import urlsplit
+    host = (urlsplit(url).hostname or "").lower()
+    return host[4:] if host.startswith("www.") else host
+
+
+#: What the engine actually does, in the words a buyer reads. It lives here as a constant
+#: because TWO surfaces render it: `render_markdown` for every new pack, and
+#: `rewrite_legacy_shelf_life` for the packs already on sale. Two copies of a promise is how a
+#: backfilled pack comes to promise something different from a freshly generated one.
+SHELF_LIFE_POLICY = (
+    "We re-check the evidence behind this pack every 30 days. The date above is when we look "
+    "again, not a date this stops being true. If a check no longer holds up, we take the pack "
+    "off sale rather than leave it quietly going out of date."
+)
+
+#: The line as it shipped, on 62 of 62 live packs (censused 2026-08-14 against R2). The prose
+#: pass left it verbatim, which is what makes a surgical rewrite of already-sold bundles safe.
+_LEGACY_SHELF_LIFE_RE = re.compile(
+    r"^-[ \t]+\*\*Evidence goes stale after:\*\*[ \t]*(?P<stamp>\S+)[ \t]*$", re.M)
+
+
+def shelf_life_lines(reverify_due_at: str) -> list[str]:
+    """The footer's freshness block, or nothing at all when there is no SLA stamp.
+
+    Silence is the correct output for a pack with no stamp: an invented date would be a promise
+    no sweep is behind.
+    """
+    stamp = _date_only(reverify_due_at)
+    if not stamp:
+        return []
+    return [f"- **Next evidence check:** {stamp}", "", SHELF_LIFE_POLICY]
+
+
+def rewrite_legacy_shelf_life(markdown: str) -> Optional[str]:
+    """Replace the old expiry line in an ALREADY-SHIPPED report, or None if it isn't there.
+
+    A live bundle's .md files are the deliverables of record and the backfill copies them
+    byte-identical; this is the one deliberate exception, and it is narrow on purpose. It
+    matches one exact line, rewrites it into the same text a new pack renders, and touches
+    nothing else — so a pack that was already corrected returns None and is not rewritten twice.
+    """
+    if not _LEGACY_SHELF_LIFE_RE.search(markdown or ""):
+        return None
+
+    def _sub(m: re.Match) -> str:
+        return "\n".join(shelf_life_lines(m.group("stamp")))
+
+    return _LEGACY_SHELF_LIFE_RE.sub(_sub, markdown)
+
+
+def _date_only(stamp: str) -> str:
+    """`2026-08-31T00:41:12.904331+00:00` is a machine stamp, not a date a buyer reads.
+
+    Kept lenient on purpose: an unparseable value is printed as it stands rather than dropped,
+    because a missing date in the footer is a worse failure than an ugly one.
+    """
+    text = str(stamp or "").strip()
+    return text[:10] if re.match(r"^\d{4}-\d{2}-\d{2}", text) else text
+
+
+def _cited(ids: list[str], index: dict[str, Any]) -> str:
+    """Render citation ids as something a buyer can actually open.
+
+    Fixed 2026-08-14, and the reason is worth keeping. This line used to be
+    ``", ".join(f"`{c}`" for c in citations)`` — the raw 16-hex passage id in backticks —
+    and every one of the 62 live packs rendered it as ``Sources used: , , , , , ,``,
+    because `plain_text._BARE_ID` strips bare hex ids from prose and did not exempt a code
+    span. That is now fixed at the regex, but restoring the ids would only have restored
+    `1e62e0c381e1c8d3`, which tells a buyer nothing. An internal passage id is not a
+    receipt. The domain, linked, is.
+
+    Unresolvable ids keep their raw form: this is an audit document and losing the pointer
+    is worse than showing an ugly one.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for cid in ids:
+        src = index.get(cid)
+        url = getattr(src, "url", "") if src is not None else ""
+        if not url:
+            if cid not in seen:
+                seen.add(cid)
+                out.append(f"`{cid}`")
+            continue
+        key = url.split("#", 1)[0]
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(f"[{_host(url) or url}]({url})")
+    return ", ".join(out)
+
+
+#: A model writes its citations into the rationale as `[c21b2c84c437b383, c666011f1509e3cc]`.
+#: In the QA report those never reach a buyer: the bundle's prose pass strips bare hex ids
+#: (`plain_text._BARE_ID`) and the paragraph reads cleanly (censused 2026-08-14 over 62 live
+#: packs: zero `[]` or `[, ,]` residue in prose). `pack_reference` renders the SAME rationale
+#: text with no prose pass at all — deterministic, zero model calls, which is what lets it be
+#: backfilled — so it has to turn the ids into links itself rather than inherit a strip that
+#: does not run on its path.
+_INLINE_IDS_RE = re.compile(r"\[((?:[0-9a-f]{16})(?:\s*,\s*[0-9a-f]{16})*)\]")
+
+
+def link_inline_citations(text: str, index: dict[str, Any]) -> str:
+    """Rewrite inline passage-id brackets into links a buyer can open.
+
+    An id that resolves to nothing keeps its raw form via `_cited`: this is an audit document,
+    and an ugly pointer beats a missing one.
+    """
+    def _sub(m: "re.Match[str]") -> str:
+        rendered = _cited([p.strip() for p in m.group(1).split(",")], index)
+        return f"({rendered})" if rendered else ""
+
+    return _INLINE_IDS_RE.sub(_sub, str(text or ""))
+
+
+def source_index(dossier: Any) -> dict[str, Any]:
+    """Public alias for `_source_index`, so `pack_reference` need not reach into a private."""
+    return _source_index(dossier)
+
+
 def _labelled(name: str, labels: dict[str, str]) -> str:
     """Plain label with the internal name kept alongside it. The token stays because a
     dossier is an audit document: someone has to be able to match this line to a gate
@@ -318,6 +525,7 @@ def render_markdown(dossier: Dossier) -> str:
     Both PASS and KILL are first-class: a KILL renders its cited reason prominently.
     """
     cand = dossier.candidate
+    src_index = _source_index(dossier)
     lines: list[str] = []
 
     # --- Header ---
@@ -329,7 +537,9 @@ def render_markdown(dossier: Dossier) -> str:
     # --- Decision badge (prominent) ---
     lines.append(_DECISION_BADGE[dossier.decision])
     lines.append("")
-    lines.append(f"_{_DECISION_GLOSS[dossier.decision]}_")
+    gloss = (_pass_gloss(dossier) if dossier.decision == Decision.PASS
+             else _DECISION_GLOSS[dossier.decision])
+    lines.append(f"_{gloss}_")
     lines.append("")
 
     # Provisional banner: this verdict was reached by the cheap emergency fallback tail
@@ -394,9 +604,10 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append("## What we checked")
         lines.append("")
         for chk in dossier.checks:
-            emoji = _VERDICT_EMOJI.get(chk.verdict.value, "?")
+            v = _verdict_of(chk)
+            emoji = _VERDICT_EMOJI.get(v, "?")
             label = _CHECK_LABEL.get(chk.check_name, chk.check_name)
-            verdict = _VERDICT_LABEL.get(chk.verdict.value, chk.verdict.value)
+            verdict = _VERDICT_LABEL.get(v, v)
             lines.append(f"### {emoji} {label}")
             lines.append("")
             lines.append(f"**{verdict}.** Confidence {chk.confidence:.2f}. "
@@ -410,15 +621,21 @@ def render_markdown(dossier: Dossier) -> str:
             lines.append("")
 
             if chk.citations:
-                lines.append("**Sources used:** " + ", ".join(f"`{c}`" for c in chk.citations))
+                lines.append("**Sources used:** " + _cited(chk.citations, src_index))
                 lines.append("")
 
             # --- Chain-of-Evidence (Contextual Snippets) ---
             if chk.sources:
                 lines.append("**What those sources said:**")
                 for src in chk.sources:
-                    snippet = src.text[:300].replace("\n", " ")
-                    lines.append(f"- [{src.source_id}] *\"{snippet}...\"* — [{src.url}]({src.url})")
+                    # `src.text[:300] + "..."` was a bare character slice, the exact defect
+                    # `trimming` exists to end: it produced the QA report's "which still
+                    # counts as demon", "which neither confi", "parents of autistic children
+                    # spe". `clip_to_sentence` cuts where a human would and marks the cut.
+                    snippet = trimming.clip_to_sentence(
+                        " ".join(str(src.text or "").split()), 300)
+                    host = _host(src.url) or src.url
+                    lines.append(f"- *“{snippet}”* — [{host}]({src.url})")
                 lines.append("")
 
     # --- Adversarial case ---
@@ -437,7 +654,7 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append(adv.kill_case)
         if adv.citations:
             lines.append("")
-            lines.append("**Sources used:** " + ", ".join(f"`{c}`" for c in adv.citations))
+            lines.append("**Sources used:** " + _cited(adv.citations, src_index))
             lines.append("")
 
     # --- Scores table (PASS only, but render for KILLs that have a score too) ---
@@ -477,10 +694,23 @@ def render_markdown(dossier: Dossier) -> str:
                         "same text we read, captured on the day we read it."
                         if archived_any else ""))
         lines.append("")
-        for src in all_src:
+        for n, src in enumerate(all_src, 1):
             pub = f" ({src.published_at})" if src.published_at else ""
-            snippet = src.text[:500].replace("\n", " ")
-            lines.append(f"### Source [{src.source_id}]")
+            # What KIND of page this is, in the buyer's words. Every entry here was rendered
+            # identically — same heading, same quote block — so a Pinterest board and a CDC
+            # page read as equals, and `8d5e24fbe6c1f5d3` shipped exactly that pair. The tier
+            # is already computed for the admissibility gate; printing it is free, and it is
+            # the difference between "33 links" and "here is what each link is". Blank for the
+            # unaudited `other` tier, because a label there would be a claim we cannot support.
+            provenance = admissibility.provenance_label(src.url or "")
+            # `src.text[:500] + "..."` was a bare slice with an unconditional ellipsis: it cut
+            # mid-word AND printed "…" on text that was never truncated, so a complete quote
+            # looked clipped. `clip_to_sentence` marks a cut only when it makes one.
+            snippet = trimming.clip_to_sentence(" ".join(str(src.text or "").split()), 500)
+            # Headed by host, not `source_id`. The id is ours — a 16-hex internal key means
+            # nothing to a buyer, and it is the same string that leaked into the prose above.
+            lines.append(f"### {n}. {_host(src.url) or src.url}"
+                         + (f" — {provenance}" if provenance else ""))
             lines.append(f"**URL:** [{src.url}]({src.url}){pub}")
             # The second pointer. `url` is the part that rots (measured 2026-08-09: 12 of 14
             # dead citations were genuinely gone), `text` below is the evidence and never
@@ -492,7 +722,7 @@ def render_markdown(dossier: Dossier) -> str:
                 on = f", as retrieved {fetched[:10]}" if fetched else ""
                 lines.append(f"**Archived copy:** [permanent snapshot]({archived}){on}")
             lines.append("")
-            lines.append(f"> {snippet}...")
+            lines.append(f"> {snippet}")
             lines.append("")
 
     # --- Metadata footer ---
@@ -501,13 +731,25 @@ def render_markdown(dossier: Dossier) -> str:
     lines.append("")
     if dossier.persona:
         lines.append(f"- **Persona:** {dossier.persona}")
-    lines.append(f"- **Judged by:** {dossier.model_version}")
+    # `Judged by:` is deliberately NOT rendered. It printed `dossier.model_version`, which for
+    # a chained operator is `fallback(cursor_cli+claude_cli+minimax)` (`operator.py:1272`) —
+    # so the buyer was shown our internal failover chain, told the judge was a "fallback",
+    # and handed a name (`cursor_cli`) deleted from this repo on 2026-08-06, which also dates
+    # the pack. It stays in the JSON dossier and the audit log, where it belongs; a buyer
+    # needs to know the evidence, not our provider routing.
     if getattr(cand, "market", ""):
         lines.append(f"- **Market:** {cand.market}")
-    lines.append(f"- **Candidate ID:** `{cand.candidate_id}`")
+    lines.append(f"- **Pack reference:** `{cand.candidate_id}`")
     lines.append(f"- **Created:** {dossier.created_at}")
-    if dossier.reverify_due_at:
-        lines.append(f"- **Evidence goes stale after:** {dossier.reverify_due_at}")
+    # This used to print `Evidence goes stale after: <date>`, which is `reverify_due_at`
+    # (created_at + 30 days, `run.py:813`) — an INTERNAL scheduling stamp telling the decay
+    # sweep when to look again. Printed in the buyer's copy it reads as a shelf life we never
+    # priced: someone buying on day 28 is told they have three days left. What actually
+    # happens is better than the promise, so we say that instead: the sweep re-runs the same
+    # checks (`scheduler/run_scheduled.py:714` → `run.run_decay_sweep`), and a re-vet that
+    # now fails a hard gate queues the pack for withdrawal (`decay.py::_queue_unlist`), while
+    # a re-vet that could not look (DEFER) changes nothing.
+    lines.extend(shelf_life_lines(dossier.reverify_due_at or ""))
     lines.append("")
 
     return "\n".join(lines)

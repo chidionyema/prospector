@@ -21,6 +21,20 @@ nltk>=3.9
 # (bridge.py::_create_bundle -> pack_html.py). Imported at module top level (not lazy) since
 # pack_html.py is loaded on every publish, not just an optional path.
 mistune>=3.3
+# The typeset edition of the pack (pack_pdf.py -> Complete_Pack.pdf). Imported LAZILY inside
+# the renderer, unlike mistune above: an install without it must still publish, one bonus file
+# short, rather than break the bundle writer on the money rail. The vendored OFL fonts it
+# embeds live in prospector/assets/fonts/ — fpdf2's core fonts are latin-1 only, which would
+# silently drop the £ sign and every em-dash in engine prose.
+fpdf2>=2.8
+# pack_pdf.py imports fontTools DIRECTLY (to read the vendored OFL metrics), and today it
+# resolves only because fpdf2 happens to pull it in transitively — the same accident the
+# numpy note below describes. A direct import must be declared, or the day fpdf2 drops the
+# edge the typeset pack breaks on a clean install and nothing here predicted it.
+fonttools>=4.5
+# Test-only: reads back the PDF this repo just wrote, so the assertions are about what a
+# buyer's reader will see (page count, extracted text) rather than about our own byte layout.
+pypdf>=5.0
 # API layer (api.py) + its FastAPI test client
 fastapi>=0.110
 uvicorn>=0.29

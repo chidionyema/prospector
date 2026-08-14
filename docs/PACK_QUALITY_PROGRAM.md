@@ -242,3 +242,59 @@ pack. Before fixing, run each defect as a census across all 62 published packs u
 `tools/preview_packs.py` (read from R2 — never from `publish/bundles/`, memory:
 `a-listed-pack-had-only-a-kill-dossier.md` and the 2026-08-14 disk/R2 correction). A defect on
 1 of 62 is a repair; a defect on 62 of 62 is a generator change.
+
+---
+
+## P8 — the action document was the same six lines in every pack *(outside the census)*
+
+Found 2026-08-13 while wiring P5, not in the founder's nine. **127 of 127 bundles on disk carried
+an identical `05_First_Week_Checklist.md`**, because `pack_floors.first_week_checklist_md` was
+wired unconditionally at `bridge.py`'s bundle step — a model-written checklist was never a
+possibility, the floor WAS the document. It also broke the rule `prompts/artifacts.md` imposes on
+every other document in the pack, telling the buyer to *"re-read the QA report kill/pass gates and
+list every SUPPORTED citation URL"* and to confirm that *"the buyer (`who_pays`)"* matched reality
+— our own audit trail, addressed to us, with a snake_case field name in a code span.
+
+**Fixed** by `prospector/pack_checklist.py`: a ten-step fortnight derived from the candidate
+fields, the check verdicts and the pack's own `##` headings — no model call, so the 127 packs
+already sold get the identical document (`tools/backfill_bundle_html.py`). The floor stays as the
+fallback for a pack that names no buyer. Tests: `tests/unit/test_pack_checklist.py`.
+
+---
+
+## Status ledger — what shipped, with receipts
+
+Append here; do not restate status in prose anywhere else.
+
+| Item | State | Receipt |
+|---|---|---|
+| P2 rendering | shipped | `tests/unit/test_pack_render_defects.py` |
+| P1 financial model | shipped | `pack_linter.REQUIRED_FIN_SECTIONS`, `tests/unit/test_currency_check_is_region_aware.py` |
+| P3 source quality | in flight (separate branch of work) | `docs/RETRIEVAL_PROGRAM.md` |
+| P6 marketing audience | shipped | `prospector/marketing_assets.py` `LABELS`, `tests/unit/test_marketing_assets_have_an_audience.py` |
+| P4 de-duplication | shipped as consolidation | `prospector/pack_reference.py` → `Evidence_and_Constraints.md` |
+| P5 one-page card | shipped | `prospector/pack_card.py` → `First_Fortnight.html` |
+| P5 machine-readable table | shipped | `prospector/pack_table.py` → `Assumptions.csv` |
+| P5 typeset PDF | **open — founder decision** | no PDF renderer is installed; see below |
+| P7 shelf life | shipped | `dossier.SHELF_LIFE_POLICY`, `tests/unit/test_shelf_life_copy.py` |
+| P8 action document | shipped | `prospector/pack_checklist.py` |
+| Backfill onto the live shelf | shipped | `tools/backfill_bundle_html.py`, 62/62 converted |
+
+**P4, measured rather than asserted.** The doc's *"roughly 40% of the reading is re-reading"* is
+not what the corpus shows: across the packs on disk, **0.4% of paragraphs repeat verbatim and 3.5%
+are near-duplicates**. The real signature of the defect is the *evidence*, not the prose — a median
+of **11 cited sources appear in more than one plan document per pack**, which is what
+`Evidence_and_Constraints.md` consolidates. The fix is the right one; the 40% figure is not, and it
+should not be quoted again.
+
+**P5's remaining half.** A real typeset PDF needs a decision, not more work: no PDF library is
+installed (weasyprint, reportlab, fpdf, xhtml2pdf, pdfkit, markdown_pdf — all absent; only
+`mistune` is), and the core PDF fonts are latin-1, so they cannot render the em-dashes and curly
+quotes the house style uses. Shipping one means vendoring a Unicode-licensed TTF into the repo.
+Until then the printable artefact is `First_Fortnight.html`, which prints to one sheet.
+
+**Everything a fix adds must reach the packs already sold.** That single constraint is why
+`pack_reference`, `pack_card`, `pack_table` and `pack_checklist` are all deterministic renderers
+over data already on disk: a model call cannot be replayed into a zip somebody bought last month.
+The backfill compares content rather than presence, so re-running it is a no-op
+(`rebuild_zip_with_index` returns `None` when nothing would change).

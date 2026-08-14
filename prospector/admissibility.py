@@ -72,7 +72,14 @@ MEDIA = {
     "bbc.co.uk", "bbc.com", "theguardian.com", "ft.com", "reuters.com", "telegraph.co.uk",
     "thetimes.co.uk", "economist.com", "independent.co.uk", "news.sky.com", "standard.co.uk",
     "inews.co.uk", "mirror.co.uk", "nytimes.com", "wsj.com",
-    # US national and state-of-record press, to match the rotation's eight states.
+    # US national desks and states-of-record press, to match the rotation's eight states.
+    # Added 2026-08-14 with the US-dominant rotation: measured that day,
+    # MEDIA held 7 UK titles and exactly 2 US ones (nytimes, wsj), so apnews.com,
+    # washingtonpost.com and npr.org all tiered `other` — a US pain_reality claim could not
+    # be corroborated by the outlets that actually cover it while the UK equivalent could.
+    # This is the real US gap; REGULATORS was NOT (".gov" is a suffix rule in GOV_SUFFIXES,
+    # so every federal AND state board — tdlr.texas.gov, dos.ny.gov — already tiers
+    # `government`, which is why `calbar.ca.gov` in REGULATORS is redundant).
     "apnews.com", "washingtonpost.com", "npr.org", "bloomberg.com", "cnbc.com",
     "politico.com", "axios.com", "latimes.com", "chicagotribune.com", "texastribune.org",
 }
@@ -80,11 +87,14 @@ ESTABLISHED_ORG = {
     "citizensadvice.org.uk", "carersuk.org", "ageuk.org.uk", "which.co.uk",
     "moneysavingexpert.com", "moneyhelper.org.uk", "mind.org.uk", "scope.org.uk",
     "shelter.org.uk", "acas.org.uk", "unison.org.uk", "rcn.org.uk",
-    # US equivalents by ROLE, not by fame: consumer advice, small-business representation,
-    # health/ageing policy and non-profit investigative reporting — the four functions the
-    # UK list already covers.
-    "consumerreports.org", "aarp.org", "kff.org", "pewresearch.org",
-    "uschamber.com", "nfib.com", "bbb.org", "propublica.org",
+    # US counterparts of the UK consumer/professional bodies above, chosen by ROLE rather
+    # than by fame: consumer advice, small-business representation, health/ageing policy and
+    # non-profit investigative reporting — the four functions the UK list already covers.
+    # Measured 2026-08-14:
+    # ESTABLISHED_ORG was 12 of 12 UK, so a US claim had no non-government, non-academic
+    # body that could corroborate it — the one tier where the US genuinely had nothing.
+    "consumerreports.org", "aarp.org", "kff.org", "pewresearch.org", "uschamber.com",
+    "nfib.com", "bbb.org", "propublica.org",
 }
 
 # Low-quality FOR THE PURPOSE OF RULING A VERDICT. Not "bad websites" — user-generated and

@@ -126,6 +126,7 @@ IMPORT_TO_DISTRIBUTION = {
     "dotenv": "python_dotenv",
     "pythonjsonlogger": "python_json_logger",
     "exa_py": "exa_py",
+    "fpdf": "fpdf2",
 }
 
 # Imported by modules that requirements.txt deliberately excludes — see its closing note on

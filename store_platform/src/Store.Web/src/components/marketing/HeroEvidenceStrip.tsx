@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import report from '@/data/sample-report.json';
-import { SourceChip, sourceHost } from '@/components/ui';
+import { SourceChip, sourceHost, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 
 /*
@@ -98,7 +98,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
         ))}
         <Link
           href="/sample"
-          className="font-medium text-caption text-accent underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
+          className={textLinkClass('font-medium text-caption')}
         >
           See the whole thing
         </Link>

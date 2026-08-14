@@ -30,7 +30,11 @@ export function WaitlistCallout() {
         whole offer, no drip sequence, no pitch.
       </p>
       <div className="mt-5">
-        <WaitlistForm source="sample-report-footer" submitLabel="Tell me when one survives" />
+        {/* No `submitLabel` override, 2026-08-14, same reason as `ShelfEndCapture`: one action
+            gets one verb, inherited from `WaitlistForm`, so the three placements cannot drift into
+            three names for the same button. The wording lives at `WaitlistForm.tsx:51` and is
+            flagged for the content review, not endorsed here. */}
+        <WaitlistForm source="sample-report-footer" />
       </div>
     </div>
   );

@@ -113,14 +113,36 @@ describe('N1 — Persistence of trust', () => {
    * the fallback for callers with no live figure to hand.
    */
   describe('the live count comes from the live stats, not the build-time snapshot', () => {
-    it('TrustGuaranteesRow accepts a listed prop and prefers it over the snapshot', () => {
+    /*
+     * THE STRONGER GUARANTEE (2026-08-14). This asserted `const live = listed ??`, i.e. that the
+     * row printed the live count and preferred the live source over the build-time snapshot. The
+     * founder then cut the row's counts entirely: the kill statistic was stated four times on one
+     * scroll, and this row was the last duplicate.
+     *
+     * Pinning the old expression would now demand the defect back, so the assertion moves to what
+     * actually protects the buyer. A row that prints NO count cannot contradict the live figure,
+     * so the test is no longer about precedence -- it is that the stale source is not reachable
+     * from this file at all. `kill-log-totals.json` is frozen at build time; while it is imported
+     * here, one edit re-creates the "61 live now" / "60 live now" contradiction the describe block
+     * above documents. An unimported module cannot be reached for by accident.
+     *
+     * `listed` stays in the props contract deliberately (the callers hold the live stats and
+     * should keep passing them), so that half of the original assertion is kept as-is.
+     */
+    it('TrustGuaranteesRow keeps the listed prop and cannot reach the stale snapshot', () => {
       if (!trustRowExists) return;
       const source = readSource('../components/marketing/TrustGuaranteesRow.tsx');
-      expect(source, 'must accept a `listed` prop').toMatch(/listed\??\s*:\s*number/);
+      expect(source, 'must still accept a `listed` prop').toMatch(/listed\??\s*:\s*number/);
+      // Anchored on `from`, so the comment in the file explaining WHY the import is absent does
+      // not itself satisfy the check it documents.
       expect(
         source,
-        'the live figure must prefer `listed` and fall back to the snapshot, not the reverse',
-      ).toMatch(/const\s+live\s*=\s*listed\s*\?\?/);
+        'must not import the build-time kill-log snapshot: this row states no counts',
+      ).not.toMatch(/from\s+'@\/data\/kill-log-totals\.json'/);
+      expect(
+        source,
+        'must not render a count: the live and killed figures are stated once, above the shelf',
+      ).not.toMatch(/\{\s*(killed|live)[.\s]/);
     });
 
     it('the home page feeds it the live stats figure', () => {

@@ -566,8 +566,26 @@
      is a real cut rather than a synthesised bold, and the policy exists to stop synthesis. It is
      a one-token exemption: the ban still holds for every other step, and
      `weightAndCasePolicy.test.ts` was widened to name display specifically rather than raised. */
-  --text-display: clamp(2.25rem, 1.2rem + 4vw, 4.5rem);
-  --text-display--line-height: 0.94; --text-display--letter-spacing: -0.036em; --text-display--font-weight: 660;
+  /* ── REVERTED TO THE SPEC'S OWN NUMBER, 2026-08-14 ──────────────────────────────────────────
+     Founder, seeing "Business ideas with the research already done." on the live page: "why is
+     this so huge?"
+
+     The block above is accurate about its own history and that is exactly the problem: 72px was
+     approved from a RENDERED SPECIMEN of the type alone, and the sentence it now has to set is
+     eight words long. At the 4.5rem cap it wraps to three lines at 0.94 leading, so the first
+     screen of a shop is a wall of headline -- a landing-page convention on a page whose job is to
+     show a shelf. A specimen approves a cut; it cannot approve a cut against copy it never saw.
+
+     This is not a new taste call overriding the founder's. It is a RETURN to SITE_SPEC §3.2,
+     which says display is 3.0rem and "Homepage hero only" -- the 72px was the override, argued in
+     the deleted `--text-mega` note below on grounds §3.2 had already answered. Restoring 48px
+     also retires the 660 weight exemption: back inside the "no scale weight above 600" policy,
+     so `weightAndCasePolicy.test.ts`'s widening for display is now belt-and-braces rather than
+     load-bearing. Tracking returns to -0.02em, which that block itself states is the correct
+     value at 48px, and leading to 1.05 -- 0.94 is a specimen setting for one or two words and
+     collides ascender-to-descender once a headline wraps. */
+  --text-display: clamp(2.25rem, 1.5rem + 2.4vw, 3rem);
+  --text-display--line-height: 1.05; --text-display--letter-spacing: -0.02em; --text-display--font-weight: 560;
   --text-h1: clamp(1.75rem, 1.25rem + 1.6vw, 2.25rem);
   --text-h1--line-height: 1.1;       --text-h1--letter-spacing: -0.02em;       --text-h1--font-weight: 560;
   --text-h2: 1.5rem;        --text-h2--line-height: 1.2;       --text-h2--letter-spacing: -0.015em;      --text-h2--font-weight: 520;

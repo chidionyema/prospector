@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import report from '@/data/sample-report.json';
-import { SourceChip } from '@/components/ui';
+import { SourceChip, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 
 /*
@@ -179,7 +179,7 @@ export function CheckSequence({ className }: { className?: string }) {
         </p>
         <Link
           href="/sample"
-          className="text-meta font-medium text-accent underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
+          className={textLinkClass('text-meta font-medium')}
         >
           Read the whole evidence record
         </Link>

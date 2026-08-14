@@ -138,6 +138,17 @@ export interface Pack {
    *  fourth copy of a list that the API itself does not validate. Absent on packs published
    *  before the persona survived the publish boundary. */
   audience?: string;
+  /** The engine's modelled economics. MOVED UP FROM `PackDetails` (2026-08-14) because the shelf
+   *  card now leads with a figure derived from it (`lib/packStat.ts`), and a field the product
+   *  page has but the shelf does not is a card that changes on click.
+   *
+   *  Optional, and every consumer must degrade when it is absent, for two independent reasons:
+   *  a deployed API predating `GET /catalog`'s projection of it (Store.Api/Program.cs) serves a
+   *  payload without it, exactly as `pricePence` above was shipped in either order; and the field
+   *  is genuinely missing on live packs -- measured across all 62 detail records on 2026-08-14,
+   *  22 carry no `month1Revenue` at all. `packLeadStat` falls to the cited source count in both
+   *  cases, which is why the card can never render blank. */
+  financialSnapshot?: FinancialSnapshot;
 }
 
 export interface PackDetails extends Pack {
@@ -146,7 +157,6 @@ export interface PackDetails extends Pack {
   qaVerdictSummary?: string;
   whatYouGet?: string[];
   sampleExtract?: string[];
-  financialSnapshot?: FinancialSnapshot;
 }
 
 /** Catalogue-wide survivorship counts (see GET /catalog/stats). */

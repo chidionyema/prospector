@@ -234,6 +234,17 @@ static string[] RehydrateStringArray(string? json)
     catch (JsonException) { return []; }
 }
 
+// Same defensive parse for the JSON-text map columns, at file scope because BOTH catalogue
+// endpoints now project the financial snapshot. Null rather than an empty map on a malformed
+// value: an absent model and a model of nothing are different facts, and the storefront's
+// fallback ladder branches on absence.
+static Dictionary<string, string>? RehydrateMap(string? json)
+{
+    if (string.IsNullOrWhiteSpace(json)) return null;
+    try { return JsonSerializer.Deserialize<Dictionary<string, string>>(json); }
+    catch (JsonException) { return null; }
+}
+
 app.MapGet("/catalog", async (StoreDbContext db, string? market) =>
 {
     // Materialise first, then shape: AdvantagesJson is JSON text (SQLite has no array
@@ -294,7 +305,15 @@ app.MapGet("/catalog", async (StoreDbContext db, string? market) =>
         p.Effort,
         p.Commitment,
         p.Mechanism,
-        Advantages = RehydrateStringArray(p.AdvantagesJson)
+        Advantages = RehydrateStringArray(p.AdvantagesJson),
+        // The engine's modelled economics, projected on the SHELF as well as the product page
+        // (2026-08-14). The card's lead figure is month-1 revenue against the pack's own price
+        // (Store.Web lib/packStat.ts), and without this the shelf has no number to lead with
+        // except the source count, so 62 of 62 cards would state the same class of fact.
+        // Same rule as Audience above: a field on the product page but not the shelf is a card
+        // that changes on click. The web degrades to the source count when it is absent, so the
+        // two sides stay deployable in either order.
+        FinancialSnapshot = RehydrateMap(p.FinancialSnapshotJson)
     }).ToList();
 })
 .WithName("GetCatalog")

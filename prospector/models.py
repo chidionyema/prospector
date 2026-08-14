@@ -109,12 +109,34 @@ class Source:
     # genuinely gone — while `text` is the evidence and never does. Defaulted so every
     # dossier written before 2026-08-09 still deserialises through `Source(**d)`.
     archived_url: Optional[str] = None
+    # WHICH search provider supplied this passage (`ddg`, `exa`, `claude_cli`, `fixture`…).
+    # Stamped once, at the chain boundary in `retrieval.make_provider`, never at the ~11
+    # `Source.make` call sites inside the individual providers — a new provider class would
+    # silently forget those, and this field exists precisely so that provider quality stops
+    # being unauditable.
+    #
+    # WHY IT EXISTS. Measured 2026-08-14 over 13,479 citations: 8.9% came from primary
+    # sources while 970 came from en.wikipedia.org, 318 from youtube.com and 170 from two
+    # dictionaries. Attributing that mix to a provider was IMPOSSIBLE from disk — the stored
+    # source carried no provider — so every provider-level finding had to be re-derived by
+    # live replay. `docs/RETRIEVAL_PROGRAM.md` §D8.
+    #
+    # NAMED `retrieved_by`, NOT `provider`: a dossier check already has a `provider` field
+    # meaning the VERDICT brain that ruled it. Two different questions ("who found the page"
+    # vs "who judged it") must not share a word in the same JSON document.
+    #
+    # Defaulted so every dossier written before 2026-08-14 still deserialises through
+    # `Source(**d)`. Absent means "written before attribution existed", never "unknown
+    # provider" — the two are not the same claim and a reader must be able to tell.
+    retrieved_by: Optional[str] = None
 
     @staticmethod
     def make(url: str, text: str, published_at: Optional[str] = None,
-             query: Optional[str] = None, fetched_at: Optional[str] = None) -> "Source":
+             query: Optional[str] = None, fetched_at: Optional[str] = None,
+             retrieved_by: Optional[str] = None) -> "Source":
         return Source(source_id=_id(url, text[:120]), url=url, text=text,
-                      published_at=published_at, query=query, fetched_at=fetched_at)
+                      published_at=published_at, query=query, fetched_at=fetched_at,
+                      retrieved_by=retrieved_by)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -365,6 +387,36 @@ class ScoreResult:
         return asdict(self)
 
 
+# The two numbers the pack cover advertises. They live as module functions, DUCK-TYPED over
+# anything with `.sources` / `.citations` / `.verdict`, because two callers hold two shapes of
+# the same record: the generator hands over a live `Dossier`, while the backfill reads
+# `store/dossiers/<id>.pass.json` through `pack_manifest._ns`, a SimpleNamespace tree whose
+# verdicts are plain strings. A second implementation for the second shape is how the cover
+# stat and the re-rendered cover stat would come to disagree about the same pack.
+def distinct_sources(checks: Any) -> list[Any]:
+    """Sources across every check, deduped by URL — see `Dossier.all_sources`."""
+    seen: dict[str, Any] = {}
+    for c in checks or []:
+        for s in (getattr(c, "sources", None) or []):
+            key = (str(getattr(s, "url", "") or "").strip().rstrip("/")
+                   or f"id:{getattr(s, 'source_id', id(s))}")
+            seen.setdefault(key, s)
+    return list(seen.values())
+
+
+def cited_claim_count(checks: Any) -> int:
+    """Checks that ruled on something AND cited it — see `Dossier.cited_claim_count`."""
+    total = 0
+    for c in checks or []:
+        verdict = getattr(c, "verdict", None)
+        name = str(getattr(verdict, "value", verdict) or "").strip().lower()
+        if name == Verdict.UNVERIFIABLE.value:
+            continue
+        if getattr(c, "citations", None) or getattr(c, "sources", None):
+            total += 1
+    return total
+
+
 @dataclass
 class Dossier:
     """The full audit record for one candidate — PASS or KILL, both first-class.
@@ -438,11 +490,30 @@ class Dossier:
 
     @property
     def all_sources(self) -> list[Source]:
-        seen: dict[str, Source] = {}
-        for c in self.checks:
-            for s in c.sources:
-                seen[s.source_id] = s
-        return list(seen.values())
+        """Distinct sources, keyed by URL — not by `source_id`.
+
+        `source_id` is minted per retrieval, so the same page fetched for two checks is two
+        ids and was counted twice: `8d5e24fbe6c1f5d3` advertised "Grounded in 51 sources"
+        with `lulu.com/create/print-books` in the list twice. This property feeds the pack's
+        source appendix, the cover stat and the storefront's `sourceCount`, so the
+        duplicate inflated the headline number AND printed the same page twice in the
+        receipts — on a storefront whose whole position is that the evidence is checkable.
+
+        Keyed on the URL alone, ignoring `source_id`, because the URL is what a buyer would
+        click; a page with no URL keeps its id as the key so it is never silently merged.
+        """
+        return distinct_sources(self.checks)
+
+    @property
+    def cited_claim_count(self) -> int:
+        """How many of this pack's claims are load-bearing AND carry a citation.
+
+        This is the number the refund promise is written against ("pick any claim marked
+        SUPPORTED, click its source"), so it counts checks that actually RULED and cited
+        something — an `unverifiable` check makes no claim to check, and a ruling with no
+        citation is not one a buyer can open.
+        """
+        return cited_claim_count(self.checks)
 
     def to_dict(self) -> dict[str, Any]:
         return {

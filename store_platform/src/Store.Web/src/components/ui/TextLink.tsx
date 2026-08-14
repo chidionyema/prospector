@@ -45,7 +45,13 @@ import { cx } from './cx';
  */
 export const textLinkClass = (className?: string) =>
   cx(
-    'text-accent underline decoration-border-strong underline-offset-2 transition-colors',
+    // `underline-offset-4`, raised from 2 on 2026-08-14 (founder, from a screenshot of "Why prices
+    // differ"): 2px was still inside the descender depth of this face at `text-meta`, so the rule
+    // cut through the y and the p exactly as the un-offset default did -- the fix documented above
+    // was directionally right and short by 2px. It is set in px-equivalents rather than as an em
+    // ratio because Tailwind's offsets are absolute and the sizes this class serves are within one
+    // step of each other.
+    'text-accent underline decoration-border-strong underline-offset-4 transition-colors',
     'hover:decoration-text hover:text-accent-hover',
     className,
   );

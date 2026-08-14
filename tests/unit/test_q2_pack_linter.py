@@ -28,27 +28,15 @@ from prospector.pack_linter import (
     symbol_for_currency,
 )
 
-# A financial model in exactly the renderer's format, arithmetic all correct.
+# Rendered by the code under test, not transcribed: `check_arithmetic` is a set of regexes
+# over another module's output, and a hand-typed fixture lets those regexes go vacuous the
+# day a line is reworded — the checker then passes everything, which is worse than failing.
 # (payback 100/44 = 2.27 prints as ~2.3 — inside the display-rounding tolerance.)
-GOOD_FIN = """## Financial Model
-
-### Revenue
-- **Month 1:** £50 × 10 customers = **£500**
-- **Month 12:** £50 × 120 customers = **£6,000**
-- **Growth (M1→M12):** 12.0×
-
-### Gross Margin: **88%** (COGS: 12% of revenue)
-- **Per customer/month:** £44.00
-
-### Payback Period
-- **~2.3 months** (CAC £100 / gross margin £44.00/month)
-
-### Customer Lifetime Value (CLV)
-- ~**£1,000** (ARPU £50 / 5.0% monthly churn)
-
-### LTV:CAC Ratio
-- 10.0
-"""
+GOOD_FIN = _render_financial_model(
+    {"revenue_model": "subscription", "monthly_price": 50,
+     "target_customers_month_1": 10, "target_customers_month_12": 120,
+     "estimated_cac_gbp": 100, "estimated_monthly_churn_pct": 5.0,
+     "cost_of_goods_pct": 12, "overhead_month_1_gbp": 200}, [], "£")
 
 
 # ---------------------------------------------------------------------------
@@ -133,18 +121,22 @@ def test_arithmetic_correct_model_has_no_problems():
 @pytest.mark.parametrize("broken, fragment", [
     ("- **Month 1:** £50 × 10 customers = **£999**", "Month 1"),
     ("- **Growth (M1→M12):** 3.0×", "Growth"),
-    ("### Gross Margin: **80%** (COGS: 12% of revenue)", "Gross margin"),
-    ("- ~**£880** (ARPU £50 / 5.0% monthly churn)", "CLV"),
-    ("- **~9.9 months** (CAC £100 / gross margin £44.00/month)", "Payback"),
+    ("- **Gross margin: 80%** — making and delivering it costs 12%", "Gross margin"),
+    ("- **~£880** — they pay £50 a month and about 5.0% stop each month.", "CLV"),
+    ("- **Paid back in: ~9.9 months** (£100 to win a customer ÷ £44.00 kept each month)",
+     "Payback"),
 ])
 def test_arithmetic_each_broken_line_is_caught(broken, fragment):
     # Swap exactly one correct line for its corrupted counterpart, keep the rest intact.
     replacements = {
         "Month 1": ("- **Month 1:** £50 × 10 customers = **£500**", broken),
         "Growth": ("- **Growth (M1→M12):** 12.0×", broken),
-        "Gross margin": ("### Gross Margin: **88%** (COGS: 12% of revenue)", broken),
-        "CLV": ("- ~**£1,000** (ARPU £50 / 5.0% monthly churn)", broken),
-        "Payback": ("- **~2.3 months** (CAC £100 / gross margin £44.00/month)", broken),
+        "Gross margin": ("- **Gross margin: 88%** — making and delivering it costs 12%",
+                         broken),
+        "CLV": ("- **~£1,000** — they pay £50 a month and about 5.0% stop each month.",
+                broken),
+        "Payback": ("- **Paid back in: ~2.3 months** (£100 to win a customer ÷ "
+                    "£44.00 kept each month)", broken),
     }
     good_line, broken_line = replacements[fragment]
     text = GOOD_FIN.replace(good_line, broken_line)
@@ -168,13 +160,34 @@ def test_arithmetic_rounding_tolerance_not_a_false_positive():
 # ---------------------------------------------------------------------------
 
 def test_sections_all_present_and_empty_model_skipped():
+    # GOOD_FIN is rendered by the LIVE renderer, so its revenue section is "### What it
+    # earns". The legacy spelling is covered separately below, because every pack already on
+    # the shelf reads "### Revenue" and a `sections` error unlists a pack.
     assert check_sections(GOOD_FIN) == []
     assert check_sections("") == []  # emptiness is validate_pack's finding, not ours
 
 
 def test_sections_missing_revenue_is_error():
-    probs = check_sections(GOOD_FIN.replace("### Revenue", "### Rev"))
-    assert any("### Revenue" in p["detail"] for p in probs)
+    # Neither the current name nor the legacy alias is present, so the section really is gone.
+    # The complaint names what the renderer emits TODAY, not the alias that happens to be
+    # missing — a pack author reading this needs the header they are expected to produce.
+    text = GOOD_FIN.replace("### What it earns", "### Rev")
+    assert text != GOOD_FIN, "test bug: the renderer no longer emits '### What it earns'"
+    probs = check_sections(text)
+    assert any("### What it earns" in p["detail"] for p in probs)
+
+
+def test_the_legacy_revenue_header_still_satisfies_the_section_check():
+    """The other half of the alias, and the half with packs riding on it.
+
+    Every financial model rendered before the 2026-08-14 plain-speech rewrite says
+    "### Revenue". `check_sections` is a sellability gate, so without the alias a rename in
+    the renderer would unlist the whole shelf. Asserted by RENAMING the live header to the
+    legacy one — if the alias were deleted, this goes red instead of passing vacuously.
+    """
+    legacy = GOOD_FIN.replace("### What it earns", "### Revenue")
+    assert legacy != GOOD_FIN, "test bug: the replacement did not apply"
+    assert check_sections(legacy) == []
 
 
 # ---------------------------------------------------------------------------
@@ -569,21 +582,63 @@ def test_a_third_person_verb_after_the_comma_is_reported():
     assert any("verb 'finds'" in d for d in details)
 
 
-def test_the_actuator_is_off_by_default_so_a_bad_title_cannot_unlist_a_pack():
-    # The whole reason the check can ship before the catalogue is retitled: on 2026-08-09
-    # this rule would have errored on 46 of 48 live packs, and the register change of
-    # 2026-08-13 puts every remaining name-first title in breach again.
+def test_the_actuator_is_on_by_default_so_a_breaching_title_cannot_reach_a_buyer():
+    # This inverts the 2026-08-09 test that pinned the actuator OFF. That default existed
+    # for one stated reason — the rule errored on 46 of 48 live packs, so blocking would
+    # have unlisted a catalogue that predated it — under the stated condition "turn it on
+    # once the catalogue has been retitled". Met and measured on 2026-08-14: 62/62 live rows
+    # re-fetched, 0 flagged by this check.
+    #
+    # It is a code default rather than a config one because the config-only version was one
+    # uncommitted line in a file another session owned: `git checkout config.yaml` would
+    # have unbound the gate with no test going red. A gate whose safe state depends on an
+    # edit surviving is not a gate.
     report = _title_report("SwarmHold")
+    assert report["ok"] is False
+    assert any(p["severity"] == "error"
+               for p in report["problems"] if p["check"] == "title")
+
+
+def test_the_actuator_can_still_be_turned_off_but_only_deliberately():
+    # The other half, and the one that makes the test above mean something: if `block` had
+    # simply been hard-wired, the test above would pass while the operator lost the switch.
+    # An explicit false still downgrades every breach to a warning and lets the pack list.
+    report = _title_report("SwarmHold", title_block_on_breach=False)
     assert report["ok"] is True
     assert all(p["severity"] == "warning"
                for p in report["problems"] if p["check"] == "title")
 
 
-def test_the_actuator_on_makes_the_same_title_block_the_listing():
-    report = _title_report("SwarmHold", title_block_on_breach=True)
-    assert report["ok"] is False
-    assert any(p["severity"] == "error"
-               for p in report["problems"] if p["check"] == "title")
+def test_the_publish_path_takes_its_default_from_the_linter_not_its_own_literal():
+    """The default that actually decides whether a pack lists is bridge.py's, not this
+    module's: `publish_pass` reads `listing_cfg.get("title_block_on_breach", <default>)`, so
+    a second literal there could disagree with the signature above and nothing would go red
+    — the linter's tests would pass while production shipped the other behaviour.
+
+    So the fallback must be the imported NAME, and that is a source-level invariant, which
+    is why this reads the source. Asserting it by running `publish_pass` would need a whole
+    Dossier and would still only prove the value on the day, not that the two sites are one.
+    """
+    import ast
+    import pathlib
+
+    from prospector import pack_linter
+    assert pack_linter.TITLE_BLOCK_ON_BREACH_DEFAULT is True
+
+    src = (pathlib.Path(pack_linter.__file__).parent
+           / "bridge.py").read_text(encoding="utf-8")
+    fallbacks = [
+        node.args[1] for node in ast.walk(ast.parse(src))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "get" and len(node.args) == 2
+        and isinstance(node.args[0], ast.Constant)
+        and node.args[0].value == "title_block_on_breach"
+    ]
+    assert fallbacks, "bridge.py no longer reads title_block_on_breach from the listing config"
+    for fb in fallbacks:
+        assert isinstance(fb, ast.Name) and fb.id == "TITLE_BLOCK_ON_BREACH_DEFAULT", (
+            "bridge.py hard-codes its own default for the title actuator; use the linter's "
+            f"constant so the two cannot drift (found {ast.dump(fb)})")
 
 
 def test_an_empty_title_errors_whatever_the_actuator_says():

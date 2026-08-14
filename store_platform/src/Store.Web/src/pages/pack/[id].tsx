@@ -7,7 +7,7 @@ import { Seo } from '@/components/Seo';
 import { productJsonLd } from '@/lib/productJsonLd';
 import { absolute, breadcrumbNode, graph } from '@/lib/seo/schema';
 import { packOgImagePath } from '@/lib/seo/ogImage';
-import { buttonClasses, Glyph, Icon, ErrorState, Breadcrumbs, SourcedLine, CitationList, PriceText } from '@/components/ui';
+import { buttonClasses, Glyph, Icon, ErrorState, Breadcrumbs, SourcedLine, CitationList, PriceText, textLinkClass } from '@/components/ui';
 import { parseCitations } from '@/lib/citations';
 import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
@@ -342,7 +342,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
       <p className="mt-2 text-caption leading-relaxed text-subtle">
         Set by how big this idea could get and the market it targets, never by the size of the
         pack.{' '}
-        <Link href="/pricing" className="text-accent underline underline-offset-2 hover:text-accent-hover">
+        <Link href="/pricing" className={textLinkClass()}>
           See the ladder
         </Link>
         .
@@ -499,7 +499,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
             icon row. */}
         Secure checkout via {providerLabel}. A pack is evidence-backed research, not a promise of business
         success. See our{' '}
-        <Link href="/refund" className="text-accent underline underline-offset-2 hover:text-accent-hover">
+        <Link href="/refund" className={textLinkClass()}>
           refund policy
         </Link>
         .
@@ -810,7 +810,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                 rest died on cited evidence.{' '}
                 <Link
                   href="/kill-log"
-                  className="text-accent underline underline-offset-2 hover:text-accent-hover"
+                  className={textLinkClass()}
                 >
                   Read what killed them
                 </Link>
@@ -978,7 +978,7 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
                   Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
                   <Link
                     href="/how-it-works"
-                    className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover"
+                    className={textLinkClass('font-medium')}
                   >
                     /how-it-works
                   </Link>

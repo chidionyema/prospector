@@ -102,6 +102,11 @@ export function Modal({ open, onClose, title, children, footer, placement = 'cen
    * context, so the drawer's `z-50` was scoped inside it and could never rise above page content
    * regardless of the number.
    *
+   * That header is opaque as of 2026-08-14 and no longer carries `backdrop-blur-md`, so the
+   * specific ancestor described above is gone -- the portal is NOT therefore redundant. It is what
+   * makes the drawer independent of whatever the header happens to be that week, and the header is
+   * one `filter`, `transform` or `will-change` away from being that ancestor again.
+   *
    * A background on the body row would have hidden the symptom at one width and left the drawer
    * still trapped in a 65px box. Escaping to <body> fixes both, and fixes them for every future
    * caller that happens to sit under a blurred or transformed ancestor -- which is invisible at

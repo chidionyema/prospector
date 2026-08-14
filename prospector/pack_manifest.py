@@ -48,6 +48,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from pathlib import PurePosixPath
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
@@ -72,6 +73,21 @@ _SAFE_ID = re.compile(r"[^A-Za-z0-9_-]+")
 def _frag(prefix: str, value: str) -> str:
     """A JSON-LD node id. Sanitised because source ids are derived from URLs upstream."""
     return f"#{prefix}-{_SAFE_ID.sub('-', value or 'unknown')}"
+
+
+#: Media type per extension for the bonus files. A table rather than the `.html`-or-octet-stream
+#: conditional it replaces: `application/octet-stream` is what a client is told when we do not
+#: know, and telling an agent that of a PDF or a CSV — the two files most likely to be opened by
+#: something other than a person — makes the manifest less useful than the filename it carries.
+_MEDIA_TYPES = {
+    ".html": "text/html",
+    ".pdf": "application/pdf",
+    ".csv": "text/csv",
+    ".md": "text/markdown",
+    ".json": "application/json",
+    ".jsonld": "application/ld+json",
+    ".txt": "text/plain",
+}
 
 
 def _as_bytes(content: Any) -> bytes:
@@ -238,7 +254,8 @@ def render_manifest(
             "@id": _frag("file", name),
             "@type": "DigitalDocument",
             "name": name,
-            "encodingFormat": "text/html" if name.endswith(".html") else "application/octet-stream",
+            "encodingFormat": _MEDIA_TYPES.get(PurePosixPath(name).suffix.lower(),
+                                               "application/octet-stream"),
             "contentUrl": name,
             "contentSize": str(len(_as_bytes(content))),
             "prospector:sha256": _digest(content),

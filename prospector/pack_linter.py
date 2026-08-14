@@ -31,6 +31,7 @@ from .copy_lint import (
     extract_urls,
     is_prose_artifact,
 )
+from .marketing_assets import BUSINESS_VOICE_TYPES, PACK_VOICE_RE, has_subject_line
 
 Problem = Dict[str, str]  # {"check", "severity", "where", "detail"}
 
@@ -81,7 +82,30 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 # `artifacts._render_financial_model` appends two model-authored lists at the end, and its
 # own source marks them: those lists "are the only FREE TEXT in this artifact — everything
 # above is Python formatting a number."
-FINANCIAL_MODEL_FREE_TEXT_HEADERS = ("### Key Assumptions", "### Model Weaknesses")
+# The renderer's own heading for each model-authored list, plus the pre-2026-08-14 names
+# still on every pack already on disk. Both spellings have to be recognised: this boundary
+# decides which half of the document the currency check is allowed to rewrite, and a backfill
+# run against an old pack (tools/backfill_pack_currency.py) with only the new names would
+# treat a cited $ price as ours to change — the silent re-tightening that
+# test_the_boundary_headers_match_what_the_renderer_actually_emits exists to catch.
+# "What we could not work out" is deliberately NOT here: those sentences are Python
+# literals, so they belong on the strict side with the rest of our own prose.
+#: What the renderer emits TODAY. A test pins this pair against `_render_financial_model`,
+#: so renaming a heading there goes red here instead of silently re-tightening the rule.
+FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT = (
+    "### What we assumed", "### Where this is weakest",
+)
+#: The pre-2026-08-14 spellings, on every pack already on disk. Nothing emits these now, so
+#: they cannot be asserted against the renderer — which is exactly why they are kept OUT of
+#: the current-contract tuple below and added back at the one place that needs them.
+FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY = (
+    "### Key Assumptions", "### Model Weaknesses",
+)
+#: The CURRENT renderer contract, and only that, so the drift guard can assert the renderer
+#: still emits every name in it. The recognised BOUNDARY is the union of the two, formed in
+#: `split_rendered_free_text` below — one place, so the guard and the boundary cannot drift.
+FINANCIAL_MODEL_FREE_TEXT_HEADERS = FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT
+_LEGACY_FREE_TEXT_HEADERS = FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY
 
 
 def split_rendered_free_text(fin_text: str) -> Tuple[str, str]:
@@ -93,7 +117,9 @@ def split_rendered_free_text(fin_text: str) -> Tuple[str, str]:
     written for.
     """
     text = fin_text or ""
-    cuts = [text.index(h) for h in FINANCIAL_MODEL_FREE_TEXT_HEADERS if h in text]
+    cuts = [text.index(h)
+            for h in FINANCIAL_MODEL_FREE_TEXT_HEADERS + _LEGACY_FREE_TEXT_HEADERS
+            if h in text]
     cut = min(cuts) if cuts else len(text)
     return text[:cut], text[cut:]
 
@@ -175,14 +201,22 @@ def _num(s: str) -> float:
     return float(s.replace(",", ""))
 
 
+# Unit word alternated 2026-08-14: a one-off business sells ORDERS, and a checker whose
+# regex only knows "customers" would go silently vacuous on exactly those packs rather than
+# fail — the worst failure available to a checker.
 _MONTH_RE = re.compile(
-    r"\*\*Month (1|12):\*\* [£$]([\d,]+) × ([\d,]+) customers = \*\*[£$]([\d,]+)\*\*")
+    r"\*\*Month (1|12):\*\* [£$€]([\d,]+) × ([\d,]+) (?:customers|orders) = "
+    r"\*\*[£$€]([\d,]+)\*\*")
 _GROWTH_RE = re.compile(r"\*\*Growth \(M1→M12\):\*\* ([\d.]+)×")
-_GM_RE = re.compile(r"### Gross Margin: \*\*(-?\d+)%\*\* \(COGS: (\d+)% of revenue\)")
-_PER_CUST_RE = re.compile(r"\*\*Per customer/month:\*\* [£$]([\d,]+\.\d{2})")
+_GM_RE = re.compile(
+    r"\*\*Gross margin: (-?\d+)%\*\* — making and delivering it costs (\d+)%")
+_PER_CUST_RE = re.compile(r"\*\*Kept per (?:customer|order): [£$€]([\d,]+\.\d{2})\*\*")
 _PAYBACK_CALC_RE = re.compile(
-    r"\*\*~([\d.]+) months\*\* \(CAC [£$]([\d,]+) / gross margin [£$]([\d,]+\.\d{2})/month\)")
-_CLV_CALC_RE = re.compile(r"~\*\*[£$]([\d,]+)\*\* \(ARPU [£$]([\d,]+) / ([\d.]+)% monthly churn\)")
+    r"\*\*Paid back in: ~([\d.]+) months\*\* \([£$€]([\d,]+) to win a customer ÷ "
+    r"[£$€]([\d,]+\.\d{2}) kept each month\)")
+_CLV_CALC_RE = re.compile(
+    r"- \*\*~[£$€]([\d,]+)\*\* — they pay [£$€]([\d,]+) a month and about "
+    r"([\d.]+)% stop each month")
 
 
 def check_arithmetic(fin_text: str) -> List[Problem]:
@@ -258,8 +292,90 @@ def check_arithmetic(fin_text: str) -> List[Problem]:
 # Required sections (renderer contract — presence/emptiness is validate_pack's finding)
 # ---------------------------------------------------------------------------
 
-REQUIRED_FIN_SECTIONS = ("## Financial Model", "### Revenue",
-                         "### Payback Period", "### LTV:CAC Ratio")
+# Only the two the renderer GUARANTEES. Payback and lifetime value are computed from
+# inputs a model may not supply, and requiring their headings is what forced the renderer
+# to print `_(not specified)_` under an empty one — 23 of 68 shipped packs carried at least
+# one, 4 carried nothing else. A section that cannot be computed is now omitted and
+# declared under "What we could not work out"; the renderer returns "" (and the pack is
+# held back) when even the headline is missing, which is what makes these two safe to pin.
+REQUIRED_FIN_SECTIONS = ("## Financial Model", "### What it earns")
+
+# What the same section was called before the 2026-08-14 rewrite. `check_sections` is a
+# SELLABILITY gate — a `sections` error unlists the pack — so grading a pack rendered last
+# week against this week's header names would take packs off the shelf for a rename. Present
+# here, absent from REQUIRED_FIN_SECTIONS above, so a section that is genuinely missing is
+# still reported under the name the renderer emits today.
+_SECTION_ALIASES = {"### What it earns": ("### Revenue",)}
+
+
+# ---------------------------------------------------------------------------
+# Placeholders — a gap where a number should be
+# ---------------------------------------------------------------------------
+# Added 2026-08-14. `_(not specified)_`, `_(cannot compute without CLV and CAC)_` and
+# `_(targets not specified)_` were RENDERED BY US, in place of every figure the model had
+# not supplied. Measured across the 68 financial models on disk: 23 carried at least one and
+# 4 carried nothing else — a document called "Financial Model", in a £49.99 pack, with no
+# number in it. The renderer no longer emits them; this is the fence that keeps any future
+# one off the storefront rather than trusting that it will not come back.
+#
+# `error` severity, deliberately: `report["ok"]` is what the publish gate ANDs into
+# `is_listed`, so a placeholder holds the pack back instead of riding along in a warning
+# nobody reads.
+_PLACEHOLDER_RE = re.compile(
+    r"_\((?:[^)]*\b(?:not specified|not stated|cannot compute|unspecified|to be "
+    r"determined|tbd|todo|n/a)\b[^)]*)\)_", re.IGNORECASE)
+
+
+def check_placeholders(artifacts: Mapping[str, str]) -> List[Problem]:
+    """Every artifact, not just the financial model: the defect is a shape, not a file."""
+    problems: List[Problem] = []
+    for name, text in sorted((artifacts or {}).items()):
+        for hit in dict.fromkeys(_PLACEHOLDER_RE.findall(str(text or ""))):
+            problems.append(_err(
+                "placeholders", name,
+                f"a gap is printed where a figure belongs: {hit.strip()}"))
+    return problems
+
+
+def check_marketing(marketing: Optional[Iterable[Mapping[str, Any]]]) -> List[Problem]:
+    """Is each marketing asset the document its label claims, written to its own reader?
+
+    Three findings, and the severities are calibrated to what a republish can actually do:
+
+    * **error** — a piece written to sell OUR pack where the buyer needs copy for THEIR
+      business ("open the pack", "this is the plan for"). It is unusable as it stands and
+      is unambiguous: 19 of 557 dossiers on 2026-08-14, so blocking cannot strand the
+      corpus.
+    * **error** — a `listing_page` that opens `Subject:`. That is the swap the founder
+      found, and a listing page is the one piece the storefront actually renders.
+    * **warning** — a `launch_email` with no subject line. Corpus-wide (177 of 177 before
+      the prompt fix), so an error here would unlist every pack on disk over a defect that
+      only regeneration can clear. It rides in the receipt and becomes countable.
+    """
+    problems: List[Problem] = []
+    for piece in marketing or []:
+        t = str((piece or {}).get("type", "") or "").strip().lower()
+        copy = str((piece or {}).get("copy", "") or "")
+        if not copy.strip():
+            continue
+        where = f"marketing:{t or 'asset'}"
+        hit = PACK_VOICE_RE.search(copy)
+        if hit and t in BUSINESS_VOICE_TYPES:
+            problems.append(_err(
+                "marketing_audience", where,
+                f"written to sell this pack, not to the business's own customers: "
+                f"{hit.group(0)!r}"))
+        if t == "listing_page" and has_subject_line(copy):
+            problems.append(_err(
+                "marketing_audience", where,
+                "the listing page opens with a subject line, so it is an email under the "
+                "wrong heading"))
+        if t == "launch_email" and not has_subject_line(copy):
+            problems.append(_warn(
+                "marketing_audience", where,
+                "no subject line, so this is a description of the business rather than an "
+                "email anyone could send"))
+    return problems
 
 
 def check_sections(fin_text: str) -> List[Problem]:
@@ -268,7 +384,8 @@ def check_sections(fin_text: str) -> List[Problem]:
         return []  # an empty artifact is validate_pack's finding; don't double-report
     return [
         _err("sections", "financial_model", f"missing required section {s!r}")
-        for s in REQUIRED_FIN_SECTIONS if s not in t
+        for s in REQUIRED_FIN_SECTIONS
+        if s not in t and not any(a in t for a in _SECTION_ALIASES.get(s, ()))
     ]
 
 
@@ -324,6 +441,12 @@ def check_truncation(fields: Dict[str, Tuple[str, str]],
 #: already produces a 40-60 char line for the same pack and renders it well, so the title
 #: has no claim to be 90+.
 TITLE_MAX_CHARS = 60
+
+# The actuator's default, named once because it is read in two places — `check_title`/`lint`
+# below, and `bridge.py`'s `listing_cfg.get(...)` fallback on the publish path. Two literals
+# that must agree is the same drift this module exists to catch: the one that matters is
+# bridge's, and a config file cannot be relied on to carry it (see check_title, 2026-08-14).
+TITLE_BLOCK_ON_BREACH_DEFAULT = True
 
 #: Kept for the LEGACY reading of a `Name, descriptor` title (see `split_title`). They no
 #: longer gate `check_title`: under the current format there is no name in the title at all.
@@ -389,7 +512,7 @@ def split_title(title: str) -> Tuple[str, str]:
 
 
 def check_title(title: str, *, max_chars: int = TITLE_MAX_CHARS,
-                block: bool = False) -> List[Problem]:
+                block: bool = TITLE_BLOCK_ON_BREACH_DEFAULT) -> List[Problem]:
     """The pack title must name the TRADE and its BUYER, and fit `max_chars`.
 
     Why this check exists, and why it is not cosmetic. The title is the ONE string that
@@ -425,10 +548,21 @@ def check_title(title: str, *, max_chars: int = TITLE_MAX_CHARS,
     title, so both stay the prompt's job (`prompts/retitle.md`). This function catches
     "the format was not followed", never "this is a weak title".
 
-    `block` is the ACTUATOR and defaults off. Every breach is reported either way; with
-    `block` false they are warnings, so shipping the check cannot unlist packs that predate
-    the rule. Turn it on once the catalogue has been retitled — the same order
-    `max_grammar_defects_per_1k` was introduced in, for the same reason.
+    `block` is the ACTUATOR, and since 2026-08-14 it defaults ON. It shipped off for one
+    stated reason — on 2026-08-09 this rule errored on 46 of 48 live packs, and blocking
+    would have unlisted a catalogue that predated it — with the stated condition "turn it on
+    once the catalogue has been retitled". That condition is now met and measured: all 62
+    live rows were re-fetched from the API and 0 are flagged by this check.
+
+    The default flipped rather than the config alone because of how the actuator nearly came
+    undone. It was switched on in `config.yaml` only, so the single line standing between a
+    breaching title and a buyer sat uncommitted in a file another session owned — one
+    `git checkout config.yaml` and the gate silently unbinds, with a green suite either way,
+    which is precisely the class of drift the rest of this module exists to stop. A gate
+    whose safe state depends on a config edit surviving is not a gate. `max_chars` was
+    already code-defaulted to `TITLE_MAX_CHARS` for the same reason; only the actuator was
+    not. Config may still turn this OFF, but that now takes a deliberate `false`, which
+    reads as a decision in a diff instead of as an absence.
     """
     mk = _err if block else _warn
     t = " ".join((title or "").split())
@@ -1103,6 +1237,7 @@ def check_urls(texts: Dict[str, str], *, cache_path: Optional[Path] = None,
 
 def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               listing_texts: Dict[str, Tuple[str, str]], market: str,
+              marketing: Optional[Iterable[Mapping[str, Any]]] = None,
               truncation_caps: Optional[Dict[str, int]] = None,
               check_urls_enabled: bool = False,
               url_cache_path: Optional[Path] = None,
@@ -1110,7 +1245,7 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               house_fields: Optional[Dict[str, str]] = None,
               archived_urls: Optional[Mapping[str, str]] = None,
               title_max_chars: int = TITLE_MAX_CHARS,
-              title_block_on_breach: bool = False,
+              title_block_on_breach: bool = TITLE_BLOCK_ON_BREACH_DEFAULT,
               shelf_copy_block_on_breach: bool = False,
               grammar_enabled: bool = False,
               max_grammar_defects_per_1k: float = 0.0) -> Dict[str, Any]:
@@ -1132,6 +1267,11 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     problems += check_currency(fin, listing_copy, market)
     problems += check_arithmetic(fin)
     problems += check_sections(fin)
+    problems += check_placeholders(artifacts or {})
+    # The marketing pieces are graded from the LIST, not from the rendered
+    # Marketing_Assets.md: the renderer stamps the heading, so grading the rendered file
+    # would ask each piece to agree with a label this engine wrote over it.
+    problems += check_marketing(marketing)
     problems += check_truncation(listing_texts or {}, truncation_caps)
 
     # --- copy quality -----------------------------------------------------------------

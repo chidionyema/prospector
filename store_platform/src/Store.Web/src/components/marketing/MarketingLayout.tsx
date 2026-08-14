@@ -18,10 +18,17 @@ import { useDisclosure } from '@/lib/useDisclosure';
 
 /** The public marketing nav, every entry points at a page that exists. */
 export const MARKETING_NAV = [
-  // "Catalogue", not "Catalog". The site is written in British English throughout (the graph on
-  // /ideas already labels itself "Catalogue categories"), and the nav and footer were the only
-  // two places carrying the American spelling.
-  { href: '/', label: 'Catalogue' },
+  // "Catalogue" IS GONE FROM THE NAV, 2026-08-14 (founder, from a screenshot): the wordmark to its
+  // immediate left already links to `/`, so the header offered the same destination twice, 90px
+  // apart, and the second one spent a nav slot saying what the first one means. A logo that
+  // returns home is a convention a reader does not have to be taught; a nav item is not free.
+  //
+  // The British spelling this comment used to defend still applies wherever the word survives
+  // (the footer, /ideas' "Catalogue categories") -- "Catalogue", never "Catalog".
+  //
+  // Deliberately removed from the LIST rather than filtered at the two render sites: `MARKETING_NAV`
+  // feeds both the desktop row (:197) and the mobile sheet (:358), and a filter at one of them is
+  // how the two drift apart.
   // `/ideas` is here rather than only in the sitemap because it is the hub every `/ideas/<slug>`
   // landing hangs off: linked from the chrome, each landing is two clicks from the home page
   // instead of being reachable only from a sitemap and its siblings.
@@ -133,7 +140,18 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         1px box would move the whole page by a pixel on the first scroll of every visit.
       */}
       <header
-        className={`sticky top-0 z-30 w-full border-b bg-bg/90 backdrop-blur-md pt-[env(safe-area-inset-top)] transition-colors duration-200 ${
+        /* OPAQUE, 2026-08-14 (founder, from a screenshot): "The header doesn't mask what scrolls
+           under it -- that's the single most visible bug on this screen." It was `bg-bg/90` with
+           `backdrop-blur-md`, i.e. 10% of whatever is passing underneath printed straight through
+           the nav, blurred. A blur does not hide text, it smears it: body copy sliding up behind
+           the wordmark reads as a rendering fault, and it is worst exactly where the page is
+           busiest. The blur goes with it -- it was the compensation for the transparency, and with
+           an opaque ground it is a per-frame compositing cost that buys nothing.
+
+           The hairline still only changes COLOUR on scroll (see the note above): with an opaque
+           header the border is no longer what separates header from content, so it is free to stay
+           invisible at rest and appear as scroll feedback. */
+        className={`sticky top-0 z-30 w-full border-b bg-bg pt-[env(safe-area-inset-top)] transition-colors duration-200 ${
           scrolled ? 'border-border' : 'border-transparent'
         }`}
       >
@@ -313,10 +331,23 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                 className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 aria-expanded={menuOpen}
                 aria-controls="marketing-menu"
+                /* THE WORD IS GONE, 2026-08-14 (founder, from a screenshot): "the hamburger and
+                   the word 'Menu' is redundant -- pick one". The glyph is the universal control
+                   and the word was the same instruction said twice.
+
+                   The accessible name does not regress. `Icon.tsx:128` sets `aria-hidden` on the
+                   glyph, so the name used to come from the visible word; it now comes from this
+                   `aria-label`, which is the same string. WCAG 2.5.3 Label in Name applies to a
+                   VISIBLE label -- with no visible text there is no name to mismatch, so the
+                   objection recorded above (two accessible names) cannot arise.
+
+                   It also settles the two-width complaint from the same review: this button and
+                   Search carry an identical className, so their widths only ever differed because
+                   this one padded out an extra word. Icon-only, both are the `min-w-11` square. */
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
                 onClick={() => setMenuOpen((o) => !o)}
               >
                 <Icon name={menuOpen ? 'close' : 'menu'} size={18} />
-                {menuOpen ? 'Close' : 'Menu'}
               </button>
             </div>
           </div>
@@ -356,10 +387,14 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
                   Account
                 </Link>
               </div>
-              {/* Was a full-width "Browse the packs" button pointing at `/` -- the same
-                  destination as the "Catalogue" item three rows above it, in a drawer whose whole
-                  job is to disambiguate destinations. The drawer's one emphasised action is now
-                  the thing the drawer did not otherwise offer. */}
+              {/* Was a full-width "Browse the packs" button pointing at `/` -- the same destination
+                  as the "Catalogue" item that used to sit three rows above it, in a drawer whose
+                  whole job is to disambiguate destinations. The drawer's one emphasised action is
+                  the thing the drawer did not otherwise offer.
+
+                  That "Catalogue" row is itself gone as of 2026-08-14 (see `MARKETING_NAV`), which
+                  does not restore the case for a `/` button here: the wordmark in the header above
+                  this drawer still goes home. Search is still the action nothing else offers. */}
               <div className="py-4">
                 <Button fullWidth size="lg" onClick={openSearch}>
                   <Icon name="search" size={18} />

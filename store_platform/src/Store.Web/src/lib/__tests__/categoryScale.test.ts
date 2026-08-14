@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 import { readStylesheet } from '../../__tests__/helpers/stylesheet';
 
+import type { Pack } from '../api/client';
 import { allCategories, UNLABELLED } from '../category';
 import { SECTOR } from '../facets';
+import { packLeadStat } from '../packStat';
 
 function readSource(relativePath: string): string {
   const path = fileURLToPath(new URL(relativePath, import.meta.url));
@@ -176,67 +178,81 @@ describe('the untagged pack renders no sector marker', () => {
     expect(page, 'the chip must be behind a tagged guard').toMatch(/\{(?:cat|category)\.tagged &&/);
   });
 
-  it('the generated cover branches on `tagged` and draws no mark at all when false', () => {
-    expect(page, 'the cover must branch on the flag, not on the icon being present').toMatch(
-      /category\.tagged \?/,
-    );
-
+  it('the card draws no marker for a missing sector, and is not empty without one', () => {
     /*
-     * THE ASSERTION BELOW WAS `toMatch(/category\.tagged \?[\s\S]*?\) : null\}/)` and is replaced
-     * (2026-08-14) by one that pins the SAME rule against the cover that now exists. That regex
-     * required the untagged branch to be spelled `) : null}`, i.e. it pinned a JSX spelling: the
-     * cover's category line is now a single always-rendered slot whose CONTENT is the branch
-     * (`{category.tagged ? category.label : null}`), which satisfies the rule exactly -- an
-     * untagged pack draws no marker -- while failing the old pattern by a bracket.
+     * REWRITTEN 2026-08-14. This assertion used to locate `function PackCoverArt` and require its
+     * untagged branch to render `category.tagged ? category.label : null`. The cover is deleted --
+     * a 112px plate reading as a failed image load, carrying a mark computed by hashing the pack
+     * id -- so the old locator matches nothing and the old spelling exists nowhere.
      *
-     * The rule this file exists to enforce is "a marker with no name beside it is decoration
-     * pretending to be information". The cover draws no glyphs AT ALL now, tagged or not: the
-     * sector's 72px icon went with the pastel tint when the cover became the pack's evidence run
-     * on the instrument plate. So the guard below is strictly stronger than the one it replaces
-     * -- the old rule allowed a glyph on the tagged branch and forbade it only on the untagged
-     * one; this forbids it on both, which is what makes the untagged branch unable to regress.
+     * THE RULE IS UNCHANGED and is what is re-pinned below: "a marker with no name beside it is
+     * decoration pretending to be information", so a pack whose sector we do not know draws
+     * NOTHING that claims one. What has changed is the thing that stops an untagged card reading
+     * as empty. It used to be the argument the old version of this test recorded -- a bare tint
+     * "reads as an empty box", answered first with a monogram (rejected: `HA` and `SE` decode to
+     * nothing) and then with the evidence run on a plate (rejected with the plate). It is now the
+     * card's lead figure, which every pack has and which no pack shares: `lib/packStat.ts`.
+     *
+     * That is why the second half of this test runs the ladder rather than reading the page. The
+     * defect being guarded against is a card with no sector AND no figure, and only one of those
+     * two is visible in the source text.
      */
-
-    /*
-     * THE UNTAGGED BRANCH IS EMPTY. This assertion previously required the opposite -- a
-     * `monogram` of the printed heading's initials -- and that requirement is withdrawn, not
-     * relaxed, on founder review of the deployed shelf (2026-08-06).
-     *
-     * The monogram was introduced to solve a real problem correctly identified above: the 9 of 63
-     * untagged packs were all drawing `UNLABELLED.icon`, so nine cards wore the same grey
-     * briefcase. It was rejected on what it actually rendered. Two capitals at 5.5rem, floating
-     * where a product photograph goes, decode to nothing: on the live shelf they read as `HA` and
-     * `SE`, which a buyer cannot look up, cannot match to any label on the card, and cannot tell
-     * apart from placeholder art or an internal code. The rule this file exists to enforce --
-     * "a marker with no name beside it is decoration pretending to be information" -- rules out
-     * the monogram by exactly the same argument it rules out the grey briefcase. The monogram
-     * merely made the meaningless mark unique per pack instead of shared.
-     *
-     * The counter-argument on record was that a bare tint "reads as an empty box". That was true
-     * when the cover held nothing else, and is no longer true: the cover now carries the spec
-     * strip ("8 documents · N sources"), which is information the buyer can act on, in the space
-     * the monogram occupied. So the untagged cover is a tint plus real specs, and nothing is
-     * drawn that claims a category we do not have.
-     *
-     * What is still forbidden, and is what this now asserts: drawing `UNLABELLED`'s icon or any
-     * other glyph on the untagged branch. The branch must render nothing.
-     */
-    const cover = page.slice(
-      page.indexOf('function PackCoverArt'),
-      page.indexOf('function SectorChips'),
-    );
-    expect(cover.length, 'PackCoverArt must be locatable for this assertion').toBeGreaterThan(0);
-    expect(cover, 'the untagged branch must render nothing').toMatch(
-      /category\.tagged \? category\.label : null/,
-    );
-    // Comments stripped first: the cover's own docblock explains at length why the monogram was
-    // removed, and a rule that forbids naming the thing you removed forbids recording why.
-    const coverCode = cover
+    const cardStart = page.indexOf('function PackCard(');
+    expect(cardStart, 'function PackCard must be locatable for this assertion').toBeGreaterThan(-1);
+    const cardEnd = page.indexOf('\nfunction ', cardStart + 1);
+    const card = page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd);
+    const cardCode = card
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')
       .replace(/\/\/[^\n]*/g, '');
-    expect(coverCode, 'no monogram may come back to the cover').not.toMatch(/monogram/i);
-    expect(coverCode, 'the cover draws no glyph on either branch').not.toMatch(/<Icon\b/);
+
+    // The sector reaches the card as a LABEL and never as a picture. `cat.icon` is what the
+    // untagged packs all wore as one grey briefcase, and `UNLABELLED` is where that icon lives.
+    expect(cardCode, 'the sector must not be drawn as a glyph').not.toMatch(
+      /cat\.icon|category\.icon/,
+    );
+    expect(cardCode, 'the untagged fallback identity must not come back').not.toMatch(
+      /UNLABELLED|monogram/i,
+    );
+    // Every sector rendering is behind the guard, so an untagged pack prints no empty chip.
+    const sectorPrints = cardCode.match(/cat\.label/g) ?? [];
+    const sectorGuards = cardCode.match(/cat\.tagged &&/g) ?? [];
+    expect(sectorPrints.length, 'the card must print the sector as its own label').toBeGreaterThan(0);
+    expect(
+      sectorGuards.length,
+      'every sector label must sit behind its own `cat.tagged` guard',
+    ).toBe(sectorPrints.length);
+
+    // And the identity that does not depend on the sector at all: the pack's own figure, on
+    // every variant. This is the part an untagged pack relies on.
+    expect(
+      (cardCode.match(/<PackFigure\b/g) ?? []).length,
+      'every card variant must carry the pack figure',
+    ).toBe(3);
+  });
+
+  it('an untagged pack still leads with a figure of its own', () => {
+    const untagged: Pack = {
+      id: 'cccc3333dddd4444',
+      title: 'Bin store recycling signs for small flat blocks',
+      oneLine: 'Signage kits for managing agents.',
+      price: '£29.99',
+      pricePence: 2999,
+      paymentProvider: 'stripe',
+      providerPriceId: 'price_test',
+      sector: null,
+      sourceCount: 39,
+    };
+    const stat = packLeadStat(untagged);
+    expect(stat, 'a pack with no sector must still have something true to show').not.toBeNull();
+    expect(stat!.figure.length, 'the figure must not be blank').toBeGreaterThan(0);
+    expect(stat!.label.length, 'the figure must be named in words').toBeGreaterThan(0);
+    // The figure owes nothing to the category, which is the whole reason it survives an absent
+    // sector where every previous answer to this problem did not.
+    const statSource = readSource('../packStat.ts').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(statSource, 'the figure must not be derived from the sector').not.toMatch(
+      /sector|categor/i,
+    );
   });
 
   it('UNLABELLED is still not in the rendered sector vocabulary', () => {

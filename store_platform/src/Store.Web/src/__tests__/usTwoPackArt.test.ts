@@ -2,6 +2,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import type { Pack } from '@/lib/api/client';
+import { packLeadStat } from '@/lib/packStat';
+
 function readSource(relativePath: string): string {
   return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
 }
@@ -68,105 +71,150 @@ describe('US-2 — Pack cards with pack art', () => {
     ).toBe(true);
   });
 
-  it('every PackCard still carries a per-pack identity, drawn from the category', () => {
+  it('every PackCard still carries a per-pack identity, and it is now a number', () => {
     /*
      * US-2's actual problem was that 45 cards were indistinguishable without reading the title.
-     * The 1:1 coloured tile was one answer to it; it is not the only one, and it was not a good
-     * one -- sixty-one gradient tiles are as uniform as sixty-one white rectangles, they are just
-     * louder about it. So this asserts the PROBLEM stays solved rather than pinning any one
-     * drawing of it.
+     * This test has always asserted that the PROBLEM stays solved rather than pinning any one
+     * drawing of it, and the drawing has now been withdrawn twice:
      *
-     * REVISED 2026-08-06 (brand v3). The carrier it used to pin -- a 44px identity row of
-     * `cat.dot` + sector label + market + `pack.id.slice(0, 6).toUpperCase()` -- is gone, and two
-     * of its four elements went for reasons this suite should not be re-litigating:
+     *   1. the 1:1 category tile (withdrawn 2026-08-06) -- sixty-one gradient tiles are as
+     *      uniform as sixty-one white rectangles, they are just louder about it;
+     *   2. `PackCoverArt`, the 112px instrument plate carrying `PackMark` (withdrawn 2026-08-14)
+     *      -- at 112px it took roughly 60% of a card and read as the placeholder where a product
+     *      image failed to load, and the mark inside it was computed by hashing `pack.id`, so it
+     *      encoded nothing about the pack it identified.
      *
-     *   - the short id (`№ FCF4A5`) is debug output. A truncated hash of a database key, printed
-     *     on a product, is a fact about our storage that no buyer can use;
-     *   - the market read as a bare `US` beside it, and rendered on all 63 cards including the
-     *     63 that matched the reader's own market, where it distinguishes nothing.
+     * The assertions that pinned #2 by name (`<PackCoverArt ... category={cat}`, the plate's
+     * `bg-ins-bg`, its literal radial-gradient class, `For {marketLabel(pack.market)} rules`) are
+     * REPLACED rather than deleted, because the rule they served is unchanged and is the reason
+     * this file exists: a card must carry something that is true of THIS pack and of no other.
      *
-     * What replaces it is a drawn cover (`PackCoverArt`) rather than a text row, so the
-     * assertions follow the identity to it: the sector's colour and icon, a per-pack variation
-     * that is deterministic in the pack id, and the market stated in words but only when it is
-     * not the reader's own.
+     * That something is now the pack's own strongest figure, set as type (`lib/packStat.ts`,
+     * `PackFigure` in index.tsx). It is a stronger satisfaction of the rule than either cover:
+     * a tile encoded the sector, which 51 other packs share; a hashed mark encoded nothing at
+     * all; a number is a fact about this pack that the buyer can act on and that differs card to
+     * card. Measured on the live catalogue 2026-08-14: 39 of 62 packs lead with the modelled
+     * price multiple (1x to 123x) and the remaining 23 with their cited source count (17 to 51).
      */
-    expect(page, 'the card must derive its identity from the pack category').toMatch(
+    expect(page, 'the card must still read the pack category for its sector label').toMatch(
       /const cat = categoryFor\(pack\)/,
     );
-    expect(page, 'the card must open on the generated cover').toMatch(
-      /<PackCoverArt\b[\s\S]{0,120}category=\{cat\}/,
+    expect(page, 'the card must compute one lead figure per pack').toMatch(
+      /const stat = packLeadStat\(pack\)/,
     );
+
     /*
-     * THE TINT AND THE ICON: WITHDRAWN 2026-08-14, and this is the second withdrawal on this
-     * cover, so the reasoning is kept rather than the assertion. Two assertions stood here:
-     *
-     *   toMatch(/category\.tint/)              // the cover ground is the sector's pastel
-     *   toMatch(/name=\{category\.icon\}/)     // the mark is the sector's glyph at 72px
-     *
-     * They were the surviving half of "identity comes from the category", and they were right
-     * that the cover must be deterministic and not decorative-random. What they pinned was a
-     * sector drawn TWICE -- once as a hue, once as a pictogram -- on a card whose only
-     * pack-specific fact (the source count) was pushed into the body. A pastel rectangle with a
-     * 14%-opacity briefcase in it is stock furniture, and this shop sells audited evidence.
-     *
-     * The cover is now the pack's evidence run on the instrument plate. The determinism rule is
-     * not withdrawn and is asserted below in its stronger form: the cover renders `sourceCount`,
-     * a fact of the pack, and nothing derived from a hash, a random, or the render order.
+     * ALL THREE VARIANTS, ONE DEVICE. The row, the lead poster and the shelf card each render the
+     * SAME component at a different size. Pinning "three mounts, one per weight" is what stops
+     * the treatment drifting into three treatments, which is how the shelf got flat the first
+     * time: the row list and the grid stopped stating the same fact the same way.
      */
-    expect(page, 'the cover must draw the pack\'s own evidence run').toMatch(
-      /<EvidenceBar\b[^>]*count=\{pack\.sourceCount\}[^>]*tone="instrument"/,
-    );
-    expect(page, 'the cover must sit on the instrument ground, not a per-sector tint').toMatch(
-      /border-ins-line bg-ins-bg/,
-    );
-    expect(page, 'the sector stays on the cover, as a fact rather than a picture').toMatch(
-      /category\.tagged \? category\.label : null/,
-    );
+    const cardStart = page.indexOf('function PackCard(');
+    expect(cardStart, 'function PackCard must be locatable').toBeGreaterThan(-1);
+    const cardEnd = page.indexOf('\nfunction ', cardStart + 1);
+    const cardBody = page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd);
+    const figures = cardBody.match(/<PackFigure\b[^/]*\/>/g) ?? [];
+    expect(figures.length, 'every card variant must render the lead figure').toBe(3);
+    ['row', 'lead', 'mid'].forEach((weight) => {
+      expect(
+        figures.some((f) => f.includes(`weight="${weight}"`)),
+        `the ${weight} variant must carry the lead figure`,
+      ).toBe(true);
+    });
+
     /*
-     * PER-PACK JITTER: WITHDRAWN, NOT RELAXED (2026-08-06, internal design review).
-     *
-     * Two assertions used to live here and are deleted on purpose, with the reasoning kept in
-     * place so nobody re-derives the idea from scratch:
-     *
-     *   toMatch(/Array\.from\(pack\.id\)\.reduce/)                  // seed the offset from the id
-     *   toMatch(/COVER_OFFSETS = \[[\s\S]{0,200}'left-\[\d+%\]'/)   // 5 literal offset classes
-     *
-     * They encoded a real constraint -- a cover that moves on reload is worse than no cover,
-     * because a returning reader cannot find the card they were looking at -- and the fix was
-     * sound in isolation: hash the id, index a fixed table of `left-[n%]` literals.
-     *
-     * It was rejected on what it rendered. The glyph was pushed to a per-pack horizontal offset
-     * inside a 96px-tall band, so on the seeds that landed right the mark was CLIPPED by the
-     * card edge, and down a three-up grid the eye read the row as five different components
-     * rather than five instances of one. Variation was bought at the cost of the thing a shelf
-     * needs most, which is that its cards look like a set.
-     *
-     * The replacement gets non-uniformity from something that is already true of each pack
-     * rather than from its id: the category tint and the category glyph, on a fixed four-corner
-     * layout, over one shared `COVER_WEAVE` texture. Two packs in the same sector do look alike
-     * -- that is now the intent, because they ARE alike, and the chip and title separate them.
-     *
-     * The determinism requirement is not withdrawn; it is satisfied more strongly than before,
-     * since nothing about the cover is derived from anything but the pack's own category. The
-     * `Math.random` ban below is the part of the old rule that still has teeth, so it stays.
+     * NOT A SECOND PRICE. The figure is one step of the six-step scale above the price it shares
+     * a card with, which is what makes it the lead. If it ever renders at the price's size the
+     * card has two numbers of equal weight and no visual at all, which is the state this whole
+     * change was made to leave.
      */
-    // Comments stripped first: the component's own header names `Math.random()` while explaining
-    // why it is banned there, and a doc comment is not a call.
+    const figureComponent = page.slice(
+      page.indexOf('function PackFigure('),
+      page.indexOf('function PackCard('),
+    );
+    expect(figureComponent, 'the lead poster sets its figure at the display step').toMatch(
+      /text-display/,
+    );
+    expect(figureComponent, 'the shelf card sets its figure at the h1 step').toMatch(/text-h1/);
+
+    /*
+     * THE DETERMINISM RULE, KEPT AND STRENGTHENED. It was written for the cover -- "a cover that
+     * changes on reload is worse than no cover, because a buyer returning to the shelf cannot
+     * find the card they were looking at" -- and it now binds the figure. The hash it used to
+     * permit (the id-seeded offset table, then `PackMark`) is banned outright: a number derived
+     * from a database key is not a fact about the business, which is precisely why the mark was
+     * removed. The figure may be derived from the pack's DATA and from nothing else.
+     */
     const withoutComments = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(withoutComments, 'the cover must not be random').not.toMatch(/Math\.random\(/);
-    // Tailwind scans source text, so an interpolated `bg-[image:...${n}...]` compiles to nothing.
-    // The cover's one arbitrary-value class must therefore be a full literal, not built at
-    // runtime. It used to be `COVER_WEAVE`, a repeating-linear-gradient; it is now the plate's
-    // radial lift. The RULE is what this pins, not the gradient.
-    expect(page, 'the cover texture must be a full literal class string').toMatch(
-      /'bg-\[image:radial-gradient\([^']*\)\]'/,
+    expect(withoutComments, 'the card must not be random').not.toMatch(/Math\.random\(/);
+    const statSource = readSource('../lib/packStat.ts').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(statSource, 'the lead figure must not be random').not.toMatch(/Math\.random\(/);
+    expect(statSource, 'the lead figure must not be hashed out of the id').not.toMatch(
+      /charCodeAt|pack\.id/,
     );
-    expect(page, 'the cover must state the listing market in words').toMatch(
-      /For \{marketLabel\(pack\.market\)\} rules/,
+
+    expect(page, 'the market chip must still be stated in words').toMatch(
+      /\{marketLabel\(pack\.market\)\} rules/,
     );
     expect(page, 'the market chip must render only when it differs from the reader\'s').toMatch(
       /pack\.market !== viewerMarket/,
     );
+  });
+
+  /*
+   * THE LADDER ITSELF, exercised rather than read. The assertions above prove the card renders a
+   * figure; these prove the figure is always there to render. A source-text test cannot tell the
+   * difference between "renders the pack's number" and "renders an empty span", and an empty span
+   * is exactly the failure the removed cover produced.
+   */
+  describe('the lead figure is never blank, and never invented', () => {
+    const base: Pack = {
+      id: 'aaaa1111bbbb2222',
+      title: 'Material price cover for UK self-employed builders',
+      oneLine: 'Weekly quotes cover for builders.',
+      price: '£49.99',
+      pricePence: 4999,
+      paymentProvider: 'stripe',
+      providerPriceId: 'price_test',
+      sourceCount: 34,
+    };
+
+    it('leads with the modelled multiple when the pack models one that clears its own price', () => {
+      const stat = packLeadStat({ ...base, financialSnapshot: { month1Revenue: '£870' } });
+      // 870 / 49.99 floored. The figure is the RATIO, not the money: the raw modelled revenue was
+      // deleted from the buy box on 2026-08-13 as an invented-revenue claim, and a shelf card is
+      // not the place to reinstate it at display size. See lib/packStat.ts.
+      expect(stat).toEqual({
+        kind: 'price_multiple',
+        figure: '17×',
+        label: 'the price back in month one, modelled',
+      });
+    });
+
+    it('falls to the cited source count when there is no model, and says so in words', () => {
+      expect(packLeadStat(base)).toEqual({
+        kind: 'sources',
+        figure: '34',
+        label: 'cited sources behind it',
+      });
+    });
+
+    it('falls through a model that does not clear the price, rather than flattering it', () => {
+      // £30 modelled against a £49.99 price is a multiple below 1. `paybackEquation` refuses it,
+      // so the card states the fact it can stand behind instead of the one that reads better.
+      const stat = packLeadStat({ ...base, financialSnapshot: { month1Revenue: '£30' } });
+      expect(stat?.kind).toBe('sources');
+    });
+
+    it('renders nothing at all rather than a zero when the pack carries no number', () => {
+      expect(packLeadStat({ ...base, sourceCount: undefined })).toBeNull();
+      expect(packLeadStat({ ...base, sourceCount: 0 })).toBeNull();
+    });
+
+    it('is a pure function of the pack, so a returning buyer sees the same card', () => {
+      const pack = { ...base, financialSnapshot: { month1Revenue: '£1,300' } };
+      expect(packLeadStat(pack)).toEqual(packLeadStat({ ...pack }));
+    });
   });
 
   it('pack detail page opens on a sourced dossier excerpt, not a cover', () => {
