@@ -22,6 +22,8 @@ from __future__ import annotations
 import re
 from typing import Iterable, List
 
+from .trimming import ABBREV_GUARD
+
 # Inline constructs, applied in this order. Images before links (an image is a link with a
 # leading `!`), links before emphasis (link text may itself be bold).
 _IMAGE = re.compile(r"!\[([^\]]*)\]\([^)]*\)")
@@ -256,10 +258,14 @@ REGISTER_DENYLIST: tuple[tuple[re.Pattern[str], str], ...] = (
      "under acute financial strain"),
 )
 
-# Sentence boundary. `e.g.` / `i.e.` are excluded, otherwise a truncated reason gets cut back
+# Sentence boundary. Abbreviations are excluded, otherwise a truncated reason gets cut back
 # to an abbreviation and loses its argument. A decimal ("£2.99") cannot match: the dot has to
 # be followed by whitespace or end-of-string.
-_SENTENCE_END = re.compile(r"(?<!\be\.g)(?<!\bi\.e)(?<!\.)[.!?][\"'’)\]]?(?=\s|$)")
+#
+# The exclusion list moved to `trimming.ABBREV_GUARD` on 2026-08-14 and grew from two entries
+# to forty-plus. `e.g` and `i.e` alone were not enough: the shipped pack cut at "1 in 31 U.S."
+# and "The passages describe U.S." on the executive summary's first page.
+_SENTENCE_END = re.compile(ABBREV_GUARD + r"(?<!\.)[.!?][\"'’)\]]?(?=\s|$)")
 _ENDS_SENTENCE = re.compile(r"[.!?][\"'’)\]]?$")
 # A trailing ellipsis, including one wearing a closing quote: `...your testing...'`. Without
 # the optional closer, `_SENTENCE_END` read that final `.'` as a finished sentence and the
@@ -273,15 +279,45 @@ def _strip_confidence(text: str) -> str:
     return text
 
 
+#: Sentinel for a masked code span. Chosen to contain no character any rule below matches:
+#: no hex, no bracket, no separator, no sentence-ending punctuation.
+_SPAN_MASK = "\x00SPAN{}\x00"
+_SPAN_MASK_RE = re.compile(r"\x00SPAN(\d+)\x00")
+
+
 def _strip_ids(text: str) -> str:
-    """Remove passage ids and repair the sentence they were embedded in."""
+    """Remove passage ids and repair the sentence they were embedded in.
+
+    A code span is EXEMPT. The rules below hunt ids that leaked into prose — the regex is
+    literally named `_BARE_ID` — and an id inside backticks is the opposite of bare: a
+    caller deliberately quoted it. Before 2026-08-14 they were stripped anyway, and the
+    cost was not cosmetic: `dossier.py` writes citation ids and the pack reference in
+    backticks, so on every one of the 62 live packs the buyer read
+    ``Sources used: , , , , , ,`` and a blank ``Candidate ID:`` — in the two lines whose
+    entire job is showing receipts. Proven at the regex:
+    ``_BARE_ID.sub(" ", "`1e62e0c381e1c8d3`") == "` `"``.
+
+    Masking (rather than reordering the rules) is what makes the exemption total: it holds
+    for every rule here and for any rule added later, and it cannot be undone by one that
+    runs after `_BARE_ID`.
+    """
+    spans: list[str] = []
+
+    def _mask(match: re.Match[str]) -> str:
+        spans.append(match.group(0))
+        return _SPAN_MASK.format(len(spans) - 1)
+
+    text = _CODE_SPAN.sub(_mask, text)
     text = _LABELLED_IDS.sub("", text)
     text = _NOUN_IDS.sub(_noun_only, text)
     text = _ORPHAN_NOUN_SEPS.sub(_noun_only, text)
     text = _ID_LABEL.sub("", text)
     text = _PREPOSED_ID.sub("", text)
     text = _SUBJECT_ID.sub(lambda m: f"{m.group(1)}the passage", text)
-    return _BARE_ID.sub(" ", text)
+    text = _BARE_ID.sub(" ", text)
+    if not spans:
+        return text
+    return _SPAN_MASK_RE.sub(lambda m: spans[int(m.group(1))], text)
 
 
 def _noun_only(match: re.Match[str]) -> str:

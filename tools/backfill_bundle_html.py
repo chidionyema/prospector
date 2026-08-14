@@ -17,10 +17,15 @@ first-week checklist, the one document that tells a buyer what to do, last. The
 generator was fixed to take its order from the BUNDLE_FILES contract instead;
 this tool now does the same, so the shelf can be brought in line with it.
 
-Only the generated files (index.html, manifest.jsonld) are ever written or
-replaced. The .md deliverables of record are never rewritten — that would be
-editing a document someone already paid for, which is a different decision and
-not this tool's to make.
+The generated files (index.html, manifest.jsonld) are written or replaced freely.
+The .md deliverables of record are copied byte-identical with exactly ONE
+exception, taken deliberately and kept as narrow as a single line: the retired
+`Evidence goes stale after: <ISO stamp>` footer (see `patched_md`). That line
+printed an internal cron stamp as if it were a warranty expiry on a document
+someone paid £49.99 for; leaving it in place is not neutrality, it is continuing
+to make a promise we never priced. Every other byte of every deliverable is
+untouched, and rewriting anything further is a different decision and not this
+tool's to make.
 
 manifest.jsonld carries the evidence (every check, verdict and cited passage),
 which exists only in this repo's store/dossiers, never in the shipped zip. A pack
@@ -64,8 +69,18 @@ from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from prospector import pack_html, pack_manifest  # noqa: E402
-from prospector.bridge import _SECTION_TITLES, BUNDLE_FILES  # noqa: E402
+from prospector import dossier as dossier_render  # noqa: E402
+from prospector import (  # noqa: E402
+    models,
+    pack_card,
+    pack_checklist,
+    pack_html,
+    pack_manifest,
+    pack_pdf,
+    pack_reference,
+    pack_table,
+)
+from prospector.bridge import _SECTION_TITLES, BUNDLE_FILES, BUNDLE_READING_ORDER  # noqa: E402
 
 # Env-overridable so a backfill can be pointed at staging. This script PATCHes live
 # catalogue rows; a hardcoded production constant means there is no way to rehearse
@@ -95,7 +110,40 @@ class Report:
         counts: dict = {}
         for r in self.results:
             counts[r.action] = counts.get(r.action, 0) + 1
-        return ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+        out = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+        # A pack whose PDF failed to render is `already-correct` by the idempotence check
+        # (`pdf_ok` is True when there is nothing to compare), which reads as done and is not.
+        # Measured 2026-08-14: three packs reported already-correct while shipping no PDF at
+        # all, because one `***triple asterisk***` asked for a font face that was not vendored.
+        # The count is named here so a silent deliverable loss cannot hide inside a green run.
+        if PDF_FAILURES:
+            out += (f"\n  WITHOUT Complete_Pack.pdf: {len(PDF_FAILURES)} pack(s) — "
+                    + ", ".join(sorted(PDF_FAILURES)))
+        return out
+
+
+#: Pack ids whose PDF render raised this run. Module-level because the render happens deep
+#: inside `rebuild_zip_with_index`, whose return type says "the new zip or nothing to do" and
+#: has no room for a third answer.
+PDF_FAILURES: List[str] = []
+
+
+def patched_md(name: str, raw: bytes) -> bytes:
+    """The bytes to ship for one .md entry: usually the originals, unchanged.
+
+    THE ONE DELIBERATE EXCEPTION to "every .md is copied byte-identical". A live pack's footer
+    printed `Evidence goes stale after: <ISO stamp>` — `reverify_due_at`, an internal scheduling
+    field (`run.py:813`) that tells the decay sweep when to look again. To a buyer it reads as a
+    warranty with a cliff: bought on day 28, the document says three days left. The rewrite is
+    the single shared renderer (`dossier.rewrite_legacy_shelf_life`), so a backfilled pack and a
+    freshly generated one make exactly the same promise. Idempotent by construction: a pack
+    already carrying the new wording does not match, and comes back unchanged.
+    """
+    if not name.endswith(".md"):
+        return raw
+    text = raw.decode("utf-8", errors="replace")
+    rewritten = dossier_render.rewrite_legacy_shelf_life(text)
+    return raw if rewritten is None else rewritten.encode("utf-8")
 
 
 def ordered_md_entries(src: zipfile.ZipFile) -> List[Tuple[str, str]]:
@@ -116,12 +164,16 @@ def ordered_md_entries(src: zipfile.ZipFile) -> List[Tuple[str, str]]:
     being dropped: this tool's whole promise is that it does not lose content, and a legacy
     bundle with an extra file must still render all of it.
     """
-    names = src.namelist()
-    md = [n for n in names if n.endswith(".md")]
-    known = [n for n in BUNDLE_FILES if n in md]
-    extra = [n for n in md if n not in set(BUNDLE_FILES)]
+    payload = (
+        {n: src.read(n) for n in src.namelist()}
+        if hasattr(src, "namelist") else dict(src)
+    )
+    md = [n for n in payload if n.endswith(".md")]
+    known = [n for n in BUNDLE_READING_ORDER if n in md]
+    extra = [n for n in md if n not in set(BUNDLE_READING_ORDER)]
     return [
-        (_SECTION_TITLES.get(n, n[:-3]), src.read(n).decode("utf-8", errors="replace"))
+        (_SECTION_TITLES.get(n, n[:-3]),
+         patched_md(n, payload[n]).decode("utf-8", errors="replace"))
         for n in known + extra
     ]
 
@@ -156,6 +208,13 @@ def load_local_dossier(pack_id: str) -> Optional[Any]:
     return None
 
 
+def _text(raw: Optional[bytes]) -> str:
+    """Zip bytes as text. `errors="replace"` because this is a READ for rendering, never a
+    write: a byte the codec cannot round-trip must not raise and take the whole backfill down
+    with it, and the deliverable of record still ships as its original bytes."""
+    return raw.decode("utf-8", errors="replace") if raw else ""
+
+
 def rebuild_zip_with_index(
     zip_bytes: bytes,
     meta: pack_html.PackMeta,
@@ -183,18 +242,88 @@ def rebuild_zip_with_index(
     The manifest is rendered AFTER index.html so it can carry index.html's digest, and it is
     given the .md entries as BYTES read straight out of the source zip, so the digests it
     publishes are of the files that actually ship rather than of a decode round-trip.
+
+    A dossier also buys `Evidence_and_Constraints.md` (P4): the shared evidence stated once,
+    rendered from the same `pack_reference` the generator calls, so a backfilled pack and a
+    freshly generated one carry the identical document. It is a BONUS file — no dossier, no
+    document, and never a listing blocker.
     """
     src = zipfile.ZipFile(io.BytesIO(zip_bytes))
     names = src.namelist()
-    generated = {"index.html", pack_manifest.MANIFEST_FILENAME}
-    index_html = pack_html.render_pack_html(ordered_md_entries(src), meta)
+    # Rewritten from scratch every run rather than copied. The PDF joins them because it is
+    # BINARY: `patched_md` decodes every other entry to look for the retired shelf-life line,
+    # and a binary file taken through a lossy decode/encode round trip is a corrupted file.
+    generated = {"index.html", pack_manifest.MANIFEST_FILENAME, pack_pdf.FILENAME}
+
+    # Everything that will ship, keyed by name: the originals (with the one shelf-life rewrite)
+    # plus any bonus document this run can add. Built ONCE and then used for the reader, the
+    # manifest digests, the idempotency check and the write — four consumers that must agree.
+    payload: Dict[str, bytes] = {
+        n: patched_md(n, src.read(n)) for n in names if n not in generated}
+    if dossier is not None:
+        reference_md = pack_reference.render(dossier)
+        if reference_md:
+            payload[pack_reference.FILENAME] = reference_md.encode("utf-8")
+        # The one DELIVERABLE this tool rewrites rather than copies. It is not a bonus file and
+        # the rule above ("every .md entry is copied byte-identical") is broken here on purpose:
+        # measured 2026-08-13, 127 of 127 bundles on disk shipped the same six-line template as
+        # their action document, addressed to somebody auditing the engine rather than to the
+        # buyer. Leaving it byte-identical would mean the fix reached new packs only, and the
+        # founder's ask was explicitly both. Rendered by the module the generator now calls, so
+        # a backfilled pack and a fresh one carry the identical checklist; where the pack gives
+        # it nothing to point at, `render` returns "" and the original ships untouched.
+        checklist_md = pack_checklist.render(
+            dossier, {n: _text(b) for n, b in payload.items() if n.endswith(".md")})
+        if checklist_md:
+            payload[pack_checklist.FILENAME] = checklist_md.encode("utf-8")
+        # P5. Both are deterministic projections of files ALREADY IN THIS ZIP plus the dossier,
+        # which is the only reason a pack sold in June can be given them at all. Rendered by the
+        # same two modules the generator calls, so a backfilled pack and a fresh one are
+        # identical documents rather than two implementations that drift.
+        card_html = pack_card.render(
+            dossier,
+            checklist_md=_text(payload.get("05_First_Week_Checklist.md")),
+            financial_md=_text(payload.get("04_Financial_Model.md")),
+            pack_id=pack_id,
+        )
+        if card_html:
+            payload[pack_card.FILENAME] = card_html.encode("utf-8")
+        table_csv = pack_table.render(dossier)
+        if table_csv:
+            payload[pack_table.FILENAME] = table_csv.encode("utf-8")
+
+    index_html = pack_html.render_pack_html(ordered_md_entries(payload), meta)
+
+    # The typeset edition, from the SAME sections the reader is built from, so a pack sold in
+    # June gets the identical document a pack published today does. fpdf2 is an optional
+    # dependency and the renderer is deterministic but not free (~1s a page), so a failure
+    # here degrades to "this bundle keeps whatever PDF it already had" rather than aborting a
+    # backfill that has real .md fixes to land.
+    pdf_bytes: Optional[bytes] = None
+    try:
+        pdf_bytes = pack_pdf.render_pack_pdf(ordered_md_entries(payload), meta)
+    except Exception as e:  # noqa: BLE001 — bonus file
+        PDF_FAILURES.append(pack_id)
+        print(f"  {pack_id}: Complete_Pack.pdf render failed ({e}); leaving it out", flush=True)
 
     manifest_json: Optional[str] = None
     if dossier is not None:
-        carried: Dict[str, Any] = {n: src.read(n) for n in names if n not in generated}
+        # Every bonus file this run ships is declared to the manifest, not just the reader. A
+        # manifest that omits an entry the zip contains is the same lie as one that lists an
+        # entry the zip lacks — an agent enumerating the archive finds a file nothing accounts
+        # for. `payload` carries the bytes; the manifest wants text, so decode here.
+        extra = {"index.html": index_html}
+        for name in (pack_card.FILENAME, pack_table.FILENAME):
+            if name in payload:
+                extra[name] = _text(payload[name])
+        if pdf_bytes is not None:
+            # Bytes, not text: `pack_manifest._as_bytes` takes either, and the digest has to be
+            # of the bytes that shipped. A PDF decoded with errors="replace" would hash to
+            # something no verifier could reproduce from the zip.
+            extra[pack_pdf.FILENAME] = pdf_bytes
         manifest_json = pack_manifest.render_manifest(
-            dossier, carried, BUNDLE_FILES, _SECTION_TITLES, pack_id,
-            extra_files={"index.html": index_html},
+            dossier, dict(payload), BUNDLE_FILES, _SECTION_TITLES, pack_id,
+            extra_files=extra,
         )
 
     def current(name: str) -> Optional[str]:
@@ -203,20 +332,43 @@ def rebuild_zip_with_index(
         return src.read(name).decode("utf-8", errors="replace")
 
     reader_ok = current("index.html") == index_html
+    # Compared as BYTES against the zip entry, which is only a meaningful test because
+    # `render_pack_pdf` is byte-deterministic (`pack_pdf._pin_determinism`). Were the creation
+    # date left to the clock this would be False on every pack on every run, and the backfill
+    # would rewrite all 62 bought bundles nightly for no change.
+    pdf_ok = pdf_bytes is None or (
+        pack_pdf.FILENAME in names and src.read(pack_pdf.FILENAME) == pdf_bytes)
     manifest_ok = manifest_json is None or current(pack_manifest.MANIFEST_FILENAME) == manifest_json
-    if reader_ok and manifest_ok:
+    # A pack can be reader-correct and manifest-correct and STILL need rewriting, because a
+    # DELIVERABLE changed: the retired shelf-life line, or a bonus document this pack does not
+    # carry yet. Checking only the two generated files would have reported every already-
+    # backfilled pack "already-correct" and left the buyer's own document saying its evidence
+    # expires.
+    deliverables_ok = all(
+        name in names and payload[name] == src.read(name) for name in payload)
+    if reader_ok and manifest_ok and deliverables_ok and pdf_ok:
         return None
 
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
+        # Original entry order first (the stale generated files are dropped here and rewritten
+        # below, so a corrected bundle can never end up with two index.html members — zipfile
+        # permits duplicates silently and readers disagree about which one wins), then anything
+        # this run added, so an existing pack's entry order is never reshuffled by a new file.
         for name in names:
-            # The stale generated files are dropped here and rewritten below, so a corrected
-            # bundle can never end up with two index.html members (zipfile permits duplicates
-            # silently, and readers disagree about which one wins).
             if name in generated:
                 continue
-            dst.writestr(name, src.read(name))
+            dst.writestr(name, payload[name])
+        for name in payload:
+            if name not in names:
+                dst.writestr(name, payload[name])
         dst.writestr("index.html", index_html)
+        if pdf_bytes is not None:
+            dst.writestr(pack_pdf.FILENAME, pdf_bytes)
+        elif pack_pdf.FILENAME in names:
+            # Same rule as the manifest below: the renderer failing this run must not delete a
+            # file the buyer already has.
+            dst.writestr(pack_pdf.FILENAME, src.read(pack_pdf.FILENAME))
         if manifest_json is not None:
             dst.writestr(pack_manifest.MANIFEST_FILENAME, manifest_json)
         elif pack_manifest.MANIFEST_FILENAME in names:
@@ -317,18 +469,32 @@ def main() -> int:
             details = requests.get(f"{args.api_url}/catalog/{pid}", timeout=15)
             details.raise_for_status()
             d = details.json()
-            meta = pack_html.PackMeta(
-                title=d.get("title") or pack.get("title") or pid,
-                one_liner=d.get("oneLine") or "",
-                verified_at=d.get("verifiedAt") or "",
-                source_count=d.get("sourceCount"),
-                pack_id=pid,
-            )
-
             # The manifest needs the evidence record, which lives only on this disk. A pack
             # whose dossier is gone still gets its reader corrected; it is reported as
             # `no-dossier` rather than being handed an empty evidence document.
             dossier = load_local_dossier(pid)
+
+            # Counts come from the dossier when we have it, NOT from the API projection: the
+            # stored `sourceCount` was minted before `all_sources` deduped by URL, so it is
+            # the inflated number this backfill exists to correct. Without a local dossier we
+            # keep the projection's figure rather than blanking a stat that is merely stale.
+            source_count = d.get("sourceCount")
+            claim_count = None
+            if dossier is not None:
+                # `dossier` here is `pack_manifest._ns`, a SimpleNamespace tree — not a
+                # `Dossier` — so the counts come from the shared duck-typed helpers rather
+                # than from properties this object does not have.
+                checks = getattr(dossier, "checks", None) or []
+                source_count = len(models.distinct_sources(checks)) or None
+                claim_count = models.cited_claim_count(checks) or None
+            meta = pack_html.PackMeta(
+                title=d.get("title") or pack.get("title") or pid,
+                one_liner=d.get("oneLine") or "",
+                verified_at=d.get("verifiedAt") or "",
+                source_count=source_count,
+                pack_id=pid,
+                claim_count=claim_count,
+            )
             new_bytes = rebuild_zip_with_index(zip_bytes, meta, dossier, pid)
             if new_bytes is None:
                 report.add(PackResult(pid, "already-correct", old_key.rsplit("/", 1)[-1]))
@@ -342,6 +508,10 @@ def main() -> int:
             # having it corrected. Only the second is a change to what an existing buyer sees.
             had = zipfile.ZipFile(io.BytesIO(zip_bytes)).namelist()
             parts = ["reordered reader" if "index.html" in had else "new reader"]
+            if any(dossier_render.rewrite_legacy_shelf_life(
+                    zipfile.ZipFile(io.BytesIO(zip_bytes)).read(n).decode("utf-8", "replace"))
+                    for n in had if n.endswith(".md")):
+                parts.append("shelf-life line retired")
             if dossier is None:
                 parts.append("no-dossier: manifest SKIPPED")
             elif pack_manifest.MANIFEST_FILENAME in had:

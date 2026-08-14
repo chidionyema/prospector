@@ -73,6 +73,7 @@ from backfill_listing_copy import DEFAULT_API_URL, patch_copy  # noqa: E402  (sa
 from prospector import prompts  # noqa: E402
 from prospector.artifacts import CARD_LINE_MAX  # noqa: E402
 from prospector.config import Config, load_config  # noqa: E402
+from prospector.errors import ProviderExhaustedError  # noqa: E402
 from prospector.pack_linter import (  # noqa: E402
     TITLE_MAX_CHARS,
     check_claims,
@@ -442,6 +443,19 @@ def main() -> int:
                 print(f"--from-plan line {lineno}: expected id<TAB>before<TAB>after",
                       file=sys.stderr)
                 return 2
+            # The two plan formats are both id<TAB>_<TAB>_, so the WRONG flag parses cleanly
+            # and writes silently. On 2026-08-14 a --plan-out file (id/field/value) was fed to
+            # --from-plan, which keys by id alone and takes parts[-1]: ten of fourteen live rows
+            # had a headline or a card line written into their TITLE, two of them over the
+            # 60-char cap, and the run reported "patched: 14, failed: 0". A field name in
+            # column 2 is what distinguishes the formats, and it is the only thing that can:
+            # a genuine `before` title is prose, never one of these three tokens.
+            if parts[1].strip() in _FIELD_KEY:
+                print(f"--from-plan line {lineno}: column 2 is {parts[1].strip()!r}, a field "
+                      f"name — this is a --plan-out file. Use --from-lines, which patches the "
+                      f"named field; --from-plan would write column 3 into the title.",
+                      file=sys.stderr)
+                return 2
             approved[parts[0].strip()] = parts[-1].strip()
         print(f"approved plan       : {len(approved)} titles from {args.from_plan}")
 
@@ -507,6 +521,11 @@ def main() -> int:
         patches.append((row, fixes))
 
     skipped: List[Tuple[Dict[str, Any], List[str]]] = []
+    # Three failures in a row is a brain, not a row: no realistic per-row flake rate produces
+    # three consecutive misses, and stopping there costs at most three wasted calls instead of
+    # a shelf's worth of them.
+    _OUTAGE_RUN = 3
+    consecutive_failures = 0
     op = None
     # Only when at least one row still needs a model. A fully-approved plan must not depend on
     # a brain being reachable: the thinking already happened and was reviewed.
@@ -550,10 +569,33 @@ def main() -> int:
         try:
             fields, trail, notes = propose(op, row, max_chars=args.max_chars,
                                            attempts=args.attempts, needs=needs)
-        except Exception as e:  # an operator outage ENDS the run; it is not a verdict of "no"
-            print(f"  OPERATOR FAILED: {type(e).__name__}: {e}", file=sys.stderr)
+        except ProviderExhaustedError as e:
+            # A dead brain ENDS the run. There is nothing to retry against and no verdict of
+            # "no" to record — every remaining row would fail identically.
+            print(f"  OPERATOR EXHAUSTED: {e}", file=sys.stderr)
             print(f"  stopping after {i - 1} of {len(todo)} — re-run to resume", file=sys.stderr)
             break
+        except Exception as e:
+            # One row's failure is NOT an outage. Measured 2026-08-14: MiniMax-M3 spends its
+            # whole token budget thinking on a per-CALL coin flip (`finish_reason=length`; the
+            # same 14 packs truncated at pack 2 on one run and pack 5 on the next), and the old
+            # bare `break` here turned one such flip into 61 unattempted rows. The row is
+            # recorded as skipped, exactly like an attempts-exhausted row, and a second pass
+            # picks up the stragglers.
+            #
+            # The outage case still has to be caught, because an unreachable endpoint ALSO
+            # arrives as a plain exception: a run of consecutive failures is what distinguishes
+            # "the brain is down" from "this row was unlucky", so the counter — not the first
+            # failure — is the stop condition.
+            consecutive_failures += 1
+            print(f"  FAILED: {type(e).__name__}: {e}", file=sys.stderr)
+            skipped.append((row, [f"{type(e).__name__}: {e}"]))
+            if consecutive_failures >= _OUTAGE_RUN:
+                print(f"  {consecutive_failures} consecutive failures — treating as an outage; "
+                      f"stopping after {i} of {len(todo)}, re-run to resume", file=sys.stderr)
+                break
+            continue
+        consecutive_failures = 0
         if fields is None:
             print(f"  SKIPPED after {args.attempts} attempts:")
             for line in trail:

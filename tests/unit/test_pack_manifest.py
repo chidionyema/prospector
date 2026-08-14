@@ -19,7 +19,7 @@ import zipfile
 import pytest
 
 from prospector import pack_manifest
-from prospector.bridge import _SECTION_TITLES, BUNDLE_FILES, EngineBridge
+from prospector.bridge import _SECTION_TITLES, BUNDLE_BONUS_FILES, BUNDLE_FILES, EngineBridge
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict
 from prospector.verify import VERDICT_PASSAGE_TRUNCATE
 
@@ -150,12 +150,19 @@ class TestTheManifestDescribesWhatShipped:
         assert [n["contentUrl"] for n in _nodes(doc, "DigitalDocument")] == [BUNDLE_FILES[0]]
 
     def test_a_bonus_file_is_listed_and_flagged_as_not_promised(self, bridge):
-        """index.html is in the zip, so an agent enumerating entries must find it accounted for,
-        and must be able to tell it apart from a sold deliverable."""
+        """A bonus file is in the zip, so an agent enumerating entries must find it accounted
+        for, and must be able to tell it apart from a sold deliverable.
+
+        Asserted against BUNDLE_BONUS_FILES, not a literal: the manifest is the machine-readable
+        account of what shipped, so every declared bonus must appear in it. The manifest itself is
+        the one exception — a file cannot carry the digest of its own final bytes
+        (`test_the_manifest_never_describes_itself`).
+        """
         doc = _manifest_from_zip(bridge._create_bundle(_dossier(), _full_artifacts(), []))
         bonus = [n for n in _nodes(doc, "DigitalDocument")
                  if n.get("prospector:promisedDeliverable") is False]
-        assert [n["contentUrl"] for n in bonus] == ["index.html"]
+        assert (set(n["contentUrl"] for n in bonus)
+                == set(BUNDLE_BONUS_FILES) - {pack_manifest.MANIFEST_FILENAME})
 
 
 class TestTheManifestCarriesTheEvidence:

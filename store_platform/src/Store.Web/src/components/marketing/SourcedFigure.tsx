@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { textLinkClass } from '@/components/ui';
 import { citedFigure } from '@/lib/sources';
 
 /**
@@ -24,7 +25,7 @@ export function SourcedFigure({ id, className }: { id: string; className?: strin
         href={source.url}
         target="_blank"
         rel="noopener noreferrer nofollow"
-        className="whitespace-nowrap text-accent underline decoration-dotted underline-offset-2 transition-colors hover:text-accent-hover"
+        className={textLinkClass('whitespace-nowrap')}
       >
         {source.publisher}
         <span className="sr-only">, opens the source in a new tab</span>

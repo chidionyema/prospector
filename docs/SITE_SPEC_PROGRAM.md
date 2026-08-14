@@ -960,3 +960,70 @@ have unlisted the shelf. Flip it once `tools/retitle_catalogue.py --apply` has l
 - [ ] Resolve sequence sequential; `prefers-reduced-motion` renders final states instantly
 - [ ] Focus visible on all interactives; killed state never colour-only; contrast floors hold
 - [ ] LCP <1.2s / CLS 0 on the homepage and a pack page
+
+---
+
+### v5, 2026-08-14 — "under-designed, not cluttered": a seen-with-eyes critique. NOT STARTED.
+
+Two founder critiques arrived this session. The FIRST was read from the rendered DOM (data shapes);
+its triage is in the session handoff and most of it resolved to §5.4 / "Known open items" — the live
+rows were never rewritten — plus four verified FALSE POSITIVES (the `sr-only` wordmark doubling, a
+miscounted CTA, a checkbox misread as a button, eleven bands that are six). The SECOND, below, was
+made **looking at pixels**, and it supersedes the first's design implications:
+
+> "This isn't cluttered, it's **under-designed**. It reads as a wireframe someone shipped, not as
+> minimalism. Minimal designs fail when the restraint isn't backed by precision. Right now the
+> restraint is there and the precision isn't, so it reads as unfinished rather than austere."
+
+**Founder decision, same session (via AskUserQuestion), which governs this work order:**
+**the buyer is the SOLE TRADER, and the register must SOFTEN.** The dev-tools chrome and the
+Markdown-in-a-zip deliverable are the mismatch — not the pack subjects. This is an EXPLICIT
+OVERRIDE of §3 (design system) and §5.2 (vocabulary). Do not silently re-litigate either; §3's
+monochrome/2px rulings and §5.2's vocabulary are now subordinate to this decision.
+
+#### Work orders — "unstyled prototype" tells
+1. **The orphaned accent.** The teal funnel in the logo is the only colour on the screen; nothing
+   else picks it up — not links, not the CTA, not the category chip. Decide, do not straddle:
+   build a real system off it, or drop it and commit to pure monochrome. (Note: §3.1 already flags
+   `--brand-mark` as ≈12° from `--success`, under the ≥25° separation rule. That flag is unresolved
+   and must be resolved by whichever branch is taken.)
+2. **Header buttons are default grey fills.** The search pill and the Menu pill are two different
+   widths, flat neutral on a white bar — the `<button>` default look. Also **hamburger + the word
+   "Menu" is redundant: pick one.** (These two controls are exactly the scope of the 2026-08-09 v4
+   item 5 `rounded-full` pill override; that override is what now reads as unstyled.)
+3. **The header does not mask what scrolls under it.** "with the research" clips hard at the header
+   edge with no backdrop blur or solid fill; text collides at the boundary.
+   **Founder: "the single most visible bug on this screen."** Fix first.
+4. **"Why prices differ" underline** sits at an offset that cuts the descenders on `y` and `p`.
+   Set `text-underline-offset` or use a bottom border.
+5. **Every divider is a 1px full-bleed grey line** — the wireframe device. Sections separate by
+   **space and weight**, not rules. Replace all full-bleed hairline dividers with spacing.
+
+#### The black media block — "the biggest problem"
+~60% of the pack card is a black rectangle holding a decorative bar-glyph **that encodes nothing**
+and a monospace "30 sources". It is a placeholder where an image should be: it makes the card read
+empty and top-heavy while real content is squeezed into the bottom third. The monospace type
+(category chip + source count) also drags the terminal aesthetic back in — which decision 1 above
+is trying to remove. **Remove the black media block until there is real imagery for it.**
+
+#### Spacing and hierarchy
+6. **Roughly a full screen of dead air** between "Read a full pack free" and the "What survived"
+   divider. Large negative space reads as confident only when the surrounding space is tight; here
+   everything is loose, so it reads as a layout gap.
+7. **Two CTAs at opposite extremes**: a ~170px-tall full-bleed black slab, then bare text with an
+   arrow. No middle tier, and the slab is so tall it reads as a section, not a button.
+   **Cap button height at 56px**; give the secondary an outline or a background.
+8. **The CTA label is centred** while everything else on the page is flush left — it breaks the
+   vertical axis the margins establish.
+9. **Tracking mismatch.** Headline tracking is very tight (`y`/`d` in "already done" nearly touch)
+   while body copy is loose. Same family, wildly different tracking — this is why the two blocks
+   feel like they come from different sites.
+
+#### The mechanical instruction (founder's own words)
+> "Pick a spacing scale (4/8/12/16/24/32/48/64) and snap every vertical gap to it; nothing
+> arbitrary. Replace all full-bleed hairline dividers with spacing. Cap button height at 56px.
+> Remove the black media block until there's real imagery to put in it."
+
+**Status: NOT STARTED.** No code changed for v5 in this session. Do not mark any row ✅ without a
+computed-value proof in a real browser — §3's ledger row is the precedent (Playwright over five
+routes, `getComputedStyle`, not a grep of the stylesheet). Memory `never-judge-design-by-grepping-html`.

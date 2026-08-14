@@ -1,8 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
-import { Icon } from '@/components/ui';
+import { Icon, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
-import killTotals from '@/data/kill-log-totals.json';
+// No `kill-log-totals.json` import: this row stopped printing counts on 2026-08-14 and the import
+// is what would make a future edit reach for one without noticing the page already states them.
 
 /**
  * N1 - The single "Trust & guarantees" row.
@@ -12,14 +13,13 @@ import killTotals from '@/data/kill-log-totals.json';
  * the same kill-log totals the rest of the site uses, so the counts stay
  * in sync with the kill log automatically.
  *
- * The row is the canonical "what am I actually buying?" surface: price, refund,
- * volume of vetting, the kill count, the live count. The buyer who scans the
- * page from top to bottom sees the trust once, definitively, and links to
- * the rest of the trust surface from here.
+ * The row is the canonical "what am I actually buying?" surface: price, refund, sourcing, and a
+ * link to the evidence. It carried the kill count and the live count too until 2026-08-14, which
+ * is what made it the fourth telling of the kill statistic on one scroll; it is the purchase
+ * terms now, and the counts are stated once, above the shelf, from the live catalogue.
  */
 export default function TrustGuaranteesRow({
   className,
-  listed,
   price,
   layout = 'row',
 }: {
@@ -36,6 +36,14 @@ export default function TrustGuaranteesRow({
    * merge site in `pages/index.tsx`.
    */
   layout?: 'row' | 'stack';
+  /*
+   * ACCEPTED AND IGNORED as of 2026-08-14, deliberately not deleted. This row no longer prints a
+   * live count (see the kill-sentence note below), but `listed` is passed by callers that hold the
+   * live `/catalog` stats, and dropping it from the type would be a compile error at every one of
+   * them for a change that is purely about what this row says. It stays in the contract so a
+   * caller can keep passing the live figure, and so restoring a count here can never reintroduce
+   * the build-time-snapshot bug the comment history below records.
+   */
   listed?: number;
   /*
    * The price fact, computed by the caller from the packs it already has
@@ -46,24 +54,19 @@ export default function TrustGuaranteesRow({
    */
   price?: { label: string; uniform: boolean };
 }) {
-  // Source: the canonical kill-log totals. killed + passed is the total
-  // "researched" figure. Those two are historical, so a build-time snapshot is
-  // the right shape for them.
-  //
-  // The live count is NOT. `kill-log-totals.json` is frozen at build time, and the
-  // home page renders the same claim twice from two different sources: index.tsx
-  // reads `stats.listed` off the live `/catalog`, this row read `totals.shown`.
-  // On 2026-08-05 the live catalog held 61 packs while the JSON still said
-  // `"shown": 60`, so the page shipped "61 live now" and "60 live now" on one
-  // scroll. Publishing a pack without a redeploy widens the gap indefinitely.
-  //
-  // So the live figure is a prop now, passed from whatever already holds the live
-  // stats. The snapshot stays only as the fallback for callers with nothing live
-  // to hand (the count is then stale but at least not self-contradicting on a page
-  // that has the real number elsewhere).
-  const totals = killTotals as { killed: number; passed: number; live?: number; shown?: number };
-  const killed = totals.killed;
-  const live = listed ?? totals.live ?? totals.shown ?? 0;
+  /* THE COUNTS ARE GONE FROM THIS ROW (2026-08-14). Kept as history because the reasoning below
+     is still live the moment anyone puts a number back here.
+
+     This row used to read the canonical kill-log totals: `killed + passed` is the "researched"
+     figure, and those two are historical, so a build-time snapshot was the right shape for them.
+     The LIVE count never was. `kill-log-totals.json` is frozen at build time, and the home page
+     rendered the same claim twice from two different sources -- index.tsx read `stats.listed` off
+     the live `/catalog`, this row read `totals.shown`. On 2026-08-05 the live catalog held 61
+     packs while the JSON still said `"shown": 60`, so the page shipped "61 live now" and "60 live
+     now" on one scroll, and publishing a pack without a redeploy widened the gap indefinitely.
+     That is why `listed` became a prop, and why it is still accepted above.
+
+     Both counts are now stated once, above the shelf, from the live source. */
 
   /*
    * THREE facts, down from five (brand v3, 2026-08-06).
@@ -74,8 +77,9 @@ export default function TrustGuaranteesRow({
    * where they are evidence rather than reassurance -- the filter-log card above the fold and the
    * method band -- and this row is only the purchase terms.
    *
-   * `listed` and `killed` are still read below so the row's kill-log sentence stays true to the
-   * same source, and so callers that already pass `listed` do not have to change.
+   * As of 2026-08-14 neither statistic is read here at all: the volume figures were the last
+   * duplicate of a number the page already states above the shelf. `listed` is still accepted so
+   * callers do not have to change (see the note on the prop).
    */
   const facts: { icon: 'money' | 'shield' | 'verified'; label: string }[] = [
     { icon: 'shield', label: '14-day money back' },
@@ -110,13 +114,27 @@ export default function TrustGuaranteesRow({
           ))}
         </ul>
         <p className={cx('text-caption text-subtle', stacked ? 'mt-5 border-t border-border pt-5' : 'mt-4')}>
-          {/* WAS "has every one, with the sourced reason why", which /kill-log itself contradicts
-              in its own copy: it publishes 60 of the 1,168. Promising the complete log and then
-              delivering a sample is the exact overclaim the kill log exists to disprove, made on
-              the page that links to it. It now promises what the log actually contains. */}
-          {killed.toLocaleString('en-GB')} ideas were killed to list these {live}. The{' '}
-          <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">kill log</Link>
-          {' '}has every kill that came with an argument, and the sourced reason why.
+          {/* THE KILL COUNT IS NOT REPEATED HERE (founder, 2026-08-14). The number of killed ideas
+              was stated four times on one scroll; removing `LiveKillCard` from the home page took
+              out one of them and left this one, which the note at that removal site in
+              `pages/index.tsx` records as the last duplicate with no prop to suppress it. It is a
+              sentence now, not a statistic: the counts are stated once, above the shelf, from the
+              live catalogue, and this row is the purchase terms.
+
+              The LINK stays, because the kill log is the evidence behind the three terms above it
+              and this row is where a buyer decides whether to believe them.
+
+              The promise stays worded as "every kill that came with an argument" rather than
+              "every one". /kill-log publishes a sample, not the whole log, and it says so in its
+              own copy -- promising the complete log on the page that links to it is the exact
+              overclaim the kill log exists to disprove. So this says what the log HOLDS ("the
+              ideas that failed"), never how many of them, and never "every".
+
+              No dash in the sentence (founder standing rule on copy): the clause it would have
+              joined is a relative clause instead. */}
+          The{' '}
+          <Link href="/kill-log" className={textLinkClass()}>kill log</Link>
+          {' '}publishes the ideas that failed these checks, each with the sourced reason why.
         </p>
       </div>
     </section>

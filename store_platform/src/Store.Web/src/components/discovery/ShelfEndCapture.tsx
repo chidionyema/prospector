@@ -58,7 +58,16 @@ export function ShelfEndCapture({ className }: { className?: string }) {
           </div>
 
           <div className="w-full max-w-md">
-            <WaitlistForm source="homepage-shelf-end" submitLabel="Tell me when one survives" />
+            {/* No `submitLabel` override, 2026-08-14: the homepage carried two email forms whose
+                buttons named the same action two different ways, this one and the discovery
+                placement's default. One action, one verb, set in `WaitlistForm` and inherited
+                everywhere, so a third placement cannot invent a fourth wording.
+
+                The wording itself ("Put it in the queue") is inherited rather than endorsed and is
+                flagged for the content review: "queue" is the engine's word for its own backlog,
+                and the buyer here is a sole trader who does not know the engine exists. Changing it
+                is one string in `WaitlistForm.tsx:51` now that nothing overrides it. */}
+            <WaitlistForm source="homepage-shelf-end" />
           </div>
         </div>
       </div>

@@ -114,17 +114,32 @@ describe('Design contract — global tokens (globals.css)', () => {
     expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.02em/);
   });
 
-  it('sets display at 72px desktop, the largest step there is', () => {
+  it('sets display at 48px desktop, the largest step there is', () => {
     // Clamped for the same reason as h1 (spec §3.2: display "mobile: 2.25"). `--text-mega` (6rem)
     // is deleted rather than unused -- see tokens.css.
     //
-    // 3rem -> 4.5rem (2026-08-14). This is NOT the seventh step returning: display used to be
-    // worn by eight surfaces as "h1, but bigger at desktop", so it could not be sized for the
-    // hero without resizing seven page titles. Those seven moved to `text-h1` in the same commit
-    // and display now has exactly one consumer (`pages/index.tsx`'s hero), which is what the spec
-    // said it was for all along. The step COUNT is unchanged, which is what the deletions below
-    // actually guard.
-    expect(css).toMatch(/--text-display:\s*clamp\([^)]*4\.5rem\s*\)/); // 72px at >=1000px
+    // 3rem -> 4.5rem -> 3rem. The middle value held for one day and this test pinned it, so read
+    // the round trip before changing it again:
+    //
+    //   4.5rem was approved from a RENDERED TYPE SPECIMEN, before the hero carried its real
+    //   sentence. At 72px the eight words of "Business ideas with the research already done."
+    //   wrapped to three lines and filled the fold with one sentence, which is what the founder
+    //   saw on 2026-08-14 and rejected on sight. A size approved on a specimen is approved for
+    //   the specimen's word count; this one was never re-checked against the copy that shipped.
+    //
+    //   3rem is not a new taste call, it is the number SITE_SPEC_PROGRAM.md §3.2 declares for
+    //   display ("3.0rem, Homepage hero only"), so this is a RETURN to the spec rather than a
+    //   departure from it. Anything above it needs the spec changed first.
+    //
+    // What the 4.5rem commit did that survives: display used to be worn by eight surfaces as
+    // "h1, but bigger at desktop", so it could not be sized for the hero without resizing seven
+    // page titles. Those seven moved to `text-h1` and display now has exactly one consumer
+    // (`pages/index.tsx`'s hero). That is why this token can be retuned at all. The step COUNT
+    // is unchanged either way, which is what the deletions below actually guard.
+    expect(css).toMatch(/--text-display:\s*clamp\([^)]*3rem\s*\)/); // 48px at the top of the clamp
+    // The 660 weight exemption went with the size: at 48px the face does not need it, and a
+    // seventh weight on one token is how a scale acquires an eighth.
+    expect(css).toMatch(/--text-display--font-weight:\s*560;/);
     expect(css).not.toMatch(/--text-mega:/);
     // A seventh step cannot be reached for: --text-hero/-h3/-small are deleted, not unused.
     expect(css).not.toMatch(/--text-hero:/);

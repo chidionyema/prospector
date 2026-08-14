@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from . import evidence_budget, facets
 from .copy_lint import buyer_readable
+from .marketing_assets import ASSET_TYPES
 from .models import Candidate, CheckResult, Decision, Dossier, Verdict
 from .operator import Operator, ParseError, _extract_json
 from .pack_linter import symbol_for_currency
@@ -165,7 +166,7 @@ _ONE_OFF_MODELS = frozenset({
 })
 
 
-def _revenue_shape(assumptions: Dict[str, Any], churn: Optional[float]) -> str:
+def revenue_shape(assumptions: Dict[str, Any], churn: Optional[float]) -> str:
     """``"recurring"``, ``"one_off"`` or ``"unknown"`` — never a guess dressed as a fact.
 
     A declared `revenue_model` wins. Absent one, a stated monthly churn rate is taken as
@@ -234,17 +235,23 @@ def _render_financial_model(assumptions: Dict[str, Any],
     if price is None or cust_m1 is None:
         return ""
 
-    shape = _revenue_shape(assumptions, churn)
+    shape = revenue_shape(assumptions, churn)
     recurring = shape == "recurring"
     unit = "orders" if shape == "one_off" else "customers"
     one = unit[:-1]
+    # The per-unit lines count orders; the acquisition and lifetime lines are about
+    # the person. Deriving both from one word produced "what it costs to win a order".
+    person = "customer" if shape != "one_off" else "buyer"
     per_month = " a month" if recurring else ""
 
     # Every input the model did not supply, in the buyer's words, printed once at the end.
     gaps: List[str] = []
 
     def money(value: float, dp: int = 0) -> str:
-        return f"{currency}{value:,.{dp}f}"
+        # Sign OUTSIDE the symbol. `f"{currency}{-378:,.0f}"` renders "£-378", which reads
+        # as a typo rather than a loss, in the one line where the loss is the finding.
+        sign = "-" if value < 0 else ""
+        return f"{sign}{currency}{abs(value):,.{dp}f}"
 
     lines: List[str] = ["## Financial Model", ""]
 
@@ -265,7 +272,7 @@ def _render_financial_model(assumptions: Dict[str, Any],
     if shape == "unknown":
         lines.append("")
         lines.append(f"These are {one} counts, not a repeat-purchase promise: nothing here "
-                     f"assumes the same {one} buys twice.")
+                     f"assumes the same {person} buys twice.")
     lines.append("")
 
     # --- Gross margin ---
@@ -287,7 +294,7 @@ def _render_financial_model(assumptions: Dict[str, Any],
     # --- Cost of winning a customer, and when it comes back ---
     cost_lines: List[str] = []
     if cac is not None:
-        cost_lines.append(f"- **Costs to win one {one}: {money(cac)}**")
+        cost_lines.append(f"- **Costs to win one {person}: {money(cac)}**")
     if payback is not None:
         cost_lines.append(f"- **Paid back in: ~{payback} months** — the model's own figure, "
                           f"not ours")
@@ -315,7 +322,7 @@ def _render_financial_model(assumptions: Dict[str, Any],
                     "any of this works, and it was not supplied.")
 
     if cost_lines:
-        lines.append(f"### What it costs to win a {one}")
+        lines.append(f"### What it costs to win a {person}")
         lines.append("")
         lines.extend(cost_lines)
         lines.append("")
@@ -342,10 +349,10 @@ def _render_financial_model(assumptions: Dict[str, Any],
                     "repeat rate a customer is worth exactly one sale and no more.")
     else:
         gaps.append("Whether buyers pay once or keep paying. Everything about what a "
-                    f"{one} is worth over time hangs on it, and it was not stated.")
+                    f"{person} is worth over time hangs on it, and it was not stated.")
 
     if clv_line:
-        lines.append(f"### What one {one} is worth")
+        lines.append(f"### What one {person} is worth")
         lines.append("")
         lines.append(clv_line)
         lines.append("")
@@ -1002,7 +1009,10 @@ def generate_marketing_content(
     claims_json = json.dumps(_claims_prompt_view(claims))
     cand_json = json.dumps(_candidate_prompt_view(cand))
 
-    types = ["listing_page", "teaser_social", "seo_preview", "launch_email"]
+    # One definition, shared with the renderer that headings them and the lint that grades
+    # them: `marketing_assets.ASSET_TYPES`. A local list here is how the generator, the
+    # heading and the gate came to disagree about what a `launch_email` even is.
+    types = list(ASSET_TYPES)
 
     # The artifact path has carried a currency hint since Epic D; this one never did, so the
     # model picked a symbol from the copy's implicit context. `lint_pack` grades every piece

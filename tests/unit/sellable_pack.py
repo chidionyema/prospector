@@ -29,6 +29,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from prospector.artifacts import _render_financial_model
+
 _BUILD_SPEC = """## Architecture
 
 The service ingests fuel-card statements, matches each transaction against the vehicle that
@@ -98,31 +100,44 @@ Filings and their evidence are retained for the statutory period. Every submissi
 reviewed it and when, because a reclaim that cannot be explained cannot be defended.
 """
 
-_FINANCIAL_MODEL = """## Financial Model
+# The Python-rendered head comes from the renderer itself — this fixture asserts that a
+# pack the pipeline can actually produce is sellable, so a transcribed head would let the
+# claim survive a renderer change. The prose below it is the model-authored tail.
+_FIN_INPUTS = {"revenue_model": "subscription", "monthly_price": 40,
+               "target_customers_month_1": 12, "target_customers_month_12": 90,
+               "estimated_cac_gbp": 90, "estimated_monthly_churn_pct": 4.0,
+               "cost_of_goods_pct": 35, "overhead_month_1_gbp": 400}
 
-### Revenue
+_FINANCIAL_TAIL = """
+### How the revenue works
 
 Revenue is a share of what each operator actually recovers, billed only after the reclaim is
 paid out. Recovery scales with fleet size and with the share of transactions matched, so
 revenue per operator rises as the matching improves rather than needing a price change.
 
-### Costs
+### What it costs to run
 
 The variable cost is reviewer time in the monthly loop. Infrastructure is immaterial next to
 it, so the cost line is effectively a staffing line.
 
-### Payback Period
-
-Acquisition is a referral fee paid once, recovered out of the operator's first successful
-reclaim in the common case, and out of the second where the fleet sits at the small end of
-the target band.
-
-### LTV:CAC Ratio
+### Why the money comes back
 
 Retention is the lever that matters here. An operator who files once through the service and
 sees the money arrive has no reason to return to filing it themselves, so lifetime value is
 governed by fleet churn rather than by product churn.
 """
+
+
+def financial_model(currency: str = "£") -> str:
+    """The rendered model in THIS market's symbol.
+
+    It has to be parameterised: `check_currency` refuses a pack whose money symbol
+    contradicts its market (a `us` pack quoting £), and every figure above is Python
+    formatting `currency` — so a hardcoded £ here made the four `us` money-rail fixtures
+    unsellable the moment the renderer started printing real numbers.
+    """
+    return _render_financial_model(_FIN_INPUTS, [], currency) + _FINANCIAL_TAIL
+
 
 _LISTING_COPY = """# FuelClaim
 
@@ -150,13 +165,13 @@ share of what arrives, so an unsuccessful reclaim costs the operator nothing at 
 """
 
 
-def sellable_artifacts() -> Dict[str, str]:
+def sellable_artifacts(currency: str = "£") -> Dict[str, str]:
     """The four required artifacts, each above its real floor."""
     return {
         "build_spec": _BUILD_SPEC,
         "gtm_plan": _GTM_PLAN,
         "ops_plan": _OPS_PLAN,
-        "financial_model": _FINANCIAL_MODEL,
+        "financial_model": financial_model(currency),
     }
 
 
@@ -170,10 +185,19 @@ def sellable_marketing() -> List[Dict[str, str]]:
     ]
 
 
-def sellable_tags(**extra: Any) -> Dict[str, Any]:
+#: Market → money symbol, the same mapping the currency lint holds packs to. A fixture that
+#: publishes into a market has to render in that market's symbol or it is not sellable.
+_MARKET_SYMBOL = {"us": "$", "eu": "€"}
+
+
+def symbol_for_market(market: str) -> str:
+    return _MARKET_SYMBOL.get(str(market or "").strip().lower(), "£")
+
+
+def sellable_tags(currency: str = "£", **extra: Any) -> Dict[str, Any]:
     """`candidate.tags` for a pack that clears completeness, the bundle audit and the lint."""
     tags: Dict[str, Any] = {
-        "artifacts": sellable_artifacts(),
+        "artifacts": sellable_artifacts(currency),
         "marketing": sellable_marketing(),
     }
     tags.update(extra)

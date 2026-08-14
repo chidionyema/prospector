@@ -38,16 +38,44 @@ from __future__ import annotations
 
 import re
 
-__all__ = ["clip_to_sentence", "RATIONALE_MAX"]
+__all__ = ["clip_to_sentence", "RATIONALE_MAX", "ABBREV_GUARD"]
 
 #: The budget every verdict rationale is held to. The prompt asks for <=2 sentences, so this is a
 #: backstop against a model that ignores the instruction, not the normal path.
 RATIONALE_MAX = 600
 
+#: Abbreviations whose full stop does NOT end a sentence.
+#:
+#: Added 2026-08-14. The founder read a live pack and found the executive summary cut at
+#: "A 2025 report puts autism at 1 in 31 U.S." and "The passages describe U.S." — twice on
+#: page one. A sentence splitter that stops at `U.S.` produces a cut that looks exactly like
+#: the mid-word clip this module was written to end, so the fix for one without the other
+#: leaves the same symptom in front of the buyer.
+#:
+#: One definition, imported by `plain_text` rather than restated there: a second copy is how
+#: a guard gets fixed in the path a test exercises and left broken in the path a buyer reads.
+_ABBREVIATIONS = (
+    "e.g", "i.e", "etc", "vs", "cf", "al", "approx", "est", "no",
+    "Mr", "Mrs", "Ms", "Dr", "Prof", "St", "Jr", "Sr", "Rev",
+    "Inc", "Ltd", "Corp", "Co", "plc", "LLC", "Fig", "Vol", "Ch", "pp",
+    "Jan", "Feb", "Mar", "Apr", "Jun", "Jul", "Aug", "Sept", "Sep", "Oct", "Nov", "Dec",
+)
+
+#: A run of negative lookbehinds to place immediately before the `[.!?]` of a sentence-end
+#: pattern. Each is separately fixed-width because Python's `re` rejects a variable-width
+#: lookbehind, so the alternation has to be spelled out rather than grouped.
+#:
+#: The final clause is the general initialism rule: any `X.Y` — `U.S.`, `U.K.`, `E.U.`,
+#: `D.C.`, `Ph.D.` — where a single capital sits between two dots.
+ABBREV_GUARD = (
+    "".join(rf"(?<!\b{re.escape(a)})" for a in _ABBREVIATIONS)
+    + r"(?<![A-Z]\.[A-Z])"
+)
+
 # A sentence end, plus any closing quote or bracket that belongs to it, followed by whitespace or
 # the end of the string. The trailing-bracket clause matters: `... (Ofgem, 2024).` must cut after
 # the period, not before the parenthesis, or the citation is orphaned.
-_SENTENCE_END = re.compile(r"[.!?][\"'’\)\]]*(?=\s|$)")
+_SENTENCE_END = re.compile(ABBREV_GUARD + r"[.!?][\"'’\)\]]*(?=\s|$)")
 
 # How much of the budget a sentence-boundary cut must retain to be worth taking. Below this we
 # would be throwing away most of the allowance to honour an early full stop -- a rationale opening

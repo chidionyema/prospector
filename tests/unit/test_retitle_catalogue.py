@@ -295,3 +295,40 @@ def test_a_dossier_without_a_candidate_object_warns_rather_than_inventing_one(tm
     note = retitle._write_dossier_title(tmp_path, "pack1", "New, and better")
     assert "republish" in note.lower()
     assert "candidate" not in json.loads((d / "pack1.pass.json").read_text())
+
+
+def test_a_plan_out_file_fed_to_from_plan_is_refused_rather_than_mis_keyed(tmp_path, monkeypatch,
+                                                                          capsys):
+    """The two plan formats are both three tab-separated columns, so the wrong flag parses
+    cleanly and writes silently.
+
+    `--plan-out` emits id/field/value; `--from-plan` reads id/before/after and keys by id alone,
+    taking the LAST column. On 2026-08-14 a --plan-out file went to --from-plan and every
+    pack's final line — a headline or a card line — was written into its live TITLE: ten of
+    fourteen rows wrong, two of them past the 60-char cap, under a report reading
+    "patched: 14, failed: 0". Nothing downstream could catch it, because each individual write
+    was exactly what it was told to do. The parse is the only place the two can be told apart.
+    """
+    plan = tmp_path / "plan.tsv"
+    plan.write_text("abc123\ttitle\tSomething for someone\n"
+                    "abc123\tcardLine\tDoes the thing\n", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv",
+                        ["retitle_catalogue.py", "--dry-run", "--from-plan", str(plan)])
+    assert retitle.main() == 2
+    err = capsys.readouterr().err
+    assert "--from-lines" in err, "the refusal must name the flag that IS correct"
+
+
+def test_a_genuine_before_after_plan_still_parses(tmp_path, monkeypatch, capsys):
+    """The other half: the guard keys on a field NAME in column 2, so it must not reject a real
+    id/before/after plan, whose column 2 is prose. Without this, the fix above would read as
+    working while having simply disabled the flag.
+    """
+    plan = tmp_path / "plan.tsv"
+    plan.write_text("abc123\tOld title, with a name\tSomething for someone\n", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv",
+                        ["retitle_catalogue.py", "--dry-run", "--from-plan", str(plan)])
+    monkeypatch.setattr(retitle, "_fetch_catalogue", lambda *_a, **_k: [])
+    # 1 = "no rows to process", i.e. it got past the parse and on to the catalogue.
+    assert retitle.main() == 1
+    assert "approved plan       : 1 titles" in capsys.readouterr().out

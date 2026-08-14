@@ -141,8 +141,37 @@ class TestPrintStylesheet:
 class TestFooter:
     def test_footer_states_the_sourcing_claim_and_pack_id(self):
         html = render_pack_html([("A", "# a\n")], _meta(pack_id="deadbeef" * 2))
-        assert "Every factual claim in this pack cites a retrievable source." in html
+        assert "Every claim we could check links to the page it came from." in html
         assert "deadbeef" * 2 in html
+
+    def test_the_footer_does_not_promise_a_source_for_every_claim(self):
+        """A pack ships `unverifiable` checks — claims we could NOT source. The old footer
+        said every factual claim cites a retrievable source, which those checks falsify, and
+        an overstated sourcing promise is the first thing a sceptical buyer tests."""
+        html = render_pack_html([("A", "# a\n")], _meta())
+        assert "Every factual claim in this pack cites a retrievable source" not in html
+
+
+class TestCoverStat:
+    def test_the_cover_leads_with_claims_not_source_volume(self):
+        html = render_pack_html([("A", "# a\n")], _meta(claim_count=6))
+        assert "6 claims against 12 sources" in html
+        assert "Grounded in" not in html
+
+    def test_one_claim_and_one_source_are_singular(self):
+        html = render_pack_html([("A", "# a\n")], _meta(claim_count=1, source_count=1))
+        assert "1 claim against 1 source" in html
+
+    def test_a_pack_with_no_claim_count_keeps_the_old_source_line(self):
+        """Bundles rendered before claim counts existed still carry a source count; a
+        backfill of one must not lose the stat entirely."""
+        html = render_pack_html([("A", "# a\n")], _meta())
+        assert "12 sources" in html
+
+    def test_a_claim_count_with_no_source_count_still_renders(self):
+        html = render_pack_html([("A", "# a\n")], _meta(claim_count=4, source_count=None))
+        assert "4 claims" in html
+        assert "against" not in html.split("cover-stats")[1][:200]
 
 
 class TestEscaping:

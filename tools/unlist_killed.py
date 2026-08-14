@@ -104,9 +104,21 @@ def _commit(processed: list[dict]) -> int:
 
 
 def _reason(entry: dict) -> str:
-    """The API rejects an empty reason on purpose — an unexplained delisting reads as a bug."""
-    gate = entry.get("gate_fired") or entry.get("reason") or "re-vet KILL"
-    return f"re-vet KILL ({gate}) — queued {entry.get('queued_at', 'unknown date')}"
+    """The API rejects an empty reason on purpose — an unexplained delisting reads as a bug.
+
+    An explicit `reason` is passed through VERBATIM. The queue used to be written by exactly
+    one producer (`decay.py::_queue_unlist`, always a re-vet KILL), so the phrasing was
+    hardcoded; from 2026-08-14 `tools/retire_rotted_passes.py` also queues withdrawals, for
+    citation rot on a pack that was never re-vetted at all. Stamping those "re-vet KILL" would
+    put a false cause in the storefront's own moderation record — the one place the reason is
+    read later.
+    """
+    explicit = entry.get("reason")
+    when = entry.get("queued_at", "unknown date")
+    if explicit:
+        return f"{explicit} — queued {when}"
+    gate = entry.get("gate_fired") or "re-vet KILL"
+    return f"re-vet KILL ({gate}) — queued {when}"
 
 
 def _unlist_one(session: requests.Session, api_url: str, key: str,

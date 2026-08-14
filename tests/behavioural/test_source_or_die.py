@@ -27,6 +27,10 @@ def cand() -> Candidate:
 
 
 REAL_SOURCE = Source.make(url="https://real.example.com", text="Real evidence of market pain.")
+#: A SECOND, independent publisher. The corroboration floor (2026-08-14) treats pages from one
+#: registrable domain as one source, so a `supported` ruling needs two of these to stand.
+SECOND_PUBLISHER = Source.make(url="https://other.example.org",
+                               text="Independent corroboration of the same market pain.")
 
 
 # ---------------------------------------------------------------------------
@@ -79,14 +83,23 @@ def test_supported_with_unknown_source_id_downgraded(cand):
 # ---------------------------------------------------------------------------
 
 def test_supported_with_valid_citation_not_downgraded(cand):
-    """Model returns 'supported' and cites the real source_id -> verdict kept."""
+    """Model returns 'supported' and cites the real source_id -> verdict kept.
+
+    TWO publishers, not one, since 2026-08-14: the corroboration floor
+    (`admissibility.corroboration_reason`, `config.yaml admissibility.corroboration_min_domains`)
+    demotes a `supported` ruling whose citations all come from a single registrable domain.
+    That gate has its own tests in `tests/unit/test_corroboration_floor.py`; the property
+    THIS test pins is source-or-die — a valid citation prevents the no-citation downgrade —
+    so the fixture is given the corroboration it would have in a real ruling rather than the
+    gate being switched off underneath it.
+    """
     op = MockOperator(router=lambda s, u: {
         "verdict": "supported",
         "confidence": 0.85,
         "rationale": "Pain confirmed by data.",
-        "citations": [REAL_SOURCE.source_id],
+        "citations": [REAL_SOURCE.source_id, SECOND_PUBLISHER.source_id],
     })
-    result = verdict_for(op, cand, "pain_reality", sources=[REAL_SOURCE])
+    result = verdict_for(op, cand, "pain_reality", sources=[REAL_SOURCE, SECOND_PUBLISHER])
     assert result.verdict == Verdict.SUPPORTED
     assert REAL_SOURCE.source_id in result.citations
 

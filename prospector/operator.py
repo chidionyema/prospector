@@ -21,7 +21,7 @@ import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from .breaker import CircuitBreaker
 from .telemetry import track_latency
@@ -92,11 +92,68 @@ def _extract_json(text: str) -> Any:
                             logger.info(f"JSON Strategy 3 success: found {len(candidate)} balanced chars starting at {start}")
                             return data
                         except json.JSONDecodeError as e:
-                            logger.warning(f"JSON Strategy 3 balanced match failed: {e}", 
+                            logger.warning(f"JSON Strategy 3 balanced match failed: {e}",
                                            extra={"candidate_start": candidate[:50], "candidate_end": candidate[-50:]})
                             continue
-    
+
+    # Strategy 4: the LAST balanced block wins, not the first.
+    #
+    # Strategies 1-3 all assume the answer is the first JSON-shaped thing in the response.
+    # That is false for a reasoning model, which thinks in prose first and answers last — and
+    # its prose is full of JSON-shaped noise: measured 2026-08-14 on a live retitle run,
+    # MiniMax returned 55,639 chars whose reasoning contained the literal `[Customers] [have
+    # problem]`, so Strategy 3 locked on to `[Customers]` and every later attempt inherited a
+    # broken depth count. The answer — a complete `{... "card_line": "..."}` — was the last
+    # 200 characters of the response and no strategy ever looked there. The whole run produced
+    # nothing, twice, at $0.0067 and four minutes a call.
+    #
+    # Strategy 1 already handles the well-formed case (`<think>…</think>` then JSON), so this
+    # runs ONLY after 1-3 have failed and cannot change any response that parses today. It is
+    # tried on the think-stripped text first and the raw text second, because a `<think>` with
+    # no closing tag — which is what a model that runs out of budget mid-answer emits — leaves
+    # the stripper nothing to remove.
+    for source in (t, text):
+        for candidate in _tail_json_candidates(source):
+            try:
+                data = json.loads(candidate)
+                logger.info(
+                    f"JSON Strategy 4 success: {len(candidate)} chars taken from the tail of "
+                    f"{len(source)}")
+                return data
+            except json.JSONDecodeError:
+                continue
+
     raise ParseError(f"no valid JSON found in {len(text)} chars. Start={text[:100]!r}, End={text[-100:]!r}")
+
+
+def _tail_json_candidates(text: str, *, max_closers: int = 6,
+                          max_openers: int = 200) -> Iterator[str]:
+    """Substrings that could be the answer, searched inward from the END of the response.
+
+    Deliberately NOT a balanced-depth scan. A depth counter is only correct if every brace
+    before the answer is matched, and in reasoning prose they are not: one stray `{` in a
+    sentence about a data shape swallows the real object, which is precisely how Strategy 3
+    locked on to `[Customers]` and never recovered. Anchoring on the LAST closing brace and
+    walking the opening braces backwards makes the noise before the answer irrelevant, and it
+    finds a well-formed trailing object on the FIRST attempt.
+
+    Bounded on purpose (`max_closers` × `max_openers`): a pathological response must not turn
+    a parse failure into a CPU-bound hang on the publish path. Failures are cheap — `json.loads`
+    on a candidate that starts mid-prose rejects at the first character.
+    """
+    closers = [i for i, c in enumerate(text) if c in "}]"]
+    openers = [i for i, c in enumerate(text) if c in "{["]
+    for close in reversed(closers[-max_closers:]):
+        tried = 0
+        for open_at in reversed([i for i in openers if i < close]):
+            if tried >= max_openers:
+                break
+            tried += 1
+            if text[open_at] == "{" and text[close] != "}":
+                continue
+            if text[open_at] == "[" and text[close] != "]":
+                continue
+            yield text[open_at:close + 1]
 
 
 class Operator(ABC):
@@ -386,6 +443,17 @@ def _read_sse_bounded(req, *, stall_timeout: float,
     return "".join(box["parts"]), box["usage"], box["finish"]
 
 
+class _MiniMaxTruncated(RuntimeError):
+    """M3 spent its whole token budget inside <think> and never emitted the answer.
+
+    A distinct type rather than a message match, because the two callers want opposite
+    things: `_raw` re-asks (the reasoning length is non-deterministic on an identical
+    prompt), while everything above it must see a plain RuntimeError so the chain fails over
+    normally once the re-asks are spent. It is deliberately NOT a ProviderExhaustedError —
+    nothing is exhausted, the model simply talked too long.
+    """
+
+
 class MiniMaxOperator(Operator):
     """MiniMax OpenAI-compatible API brain.
 
@@ -437,6 +505,7 @@ class MiniMaxOperator(Operator):
     #                       longest (measured: 23% of failures sat exactly at the per-recv cap).
     _STALL_TIMEOUT_S = float(os.environ.get("PROSPECTOR_MINIMAX_STALL_S", "90"))
     _TOTAL_DEADLINE_S = float(os.environ.get("PROSPECTOR_MINIMAX_DEADLINE_S", "600"))
+    _RETRY_TRUNCATED_MAX = int(os.environ.get("PROSPECTOR_MINIMAX_TRUNCATION_RETRIES", "2"))
 
     # MiniMax API endpoint (OpenAI-compatible /v1/chat/completions).
     # The flagship reasoning model and the stable non-reasoning option for
@@ -472,6 +541,33 @@ class MiniMaxOperator(Operator):
 
     @track_latency(name="minimax_raw_call")
     def _raw(self, system: str, user: str, temperature: float) -> str:
+        """Call the endpoint, re-asking when M3 spends the whole budget thinking.
+
+        A truncation is not a verdict about the request — it is a coin landing badly. The
+        model's reasoning length is non-deterministic on an identical prompt: measured
+        2026-08-14 on the retitle of the live shelf, the SAME 14 packs truncated at pack 2 on
+        one run and at pack 5 on the next, and the packs that failed the first time succeeded
+        the second. So the honest response to `finish_reason=length` is to ask again.
+
+        Two attempts, not more. The retry is expensive (a full 32k-token budget burned to
+        produce nothing) and this rail exists to keep a non-deterministic hiccup from stopping
+        the line, not to grind a genuinely over-long prompt: three failures in a row is a
+        prompt problem, and the exception then reaches the chain so the next tier can answer.
+        """
+        last: Optional[Exception] = None
+        for attempt in range(self._RETRY_TRUNCATED_MAX + 1):
+            try:
+                return self._raw_once(system, user, temperature)
+            except _MiniMaxTruncated as e:
+                last = e
+                from .telemetry import logger as _log
+                _log.warning(
+                    f"MiniMax spent its whole budget reasoning and returned no answer; "
+                    f"re-asking (attempt {attempt + 1}/{self._RETRY_TRUNCATED_MAX})",
+                    extra={"provider": self.name})
+        raise RuntimeError(str(last))
+
+    def _raw_once(self, system: str, user: str, temperature: float) -> str:
         """Call MiniMax OpenAI-compatible /v1/chat/completions endpoint."""
         import urllib.request
 
@@ -563,7 +659,7 @@ class MiniMaxOperator(Operator):
         # over-long prompt, the same outcome) instead of failing over to a brain that could
         # answer. Naming the truncation converts a silent 3-attempt burn into one clean failover.
         if finish == "length" and not _RE_THINK.sub("", content).strip():
-            raise RuntimeError(
+            raise _MiniMaxTruncated(
                 f"MiniMax call failed: response truncated at max_tokens — {len(content)} chars of "
                 f"reasoning and no answer (finish_reason=length)")
         logger.info(f"MiniMax response: length={len(content)}, start={content[:200]!r}, end={content[-200:]!r}")

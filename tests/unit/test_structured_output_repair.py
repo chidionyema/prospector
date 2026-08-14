@@ -118,3 +118,63 @@ def test_mock_operator_router_returns_list():
     op = MockOperator(router=router)
     result = op.complete_json("system", "user")
     assert result == ["query one", "query two"]
+
+
+# ---------------------------------------------------------------------------
+# Strategy 4 — the answer a reasoning model leaves at the very END
+#
+# MiniMax heads the non-critical chain since claude_cli was removed from it
+# (config.yaml:70, founder directive 2026-08-14), so every generation, prescreen,
+# score and retitle call now goes through a model that thinks out loud first.
+# These pin the shapes that thinking produces. Measured on a live retitle run:
+# 55,639 chars of reasoning, the answer in the last 200.
+# ---------------------------------------------------------------------------
+
+_REASONING = (
+    "Let me analyze this carefully.\n"
+    'The headline template says "[Customers] [have problem]" and a shape {like: this\n'
+) * 40
+_ANSWER = '{"name": "Vendor patch alerts", "card_line": "flags suppliers that stopped patching"}'
+
+
+def test_reasoning_prose_with_an_unclosed_brace_does_not_swallow_the_answer():
+    """The measured failure. Prose describing a data shape leaves `{` open, so a
+    forward depth scan never returns to zero and the trailing answer is read as
+    nested inside the noise. Anchoring on the LAST closer makes the prose irrelevant."""
+    assert _extract_json(_REASONING + "\n" + _ANSWER)["name"] == "Vendor patch alerts"
+
+
+def test_a_bracket_pair_in_the_reasoning_does_not_win_over_the_answer():
+    """`[Customers]` is valid-looking and appears first. First-match strategies
+    returned it, or a fragment starting at it, and the caller saw a ParseError."""
+    text = 'The template is [Customers] [have problem].\n' + _ANSWER
+    assert _extract_json(text)["card_line"] == "flags suppliers that stopped patching"
+
+
+def test_the_answer_is_found_inside_a_closed_think_block_response():
+    assert _extract_json("<think>\n" + _REASONING + "\n</think>\n" + _ANSWER)["name"] == \
+        "Vendor patch alerts"
+
+
+def test_chatter_after_the_answer_still_resolves():
+    """A closer that is not the last character: the scan walks closers backwards, so
+    a sign-off containing brackets costs one failed parse, not the answer."""
+    out = _extract_json(_REASONING + "\n" + _ANSWER + "\nI hope this helps! [done]")
+    assert out["name"] == "Vendor patch alerts"
+
+
+def test_a_brace_inside_a_string_value_is_not_treated_as_structure():
+    text = _REASONING + '\n{"card_line": "Costs about {X} per seat", "n": 2}'
+    assert _extract_json(text) == {"card_line": "Costs about {X} per seat", "n": 2}
+
+
+def test_an_array_answer_after_reasoning_is_recovered():
+    assert _extract_json(_REASONING + '\n[{"a": 1}, {"b": 2}]') == [{"a": 1}, {"b": 2}]
+
+
+def test_prose_with_no_json_at_all_still_raises_rather_than_scanning_forever():
+    """The bound matters: `_tail_json_candidates` is capped so a pathological
+    response fails fast instead of turning a parse error into a CPU-bound hang on
+    the publish path."""
+    with pytest.raises(ParseError):
+        _extract_json("Here are some braces { { { and brackets [ [ [ and no answer.")

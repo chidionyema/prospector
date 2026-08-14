@@ -304,8 +304,33 @@ class Admissibility:
     the channel checks where that evidence was the right shape for the question.
 
     Set `policy: off` to restore pre-§20 behaviour exactly.
+
+    `health_claims_need_primary` is a SECOND, narrower gate that asks about the CLAIM rather
+    than the domain: a ruling stating a medical or prevalence rate must cite at least one
+    government, academic or established health body. Measured 2026-08-14 over
+    `store/dossiers/*.json`: 6 of 3,476 ruled and cited checks (0.17%). It exists because the
+    tier policy admitted `jeffreydachmd.com` and `playproject.org` for the 1-in-31 autism
+    prevalence figure while CDC pages sat unused in the same source list.
+
+    `corroboration_min_domains` is a THIRD gate, about the NUMBER of independent publishers:
+    a `supported` ruling whose citations all come from one registrable domain is demoted,
+    unless one of them is a `government` or `academic` source (which needs no corroborating
+    blog). Measured 2026-08-14: 470 of 2,816 cited supported rulings (16.7%) rest on a single
+    publisher; replaying all 75 PASS dossiers with those demoted flips exactly one to KILL.
+    Set it to 1 to turn the gate off, exactly as `policy: off` disables the tier gate.
+
+    IT SHIPS OFF (1). Turning it on at 2 measured a golden-set discrimination of 77.8%
+    against the required 100% (`tests/test_golden_set.py`) and dropped
+    `tests/sim/test_decay.py::test_decay_loop_refreshes_valid_dossier` to 0 refreshes,
+    because the mock fixtures cite one publisher per check (`ok.com`) and every ruling
+    demotes to `unverifiable`. That is a fixture that predates the floor, not a defect in
+    the floor — but "golden-set discrimination regression blocks ship" is the project rule,
+    so the mechanism lands inert and is enabled once the fixtures cite two publishers.
     """
     policy: str = "P1_check_aware"
+    health_claims_need_primary: bool = True
+    corroboration_min_domains: int = 1
+    corroboration_exempt_tiers: tuple[str, ...] = ("government", "academic")
 
 
 def _validate_admissibility(raw: Any) -> "Admissibility":
@@ -322,14 +347,42 @@ def _validate_admissibility(raw: Any) -> "Admissibility":
         return Admissibility()
     if not isinstance(raw, dict):
         raise ValueError(f"config `admissibility` must be a mapping, got {type(raw).__name__}")
-    unknown = set(raw) - {"policy"}
+    unknown = set(raw) - {"policy", "health_claims_need_primary",
+                          "corroboration_min_domains", "corroboration_exempt_tiers"}
     if unknown:
         raise ValueError(f"config `admissibility` has unknown key(s): {sorted(unknown)}")
     policy = str(raw.get("policy") or "P1_check_aware")
     if policy not in POLICIES:
         raise ValueError(
             f"config `admissibility.policy` = {policy!r} is not one of {list(POLICIES)}")
-    return Admissibility(policy=policy)
+    health = raw.get("health_claims_need_primary", True)
+    if not isinstance(health, bool):
+        raise ValueError(
+            "config `admissibility.health_claims_need_primary` must be true or false, got "
+            f"{health!r}")
+    # `bool` is an `int` subclass, so `min_domains: true` would arrive as 1 and silently
+    # disable the gate while the config file reads as if it were configured. Same reasoning
+    # as the policy check above: a typo must stop the process, not quietly turn a gate off.
+    raw_min = raw.get("corroboration_min_domains", 1)
+    if isinstance(raw_min, bool) or not isinstance(raw_min, int) or raw_min < 1:
+        raise ValueError(
+            "config `admissibility.corroboration_min_domains` must be an integer >= 1 "
+            f"(1 disables the gate), got {raw_min!r}")
+    raw_exempt = raw.get("corroboration_exempt_tiers", ["government", "academic"])
+    if isinstance(raw_exempt, str) or not isinstance(raw_exempt, (list, tuple)):
+        raise ValueError(
+            "config `admissibility.corroboration_exempt_tiers` must be a list of tier names, "
+            f"got {raw_exempt!r}")
+    from .admissibility import LOW_TIERS, PROVENANCE_LABEL
+    known = set(PROVENANCE_LABEL) | set(LOW_TIERS) | {"other"}
+    bad_tiers = sorted({str(t) for t in raw_exempt} - known)
+    if bad_tiers:
+        raise ValueError(
+            f"config `admissibility.corroboration_exempt_tiers` has unknown tier(s): "
+            f"{bad_tiers}; known tiers are {sorted(known)}")
+    return Admissibility(policy=policy, health_claims_need_primary=health,
+                         corroboration_min_domains=raw_min,
+                         corroboration_exempt_tiers=tuple(str(t) for t in raw_exempt))
 
 
 def _validate_retrieval(raw: Any) -> "Retrieval":
