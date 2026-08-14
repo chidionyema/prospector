@@ -33,6 +33,11 @@ public static class AuditActions
 
     // Additional actions from spec F1 if needed
     public const string DisputeResolve = "admin.dispute.resolve";
+
+    // Founder preview — reading a pack's contents without a purchase. Both outcomes are named:
+    // an allowlist fence that only records its successes cannot show that anyone tried.
+    public const string FounderPreview = "founder.preview";
+    public const string FounderPreviewDenied = "founder.preview.denied";
 }
 
 /// <summary>A structured audit event. Mirrors haworks BuildingBlocks/Audit.</summary>

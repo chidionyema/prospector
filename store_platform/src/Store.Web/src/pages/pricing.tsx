@@ -5,7 +5,7 @@ import { Seo } from '@/components/Seo';
 import { Button, Icon, textLinkClass } from '@/components/ui';
 import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { BRAND, LEGAL } from '@/lib/config';
-import { GetServerSideProps } from 'next';
+import { GetStaticProps } from 'next';
 import { fetchCatalog } from '@/lib/api/client';
 import { priceRange, priceLadder, priceSentence, formatGbp, type PriceRange, type LadderRung } from '@/lib/priceRange';
 import PriceLadder from '@/components/marketing/PriceLadder';
@@ -258,8 +258,13 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
  *
  * A failed fetch is not an error page: `range` is null, and every price claim above simply does
  * not render. The page still answers what is in a pack, what is not, and the refund terms.
+ *
+ * ISR, not `getServerSideProps` (measured 2026-08-14): this function reads no `context` at all --
+ * no visitor-specific input exists on a pricing page whose numbers are the same for everyone --
+ * so every hit was paying a live `/catalog` round trip for two figures that only change when the
+ * engine publishes. 300s revalidate matches `kill-log.tsx`'s ISR window for the same reason.
  */
-export const getServerSideProps: GetServerSideProps<{
+export const getStaticProps: GetStaticProps<{
   range: PriceRange | null;
   ladder: LadderRung[];
 }> = async () => {
@@ -267,5 +272,5 @@ export const getServerSideProps: GetServerSideProps<{
   // Same fetch, two derivations. `ladder` is `[]` on a failed fetch, and `PriceLadder` renders
   // nothing below two rungs, so the drawing disappears with the rest of the price claims rather
   // than drawing a shelf nobody could read.
-  return { props: { range: priceRange(packs), ladder: priceLadder(packs) } };
+  return { props: { range: priceRange(packs), ladder: priceLadder(packs) }, revalidate: 300 };
 };
