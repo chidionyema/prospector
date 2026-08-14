@@ -33,4 +33,13 @@ public record PricePatchRequest(
     string? ProviderPriceId,
     string Reason,
     string Actor,
-    string? RationaleRef = null);
+    string? RationaleRef = null,
+    /// <summary>
+    /// The same rung in US cents, for buyers billed in USD (founder decision 2026-08-14).
+    /// Appended last so every existing caller keeps compiling and keeps its behaviour.
+    ///
+    /// OMITTED MEANS UNCHANGED, never cleared. A GBP-only caller must not be able to strip USD
+    /// billability off a pack by not mentioning it — that would take a US buyer's ability to
+    /// purchase away as a side effect of an unrelated price move.
+    /// </summary>
+    long? PriceUsdCents = null);

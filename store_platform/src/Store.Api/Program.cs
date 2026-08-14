@@ -491,6 +491,12 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
             // a stored floor of 0 reads as "any payment fulfils" to a direct reader.
             MinBillablePence = initialPrice,
             MinBillableEffectiveAt = DateTime.UtcNow,
+            // No default twin here, unlike PricePence above. An absent USD price must stay
+            // absent: Money.DefaultPackPricePence is a GBP number, and defaulting a USD column
+            // from it would put a price on the rail that nobody declared. Null keeps the pack
+            // unbillable in USD, which the fulfilment fence already enforces.
+            PriceUsdCents = request.PriceUsdCents,
+            MinBillableUsdCents = request.PriceUsdCents,
         };
         db.Packs.Add(pack);
     }
@@ -1082,6 +1088,32 @@ app.MapPatch("/internal/catalog/{id}/price", async (
     if (!string.IsNullOrEmpty(request.ProviderPriceId))
     {
         pack.ProviderPriceId = request.ProviderPriceId;
+    }
+
+    // The USD rung moves under exactly the same drain rule, for exactly the same reason: a live
+    // USD Checkout Session minted at the old rung is still payable for up to 24h, and gating it
+    // on the new one refuses money already taken.
+    //
+    // Omission leaves the USD price untouched rather than clearing it. Clearing on omission would
+    // make every existing GBP-only re-pricing caller silently strip USD billability off a pack the
+    // moment this field shipped — the same omission-nulls-it defect the ProviderProductId comment
+    // above records, on a column that decides whether a US buyer can be served at all.
+    if (request.PriceUsdCents is { } usd)
+    {
+        if (usd <= 0)
+        {
+            return Results.BadRequest(new { error = "priceUsdCents must be positive when present" });
+        }
+        var currentUsdFloor = pack.EffectiveFloorMinorUnits("USD", now) ?? usd;
+        pack.MinBillableUsdCents = Math.Min(currentUsdFloor, usd);
+        // One drain clock covers both ladders. They are moved together by one decision
+        // (PriceDecision mints both), so a second timestamp could only ever disagree with this
+        // one — and a disagreement here is a paying buyer refused.
+        if (usd > currentUsdFloor && pack.MinBillableEffectiveAt <= now)
+        {
+            pack.MinBillableEffectiveAt = now + CheckoutSessionDrain;
+        }
+        pack.PriceUsdCents = usd;
     }
 
     // Same transaction as the change, deliberately: a history row written afterwards is a row

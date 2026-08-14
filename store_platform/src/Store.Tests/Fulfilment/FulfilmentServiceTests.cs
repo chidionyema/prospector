@@ -160,14 +160,65 @@ public sealed class FulfilmentServiceTests : IDisposable
     [Fact]
     public async Task FulfilAsync_WrongCurrency_IsUnfulfilledEvenIfAmountLooksSufficient()
     {
+        // No PriceUsdCents on this pack, which is every pack's default.
         await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4900);
 
-        // 4900 *USD* cents is not 4900 GBP pence — the comparison is only meaningful in the
-        // store currency, so a non-GBP payment must never grant.
+        // 4900 *USD* cents is not 4900 GBP pence. Adding a USD column did not weaken this: a pack
+        // with no USD floor still refuses a USD payment, so nothing became billable by migration.
         var outcome = await RunAsync(TxnInCurrency("txn-1", "USD", new PurchasedItem("prod-1", 4900)));
 
         Assert.Empty(outcome.EntitlementsCreated);
         Assert.Contains(outcome.Unfulfilled, u => u.Contains("USD"));
+    }
+
+    // --- USD billing (founder decision 2026-08-14). Currency follows the BUYER, and the paid
+    // amount is compared against a floor held in that same currency — never a converted one. ---
+
+    [Fact]
+    public async Task FulfilAsync_UsdPaymentAtUsdFloor_GrantsEntitlement()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4999, priceUsdCents: 6999);
+
+        var outcome = await RunAsync(TxnInCurrency("txn-1", "USD", new PurchasedItem("prod-1", 6999)));
+
+        Assert.Single(outcome.EntitlementsCreated);
+        Assert.Empty(outcome.Unfulfilled);
+    }
+
+    [Fact]
+    public async Task FulfilAsync_UsdPaymentBelowUsdFloor_IsUnfulfilled()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4999, priceUsdCents: 6999);
+
+        var outcome = await RunAsync(TxnInCurrency("txn-1", "USD", new PurchasedItem("prod-1", 6998)));
+
+        Assert.Empty(outcome.EntitlementsCreated);
+        Assert.Contains(outcome.Unfulfilled, u => u.Contains("USD"));
+    }
+
+    [Fact]
+    public async Task FulfilAsync_GbpPaymentIsJudgedAgainstThePenceFloorNotTheUsdOne()
+    {
+        // The trap this pins: the USD number is the larger one, so a fence that reached for the
+        // wrong column would refuse a UK buyer who paid the full GBP price. Same minor-unit
+        // magnitude, different currency, opposite verdicts.
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4999, priceUsdCents: 6999);
+
+        var outcome = await RunAsync(Txn("txn-1", new PurchasedItem("prod-1", 4999)));
+
+        Assert.Single(outcome.EntitlementsCreated);
+        Assert.Empty(outcome.Unfulfilled);
+    }
+
+    [Fact]
+    public async Task FulfilAsync_CurrencyWithNoFloorOnThePack_IsUnfulfilled()
+    {
+        await SeedPackAsync("pack-1", "prod-1", "k.zip", pricePence: 4999, priceUsdCents: 6999);
+
+        var outcome = await RunAsync(TxnInCurrency("txn-1", "EUR", new PurchasedItem("prod-1", 999_999)));
+
+        Assert.Empty(outcome.EntitlementsCreated);
+        Assert.Contains(outcome.Unfulfilled, u => u.Contains("EUR"));
     }
 
     // --- P0-1: Stripe stamps the catalog pack id (not the provider product id) into
@@ -287,7 +338,7 @@ public sealed class FulfilmentServiceTests : IDisposable
         return await svc.RevokeAsync(reversal);
     }
 
-    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "paddle", long pricePence = 0)
+    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "paddle", long pricePence = 0, long? priceUsdCents = null)
     {
         using var ctx = NewContext();
         ctx.Packs.Add(new Pack
@@ -301,6 +352,7 @@ public sealed class FulfilmentServiceTests : IDisposable
             ContentKey = contentKey,
             ContentVersion = version,
             PricePence = pricePence,
+            PriceUsdCents = priceUsdCents,
         });
         await ctx.SaveChangesAsync();
     }

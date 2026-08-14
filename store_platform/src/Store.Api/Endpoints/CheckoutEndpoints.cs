@@ -132,8 +132,10 @@ public static class CheckoutEndpoints
 
         var (successUrl, cancelUrl) = BuildRedirectUrls(packIds, config, request);
 
+        var currency = ResolveBuyerCurrency(request, packIds.Select(id => packs[id]));
+
         var lines = packIds
-            .Select(id => new CheckoutLine(id, packs[id].ProviderPriceId!))
+            .Select(id => new CheckoutLine(id, packs[id].ProviderPriceId!, currency))
             .ToArray();
 
         var (rejection, billedLines) = ApplySmokeTestPricing(lines, packIds, sp, config, request);
@@ -144,6 +146,48 @@ public static class CheckoutEndpoints
 
         return await OpenSessionAsync(
             paymentProvider, billedLines, buyerEmail, embedded, successUrl, cancelUrl).ConfigureAwait(false);
+    }
+
+    /// <summary>Header carrying the edge-resolved buyer country. Both apps run on Fly.io.</summary>
+    /// <remarks>
+    /// The same header the storefront reads to pick a shelf (Store.Web/src/lib/market.ts). The
+    /// API had no server-side notion of the buyer's country at all before this — currency was a
+    /// <c>const StoreCurrency = "GBP"</c> in the fulfilment fence — so a US buyer was billed in
+    /// pounds however the storefront rendered the price.
+    /// </remarks>
+    private const string ClientCountryHeader = "Fly-Client-Country";
+
+    /// <summary>
+    /// The currency this basket is billed in, decided server-side.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Currency follows the BUYER, not the pack: a US buyer of a UK-market pack pays USD, and a
+    /// UK buyer of a US-market pack pays GBP. The pack's <c>Market</c> is the jurisdiction of the
+    /// opportunity and says nothing about who is holding the card.
+    /// </para>
+    /// <para>
+    /// Resolved from the request and never from a client-supplied body field: the amount charged
+    /// must not be selectable by the caller. That also means the storefront's own currency
+    /// display (which reads the same header) is advisory — this is the number that bills.
+    /// </para>
+    /// <para>
+    /// USD applies only when EVERY pack in the basket carries a <c>PriceUsdCents</c>, because
+    /// that is the engine's signal that the Stripe Price was minted with a usd
+    /// <c>currency_options</c> entry (bridge.py mints the two together). Opening a USD session
+    /// against a Price that has no USD option is a Stripe error — a refusal to sell — so a
+    /// mixed basket falls back to GBP, which every pack can always be billed in. A buyer who
+    /// can pay is worth more than a buyer who sees their own currency.
+    /// </para>
+    /// </remarks>
+    private static string ResolveBuyerCurrency(HttpRequest request, IEnumerable<Pack> packs)
+    {
+        var country = request.Headers[ClientCountryHeader].ToString().Trim();
+        if (!string.Equals(country, "US", StringComparison.OrdinalIgnoreCase))
+        {
+            return "GBP";
+        }
+        return packs.All(p => p.PriceUsdCents is > 0) ? "USD" : "GBP";
     }
 
     /// <summary>
@@ -185,7 +229,12 @@ public static class CheckoutEndpoints
                 sp.GetService<ILoggerFactory>()?.CreateLogger("SmokeTestPricing").LogWarning(
                     "SMOKE-TEST PRICING APPLIED: packs [{Packs}] repriced to {PriceId}",
                     string.Join(",", packIds), smoke.Lines[0].ProviderPriceId);
-                break;
+                // The token Price is a single hand-made Stripe object (Stripe:SmokeTestPriceId)
+                // with no currency_options, so it can only be billed in its own currency. The
+                // `with` rewrite above copied the buyer's currency onto it; left alone, a smoke
+                // test run from a US IP would fail at Stripe and read as a broken rail rather
+                // than as a misconfigured test fixture.
+                return (null, [.. smoke.Lines.Select(line => line with { Currency = "GBP" })]);
 
             default:
                 break;
