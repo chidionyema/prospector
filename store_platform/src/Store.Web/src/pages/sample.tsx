@@ -170,7 +170,7 @@ export default function SamplePage() {
             suspicion. "Zero pence" is the same reflex in the price: a shop that will not simply say
             "free" sounds like it is bracing for an argument.
             The headline states what the thing IS. The reader can decide what it proves. */}
-        <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text md:text-display">
+        <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text">
           A whole report. Free, and nothing held back.
         </h1>
         <p className="mt-6 max-w-[60ch] text-body leading-relaxed text-muted">

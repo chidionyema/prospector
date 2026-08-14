@@ -47,7 +47,7 @@ export default function AboutPage() {
             It runs at `display`, the top of the six-step scale, which now carries its own mobile
             size. (The 96px `text-mega` this note used to contrast against was deleted from
             tokens.css on 2026-08-08 -- §3.2 has six sizes and that was a seventh.) */}
-        <h1 className="text-display font-semibold text-text">
+        <h1 className="text-h1 font-semibold text-text">
           So I built the part I kept losing to doubt.
         </h1>
 

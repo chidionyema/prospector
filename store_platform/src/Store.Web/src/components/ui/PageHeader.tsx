@@ -32,12 +32,13 @@ export function PageHeader({ eyebrow, title, description, action, className }: P
     >
       <div>
         {eyebrow && <p className="mb-2 text-caption font-medium text-subtle">{eyebrow}</p>}
-        {/* `text-display` had no responsive step built into the token, so this shipped the largest
-            size at every width, including a 390px phone where /account's title overflowed its
-            column. Scales up only once there is room for it.
+        {/* No `lg:text-display` any more (2026-08-14). `--text-display` is now the homepage hero
+            step and nothing else -- it tops out at 72px, which is not a page-title size -- so
+            every non-hero surface that used to step up into it sits on `text-h1` instead. The
+            token carries its own clamp, so this is still responsive without a breakpoint here.
             No `leading-tight`/`tracking-tight`: both tokens already carry their own line-height and
             letter-spacing, and stacking the utilities on top applied the correction twice. */}
-        <h1 className="text-h1 font-semibold text-text lg:text-display">{title}</h1>
+        <h1 className="text-h1 font-semibold text-text">{title}</h1>
         {description && <p className="mt-2 max-w-[60ch] text-body text-muted">{description}</p>}
       </div>
       {action && <div className="shrink-0 sm:pb-0.5">{action}</div>}

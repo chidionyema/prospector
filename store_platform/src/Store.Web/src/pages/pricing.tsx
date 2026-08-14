@@ -49,7 +49,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
 
       <section className="mx-auto max-w-3xl px-6 pt-10 pb-16 md:pt-14 md:py-24">
         <p className="mb-3 text-caption font-medium text-subtle">Pricing</p>
-        <h1 className="text-h1 font-semibold text-text md:text-display">
+        <h1 className="text-h1 font-semibold text-text">
           {range ? range.headline : 'One payment per pack.'}
         </h1>
         <p className="mt-4 max-w-[60ch] text-body text-muted">
