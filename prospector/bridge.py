@@ -162,14 +162,26 @@ def _normalise_catalog_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 # A line is "cited" if it carries a source marker or a year alongside a number — safe to show
 # pre-purchase because it demonstrates the research is real without revealing the how-to.
 _CITED_RE = re.compile(r"\(source\b|https?://|\b20\d\d\b", re.IGNORECASE)
-# These three parse the document `artifacts._render_financial_model` writes, so they are
-# one half of a two-sided contract with a renderer in another module. `_MONEY_RE` matched a
-# hardcoded £ until 2026-08-14, which is why no US pack ever carried a month-1 revenue on
-# the storefront. `tests/unit/test_pack_render_defects.py` renders and then parses, so a
-# heading change cannot quietly empty the snapshot again.
+# These three parse the document `artifacts._render_financial_model` writes, so they are one
+# half of a two-sided contract with a renderer in another module, and each carries the
+# pre-2026-08-14 header as well as the plain-speech one that replaced it. A snapshot is the
+# headline economics shown BEFORE purchase and it fails by returning {} — so a regex that
+# silently stopped matching would blank the teaser on every new pack with nothing going red,
+# while every pack already on the shelf still carries the old headers.
+# `tests/unit/test_pack_render_defects.py` renders and then parses, so a heading change
+# cannot quietly empty the snapshot again.
+#
+# The currency class is `[£$€]`, not a hardcoded £: until 2026-08-14 it was the pound alone,
+# which is why no US pack ever carried a month-1 revenue on the storefront.
 _MONEY_RE = re.compile(r"\*\*Month 1:\*\*.*?=\s*\*\*([£$€][\d,]+)\*\*")
-_LTV_RE = re.compile(r"### Worth against cost\s*\n\s*\n?\s*-\s*\*\*([\d.]+×)\*\*")
-_PAYBACK_RE = re.compile(r"\*\*Paid back in: ~?([\d.]+)\s*months?\*\*")
+_LTV_RE = re.compile(
+    r"(?:LTV:CAC Ratio|Worth against cost)\s*\n\s*-\s*\*\*([\d.]+×)\*\*")
+# Payback moved from a section of its own into a bullet under "What it costs to win a …",
+# so the new form is matched on the bullet alone. The derived branch prints one decimal
+# (`{cac / margin_per_unit:.1f}`), which the old integer-only capture would have truncated.
+_PAYBACK_RE = re.compile(
+    r"(?:Payback Period\s*\n\s*-\s*\*\*~?([\d.]+)\s*months?\*\*"
+    r"|\*\*Paid back in:\s*~?([\d.]+)\s*months?\*\*)")
 
 
 def _sample_excerpts(build_spec: str, proof_point: str, max_items: int = 3) -> List[str]:
@@ -210,7 +222,9 @@ def _financial_snapshot(fin_text: str) -> Dict[str, str]:
         snap["ltvCac"] = m.group(1)
     m = _PAYBACK_RE.search(t)
     if m:
-        snap["paybackMonths"] = f"{m.group(1)} months"
+        # Two alternations, so exactly one group carries the figure: legacy header form
+        # first, plain-speech bullet second.
+        snap["paybackMonths"] = f"{m.group(1) or m.group(2)} months"
     return snap
 
 

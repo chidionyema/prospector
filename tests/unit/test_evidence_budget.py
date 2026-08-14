@@ -214,11 +214,17 @@ def test_the_financial_model_is_never_claim_checked():
     """It is a JSON fill that Python renders; there is no prose in it to verify."""
     checker = _Checker([False, False])
 
+    # Both keys are required, not decoration: `_render_financial_model` returns "" outright
+    # when either the price or the month-1 target is missing (artifacts.py:234), because a
+    # model with no headline is not a document. A fixture carrying only the price renders
+    # empty, and this test would then assert `content` against the renderer's deliberate
+    # refusal rather than against the claim-check behaviour it is here to pin.
+    fill = {"type": "financial_model", "monthly_price": 12, "target_customers_month_1": 40}
+
     class FinWriter(_Writer):
         def complete_json(self, system, user, **kw):
             self.users.append(user)
-            return {"type": "financial_model", "monthly_price": 12,
-                    "target_customers_month_1": 40}
+            return dict(fill)
 
     from prospector.artifacts import _gen_one_artifact
     from prospector.prompts import ALL_MARKET_KEYS
@@ -227,8 +233,7 @@ def test_the_financial_model_is_never_claim_checked():
         writer, "{}", "[]", "financial_model", {k: "" for k in ALL_MARKET_KEYS},
         eb.length_rule(500, 700), checker, [])
     assert checker.calls == 0 and violations == []
-    assert raw == {"type": "financial_model", "monthly_price": 12,
-                   "target_customers_month_1": 40} and content
+    assert raw == fill and content
 
 
 def test_the_length_contract_does_not_reach_the_financial_model_prompt():

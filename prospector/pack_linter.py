@@ -83,9 +83,11 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 # own source marks them: those lists "are the only FREE TEXT in this artifact — everything
 # above is Python formatting a number."
 # The renderer's own heading for each model-authored list, plus the pre-2026-08-14 names
-# still on every pack already on disk. Both spellings must stay here: this boundary decides
-# which half of the document the currency check is allowed to rewrite, and a backfill run
-# against an old pack with only the new names would treat a cited $ price as ours to change.
+# still on every pack already on disk. Both spellings have to be recognised: this boundary
+# decides which half of the document the currency check is allowed to rewrite, and a backfill
+# run against an old pack (tools/backfill_pack_currency.py) with only the new names would
+# treat a cited $ price as ours to change — the silent re-tightening that
+# test_the_boundary_headers_match_what_the_renderer_actually_emits exists to catch.
 # "What we could not work out" is deliberately NOT here: those sentences are Python
 # literals, so they belong on the strict side with the rest of our own prose.
 #: What the renderer emits TODAY. A test pins this pair against `_render_financial_model`,
@@ -94,14 +96,16 @@ FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT = (
     "### What we assumed", "### Where this is weakest",
 )
 #: The pre-2026-08-14 spellings, on every pack already on disk. Nothing emits these now, so
-#: they cannot be asserted against the renderer — but the boundary must still recognise them
-#: or a backfill over an old pack would treat a cited $ price as ours to rewrite.
+#: they cannot be asserted against the renderer — which is exactly why they are kept OUT of
+#: the current-contract tuple below and added back at the one place that needs them.
 FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY = (
     "### Key Assumptions", "### Model Weaknesses",
 )
-FINANCIAL_MODEL_FREE_TEXT_HEADERS = (
-    FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT + FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY
-)
+#: The CURRENT renderer contract, and only that, so the drift guard can assert the renderer
+#: still emits every name in it. The recognised BOUNDARY is the union of the two, formed in
+#: `split_rendered_free_text` below — one place, so the guard and the boundary cannot drift.
+FINANCIAL_MODEL_FREE_TEXT_HEADERS = FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT
+_LEGACY_FREE_TEXT_HEADERS = FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY
 
 
 def split_rendered_free_text(fin_text: str) -> Tuple[str, str]:
@@ -113,7 +117,9 @@ def split_rendered_free_text(fin_text: str) -> Tuple[str, str]:
     written for.
     """
     text = fin_text or ""
-    cuts = [text.index(h) for h in FINANCIAL_MODEL_FREE_TEXT_HEADERS if h in text]
+    cuts = [text.index(h)
+            for h in FINANCIAL_MODEL_FREE_TEXT_HEADERS + _LEGACY_FREE_TEXT_HEADERS
+            if h in text]
     cut = min(cuts) if cuts else len(text)
     return text[:cut], text[cut:]
 
@@ -294,6 +300,13 @@ def check_arithmetic(fin_text: str) -> List[Problem]:
 # held back) when even the headline is missing, which is what makes these two safe to pin.
 REQUIRED_FIN_SECTIONS = ("## Financial Model", "### What it earns")
 
+# What the same section was called before the 2026-08-14 rewrite. `check_sections` is a
+# SELLABILITY gate — a `sections` error unlists the pack — so grading a pack rendered last
+# week against this week's header names would take packs off the shelf for a rename. Present
+# here, absent from REQUIRED_FIN_SECTIONS above, so a section that is genuinely missing is
+# still reported under the name the renderer emits today.
+_SECTION_ALIASES = {"### What it earns": ("### Revenue",)}
+
 
 # ---------------------------------------------------------------------------
 # Placeholders — a gap where a number should be
@@ -371,7 +384,8 @@ def check_sections(fin_text: str) -> List[Problem]:
         return []  # an empty artifact is validate_pack's finding; don't double-report
     return [
         _err("sections", "financial_model", f"missing required section {s!r}")
-        for s in REQUIRED_FIN_SECTIONS if s not in t
+        for s in REQUIRED_FIN_SECTIONS
+        if s not in t and not any(a in t for a in _SECTION_ALIASES.get(s, ()))
     ]
 
 

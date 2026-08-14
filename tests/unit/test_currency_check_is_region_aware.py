@@ -14,7 +14,6 @@ source supports, on a storefront whose first rule is source-or-die.
 """
 from prospector.artifacts import _render_financial_model
 from prospector.pack_linter import (
-    FINANCIAL_MODEL_FREE_TEXT_HEADERS,
     FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT,
     FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY,
     check_currency,
@@ -127,9 +126,19 @@ def test_the_boundary_headers_match_what_the_renderer_actually_emits():
     for header in FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT:
         assert header in out, f"renderer no longer emits {header!r}"
     # The legacy spellings are NOT asserted against the renderer — nothing emits them since
-    # 2026-08-14 — but the boundary has to keep recognising them for the packs on disk.
+    # 2026-08-14 — and deliberately not against the current-contract tuple either, because
+    # that tuple is what the loop above pins to the renderer. What has to hold is the
+    # BEHAVIOUR the packs on disk depend on: the boundary still cuts at a legacy header, so
+    # a backfill over an old pack leaves its cited foreign prices alone. Asserted by running
+    # the splitter, so deleting the legacy tuple goes red here rather than passing on a
+    # membership check nothing reads.
     for header in FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY:
-        assert header in FINANCIAL_MODEL_FREE_TEXT_HEADERS
+        head, tail = split_rendered_free_text(
+            f"## Financial Model\n- **Month 1:** £10 × 5 = **£50**\n\n"
+            f"{header}\n- A US comparable charges $0.10 per page.\n")
+        assert header in tail and header not in head, (
+            f"the boundary no longer recognises {header!r}, so a pack rendered before "
+            "2026-08-14 would have its cited comparables graded as ours")
 
     rendered, notes = split_rendered_free_text(out)
     assert "$0.10 per page" in notes and "€7.55" in notes

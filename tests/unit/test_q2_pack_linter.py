@@ -160,13 +160,34 @@ def test_arithmetic_rounding_tolerance_not_a_false_positive():
 # ---------------------------------------------------------------------------
 
 def test_sections_all_present_and_empty_model_skipped():
+    # GOOD_FIN is rendered by the LIVE renderer, so its revenue section is "### What it
+    # earns". The legacy spelling is covered separately below, because every pack already on
+    # the shelf reads "### Revenue" and a `sections` error unlists a pack.
     assert check_sections(GOOD_FIN) == []
     assert check_sections("") == []  # emptiness is validate_pack's finding, not ours
 
 
 def test_sections_missing_revenue_is_error():
-    probs = check_sections(GOOD_FIN.replace("### What it earns", "### Rev"))
+    # Neither the current name nor the legacy alias is present, so the section really is gone.
+    # The complaint names what the renderer emits TODAY, not the alias that happens to be
+    # missing — a pack author reading this needs the header they are expected to produce.
+    text = GOOD_FIN.replace("### What it earns", "### Rev")
+    assert text != GOOD_FIN, "test bug: the renderer no longer emits '### What it earns'"
+    probs = check_sections(text)
     assert any("### What it earns" in p["detail"] for p in probs)
+
+
+def test_the_legacy_revenue_header_still_satisfies_the_section_check():
+    """The other half of the alias, and the half with packs riding on it.
+
+    Every financial model rendered before the 2026-08-14 plain-speech rewrite says
+    "### Revenue". `check_sections` is a sellability gate, so without the alias a rename in
+    the renderer would unlist the whole shelf. Asserted by RENAMING the live header to the
+    legacy one — if the alias were deleted, this goes red instead of passing vacuously.
+    """
+    legacy = GOOD_FIN.replace("### What it earns", "### Revenue")
+    assert legacy != GOOD_FIN, "test bug: the replacement did not apply"
+    assert check_sections(legacy) == []
 
 
 # ---------------------------------------------------------------------------
