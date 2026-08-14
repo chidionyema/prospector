@@ -606,7 +606,13 @@ function PackCard({
             Below `lg` this is untouched: one column, price row last, price left, button right. */}
         <span className="flex flex-1 flex-col p-6 sm:p-8 lg:flex-row lg:items-center lg:gap-10">
           <span className="flex flex-1 flex-col">
-            <span className="block text-h2 font-semibold text-text">{heading}</span>
+            {/* CLAMPED, LIKE THE OTHER TWO WEIGHTS. This was the only card heading on the shelf
+                with no bound, and it is also the largest type (`text-h2`), so it ran longest where
+                it cost most: pack titles measure 43..60 characters on the live catalogue (all 59
+                packs, 2026-08-14), which at this size takes three lines and pushes the price rail
+                out of the card's optical centre. `row` truncates to one line (:437) and `mid`
+                clamps to two (:691); one shelf should not state the same field at three lengths. */}
+            <span className="line-clamp-2 block text-h2 font-semibold text-text">{heading}</span>
             {line && <span className="mt-2 block max-w-[58ch] text-body text-muted">{line}</span>}
             {/* The evidence run moved onto the plate (2026-08-14) and is not drawn twice on one
                 card. On the poster it is the largest thing on the largest graphic on the page,
@@ -685,6 +691,34 @@ function PackCard({
           price row fixes it the same way for free -- the title is the first child on every card, so
           its baseline cannot move, and everything the optional facts add or remove is absorbed by
           the `mt-auto` gap, not passed on to a neighbour. */}
+      {/* A HEADER BAND, NOT A COVER PLATE (founder, 2026-08-14, from the deployed landing page:
+          "why are cards missing headers while the ones that do the header is too long ... like the
+          header shading/colour").
+
+          The docblock above is still right that the 112px plate had to go, and this does not bring
+          it back. What it fixes is the thing that removal left behind: `lead` wears an instrument
+          plate across 34% of its width (:544) and `row` wears a 48px one (:410), so the shelf
+          stated the same product in three treatments and the `mid` cards -- the majority of the
+          grid -- were the only ones opening on bare white. That does not read as restraint next to
+          two neighbours with a ground; it reads as the cards whose header failed to render.
+
+          40px, and the height is the whole argument. The verdict on `PackCoverArt` was about
+          PROPORTION -- at 112px it took ~60% of the card and became the rectangle where a product
+          photo has not loaded. A band this size cannot be mistaken for an image slot; it is the
+          same device the row card already uses, run full width, so one shelf now has one ground.
+          `emphasis` and the default `across` axis match `:416` exactly, for the reason recorded
+          there: `--ins-dim2` on `--ins-bg` composites to a near-black mark on a near-black plate
+          and reads as a failed image, which is the misread this band exists to end. */}
+      <span
+        className={cx(
+          'relative h-10 w-full flex-none overflow-hidden',
+          'bg-ins-bg text-ins-muted',
+        )}
+        aria-hidden
+      >
+        <PackMark id={pack.id} emphasis />
+      </span>
+
       <div className="flex flex-1 flex-col p-5">
         {/* No `group-hover:text-primary`. A title that changes colour on hover implies the title
             alone is the link; the whole card is. Border + lift already say "interactive". */}
