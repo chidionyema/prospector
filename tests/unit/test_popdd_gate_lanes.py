@@ -259,16 +259,22 @@ class TestTheGateDecidesBeforeItSpendsAnything:
 
 class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
     def test_the_installed_hook_is_the_tracked_one(self):
-        # `.git/hooks/` is not part of the repository, and actions/checkout populates it
-        # with `*.sample` only — so on CI this asserts an artifact that cannot exist, and
-        # it failed there for that reason and no other.
+        # ABSENT is a legitimate state, and this test used to deny it twice over.
         #
-        # The skip is deliberately narrow: absent file AND a CI runner. On a developer
-        # machine an absent hook still FAILS, because there the gate genuinely is not
-        # installed. A hook that exists but is a plain file — the stale second copy this
-        # class was written to catch — fails everywhere, which is the point.
-        if os.environ.get("CI") and not INSTALLED_HOOK.exists():
-            pytest.skip("no .git/hooks/pre-commit on a CI checkout — nothing installed to compare")
+        # `.git/hooks/` is not part of the repository — actions/checkout populates it with
+        # `*.sample` only — so on CI this asserted an artifact that cannot exist. That was
+        # first patched with a CI-only skip, which still FAILED on a developer machine with
+        # no hook. Then the founder deliberately removed the local hook (2026-08-14,
+        # "the POPDD gate is now installed — no, this should be disabled"), and a green
+        # suite started reporting a red on a decision, not a defect.
+        #
+        # Whether the gate is INSTALLED is the operator's call and is enforced elsewhere:
+        # the `engine` job in .github/workflows/ci.yml runs the same verification on every
+        # PR, so a disabled local hook does not mean unverified code. What this class exists
+        # to catch is narrower and is still asserted below for every checkout that has a
+        # hook at all: a SECOND COPY whose content has diverged from the tracked file.
+        if not INSTALLED_HOOK.exists() and not INSTALLED_HOOK.is_symlink():
+            pytest.skip(f"no pre-commit hook at {INSTALLED_HOOK} — nothing installed to compare")
         assert INSTALLED_HOOK.is_symlink(), (
             f"{INSTALLED_HOOK} must be a symlink to the tracked .lux/hooks/pre-commit, "
             "or the file under review is not the file that runs."
