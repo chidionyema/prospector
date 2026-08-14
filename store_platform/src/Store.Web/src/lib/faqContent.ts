@@ -59,7 +59,7 @@ export const FAQS: FaqItem[] = [
       // version opened "A pack is one vetted business opportunity in N documents" and listed them
       // across the same sentence, so a buyer who skimmed could not count to eight. Eight it is,
       // one sentence.
-      `One vetted business opportunity, as ${PACK_CONTENTS.length} plain-text documents: a build spec, go-to-market plan, operations plan, financial model, first-week checklist, marketing assets, an executive summary, and a QA report with a source behind every claim. One zip, one payment, instant download.`,
+      `One vetted business opportunity, as ${PACK_CONTENTS.length} documents: a build spec, go-to-market plan, operations plan, financial model, first-week checklist, marketing assets, an executive summary, and a QA report with a source behind every claim. Every one in Markdown you can edit, and the whole pack again as one typeset PDF. One zip, one payment, instant download.`,
     ],
   },
   { category: 'packs',

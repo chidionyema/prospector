@@ -54,19 +54,39 @@ class PackMeta:
     verified_at: str = ""
     source_count: Optional[int] = None
     pack_id: str = ""
+    claim_count: Optional[int] = None
 
 
 def _cover_html(meta: PackMeta) -> str:
     """The header block: title, one-liner, and whatever provenance fields are available.
     Each stat is only emitted when present — an absent source count must not print '0
-    sources' (that reads as a claim we didn't check), it must simply not appear."""
+    sources' (that reads as a claim we didn't check), it must simply not appear.
+
+    The provenance stat leads with CLAIMS, not sources. "Grounded in 51 sources" advertises
+    volume, which is the one thing about the evidence a buyer cannot use: it says nothing
+    about how many statements in the pack are actually load-bearing, and it grew every time
+    the same page was retrieved for a second check (fixed in `Dossier.all_sources`). What a
+    buyer can act on is "we made 6 claims and here is what each one rests on" — the same
+    number the refund promise is written against."""
     stats: List[str] = []
     if meta.verified_at:
         stats.append(
             f'<span class="stat"><span class="stat-label">Verified</span> '
             f'<span class="stat-value">{html.escape(meta.verified_at)}</span></span>'
         )
-    if meta.source_count is not None:
+    if meta.claim_count is not None:
+        claim_noun = "claim" if meta.claim_count == 1 else "claims"
+        value = f"{meta.claim_count} {claim_noun}"
+        if meta.source_count is not None:
+            source_noun = "source" if meta.source_count == 1 else "sources"
+            value += f" against {meta.source_count} {source_noun}"
+        stats.append(
+            f'<span class="stat"><span class="stat-label">Checked</span> '
+            f'<span class="stat-value">{value}</span></span>'
+        )
+    elif meta.source_count is not None:
+        # Bundles rendered before claim counts existed still carry a source count; printing
+        # it alone is the old line, kept so a backfill of an old pack does not lose the stat.
         noun = "source" if meta.source_count == 1 else "sources"
         stats.append(
             f'<span class="stat"><span class="stat-label">Grounded in</span> '
@@ -97,7 +117,12 @@ def _footer_html(meta: PackMeta) -> str:
     pack_id_html = f'<p class="footer-id">Pack ID: {html.escape(meta.pack_id)}</p>' if meta.pack_id else ""
     return (
         '<footer class="pack-footer">'
-        "<p>Every factual claim in this pack cites a retrievable source.</p>"
+        # The old line read "Every factual claim in this pack cites a retrievable source",
+        # which is not true of a pack carrying `unverifiable` checks — and the checks it is
+        # NOT true of are exactly the ones a buyer most needs pointed out. A sourcing promise
+        # that overstates itself is the one sentence a sceptical buyer will test first.
+        "<p>Every claim we could check links to the page it came from. Where the evidence "
+        "was thin, this pack says so instead of filling the gap.</p>"
         f"{pack_id_html}"
         "</footer>"
     )

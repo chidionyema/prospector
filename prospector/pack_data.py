@@ -113,6 +113,10 @@ FINANCIAL_INPUTS: Tuple[Tuple[str, str, str], ...] = (
     ("sales_cycle_months", "Sales cycle", "months"),
     ("payback_months", "Payback (stated)", "months"),
     ("ltv_cac_ratio", "LTV:CAC (stated)", "ratio"),
+    # Appended 2026-08-14, after the tuple's original members, because the sheet's row
+    # numbers are formula targets: `financial_xlsx` builds `row_of` by iterating THIS
+    # tuple, so appending shifts nothing that already had a row.
+    ("repeat_purchases_per_customer", "Repeat sales per buyer", "count"),
 )
 
 _FINANCIAL_OUTPUT_LABELS: Dict[str, str] = {
@@ -298,8 +302,20 @@ def financial_model(assumptions: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
     gm_per_customer = (price * gross_margin_pct / 100.0
                        if price is not None and gross_margin_pct is not None else None)
 
-    clv_derived = (price / (churn / 100.0)
-                   if price is not None and churn not in (None, 0) else None)
+    # Same gate as the renderer, from the SAME function: `price / churn` is a
+    # subscription formula, and applying it to a one-off sale is how a £24 book acquired a
+    # £480 lifetime value on 17 of the 68 packs on disk. Imported rather than restated —
+    # this module already mirrors the renderer's formulas, and a second copy of the rule is
+    # exactly how the sheet and the document come to disagree.
+    from .artifacts import revenue_shape
+    shape = revenue_shape(src, churn)
+    repeat = inputs.get("repeat_purchases_per_customer")
+    if shape == "recurring" and price is not None and churn not in (None, 0):
+        clv_derived = price / (churn / 100.0)
+    elif shape == "one_off" and price is not None and repeat:
+        clv_derived = price * repeat
+    else:
+        clv_derived = None
     clv = clv_stated if clv_stated is not None else clv_derived
 
     payback_derived = (cac / gm_per_customer
@@ -332,6 +348,7 @@ def financial_model(assumptions: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
     weaknesses = [str(w) for w in (src.get("weaknesses") or []) if str(w).strip()]
     return {
         "model_available": bool(src),
+        "revenue_shape": shape,
         "inputs": inputs,
         "input_labels": {k: label for k, label, _u in FINANCIAL_INPUTS},
         "outputs": outputs,
@@ -582,6 +599,7 @@ def financial_xlsx(model: Mapping[str, Any], out_path: str,
 
         price, c1, c12 = b("monthly_price"), b("target_customers_month_1"), b("target_customers_month_12")
         cac, churn = b("estimated_cac_gbp"), b("estimated_monthly_churn_pct")
+        repeat_cell = b("repeat_purchases_per_customer")
         cogs, overhead = b("cost_of_goods_pct"), b("overhead_month_1_gbp")
 
         r = out_start + 1
@@ -598,7 +616,13 @@ def financial_xlsx(model: Mapping[str, Any], out_path: str,
             ("growth_multiple_m1_m12", f'=IF({rev1_cell}=0,"",{rev12_cell}/{rev1_cell})'),
             ("gross_margin_pct", f"=100-{cogs}"),
             ("gross_margin_per_customer", f"={price}*{gm_pct_cell}/100"),
-            ("customer_lifetime_value", f'=IF({churn}=0,"",{price}/({churn}/100))'),
+            # One-off businesses have no churn to divide by; their lifetime value is the
+            # price times how often the buyer comes back. A single formula for both shapes
+            # is the spreadsheet half of the defect fixed in `_render_financial_model`.
+            ("customer_lifetime_value",
+             (f'=IF({repeat_cell}=0,"",{price}*{repeat_cell})'
+              if model.get("revenue_shape") == "one_off"
+              else f'=IF({churn}=0,"",{price}/({churn}/100))')),
             ("payback_months", f'=IF({gm_cust_cell}=0,"",{cac}/{gm_cust_cell})'),
             ("ltv_cac_ratio", f'=IF({cac}=0,"",{clv_cell}/{cac})'),
             ("month_1_cogs", f"={rev1_cell}*{cogs}/100"),

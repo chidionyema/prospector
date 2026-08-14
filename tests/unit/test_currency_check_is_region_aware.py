@@ -15,6 +15,8 @@ source supports, on a storefront whose first rule is source-or-die.
 from prospector.artifacts import _render_financial_model
 from prospector.pack_linter import (
     FINANCIAL_MODEL_FREE_TEXT_HEADERS,
+    FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT,
+    FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY,
     check_currency,
     split_rendered_free_text,
 )
@@ -122,8 +124,12 @@ def test_the_boundary_headers_match_what_the_renderer_actually_emits():
         currency="£",
     )
 
-    for header in FINANCIAL_MODEL_FREE_TEXT_HEADERS:
+    for header in FINANCIAL_MODEL_FREE_TEXT_HEADERS_CURRENT:
         assert header in out, f"renderer no longer emits {header!r}"
+    # The legacy spellings are NOT asserted against the renderer — nothing emits them since
+    # 2026-08-14 — but the boundary has to keep recognising them for the packs on disk.
+    for header in FINANCIAL_MODEL_FREE_TEXT_HEADERS_LEGACY:
+        assert header in FINANCIAL_MODEL_FREE_TEXT_HEADERS
 
     rendered, notes = split_rendered_free_text(out)
     assert "$0.10 per page" in notes and "€7.55" in notes

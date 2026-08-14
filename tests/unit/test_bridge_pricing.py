@@ -23,7 +23,7 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from sellable_pack import sellable_tags
+from sellable_pack import sellable_tags, symbol_for_market
 
 from prospector.bridge import EngineBridge
 from prospector.config import Config
@@ -48,7 +48,10 @@ def _dossier(candidate_id: str, tier: str = "", market: str = "",
     # the bundle audit and the Q2 lint BEFORE it mints, and skips provisioning entirely for a
     # pack that cannot list — so a stub fixture here would exercise the no-mint path while
     # claiming to test the minted price. See tests/unit/sellable_pack.py.
-    candidate.tags = sellable_tags()
+    # In THIS market's currency: the financial model is rendered, not transcribed, and the
+    # Q2 lint refuses a `us` pack quoting £ — so a £ fixture published as `us` fails the
+    # content gate and never reaches the mint path these tests are about.
+    candidate.tags = sellable_tags(symbol_for_market(market))
     if tags_extra:
         candidate.tags.update(tags_extra)
 

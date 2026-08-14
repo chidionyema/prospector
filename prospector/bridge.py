@@ -22,8 +22,9 @@ from . import facet_derive, indexnow
 from . import facets as facets_mod
 from .archive import archive_sources
 from .copy_lint import buyer_readable, is_prose_artifact
+from .marketing_assets import heading_for
 from .models import Decision, Dossier, ScoreResult
-from .pack_linter import lint_pack
+from .pack_linter import TITLE_BLOCK_ON_BREACH_DEFAULT, lint_pack
 from .pack_validation import validate_pack
 
 # Aliased on import: `EngineBridge.publish_pass` below is the whole publish ROUTINE (upload,
@@ -161,9 +162,14 @@ def _normalise_catalog_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 # A line is "cited" if it carries a source marker or a year alongside a number — safe to show
 # pre-purchase because it demonstrates the research is real without revealing the how-to.
 _CITED_RE = re.compile(r"\(source\b|https?://|\b20\d\d\b", re.IGNORECASE)
-_MONEY_RE = re.compile(r"\*\*Month 1:\*\*.*?=\s*\*\*(£[\d,]+)\*\*")
-_LTV_RE = re.compile(r"LTV:CAC Ratio\s*\n\s*-\s*\*\*([\d.]+×)\*\*")
-_PAYBACK_RE = re.compile(r"Payback Period\s*\n\s*-\s*\*\*~?(\d+)\s*months?\*\*")
+# These three parse the document `artifacts._render_financial_model` writes, so they are
+# one half of a two-sided contract with a renderer in another module. `_MONEY_RE` matched a
+# hardcoded £ until 2026-08-14, which is why no US pack ever carried a month-1 revenue on
+# the storefront. `tests/unit/test_pack_render_defects.py` renders and then parses, so a
+# heading change cannot quietly empty the snapshot again.
+_MONEY_RE = re.compile(r"\*\*Month 1:\*\*.*?=\s*\*\*([£$€][\d,]+)\*\*")
+_LTV_RE = re.compile(r"### Worth against cost\s*\n\s*\n?\s*-\s*\*\*([\d.]+×)\*\*")
+_PAYBACK_RE = re.compile(r"\*\*Paid back in: ~?([\d.]+)\s*months?\*\*")
 
 
 def _sample_excerpts(build_spec: str, proof_point: str, max_items: int = 3) -> List[str]:
@@ -244,8 +250,23 @@ BUNDLE_FILES = (
 # and a module-level import here would reverse that. The duplication is pinned by
 # `tests/unit/test_bundle_declared_entries.py`, so it cannot drift silently.
 BUNDLE_BONUS_FILES = (
-    "index.html",       # the rendered reader (pack_html.py)
-    "manifest.jsonld",  # the machine-readable half (pack_manifest.MANIFEST_FILENAME)
+    "index.html",                    # the rendered reader (pack_html.py)
+    "manifest.jsonld",               # the machine-readable half (pack_manifest.MANIFEST_FILENAME)
+    "Evidence_and_Constraints.md",   # the evidence, once (pack_reference.py) — P4
+    "First_Fortnight.html",          # the one printable page (pack_card.py) — P5
+    "Assumptions.csv",               # the machine-readable table (pack_table.py) — P5
+    "Complete_Pack.pdf",             # the typeset edition (pack_pdf.FILENAME) — P5
+)
+
+# Reading order for the in-bundle reader, which is NOT the same list as the sellability
+# contract: `Evidence_and_Constraints.md` is a bonus file (a missing one must never block a
+# listing) but it has a place in the read, immediately before the QA report — the two evidence
+# documents together, after the plans that apply them. Defined once here because the generator
+# and `tools/backfill_bundle_html.py` both order the reader, and two orderings is how a
+# backfilled pack comes to open on a different page from a freshly generated one.
+BUNDLE_READING_ORDER = tuple(
+    x for name in BUNDLE_FILES
+    for x in (("Evidence_and_Constraints.md", name) if name == "QA_Report.md" else (name,))
 )
 
 # Human-readable section titles for the in-bundle index.html reading experience
@@ -261,6 +282,7 @@ _SECTION_TITLES = {
     "04_Financial_Model.md": "The Financial Model",
     "05_First_Week_Checklist.md": "First-Week Checklist",
     "Marketing_Assets.md": "Marketing Assets",
+    "Evidence_and_Constraints.md": "Evidence and Constraints",
     "QA_Report.md": "The QA Report, with the receipts",
 }
 
@@ -875,6 +897,9 @@ class EngineBridge:
         lint_report = lint_pack(
             artifacts=artifacts,
             listing_copy=listing_copy,
+            # The same list `_create_bundle` renders into Marketing_Assets.md, after
+            # `ensure_marketing_floor`, so what is graded is what ships.
+            marketing=marketing,
             listing_texts={
                 # Rendered half and source half must stay in the SAME normalisation space.
                 # `check_truncation` decides "cut mid-word" with `source.startswith(final)`,
@@ -917,9 +942,14 @@ class EngineBridge:
             },
             # Same field, second question: `check_house_dashes` asks whether the title is
             # punctuated in house style; `check_title` asks whether it is a marketing
-            # headline a buyer can read on a card. Actuator defaults OFF (see check_title).
+            # headline a buyer can read on a card. Both defaults are code-side and SAFE: a
+            # missing config key must not silently unbind the only thing standing between a
+            # breaching title and a buyer. See check_title for why the actuator flipped on
+            # 2026-08-14 — the config line that switched it on lived uncommitted in a file a
+            # concurrent session owned, so one checkout would have undone it invisibly.
             title_max_chars=int(listing_cfg.get("title_max_chars", 60) or 60),
-            title_block_on_breach=bool(listing_cfg.get("title_block_on_breach", False)),
+            title_block_on_breach=bool(listing_cfg.get(
+                "title_block_on_breach", TITLE_BLOCK_ON_BREACH_DEFAULT)),
             grammar_enabled=bool(listing_cfg.get("lint_grammar", False)),
             max_grammar_defects_per_1k=float(
                 listing_cfg.get("max_grammar_defects_per_1k", 0.0) or 0.0),
@@ -1471,18 +1501,26 @@ class EngineBridge:
                 # The old loop appended a `##` heading per piece even when `copy` was empty,
                 # so a marketing list of empty pieces produced exactly "# Marketing Assets\n\n"
                 # — the 20-byte file. Skip empty pieces, then assert we wrote something real.
-                sections = [
-                    f"## {str(m.get('type', 'asset')).replace('_', ' ').title()}\n\n"
-                    f"{(m.get('copy') or '').strip()}\n"
-                    for m in marketing
-                    if (m.get("copy") or "").strip()
-                ]
+                # The heading names the READER, not our enum: `marketing_assets.LABELS` is
+                # the one definition of what each piece is for, shared with the generator
+                # and with the lint that grades it. It used to be
+                # `type.replace("_", " ").title()`, which shipped "Seo Preview" and told a
+                # buyer nothing about who the copy underneath was written for.
+                sections = []
+                for m in marketing:
+                    body = (m.get("copy") or "").strip()
+                    if not body:
+                        continue
+                    head, who = heading_for(m.get("type", "asset"))
+                    sections.append(f"## {head}\n\n" + (f"_{who}_\n\n" if who else "")
+                                    + f"{body}\n")
                 if not sections:
                     # ensure_marketing_floor above should make this unreachable; if it ever is
                     # reached, synthesise the floor directly rather than ship a header stub.
                     from .pack_floors import claim_safe_marketing
                     sections = [
-                        f"## Listing Page\n\n{m['copy'].strip()}\n"
+                        f"## {heading_for(m.get('type', 'listing_page'))[0]}\n\n"
+                        f"{m['copy'].strip()}\n"
                         for m in claim_safe_marketing(
                             dossier.candidate, getattr(dossier, "checks", []) or []
                         )
@@ -1501,8 +1539,22 @@ class EngineBridge:
                 self._add_to_zip(zipf, "00_Executive_Summary.md", exec_summary_content)
                 written["00_Executive_Summary.md"] = exec_summary_content
 
-                checklist_content = prose_pass_document(
-                    first_week_checklist_md(dossier.candidate))
+                # The action document. `pack_checklist.render` is preferred and the six-line
+                # floor is the fallback, never the default — measured 2026-08-13, the floor was
+                # the document in 127 of 127 bundles on disk because it was wired
+                # unconditionally here.
+                #
+                # It deliberately does NOT get a prose pass. The derived text is already in the
+                # pack's voice, and the backfill that puts this same document into already-sold
+                # packs cannot make a model call at all: routing one through a rewrite here
+                # would mean a pack bought today and the same pack re-rendered tomorrow carry
+                # two different checklists, which is the drift `pack_reference` and
+                # `pack_card` are both built to avoid.
+                from . import pack_checklist
+                checklist_content = pack_checklist.render(dossier, dict(written))
+                if not checklist_content:
+                    checklist_content = prose_pass_document(
+                        first_week_checklist_md(dossier.candidate))
                 self._add_to_zip(zipf, "05_First_Week_Checklist.md", checklist_content)
                 written["05_First_Week_Checklist.md"] = checklist_content
 
@@ -1521,7 +1573,57 @@ class EngineBridge:
                 # sha256 for every entry it lists, and listing an entry the zip does not contain
                 # would make the one file whose job is to be machine-checkable the one file that
                 # lies.
-                extra_written: Dict[str, str] = {}
+                # Typed Any, not str: `Complete_Pack.pdf` is bytes. Every consumer below either
+                # filters by suffix (`readable`) or hashes through `pack_manifest._as_bytes`,
+                # which takes both.
+                extra_written: Dict[str, Any] = {}
+
+                # 8b. Evidence_and_Constraints.md — P4: the shared evidence, stated ONCE.
+                # Measured 2026-08-14 over 62 live packs: the same cited source is leaned on by
+                # all three plan files a median of 11 times per pack (max 29), and near-duplicate
+                # paragraphs across files run to 3.5% of the corpus. This document is where that
+                # evidence lives now. Rendered with no model call and no prose pass, straight
+                # from the dossier, which is what lets the same renderer backfill packs already
+                # sold. Bonus on the same terms as index.html: guarded, and never a listing
+                # blocker. It is written BEFORE index.html so the reader can include it.
+                try:
+                    from . import pack_reference
+                    reference_md = pack_reference.render(dossier)
+                    if reference_md:
+                        self._add_to_zip(zipf, pack_reference.FILENAME, reference_md)
+                        extra_written[pack_reference.FILENAME] = reference_md
+                except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
+                    logger.warning(
+                        f"{pack_reference.FILENAME} render failed for {candidate_id}: {e}; "
+                        "shipping the bundle without it")
+
+                # 8c. First_Fortnight.html + Assumptions.csv — P5: "markdown files is not the
+                # one." Eight .md files in a zip reads as an AI output dump; these are the two
+                # artefacts the programme doc asks for that a pack can actually carry. The card
+                # is the one printable page a buyer pins up; the CSV is the assumptions register
+                # in a form a spreadsheet opens. Both are deterministic projections of files
+                # already written above, so the SAME renderers backfill packs already sold.
+                # Guarded and bonus, on the same terms as everything else in this block.
+                try:
+                    from . import pack_card, pack_table
+                    card_html = pack_card.render(
+                        dossier,
+                        checklist_md=written.get("05_First_Week_Checklist.md", ""),
+                        financial_md=written.get("04_Financial_Model.md", ""),
+                        pack_id=candidate_id,
+                    )
+                    if card_html:
+                        self._add_to_zip(zipf, pack_card.FILENAME, card_html)
+                        extra_written[pack_card.FILENAME] = card_html
+                    table_csv = pack_table.render(dossier)
+                    if table_csv:
+                        self._add_to_zip(zipf, pack_table.FILENAME, table_csv)
+                        extra_written[pack_table.FILENAME] = table_csv
+                except Exception as e:  # noqa: BLE001 — bonus files; the 8 .md deliverables ship regardless
+                    logger.warning(
+                        f"P5 card/table render failed for {candidate_id}: {e}; "
+                        "shipping the bundle without them")
+
                 try:
                     from . import pack_html
                     pack_meta = pack_html.PackMeta(
@@ -1530,21 +1632,57 @@ class EngineBridge:
                         verified_at=getattr(dossier, "created_at", "") or "",
                         source_count=len(dossier.all_sources) if getattr(dossier, "all_sources", None) else None,
                         pack_id=candidate_id,
+                        # Leads the cover stat: claims are what a buyer can act on, sources
+                        # are only the volume behind them. `or None` so a dossier with no
+                        # cited ruling falls back to the old source-only line rather than
+                        # printing "Checked 0 claims" on a pack we did check.
+                        claim_count=getattr(dossier, "cited_claim_count", 0) or None,
                     )
                     # The reading order, taken from the contract rather than from the order
                     # the files happened to be written in. `if name in written` keeps a
                     # partially-built bundle renderable — such a pack is held UNLISTED by the
                     # completeness gate below, and a bonus file must never be the thing that
                     # raises on the retry path.
+                    # `written` holds the eight promised deliverables; `extra_written` holds the
+                    # bonus documents that reached the zip. The reader draws from BOTH, in the
+                    # shared reading order — but only from what was actually written, so a
+                    # partially-built bundle stays renderable and a bonus file that failed to
+                    # render simply is not in the read.
+                    readable = {**written, **{k: v for k, v in extra_written.items()
+                                              if k.endswith(".md")}}
                     md_entries: List[Tuple[str, str]] = [
-                        (_SECTION_TITLES[name], written[name])
-                        for name in BUNDLE_FILES
-                        if name in written
+                        (_SECTION_TITLES[name], readable[name])
+                        for name in BUNDLE_READING_ORDER
+                        if name in readable
                     ]
                     index_html = pack_html.render_pack_html(md_entries, pack_meta)
                     self._add_to_zip(zipf, "index.html", index_html)
                     if index_html:
                         extra_written["index.html"] = index_html
+
+                    # 9b. Complete_Pack.pdf — the same eight sections, typeset. index.html
+                    # answers "I want to read this now"; the PDF answers "I want to read this
+                    # on a train, print it, or send it to my accountant", which is the half of
+                    # the experience a folder of .md files never had. Nested try of its own:
+                    # fpdf2 is an optional dependency and a PDF failure must not be reported
+                    # as (or cost us) the reader that already succeeded above.
+                    try:
+                        from . import pack_pdf
+                        pdf_bytes = pack_pdf.render_pack_pdf(md_entries, pack_meta)
+                        if pdf_bytes:
+                            zipf.writestr(pack_pdf.FILENAME, pdf_bytes)
+                            # Recorded, so the manifest accounts for it. It was left out until
+                            # 2026-08-14 on the belief that a bytes value would reach a renderer
+                            # expecting str; it does not — `readable` above takes only `.md`, and
+                            # the manifest hashes through `_as_bytes`, which the BACKFILL has
+                            # always fed bytes. The cost of the omission was a bundle carrying a
+                            # file its own machine-readable index denied existed, which is the
+                            # one failure mode manifest.jsonld exists to make impossible.
+                            extra_written[pack_pdf.FILENAME] = pdf_bytes
+                    except Exception as e:  # noqa: BLE001 — bonus file
+                        logger.warning(
+                            f"Complete_Pack.pdf render failed for {candidate_id}: {e}; "
+                            "shipping the bundle without it")
                 except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
                     logger.warning(
                         f"index.html render failed for {candidate_id}: {e}; "

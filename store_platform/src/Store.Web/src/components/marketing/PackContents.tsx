@@ -205,11 +205,19 @@ export function PackContentsSection({
           use, spent to make one point ("it opens anywhere") that "paste anywhere" makes without
           asking anyone to recognise a product. Every fact in the old sentence survives; the zip is
           at the end, where it reads as "and it opens anywhere" rather than as the description of
-          what you are buying. */}
+          what you are buying.
+
+          "plain-text" came out on 2026-08-14, when it stopped being true: bridge.py now also
+          writes Complete_Pack.pdf, a typeset edition of the whole pack, and a buyer told "plain
+          text" who opens a PDF has been told something false about the thing they paid for. It is
+          also the one addition worth the words. The founder's verdict on the pack as shipped was
+          that "markdown files is not the one"; the PDF is the answer to that, and a feature the
+          shelf does not mention is a feature nobody buys. The count still counts DELIVERABLES,
+          not archive entries, which is why the noun beside it stays "documents". */}
       <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-[62ch] text-meta text-muted">
-          <span className="font-medium text-text">{PACK_CONTENTS.length} plain-text documents in a
-          zip, 5,000+ words.</span>{' '}
+          <span className="font-medium text-text">{PACK_CONTENTS.length} documents, 5,000+ words,
+          in Markdown you can edit and one typeset PDF you can print.</span>{' '}
           Yours to keep, edit, or paste anywhere. No login, no subscription.
         </p>
         <span className="inline-flex flex-none items-center gap-2 text-meta font-medium text-text">

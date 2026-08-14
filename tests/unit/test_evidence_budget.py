@@ -217,7 +217,8 @@ def test_the_financial_model_is_never_claim_checked():
     class FinWriter(_Writer):
         def complete_json(self, system, user, **kw):
             self.users.append(user)
-            return {"type": "financial_model", "monthly_price": 12}
+            return {"type": "financial_model", "monthly_price": 12,
+                    "target_customers_month_1": 40}
 
     from prospector.artifacts import _gen_one_artifact
     from prospector.prompts import ALL_MARKET_KEYS
@@ -226,7 +227,8 @@ def test_the_financial_model_is_never_claim_checked():
         writer, "{}", "[]", "financial_model", {k: "" for k in ALL_MARKET_KEYS},
         eb.length_rule(500, 700), checker, [])
     assert checker.calls == 0 and violations == []
-    assert raw == {"type": "financial_model", "monthly_price": 12} and content
+    assert raw == {"type": "financial_model", "monthly_price": 12,
+                   "target_customers_month_1": 40} and content
 
 
 def test_the_length_contract_does_not_reach_the_financial_model_prompt():

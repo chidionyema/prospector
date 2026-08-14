@@ -92,9 +92,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
 > idea that passed an automated kill-first filter: ${checksSentence()}. It then survived an
 > adversarial review. Each claim in a pack cites a retrievable source.
 
-A pack is a zip of plain Markdown (5,000+ words), eight documents: an executive summary, a build
+A pack is a zip of eight documents (5,000+ words): an executive summary, a build
 spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing
-assets, and a QA report with a source behind every claim. It is delivered instantly on payment and
+assets, and a QA report with a source behind every claim. Each document is Markdown, and the whole
+pack ships again as Complete_Pack.pdf, a typeset edition. It is delivered instantly on payment and
 carries a 14-day, no-questions refund.
 
 Every pack also ships manifest.jsonld, a JSON-LD document written for the agent rather than the
