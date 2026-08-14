@@ -673,6 +673,14 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
         return Results.BadRequest(new { error = facetError });
     }
 
+    // Market rides this endpoint but keeps its own validator: it is a shape, not a closed set
+    // (PackFacets.TryValidateMarket explains why). Checked here, before the lookup, so a bad
+    // code gets the same 400 as a bad facet and nothing is half-written.
+    if (!PackFacets.TryValidateMarket(request.Market, out var marketError))
+    {
+        return Results.BadRequest(new { error = marketError });
+    }
+
     var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
     if (pack is null) return Results.NotFound();
 
@@ -690,6 +698,7 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
     pack.Effort = Applied(request.Effort, pack.Effort);
     pack.Commitment = Applied(request.Commitment, pack.Commitment);
     pack.Mechanism = Applied(request.Mechanism, pack.Mechanism);
+    pack.Market = Applied(request.Market, pack.Market);
     if (request.Advantages is not null)
     {
         pack.AdvantagesJson = request.Advantages.Length == 0
@@ -707,6 +716,7 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
         pack.Effort,
         pack.Commitment,
         pack.Mechanism,
+        pack.Market,
         Advantages = RehydrateStringArray(pack.AdvantagesJson)
     });
 })
