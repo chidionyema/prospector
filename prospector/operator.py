@@ -31,12 +31,19 @@ class ParseError(Exception):
     pass
 
 
+#: A reasoning model's <think>…</think> preamble, which is NOT the answer. Defined once because
+#: two call sites now depend on it agreeing: the parser strips it to find the JSON, and the
+#: MiniMax adapter uses "nothing left after stripping it" as its truncation test. A second copy
+#: could disagree with the first about what counts as an answer.
+_RE_THINK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+
 def _extract_json(text: str) -> Any:
     """Multi-strategy JSON extraction from verbose model output."""
     from .telemetry import logger
-    
+
     # Strategy 1: Strip <think> blocks and try direct load
-    t = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE).strip()
+    t = _RE_THINK.sub("", text).strip()
     # Strip markdown code fences
     t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.MULTILINE).strip()
     try:
@@ -306,6 +313,79 @@ def _urlopen_read_bounded(req, *, timeout: float, total_deadline: float) -> byte
     return box["data"]
 
 
+def _read_sse_bounded(req, *, stall_timeout: float,
+                      total_deadline: float) -> tuple[str, dict, str]:
+    """Read an OpenAI-compatible SSE stream, bounded by a per-chunk STALL timeout and a hard total.
+
+    Returns `(content, usage, finish_reason)`.
+
+    WHY STREAM AT ALL — a socket timeout can only measure what the socket does
+    ---------------------------------------------------------------------------
+    On a NON-streamed completion the first byte arrives only once the model has finished, so
+    time-to-first-byte IS the entire generation time. A per-recv timeout therefore cannot tell
+    "reasoning hard" from "dead", and any value picked for it is simultaneously too short for the
+    slow tail and too long for a corpse. Measured 2026-08-14 over the 406 MiniMax calls since
+    12 Aug (`store/prospector.jsonl`, `operation=minimax_raw_call`):
+
+        failures 116/406 = 28.6%     of which  23% landed at 239-246s (the 240s per-recv cap)
+                                                9% landed at 246-310s (the 300s hard deadline)
+        successes 290/406            60% under 60s — the provider was alive throughout
+
+    i.e. roughly a third of the failures were a live provider cut off mid-answer, and the whole
+    generation batch behind them was lost (`Generation chain EXHAUSTED`, 6 times in one tick).
+
+    Streamed, the socket timeout measures SILENCE, which is the only thing that actually
+    distinguishes slow from dead: tokens start flowing at ~1.3s (probed 2026-08-14) and continue,
+    so `stall_timeout` fires only on a genuinely wedged connection while `total_deadline` stays
+    the hard ceiling a trickled body cannot defeat — the same thread-and-close construction as
+    `_urlopen_read_bounded` above, and for the same 46-hour reason.
+    """
+    resp = urllib.request.urlopen(req, timeout=stall_timeout)
+    box: dict = {"parts": [], "usage": {}, "finish": ""}
+
+    def _read():
+        try:
+            for raw_line in resp:  # per-recv timeout applies to EACH read, i.e. to each gap
+                line = raw_line.decode("utf-8", "replace").strip()
+                if not line.startswith("data:"):
+                    continue  # SSE comments / keep-alives / blank frame separators
+                payload = line[5:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    event = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue  # a partial frame is not a failed call
+                if event.get("usage"):
+                    box["usage"] = event["usage"]
+                for choice in event.get("choices") or []:
+                    piece = (choice.get("delta") or {}).get("content") or ""
+                    if piece:
+                        box["parts"].append(piece)
+                    if choice.get("finish_reason"):
+                        box["finish"] = choice["finish_reason"]
+        except BaseException as e:  # noqa: BLE001 — surfaced to the caller below
+            box["err"] = e
+        finally:
+            try:
+                resp.close()
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_read, daemon=True)
+    t.start()
+    t.join(total_deadline)
+    if t.is_alive():
+        try:
+            resp.close()  # break the wedged socket so the reader thread unblocks (no fd leak)
+        except Exception:
+            pass
+        raise TimeoutError(f"streamed response exceeded {total_deadline:.0f}s hard deadline")
+    if "err" in box:
+        raise box["err"]
+    return "".join(box["parts"]), box["usage"], box["finish"]
+
+
 class MiniMaxOperator(Operator):
     """MiniMax OpenAI-compatible API brain.
 
@@ -347,6 +427,16 @@ class MiniMaxOperator(Operator):
     _throttle = threading.Semaphore(int(os.environ.get("PROSPECTOR_MINIMAX_CONCURRENCY", "3")))
     _RETRY_429_MAX = int(os.environ.get("PROSPECTOR_MINIMAX_429_RETRIES", "4"))
     _RETRY_429_BASE_S = float(os.environ.get("PROSPECTOR_MINIMAX_429_BACKOFF_S", "5"))
+
+    # The transport is STREAMED (see `_read_sse_bounded`), so these two measure different things
+    # and neither is the old 240s compromise between them:
+    #   _STALL_TIMEOUT_S  — silence on an open stream. Probed 2026-08-14: first token at 1.31s and
+    #                       a steady flow after, so 90s of nothing is a wedged socket, not thinking.
+    #   _TOTAL_DEADLINE_S — the hard ceiling. A call only reaches it while ACTIVELY emitting
+    #                       tokens, which is a live call; the old 300s cut live calls off at their
+    #                       longest (measured: 23% of failures sat exactly at the per-recv cap).
+    _STALL_TIMEOUT_S = float(os.environ.get("PROSPECTOR_MINIMAX_STALL_S", "90"))
+    _TOTAL_DEADLINE_S = float(os.environ.get("PROSPECTOR_MINIMAX_DEADLINE_S", "600"))
 
     # MiniMax API endpoint (OpenAI-compatible /v1/chat/completions).
     # The flagship reasoning model and the stable non-reasoning option for
@@ -398,6 +488,12 @@ class MiniMaxOperator(Operator):
             # retries MiniMax rather than failing over). So we keep the full budget and let the rare
             # runaway call hit the 240s timeout → THAT exception does fail over to claude_cli.
             "max_tokens": 32768,
+            # STREAMED so the socket timeout measures silence rather than total generation time
+            # (`_read_sse_bounded` carries the measurement). `include_usage` is not optional: an
+            # OpenAI-compatible stream omits the usage block entirely without it, and every
+            # MiniMax call would then record 0 tokens into the spend ledger.
+            "stream": True,
+            "stream_options": {"include_usage": True},
         }
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
@@ -412,23 +508,24 @@ class MiniMaxOperator(Operator):
         from .errors import ProviderExhaustedError, looks_exhausted
         from .telemetry import logger as _log
 
-        data = None
+        content, usage, finish = "", {}, ""
         for attempt in range(self._RETRY_429_MAX + 1):
             try:
                 # MiniMax M3 completions routinely take 75-115s (measured 2026-07-01: 75.7s and
                 # 113.4s succeeded; calls cut at the old 120s cap failed with "read operation
                 # timed out", zeroing whole generation batches when it was the only live brain).
-                # 240s gives the slow-but-alive path headroom so a slow response is not misread
-                # as a dead provider. timeout=240 is per-recv; total_deadline is the HARD ceiling
-                # that a trickled body cannot defeat (see _urlopen_read_bounded). Beyond it the
-                # chain fails over to Ollama.
+                # Raising that cap to 240s did not fix it — it only moved the cliff: 2026-08-14
+                # measured 28.6% of calls failing, a third of them exactly AT the cap. A duration
+                # bound cannot grade a non-streamed call, so the transport streams and the two
+                # bounds now measure what they are named for (see `_read_sse_bounded`).
                 #
                 # The semaphore is held only around the REQUEST, never around the backoff sleep:
                 # a waiter that keeps its slot while sleeping converts backpressure into a
                 # deadlock of the whole pool, which is the failure this rail exists to prevent.
                 with self._throttle:
-                    raw = _urlopen_read_bounded(req, timeout=240, total_deadline=300)
-                data = json.loads(raw.decode("utf-8"))
+                    content, usage, finish = _read_sse_bounded(
+                        req, stall_timeout=self._STALL_TIMEOUT_S,
+                        total_deadline=self._TOTAL_DEADLINE_S)
                 break
             except Exception as e:
                 msg = str(e)
@@ -450,8 +547,8 @@ class MiniMaxOperator(Operator):
                                                  provider=self.name)
                 raise RuntimeError(f"MiniMax call failed: {e}") from e
 
-        # Track token usage (OpenAI-compatible usage block)
-        usage = data.get("usage") or {}
+        # Track token usage (OpenAI-compatible usage block, delivered as the stream's last event)
+        usage = usage or {}
         inp = int(usage.get("prompt_tokens", 0) or 0)
         out = int(usage.get("completion_tokens", 0) or 0)
         total = int(usage.get("total_tokens", 0) or 0)
@@ -459,8 +556,16 @@ class MiniMaxOperator(Operator):
         record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
                      cached_tokens=0, web=False, provider=self.name)
 
-        # OpenAI-compatible response shape
-        content = data.get("choices", [{}])[0].get("message", {}).get("content", "") or ""
+        # A response cut off at max_tokens is an HTTP SUCCESS carrying an unusable body: M3 spends
+        # its budget inside <think>…</think> and a `length` finish means the JSON never came.
+        # Measured 2026-08-14, one generation call: 142,992 chars that ended `</think>\n\n`, and
+        # all the caller could say was "no valid JSON found" — which retries MiniMax (the same
+        # over-long prompt, the same outcome) instead of failing over to a brain that could
+        # answer. Naming the truncation converts a silent 3-attempt burn into one clean failover.
+        if finish == "length" and not _RE_THINK.sub("", content).strip():
+            raise RuntimeError(
+                f"MiniMax call failed: response truncated at max_tokens — {len(content)} chars of "
+                f"reasoning and no answer (finish_reason=length)")
         logger.info(f"MiniMax response: length={len(content)}, start={content[:200]!r}, end={content[-200:]!r}")
         return content
 
@@ -531,8 +636,10 @@ class DeepSeekOperator(Operator):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            # Bounded read, not a bare per-recv timeout — see the note at the StandardCompute
+            # call site for the 46-hour daemon wedge this shape produced on 2026-08-11.
+            raw = _urlopen_read_bounded(req, timeout=120, total_deadline=180)
+            data = json.loads(raw.decode("utf-8"))
         except Exception as e:
             # looks_exhausted, not an ad-hoc substring test. The hand-rolled
             # `"quota" in e or "limit" in e` that stood here missed "HTTP Error 402: Payment
@@ -643,8 +750,21 @@ class StandardComputeOperator(Operator):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            # HARD total deadline, not a bare per-recv timeout. `urlopen(timeout=300)` bounds each
+            # individual socket recv; a server that trickles the body resets it on every chunk and
+            # `resp.read()` blocks forever. That is not theoretical here: this adapter sits in BOTH
+            # the verdict chain and the non-critical chain (`config.yaml:53` and `:76`), and on
+            # 2026-08-11 the daemon logged `LLM completion started: fallback(claude_cli+
+            # standardcompute+minimax)` at 08:05:25 and then emitted NOTHING for 46 hours, until
+            # `Failed minimax_raw_call` at 2026-08-13T06:12:02. Two days of a live storefront's
+            # supply, spent inside one `read()` that no timeout could reach.
+            #
+            # `_urlopen_read_bounded` (operator.py:277) was written for precisely this in July and
+            # applied to MiniMax alone; every other metered adapter kept the bare call. One helper,
+            # every call site — a bound that protects one provider protects nothing, because the
+            # chain hangs on whichever member was left bare.
+            raw = _urlopen_read_bounded(req, timeout=300, total_deadline=360)
+            data = json.loads(raw.decode("utf-8"))
         except Exception as e:
             # The classifier needs the RESPONSE BODY, not just str(e). urllib renders an
             # HTTPError as "HTTP Error 402: Payment Required" and drops the JSON body, which
@@ -814,8 +934,12 @@ class OpenRouterOperator(Operator):
                          "Authorization": f"Bearer {self._key}"},
                 method="POST")
             try:
-                with urllib.request.urlopen(req, timeout=self._MODEL_TIMEOUT_S) as resp:
-                    raw = resp.read().decode("utf-8")
+                # Bounded read. The warm-up probe exists to fail a slow model FAST (see the
+                # class docstring's "FAST ROTATION"); a bare per-recv timeout cannot deliver
+                # that against a trickled body, which is the one failure it most needs to catch.
+                raw = _urlopen_read_bounded(
+                    req, timeout=self._MODEL_TIMEOUT_S,
+                    total_deadline=self._MODEL_TIMEOUT_S * 1.5).decode("utf-8")
                 latency = time.monotonic() - t0
                 if raw.strip():
                     self._h[model]["successes"] = 1
@@ -927,8 +1051,10 @@ class OpenRouterOperator(Operator):
             )
             t0 = time.monotonic()
             try:
-                with urllib.request.urlopen(req, timeout=self._MODEL_TIMEOUT_S) as resp:
-                    raw = resp.read().decode("utf-8")
+                # Bounded read — same reason as the warm-up probe above.
+                raw = _urlopen_read_bounded(
+                    req, timeout=self._MODEL_TIMEOUT_S,
+                    total_deadline=self._MODEL_TIMEOUT_S * 1.5).decode("utf-8")
                 latency = time.monotonic() - t0
                 if not raw.strip():
                     self._breakers[model].record_failure()
@@ -1041,8 +1167,10 @@ class OllamaOperator(Operator):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            # Bounded read — a local Ollama that stalls mid-stream wedges the caller exactly the
+            # same way a remote one does; see the StandardCompute call site for the incident.
+            raw = _urlopen_read_bounded(req, timeout=300, total_deadline=360)
+            data = json.loads(raw.decode("utf-8"))
         except Exception as e:
             from .errors import ProviderExhaustedError
             if "connection refused" in str(e).lower() or "connection" in str(e).lower():
