@@ -26,3 +26,24 @@
 export function packOgImagePath(packId: string): string {
   return `/og/pack/${encodeURIComponent(packId)}`;
 }
+
+/**
+ * Site-root-relative path of the DEFAULT card, used by every page that does not render its own
+ * (i.e. everything except pack pages). Lives here for the same reason `packOgImagePath` does: it
+ * had drifted into two hardcoded `/og.png` strings, in `Seo.tsx` and in `schema.ts`'s Product
+ * `image`, and this module exists precisely so the meta tag and the schema cannot disagree.
+ *
+ * THE `?v=` IS LOAD-BEARING, not decoration. Until 2026-08-14 `public/og.png` was the link-preview
+ * card of a different product entirely ("The Intro Exchange"), shipped in `5f95ca7` and never
+ * regenerated; it is now the Mumchimp card (`scripts/gen-brand-assets.mjs`). Every social scraper
+ * caches a preview against the image URL and re-fetches on a timescale of weeks, not minutes --
+ * Slack, X, LinkedIn, iMessage and Facebook all do, and Facebook's cache is only clearable by
+ * hand through its Sharing Debugger. Replacing the BYTES at an unchanged URL therefore leaves the
+ * wrong brand on every link already scraped, and on every new share that hits a warm cache. A new
+ * URL is the one thing every scraper treats as a new image.
+ *
+ * Bump this date whenever `public/og.png` is regenerated with different content. It is a date
+ * rather than an incrementing integer so the value says WHEN the card changed, which is the
+ * question anyone reading a stale preview is actually asking.
+ */
+export const DEFAULT_OG_IMAGE_PATH = '/og.png?v=2026-08-14';

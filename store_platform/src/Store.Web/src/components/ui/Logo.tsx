@@ -54,7 +54,7 @@ interface LogoProps {
  * actually owns.
  */
 /**
- * The brand mark: a stratigraphy tile.
+ * The brand mark: a funnel cut from three strata.
  *
  * WHY THIS SHAPE, and not an arbitrary glyph. Every product on this site already carries a mark
  * made of horizontal strata (`lib/packMark.ts`), on the stated reasoning that a shop selling
@@ -65,15 +65,32 @@ interface LogoProps {
  *
  * Hand-authored, NOT `strata(BRAND.name)`. A hashed brand mark would be an arbitrary shape that
  * happens to be stable -- fine for a pack, wrong for an identity, which has to survive being 16px
- * in a browser tab. Three bands, centred, descending in width: a funnel. See the band list in
- * `BrandMark` for why it is centred rather than left-aligned -- briefly, left-aligned horizontal
- * bars in a dark tile are the text/document glyph, and the mark was being read as a list-view
- * toggle rather than as identity.
+ * in a browser tab.
  *
- * Knocked out of a solid tile rather than drawn as ink bands on nothing, for two reasons: it keeps
- * the existing monogram's silhouette (this replaces a `bg-text` rounded tile holding an "M", so
- * every place that reserved space for the monogram still gets the same footprint), and a solid
- * shape survives small sizes and busy backgrounds, where hairline bars break up.
+ * THE TILE IS GONE -- founder decision, 2026-08-14, choosing option D from a sheet of six concepts
+ * rendered side by side at 16/24/32/48px, as a 180px iOS tile, and swapped into the live header at
+ * 1280 and 390. The tile had been rejected three times, and twice the fix changed a PARAMETER:
+ * band alignment (2026-08-08), cut corner and radius (2026-08-09). The verdict did not move,
+ * because a rounded square with bars knocked out of it is the generic app-icon silhouette whatever
+ * the corner does -- so no radius, band width or colour was ever going to answer it. What changes
+ * here is the CONCEPT: there is no container. The mark IS the funnel -- three slabs narrowing in
+ * width and in height at once, wide intake at the top and one thing out at the bottom, which is
+ * what the engine does (1,444 ideas in, 80 on the shelf).
+ *
+ * It stays inside the strata alphabet the pack marks are drawn from (`lib/packMark.ts`): still
+ * horizontal bands, still stacked, still descending. What it drops is the frame around them.
+ *
+ * DRAWN AS THREE SOLID SLABS, not as one shape with bands knocked out of it. The tile knocked its
+ * bands out in `fill-bg`, which quietly made the mark depend on the surface behind it: right on
+ * the white storefront, wrong on any other ground, and in `public/icon.svg` those knockouts were
+ * white ink that would have shown as bars against a dark browser tab strip. Three closed paths in
+ * `currentColor` have no such dependency -- one colour, any ground, and `--brand-mark` recolours
+ * all of it.
+ *
+ * The known objection, recorded because it was accepted rather than missed: a funnel is also the
+ * generic filter glyph. It was taken on the argument that here the funnel is the business, not a
+ * control -- and unlike the tile's app-icon read, this one was judged in the live header beside
+ * the real nav before it shipped.
  *
  * Sized in `em` so one component serves the 28px header lockup and the footer alike: the mark
  * always matches the wordmark it stands next to, with no per-placement size prop.
@@ -109,54 +126,24 @@ function BrandMark({ className, standalone = false }: { className?: string; stan
         className,
       )}
     >
-      {/* CUT CORNER, not a plain rounded rect -- explicit founder override, 2026-08-09, of the
-          rx-14 tile above. A solid rounded square with three knocked-out bars inside it is the
-          generic-app-icon silhouette itself (Slack, Notion, a hundred others), independent of
-          what radius it uses; a reader flagged that read directly ("feels a bit generic and
-          boxed-in") against THIS shape, so tightening the radius alone would not have answered
-          the complaint. The fix gives the tile a feature the generic silhouette does not have: one
-          corner (top-right) is cut at a straight 22-unit diagonal instead of rounded, so the tile
-          itself echoes the funnel narrowing inside it rather than being a neutral frame around it.
-          The other three corners round at `r=2`, which -- unlike the rx-14 this replaces --
-          finally MATCHES the sitewide `--radius-sm`/`--radius-md` (`tokens.css`, "ONE RADIUS, 2px,
-          AND NO PILLS", 2026-08-08) instead of standing out against it; the previous comment's own
-          reasoning ("a brand mark is allowed its own geometry, but not one that contradicts the
-          system") argued for exactly this rounding value, just not for cutting a corner too.
-          Authored as a path, not a rect, since a rect cannot express one straight-cut corner. */}
-      <path
-        d="M 2 0 L 78 0 L 100 22 L 100 98 A 2 2 0 0 1 98 100 L 2 100 A 2 2 0 0 1 0 98 L 0 2 A 2 2 0 0 1 2 0 Z"
-        fill="currentColor"
-      />
-      {/* Knocked out in the page background rather than in white, so the mark stays correct if the
-          lockup is ever set on a tinted surface.
+      {/* THE GEOMETRY, so a future edit does not have to re-derive it. The funnel's edges run from
+          (3, 6) and (97, 6) down to (37, 94) and (63, 94). The three slabs are that trapezoid cut
+          by two horizontal gaps, at y=38..46 and y=70..78, so each slab is both narrower AND
+          shorter than the one above it: 32, 24 and 16 units tall. Two things descend at once,
+          which is what stops the stack reading as a list of equal rows.
 
-          CENTRED AND DESCENDING (2026-08-08). These were three LEFT-ALIGNED bands of ragged width
-          (64/40/56), and left-aligned horizontal bars inside a dark rounded tile is the universal
-          text/document/list primitive -- Material's `subject` and `format_align_left`, reader
-          mode, every "list view" toggle ever drawn. In a header, beside five nav items, it parsed
-          as a control rather than as identity.
+          The slab corners are square. `--radius-sm` is 2px sitewide (`tokens.css`, "ONE RADIUS,
+          2px, AND NO PILLS") and a 2-unit radius on a 100-unit viewBox is 0.32px at the 16px
+          favicon -- a rounding that cannot be seen at the size that matters and that softens the
+          diagonal edge at the size that does. The mark's own geometry is the exception the token
+          block already allows; it does not contradict the system, it just declines a radius.
 
-          Rendering the alternatives side by side at 19.7/32/16px is what settled it, and it also
-          killed the obvious fix: making the widths monotonic while keeping the left margin
-          (64/52/38) is WORSE, because a stack of left-aligned lines with a short last one is
-          precisely the paragraph glyph. The shared left margin was the problem, not the raggedness
-          -- text always shares a left edge, so nothing that keeps one escapes the read.
-
-          Centring the bands and descending the widths makes it a funnel, which is the one shape
-          that is both unmistakably not a list and exactly what this business does: 1,444 ideas in
-          at the top, 80 out at the bottom. It stays in the strata alphabet the 57 pack marks are
-          drawn from (`lib/packMark.ts`) -- still horizontal bands, still knocked out of a solid
-          tile -- so the brand and the products remain visibly the same system.
-
-          Symmetric by construction: 3 bands x 14 + 2 gaps x 10 = 62, centred in 100 leaves 19
-          above and 19 below. `x` is always (100 - w) / 2. */}
-      {[
-        { y: 19, x: 10, w: 80 },
-        { y: 43, x: 24, w: 52 },
-        { y: 67, x: 38, w: 24 },
-      ].map((b) => (
-        <rect key={b.y} x={b.x} y={b.y} width={b.w} height={14} rx={2} className="fill-bg" />
-      ))}
+          Coordinates are literal rather than computed from the edge equations at render time: the
+          favicon in `public/icon.svg` carries the same three paths as static text, and two
+          derivations of one shape are two shapes waiting to diverge. */}
+      <path d="M 3 6 L 97 6 L 84.64 38 L 15.36 38 Z" fill="currentColor" />
+      <path d="M 18.45 46 L 81.55 46 L 72.27 70 L 27.73 70 Z" fill="currentColor" />
+      <path d="M 30.82 78 L 69.18 78 L 63 94 L 37 94 Z" fill="currentColor" />
     </svg>
   );
 }
