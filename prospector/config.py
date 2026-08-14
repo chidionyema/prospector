@@ -75,6 +75,26 @@ class Retrieval:
     # Default 1 = OFF, a byte-for-byte no-op, so fixtures, the golden set and any directly
     # constructed Retrieval() keep their behaviour; config.yaml turns it on for the engine.
     relevance_overfetch: int = 1
+    # RANKING CANNOT SAVE A RESULT SET THAT IS ENTIRELY OFF-TOPIC. `relevance_overfetch`
+    # above picks the best k of what ONE provider returned; when that provider answered a
+    # precise query with the topic's head pages, the best of nine is still junk.
+    # MEASURED 2026-08-14 over the 1,622 grounding passages written since the page-fetch fix
+    # (`store/dossiers/*.json`): 183 of them (11.3%) contain ZERO of their own query's
+    # content words — `4A's ANA agency members AI content guidelines California 2024 2025`
+    # was grounded on fire.ca.gov (a CAL FIRE hiring page), `insider risk detection startup
+    # funding round Series A 2026 offboarding` on theins.press (a Russian politics
+    # magazine). Mean query coverage by verdict: supported 0.488, refuted 0.447,
+    # unverifiable 0.300 — the checks that fail are the checks whose pages were off-topic.
+    # A below-floor result set is therefore treated as a SOFT failure: try the next provider
+    # in the chain and keep whichever set covers the query best. Paired replay of the 15
+    # worst real queries through the identical stack (rank + page fetch, cache off):
+    # ddg 0.359 -> exa 0.525 mean coverage, exa better on 12 of 15.
+    # This can only ADD: the best set seen is always returned, never fewer sources than the
+    # first provider gave, so it cannot starve a check, cannot empty `sources` and cannot
+    # reach the DEFER gate. It costs one extra (metered) search on a below-floor query.
+    # 0.0 = OFF, a byte-for-byte no-op for fixtures, the golden set and any directly
+    # constructed Retrieval().
+    min_relevance: float = 0.0
     # DiskCache freshness: cached grounding passages older than this are treated as a
     # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
     # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,
@@ -405,6 +425,12 @@ _BLOCK_KEYS: dict[str, frozenset[str]] = {
     # F1-F4 — deterministic buyer-facing data artifacts (scorecard, financials,
     # comparables, radar SVG, XLSX, PDF). Zero LLM calls.
     "pack_data": frozenset({"enabled", "formats", "chrome_path"}),
+    # The pack's length contract, derived from the evidence it holds rather than asserted
+    # as a constant. See prospector/evidence_budget.py for the measurement that set it.
+    "artifacts": frozenset({
+        "enforce_length_budget", "claim_check", "base_words",
+        "words_per_evidence_word", "floor_words", "ceiling_words",
+    }),
 }
 
 
@@ -547,6 +573,9 @@ class Config:
     # F1-F4 — deterministic buyer-facing data artifacts. The comparables in particular are
     # already fetched today and then DISCARDED; the buyer never sees the price evidence.
     pack_data: dict[str, Any] = field(default_factory=dict)
+    # The £49 deliverable's length contract. Empty means the shipped defaults in
+    # `evidence_budget.artifacts_cfg` apply, which leave the old prompt behaviour intact.
+    artifacts: dict[str, Any] = field(default_factory=dict)
     schedule: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
@@ -976,6 +1005,7 @@ def load_config(path: str | Path | None = None) -> Config:
             "meta_shape_monitor", raw.get("meta_shape_monitor")),
         claim_lock=_validate_block("claim_lock", raw.get("claim_lock")),
         pack_data=_validate_block("pack_data", raw.get("pack_data")),
+        artifacts=_validate_block("artifacts", raw.get("artifacts")),
         schedule=raw.get("schedule") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},

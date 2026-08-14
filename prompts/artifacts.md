@@ -14,8 +14,8 @@ price", never "monthly_price"; write "who the buyer is", never "the who_pays fie
 write "value durability", never "value_durability". This applies to the "assumptions" and
 "weaknesses" strings too, which the buyer reads verbatim in the finished pack.
 Use only real, current, maintained tools and benchmarks.
-Structure each artifact as several titled sections (markdown headings), each with real
-substance — never a single block or a heading with one thin line under it.
+
+{length_rule}
 
 USER: Opportunity: {candidate_json}   Verified claims: {claims_json}
 
@@ -59,5 +59,6 @@ SPECIAL RULE for ops_plan:
   Output ONLY: {"type": "ops_plan", "content": "..."}
 
 REMINDER: produce artifact type "{type}". For build_spec / gtm_plan / ops_plan the
-"content" field is the full artifact as a single markdown string and MUST be substantial
-(many paragraphs), never empty. Output ONLY the one JSON object for "{type}".
+"content" field is the full artifact as a single markdown string. It must never be empty
+and must respect the length contract above — a shorter artifact that earns every sentence
+is a better product than a long one. Output ONLY the one JSON object for "{type}".

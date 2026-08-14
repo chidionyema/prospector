@@ -13,6 +13,15 @@ allowance, answered `POST /v1/chat/completions` with HTTP 200 and put its billin
 
 Thirteen consecutive generation ticks produced zero candidates. These tests pin both halves
 of the fix: the classifier must recognise the wording, and the adapter must raise on it.
+
+IT HAPPENED AGAIN, 2026-08-13 — same provider, same clause, ONE NOUN DIFFERENT. The body
+below is byte-identical to the 2026-08-09 one except "free usage" became "free TRIAL", which
+the alternation did not list. Eight consecutive barren ticks, three signals parked to
+`signals/pending/`, nothing published since 2026-08-10T23:06Z. The adapter half of the fix was
+never at fault: it asks the classifier, and the classifier said healthy. So the lesson this
+file now pins is not "add trial" but that the alternation enumerates a VENDOR'S NOUNS for the
+thing an account runs out of, and a vendor renames those in a copy edit. Every member of that
+family is tested below, and a new one should be added to the regex the day it is seen.
 """
 from __future__ import annotations
 
@@ -31,6 +40,14 @@ from prospector.operator import StandardComputeOperator
 # The body as logged, verbatim (197 chars), em dashes and all.
 OUT_OF_CREDIT_BODY = (
     "You've used up your free usage — let's keep going.\n\n"
+    "Continue at a flat monthly price — no per-token billing, no surprise charges.\n\n"
+    "Set up your plan at https://standardcompute.com/dashboard/billing."
+)
+
+# The 2026-08-13 body, verbatim from store/scheduler/launchd.err.log:205145 (197 chars).
+# One noun apart from the line above, and that one noun cost a day of production.
+OUT_OF_TRIAL_BODY = (
+    "You've used up your free trial — let's keep going.\n\n"
     "Continue at a flat monthly price — no per-token billing, no surprise charges.\n\n"
     "Set up your plan at https://standardcompute.com/dashboard/billing."
 )
@@ -89,6 +106,30 @@ def test_classifier_reads_the_upsell_as_permanent_exhaustion():
     # the nearest word here is "no per-token billing, no surprise charges".
     assert looks_exhausted(OUT_OF_CREDIT_BODY) is True
     assert classify_exhaustion(OUT_OF_CREDIT_BODY) == PERMANENT
+
+
+def test_the_2026_08_13_trial_wording_is_permanent_exhaustion():
+    """The exact body that produced eight barren ticks. Length is asserted so that a future
+    edit to the string cannot quietly stop being the thing that was logged."""
+    assert len(OUT_OF_TRIAL_BODY) == 197
+    assert looks_exhausted(OUT_OF_TRIAL_BODY) is True
+    assert classify_exhaustion(OUT_OF_TRIAL_BODY) == PERMANENT
+
+
+@pytest.mark.parametrize("noun", [
+    "usage", "trial", "credit", "credits", "quota", "allowance", "balance", "tokens", "minutes",
+])
+def test_every_noun_an_account_can_run_out_of_is_covered(noun):
+    """Twice now the outage was one unlisted noun. Enumerate the family, not the sample."""
+    assert classify_exhaustion(f"You've used up your free {noun} — let's keep going.") == PERMANENT
+
+
+def test_the_noun_family_did_not_widen_into_ordinary_prose():
+    """The mirror-image defect: benching a live brain over a candidate that says 'used up'."""
+    for benign in ("the team used up its budget for offsites last quarter",
+                   "we used up the remaining conference swag",
+                   "used up all the goodwill with that release"):
+        assert classify_exhaustion(benign) != PERMANENT, benign
 
 
 def test_two_hundred_with_an_upsell_raises_instead_of_returning_it(op, monkeypatch):

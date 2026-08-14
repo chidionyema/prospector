@@ -1765,16 +1765,28 @@ class FallbackSearchProvider(SearchProvider):
     """
     def __init__(self, providers: list[tuple[str, SearchProvider]],
                  *, failure_threshold: int = 3, cooldown_s: float = 60.0,
-                 clock=time.monotonic, health=None):
+                 clock=time.monotonic, health=None, min_relevance: float = 0.0):
         if not providers:
             raise ValueError("FallbackSearchProvider needs at least one provider")
         from .health import get_health
         self.providers = providers
+        # See `config.Retrieval.min_relevance`. 0.0 keeps the pre-2026-08-14 behaviour
+        # exactly: the first provider that answers wins, however off-topic its answer.
+        self.min_relevance = float(min_relevance or 0.0)
         self._breakers = {
             name: CircuitBreaker(name, failure_threshold=failure_threshold,
                                  cooldown_s=cooldown_s, clock=clock)
             for name, _ in providers}
         self._health = health if health is not None else get_health()
+
+    def _usable_after(self, idx: int) -> bool:
+        """Is there a provider AFTER `idx` that could actually be asked right now?
+
+        Escalating on low relevance is only worth the latency if someone is left to
+        escalate TO — a dead-marked or breaker-open tail is not a second opinion.
+        """
+        return any(not self._health.is_dead(n) and self._breakers[n].allow()
+                   for n, _ in self.providers[idx + 1:])
 
     @track_latency(name="fallback_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
@@ -1783,7 +1795,10 @@ class FallbackSearchProvider(SearchProvider):
         tried: list[str] = []
         last_status = "empty"
         start = time.monotonic()
-        for name, prov in self.providers:
+        # Best (coverage, provider, results) seen this call. Only ever WRITTEN by a
+        # provider that answered, so returning it cannot invent sources.
+        best: Optional[tuple[float, str, list[Source]]] = None
+        for idx, (name, prov) in enumerate(self.providers):
             br = self._breakers[name]
             # Persisted quota window (cross-run) OR in-run breaker can skip it for free.
             if self._health.is_dead(name) or not br.allow():
@@ -1793,12 +1808,40 @@ class FallbackSearchProvider(SearchProvider):
                 results = prov.search(query, k=k, max_chars=max_chars)
                 br.record_success()       # incl. a legitimate empty [] — provider is healthy
                 self._health.clear(name)  # proven alive — drop any stale dead mark
-                audit("fallback_resolved", actual_provider=name,
+                # RELEVANCE FAILOVER. A result set that shares almost no content words with
+                # the query is not evidence, and no downstream stage can repair it: ranking
+                # picks the best of what arrived, the page fetch reads the wrong page in
+                # full, and the verdict correctly rules `unverifiable`. Treat it as a SOFT
+                # failure — the provider is healthy (breaker success is already recorded
+                # above and is NOT reversed), it just answered a different question.
+                cov = _mean_coverage(query, results)
+                if best is None or cov > best[0]:
+                    best = (cov, name, results)
+                if (results and self.min_relevance > 0.0 and cov < self.min_relevance
+                        and self._usable_after(idx)):
+                    logger.info(
+                        "Grounding provider %r answered %r at %.0f%% query coverage "
+                        "(floor %.0f%%); escalating to the next provider",
+                        name, query[:80], 100 * cov, 100 * self.min_relevance)
+                    audit("search_relevance_escalate", provider=name, query=query[:200],
+                          coverage=round(cov, 3), floor=self.min_relevance,
+                          returned_n=len(results))
+                    tried.append(name)
+                    last_status = "low_relevance"
+                    continue
+                # This provider ends the chain — but an EARLIER one it escalated off may
+                # still cover the query better (the tail is a second opinion, not an
+                # authority). `best` holds the earliest strict maximum, so a tie keeps the
+                # earlier provider's order, exactly as the ranker does.
+                chosen_name, chosen = name, results
+                if self.min_relevance > 0.0 and best is not None and best[1] != name:
+                    chosen_name, chosen = best[1], best[2]
+                audit("fallback_resolved", actual_provider=chosen_name,
                       tried=tried + [name], query=query[:200], k=k,
-                      max_chars=max_chars, returned_n=len(results),
+                      max_chars=max_chars, returned_n=len(chosen),
                       latency_ms=int((time.monotonic() - start) * 1000),
-                      status="ok" if results else "empty")
-                return results
+                      status="ok" if chosen else "empty")
+                return chosen
             except (FixtureMiss, ProviderUnavailable) as e:
                 # Either no fixture matched this query, or the provider is not configured
                 # to run (e.g. missing API key). Fall through to the next provider WITHOUT
@@ -1841,6 +1884,21 @@ class FallbackSearchProvider(SearchProvider):
                     f"(breaker={br.state}); failing over to next",
                     extra={"provider": name, "exhausted": exhausted,
                            "breaker": br.state, "error": str(e)[:200]})
+        if best is not None:
+            # Every provider was tried and none cleared the floor (or the ones after the
+            # best one failed outright). Return the best coverage seen rather than nothing:
+            # low-relevance evidence still beats a GroundingInfrastructureError, which the
+            # daemon reads as an outage and turns into a DEFER.
+            cov, name, results = best
+            logger.info("No provider cleared the %.0f%% relevance floor for %r; "
+                        "keeping %r at %.0f%%",
+                        100 * self.min_relevance, query[:80], name, 100 * cov)
+            audit("fallback_resolved", actual_provider=name,
+                  tried=tried, query=query[:200], k=k, max_chars=max_chars,
+                  returned_n=len(results),
+                  latency_ms=int((time.monotonic() - start) * 1000),
+                  status="best_effort", coverage=round(cov, 3))
+            return results
         audit("fallback_resolved", actual_provider=None,
               tried=tried, query=query[:200], k=k,
               max_chars=max_chars, returned_n=0,
@@ -1916,7 +1974,8 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
         built[0][1] if len(built) == 1
         else FallbackSearchProvider(built,
                                     failure_threshold=r.breaker_failure_threshold,
-                                    cooldown_s=r.breaker_cooldown_s))
+                                    cooldown_s=r.breaker_cooldown_s,
+                                    min_relevance=float(getattr(r, "min_relevance", 0.0) or 0.0)))
     # Fetch the PAGE rather than ruling on the search snippet. Wrapped here, not inside
     # FallbackSearchProvider, because the line above skips that wrapper entirely on a
     # single-provider config. Never wrapped when fixtures are pinned: the golden-set harness

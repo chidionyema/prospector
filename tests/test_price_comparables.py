@@ -230,14 +230,50 @@ def test_extraction_failure_degrades_and_never_raises(cfg: Config):
 # --- 3. FX is declared, never guessed --------------------------------------
 
 def test_undeclared_currency_carries_no_pence_and_is_never_eligible(cfg: Config):
-    fx = comparables_config(cfg)["fx_to_gbp"]
-    assert to_pence_gbp(49, "GBP", fx) == 4900
-    assert to_pence_gbp(49, "USD", fx) is None, (
-        "config.yaml declares GBP only; a USD rate must be an explicit, sourced config act")
+    """The rule is UNDECLARED -> no pence. It is not "GBP is the only declared rate".
 
-    usd = PriceAnchor(amount=49, currency="USD", cadence="one_off", what="x",
-                      source_id="s", url="https://a.example", amount_pence_gbp=None)
-    assert eligible_anchors([usd], cfg) == []
+    This test used to assert `to_pence_gbp(49, "USD", fx) is None`, i.e. it pinned the
+    contents of config.yaml rather than the rule the contents were an instance of. On
+    2026-08-13 a sourced USD/EUR rate was added — `fx_source: "US Federal Reserve H.10,
+    release 2026-08-12"`, `fx_asof: "2026-08-07"` — which is precisely the "explicit,
+    sourced config act" the old assertion's own message demanded, and the test failed
+    anyway, blocking every commit in the repo. A test that fails when the thing it asks
+    for is delivered is testing the wrong noun.
+
+    So: pick a currency that is genuinely absent from the config, and separately require
+    that any rate which IS declared came with its provenance.
+    """
+    conf = comparables_config(cfg)
+    fx = conf["fx_to_gbp"]
+    assert to_pence_gbp(49, "GBP", fx) == 4900
+
+    absent = next(c for c in ("JPY", "CHF", "AUD", "SEK") if c not in fx)
+    assert to_pence_gbp(49, absent, fx) is None, (
+        f"{absent} is not declared in config.yaml; an undeclared rate must never be guessed")
+
+    anchor = PriceAnchor(amount=49, currency=absent, cadence="one_off", what="x",
+                         source_id="s", url="https://a.example", amount_pence_gbp=None)
+    assert eligible_anchors([anchor], cfg) == []
+
+
+def test_every_declared_non_gbp_rate_carries_its_source(cfg: Config):
+    """An FX rate is evidence about the world, so source-or-die applies to it too.
+
+    This is the half of the old assertion that was worth keeping: a non-GBP rate may exist,
+    but only as a dated, attributed act. Without this, dropping the previous assertion would
+    have left the config free to grow unsourced rates silently.
+    """
+    conf = comparables_config(cfg)
+    non_gbp = {k for k in conf["fx_to_gbp"] if k != "GBP"}
+    if not non_gbp:
+        return  # GBP-only is always fine; there is nothing to source.
+
+    assert conf.get("fx_source"), (
+        f"config declares FX rates {sorted(non_gbp)} with no `fx_source` — an unsourced "
+        f"rate is a guess with a decimal point on it")
+    assert conf.get("fx_asof"), (
+        f"config declares FX rates {sorted(non_gbp)} with no `fx_asof` — a rate with no date "
+        f"cannot be told from a stale one")
 
 
 def test_a_declared_rate_converts(cfg: Config):

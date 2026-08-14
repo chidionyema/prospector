@@ -30,8 +30,11 @@ produce a MORE concrete sentence, not a denser one. If your rewritten title or o
 longer and more technical than what you were given, you have made it worse. Do not smuggle
 jargon in as a substitute for specificity.
 
-The title keeps its shape through every revision: a short name, a COMMA, then what it
-does, in AT MOST 60 CHARACTERS. Answering the critique is not licence to grow it. If the
+The title keeps its shape through every revision: what the business DOES, then who PAYS
+for it (`<what it does> for <who pays>`), in AT MOST 60 CHARACTERS, with no invented
+product name and no opening instruction to the reader ("Sell…", "Run…", "Get…"). The
+reader is deciding whether to START this business, not whether to buy what it sells.
+Answering the critique is not licence to grow it. If the
 revised idea genuinely needs more words, spend them in the one_liner, which has room.
 
 {lane_directive}

@@ -15,10 +15,11 @@ report inconsistent or arithmetically impossible figures.
 from __future__ import annotations
 
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
-from . import facets
+from . import evidence_budget, facets
 from .copy_lint import buyer_readable
 from .models import Candidate, CheckResult, Decision, Dossier, Verdict
 from .operator import Operator, ParseError, _extract_json
@@ -148,17 +149,64 @@ def _claims_prompt_view(claims: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # Financial model arithmetic (FIX #3 — Python, not LLM)
 # ---------------------------------------------------------------------------
 
+#: How the business takes money. Everything that divides by a month depends on it, and
+#: until 2026-08-14 nothing carried it: `monthly_price` was read as a monthly price for
+#: every business on the catalogue. A personalised picture book bought once was modelled
+#: as a subscription, and its lifetime value came out of `price / churn` — a churn rate
+#: the model had invented because the schema asked for one. Measured across the 68
+#: financial models on disk that day: 17 derived a lifetime value that way.
+_RECURRING_MODELS = frozenset({
+    "subscription", "subscriptions", "saas", "membership", "retainer", "recurring",
+    "repeat_purchase", "repeat_purchases", "licence", "license",
+})
+_ONE_OFF_MODELS = frozenset({
+    "one_off", "oneoff", "one_time", "single_purchase", "single_sale", "transactional",
+    "product_sale", "product", "commission", "project", "per_project",
+})
+
+
+def _revenue_shape(assumptions: Dict[str, Any], churn: Optional[float]) -> str:
+    """``"recurring"``, ``"one_off"`` or ``"unknown"`` — never a guess dressed as a fact.
+
+    A declared `revenue_model` wins. Absent one, a stated monthly churn rate is taken as
+    the model asserting recurrence, since churn is meaningless otherwise; that inference
+    is disclosed in the rendered line rather than hidden. Everything else is `unknown`,
+    and `unknown` suppresses every figure whose formula assumes a customer pays again.
+    """
+    raw = str(assumptions.get("revenue_model") or "").strip().lower()
+    raw = re.sub(r"[\s-]+", "_", raw)
+    if raw in _RECURRING_MODELS:
+        return "recurring"
+    if raw in _ONE_OFF_MODELS:
+        return "one_off"
+    if raw:
+        # A model that answered with something we do not recognise ("freemium tiers",
+        # "marketplace take rate") has told us it is not simple, not that it is monthly.
+        return "unknown"
+    return "recurring" if churn else "unknown"
+
+
 def _render_financial_model(assumptions: Dict[str, Any],
                              claims: List[Dict[str, Any]],
                              currency: str = "£") -> str:
-    """Compute and render financial model from structured JSON assumptions.
+    """Compute and render the financial model from structured JSON assumptions.
 
-    FIX #3: all arithmetic is done in Python. The LLM supplies only raw inputs;
-    Python computes Revenue, Margin, Payback, CLV, LTV:CAC.  This eliminates
-    LLM math errors (e.g. "$1M revenue, $2M costs, called profitable").
+    All arithmetic is done in Python. The model supplies only raw inputs; Python computes
+    every total, so the class of error where a model writes "£1M revenue, £2M costs,
+    profitable" cannot occur here.
 
-    Displays None/missing fields gracefully — a business with no clear price or
-    customer target renders a partial model with explicit gaps, not a wrong total.
+    TWO RULES, both added 2026-08-14 after the founder read a shipped pack:
+
+    **A figure we cannot compute is not printed as a gap in the middle of the document.**
+    It used to render ``_(not specified)_`` inline, six or seven times in a row on the
+    worst packs: measured across the 68 financial models on disk, 23 carried at least one
+    and 4 were nothing else — a document titled "Financial Model" containing no number, in
+    a £49.99 pack. Missing inputs are now collected and stated once, in plain words, at the
+    end. The document says what it could not work out; it does not pretend to a section.
+
+    **A model with no headline is not a document.** With no price or no month-1 target
+    there is nothing to compute, so this returns ``""`` and the pack is held back by
+    `pack_validation.validate_pack` rather than listed with a hollow file in it.
 
     `currency` is the symbol for the pack's market, resolved by the caller from that
     market's config-declared `currency_hint` (config.yaml markets.<code>). It was a
@@ -178,122 +226,180 @@ def _render_financial_model(assumptions: Dict[str, Any],
     overhead: Optional[float] = assumptions.get("overhead_month_1_gbp")
     payback: Optional[int] = assumptions.get("payback_months")
     ltv_cac_raw: Optional[float] = assumptions.get("ltv_cac_ratio")
+    repeat: Optional[float] = assumptions.get("repeat_purchases_per_customer")
     assumptions_list: List[str] = assumptions.get("assumptions") or []
     weaknesses: List[str] = assumptions.get("weaknesses") or []
+
+    # No headline, no document. See the docstring.
+    if price is None or cust_m1 is None:
+        return ""
+
+    shape = _revenue_shape(assumptions, churn)
+    recurring = shape == "recurring"
+    unit = "orders" if shape == "one_off" else "customers"
+    one = unit[:-1]
+    per_month = " a month" if recurring else ""
+
+    # Every input the model did not supply, in the buyer's words, printed once at the end.
+    gaps: List[str] = []
+
+    def money(value: float, dp: int = 0) -> str:
+        return f"{currency}{value:,.{dp}f}"
 
     lines: List[str] = ["## Financial Model", ""]
 
     # --- Revenue ---
-    lines.append("### Revenue")
-    if price is not None and cust_m1 is not None:
-        rev_m1 = price * cust_m1
-        lines.append(f"- **Month 1:** {currency}{price:,.0f} × {cust_m1} customers = **{currency}{rev_m1:,.0f}**")
-    else:
-        lines.append("- Month 1: _(price or customer target not specified)_")
-
-    if price is not None and cust_m12 is not None:
+    rev_m1 = price * cust_m1
+    lines.append("### What it earns")
+    lines.append("")
+    lines.append(f"- **Month 1:** {money(price)} × {cust_m1:,} {unit} = **{money(rev_m1)}**")
+    if cust_m12 is not None:
         rev_m12 = price * cust_m12
-        lines.append(f"- **Month 12:** {currency}{price:,.0f} × {cust_m12} customers = **{currency}{rev_m12:,.0f}**")
-        if cust_m1 and cust_m1 > 0:
-            growth = rev_m12 / rev_m1
-            lines.append(f"- **Growth (M1→M12):** {growth:.1f}×")
-    elif cust_m12 is not None:
-        lines.append(f"- Month 12: {cust_m12} customers _(monthly price not specified)_")
+        lines.append(
+            f"- **Month 12:** {money(price)} × {cust_m12:,} {unit} = **{money(rev_m12)}**")
+        if cust_m1 > 0:
+            lines.append(f"- **Growth (M1→M12):** {rev_m12 / rev_m1:.1f}×")
     else:
-        lines.append("- Month 12: _(targets not specified)_")
+        gaps.append("Where sales land by month 12. We were given a month-one target and "
+                    "no year-one one, so there is no growth line.")
+    if shape == "unknown":
+        lines.append("")
+        lines.append(f"These are {one} counts, not a repeat-purchase promise: nothing here "
+                     f"assumes the same {one} buys twice.")
     lines.append("")
 
     # --- Gross margin ---
+    gross_margin: Optional[float] = None
+    margin_per_unit: Optional[float] = None
     if cog_pct is not None:
         gross_margin = 100 - cog_pct
-        lines.append(f"### Gross Margin: **{gross_margin:.0f}%** "
-                     f"(COGS: {cog_pct:.0f}% of revenue)")
-        if price is not None:
-            margin_per_customer = price * gross_margin / 100
-            lines.append(f"- **Per customer/month:** {currency}{margin_per_customer:,.2f}")
+        margin_per_unit = price * gross_margin / 100
+        lines.append("### What it keeps after costs")
+        lines.append("")
+        lines.append(f"- **Gross margin: {gross_margin:.0f}%** — making and delivering it "
+                     f"costs {cog_pct:.0f}% of what you charge")
+        lines.append(f"- **Kept per {one}: {money(margin_per_unit, 2)}**{per_month}")
         lines.append("")
     else:
-        lines.append("### Gross Margin: _(COGS not specified)_")
-        lines.append("")
+        gaps.append("What it costs to make and deliver one. Without that there is no margin "
+                    "figure, and no profit line below it.")
 
-    # --- Payback ---
-    lines.append("### Payback Period")
+    # --- Cost of winning a customer, and when it comes back ---
+    cost_lines: List[str] = []
+    if cac is not None:
+        cost_lines.append(f"- **Costs to win one {one}: {money(cac)}**")
     if payback is not None:
-        lines.append(f"- **{payback} months**")
-    elif cac is not None and price is not None and gross_margin is not None:
-        margin_pm = price * gross_margin / 100
-        if margin_pm > 0:
-            calc_payback = cac / margin_pm
-            lines.append(f"- **~{calc_payback:.1f} months** (CAC {currency}{cac:,.0f} / "
-                         f"gross margin {currency}{margin_pm:,.2f}/month)")
+        cost_lines.append(f"- **Paid back in: ~{payback} months** — the model's own figure, "
+                          f"not ours")
+    elif cac is not None and margin_per_unit is not None and margin_per_unit > 0:
+        if recurring:
+            cost_lines.append(
+                f"- **Paid back in: ~{cac / margin_per_unit:.1f} months** "
+                f"({money(cac)} to win a customer ÷ {money(margin_per_unit, 2)} kept each month)")
         else:
-            lines.append("- Cannot calculate: gross margin per customer is zero or negative")
-    elif cac is not None:
-        lines.append(f"- CAC: {currency}{cac:,.0f} _(monthly price or margin not specified — cannot compute payback)_")
-    else:
-        lines.append("- _(not specified)_")
-    lines.append("")
+            sales = cac / margin_per_unit
+            if sales <= 1:
+                cost_lines.append(
+                    f"- **Paid back on the first sale** — winning a buyer costs "
+                    f"{money(cac)} and one sale keeps {money(margin_per_unit, 2)}")
+            else:
+                cost_lines.append(
+                    f"- **Not paid back on the first sale** — winning a buyer costs "
+                    f"{money(cac)} and one sale keeps only {money(margin_per_unit, 2)}, so "
+                    f"it takes {sales:.1f} sales to the same buyer to break even on that spend")
+    elif cac is not None and margin_per_unit is not None:
+        cost_lines.append("- Each sale loses money before you have paid to win it, so there "
+                          "is no payback period to quote.")
+    elif cac is None:
+        gaps.append("What it costs to win one buyer. That is the number that decides whether "
+                    "any of this works, and it was not supplied.")
 
-    # --- CLV ---
-    lines.append("### Customer Lifetime Value (CLV)")
+    if cost_lines:
+        lines.append(f"### What it costs to win a {one}")
+        lines.append("")
+        lines.extend(cost_lines)
+        lines.append("")
+
+    # --- What a customer is worth ---
+    # Derivation is gated on the revenue shape. `price / churn` is a subscription formula;
+    # applying it to a one-off sale is how a £24 book acquired a £480 lifetime value.
+    clv_line: Optional[str] = None
     if clv is not None:
-        lines.append(f"- **{currency}{clv:,.0f}**")
-    elif churn is not None and churn > 0 and price is not None:
-        # Simple CLV = ARPU / monthly churn rate
-        calc_clv = price / (churn / 100)
-        lines.append(f"- ~**{currency}{calc_clv:,.0f}** (ARPU {currency}{price:,.0f} / {churn:.1f}% monthly churn)")
-    elif price is not None:
-        lines.append(f"- ARPU: {currency}{price:,.0f}/month _(churn rate not specified)_")
+        clv_line = f"- **{money(clv)}** over the whole relationship — the model's own figure"
+    elif recurring and churn:
+        clv = price / (churn / 100)
+        inferred = "" if assumptions.get("revenue_model") else (
+            " We are treating this as a repeat payment because the model gave a monthly "
+            "churn rate, which only means something if customers keep paying.")
+        clv_line = (f"- **~{money(clv)}** — they pay {money(price)} a month and about "
+                    f"{churn:.1f}% stop each month.{inferred}")
+    elif shape == "one_off" and repeat:
+        clv = price * repeat
+        clv_line = (f"- **~{money(clv)}** — {money(price)} a sale, and the model expects "
+                    f"about {repeat:g} sales to the same buyer")
+    elif shape == "one_off":
+        gaps.append("How often a buyer comes back. This is a one-off sale, so without a "
+                    "repeat rate a customer is worth exactly one sale and no more.")
     else:
-        lines.append("_(not specified)_")
-    lines.append("")
+        gaps.append("Whether buyers pay once or keep paying. Everything about what a "
+                    f"{one} is worth over time hangs on it, and it was not stated.")
 
-    # --- LTV:CAC ---
-    lines.append("### LTV:CAC Ratio")
+    if clv_line:
+        lines.append(f"### What one {one} is worth")
+        lines.append("")
+        lines.append(clv_line)
+        lines.append("")
+
+    # --- Worth against cost ---
+    ratio: Optional[float] = None
     if ltv_cac_raw is not None:
         ratio = ltv_cac_raw
-    elif clv is not None and cac is not None and cac > 0:
+    elif clv is not None and cac:
         ratio = clv / cac
-    elif churn is not None and cac is not None and cac > 0 and price is not None:
-        calc_clv = price / (churn / 100)
-        ratio = calc_clv / cac if cac > 0 else None
-    else:
-        ratio = None
-
     if ratio is not None:
         if ratio >= 3:
-            lines.append(f"- **{ratio:.1f}×** ✅ (>3× healthy SaaS benchmark)")
+            verdict = "comfortably above the three-to-one most people hold this to"
         elif ratio >= 1:
-            lines.append(f"- **{ratio:.1f}×** ⚠️  (positive but below 3× benchmark)")
+            verdict = "positive, but under the three-to-one most people hold this to"
         else:
-            lines.append(f"- **{ratio:.1f}×** ❌  (CAC not recovered — unsustainable)")
-    else:
-        lines.append("_(cannot compute without CLV and CAC)_")
-    lines.append("")
+            verdict = "you spend more winning a buyer than you ever get back — as modelled, this does not work"
+        lines.append("### Worth against cost")
+        lines.append("")
+        lines.append(f"- **{ratio:.1f}×** — {verdict}")
+        lines.append("")
 
     # --- Month 1 P&L ---
-    lines.append("### Month 1 P&L")
-    if price is not None and cust_m1 is not None and overhead is not None:
-        rev = price * cust_m1
+    if overhead is not None:
+        lines.append("### Month one, in and out")
+        lines.append("")
+        lines.append(f"- In: {money(rev_m1)}")
         if cog_pct is not None:
-            cogs = rev * cog_pct / 100
-            gross = rev - cogs
+            cogs = rev_m1 * cog_pct / 100
+            lines.append(f"- Cost of making and delivering it ({cog_pct:.0f}%): {money(cogs)}")
+            net = rev_m1 - cogs - overhead
+            lines.append(f"- Everything else it takes to run: {money(overhead)}")
+            lines.append(f"- **Left over: {money(net)}**")
         else:
-            gross = None
-        net = (gross or rev) - overhead if gross is not None else None
-        lines.append(f"- Revenue: {currency}{rev:,.0f}")
-        if cog_pct is not None:
-            lines.append(f"- COGS ({cog_pct:.0f}%): {currency}{cogs:,.0f}")
-        lines.append(f"- Overhead: {currency}{overhead:,.0f}")
-        if net is not None:
-            lines.append(f"- **Net: {currency}{net:,.0f}**")
-        else:
-            lines.append("- Net: _(cannot compute without COGS)_")
-    elif overhead is not None:
-        lines.append(f"- Overhead: {currency}{overhead:,.0f} _(revenue not specified)_")
+            lines.append(f"- Everything else it takes to run: {money(overhead)}")
+            lines.append("- Left over: not calculable until the cost of making it is known")
+        lines.append("")
     else:
-        lines.append("_(not specified)_")
-    lines.append("")
+        gaps.append("What it costs to keep the lights on in month one — rent, tools, "
+                    "software, your own time. Without it there is no profit line.")
+
+    # --- What we could not work out ---
+    # This section is the whole point of the change. It replaces the inline `_(not
+    # specified)_` bullets that used to sit where a number should be.
+    if gaps:
+        lines.append("### What we could not work out")
+        lines.append("")
+        lines.append("Nothing below was invented to fill a gap. Each one needs a number the "
+                     "evidence behind this idea did not give us, and each is worth pinning "
+                     "down before you commit money:")
+        lines.append("")
+        for gap in gaps:
+            lines.append(f"- {gap}")
+        lines.append("")
 
     # --- Key assumptions ---
     # These two lists are the only FREE TEXT in this artifact — everything above is Python
@@ -301,16 +407,18 @@ def _render_financial_model(assumptions: Dict[str, Any],
     # JSON object keyed `estimated_cac_gbp` and then asked to critique it, so it names the
     # key. `buyer_readable` is the choke point that makes that unrepresentable in output.
     if assumptions_list:
-        lines.append("### Key Assumptions (grounded in verified claims)")
+        lines.append("### What we assumed")
+        lines.append("")
         for a in assumptions_list:
             lines.append(f"- {buyer_readable(str(a))}")
         lines.append("")
 
     # --- Weaknesses ---
     if weaknesses:
-        lines.append("### Model Weaknesses")
+        lines.append("### Where this is weakest")
+        lines.append("")
         for w in weaknesses:
-            lines.append(f"- ⚠️  {buyer_readable(str(w))}")
+            lines.append(f"- {buyer_readable(str(w))}")
         lines.append("")
 
     return "\n".join(lines)
@@ -345,42 +453,95 @@ def _validate_artifact_shape(t: str, data: Any) -> Any:
     return data
 
 
+# What the prompt said before the length contract existed, kept verbatim as the
+# actuator-off branch: with `artifacts.enforce_length_budget` false the model must see
+# exactly the instruction it has always seen, or "off" would still be a behaviour change
+# and the before/after sweep would be measuring two different engines.
+_LEGACY_LENGTH_RULE = (
+    "Structure each artifact as several titled sections (markdown headings), each with "
+    "real substance — never a single block or a heading with one thin line under it."
+)
+
+
 def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
-                      t: str, market_vars: Optional[Dict[str, str]] = None
-                      ) -> tuple[str, str, Optional[Dict[str, Any]]]:
+                      t: str, market_vars: Optional[Dict[str, str]] = None,
+                      length_rule: str = _LEGACY_LENGTH_RULE,
+                      check_op: Optional[Operator] = None,
+                      claims: Optional[List[Dict[str, Any]]] = None,
+                      ) -> tuple[str, str, Optional[Dict[str, Any]], List[Dict[str, Any]]]:
     """Generate one artifact type. Runs in a thread.
 
-    Returns ``(type, content, raw)``. ``raw`` is the financial model's structured
-    assumptions dict — the verified INPUTS behind the rendered arithmetic. It used to be
-    discarded the moment `_render_financial_model` had run, which is why the buyer's bundle
-    could never ship a spreadsheet or a machine-readable financial file (register F1/F3).
-    It is ``None`` for every other artifact type.
+    Returns ``(type, content, raw, violations)``. ``raw`` is the financial model's
+    structured assumptions dict — the verified INPUTS behind the rendered arithmetic. It
+    used to be discarded the moment `_render_financial_model` had run, which is why the
+    buyer's bundle could never ship a spreadsheet or a machine-readable financial file
+    (register F1/F3). It is ``None`` for every other artifact type.
+
+    ``violations`` is what the claim-check said about the finished prose, and is empty
+    when ``check_op`` is None. It is REPORTED, never fatal: dropping an unverified
+    marketing piece costs the buyer a tweet, but dropping build_spec costs them the pack,
+    so the artifact ships with its violations recorded and the decision to gate on them is
+    a separate, config-declared step taken once the live rate is known.
     """
-    system, user = render("artifacts", candidate_json=cand_json,
-                          claims_json=claims_json, type=t,
-                          **(market_vars or {}))
-    coerce = ((lambda text: _coerce_bare_markdown_artifact(text, t))
-              if t in _PROSE_ARTIFACT_TYPES else None)
-    with telemetry_stage("artifacts"):
-        data = op.complete_json(system, user, temperature=0.3,
-                                validate=lambda d: _validate_artifact_shape(t, d),
-                                coerce=coerce)
+    claims = claims or []
+    feedback = ""
+    violations: List[Dict[str, Any]] = []
+    # One draft, plus one repair turn that is shown exactly what it got wrong. A second
+    # repair is not free and the marketing path already measured the second one as the
+    # point of diminishing returns (`_gen_one_content` gives its cheap pieces 2 attempts).
+    attempts = 2 if (check_op is not None and t in _PROSE_ARTIFACT_TYPES) else 1
 
-    # FIX #3: financial_model returns structured JSON — perform arithmetic in Python.
-    if t == "financial_model" and isinstance(data, dict):
-        assumptions = data
-        # Render to human-readable text, in the market's own money. The symbol comes from
-        # the same config-declared currency_hint the prompt above was given, so the figures
-        # and the symbol cannot disagree.
-        claims_list = json.loads(claims_json) if claims_json else []
-        content = _render_financial_model(
-            assumptions, claims_list,
-            currency=symbol_for_currency((market_vars or {}).get("currency_hint")),
+    for attempt in range(attempts):
+        # The financial_model is a JSON fill whose length is a property of the Python
+        # template, not of the model's restraint, so the word contract does not apply.
+        system, user = render("artifacts", candidate_json=cand_json,
+                              claims_json=claims_json, type=t,
+                              length_rule=(length_rule if t in _PROSE_ARTIFACT_TYPES else ""),
+                              **(market_vars or {}))
+        if feedback:
+            user = f"{user}\n\n{feedback}"
+        coerce = ((lambda text: _coerce_bare_markdown_artifact(text, t))
+                  if t in _PROSE_ARTIFACT_TYPES else None)
+        with telemetry_stage("artifacts"):
+            data = op.complete_json(system, user, temperature=0.3,
+                                    validate=lambda d: _validate_artifact_shape(t, d),
+                                    coerce=coerce)
+
+        # FIX #3: financial_model returns structured JSON — arithmetic happens in Python.
+        if t == "financial_model" and isinstance(data, dict):
+            assumptions = data
+            # Render to human-readable text, in the market's own money. The symbol comes
+            # from the same config-declared currency_hint the prompt above was given, so
+            # the figures and the symbol cannot disagree.
+            claims_list = json.loads(claims_json) if claims_json else []
+            content = _render_financial_model(
+                assumptions, claims_list,
+                currency=symbol_for_currency((market_vars or {}).get("currency_hint")),
+            )
+            return t, content, assumptions, []
+
+        content = str(data.get("content", ""))
+        if check_op is None or t not in _PROSE_ARTIFACT_TYPES:
+            return t, content, None, []
+
+        # The same verifier that has always guarded the copy we give away, now pointed at
+        # the document the buyer pays for. It was never wired here: before 2026-08-14
+        # every reference to `verify_claims_detail` sat on the marketing path.
+        ok, violations = verify_claims_detail(check_op, content, claims)
+        if ok:
+            return t, content, None, []
+        logger.info(
+            f"Artifact {t} failed claim-check (attempt {attempt + 1}/{attempts})",
+            extra={"type": t, "violations_n": len(violations)})
+        feedback = (
+            "Your previous draft FAILED claim-check. Rewrite so every factual statement "
+            "is supported by the verified claims. Do not invent tools, prices, channels "
+            "or benchmarks. Cutting an unsupported paragraph is always better than "
+            "softening it. Violations:\n"
+            f"{json.dumps(violations, ensure_ascii=False)}"
         )
-        return t, content, assumptions
 
-    # All other types return {type, content}.
-    return t, str(data.get("content", "")), None
+    return t, content, None, violations
 
 
 def generate_artifacts(
@@ -423,8 +584,32 @@ def generate_artifacts(
     claims_json = json.dumps(_claims_prompt_view(claims))
     cand_json = json.dumps(_candidate_prompt_view(cand))
 
+    # How long this pack is allowed to be, derived from the evidence it actually holds.
+    # Measured 2026-08-14 over 59 live packs: 6,330 prose words written from 680 words of
+    # retrieved passages, a 9.5x inflation, with 78.3% of sentences carrying no figure at
+    # all. The model was asked to be "substantial (many paragraphs)" and had nothing left
+    # to be substantial ABOUT, so it produced the connective prose that reads as machine
+    # writing. The budget removes the reason to pad. It is computed either way so the
+    # sweep can report on packs generated before the actuator was switched on.
+    budget = evidence_budget.budget_for(checks, cfg)
+    length_rule = (
+        evidence_budget.length_rule(budget["per_artifact_words"], budget["words"])
+        if budget["enforced"] else _LEGACY_LENGTH_RULE
+    )
+    logger.info(
+        "artifact length budget: %s words/artifact from %s words of evidence (enforced=%s)",
+        budget["per_artifact_words"], budget["words"], budget["enforced"],
+        extra={"budget_words": budget["total_words"], "evidence_words": budget["words"],
+               "evidence_sources": budget["sources"], "enforced": budget["enforced"]})
+
+    # The claim-check always runs on the moat `op`, never on the (possibly cheap) writer:
+    # a verification gate judged by the same model that produced the copy is not a gate.
+    # Same rule `_gen_one_content` has always followed for the marketing pieces.
+    claim_check_on = evidence_budget.artifacts_cfg(cfg)["claim_check"]
+
     types = ["build_spec", "gtm_plan", "ops_plan", "financial_model"]
     results: Dict[str, str] = {}
+    unverified: Dict[str, List[Dict[str, Any]]] = {}
     financial_assumptions: Optional[Dict[str, Any]] = None
 
     # Money figures in the pack must be denominated in the OPPORTUNITY's market currency
@@ -439,20 +624,35 @@ def generate_artifacts(
         futures = {
             ex.submit(_gen_one_artifact,
                       cheap_op if t == "financial_model" else prose_op,
-                      cand_json, claims_json, t, market_vars): t
+                      cand_json, claims_json, t, market_vars, length_rule,
+                      op if claim_check_on else None, claims): t
             for t in types
         }
         for future in as_completed(futures):
             t = futures[future]
             try:
-                _, content, raw = future.result()
+                _, content, raw, violations = future.result()
                 results[t] = content
+                if violations:
+                    unverified[t] = violations
                 if t == "financial_model" and isinstance(raw, dict):
                     financial_assumptions = raw
             except Exception as e:
                 logger.error(f"Artifact generation failed for {t}: {e}",
                              extra={"type": t, "error": str(e)})
                 results[t] = ""
+
+    # The measurement that decides whether this becomes a listing gate. Recorded rather
+    # than enforced on purpose: the house rollout doctrine is to ship the check, measure
+    # the live rate, repair, and only then flip an actuator. A threshold chosen before the
+    # sweep is a guess, and this one would be a guess that unlists the catalogue.
+    if claim_check_on:
+        logger.info(
+            "artifact claim-check: %s of %s prose artifacts carry unverified statements",
+            len(unverified), len(evidence_budget.PROSE_TYPES),
+            extra={"unverified_artifacts": sorted(unverified),
+                   "unverified_n": sum(len(v) for v in unverified.values()),
+                   "candidate_id": getattr(cand, "candidate_id", "")})
 
     # Register F1/F2 — the deterministic, zero-LLM data files (scorecard, financial model
     # and price comparables as JSON+CSV, plus the score radar as SVG). Gated on

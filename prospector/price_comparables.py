@@ -83,12 +83,28 @@ def comparables_config(cfg: Config) -> dict[str, Any]:
         "queries": list(raw.get("queries") or _COMPARABLE_TEMPLATES),
         "fx_to_gbp": {str(k).upper(): float(v)
                       for k, v in (raw.get("fx_to_gbp") or {"GBP": 1.0}).items()},
+        # Provenance for those rates, carried through rather than dropped on the floor.
+        # config.yaml states that "`fx_asof` is what makes staleness visible" — but the
+        # fields were written into the YAML and never read out of it, so nothing could see
+        # anything. A rate is evidence about the world, so source-or-die covers it too:
+        # `tests/test_price_comparables.py::test_every_declared_non_gbp_rate_carries_its_source`
+        # now fails the build if a non-GBP rate appears without both. `None` when absent,
+        # which is the honest answer for a GBP-only config that never needed a source.
+        "fx_source": raw.get("fx_source") or None,
+        "fx_asof": raw.get("fx_asof") or None,
         "cadence_eligible": [str(c) for c in (raw.get("cadence_eligible") or ["one_off"])],
         "min_anchor_pence": int(raw.get("min_anchor_pence", DEFAULT_MIN_ANCHOR_PENCE)),
         "max_anchor_pence": int(raw.get("max_anchor_pence", DEFAULT_MAX_ANCHOR_PENCE)),
         "min_anchors": int(raw.get("min_anchors", 3)),
         "min_domains": int(raw.get("min_domains", 2)),
         "rung_adjust_enabled": bool(raw.get("rung_adjust_enabled", False)),
+        # How many of the six checks' general grounding passages may ride along behind the
+        # price pages. See `run_price_comparables` for why this is bounded rather than open.
+        "pooled_cap": int(raw.get("pooled_cap", 8)),
+        # The price searches get their own results-per-query. The shared `retrieval.results_per_query`
+        # is 3, tuned so a verdict check can reach 'supported' on two queries; that is far too few
+        # pages to establish what a market charges.
+        "results_per_query": int(raw.get("results_per_query", 8)),
     }
 
 
@@ -258,6 +274,7 @@ def run_price_comparables(op: Operator, search: SearchProvider, cfg: Config,
     the pack prices at its ladder rung, which is what it does today anyway.
     """
     r = cfg.retrieval
+    conf = comparables_config(cfg)
     queries = comparables_queries(cand, cfg)
     audit("verify_search", check=PRICING_CHECK,
           candidate_id=getattr(cand, "candidate_id", None),
@@ -267,7 +284,7 @@ def run_price_comparables(op: Operator, search: SearchProvider, cfg: Config,
     n_failed = 0
     for q in queries:
         try:
-            fetched.extend(search.search(q, k=r.results_per_query,
+            fetched.extend(search.search(q, k=conf["results_per_query"],
                                          max_chars=r.max_passage_chars))
         except GroundingInfrastructureError:
             raise  # circuit breaker: all providers dead — the caller halts the run
@@ -275,9 +292,32 @@ def run_price_comparables(op: Operator, search: SearchProvider, cfg: Config,
             n_failed += 1
             logger.error(f"price_comparables search failed for {q!r}: {e}")
 
+    # ORDER AND BOUND THE CORPUS. This used to be `list(fetched) + list(pooled_sources or [])`,
+    # unordered and uncapped, and `extract_anchors` puts every one of them into a single prompt.
+    # The arithmetic that produced was brutal: `retrieval.results_per_query` is 3, so three price
+    # queries yielded ~9 price pages, which then went into a ~41-passage prompt behind ~32 general
+    # grounding passages — gov.uk, Wikipedia, YouTube, LinkedIn, Facebook. Measured over the 169
+    # runs in `store/scheduler/audit/`: 7,192 passages read, ZERO search failures, 210 anchors
+    # kept, and 98 of 169 runs (58%) produced no anchor at all — 2.92 anchors per 100 passages.
+    #
+    # The searches were never the problem. Replayed live on 0bf4d472ef2b90ad, they returned 8
+    # results of which 5 were vendor `/pricing` URLs carrying real prices. Those five were simply
+    # outnumbered five-to-one in the prompt by pages that were never about price.
+    #
+    # So: every price-page result goes in, first and uncapped; the pooled passages follow as a
+    # bounded tail. The tail is kept because it is free — `payer_solvency` already paid for those
+    # pages and willingness-to-pay figures do turn up in them — but it may no longer crowd out the
+    # pages we searched for on purpose.
     seen: set[str] = set()
     uniq: list[Source] = []
-    for s in list(fetched) + list(pooled_sources or []):
+    for s in fetched:
+        if s.source_id not in seen:
+            seen.add(s.source_id)
+            uniq.append(s)
+    n_priced = len(uniq)
+    for s in (pooled_sources or []):
+        if len(uniq) - n_priced >= conf["pooled_cap"]:
+            break
         if s.source_id not in seen:
             seen.add(s.source_id)
             uniq.append(s)
@@ -294,11 +334,15 @@ def run_price_comparables(op: Operator, search: SearchProvider, cfg: Config,
     audit("verify_search", check=PRICING_CHECK,
           candidate_id=getattr(cand, "candidate_id", None),
           queries=queries, queries_n=len(queries), n_failed=n_failed,
-          passages_n=len(uniq), anchors_n=len(result.anchors),
+          passages_n=len(uniq), priced_passages_n=n_priced,
+          pooled_passages_n=len(uniq) - n_priced,
+          anchors_n=len(result.anchors),
           anchors_rejected_n=len(result.rejected),
           retrieval_failed=False, short_circuit_empty=False)
-    logger.info("price_comparables: %d anchor(s) kept, %d rejected, from %d passage(s)",
-                len(result.anchors), len(result.rejected), len(uniq))
+    logger.info("price_comparables: %d anchor(s) kept, %d rejected, from %d passage(s) "
+                "(%d from price searches, %d pooled)",
+                len(result.anchors), len(result.rejected), len(uniq),
+                n_priced, len(uniq) - n_priced)
     return result
 
 

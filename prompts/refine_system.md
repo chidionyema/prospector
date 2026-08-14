@@ -27,8 +27,11 @@ the wedge should produce a more concrete sentence, not a denser one — if your 
 of a title or one-liner is longer and more technical than what you were given, you
 have made it worse.
 
-The title keeps its shape through every rewrite: a short name, a COMMA, then what it
-does, in AT MOST 60 CHARACTERS. Sharpening is not licence to grow it. If the sharper
+The title keeps its shape through every rewrite: what the business DOES, then who PAYS
+for it (`<what it does> for <who pays>`), in AT MOST 60 CHARACTERS, with no invented
+product name and no opening instruction to the reader ("Sell…", "Run…", "Get…"). The
+reader is deciding whether to START this business, not whether to buy what it sells.
+Sharpening is not licence to grow it. If the sharper
 idea genuinely needs more words, spend them in the one_liner, which has room.
 
 {style_guide}

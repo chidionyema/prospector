@@ -203,6 +203,19 @@ retrieval:
   # search call; no extra page fetch (ranking runs on the snippet, before the fetch) and
   # no LLM call. Measured lift on the ten worst live queries: 25.9% -> 36.8% coverage.
   relevance_overfetch: 3
+  # Escalate to the NEXT provider when a result set barely mentions the query (2026-08-14).
+  # Ranking picks the best of what one provider returned; it cannot rescue nine off-topic
+  # pages. MEASURED over the 1,622 passages written since the page-fetch fix: 183 (11.3%)
+  # share ZERO content words with their own query, and mean coverage by verdict is
+  # supported 0.488 / refuted 0.447 / unverifiable 0.300. 0.35 sits between the
+  # unverifiable median (0.298) and the supported p25 (0.400).
+  # Paired replay of the 15 worst live queries, identical stack, cache off:
+  # ddg 0.359 -> exa 0.525, exa better on 12/15 (ddg answered `4A's ANA agency members AI
+  # content guidelines California` with fire.ca.gov; `UK AI Bill parliamentary progress
+  # AISI` with two Wikipedia pages and visitbritain.com — exa returned bills.parliament.uk
+  # and aisi.gov.uk). COSTS one extra metered Exa search on a below-floor query; the best
+  # set seen is always returned, so it can never reduce a check's sources or DEFER it.
+  min_relevance: 0.35
   cache: true
   cache_ttl_s: 1209600   # 14 days; cached grounding older than this is re-fetched (0 = never expire)
   # BATCHED LLM query-gen on the fast/non-critical tier (deepseek→minimax). ONE call per
@@ -1603,6 +1616,33 @@ claim_lock:
 # is the pointed one: `price_comparables` already fetches cited willingness-to-pay anchors
 # and the pack then DISCARDS them, so the buyer never sees the price evidence we paid to
 # retrieve. `pdf` and `xlsx` degrade to absent (logged) rather than failing a bundle.
+# How long a pack may be, derived from the evidence it holds instead of asserted as a
+# constant. Measured 2026-08-14 over the 59 live packs that carry both prose and checks:
+# a median 6,330 prose words written from a median 680 words of retrieved passage text —
+# 9.5x — with 78.3% of sentences containing no number, price or percentage. The prompt
+# asked for "substantial (many paragraphs)" with no ceiling, so the model filled the gap
+# with prose that asserts nothing. That is the cause of the "reads like an LLM" verdict;
+# the register is the symptom. See prospector/evidence_budget.py.
+#
+# Calibration: base 900 + 1.0/evidence-word gives a median budget of 1,580 words, i.e.
+# 25% of what ships today. That is not a round number chosen for comfort — the founder
+# independently judged on 2026-08-13 that "roughly 20% of the wordcount" was the product
+# and the rest was scaffolding. The arithmetic and the editorial read agree.
+artifacts:
+  enforce_length_budget: true  # steers generation only; it can never unlist a pack
+  # The verifier that has guarded the copy we GIVE AWAY since the beginning, now pointed
+  # at the documents the buyer pays for. Before 2026-08-14 every call site of
+  # `verify_claims_detail` sat on the marketing path: the free shelf card was claim-checked
+  # on every attempt and the £49 build spec was not checked at all. It costs up to 3 extra
+  # moat calls per pack (one per prose artifact, plus one repair turn each on failure).
+  # Violations are RECORDED, never fatal — dropping build_spec would cost the buyer the
+  # pack. Making it a listing gate is a separate flip, taken once the live rate is known.
+  claim_check: true
+  base_words: 900              # the operational judgement that is legitimately in no source
+  words_per_evidence_word: 1.0 # the part that restates retrieved evidence
+  floor_words: 600             # never collapse below the existing anti-stub gate
+  ceiling_words: 3600          # binds only on the best-evidenced packs
+
 pack_data:
   enabled: true              # founder 2026-08-07 — the data files now ship in the bundle
   formats: [json, csv, svg]  # add xlsx / pdf once F3/F4 are exercised on a real pack
