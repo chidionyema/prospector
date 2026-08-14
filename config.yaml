@@ -324,6 +324,40 @@ retrieval:
 # silently disabling the gate.
 admissibility:
   policy: P1_check_aware
+  # A SECOND gate, about the CLAIM rather than the domain: a ruling that states a medical or
+  # prevalence rate must cite at least one government, academic or established health body.
+  # `8d5e24fbe6c1f5d3` cited jeffreydachmd.com ("Increasing Autism Rate is Caused by
+  # Environmental Toxin Says RFK Jr") and playproject.org for the 1-in-31 US autism figure,
+  # in a pack sold to people who will market to autism parents, while CDC pages sat unused in
+  # the same source list. Both sit in the `other` tier, so `policy` above cleared them.
+  # Measured cost 2026-08-14 over store/dossiers/*.json (offline, zero LLM): 6 of 3,476 ruled
+  # and cited checks demote = 0.17%, i.e. cheaper than P1 and aimed at the brand risk.
+  health_claims_need_primary: true
+  # A THIRD gate, about the NUMBER of independent publishers. A `supported` ruling whose
+  # citations all come from ONE registrable domain is demoted to unverifiable: three pages
+  # from one site are one source, and every pack invites the buyer to click any SUPPORTED
+  # claim and claim a refund if it does not say what we say it says.
+  # Measured 2026-08-14, offline over 2,031 dossiers (tools/experiments/d5_corroboration.py):
+  # 470 of 2,816 cited supported rulings (16.7%) rest on a single publisher — siterecon.ai,
+  # sparkreceipt.com, facebook.com (23). Replaying all 75 PASS dossiers with those demoted
+  # flips exactly ONE to KILL (b94760e86e62585a, NHS unpaid-hours audits, whose
+  # value_durability cites nhsleavecalculator.co.uk twice plus two sibling calculator sites).
+  # Set to 1 to disable, exactly as `policy: off` disables the tier gate.
+  #
+  # SHIPS OFF (1), 2026-08-14. At 2 the golden set scored 77.8% discrimination against the
+  # required 100% and tests/sim/test_decay.py refreshed 0 dossiers instead of 1: the mock
+  # fixtures cite one publisher per check (ok.com), so every ruling demotes to unverifiable
+  # and the dossier is delisted on source_or_die. That is a fixture written before the floor
+  # existed, not a defect in the floor — but golden-set discrimination regression blocks
+  # ship, so the mechanism lands inert. Turn this to 2 in the SAME change that gives those
+  # fixtures a second publisher; tests/unit/test_corroboration_floor.py pins both halves.
+  corroboration_min_domains: 1
+  # A lone source in these tiers needs no corroboration: legislation.gov.uk IS the answer on
+  # legality, and requiring a blog to agree with it makes the evidence worse. Exempting these
+  # two spares 67 government + 5 academic rulings at no extra cost — the flip count is 1
+  # either way. `media` and `established_org` are deliberately NOT here: one newspaper
+  # restating one press release is the correlated evidence this gate exists to catch.
+  corroboration_exempt_tiers: [government, academic]
 
 thresholds:
   # confidence_floor: KILL-SIDE lever only (kill_filter.is_hard_fail). A grounded killing
@@ -697,6 +731,35 @@ markets:
     # US law is federal PLUS 50 states. Without state-level scoping the legality check
     # drowns in irrelevant federal/other-state material (story risk 3).
     require_subdivision: true
+    # `subdivisions` maps a market CODE to the jurisdiction's NAME, and exists because the
+    # code alone never reached the model. A subdivision inherits its parent's whole block
+    # including `label`, so before 2026-08-14 `market_kwargs("us-tx")` and
+    # `market_kwargs("us-ca")` were byte-identical on every key: the state reached the
+    # dossier stamp and the retrieval namespace, and the model was left to pick a state
+    # from its own prior. It picked one. MEASURED over the 146 us dossiers on disk: 63%
+    # named no state at all, and of the 54 that did, California took 40 against Texas 10,
+    # New York 3, Illinois 2, Florida 1 — while the ONLY worked examples in
+    # prompts/markets/us/query_gen_exemplars.md are Texas. A name here is not a market
+    # claim (prompts.py builds market_scope from names alone), so this is admissible to
+    # the moat: without it a verdict cannot tell that a California passage is irrelevant
+    # to a Texas candidate.
+    #
+    # Listing a code here does NOT schedule it — `schedule.market_rotation` does. Codes
+    # beyond the current rotation are declared so the rotation can be widened without a
+    # code change.
+    subdivisions:
+      us-tx: "Texas"
+      us-ca: "California"
+      us-fl: "Florida"
+      us-ny: "New York"
+      us-il: "Illinois"
+      us-pa: "Pennsylvania"
+      us-oh: "Ohio"
+      us-ga: "Georgia"
+      us-nc: "North Carolina"
+      us-mi: "Michigan"
+      us-wa: "Washington"
+      us-az: "Arizona"
     # Retrieval overlay — evidence terrain only (DD2). Slightly deeper fetch so state
     # .gov / CMS / SEC pages are likelier to land in the passage set; does NOT touch bars.
     retrieval:
@@ -1315,7 +1378,7 @@ listing:
   # here makes them warnings, so shipping the rule does not unlist the 46 live packs that
   # predate it. Flip to true once tools/retitle_catalogue.py has landed the rewrite — the
   # same sequence max_grammar_defects_per_1k was introduced in, for the same reason.
-  title_block_on_breach: false
+  title_block_on_breach: true
 
   # SHELF COPY (pack_linter.check_shelf_copy). The same actuator pattern, for the class of
   # defect no check in this repo could see until 2026-08-13: copy that is short, sourced,
@@ -1726,9 +1789,19 @@ dedup_token_threshold: 0.34
 # An unresolvable code disables the WHOLE rotation rather than silently rotating over what is
 # left: a typo'd "us-ca" that quietly degrades to UK-only is precisely the failure this exists to
 # prevent, and a rotation the operator believes is running is worse than one plainly refused.
+# 2026-08-14 (founder: "us should be dominant and not just california"): the rotation was
+# "uk,us", a clean 50/50 that was working — the 2026-08-14 batches ran 23 us against 20 uk.
+# What it could not do is spread the US, because "us" is ONE code and one code is one tick's
+# framing; every US tick asked the same question and the model answered California 40 times
+# out of 54. The list below is US on 8 of every 10 ticks, each a DIFFERENT state, with uk
+# retained on 2 because it is the calibration anchor every bar was measured against
+# (markets.uk.readiness_ref is deliberately empty for that reason) and retiring it would
+# leave the thresholds unanchored. Order alternates the big states rather than grouping them
+# so that any window of a few ticks is already mixed.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
             revet_provisional_kills: false, gate_generation_on_grounding: true,
-            reload_on_code_change: true, market_rotation: "uk,us" }
+            reload_on_code_change: true,
+            market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

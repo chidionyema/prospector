@@ -136,10 +136,23 @@ def market_kwargs(cfg, *, for_moat: bool = False, market: str = "") -> dict[str,
     block = (cfg.market_config(market or None)
              if getattr(cfg, "markets", None) else {})
     label = str(block.get("label", "") or "")
+    code = str(block.get("code", "") or "")
 
-    # market_scope is derived from the LABEL alone — a name, never a fact. That makes it
-    # structurally impossible for the moat's market variable to carry market claims.
-    scope = f"Jurisdiction under evaluation: {label}." if label else ""
+    # A subdivision code ("us-tx") inherits its parent's whole block, INCLUDING `label`, so
+    # until 2026-08-14 the state reached the dossier stamp and the retrieval namespace and
+    # never the model: `market_kwargs` for "us-tx" and "us-ca" were byte-identical on every
+    # key. The model therefore chose the state itself, and chose one — of the 54 US dossiers
+    # that named a state, 40 said California against 10 Texas, while the only worked examples
+    # in prompts/markets/us/query_gen_exemplars.md are Texas. `subdivisions` maps the code to
+    # its name so framing can say which jurisdiction this run is actually about.
+    sub_label = str((block.get("subdivisions") or {}).get(code, "") or "")
+
+    # market_scope is derived from NAMES alone — never a fact. That makes it structurally
+    # impossible for the moat's market variable to carry market claims. The subdivision name
+    # joins it because a verdict that cannot tell which state it is ruling on cannot judge a
+    # California passage irrelevant to a Texas candidate.
+    scope_name = ", ".join(p for p in (sub_label, label) if p)
+    scope = f"Jurisdiction under evaluation: {scope_name}." if scope_name else ""
 
     moat = {
         "market_scope": scope,
@@ -152,8 +165,19 @@ def market_kwargs(cfg, *, for_moat: bool = False, market: str = "") -> dict[str,
     # still push state/country naming into generation framing. The moat never sees this
     # — only market_scope reaches verdict/adversarial.
     context = str(block.get("market_context", "") or "").strip()
-    code = str(block.get("code", "") or "")
-    if block.get("require_subdivision") and code and "-" not in code:
+    if sub_label:
+        # The subdivision is PINNED by the code the rotation selected, so this is a
+        # directive, not the reminder below: the run is about one named jurisdiction and
+        # substituting another is the failure being corrected, not a lesser answer.
+        directive = (
+            f"SUBDIVISION PINNED: this run evaluates {sub_label} specifically, not "
+            f"{label or 'the parent market'} at large. Ground every opportunity in "
+            f"{sub_label}'s own statutes, licensing boards, agencies and filings, and "
+            f"name {sub_label} explicitly in the claim. Do NOT substitute another "
+            f"sub-jurisdiction, and do not leave the claim at the bare parent market."
+        )
+        context = f"{context}\n\n{directive}".strip() if context else directive
+    elif block.get("require_subdivision") and code and "-" not in code:
         reminder = (
             f"SUBDIVISION REQUIRED: opportunities in {label or code} must name a "
             f"specific sub-jurisdiction (e.g. {code}-xx). Do not leave the claim at "
@@ -164,7 +188,7 @@ def market_kwargs(cfg, *, for_moat: bool = False, market: str = "") -> dict[str,
     return {
         **moat,
         "market_context": context,
-        "market_label": label,
+        "market_label": f"{sub_label}, {label}" if sub_label and label else (sub_label or label),
         "currency_hint": str(block.get("currency_hint", "") or ""),
         "market_exemplars": _fragment(chain, "query_gen_exemplars"),
         "market_batched_exemplars": _fragment(chain, "query_gen_batched_exemplars"),

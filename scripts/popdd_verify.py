@@ -42,10 +42,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import json
 import os
 import re
+import signal
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -79,6 +83,13 @@ DOTNET_TEST_PROJ = "store_platform/src/Store.Tests/Store.Tests.csproj"
 # 2026-08-10 for 2910 tests -> 1279s for 2968), tracked separately; this constant must not
 # be the thing that hides it, so the ceiling stays finite and a genuine hang still dies.
 TEST_TIMEOUT_SECONDS = int(os.environ.get("POPDD_TEST_TIMEOUT", "2400"))
+
+# How long the gate will wait to collect output AFTER it has killed a timed-out step's whole
+# process group. Deliberately short and deliberately finite: an orphan holding the inherited
+# pipe write end is precisely the condition that wedged this hook (see `_run_step`), so the
+# drain must be allowed to give up. Losing the tail of a hung run's log costs a diagnosis;
+# waiting for it forever costs every commit in the checkout.
+DRAIN_TIMEOUT_SECONDS = 30
 
 # Extensions that must be covered by SOME lane. A file with one of these that matches no
 # lane blocks the commit rather than sailing through unproven.
@@ -253,6 +264,182 @@ def staged_paths() -> list[str]:
 
 # ── execution ────────────────────────────────────────────────────────────────
 
+def _gate_lock_path() -> Path:
+    """The single-flight lock, in THIS working tree's own git dir.
+
+    `git rev-parse --absolute-git-dir` is used rather than `ROOT / ".git"` because in a linked
+    worktree `.git` is a FILE containing `gitdir:`, not a directory — the exact bug
+    tests/unit/test_popdd_gate_lanes.py once had. It also gives the property this rail needs
+    for free: the primary checkout resolves to `<repo>/.git` and each linked worktree to
+    `<repo>/.git/worktrees/<name>`, so two SESSIONS IN THE SAME TREE collide (which is the
+    thing we are stopping) while two sessions in separate worktrees never do (which is the
+    thing we want people to do instead).
+    """
+    out = subprocess.run(
+        ["git", "rev-parse", "--absolute-git-dir"], cwd=ROOT,
+        capture_output=True, text=True,
+    )
+    git_dir = Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() \
+        else ROOT / ".git"
+    return git_dir / "popdd-gate.lock"
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True      # exists, owned by someone else
+    return True
+
+
+@contextlib.contextmanager
+def single_flight():
+    """Refuse a second gate run in the SAME working tree, immediately and loudly.
+
+    This is a rail, not advice, because the failure it prevents has bitten this repo
+    repeatedly and costs everyone at once. The gate runs the whole suite inside
+    .git/hooks/pre-commit, so for its entire runtime `git commit` holds `.git/index.lock`.
+    Two sessions sharing one checkout therefore serialise into ~100-minute commit cycles, and
+    if either run wedges, EVERY commit in the checkout is blocked until a human kills a PID.
+    On 2026-08-14 that happened: a gate sat at 0.0% CPU for 49 minutes holding the lock while
+    two other sessions could not commit at all.
+
+    Waiting politely is the wrong behaviour — it produces exactly the queue. Failing in under
+    a second with the fix printed is right, and the fix is a worktree of your own:
+    `./scripts/setup_worktree.sh` gives you a separate index and a separate lock, after which
+    both sessions commit concurrently and neither can wedge the other.
+
+    A holder whose PID is gone is stale (a crash, a SIGKILL) and is taken over silently — a
+    lock that bricks the repo after one crash would just be a new way to be stuck.
+    """
+    path = _gate_lock_path()
+    mine = {"pid": os.getpid(), "started": time.time(), "tree": str(ROOT)}
+
+    for attempt in (1, 2):
+        try:
+            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            os.write(fd, json.dumps(mine).encode())
+            os.close(fd)
+            break
+        except FileExistsError:
+            try:
+                holder = json.loads(path.read_text())
+                pid, started = int(holder["pid"]), float(holder["started"])
+            except (OSError, ValueError, KeyError, TypeError):
+                path.unlink(missing_ok=True)      # unreadable == stale
+                continue
+
+            if not _pid_alive(pid):
+                path.unlink(missing_ok=True)
+                continue
+
+            age = int(time.time() - started)
+            print(
+                f"\n❌ POPDD gate: another gate run is already in flight IN THIS CHECKOUT "
+                f"(pid {pid}, {age // 60}m{age % 60:02d}s old).\n"
+                f"   It holds .git/index.lock for its whole run, so this commit cannot even "
+                f"start.\n\n"
+                f"   Do not wait for it. Get your own working tree — separate index, separate "
+                f"lock:\n"
+                f"       ./scripts/setup_worktree.sh ../<your-worktree>\n"
+            )
+            if age > TEST_TIMEOUT_SECONDS + DRAIN_TIMEOUT_SECONDS + 120:
+                print(
+                    f"   That run is ALSO past its own ceiling ({TEST_TIMEOUT_SECONDS}s) and "
+                    f"should have died.\n"
+                    f"   It is wedged. Clear it:  kill {pid}\n"
+                )
+            yield False
+            return
+        if attempt == 2:
+            break
+
+    try:
+        yield True
+    finally:
+        try:
+            if json.loads(path.read_text()).get("pid") == os.getpid():
+                path.unlink(missing_ok=True)
+        except (OSError, ValueError):
+            pass
+
+
+class StepTimeout(Exception):
+    """The step exceeded its wall-clock ceiling and its process group was killed.
+
+    Carries whatever output was drained before the kill, which may be empty when the pipe
+    was still held open — see `_run_step`.
+    """
+
+    def __init__(self, stdout: str, stderr: str, drained: bool) -> None:
+        super().__init__("step timed out")
+        self.stdout, self.stderr, self.drained = stdout, stderr, drained
+
+
+def _run_step(argv: list[str], cwd: Path, timeout: int) -> subprocess.CompletedProcess:
+    """Run one lane step under a wall-clock ceiling that CANNOT itself hang.
+
+    `subprocess.run(capture_output=True, timeout=...)` is not safe here, and on 2026-08-14 it
+    wedged this repo for every session at once. On timeout `run()` kills only the DIRECT child
+    and then re-enters `communicate()` to drain the pipes. A grandchild that inherited the pipe
+    write ends and outlived pytest holds that pipe open, so the second `communicate()` blocks
+    forever, `TimeoutExpired` is never raised, and the "exceeded Ns" branch below is never
+    reached. This gate runs inside .git/hooks/pre-commit, so a wedged gate holds
+    `.git/index.lock` indefinitely — and this checkout is shared by concurrent sessions, so
+    ONE hang stops every commit on the machine. Observed: popdd_verify alive at 0.0% CPU for
+    37 minutes with no pytest child anywhere, the timeout message never printed.
+
+    pytest is exactly the process that spawns such grandchildren (see the repo's
+    multiprocessing-spawn-under-pytest note: the spawned child is unnamed, so it does not even
+    show up in `pgrep -f pytest`).
+
+    Two changes make the ceiling real:
+      * `start_new_session=True` puts the step in its own process group, so the kill reaches
+        every descendant rather than the one process we happen to hold a handle to;
+      * the post-kill drain is BOUNDED. If a survivor still holds the pipe we abandon the
+        output and fail the lane. A gate that reports "TIMEOUT with no output" is strictly
+        better than one that never reports at all.
+    """
+    proc = subprocess.Popen(
+        argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        start_new_session=True,
+    )
+
+    def kill_group() -> None:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            proc.kill()
+
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        kill_group()
+        try:
+            # Bounded on purpose. The unbounded retry is the deadlock this function exists
+            # to remove; never widen it into a plain communicate().
+            out, err = proc.communicate(timeout=DRAIN_TIMEOUT_SECONDS)
+            drained = True
+        except subprocess.TimeoutExpired:
+            for pipe in (proc.stdout, proc.stderr):
+                try:
+                    pipe.close()
+                except OSError:
+                    pass
+            out, err, drained = "", "", False
+        raise StepTimeout(out or "", err or "", drained) from None
+    except KeyboardInterrupt:
+        # start_new_session detaches the child from the terminal's process group, so a Ctrl-C
+        # at the commit prompt no longer reaches pytest by itself. Forward it, or an
+        # interrupted commit leaves a full suite running unattended.
+        kill_group()
+        raise
+
+    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
+
 def run_lane(agent: PopddAgent, lane: Lane) -> bool:
     for required in lane.preflight:
         if not required.exists():
@@ -271,11 +458,8 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
     for step_name, argv in lane.steps:
         print(f"   … {step_name}")
         try:
-            result = subprocess.run(
-                argv, cwd=lane.cwd, capture_output=True, text=True,
-                timeout=TEST_TIMEOUT_SECONDS,
-            )
-        except subprocess.TimeoutExpired:
+            result = _run_step(argv, lane.cwd, TEST_TIMEOUT_SECONDS)
+        except StepTimeout as timed_out:
             # A timeout used to propagate as an uncaught traceback, which killed the process
             # before "test-run:complete" was ever signed. The chain was then left with a
             # dangling STARTED entry (receipts seq 24 and 25 of 2026-07-30) that looked like
@@ -286,13 +470,24 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
                     "verdict": "TIMEOUT", "lane": lane.key, "step": step_name,
                     "passed": 0, "failed": 0, "failedTests": [], "exitCode": None,
                     "timeoutSeconds": TEST_TIMEOUT_SECONDS,
+                    "outputDrained": timed_out.drained,
                 },
             )
             print(
-                f"\n❌ {lane.label}: step '{step_name}' exceeded {TEST_TIMEOUT_SECONDS}s and was killed.\n"
+                f"\n❌ {lane.label}: step '{step_name}' exceeded {TEST_TIMEOUT_SECONDS}s; its "
+                "whole process group was killed.\n"
                 "   This is a hang, not a slow suite. If the suite is legitimately this slow,\n"
                 "   raise POPDD_TEST_TIMEOUT.\n"
             )
+            if not timed_out.drained:
+                print(
+                    "   Output was abandoned: a surviving process still held the pipe after "
+                    f"{DRAIN_TIMEOUT_SECONDS}s.\n"
+                    "   Failing the lane anyway — the gate never waits on a pipe it cannot "
+                    "close.\n"
+                )
+            print(timed_out.stdout[-4000:])
+            print(timed_out.stderr[-2000:])
             return False
 
         combined += result.stdout + result.stderr
@@ -364,10 +559,13 @@ def main(argv: list[str] | None = None) -> int:
 
     agent = PopddAgent.at_path(ROOT)
     ok = True
-    for key in selected:
-        if not run_lane(agent, LANES[key]):
-            ok = False
-            break   # kill-fast: a failed lane already blocks the commit
+    with single_flight() as acquired:
+        if not acquired:
+            return 1
+        for key in selected:
+            if not run_lane(agent, LANES[key]):
+                ok = False
+                break   # kill-fast: a failed lane already blocks the commit
 
     verify = agent.verify_chain()   # (auto-saved by PopddAgent)
 

@@ -237,14 +237,20 @@ def test_verdict_for_records_untraceable_figures_without_touching_the_ruling():
 
     src = Source(source_id="s1", url="https://example.org/carers",
                  text="Carers report significant unmet need for respite provision.")
+    # A second, independent publisher — no digits, so it cannot change what the figure trace
+    # finds. Required since 2026-08-14: the corroboration floor demotes a `supported` ruling
+    # cited entirely to one registrable domain (`admissibility.corroboration_reason`), and
+    # this test is about the FIGURE trace, which must be exercised on a surviving ruling.
+    src2 = Source(source_id="s2", url="https://carerstrust.example.net/respite",
+                  text="Local authorities fund respite placements for unpaid carers.")
     cand = Candidate(title="Respite matcher", one_liner="Match carers to respite",
                      hypothesis="Carers cannot find respite", who_pays="Local authorities")
     op = MockOperator(router=lambda system, user: {
         "verdict": "supported", "confidence": 0.9,
         "rationale": "Around £320 per carer per year is available, and unmet need is significant.",
-        "citations": ["s1"]})
+        "citations": ["s1", "s2"]})
 
-    r = verdict_for(op, cand, "payer_solvency", [src])
+    r = verdict_for(op, cand, "payer_solvency", [src, src2])
 
     assert r.untraceable_figures == ["320"], "the trace block in verdict_for did not fire"
     assert r.verdict is Verdict.SUPPORTED, "an untraceable figure must NOT demote the ruling"
