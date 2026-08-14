@@ -929,8 +929,33 @@ generation:
   # UNPROVEN either way — prescreen-rejected candidates never get a dossier, so the retro
   # corpus cannot answer it. The measurement is forward: pass rate per VETTED candidate
   # before vs after this change, at fixed batch_size.
-  candidates_per_signal: 50
+  # CUT 50 -> 20 on 2026-08-14. The paragraph above is unchanged and still true — k=50 vs k=20
+  # is unproven on YIELD — but k=50 turned out to be unaffordable in TIME, which is a separate
+  # measurement and a decisive one:
+  #   store/scheduler/alerts.jsonl 2026-08-14T20:48:25Z  critical  tick_error
+  #     "tick_hard_deadline: exceeded 10800s during generation (batch=15); force-exited"
+  #   store/scheduler/alerts.jsonl 11:23-15:57Z          critical  barren_streak x18
+  #     "The generation chain has produced nothing for 21 ticks in a row"
+  # Generation was not returning empty; it was never returning. A tick force-exited at the 3h
+  # deadline mid-generation vets nothing, so the pool k widens is a pool nothing ever selects
+  # from: measured yield at k=50 is 0 passes across 21 consecutive ticks. k=20 still exceeds
+  # `schedule.batch_size` (15), so prescreen keeps a real choice to make.
+  # `load_config` runs ONCE in run_scheduled.main (:1944) — this value only takes effect on a
+  # daemon RESTART, never on the next tick.
+  candidates_per_signal: 20
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
+  # FLOOR on ideas requested per call (2026-08-14). The old wave formula floored the CALL
+  # count at the lens count instead, so the daemon's per-lane remainder (batch_size 15 over
+  # 4 lanes = 3-5) always fanned out as 5 calls of ask=1 — every "Produce up to N DISTINCT"
+  # line in the 2026-08-14 log reads 1, and each such call paid MiniMax-M3's full reasoning
+  # preamble for one idea (median response that day: 47,602 chars). Live calls with the
+  # daemon's exact rendered prompt at ask=4 (2026-08-14, scratchpad ab_ask): 193.8s wall /
+  # 115,017 think-chars / 3 ideas returned, i.e. the reasoning preamble dominates the call
+  # whatever the ask, so asking for one idea per call multiplies the preamble by the idea
+  # count. (Full ask 1-vs-5-vs-10 A/B: ab_ask_results.json.) min_ask concentrates a wave into
+  # ceil(remaining/ask) calls. 1 restores the legacy one-idea-per-call fan-out exactly
+  # (prospector/generate.py::plan_wave keeps the old formula on that branch).
+  min_ask: 5
   max_rounds: 6         # max batching rounds to hit the requested candidate count
   # Default archetype when no lane pin / --archetype. Lane defaults below override per tier
   # (side_hustle→solo_agent, smb→small_team, growth/venture→startup). Moat/gates untouched.
@@ -1434,21 +1459,28 @@ listing:
     # evidence behind them yet; that is what the price_comparables check (C3) and the
     # storefront events (D2) exist to produce. They are pinned here so the ladder is
     # deterministic and so moving one is a visible, reviewable act.
-    # Charm pricing (2026-08-09, founder: "round figure is not right, we should have pence,
-    # cents also"). Every rung now ends in 99p instead of a flat hundred so the storefront
-    # renders £19.99 / £49.99 / £199.99 instead of £19 / £49 / £199. The rung POSITIONS are
-    # unchanged (default_rung_index, tier_rung_index and market_rung_offset below all index
-    # into this same 7-element array), so only the numbers moved, not the ladder shape.
-    rungs: [1999, 2999, 4999, 7999, 9999, 14999, 19999]
+    # Charm pricing was introduced 2026-08-09 (founder: "round figure is not right, we should
+    # have pence, cents also") and REVERSED 2026-08-14 (founder: ".00 everywhere", "not
+    # realistic at all"). Every rung ends in a flat pound again: £19 / £29 / £49 / £79 / £99 /
+    # £149 / £199. The rung POSITIONS are unchanged — default_rung_index, tier_rung_index and
+    # market_rung_offset below all index into this same 7-element array — so only the numbers
+    # moved, not the ladder shape, and no pack changes tier as a result of this edit.
+    #
+    # Note what this edit does NOT do. It governs the price a pack is assigned at listing
+    # time; it does not touch a pack already on the shelf, because a catalogue row and its
+    # provider Price object are minted together by one PriceDecision (bridge.py) and rewriting
+    # either one alone charges a buyer an amount the fulfilment fence then rejects. Bringing
+    # the live shelf onto this ladder is a separate, deliberate repricing operation.
+    rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
 
     # A human-readable label for the ladder below, recorded on every D3 rationale record
     # (prospector/price_rationale.py). It is a LABEL, not the truth: a stale label that
     # nobody bumped after editing `rungs` would misattribute a price. The record also
     # carries the rung numbers themselves plus a `fingerprint` digest over them, and the
     # fingerprint is what proves which ladder actually ran.
-    ladder_version: L1-ladder-2026-08-09-charm
+    ladder_version: L1-ladder-2026-08-14-flat
 
-    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4999: an
+    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4900: an
     # unclassified pack is one we know nothing about, and guessing at its price is
     # strictly worse than holding the price the whole catalogue already sells at.
     default_rung_index: 2
@@ -1811,9 +1843,18 @@ dedup_token_threshold: 0.34
 # (markets.uk.readiness_ref is deliberately empty for that reason) and retiring it would
 # leave the thresholds unanchored. Order alternates the big states rather than grouping them
 # so that any window of a few ticks is already mixed.
+# `gen_budget_frac: 0.35` — the generation phase's share of the tick hard deadline
+# (PROSPECTOR_TICK_DEADLINE_S, 10800s => 63 min). Added 2026-08-14: the force-exited tick
+# that day (alerts.jsonl 20:48:25Z "tick_hard_deadline: exceeded 10800s") had spent hours
+# inside a degraded generation chain; a healthy generation phase measures ~3 min for k=15
+# (launchd.err.log 2026-08-11), so this budget only ever bites during degradation — which
+# is exactly when generation used to eat the phases that run after it. Enforced at run
+# time by run_scheduled._default_generate -> generate()'s wave loop (no new wave starts
+# past the deadline), and projected at commit time by scripts/gen_budget_guard.py against
+# the same fraction. 0 disables the rail.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
             revet_provisional_kills: false, gate_generation_on_grounding: true,
-            reload_on_code_change: true,
+            reload_on_code_change: true, gen_budget_frac: 0.35,
             market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
 
 spend:

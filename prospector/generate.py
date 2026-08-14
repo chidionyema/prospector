@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Optional
@@ -178,6 +179,39 @@ _AUDIENCE_DESCRIPTIONS: dict[str, str] = {
 }
 
 
+def plan_wave(remaining: int, n_axis: int, n_lenses: int, max_per_call: int,
+              min_ask: int = 1) -> tuple[int, int]:
+    """How many parallel calls a generation wave makes, and how many ideas each call asks for.
+
+    ONE function, used by the wave loop below AND by scripts/gen_budget_guard.py, so the
+    commit-time projection and the runtime behaviour can never drift apart.
+
+    The legacy shape (min_ask <= 1) floored n_calls at the LENS count —
+    `max(remaining, n_lenses)` — so a small per-lane remainder (3-5, the daemon's
+    batch_size 15 split over 4 lanes) always fanned out 5 calls of ask=1. Measured
+    2026-08-14 (store/scheduler/launchd.err.log): every "Produce up to N DISTINCT" line
+    read 1, waves 2-3 added +0 while still being paid for, and each ask=1 call carried a
+    full reasoning preamble (MiniMax-M3 median response 47,602 chars that day) — the
+    per-idea overhead was the whole call. min_ask concentrates the same remainder into
+    fewer calls that each ask for more, trading per-call form anchoring for a per-idea
+    cost that is measured, not multiplied.
+    """
+    remaining = max(1, int(remaining))
+    n_axis = max(1, int(n_axis))
+    n_lenses = max(1, int(n_lenses))
+    max_per_call = max(1, int(max_per_call))
+    min_ask = max(1, int(min_ask))
+    if min_ask <= 1:
+        # Byte-for-byte the historical formula (escape hatch: generation.min_ask: 1).
+        n_calls = max(1, min(n_axis, max(remaining, n_lenses)))
+        ask = max(1, min(max_per_call, math.ceil(remaining / n_calls)))
+        return n_calls, ask
+    ask_target = max(1, min(max_per_call, max(min_ask, math.ceil(remaining / n_axis))))
+    n_calls = max(1, min(n_axis, math.ceil(remaining / ask_target)))
+    ask = max(1, min(max_per_call, math.ceil(remaining / n_calls)))
+    return n_calls, ask
+
+
 @track_latency(name="generate")
 def generate(
     op: Operator,
@@ -196,8 +230,18 @@ def generate(
     pass_patterns: str = "",
     prior_titles: Optional[list[str]] = None,
     diagnostics: Optional[dict[str, Any]] = None,
+    deadline_mono: Optional[float] = None,
 ) -> list[Candidate]:
     """Generate k raw Candidate opportunities from a signal.
+
+    deadline_mono: optional `time.monotonic()` timestamp. When set, no NEW wave starts
+    past it — the wave loop returns whatever candidates are already in hand instead of
+    starving the phases that run after generation. This is the rail behind the 2026-08-14
+    force-exit (store/scheduler/alerts.jsonl 20:48:25Z "tick_hard_deadline: exceeded
+    10800s"): a degraded generation chain (MiniMax truncation-retrying at up to ~30 min
+    per call slot) could previously spend the entire 3h tick inside this loop. A wave
+    already in flight is never interrupted (its calls carry their own per-call deadlines,
+    operator.py `_TOTAL_DEADLINE_S`), so the worst overshoot is one wave, not the tick.
 
     diagnostics: optional dict the caller owns; when the non-critical generation chain
     EXHAUSTS partway through (waves 1-2 produced survivors, wave 3 hits the quota wall),
@@ -603,15 +647,29 @@ def generate(
     _seed_src = (signal_text or sector or "").encode("utf-8")
     aud_base = int(hashlib.sha1(_seed_src).hexdigest(), 16) if audience_forms else 0
 
+    # Floor on ideas-per-call. Config-declared (`generation.min_ask`); 1 restores the
+    # legacy one-idea-per-call fan-out. See plan_wave's docstring for the 2026-08-14
+    # measurement behind the default.
+    min_ask = int(gen_cfg.get("min_ask", 5) or 1)
+
     for wave in range(1, max_rounds + 1):
         if len(candidates) >= target:
             break
+        if deadline_mono is not None and time.monotonic() >= deadline_mono:
+            logger.warning(
+                f"Generation time budget exhausted before wave {wave}: returning "
+                f"{len(candidates)}/{target} candidate(s) so vetting still runs this tick",
+                extra={"wave": wave, "total": len(candidates), "target": target,
+                       "gen_budget_exhausted": True})
+            if diagnostics is not None:
+                with _DIAG_LOCK:
+                    diagnostics["gen_budget_exhausted"] = True
+            break
         remaining = target - len(candidates)
         axis = forms or lenses
-        # One call per DISTINCT form (capped at the form count), enough to cover the
-        # remainder. Each call asks for a small share so it stays anchored to its form.
-        n_calls = max(1, min(len(axis), max(remaining, len(lenses))))
-        ask = max(1, min(max_per_call, math.ceil(remaining / n_calls)))
+        # Fewer, bigger calls (min_ask) instead of one call per distinct form — the
+        # form/audience rotation in _assign still advances across the global call ordinal.
+        n_calls, ask = plan_wave(remaining, len(axis), len(lenses), max_per_call, min_ask)
         # Avoid = cross-run memory (prior catalogue/kills) + this run's candidates so far.
         # Both axes matter: prior_avoid stops re-proposing old families across runs; the
         # in-run tail stops collapse within this run.
@@ -757,8 +815,13 @@ def generate_multilane(
     pass_patterns: str = "",
     prior_titles: Optional[list[str]] = None,
     diagnostics: Optional[dict] = None,
+    deadline_mono: Optional[float] = None,
 ) -> list[Candidate]:
     """Fan generation OUT across ambition lanes for a mixed-ambition catalogue (Part 14).
+
+    deadline_mono is ONE absolute timestamp shared by every lane: lanes run concurrently
+    (pool below), so a single wall-clock deadline bounds the whole phase rather than
+    granting each lane its own budget.
 
     For each tier in `lanes`, resolve `cfg.for_lane(tier)` (which swaps in that lane's
     generation framing — e.g. side-hustle-scale opportunities vs venture moats) and ask for
@@ -800,7 +863,7 @@ def generate_multilane(
             target_qualities=target_qualities, recent_failure_modes=recent_failure_modes,
             k=k, gen_op=gen_op, grid_priorities=priorities, focus=focus,
             pass_patterns=pass_patterns, prior_titles=list(prior_titles or []),
-            diagnostics=diagnostics)
+            diagnostics=diagnostics, deadline_mono=deadline_mono)
         for c in cands:
             c.ambition_tier = tier
         return tier, cands

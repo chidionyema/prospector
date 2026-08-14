@@ -112,6 +112,27 @@ WEB_EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css"}
 
 WEB_REL = "store_platform/src/Store.Web/"
 
+# ── the engine lane's catchment ───────────────────────────────────────────────
+# The daemon is steered by two kinds of file, and until 2026-08-14 one of them was proven by
+# NOTHING. `.yaml` is not in SOURCE_EXTS and matched no lane, so commit 9089ebc — which raised
+# `generation.candidates_per_signal` 5 → 50 in config.yaml — printed "nothing to prove" and
+# sailed through. Every tick after it force-exited at the 3h deadline mid-generation
+# (store/scheduler/alerts.jsonl 2026-08-14T20:48:25Z `tick_error`), and the engine produced
+# nothing for 21 consecutive ticks (18 `barren_streak` criticals, 11:23–15:57Z) until the
+# founder asked why.
+#
+# Deliberately NOT solved by adding `.yaml` to SOURCE_EXTS: that set means "block the commit if
+# no lane claims this", which would make every .github/workflows and docs yaml edit unprovable
+# and therefore uncommittable, and a gate that blocks unrelated work is a gate people disable
+# with --no-verify. Named catchment instead: the config the daemon actually reads, and the
+# daemon's own package.
+ENGINE_CONFIGS = ("config.yaml",)
+ENGINE_DIRS = ("prospector/scheduler/",)
+
+
+def _is_engine_path(path: str) -> bool:
+    return path in ENGINE_CONFIGS or path.startswith(ENGINE_DIRS)
+
 
 # ── parsers ──────────────────────────────────────────────────────────────────
 # Each returns (passed, failed, failed_test_ids). A parser that cannot find counts
@@ -169,6 +190,25 @@ def _parse_dotnet(stdout: str) -> tuple[int, int, list[str]]:
     return passed, failed, failed_tests[:50]
 
 
+def _parse_engine(stdout: str) -> tuple[int, int, list[str]]:
+    """Count the engine script's own verdict lines ('   PASS  x' / '   FAIL  x').
+
+    The verdict still comes from the exit code — these counts only make the receipt legible.
+    """
+    passed = failed = 0
+    failed_checks: list[str] = []
+    for line in stdout.splitlines():
+        m = re.match(r"\s+(PASS|FAIL)\s+(.*)$", line)
+        if not m:
+            continue
+        if m.group(1) == "PASS":
+            passed += 1
+        else:
+            failed += 1
+            failed_checks.append(m.group(2).strip())
+    return passed, failed, failed_checks
+
+
 # ── lanes ────────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
@@ -216,6 +256,24 @@ LANES: dict[str, Lane] = {
         cwd=WEB_DIR,
         preflight=(WEB_DIR / "node_modules",),
     ),
+    # The engine is the crown jewel and it runs unattended, so its proof is not "the tests
+    # passed" but "a tick still completes with this change". scripts/verify_engine_change.sh
+    # imports the daemon module, lints it, runs a --dry-run tick to completion, and checks the
+    # generation budget ratio that 9089ebc violated. It is ~15s, so it runs FIRST.
+    #
+    # --dry-run is what makes this safe to run from a commit hook against production state: it
+    # evaluates the guards and the generation plan and stops, spending no provider budget and
+    # writing no candidates. What it CANNOT prove is yield — only a live paid tick shows the
+    # engine is producing — and the script says so in its own output rather than letting a
+    # green lane imply it.
+    "engine": Lane(
+        key="engine",
+        label="engine — import + dry-run tick + budget ratio",
+        target="prospector:engine-tick",
+        steps=(("engine verify", [str(ROOT / "scripts" / "verify_engine_change.sh")]),),
+        parser=_parse_engine,
+        preflight=(ROOT / "scripts" / "verify_engine_change.sh",),
+    ),
     "dotnet": Lane(
         key="dotnet",
         label="dotnet — Store.Tests",
@@ -225,7 +283,9 @@ LANES: dict[str, Lane] = {
     ),
 }
 
-LANE_ORDER = ("web", "dotnet", "python")   # cheapest first, so a fast failure comes back fast
+# cheapest first, so a fast failure comes back fast. `engine` (~15s) leads: a change that
+# stops the daemon completing a tick should be reported before anything spends 175s.
+LANE_ORDER = ("engine", "web", "dotnet", "python")
 
 
 def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
@@ -241,6 +301,11 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
         if not path:
             continue
         ext = Path(path).suffix
+        # Checked first and NOT part of the elif chain: prospector/scheduler/*.py must select
+        # BOTH lanes. The suite proves the code is correct; the dry-run tick proves the daemon
+        # can still complete one. Neither substitutes for the other.
+        if _is_engine_path(path):
+            lanes.add("engine")
         if path.startswith(WEB_REL) and ext in WEB_EXTS:
             lanes.add("web")
         elif ext == ".py":
