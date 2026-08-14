@@ -691,32 +691,46 @@ function PackCard({
           price row fixes it the same way for free -- the title is the first child on every card, so
           its baseline cannot move, and everything the optional facts add or remove is absorbed by
           the `mt-auto` gap, not passed on to a neighbour. */}
-      {/* A HEADER BAND, NOT A COVER PLATE (founder, 2026-08-14, from the deployed landing page:
-          "why are cards missing headers while the ones that do the header is too long ... like the
-          header shading/colour").
+      {/* A HEADER THAT SAYS SOMETHING (founder, 2026-08-14: "the card headers on the landing page
+          the styling looks messy").
 
-          The docblock above is still right that the 112px plate had to go, and this does not bring
-          it back. What it fixes is the thing that removal left behind: `lead` wears an instrument
-          plate across 34% of its width (:544) and `row` wears a 48px one (:410), so the shelf
-          stated the same product in three treatments and the `mid` cards -- the majority of the
-          grid -- were the only ones opening on bare white. That does not read as restraint next to
-          two neighbours with a ground; it reads as the cards whose header failed to render.
+          WHAT WAS HERE FOR ONE DEPLOY, and why it was wrong. The band arrived earlier the same day
+          to answer "why are cards missing headers ... like the header shading/colour": the `mid`
+          cards were the only weight on the shelf opening on bare white while `lead` (:544) and
+          `row` (:410) both wear an instrument plate, so they read as the cards whose header failed
+          to render. That diagnosis stands. The EXECUTION was `bg-ins-bg` (#0B0D0F, tokens.css:242)
+          carrying a generative `PackMark` -- i.e. a 40px near-black strip with a different faint
+          squiggle in each one, forty times down a white grid.
 
-          40px, and the height is the whole argument. The verdict on `PackCoverArt` was about
-          PROPORTION -- at 112px it took ~60% of the card and became the rectangle where a product
-          photo has not loaded. A band this size cannot be mistaken for an image slot; it is the
-          same device the row card already uses, run full width, so one shelf now has one ground.
-          `emphasis` and the default `across` axis match `:416` exactly, for the reason recorded
-          there: `--ins-dim2` on `--ins-bg` composites to a near-black mark on a near-black plate
-          and reads as a failed image, which is the misread this band exists to end. */}
+          That is the same object the founder had killed six hours earlier at 112px, and the reason
+          it was killed applies at any height: a dark rectangle at the top of a product card is the
+          place a photo goes, so it reads as a photo that did not load. The docblock it replaced
+          argued "a band this size cannot be mistaken for an image slot". It was, on sight. The
+          height was never the defect; a decorative ground where a header belongs was.
+
+          SO THE BAND STAYS AND THE DECORATION GOES. `--surface2` is the token whose own comment
+          names this exact use ("Sunken/tinted panels: plate headers, table heads, footer, code",
+          tokens.css:83) -- one notch off white, with a hairline to close it, which separates the
+          header from the body without competing with anything in it. In it goes the ONE fact a
+          shelf is scanned by, the sector, in the same mono caption it was already set in.
+
+          It is MOVED, not copied: the sector left the meta row below (:772) in the same edit, so
+          the card still states it exactly once. That also buys back a line of the meta row, which
+          on an untagged pack was the only thing holding the row's left edge.
+
+          An untagged pack (9 of 63 live) gets the band with no label rather than no band. The
+          band is fixed-height and outside the body's flow, so an empty one costs nothing and keeps
+          every title in the grid on the same baseline -- the jitter rule the docblock above spends
+          a paragraph on. A card with no ground at all is what started this. */}
       <span
         className={cx(
-          'relative h-10 w-full flex-none overflow-hidden',
-          'bg-ins-bg text-ins-muted',
+          'flex h-10 w-full flex-none items-center gap-x-2 overflow-hidden px-5',
+          'border-b border-border bg-surface2',
         )}
-        aria-hidden
       >
-        <PackMark id={pack.id} emphasis />
+        {cat.tagged && (
+          <span className={cx('truncate font-mono text-caption', cat.ink)}>{cat.label}</span>
+        )}
       </span>
 
       <div className="flex flex-1 flex-col p-5">
@@ -769,9 +783,10 @@ function PackCard({
             `text-warning` on the market flag and `text-subtle` on "seen" are the same two treatments
             the row variant uses, so the two weights state the same fact the same way. */}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {cat.tagged && (
-            <span className={cx('font-mono text-caption', cat.ink)}>{cat.label}</span>
-          )}
+          {/* THE SECTOR IS NOT HERE ANY MORE -- it moved up into the header band (see its
+              docblock). Stated once, sitewide, is the rule; stated once per CARD is the same rule
+              at card scale, and a chip that repeats its own header is the noise the founder called
+              messy. Everything else on this row stays exactly where it was. */}
           {/* The numeral drops when the lead figure above already IS the source count (see
               `evidenceLabel`); the tick run stays either way, because the run is the comparison
               between two cards and the figure is the value of one. */}
