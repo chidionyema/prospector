@@ -89,7 +89,10 @@ def _dossier(facets, automatability=None, structural_form=""):
         listing["facets"] = facets
     cand = Candidate(
         candidate_id="c" * 16,
-        title="SpatWindow",
+        # Not the coined "SpatWindow" this file's docstring names: `check_title` blocks a
+        # coinage as an error since 2026-08-14, and this fixture has to REACH the facet
+        # warning it is here to test rather than being unlisted for its title.
+        title="Lease closure forecasts for shellfish farms",
         one_liner="Per-lease closure forecast for UK shellfish farms.",
         market="uk",
         who_pays="owner-operated shellfish farms",

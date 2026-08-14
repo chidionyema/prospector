@@ -38,7 +38,12 @@ AXES = ["pain_acuity", "money_provability", "automatability", "distribution",
 def _dossier(candidate_id: str, tier: str = "", market: str = "",
              tags_extra: dict | None = None) -> Dossier:
     candidate = Candidate(
-        title="FuelClaim — reclaim fuel duty for small fleets",
+        # A title that clears `check_title`, because since 2026-08-14 a breaching title is an
+        # ERROR by default (`TITLE_BLOCK_ON_BREACH_DEFAULT`) and `publish_pass` refuses to mint
+        # a money rail for a pack that cannot list. The old fixture — "FuelClaim — reclaim fuel
+        # duty for small fleets" — carried the coined name the gate now blocks, so it exercised
+        # the NO-MINT path while claiming to test the minted price.
+        title="Fuel duty reclaim service for small fleet operators",
         one_liner="SaaS to reclaim fuel duty for fleets",
         ambition_tier=tier,
         market=market,
