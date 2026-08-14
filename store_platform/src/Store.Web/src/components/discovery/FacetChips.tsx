@@ -15,18 +15,33 @@ export function FacetChips({
   pack,
   compact = false,
   max = 4,
+  omit,
   className,
 }: {
   pack: Pack;
   /** Compact uses the short copy ("B2C") for dense rows like the command palette. */
   compact?: boolean;
   max?: number;
+  /**
+   * A facet the SURFACE already states, which must not be repeated on every card.
+   *
+   * Measured on /ideas/b2c-business-ideas, 2026-08-14: the `B2C` chip rendered on all 31 cards,
+   * because the page's whole selection rule is `payer === 'b2c'`. A chip that is true of every
+   * card on a shelf distinguishes none of them, and it takes the first chip slot -- so `max` then
+   * cut a facet that DID vary off the end of the row. Same defect the market chip had on the home
+   * shelf ("For UK rules" on all 63 cards) and the same fix: state it once, on the page.
+   *
+   * Passed by the landing page as the `{kind, value}` it filters on, so the two can never
+   * disagree; nothing else omits anything.
+   */
+  omit?: { kind: FacetKind; value: string } | null;
   className?: string;
 }) {
   const text = compact ? shortLabel : label;
   const chips: string[] = [];
 
   const push = (kind: FacetKind, value: string | null | undefined) => {
+    if (omit && omit.kind === kind && omit.value === value) return;
     const rendered = text(kind, value);
     if (rendered) chips.push(rendered);
   };

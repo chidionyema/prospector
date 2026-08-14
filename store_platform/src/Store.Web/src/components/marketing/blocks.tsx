@@ -111,12 +111,21 @@ export function PageHero({
   // fades in from opacity 0 -- which is not LCP-eligible. Measured: /how-it-works 1824ms and
   // /ideas 1860ms LCP against 164ms and 208ms first paint (F-005).
   return (
-    <SectionBand bg={bg} width={width} className="pt-10 pb-12 md:pt-14 md:pb-16 animate-settle">
+    /* `page-hero` on the BAND, not the measure: `globals.css` uses it as an adjacent-sibling hook
+       to stop the section below opening with a full 96px on top of this band's own closing space.
+       See the note there for the measurement. `pb` comes down with it -- 64px under a lead, above
+       a rule, above another 96px, was the larger half of a 160px gap. */
+    <SectionBand
+      bg={bg}
+      width={width}
+      outerClassName="page-hero"
+      className="pt-10 pb-10 md:pt-14 md:pb-12 animate-settle"
+    >
       <div className="max-w-[46rem]">
         {eyebrow && (
           <p className="mb-3 text-caption font-medium text-subtle">{eyebrow}</p>
         )}
-        <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text md:text-display">{title}</h1>
+        <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text">{title}</h1>
         {lead && (
           <div className="mt-4 max-w-[60ch] text-body text-muted">
             {lead}

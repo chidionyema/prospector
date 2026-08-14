@@ -143,14 +143,33 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         )}
       />
 
+      {/*
+       * "BY INDUSTRY" WAS FALSE, and the nav is why it mattered (2026-08-14).
+       *
+       * The h1 read "Explore stress-tested ideas by industry." while five of the six groups this
+       * page renders are not industries at all: who pays, hours needed, how automated, skills
+       * suited, how it earns. Only `sector` is industry, and it is the last group on the page. The
+       * heading described one sixth of what was under it.
+       *
+       * It also left the site calling this one destination three things at once: the nav item says
+       * "Categories", the pack breadcrumb says "Browse by category", the URL says `/ideas`, and the
+       * h1 said "ideas by industry". The URL is the one that cannot move cheaply -- `/ideas` and
+       * all fourteen `/ideas/<slug>` pages are emitted into the sitemap (`sitemap.xml.tsx:26,110`)
+       * and are built to rank for "business ideas" -- so the fix is the words, and the h1 now
+       * carries BOTH nouns: the search phrase the URL targets, and the one the chrome uses.
+       *
+       * "Choose your battleground" went with it. This shop's proposition is that the checking
+       * already happened and can be audited; the lead states what the grouping IS, which is the
+       * question a visitor arriving on a list of fourteen unexplained links actually has.
+       */}
       <PageHero
         width="7xl"
         eyebrow="Categories"
-        title="Explore stress-tested ideas by industry."
+        title="Business ideas, by category."
         lead={
           total > 0
-            ? `${total} researched packs across ${categories.length} categories. Choose your battleground.`
-            : 'Researched packs, grouped by who they sell to, the hours they need, the skills they suit.'
+            ? `${total} researched packs, sorted six ways: who pays for it, the hours it needs, how much of it is automated, the skills it suits, how it makes money, and the sector it sits in.`
+            : 'Researched packs, grouped by who pays for them, the hours they need, and the skills they suit.'
         }
       />
 
@@ -177,8 +196,18 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * description and price range that used to force a second list. What US-7 asked for is
          * all still here -- see the component's own note -- and the duplicate is gone.
          */}
+        {/* "All categories", VISIBLE ONLY WHILE SEARCHING (2026-08-14).
+            Unsearched, this rendered the words "All categories" directly under a page titled
+            "Business ideas, by category." and directly above a caption reading "Who pays for it" --
+            a heading that told a visitor nothing the two lines either side of it had not already
+            said, in the last 40px before the fold. Under a query it earns its place, because
+            `12 matching categories` is a count that changes and cannot be got anywhere else.
+
+            It stays in the accessibility tree either way. The list's groups are `h3`s, so dropping
+            the element outright would leave the page jumping h1 to h3, and a screen-reader user
+            navigating by heading would meet "Who pays for it" with nothing saying what it groups. */}
         {filtered.length > 0 && (
-          <h2 className="mb-4 text-meta font-semibold text-text">
+          <h2 className={search ? 'mb-4 text-meta font-semibold text-text' : 'sr-only'}>
             {search ? `${filtered.length} matching categor${filtered.length === 1 ? 'y' : 'ies'}` : 'All categories'}
           </h2>
         )}

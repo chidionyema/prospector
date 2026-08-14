@@ -116,10 +116,18 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
 
         <span className="flex items-center gap-4 md:justify-end">
           {/* Presentational: the count is spelled out immediately to the right of it, and the
-              link's own aria-label carries both. A screen reader must not walk 28 pickets. */}
+              link's own aria-label carries both. A screen reader must not walk 28 pickets.
+
+              THE RUN IS NEUTRAL, NOT GREEN (2026-08-14). It was `bg-survive`, and that is the
+              colour this site uses for one specific thing: a cited source (`EvidenceBar`, the pack
+              covers, the source glyph). Here one mark is one PACK. So the same figure in the same
+              colour counted two different nouns depending on which page you were on, and the page
+              it counted packs on is the page a visitor reaches first. Grey keeps the comparison the
+              run exists for -- a 28-pack category is visibly longer than a 5-pack one -- and stops
+              the shelf claiming 28 sources. */}
           <span aria-hidden className="flex items-end gap-[1.5px]">
             {Array.from({ length: marks }, (_, i) => (
-              <span key={i} className="block h-3 w-[1.5px] bg-survive" />
+              <span key={i} className="block h-3 w-[1.5px] bg-subtle" />
             ))}
           </span>
           <span className="w-[3ch] text-right font-mono text-caption tabular-nums text-text">
@@ -161,14 +169,24 @@ export default function CategoryGraph({ categories, filterPath, grouped = true, 
     <div className={cx('grid gap-10', className)}>
       {sections.map((section) => (
         <section key={section.key}>
-          {/* `.toUpperCase()` on the VALUE, not `uppercase` in the class. House policy (asserted by
-              `weightAndCasePolicy.test.ts`): CSS-only caps leave the accessible name in sentence
-              case, so a screen reader and the screen disagree about what the caption says, and the
-              caps cannot be undone per-locale. The label stays sentence-case in `GROUPS` because
-              that is the string, and the caps are the voice. */}
+          {/* THE CAPS ARE GONE (2026-08-14), and the reasoning that used to sit here is kept
+              because it was right about the wrong question.
+
+              It argued `.toUpperCase()` on the VALUE beats the `uppercase` utility -- true, and
+              still house policy: CSS-only caps leave the accessible name in sentence case, so a
+              screen reader and the screen disagree, and they cannot be undone per-locale. But that
+              settles HOW to draw letterspaced caps, not WHETHER. Five of these ran down the page
+              (`WHO PAYS FOR IT`, `HOURS IT NEEDS FROM YOU`, ...) at 0.08em, which is the single
+              most-used device in template design and the one the home page's own cover comment
+              already calls out for making v2 read as a brochure.
+
+              Sentence case, one step down in size and colour, with the group's own rule above it.
+              The hierarchy is carried by weight, colour and the line -- three structural signals --
+              instead of by shouting. The string in `GROUPS` was already sentence case; now the
+              screen says what the string says. */}
           {section.label && (
-            <h3 className="text-caption font-medium tracking-[0.08em] text-subtle">
-              {section.label.toUpperCase()}
+            <h3 className="border-t border-border-strong pt-3 text-caption font-semibold text-subtle">
+              {section.label}
             </h3>
           )}
           <ul className={cx('list-none p-0', section.label && 'mt-2')}>

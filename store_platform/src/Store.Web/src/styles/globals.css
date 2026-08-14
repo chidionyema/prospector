@@ -447,6 +447,36 @@ section {
   expressed as a utility there rather than as an `!important` override here.
 */
 
+/*
+  THE HERO/CONTENT DEAD BAND.
+
+  Measured at 1440x900 on 2026-08-14 (`fold-idx.png`, `fold-slug.png`): `PageHero` closes with
+  `md:pb-16` (64px) and the `Section` under it opens with `md:py-24` (96px), so 160px of white
+  plus the band's own `border-b` rule sat between a page's headline and the thing that headline
+  introduces. On /ideas the search field started at y=495 and the first category row at y=639, on
+  a 900px viewport; on /ideas/b2c-business-ideas the first card cleared the fold by 90px. Every
+  route with a hero paid it, because both numbers live in `blocks.tsx`.
+
+  The two paddings were never meant to add up -- each is right on its own, one closing a band and
+  one opening an unrelated one. They only stack where a section DIRECTLY follows the hero, which
+  is the one place the two bands are a single thought rather than two. So the rule is scoped to
+  exactly that adjacency, and every other section on every page keeps the 96px rhythm untouched.
+
+  Written here rather than as a prop on 14 call sites for the usual reason: a prop that must be
+  passed on every page to avoid a defect is a defect that comes back with the next page. `globals`
+  is unlayered, so this beats the utility regardless of specificity order (see the note at the top
+  of this file); `.page-hero` is set by `PageHero` itself, on the band, so nothing else can claim
+  it by accident.
+*/
+.page-hero + section > div {
+  padding-top: 1.75rem;
+}
+@media (min-width: 768px) {
+  .page-hero + section > div {
+    padding-top: 2.5rem;
+  }
+}
+
 @media print {
   header, footer { display: none; }
   body { font-size: 12pt; color: black; }
