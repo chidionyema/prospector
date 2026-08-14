@@ -18,10 +18,24 @@ primary_region = "lhr"                # match the API region
 [http_service]
   internal_port = 3000
   force_https = true
-  # Stateless front end: fine to scale to zero between visits.
+  # Stateless front end, so scaling to zero is SAFE -- but it was not free, and the bill was paid
+  # by the visitor, not by us. Measured on prod 2026-08-14, immediately after the v146 deploy:
+  #
+  #   first hit after idle   ttfb 9.216s
+  #   every hit after that   ttfb 1.118s   (of which the SERVER is 0.086s -- the rest is
+  #                                         DNS+TCP+TLS setup, identical on api.mumchimp.com,
+  #                                         i.e. distance to lhr, not our code)
+  #
+  # 9.2 seconds is a cold machine boot, and it lands on exactly the visitor who matters most: the
+  # one arriving from a link, on a shop whose whole proposition is that it did the work already.
+  # No amount of bundle trimming touches it -- the JS had not been asked for yet.
+  #
+  # One warm machine costs ~$2/month at this size. `auto_stop_machines` stays on so the SECOND
+  # machine still parks itself when traffic is thin; `min_machines_running = 1` only forbids the
+  # last one from going down. Revert to 0 and the 9.2s comes straight back.
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
 [[vm]]
   size = "shared-cpu-1x"

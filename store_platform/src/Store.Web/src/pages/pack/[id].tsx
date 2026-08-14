@@ -1,5 +1,6 @@
 import React from 'react';
 import { GetServerSideProps } from 'next';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
@@ -20,7 +21,6 @@ import { paybackEquation } from '@/lib/payback';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { isTruncated, repairTruncation } from '@/lib/copy';
 import { track, trackPriceEvent } from '@/lib/analytics';
-import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import EvidenceExcerptPlate from '@/components/marketing/EvidenceExcerptPlate';
 import PackMark from '@/components/ui/PackMark';
@@ -31,14 +31,34 @@ import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
 import { LEGAL } from '@/lib/config';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
+import { FounderPreviewLink } from '@/components/founder/FounderPreviewLink';
+import { similarPacks } from '@/lib/discovery';
+
+// Loaded on demand, not on every page hit: `@stripe/react-stripe-js` only renders once
+// `clientSecret` is set (after the buyer clicks Buy and the checkout session round trip
+// completes), yet a static import bundled it into this route's own First Load JS regardless --
+// measured pre-change, `/pack/[id]`'s own chunk carried the full Elements wrapper for every
+// visitor, including the overwhelming majority who never click Buy. `ssr: false` is correct
+// (not a compromise): the panel is a client-only overlay gated on client state, so there is
+// nothing for the server to render.
+const EmbeddedCheckoutPanel = dynamic(
+  () => import('@/components/checkout/EmbeddedCheckoutPanel').then((m) => m.EmbeddedCheckoutPanel),
+  { ssr: false },
+);
 
 const subscribeToNothing = () => () => {};
 
 interface PackPageProps {
   pack: PackDetails | null;
-  /** The rest of the catalogue, for the "same mechanics" row. Empty when that fetch failed,
-   *  a catalogue outage must never take down a page someone is trying to buy from. */
-  catalog: Pack[];
+  /** Up to 3 pre-scored "same mechanics" matches, computed server-side from the catalogue --
+   *  NOT the catalogue itself (measured 2026-08-14: shipping all ~59 packs as a page prop just to
+   *  pick 3 in `SimilarPacks` doubled this route's `__NEXT_DATA__` payload for a row that renders
+   *  at most 3 cards). `similarPacks` is the same pure function `pages/index.tsx` already runs
+   *  server-side for its personalised row; running it here too means the client never receives a
+   *  pack it cannot show. Empty when the catalogue fetch failed or nothing scored -- a catalogue
+   *  outage must never take down a page someone is trying to buy from, and the row already hides
+   *  itself on empty (AC-21, `SimilarPacks.tsx`). */
+  similar: Pack[];
   error?: string;
   /** True when the pack could not be read because the API was unreachable, NOT because the pack
    *  is gone (a gone pack returns `notFound` and never reaches this component). Drives `noindex`,
@@ -85,7 +105,7 @@ const CHECKS = COMMON_CHECKS.map((check) => check.refutation);
 // The deliverable list lives in one shared place (PackContents) so this page and the homepage can
 // never drift into promising different things for the same £49.
 
-export default function PackPage({ pack, catalog, error, unavailable, currency }: PackPageProps) {
+export default function PackPage({ pack, similar, error, unavailable, currency }: PackPageProps) {
   const router = useRouter();
 
   // Hooks must run unconditionally. If the server couldn't fetch the pack, render an error
@@ -121,11 +141,11 @@ export default function PackPage({ pack, catalog, error, unavailable, currency }
     );
   }
 
-  return <PackPageContent pack={pack} catalog={catalog} currency={currency} />;
+  return <PackPageContent pack={pack} similar={similar} currency={currency} />;
 }
 
 /** Inner component: all hooks that require a non-null pack live here. */
-function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catalog: Pack[]; currency: Currency }) {
+function PackPageContent({ pack, similar, currency }: { pack: PackDetails; similar: Pack[]; currency: Currency }) {
   const router = useRouter();
   const preopened = preopenedClientSecret(router.query[PREOPENED_CHECKOUT_PARAM]);
 
@@ -433,6 +453,10 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
           </p>
         </>
       )}
+
+      {/* Outside the canCheckout branch on purpose: the pack most worth opening is the one that
+          cannot be sold yet. Renders nothing for every visitor who is not the founder. */}
+      <FounderPreviewLink packId={pack.id} className="mt-4" />
 
       {/*
        * THE NUMBERS LIVE IN THE PACK (email §4, Option A -- recommended).
@@ -1262,8 +1286,9 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
               </Link>
             </div>
 
-            {/* Hides itself unless at least two packs genuinely score (AC-21). */}
-            <SimilarPacks pack={pack} all={catalog} />
+            {/* Hides itself unless at least two packs genuinely score (AC-21). Scoring already
+                happened server-side (see the `similar` prop's note above); this just renders. */}
+            <SimilarPacks items={similar} />
 
             {/* Share sat at y~247, above the product, before the visitor knew what it was.
                 Nobody shares a thing they have not read, so it moves to the foot of the article,
@@ -1567,8 +1592,11 @@ export const getServerSideProps: GetServerSideProps = async ({ params, req, res 
       fetchPackDetails(id),
       fetchCatalog().catch(() => [] as Pack[]),
     ]);
+    // The catalogue itself never becomes a prop -- only its top-3 scored matches do (measured
+    // 2026-08-14: this was serialising the whole catalogue into every pack page's `__NEXT_DATA__`
+    // to render a 3-card row). See the `similar` field's note on `PackPageProps`.
     return {
-      props: { pack, catalog, currency },
+      props: { pack, similar: similarPacks(pack, catalog), currency },
     };
   } catch (error) {
     console.error('Error fetching pack details:', error);
@@ -1602,7 +1630,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, req, res 
     const message =
       error instanceof Error ? error.message : 'Could not load pack details.';
     return {
-      props: { pack: null, catalog: [], error: message, currency, unavailable: true },
+      props: { pack: null, similar: [], error: message, currency, unavailable: true },
     };
   }
 };

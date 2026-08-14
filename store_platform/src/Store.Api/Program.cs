@@ -1407,6 +1407,10 @@ app.MapAuthEndpoints();
 app.MapExternalAuthEndpoints();
 app.MapAccountOrdersEndpoints();
 
+// Founder preview: read any pack without buying it, fenced on an allowlist of authenticated,
+// provider-verified addresses — see Endpoints/FounderPreviewEndpoints.cs.
+app.MapFounderPreviewEndpoints();
+
 await app.RunAsync().ConfigureAwait(false);
 
 // Top-level statements compile to an internal Program, which WebApplicationFactory<T> cannot
