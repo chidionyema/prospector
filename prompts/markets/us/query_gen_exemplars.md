@@ -1,7 +1,12 @@
 Worked examples (note: the product name NEVER appears in the query).
 Prefer primary .gov / regulator pages over vendor blogs when the fact is regulatory.
-Lean on `site:` for the named US authority — cms.gov, cslb.ca.gov, tdlr.texas.gov,
-irs.gov, fincen.gov, consumerfinance.gov, sec.gov — so passages land on the regulator.
+Lean on `site:` for the named US authority so passages land on the regulator.
+Federal, and safe in every state: cms.gov, irs.gov, fincen.gov, consumerfinance.gov, sec.gov.
+State-regulated facts belong to THIS RUN'S PINNED STATE named in the jurisdiction line above
+— use that state's own board and no other (Texas's is tdlr.texas.gov, California's is
+cslb.ca.gov; find the equivalent for whichever state is pinned).
+The worked examples below use Texas. That is the FORMAT, not the state — never answer for a
+state other than the one pinned.
 
 - Product "a mailed retirement-drawdown report for public school teachers", check payer_solvency →
   confirmation: "teacher retirement system 403(b) contribution participation rate site:bls.gov"

@@ -17,7 +17,7 @@ import json
 import re
 from typing import Callable, Optional
 
-from .admissibility import demotion_reason
+from .admissibility import corroboration_reason, demotion_reason, health_demotion_reason
 from .admissibility import host_of as admissibility_host_of
 from .audit import audit
 from .config import Admissibility, Config
@@ -514,9 +514,36 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     _cited_urls = [s.url for s in sources if s.source_id in citations]
     if verdict in (Verdict.SUPPORTED, Verdict.REFUTED) and _cited_urls:
         _reason = demotion_reason(check_name, _cited_urls, _policy)
+        if _reason is None:
+            # Second gate, about the CLAIM rather than the domain: a medical or prevalence
+            # rate must cite the body that published it. `jeffreydachmd.com` and
+            # `playproject.org` both sit in the `other` tier, so the policy above cleared
+            # them for the 1-in-31 autism figure — in a pack sold to people who will market
+            # to autism parents, with the CDC pages already in the same source list.
+            _reason = health_demotion_reason(
+                str(data.get("rationale", "")), _cited_urls,
+                (cfg.admissibility.health_claims_need_primary if cfg is not None
+                 else Admissibility().health_claims_need_primary))
+        if _reason is None and verdict == Verdict.SUPPORTED:
+            # Third gate, about HOW MANY publishers rather than which kind: 434 of 2,816 cited
+            # `supported` rulings (15.4%) rest on a single registrable domain — pages from one
+            # site counted as several sources, under a pack that invites the buyer to click
+            # any SUPPORTED claim and demand a refund if the source does not say it.
+            # SUPPORTED-only by design: a refutation from one source still kills, and
+            # corroborating kills was never measured. A lone government/academic publisher is
+            # exempt (config), because demanding a blog agree with `legislation.gov.uk` makes
+            # the evidence worse. Measured cost: 1 of 75 all-time passes
+            # (`tools/experiments/d5_corroboration.py`).
+            _adm = cfg.admissibility if cfg is not None else Admissibility()
+            _reason = corroboration_reason(
+                check_name, _cited_urls, _adm.corroboration_min_domains,
+                _adm.corroboration_exempt_tiers)
         if _reason:
+            # `_policy`, not `cfg.admissibility.policy`: `cfg` is Optional on this signature,
+            # so reading it here raised AttributeError on exactly the path that fires a
+            # demotion — the log line that exists to record the gate working.
             logger.info(f"Admissibility demotion on {check_name}: {_reason}",
-                        extra={"check": check_name, "policy": cfg.admissibility.policy,
+                        extra={"check": check_name, "policy": _policy,
                                "was_verdict": verdict.value})
             verdict = Verdict.UNVERIFIABLE
             confidence = 0.0

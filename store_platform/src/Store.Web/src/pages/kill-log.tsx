@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip } from '@/components/ui';
+import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip, textLinkClass } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
@@ -535,7 +535,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                               unit of this page is one rejection, not the page. */}
                           <a
                             href={`#${entry.slug}`}
-                            className="ml-auto font-mono text-caption text-accent underline-offset-2 hover:underline"
+                            className={textLinkClass('ml-auto font-mono text-caption')}
                           >
                             link to this kill
                           </a>

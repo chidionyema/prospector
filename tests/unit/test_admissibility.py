@@ -101,8 +101,12 @@ def test_every_declared_policy_is_handled():
     """A policy name that config accepts but the gate ignores is a silent no-op."""
     for p in POLICIES:
         assert isinstance(inadmissible_tiers("legality", p), frozenset)
-    assert set(UGC_ADMISSIBLE) == {"distribution", "route_to_market", "buyer_intent",
-                                   "pain_reality"}
+    # `buyer_intent` was dropped 2026-08-14. A forum thread is real evidence that a channel
+    # EXISTS or that a problem HURTS — the poster is the primary source of both. It is not
+    # evidence that a market is searching for something: that is a claim about a population,
+    # and a single post cannot carry it. Cost measured before shipping: 3 further demotions
+    # across `store/dossiers/*.json` (§20.3 P1 goes 12 -> 15, 0.47% -> 0.58% of ruled checks).
+    assert set(UGC_ADMISSIBLE) == {"distribution", "route_to_market", "pain_reality"}
 
 
 def test_demotion_reason_names_the_domains_and_is_none_when_admissible():

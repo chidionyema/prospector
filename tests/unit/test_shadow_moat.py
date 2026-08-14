@@ -13,9 +13,16 @@ from prospector.run import vet_candidate
 def test_vet_candidate_logs_shadow_moat_drift(caplog):
     caplog.set_level(logging.INFO)
     
-    # Provide enough fixtures for all checks
+    # TWO publishers, not one. The corroboration floor (admissibility.corroboration_reason,
+    # wired at verify.py:538) demotes a SUPPORTED ruling that rests on a single registrable
+    # domain — 434 of 2,816 cited `supported` rulings did, under a pack that invites the buyer
+    # to click any SUPPORTED claim and demand a refund. With one fixture URL every check here
+    # demoted to unverifiable and the `source_or_die` gate fired, so this test asserted drift
+    # the engine correctly refuses to produce. Same fix as the citations one below: ground the
+    # mock properly, never relax the gate so the mock's story works.
     fixtures = {
-        "": [{"url": "http://x", "text": "evidence"}]
+        "": [{"url": "https://one.example.org/a", "text": "evidence"},
+             {"url": "https://two.example.net/b", "text": "corroborating evidence"}]
     }
     search = FixtureProvider(fixtures=fixtures)
 
@@ -30,12 +37,12 @@ def test_vet_candidate_logs_shadow_moat_drift(caplog):
     # a hash of the URL — not the URL itself. Derive it from the provider that will actually
     # serve this check rather than hardcoding the digest, so the test survives any change to
     # how ids are minted.
-    source_id = search.search("probe", 1)[0].source_id
+    source_ids = [s.source_id for s in search.search("probe", 2)]
 
     # Primary op: says PASS, grounded in the one source the fixture serves.
     op = MockOperator(router=lambda s, u: {
         "verdict": "supported", "confidence": 1.0, "rationale": "ok",
-        "citations": [source_id]
+        "citations": source_ids
     })
 
     # Experimental op: says KILL (refuted) — and must CITE, for the same reason the primary op
@@ -47,7 +54,7 @@ def test_vet_candidate_logs_shadow_moat_drift(caplog):
     # comment above insists, rather than the floor being relaxed to keep the mock's story.
     exp_op = MockOperator(router=lambda s, u: {
         "verdict": "refuted", "confidence": 1.0, "rationale": "bad",
-        "citations": [source_id]
+        "citations": source_ids
     })
 
     cand = Candidate(title="Test Idea", one_liner="x", hypothesis="y", who_pays="z")

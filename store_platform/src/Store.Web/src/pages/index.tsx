@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Button, Icon, Dropdown, chipClasses, textLinkClass, buttonClasses, PriceText } from '@/components/ui';
+// `buttonClasses` went with the closing band's duplicate "Browse the packs" link (2026-08-14): it
+// was the only caller in this file, because it is what lets a `<Link>` wear a button's shape.
+import { Button, Icon, Dropdown, chipClasses, textLinkClass, PriceText } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 // No `CtaBand` here any more: this page's closing band is hand-composed (argument left, purchase
 // terms right) rather than the shared title/lead/two-buttons shape. See the note above it.
@@ -15,7 +17,8 @@ import { SectionBand, Section } from '@/components/marketing/blocks';
 // section's other half of the ownership split, not a duplicate.
 import { PACK_CONTENTS, PackContentsSection } from '@/components/marketing/PackContents';
 import { EvidenceRecordPanel } from '@/components/marketing/EvidenceRecordPanel';
-import LiveKillCard from '@/components/marketing/LiveKillCard';
+// `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
+// 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
 import PopulationField from '@/components/marketing/PopulationField';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
@@ -33,7 +36,12 @@ import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/f
 import { repairTruncation } from '@/lib/copy';
 import { track } from '@/lib/analytics';
 import { priceRange, formatGbp } from '@/lib/priceRange';
-import { allCategories, categoryFor, type Category } from '@/lib/category';
+// `type Category` was imported here for `PackCoverArt`'s `category` prop and went with it
+// (2026-08-14). The card reads the object off `categoryFor(pack)` locally and never passes it.
+import { allCategories, categoryFor } from '@/lib/category';
+// The card's lead figure. The priority order, and why the modelled MONEY figure is deliberately
+// not in it, are written out in the module -- this is the only import site that matters.
+import { packLeadStat, type PackLeadStat } from '@/lib/packStat';
 import type { Sector } from '@/lib/facets';
 import { graph, itemListNode } from '@/lib/seo/schema';
 import {
@@ -226,6 +234,65 @@ function cardLine(text: string | null | undefined, maxWords = 20): string {
   return words.slice(0, maxWords).join(' ').replace(/[,;:]$/, '');
 }
 
+/**
+ * THE CARD'S VISUAL, AND IT IS A NUMBER.
+ *
+ * The shelf card had no visual at all after the generated cover was removed on 2026-08-14 (see
+ * the record where `PackCoverArt` was declared): the plate was a frame drawn for photography this
+ * shop does not have, and the mark inside it was a hash of the pack id, which encodes nothing
+ * about the pack. Both were "earned" by the letter of the rule and meant nothing by it.
+ *
+ * What replaces them is the pack's own strongest figure set at display-adjacent size. It is a
+ * genuine visual -- it is the largest thing on the card and it is what the eye lands on -- and it
+ * cannot be unearned, because it is a number the engine computed about THIS pack. Which number,
+ * and the ladder that guarantees it is never blank, is `lib/packStat.ts`.
+ *
+ * ONE DEVICE AT THREE SIZES, not three treatments. Figure over label on the two cards, figure
+ * beside label on the row, because a row has one line and no column to stack in. The sizes are
+ * steps of the six-step scale (§3.2) and nothing else: `text-display` on the lead poster,
+ * `text-h1` on the shelf card, `text-body` on the row -- each one step above the price it sits
+ * with, which is what makes it the lead rather than a second price.
+ *
+ * MONO ON THE FIGURE, SANS ON THE LABEL. Not a new decision: tokens.css §3.2 states the site's
+ * rule as "Commit Mono for anything the engine produced ... monospace is the site's promise that
+ * a string is checkable", and the price beside it is mono for exactly that reason
+ * (`PriceText`). `tabular-nums` so two cards' figures align down a column, which is the whole
+ * point of putting the same number in the same place on every card.
+ *
+ * NO FIXED HEIGHT anywhere in here. The plate that was removed was 112px tall on a ~300px card;
+ * this is two lines of type that size to their own content, so a card with a long title does not
+ * grow a hole and a card with a short one does not stretch.
+ */
+function PackFigure({ stat, weight }: { stat: PackLeadStat; weight: PackWeight }) {
+  if (weight === 'row') {
+    return (
+      <span className="flex min-w-0 items-baseline gap-1.5">
+        <span className="flex-none font-mono text-body font-semibold tabular-nums text-text">
+          {stat.figure}
+        </span>
+        <span className="truncate text-caption text-muted">{stat.label}</span>
+      </span>
+    );
+  }
+
+  const lead = weight === 'lead';
+  return (
+    <span className="block">
+      <span
+        className={cx(
+          'block font-mono tabular-nums leading-none text-text',
+          lead ? 'text-display' : 'text-h1',
+        )}
+      >
+        {stat.figure}
+      </span>
+      <span className={cx('mt-1.5 block text-muted', lead ? 'text-meta' : 'text-caption')}>
+        {stat.label}
+      </span>
+    </span>
+  );
+}
+
 function PackCard({
   pack,
   currency,
@@ -237,9 +304,11 @@ function PackCard({
   currency: Currency;
   /** Editorial weight. See `packWeight`. */
   weight?: PackWeight;
-  /* The market this reader is browsing. Used ONLY to suppress the cover's market chip when it
-     would be true of every card on screen -- see `PackCoverArt`. Optional so a caller with no
-     market context (the hero's featured slot renders before any grouping) simply gets the chip. */
+  /* The market this reader is browsing. Used ONLY to suppress the card's market flag when it
+     would be true of every card on screen. It used to live on `PackCoverArt`'s plate; that plate
+     is gone (see the record where it was declared) and the flag now renders on the card body's
+     meta row, on the same condition. Optional so a caller with no market context (the hero's
+     featured slot renders before any grouping) simply gets the flag. */
   viewerMarket?: string;
   /* True when this pack is in the reader's `recentlyViewed` cookie. A returning buyer scanning
      63 near-identical cards has no way to tell which ones they already opened, so the second
@@ -248,6 +317,18 @@ function PackCard({
   viewed?: boolean;
 }) {
   const cat = categoryFor(pack);
+  /* The card's lead figure, and the card's only visual. Computed once here and rendered by all
+     three variants, so a pack cannot lead with one number on the shelf and another in the
+     "recently viewed" row. `null` only when the pack carries no number at all, which no live
+     pack does -- the ladder's floor is the source count and that is populated 62 of 62. */
+  const stat = packLeadStat(pack);
+  /* The evidence bar drops its numeral when the lead figure IS the source count: the bar exists
+     to make two cards comparable at a glance, the numeral existed because "a chart without its
+     figure is decoration" (EvidenceBar's own note), and the figure is now set six times larger a
+     few lines away. Printing "34" twice on one card is the duplication the cover removal was
+     about. When the lead is the modelled multiple the bar keeps its numeral, because then the
+     two are different facts. */
+  const evidenceLabel = stat?.kind !== 'sources';
   const { heading, sub } = cardHeading(pack);
   // `repairTruncation` repairs the publish path's character-150 cut; `cardLine` then caps at a
   // word boundary so the card never shows a clause that stops mid-thought. See `cardLine`.
@@ -310,10 +391,18 @@ function PackCard({
             {cat.tagged && (
               <span className={cx('flex-none font-mono text-caption', cat.ink)}>{cat.label}</span>
             )}
+            {/* THE SAME DEVICE AS THE CARDS, at the smallest of its three sizes: figure and label
+                on one baseline instead of stacked. A row is a line in a list, so the number sits
+                in the line rather than above it -- and it lands on the same x on every row, which
+                is what makes forty of them scannable down a column. */}
+            {stat && <PackFigure stat={stat} weight="row" />}
             {/* Label off: the row already prints a sector in mono beside it, and two mono
                 fragments on one line read as a single run-on string. The bar alone still says
-                "more evidence than its neighbour", which is the comparison the shelf is for. */}
-            <EvidenceBar count={pack.sourceCount} label={false} />
+                "more evidence than its neighbour", which is the comparison the shelf is for.
+                The bar goes entirely when the lead figure is already the source count -- at row
+                scale the figure, its label, a sector and a forty-tick run of the same number is
+                a line the eye cannot parse. */}
+            {evidenceLabel && <EvidenceBar count={pack.sourceCount} label={false} />}
             {pack.market && pack.market !== viewerMarket && (
               <span className="flex-none font-mono text-caption text-warning">
                 {marketLabel(pack.market)} rules
@@ -414,7 +503,12 @@ function PackCard({
             </span>
           )}
           <span className="absolute bottom-5 left-5">
-            <EvidenceBar count={pack.sourceCount} tone="instrument" size="lg" />
+            <EvidenceBar
+              count={pack.sourceCount}
+              tone="instrument"
+              size="lg"
+              label={evidenceLabel}
+            />
           </span>
         </span>
 
@@ -433,7 +527,18 @@ function PackCard({
             {/* The evidence run moved onto the plate (2026-08-14) and is not drawn twice on one
                 card. On the poster it is the largest thing on the largest graphic on the page,
                 which is where a shop whose pitch is "the checking already happened" should put the
-                one number that varies between two products. */}
+                one number that varies between two products.
+                THE LEAD FIGURE IS THE OTHER ONE, and it is the same device the shelf cards and the
+                rows carry, one size larger -- `text-display` against their `text-h1`. This is the
+                one card allowed to look like a poster, so it is the one card whose number is
+                allowed to be the biggest type in the band. It sits under the copy rather than over
+                it because the heading still has to say what the thing IS before a figure about it
+                can mean anything. */}
+            {stat && (
+              <span className="mt-6 block">
+                <PackFigure stat={stat} weight="lead" />
+              </span>
+            )}
           </span>
           <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
             <PriceText className="text-h1 font-semibold text-text">{price}</PriceText>
@@ -453,10 +558,17 @@ function PackCard({
   }
 
   /* ── MID ────────────────────────────────────────────────────────────────────────────────────
-     The vertical card, kept close to what shipped, because at half-width it still works. What
-     changed: the cover's `8 documents · N sources` chip is gone (the document half was a
-     constant printed 57 times -- see `EvidenceBar`), and the evidence bar now sits in the body
-     where it can be compared against the card beside it rather than floating on the artwork. */
+     The vertical card, and as of 2026-08-14 it is TEXT ALL THE WAY DOWN: a title, a one-liner, a
+     meta row of facts, a price. No cover, no plate, no generated artwork of any kind.
+
+     The two edits that got it here were made a week apart and point the same way. First the
+     cover's `8 documents · N sources` chip went, because the document half was a constant printed
+     57 times (see `EvidenceBar`) and the varying half was printed second, in the same size and
+     colour as the constant beside it. Then the cover itself went -- see the note on the body
+     below, and the record where `PackCoverArt` was declared. Both removals are the same finding
+     twice: on this shelf, every pixel that is not a fact about THIS pack is a pixel that makes two
+     cards harder to tell apart. What is left is the evidence bar sitting at a fixed y in the text
+     column, which is what makes two adjacent cards' source counts comparable at a glance. */
   return (
     <Link
       href={`/pack/${pack.id}`}
@@ -467,19 +579,28 @@ function PackCard({
         focusRing,
       )}
     >
-      <PackCoverArt pack={pack} category={cat} viewerMarket={viewerMarket} viewed={viewed} />
+      {/* THE BODY OPENS ON THE TITLE, ON EVERY CARD -- and it is now the ONLY thing in the card.
+          `PackCoverArt`, the 112px near-black plate that used to render here, is REMOVED (founder,
+          2026-08-14, from a screenshot of the deployed shelf). Its own docblock is kept below as a
+          record; the verdict on it was that at 112px it occupied roughly 60% of a card's height and
+          reads as the placeholder where a product image has not loaded yet. A dark rectangle where
+          an image belongs is a promise the shop cannot keep, so it goes until there is real imagery
+          to put in it. The objection that the plate encoded the source count was raised and
+          overruled -- correctly, because the count is a FACT and the plate was a FRAME, and the fact
+          does not need the frame: every one of the four facts the plate carried is rendered a few
+          lines below, in the card's ordinary ink, on the meta row.
 
-      {/* THE BODY OPENS ON THE TITLE, ON EVERY CARD.
-          The sector chip used to be the first element in here, and it renders only when the pack
-          carries a sector -- 9 of the 63 live packs do not. So in a three-up row where one card
-          was untagged, that card's title sat ~34px HIGHER than its neighbours' and its price row
-          was pushed down by the same amount. Measured on the built shelf at 1440 (2026-08-06):
-          row 1 mixed one tagged with two untagged, row 2 the reverse, so the title baseline
-          jittered on every row of the grid. Nothing else on the page telegraphs "assembled from
-          parts" as loudly as a column of headings that do not line up.
-
-          The chip now sits in the cover's top-left corner, where its presence or absence changes
-          no other element's position, and where it is next to the tint it is derived from. */}
+          THE JITTER FIX THE PLATE WAS ALSO DOING SURVIVES IT, and that is why the facts land BELOW
+          the title rather than above it. The sector chip used to be the FIRST element of this body,
+          and it renders only when the pack carries a sector -- 9 of the 63 live packs do not. So in
+          a three-up row where one card was untagged, that card's title sat ~34px HIGHER than its
+          neighbours' and its price row was pushed down by the same amount (measured on the built
+          shelf at 1440, 2026-08-06: row 1 mixed one tagged with two untagged, row 2 the reverse, so
+          the title baseline jittered on every row of the grid). Moving the chip to the plate fixed
+          that by taking it out of the flow; putting it back BELOW the title and above an `mt-auto`
+          price row fixes it the same way for free -- the title is the first child on every card, so
+          its baseline cannot move, and everything the optional facts add or remove is absorbed by
+          the `mt-auto` gap, not passed on to a neighbour. */}
       <div className="flex flex-1 flex-col p-5">
         {/* No `group-hover:text-primary`. A title that changes colour on hover implies the title
             alone is the link; the whole card is. Border + lift already say "interactive". */}
@@ -490,13 +611,60 @@ function PackCard({
             and nothing else. */}
         {line && <p className="mt-1.5 line-clamp-3 text-meta text-muted">{line}</p>}
 
-        {/* THE EVIDENCE BAR MOVED ONTO THE COVER (2026-08-14) and is not drawn twice.
-            It was put in the body on 2026-08-07 for a good reason -- "at a fixed y in the text
-            column, which is what makes two adjacent cards' source counts comparable" -- and that
-            reason survives the move intact: the cover is a fixed 112px, so the run now sits at a
-            fixed y too, and higher up the card where the eye lands before it starts reading.
-            What changed is that the artwork it was avoiding no longer exists. There is nothing
-            left on the cover to float ON; the run IS the cover. */}
+        {/* THE CARD'S VISUAL. It is the pack's own number, set at `text-h1` -- one step above the
+            price at the foot of the same card, which is what makes it the thing the eye lands on
+            rather than a second price. See `PackFigure` above for the device and `lib/packStat.ts`
+            for which number and why.
+
+            IT SITS HERE, between the description and the meta row, for the reason the removed
+            plate's four facts sit below the title: the title is the first child on every card and
+            its baseline cannot move, and everything optional below it is absorbed by the `mt-auto`
+            gap above the price rather than passed on to a neighbour. A figure ABOVE the title
+            would be a number with nothing to be a number about, and it would reintroduce exactly
+            the jitter the plate removal was careful to keep fixed. */}
+        {stat && (
+          <div className="mt-4">
+            <PackFigure stat={stat} weight="mid" />
+          </div>
+        )}
+
+        {/* THE FOUR FACTS THE COVER PLATE CARRIED, IN THE CARD'S OWN INK.
+            The plate held one fact per corner -- top-left what it is about (sector), top-right
+            whose rules it is written for (market), bottom-left what is in the box (the cited-source
+            run), bottom-right whether you have been here before (viewed). Deleting the plate must
+            not delete any of them, so all four are here, in the order the eye already reads them.
+
+            THE EVIDENCE BAR IS BACK WHERE IT WAS ON 2026-08-07, and the reason it was put there
+            then is the reason it belongs here now: "at a fixed y in the text column, which is what
+            makes two adjacent cards' source counts comparable". The plate's counter-argument was
+            that a fixed 112px cover gives the same fixed y higher up the card. With the plate gone
+            that argument goes with it, and `mt-auto` on the price row below re-establishes the
+            fixed y from the bottom instead.
+
+            `label` is left ON here (the row variant turns it off). On a row the bar sits inline
+            with a mono sector label and two mono fragments on one line read as a run-on string; in
+            a card body there is a whole line for it, and the founder's fix is explicit that the
+            SOURCE COUNT must still be readable as text now that the run no longer has a plate of
+            its own to be the largest thing on. `EvidenceBar` renders nothing at all when a pack has
+            no `sourceCount`, so this row does not print a zero.
+
+            `text-warning` on the market flag and `text-subtle` on "seen" are the same two treatments
+            the row variant uses, so the two weights state the same fact the same way. */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {cat.tagged && (
+            <span className={cx('font-mono text-caption', cat.ink)}>{cat.label}</span>
+          )}
+          {/* The numeral drops when the lead figure above already IS the source count (see
+              `evidenceLabel`); the tick run stays either way, because the run is the comparison
+              between two cards and the figure is the value of one. */}
+          <EvidenceBar count={pack.sourceCount} label={evidenceLabel} />
+          {pack.market && pack.market !== viewerMarket && (
+            <span className="font-mono text-caption text-warning">
+              {marketLabel(pack.market)} rules
+            </span>
+          )}
+          {viewed && <span className="font-mono text-caption text-subtle">seen</span>}
+        </div>
 
         {/* `mt-auto` is what equalises card heights in the grid: the price row sits at the same y
             on every card in a row regardless of how long the title ran. */}
@@ -524,155 +692,57 @@ function PackCard({
   );
 }
 
-/**
- * The generated cover.
- *
- * Deterministic in `pack.id` so a given pack always looks the same across renders, sessions and
- * machines -- a cover that changes on reload is worse than no cover, because a buyer who returns
- * to the shelf cannot find the card they were looking at. `Math.random()` is therefore banned
- * here, and `__tests__/usTwoPackArt.test.ts` asserts the component's source contains no call to
- * it.
- *
- * The market chip lives here rather than on the meta row because "which country's rules is this
- * written for" is the one fact on the card that can make a pack useless to a reader, and it was
- * previously a bare `US` in mono beside a hash. It now says which market in words.
- *
- * It renders ONLY when the pack's market differs from the one the reader is browsing. A UK reader
- * on the UK shelf got "For UK rules" on all 63 cards: a label true of every item on a shelf tells
- * you nothing about any item on it, and it was competing for the eye with the sector badge, which
- * is the fact that actually distinguishes one card from the next. On the "Also available, US"
- * group -- and only there -- the same chip is the single most important thing on the card, because
- * that is where a reader can buy the wrong country's rules by accident.
- */
 /*
- * `COVER_WEAVE` -- a 3%-black diagonal hairline texture -- was declared here and is DELETED
- * (2026-08-14), not merely unused, because a class string left behind is a class string somebody
- * re-applies. Its stated job was "to make an untagged cover read as DELIBERATELY blank instead of
- * as a region that failed to load", for the 9 of 63 live packs that carry no sector. The cover it
- * textured no longer exists (see `PackCoverArt`), and the problem it solved cannot recur on the
- * one that replaced it: the plate is identical on all 63 cards, so an untagged pack is missing one
- * line of mono rather than missing its artwork. The one rule it existed to demonstrate survives it
- * -- Tailwind scans source text, so any arbitrary-value class must be a full literal and never
- * built by interpolation.
+ * `PackCoverArt` -- THE GENERATED COVER -- IS DELETED (2026-08-14). Its call site was the first
+ * child of the mid card; see the note there for where its four facts now render.
+ *
+ * WHAT IT WAS, so nobody rebuilds it by accident: a 112px `h-28 border-b border-ins-line bg-ins-bg`
+ * plate at the top of every pack card, carrying a bottom-left radial lift and one fact per corner
+ * -- the sector in mono top-left, "For <market> rules" top-right (only when the pack's market
+ * differed from the reader's), the cited-source run as an `EvidenceBar tone="instrument" size="lg"`
+ * bottom-left, and a "Viewed" chip bottom-right.
+ *
+ * WHY IT WENT. Founder verdict from a screenshot of the deployed shelf: at 112px it takes roughly
+ * 60% of a card and reads as the placeholder where a product image failed to load. Every argument
+ * the old docblock made for it was an argument about what to put ON a cover, and none of them
+ * answered the prior question of whether a shop that has no photography should be drawing a frame
+ * for photography it does not have. It is out until there is real imagery to put in it. The
+ * objection that the plate was the only thing encoding the source count was raised and overruled,
+ * and the removal is faithful to the objection rather than to the plate: nothing the plate stated
+ * was dropped, all four facts moved into the card body in the card's normal ink.
+ *
+ * THE THREE DECISIONS THE OLD DOCBLOCK RECORDED, KEPT, because each was earned and each still
+ * binds whatever renders those facts:
+ *
+ *  - DETERMINISM. A card's appearance had to be a function of `pack.id` and nothing else -- a
+ *    cover that changes on reload is worse than no cover, because a buyer returning to the shelf
+ *    cannot find the card they were looking at. `Math.random()` stayed banned from card rendering,
+ *    and `__tests__/usTwoPackArt.test.ts` asserts it. That constraint is now trivially satisfied:
+ *    the card draws no generated artwork at all, only facts read off the pack.
+ *  - THE MARKET FLAG IS CONDITIONAL, AND THE CONDITION IS THE POINT. "Which country's rules is
+ *    this written for" is the one fact on a card that can make a pack useless to a reader, but a
+ *    UK reader on the UK shelf got "For UK rules" on all 63 cards -- a label true of every item on
+ *    a shelf tells you nothing about any item on it, and it competed for the eye with the sector,
+ *    which is the fact that actually distinguishes one card from the next. It still renders only
+ *    on `pack.market !== viewerMarket`, which is what makes it the loudest thing on the card in
+ *    the "Built for US rules" group, where a reader can buy the wrong country's rules by accident.
+ *  - THE UNTAGGED PACKS NEED NO FALLBACK. 9 of the 63 live packs carry no sector. The pastel
+ *    cover before the plate needed `COVER_WEAVE` (a 3%-black diagonal hairline, deleted 2026-08-14)
+ *    so those nine did not render as one flat empty rectangle; the plate needed nothing because it
+ *    was identical on all 63. The card body needs nothing either, for the stronger reason: an
+ *    absent sector is now an absent line of mono in a meta row, which reads as "this pack has no
+ *    sector", not as a region that failed to load. The rule `COVER_WEAVE` existed to demonstrate
+ *    outlives it -- Tailwind scans source TEXT, so any arbitrary-value class must be written as a
+ *    full literal and never built by interpolation.
+ *
+ * TWO TESTS PIN THE COMPONENT BY NAME AND FAIL ON THIS REMOVAL, deliberately and correctly, since
+ * they pin a design that has been withdrawn: `src/__tests__/usTwoPackArt.test.ts` (requires
+ * `<PackCoverArt ... category={cat}`) and `src/lib/__tests__/categoryScale.test.ts` (slices the
+ * source between `function PackCoverArt` and `function SectorChips`). The rule the latter actually
+ * defends -- "a marker with no name beside it is decoration pretending to be information" -- is
+ * upheld by the card that replaced it, which draws no glyph on either branch and prints the sector
+ * only as its own label. Both assertions need re-pointing at the card body's meta row.
  */
-
-function PackCoverArt({
-  pack,
-  category,
-  viewerMarket,
-  viewed = false,
-}: {
-  pack: Pack;
-  category: Category;
-  viewerMarket?: string;
-  viewed?: boolean;
-}) {
-  return (
-    /* 112px. It was 96px, and the extra 16px is bought outright: the sector chip moved up here out
-       of the body, which took ~34px off the text block, so the card is net SHORTER than it was
-       while the cover is bigger. */
-    <div
-      className={cx(
-        'relative flex h-28 flex-col justify-between overflow-hidden px-5 py-4',
-        'border-b border-ins-line bg-ins-bg',
-      )}
-    >
-      {/* ══ THE COVER IS THE PACK'S OWN RECORD NOW (2026-08-14) ══════════════════════════════
-          WHAT IT REPLACES, and why that had to go. The header was a pastel sector tint, a 3%-black
-          diagonal weave, and the sector's icon at 72px and 14% opacity -- a briefcase for
-          professional services, a scale for legal. Rendered on the shelf at 1440 that is a pale
-          rectangle with a faint clip-art silhouette in it: stock-photo furniture on a product
-          whose entire proposition is that the checking already happened and you can audit it. It
-          carried exactly one fact (the sector) and drew it twice, as a hue and as a pictogram,
-          while the number that actually differs between two packs sat below the fold of the card.
-
-          WHAT REPLACES IT is the only thing on the card a buyer cannot get anywhere else: the
-          evidence run, drawn large, on the instrument ground. One tick per cited source, so the
-          shelf becomes comparable at a glance -- a 32-source pack is visibly a longer run than an
-          18-source one -- and the ground makes the run read as a readout rather than as
-          decoration. The sector stays, as one line of mono, because it is a fact and not a
-          picture. The rule the tokens carry applies here: survivors on this surface are lit, not
-          hued (#FAFAFA at 18.65:1), so no verdict colour appears on the plate.
-
-          THE UNTAGGED FALLBACK IS FIXED RATHER THAN PATCHED. 9 of 63 live packs carry no sector,
-          and the previous cover's whole weave existed so those nine did not render as one flat
-          empty rectangle beside two decorated ones. On this cover there is nothing to fall back
-          FROM: the plate is identical on all 63 and the sector line is simply absent on nine of
-          them, which reads as "this pack has no sector", not as a failed image. */}
-      <div
-        aria-hidden
-        className={cx(
-          'pointer-events-none absolute inset-0',
-          // Bottom-left lift, at 7% of the survivor white. Stated as a literal rgb() for the same
-          // reason COVER_WEAVE was: it is a surface texture, not a semantic colour, and a token
-          // here would invite someone to "fix" its contrast against text never printed on it.
-          'bg-[image:radial-gradient(120%_80%_at_12%_100%,rgb(250_250_250/0.07),transparent_60%)]',
-        )}
-      />
-
-      <div className="relative flex items-start justify-between gap-3">
-        {/* Mono, because it is a facet you can filter the shelf by, not a headline. Sentence
-            case and no letterspacing: the site's case policy bans wide-tracked caps outright
-            (`weightAndCasePolicy.test.ts`), and it is right to -- that device is what made v2
-            read as a brochure. */}
-        <span className="min-w-0 flex-1 truncate font-mono text-caption text-ins-muted">
-          {category.tagged ? category.label : null}
-        </span>
-
-        {/* FOUR CORNERS, one fact each, unchanged in ROLE -- top-left what it is about, top-right
-            whose rules it is written for, bottom-left what is in the box, bottom-right whether you
-            have been here before. Only the palette moved: `bg-surface/90` was a white pill, which
-            on this ground is a hole punched in the plate. */}
-        {pack.market && pack.market !== viewerMarket && (
-          <span className="flex-none rounded-sm border border-ins-line bg-ins-panel px-2 py-1 text-caption font-medium text-ins-muted">
-            For {marketLabel(pack.market)} rules
-          </span>
-        )}
-      </div>
-
-      <div className="relative flex items-end justify-between gap-3">
-        {/* The same component the card body used to carry, moved up and scaled: one tick per
-            source, deterministic in the index, capped at 40. Nothing here is invented -- the
-            shelf's data has `sourceCount` and no per-check verdicts (`lib/api/client.ts:88`), so
-            the cover draws the count and does NOT draw eight verdict marks it cannot source. */}
-        <EvidenceBar count={pack.sourceCount} tone="instrument" size="lg" />
-
-        {viewed && (
-          <span className="flex-none rounded-sm border border-ins-line bg-ins-panel px-2 py-1 text-caption font-medium text-ins-muted">
-            Viewed
-          </span>
-        )}
-      </div>
-
-      {/* THE SPEC STRIP -- what you are actually buying, on the shelf.
-          A £49 digital product whose card shows no page count, no file count and no preview is
-          bought blind, and the specific fear on a download page is "two pages in a Google Doc".
-          Both figures are checkable rather than promotional:
-            - `PACK_CONTENTS.length` is pinned to `prospector/bridge.py::BUNDLE_FILES` by
-              `__tests__/packContents.test.ts`, and `bridge.py` ANDs a re-audit of the written zip
-              into `is_listed`, so a pack missing a file cannot be on this shelf to be counted.
-            - `sourceCount` is present on all 63 live packs (measured on /catalog, 2026-08-06).
-          The card's own docblock argued sources are "a claim about us, not a benefit to them".
-          That is right about a source count ALONE, where "is 29 good?" has no answer. Beside a
-          fixed document count it stops being a ranking and becomes the spec of the thing in the
-          box, which is the question the card was previously leaving entirely unanswered. Mono
-          because both halves are quantities, the same voice as the toolbar caption. */}
-      {/* THE SPEC STRIP IS GONE, and the document count with it.
-          Measured in the served HTML on 2026-08-07: `8 documents` appeared 61 times on one page,
-          once per card plus the prose. `PACK_CONTENTS.length` is a constant, so that half of the
-          chip carried identical information on every card while occupying the first position the
-          eye reaches -- the definition of dead ink. The half that DID vary, `sourceCount`, was
-          printed second, in the same size and colour as the constant beside it, which is why the
-          shelf read as 57 copies of one label.
-
-          The argument the old chip made ("a £49 download with no spec is bought blind") is
-          sound and is preserved, in two better places: the fixed document count now appears
-          ONCE per page as prose, and `EvidenceBar` renders the varying number as a physical bar
-          you can compare across cards without reading a digit -- since 2026-08-14 on the cover
-          itself, at `size="lg"`, which is where the eye lands first. */}
-    </div>
-  );
-}
 
 /**
  * The sector chips, directly above the grid.
@@ -1052,7 +1122,7 @@ function CatalogBrowser({
    * branches, never an either/or that can both be true.
    */
   const shelfControls = (
-    <div ref={shelfControlsRef} className="mb-8 border-t border-border pt-6">
+    <div ref={shelfControlsRef} className="mb-8 pt-8">
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
@@ -1065,9 +1135,25 @@ function CatalogBrowser({
         </div>
         <div className="flex items-center gap-4">
           {/* Count and freshness in one mono caption -- both are quantities, and this is the only
-              place either is stated on the shelf now. */}
+              place either is stated on the shelf now.
+
+              THIS COUNT NAMES WHAT IT COUNTS (2026-08-14, founder review). It is `visible.length`,
+              i.e. the catalogue AFTER the current filters and search, across EVERY market -- and it
+              said only "45 packs", 800px under a hero saying "62 packs" and directly above a button
+              offering "Show the other 37". Three numbers that cannot all be the same number, none
+              of which said which population it was about, on a shop whose pitch is that it counts
+              carefully. Nothing about the filtering changed here; the numbers were already correct
+              and were already reconcilable. What was missing was the noun.
+
+              So: unfiltered it states the catalogue total, filtered it states the match AGAINST that
+              total, which makes the subtraction visible instead of leaving the reader to infer it.
+              `visible.length === packs.length` is a label branch and nothing else -- `visible` is
+              `filterPacks(packs, state)` re-sorted, so the two are equal exactly when no filter is
+              narrowing anything. */}
           <span className="whitespace-nowrap font-mono text-caption text-subtle">
-            {visible.length} {visible.length === 1 ? 'pack' : 'packs'}
+            {visible.length === packs.length
+              ? `${packs.length} packs in the catalogue`
+              : `${visible.length} of ${packs.length} packs match`}
             {lastVerified && ` · updated ${lastVerified.replace(/^Verified /, '')}`}
           </span>
           <div className="w-40">
@@ -1102,7 +1188,7 @@ function CatalogBrowser({
       {filtersOpen ? (
         stepFlowHeight != null && <div aria-hidden="true" style={{ height: stepFlowHeight }} />
       ) : (
-        <div ref={stepFlowWrapRef} className="mt-6 border-t border-border pt-6">
+        <div ref={stepFlowWrapRef} className="mt-12">
           <StepFlow packs={packs} state={state} onChange={apply} />
         </div>
       )}
@@ -1408,8 +1494,8 @@ function CatalogBrowser({
                          rows is structural; a box drawn around each row is not. */
                       <div
                         className={cx(
-                          'divide-y divide-border border-y border-border',
-                          (leadRow.length > 0 || mids.length > 0) && 'mt-8',
+                          'divide-y divide-border',
+                          (leadRow.length > 0 || mids.length > 0) && 'mt-12',
                         )}
                       >
                         {rows.map((pack) => (
@@ -1428,10 +1514,17 @@ function CatalogBrowser({
                   </>
                 );
               })()}
+              {/* THE BUTTON NAMES THE POPULATION IT WILL REVEAL (2026-08-14, founder review).
+                  `tailPacks.length - shown` is the remainder of the READER'S OWN MARKET group only
+                  -- `tailPacks` comes off `gridPacks`, which is `grouped.matching` -- so "Show the
+                  other 37 packs" on a page whose hero says 62 read as an arithmetic error rather
+                  than as two different populations. Naming the market makes it subtract correctly
+                  against the market line directly below it, which states this group's total. The
+                  cap, the ordering and what is hidden are all untouched: this is the label. */}
               {shown < tailPacks.length && (
                 <div className="mt-8 flex flex-col items-center gap-2">
                   <Button variant="secondary" size="lg" onClick={() => setShowAll(true)}>
-                    Show the other {tailPacks.length - shown} packs
+                    Show the other {tailPacks.length - shown} {marketLabel(market)} packs
                     <Icon name="arrowRight" size={15} />
                   </Button>
                 </div>
@@ -1452,11 +1545,29 @@ function CatalogBrowser({
                       total the page states elsewhere by construction. The earlier version could
                       not: the hero printed `packs.length` (63) while this line printed `gridPacks`
                       (52), two totals for one catalogue ~800px apart, with nothing saying the 11
-                      missing ones were further down rather than missing. */}
+                      missing ones were further down rather than missing.
+
+                      THE LINE NOW SHOWS ITS OWN SUM (2026-08-14, founder review). "Every figure is
+                      counted from the packs in this render, so the parts sum to the total the page
+                      states elsewhere by construction" was true and invisible: the parts were
+                      printed and the total they sum to was not, so a reader comparing this line
+                      against the hero's 62 or the button's 37 had to hold three unlabelled
+                      populations in their head. `gridPacks.length` is the reader's market after
+                      filtering; `group.packs.length` is each other market after the same filtering;
+                      together they ARE `visible.length`, which is the number the toolbar states. It
+                      is written as the sum of the parts, not as `visible.length`, so a partition
+                      that ever stopped summing would print the discrepancy rather than hide it.
+
+                      The per-market parts keep their exact template -- `${gridPacks.length}
+                      ${marketLabel(market)} packs` -- because `__tests__/shelfHasShape.test.ts`
+                      pins that string as the proof the breakdown is computed from live data rather
+                      than typed. The total is appended as a further part rather than wrapped around
+                      them, which satisfies both: the line still reads as one `·`-joined series. */}
                   <p className="text-caption text-subtle">
                     {[
                       `${gridPacks.length} ${marketLabel(market)} packs`,
                       ...grouped.others.map((group) => `${group.packs.length} ${group.label} packs`),
+                      `${gridPacks.length + grouped.others.reduce((n, g) => n + g.packs.length, 0)} in total`,
                     ].join(' · ')}
                   </p>
                 </div>
@@ -1473,7 +1584,7 @@ function CatalogBrowser({
                   actually means. Each card in the group also carries the "For US rules" chip that
                   the on-market cards no longer waste space on. */}
               {grouped.others.map((group) => (
-                <div key={group.market} className="mt-10 border-t border-border pt-8">
+                <div key={group.market} className="mt-16">
                   {/* US PACKS DIVIDER (email §1). The label is now "Built for US rules" -- the
                       divider is about what the buyer would be BUILDING, not what the page has
                       written, and the subtitle states the consequence plainly: the research is
@@ -1491,7 +1602,7 @@ function CatalogBrowser({
                       introducing it. Rows keep every pack fully present and linkable while
                       reading as an appendix, which is what it is. Each row still prints its
                       "<market> rules" flag, since `viewerMarket` is deliberately not passed. */}
-                  <div className="mt-4 divide-y divide-border border-y border-border">
+                  <div className="mt-6 divide-y divide-border">
                     {group.packs.map((pack) => (
                       <PackCard
                         key={pack.id}
@@ -1522,7 +1633,29 @@ function CatalogBrowser({
                  , one who scrolled the shelf and still wants more. It renders ONLY on this
                   branch: the near-miss and empty states carry their own ask (DiscoveryWaitlist),
                   and two email forms on one screen is a duplicate ask that also breaks selector
-                  uniqueness. Rationale in ShelfEndCapture.tsx. */}
+                  uniqueness. Rationale in ShelfEndCapture.tsx.
+
+                  ONE FORM IS ALREADY TRUE; ONE VERB IS NOT (audited 2026-08-14, founder review).
+                  The count is not in doubt -- this render and `DiscoveryWaitlist` two branches down
+                  are arms of the same ternary, so no state of this page can produce two email
+                  fields, and the only email field in the whole marketing tree is the one inside
+                  `WaitlistForm` (`MarketingLayout` has none). What IS wrong is the LABEL on the
+                  submit: this placement passes `submitLabel="Tell me when one survives"`
+                  (`ShelfEndCapture.tsx:61`) while the empty state takes the component default, "Put
+                  it in the queue" (`WaitlistForm.tsx:51`) -- two verbs for one action, on one page,
+                  differing only by which branch the reader landed on.
+
+                  THEY ARE NOT TWO LISTS AND MUST NOT BE KEPT APART FOR THAT REASON. Both mount the
+                  same `WaitlistForm`, which posts to one endpoint with one `WAITLIST_CONSENT_TEXT`
+                  hash; the ONLY thing that differs is the `source` tag, which is attribution in the
+                  ledger ("homepage-shelf-end" vs "catalogue-empty-state") and not a subscription.
+
+                  THE FIX IS ONE LINE AND IT IS NOT IN THIS FILE: drop the `submitLabel` override at
+                  `ShelfEndCapture.tsx:61` so every placement takes the default verb. The default is
+                  the one that must win rather than the override, because `WaitlistCallout` uses it
+                  too on /kill-log and /sample -- unifying on the override would leave three surfaces
+                  disagreeing instead of two. Left undone here only because this pass is scoped to
+                  `pages/index.tsx`. */}
               <ShelfEndCapture className="mt-10" />
             </>
           ) : candidates.length > 0 ? (
@@ -1692,9 +1825,18 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 signal the shelf could not afford.
                 "63 packs live" was insider jargon: `live` is a word about our deployment state,
                 not about the buyer's choice. A shop says how many things are on the shelf. */}
+            {/* "IN THE CATALOGUE", NOT "TO CHOOSE FROM" (2026-08-14, founder review). `packs.length`
+                is every listed pack in every market, before any filter -- the largest of the four
+                counts this page prints, and the one a reader meets first, so it is the one that
+                sets their expectation for the three below it. "62 packs to choose from" promises a
+                choice of 62 on the shelf they are about to scroll, and the shelf shows the reader's
+                own market first (~45 of them) with the rest under a divider further down. Naming
+                the population it counts is the whole fix: the toolbar states how many match, the
+                market line states how that splits, the show-more button states the remainder of one
+                market. Four numbers, four nouns, and the arithmetic between them now reads. */}
             <p className="mb-3 text-meta font-medium text-muted">
               {range ? (range.uniform ? `${range.label} each` : `From ${formatGbp(range.min)}`) : 'One payment'}
-              {` · ${packs.length} packs to choose from`}
+              {` · ${packs.length} packs in the catalogue`}
             </p>
             {/* The cap is in rem, NOT ch, and that is the whole point. `ch` is the advance width of
                 "0", so it means a different number of pixels in every font: the old max-w-[24ch]
@@ -1748,9 +1890,9 @@ export default function Home({ packs, stats, initialState, market, currency, per
             {/* The hierarchy INVERTS here. The shelf was previously the thing you had to scroll
                 past an orange "Read a free report" slab to reach: the primary action on a shop is
                 the shop. The sample is the risk-reducer, so it is the quiet link beside it. */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center md:mt-8">
-              <Link href="#catalog" className="w-full sm:w-auto">
-                <Button size="lg" fullWidth className="sm:w-auto">
+            <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center md:mt-8">
+              <Link href="#catalog">
+                <Button size="lg">
                   Browse the packs
                   <Icon name="arrowRight" size={16} />
                 </Button>
@@ -2001,10 +2143,20 @@ export default function Home({ packs, stats, initialState, market, currency, per
       </Section>
       </div>
 
-      {/* THE FILTER LOG, at every width now, and always AFTER the shelf.
-          It used to be `lg:hidden` here and the hero's right column on desktop. Both positions
-          were the same mistake at different breakpoints: the first thing a stranger met was an
-          argument, with nothing for sale in view. Measured on the built page before this change:
+      {/* THE FILTER LOG (`LiveKillCard`) IS REMOVED FROM THIS PAGE (founder, 2026-08-14). It is not
+          deleted from the codebase and this note is the record of what it was and why it earned a
+          place here for as long as it did.
+
+          WHAT IT WAS: a bordered panel below the shelf, headed by a mono chip reading
+          "<killed> killed" (`LiveKillCard.tsx:146`) over three real dead ideas with the check that
+          killed each, read from the same `kill-log.json` / `kill-log-totals.json` that /kill-log
+          renders, so the two could never disagree.
+
+          THE ARGUMENT THAT PUT IT HERE, and it was a good one: it is a claim a sceptic can check
+          without leaving the page. It also had a placement fight behind it -- it was `lg:hidden`
+          here and the hero's right column on desktop, and both were the same mistake at different
+          breakpoints, because the first thing a stranger met was an argument with nothing for sale
+          in view. Measured on the built page before that move:
 
             hero text   y=105  h=425   ends 530
             gap-10              40
@@ -2012,16 +2164,21 @@ export default function Home({ packs, stats, initialState, market, currency, per
             first card  y=1042                    -> 1.23 screens down (390x844)
                                                      1.37 (360x780), 1.08 (430x932)
 
-          The panel is NOT deleted, because the reason it earns its place is undamaged: it is the
-          only claim on the page a sceptic can check without leaving it. What changed is who meets
-          it. A reader who has scrolled past a screen of products is exactly the one with a
-          question; a reader who has seen nothing yet just wanted to know what you sell. */}
-      <Section bg="bg" width="7xl" className="!pt-0 !pb-10">
-        {/* This passed `listed` so the card could reconcile the survivor count against the shelf
-            count in prose. Cut on 2026-08-13: the card states the research total, the shelf states
-            its own count, and neither needs to explain the queue between them to a buyer. */}
-        <LiveKillCard className="w-full lg:mx-auto lg:max-w-2xl" />
-      </Section>
+          WHY IT GOES ANYWAY: the number of killed ideas was stated FOUR times on one scroll. This
+          panel's chip was one of them, and it is the copy with the least context around it -- a bare
+          count in a chip. The one that survives is the proof strip under the hero, which states the
+          research total and the kill total in one sentence, says in the line under it that the kills
+          are published with their reasons, and carries the only "Read the kill log" link on the
+          page. Everything this panel showed is on /kill-log, one click from that link, in full
+          rather than three at a time.
+
+          The two remaining statements are NOT in this file's gift and are flagged rather than
+          silently left: `TrustGuaranteesRow` hardcodes "<killed> ideas were killed to list these
+          <live>" at `TrustGuaranteesRow.tsx:117` with no prop to suppress it, and the row itself is
+          load-bearing for a different reason -- it is the page's single canonical statement of the
+          purchase terms. `PopulationField` states the kill total only in its `role="img"` label
+          (`PopulationField.tsx:132`), never in visible text, and its own docblock records that the
+          visible arithmetic was deliberately removed for exactly this reason. */}
 
       {/* 3. ONE REAL PACK, SHOWN. Format ambiguity is the biggest killer on a digital download
              page: the buyer's real fear is paying £49 for a two-page Google Doc. */}
@@ -2134,11 +2291,25 @@ export default function Home({ packs, stats, initialState, market, currency, per
               states it once, in a sentence that also says what the log actually contains. A link
               whose label is a number, 200px above a sentence containing the same number, was the
               near-duplicate that made the tail read as a page arguing with itself. */}
+          {/* THE SECOND "BROWSE THE PACKS" IS GONE (founder, 2026-08-14). It was an
+              `href="#catalog"` primary button, word for word the hero's primary button ~7,000px
+              above it, and the note directly above records this band already absorbing one round of
+              exactly this defect -- the closing `CtaBand` was removed for restating the offer the
+              band beside it was already making. Removing a duplicate and then rebuilding it out of
+              the survivor's own parts is the same page arguing with itself, one layer down.
+
+              THE HERO'S COPY IS THE ONE THAT STAYS, and it is not a coin toss: it is above the fold,
+              it is the first door a stranger meets, and it is the only one a reader who never
+              scrolls will ever see. This band's job is to give a REASON, which is what its heading
+              and paragraph do; "See how the filter works" is the action that reason earns, so it
+              becomes this band's single link rather than a secondary to a duplicate.
+
+              The one thing lost is the return path from the foot of a ~16,000px page back up to the
+              shelf. That is a real cost and it is not unmitigated: `#catalog` is still the target of
+              the hero button and of the header's own navigation, which is present at every scroll
+              position. If it needs a dedicated control at the page foot, that is a "back to the
+              shelf" affordance, which is a different object from a third copy of the primary CTA. */}
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
-            <Link href="#catalog" className={buttonClasses({ size: 'lg' })}>
-              Browse the packs
-              <Icon name="arrowRight" size={14} />
-            </Link>
             <Link
               href="/how-it-works"
               className="inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
@@ -2174,9 +2345,14 @@ export default function Home({ packs, stats, initialState, market, currency, per
           ledger. One ask per state, enforced by `oneEmailAskPerScreen` in e2e/discovery.spec.ts. */}
       {/* THE TRUST ROW AND THE CLOSING `CtaBand` STOOD HERE and are both accounted for above:
           the row moved into the closing band as its right column (`layout="stack"`, same live
-          `listed` prop), and the band was removed from this page. Its two links now exist there --
-          "Browse the packs" as the primary, "See how the filter works" as the secondary -- so
-          nothing a reader could reach from here became unreachable; what went is the second copy.
+          `listed` prop), and the band was removed from this page.
+          THIS NOTE USED TO CLAIM `CtaBand`'S TWO LINKS BOTH SURVIVED IN THE BAND ABOVE -- "Browse
+          the packs" as the primary, "See how the filter works" as the secondary. Half of that is
+          now stale and is corrected rather than deleted: the "Browse the packs" copy went on
+          2026-08-14 because it was the hero's primary button restated at the foot of the page (see
+          the record at that link). Nothing became UNREACHABLE, which was this note's actual claim:
+          `#catalog` is still the hero button's target and the header navigation reaches it from
+          every scroll position.
           `price` is still computed from the packs this render already has, never a constant, since
           the shelf stopped being one price when the segment ladder shipped (lib/priceRange.ts). */}
     </MarketingLayout>

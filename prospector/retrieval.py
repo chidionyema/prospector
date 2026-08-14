@@ -376,6 +376,57 @@ def _resolve_urls(urls: list[str], timeout: Optional[float] = None) -> list[Opti
         return list(ex.map(lambda pr: pr[0].run(_resolve, pr[1], timeout), pairs))
 
 
+class ProviderStamped(SearchProvider):
+    """Records which search provider supplied each passage (`Source.retrieved_by`).
+
+    THE DEFECT THIS CLOSES. Until 2026-08-14 a stored source was
+    `{source_id, url, text, published_at, query, fetched_at}` — nothing said which engine
+    returned it. So "is DuckDuckGo the reason 8.9% of our 13,479 citations are primary
+    sources, and 970 of them Wikipedia?" was not answerable from our own dossiers; it had
+    to be re-derived by replaying queries live. A grounding engine that cannot attribute
+    its own evidence cannot improve it. `docs/RETRIEVAL_PROGRAM.md` §D8.
+
+    WHY HERE AND NOT AT `Source.make`. There are ~11 construction sites across the provider
+    classes, and the next provider added would silently miss one — reintroducing exactly
+    this blind spot, in the one field whose job is to eliminate it. Wrapping each provider
+    as the chain is built (`make_provider`) is structural: a provider is stamped because of
+    how it is COMPOSED, not because its author remembered to.
+
+    Correct under every wrapper above it. `RelevanceRankedProvider` filters and reorders the
+    same objects and `PageTextEnricher` mutates `s.text` in place, so neither rebuilds a
+    Source and neither can drop the stamp. `DiskCache` round-trips through
+    `to_dict()`/`Source(**d)`, which carries the field.
+
+    NEVER OVERWRITES an existing stamp. A cached passage really was retrieved by whichever
+    provider first returned it; re-stamping it with today's chain head would manufacture a
+    provider attribution that never happened — the precise class of invention this field
+    exists to stop.
+    """
+
+    def __init__(self, name: str, inner: SearchProvider):
+        self.name = str(name)
+        self._inner = inner
+
+    def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        results = self._inner.search(query, k=k, max_chars=max_chars)
+        for s in results:
+            if getattr(s, "retrieved_by", None) is None:
+                try:
+                    s.retrieved_by = self.name
+                except AttributeError:
+                    # A frozen/slotted stand-in in a test double must not break grounding.
+                    # Attribution is an audit field; losing it costs a measurement, while
+                    # raising here would cost a verdict.
+                    logger.debug("could not stamp retrieved_by on %r", type(s).__name__)
+        return results
+
+    def __getattr__(self, item):
+        # Transparent to anything that reaches past `.search` (breaker bookkeeping, probes,
+        # `close()`). A wrapper that hides the wrapped provider's surface would fail far from
+        # here and read as a provider outage.
+        return getattr(self._inner, item)
+
+
 class RelevanceRankedProvider(SearchProvider):
     """Over-fetch, then hand the verdict the k passages that actually answer the query.
 
@@ -1968,7 +2019,10 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
     # the brain, not search variance.
     if fixtures:
         names = ["fixture", *names]
-    built = [(n, _build_search(n, cfg, fixtures)) for n in names]
+    # Every provider is stamped AS THE CHAIN IS BUILT, so attribution is a property of the
+    # composition rather than of each provider class remembering to set it. This also covers
+    # the single-provider config below, where `FallbackSearchProvider` is skipped entirely.
+    built = [(n, ProviderStamped(n, _build_search(n, cfg, fixtures))) for n in names]
     r = cfg.retrieval
     base: SearchProvider = (
         built[0][1] if len(built) == 1

@@ -29,6 +29,7 @@
  * carry 51 of them.
  */
 import { Icon } from './Icon';
+import { textLinkClass } from './TextLink';
 
 /**
  * The hostname a reader uses to judge provenance -- `assets.publishing.service.gov.uk` vs
@@ -89,7 +90,7 @@ export function SourceChip({
     return (
       <a
         {...common}
-        className={`font-mono text-caption text-muted underline decoration-border underline-offset-2 transition-colors duration-[120ms] hover:text-text hover:decoration-text ${className}`}
+        className={textLinkClass(`font-mono text-caption duration-[120ms] ${className}`)}
       >
         {text}
       </a>

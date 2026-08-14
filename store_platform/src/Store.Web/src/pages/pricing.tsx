@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Button, Icon } from '@/components/ui';
+import { Button, Icon, textLinkClass } from '@/components/ui';
 import { PACK_CONTENTS } from '@/components/marketing/PackContents';
 import { BRAND, LEGAL } from '@/lib/config';
 import { GetServerSideProps } from 'next';
@@ -63,7 +63,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           {range ? priceSentence(range) : 'One payment, yours forever. The price is on each pack\'s own page.'}{' '}
           If a pack survives the checks
           it is listed. If it does not, it is in the{' '}
-          <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">
+          <Link href="/kill-log" className={textLinkClass()}>
             kill log
           </Link>
           .
@@ -171,12 +171,12 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             </div>
             <p className="mt-2 text-meta leading-relaxed text-muted">
               If the pack is not what the description said, email{' '}
-              <a href={`mailto:${LEGAL.supportEmail}`} className="text-accent underline underline-offset-2 hover:text-accent-hover">
+              <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
                 {LEGAL.supportEmail}
               </a>
               {' '}within 14 days and we refund in full. No forms, no friction.
               The full policy is on the{' '}
-              <Link href="/refund" className="text-accent underline underline-offset-2 hover:text-accent-hover">
+              <Link href="/refund" className={textLinkClass()}>
                 refund page
               </Link>
               .
@@ -200,7 +200,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
                   `kill-log-totals.json`, so this one number drifted the moment the engine ran
                   again -- on the page whose whole subject is what the price buys. */}
               origin. The {killTotals.killed.toLocaleString('en-GB')} ideas we killed are in the{' '}
-              <Link href="/kill-log" className="text-accent underline underline-offset-2 hover:text-accent-hover">
+              <Link href="/kill-log" className={textLinkClass()}>
                 kill log
               </Link>
               .

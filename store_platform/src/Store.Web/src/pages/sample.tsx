@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, Glyph, Icon, SourceChipRow } from '@/components/ui';
+import { buttonClasses, Glyph, Icon, SourceChipRow, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
@@ -207,9 +207,9 @@ export default function SamplePage() {
           {PUSHED_BACK > 0 && (
             <a
               href="#pushback"
-              className="inline-flex items-center gap-2 text-warning underline-offset-2 hover:underline"
+              className={textLinkClass('inline-flex items-center gap-2')}
             >
-              <Glyph name="pushed-back" />
+              <Glyph name="pushed-back" className="text-warning" />
               {PUSHED_BACK === 1 ? '1 objection we could not dismiss' : `${PUSHED_BACK} objections we could not dismiss`}
             </a>
           )}
