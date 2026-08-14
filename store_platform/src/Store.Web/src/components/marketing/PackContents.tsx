@@ -94,6 +94,57 @@ export const PACK_CONTENTS: {
 ];
 
 /**
+ * The rest of the archive: real entries, deliberately NOT promises.
+ *
+ * These are `bridge.py::BUNDLE_BONUS_FILES`. The distinction is load-bearing and it is the reason
+ * they get their own constant instead of being appended to the list above: `audit_bundle` iterates
+ * BUNDLE_FILES only, and `is_listed` is ANDed with its result, so anything in PACK_CONTENTS is a
+ * sellability CONTRACT -- a pack missing one cannot go on the shelf. A bonus file missing must
+ * never delist a pack, so it must never enter that tuple.
+ *
+ * They were invisible here until 2026-08-14, and that was the actual complaint. The bundle grew a
+ * typeset PDF, a printable first-fortnight sheet, a machine-readable assumptions table, the
+ * evidence stated once, and a rendered reader (commit 40212a3); the shelf went on describing eight
+ * Markdown files, so the one answer to "markdown files is not the one" was shipped to buyers and
+ * advertised to nobody. A feature the shelf does not mention is a feature nobody buys.
+ *
+ * `__tests__/packContents.test.ts` pins this list to BUNDLE_BONUS_FILES the same way it pins the
+ * one above to BUNDLE_FILES, so the next file added to the zip cannot go unmentioned either.
+ */
+export const PACK_EXTRAS: { title: string; filename: string; desc: string }[] = [
+  {
+    title: 'The whole pack, typeset',
+    filename: 'Complete_Pack.pdf',
+    desc: 'Every document above in one printable PDF. Open it on a phone, or put it in front of someone.',
+  },
+  {
+    title: 'The evidence, in one place',
+    filename: 'Evidence_and_Constraints.md',
+    desc: 'Each check, what it found, and the source behind it, without hunting through the plans.',
+  },
+  {
+    title: 'The first fortnight, on one page',
+    filename: 'First_Fortnight.html',
+    desc: 'A single sheet to print and work from. Days one to fourteen, nothing else on it.',
+  },
+  {
+    title: 'The assumptions, as a table',
+    filename: 'Assumptions.csv',
+    desc: 'Every number the financial model rests on, in a file your spreadsheet opens directly.',
+  },
+  {
+    title: 'A reader for the whole pack',
+    filename: 'index.html',
+    desc: 'Open this first and read the pack in order in your browser. No install, no account.',
+  },
+  {
+    title: 'The machine-readable record',
+    filename: 'manifest.jsonld',
+    desc: 'What this pack is, in structured data, so a tool can read it as easily as you can.',
+  },
+];
+
+/**
  * "What's inside your download", the deliverable breakdown.
  *
  * `sourceCount` is the pack's real cited-source count from the API; pass it on a pack page so the
@@ -147,51 +198,90 @@ export function PackContentsSection({
           <span className="font-mono text-caption text-text">your pack/</span>
           {/* "documents", not "files". `PACK_CONTENTS` is the eight advertised DELIVERABLES, and
               the drift test pins it to `BUNDLE_FILES`. But the zip is not eight entries: bridge.py
-              also writes `index.html` (a rendered reader, pack_html.py) and `manifest.jsonld`,
-              deliberately outside BUNDLE_FILES so they do not trip that test -- measured 2026-08-08
-              across the 45 packs then live, 33 carry the reader and 19 the manifest, and entry
-              counts run 8 (12 packs), 9 (14), 10 (19), so most buyers count nine or ten entries
-              after being told eight. "Files" is a claim about the archive and it is false;
-              "documents" is a claim about the deliverables and it is exactly what this list is. */}
+              also writes everything in `PACK_EXTRAS` -- deliberately outside BUNDLE_FILES so a
+              missing one cannot delist a pack, and so they do not trip that test. Measured
+              2026-08-08 across the 45 packs then live, entry counts ran 8 (12 packs), 9 (14), 10
+              (19), so most buyers counted nine or ten entries after being told eight. "Files" is a
+              claim about the archive and it was false; "documents" is a claim about the
+              deliverables and it is exactly what the first list is. The extras are now shown in
+              their own group below rather than left as a surprise in the download. */}
           <span className="ml-auto font-mono text-caption text-subtle">
             {PACK_CONTENTS.length} documents
           </span>
         </div>
         <ul className="list-none p-0">
-          {PACK_CONTENTS.map((item, i) => {
-            const last = i === PACK_CONTENTS.length - 1;
-            return (
-              <li
-                key={item.title}
-                className="border-b border-border/60 px-5 py-4 last:border-b-0"
-              >
-                <div className="flex min-w-0 items-baseline gap-2">
-                  <span aria-hidden className="flex-none font-mono text-caption text-faint">
-                    {last ? '└──' : '├──'}
+          {PACK_CONTENTS.map((item) => (
+            <li key={item.title} className="border-b border-border/60 px-5 py-4">
+              {/* THE DOCUMENT NAME LEADS, the filename trails it in faint mono.
+                  Until 2026-08-14 this was the other way round: `00_Executive_Summary.md` was the
+                  primary column at full text colour and "Executive Summary" was a caption under
+                  it. The argument for that is written above and it was not a bad one -- a real
+                  entry a buyer can check against their download is falsifiable in a way another
+                  adjective is not. But the founder read the rendered page and the verdict was that
+                  the shelf still reads as a directory listing of Markdown, which is the exact
+                  impression "markdown files is not the one" was about. Eight snake_case filenames
+                  stacked down the primary column say "you are buying some text files" before a
+                  single title is read.
+                  The filename is KEPT, not removed: deleting it would trade a real objection for a
+                  vaguer product. Demoted to `text-faint` at the end of the line, it still answers
+                  "what will I actually find in the zip?" without being the headline. */}
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span aria-hidden className="flex-none font-mono text-caption text-faint">
+                  ├──
+                </span>
+                <span className="min-w-0 text-meta font-semibold leading-snug text-text">
+                  {item.title}
+                </span>
+                <span className="min-w-0 break-all font-mono text-caption text-faint">
+                  {item.filename}
+                </span>
+                {hasCount && item.showSourceCount && (
+                  <span className="flex-none font-mono text-caption text-success">
+                    {sourceCount} sources
                   </span>
-                  <span className="min-w-0 break-all font-mono text-caption text-text">
-                    {item.filename}
-                  </span>
-                  {hasCount && item.showSourceCount && (
-                    <span className="flex-none font-mono text-caption text-success">
-                      {sourceCount} sources
-                    </span>
-                  )}
-                </div>
-                {/* Indented to the width of the glyph plus its gap, so the prose hangs off the
-                    branch rather than restarting the line. `pl-[3.25rem]` is that measurement at
-                    the caption size, not a round number chosen by eye. */}
-                <div className="pl-[3.25rem]">
-                  <span className="block text-meta font-semibold leading-snug text-text">
-                    {item.title}
-                  </span>
-                  <span className="mt-1 block max-w-[70ch] text-meta leading-relaxed text-muted">
-                    {item.desc}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
+                )}
+              </div>
+              {/* Indented to the width of the glyph plus its gap, so the prose hangs off the
+                  branch rather than restarting the line. `pl-[3.25rem]` is that measurement at
+                  the caption size, not a round number chosen by eye. */}
+              <div className="pl-[3.25rem]">
+                <span className="block max-w-[70ch] text-meta leading-relaxed text-muted">
+                  {item.desc}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {/* The extras, in the same tree rather than a second box: they are entries in the one
+            archive, and giving them their own bordered card would say "a separate thing you may
+            also get". The label is what separates them, because the difference is real and a buyer
+            is entitled to it -- the eight above are audited on every pack before it may be listed,
+            these ride along. */}
+        <div className="border-t border-border bg-surface2 px-5 py-2">
+          <span className="font-mono text-caption text-subtle">also in the download</span>
+        </div>
+        <ul className="list-none p-0">
+          {PACK_EXTRAS.map((item, i) => (
+            <li key={item.filename} className="border-b border-border/60 px-5 py-4 last:border-b-0">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span aria-hidden className="flex-none font-mono text-caption text-faint">
+                  {i === PACK_EXTRAS.length - 1 ? '└──' : '├──'}
+                </span>
+                <span className="min-w-0 text-meta font-semibold leading-snug text-text">
+                  {item.title}
+                </span>
+                <span className="min-w-0 break-all font-mono text-caption text-faint">
+                  {item.filename}
+                </span>
+              </div>
+              <div className="pl-[3.25rem]">
+                <span className="block max-w-[70ch] text-meta leading-relaxed text-muted">
+                  {item.desc}
+                </span>
+              </div>
+            </li>
+          ))}
         </ul>
       </div>
 

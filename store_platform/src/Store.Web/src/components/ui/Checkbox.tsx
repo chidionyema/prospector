@@ -47,7 +47,7 @@ export function Checkbox({ label, hint, error, id, className, disabled, ...rest 
               'group-hover:border-text',
               'peer-checked:border-primary peer-checked:bg-primary',
               'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus',
-              error ? 'border-danger' : 'border-border-strong',
+              error ? 'border-danger' : 'border-border-control',
             )}
           >
             {/* The check inherits the box's on-primary (white): invisible on the white unchecked box,

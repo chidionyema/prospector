@@ -47,7 +47,7 @@ const controlClass = (invalid: boolean, padding = 'px-3') =>
     'disabled:cursor-not-allowed disabled:bg-surface2 disabled:opacity-40',
     invalid
       ? 'border-danger focus-visible:border-danger focus-visible:outline-danger/25'
-      : 'border-border-strong',
+      : 'border-border-control',
   );
 
 /** Labelled text input, label always present, error/hint slots, aria wired (UI-STANDARDS §2). */

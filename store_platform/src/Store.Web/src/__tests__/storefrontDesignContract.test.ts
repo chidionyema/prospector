@@ -564,15 +564,35 @@ describe('Design contract — primary CTAs', () => {
      * anchors on the bare `border ` shorthand rather than on any border utility.
      */
     const FOUR_SIDED = /\bborder border-(border|text|warning|primary|accent)(\/\d+)?\b/;
+
+    /**
+     * The radius and the border do not have to share a LINE, only a class string.
+     *
+     * `cx('block w-2 rounded-sm', supported ? 'h-5 bg-survive' : 'h-5 border border-warning-strong
+     * …')` is one element with both, written across several lines because a ternary and a comment
+     * sit between them. A strictly line-scoped test called that an offender
+     * (HeroEvidenceStrip.tsx:86, 2026-08-14) and was simply wrong: the tick renders rounded.
+     *
+     * `Button.tsx` was already exempted by path for the same underlying reason, which is the tell
+     * that the rule needed widening rather than a second exemption -- an exemption list grows one
+     * file at a time until the guard covers nothing. It keeps its exemption because the distance
+     * there is real and not a window away: `VARIANTS.secondary` (:17) and the shared BASE radius
+     * are separate string constants, and every button's radius is already asserted against the
+     * COMPOSED output by 'one radius on every button' above, which is the stronger check.
+     *
+     * Block comments are stripped FIRST, and that is what makes a small window safe: the comment
+     * above the offending line was ten lines long, so any window big enough to jump it in raw
+     * source would be big enough to pick up an unrelated neighbouring element's radius.
+     */
+    const WINDOW = 3;
     const offenders: string[] = [];
     for (const file of walkTsx()) {
-      // `Button.tsx` composes the border in `VARIANTS.secondary` and the radius in the shared BASE
-      // string, so a line-scoped check cannot see them together. Every button's radius is already
-      // asserted directly, against the composed output, by 'one radius on every button' above.
       if (/components\/ui\/Button\.tsx$/.test(file.path)) continue;
-      file.src.split('\n').forEach((line, i) => {
+      const lines = file.src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n');
+      lines.forEach((line, i) => {
         if (!FOUR_SIDED.test(line)) return;
-        if (/rounded/.test(line)) return;
+        const near = lines.slice(Math.max(0, i - WINDOW), i + WINDOW + 1).join('\n');
+        if (/rounded/.test(near)) return;
         offenders.push(`${file.path}:${i + 1}  ${line.trim().slice(0, 110)}`);
       });
     }

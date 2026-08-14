@@ -72,7 +72,13 @@ export function EvidenceBar({
 
   return (
     <span
-      className={cx('inline-flex items-center gap-2', className)}
+      /* `min-w-0 max-w-full shrink overflow-hidden` is a HARD promise to whatever contains
+         this: the tick run is a fixed intrinsic width (one `w-px` span per source plus a gap,
+         so ~79px at the default cap) and until 2026-08-14 nothing stopped it pushing past its
+         container. On a 390px phone the row card's bar ran past the card's right padding to
+         the viewport edge and was clipped there. A component that can overflow its parent has
+         to be caught at every call site or at none, so it is caught here. */
+      className={cx('inline-flex min-w-0 max-w-full shrink items-center gap-2 overflow-hidden', className)}
       /* One accessible name for the whole widget. Without this a screen reader announces forty
          empty <span>s and then a number. `aria-hidden` on the track is the other half. */
       role="img"

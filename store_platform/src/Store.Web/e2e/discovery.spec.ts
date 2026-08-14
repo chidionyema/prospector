@@ -80,25 +80,30 @@ for (const [w, h, device] of [
 }
 
 /**
- * The filter-log panel: ONE copy, and it comes after the product.
+ * The checks-log panel is OFF the home page, and this asserts the absence.
  *
- * It used to render twice -- `hidden lg:block` in the hero, `lg:hidden` below the shelf -- because
- * a single instance cannot be in two flow positions, and this asserted the property that mattered
- * about the pair: a reader sees it once. Both positions turned out to be the same mistake at two
- * widths. On desktop the panel WAS the hero's right column, so the largest and only coloured
- * object on the first screen of a shop was a ledger of ideas we had thrown away; on a phone it
- * pushed the first card 1.23 screens down, which is what the fold tests above were written for.
+ * History, because the inversion matters. The panel used to render twice -- `hidden lg:block` in
+ * the hero, `lg:hidden` below the shelf -- and this block asserted "exactly one, after the first
+ * card": a reader meets a product before they meet the argument. Both positions were the same
+ * mistake at two widths (on desktop a ledger of discarded ideas was the largest object on the
+ * first screen of a shop; on a phone it pushed the first card 1.23 screens down), so it was cut
+ * to one copy below the shelf, and then removed from the page entirely by the founder on
+ * 2026-08-14. `pages/index.tsx:2197` is the record of what it was and why it earned its place.
  *
- * With one copy below the shelf at every width, the assertion becomes the thing the pair was only
- * ever a means to: the buyer meets a product before they meet the argument. Measured in the
- * rendered DOM rather than in the source, because the source can only prove the order of two JSX
- * blocks, and `order-`/`flex-col-reverse`/`absolute` all defeat that.
+ * The removal took this test red on main for two runs (31835917831 and the one before it) with
+ * `Received: 0` -- a red that described a decision, not a defect. Rather than delete the test, it
+ * is inverted: a panel deliberately taken off a page is exactly the kind of thing that comes back
+ * by accident when a component is re-imported, and `count() === 0` is the cheapest guard against
+ * that. `LiveKillCard` itself is NOT deleted from the codebase, so the import is one line away.
+ *
+ * Still measured in the rendered DOM, not in the source: `order-`/`flex-col-reverse`/`absolute`
+ * all defeat a source-order assertion, and a component can be rendered from a place grep misses.
  */
 for (const [w, h, label] of [
   [1280, 720, 'desktop'],
   [390, 844, 'mobile'],
 ] as const) {
-  test(`the checks-log panel is visible exactly once, below the shelf, on ${label}`, async ({ page }) => {
+  test(`the checks-log panel stays off the home page on ${label}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/');
     // Anchored on `data-testid`, not on the header copy. This asserted `getByText('The filter
@@ -108,17 +113,13 @@ for (const [w, h, label] of [
     // also measuring the wrong noun: it counted TEXT NODES, so a nav link repeating the words
     // would have failed a test about this card. The testid counts panels.
     const panels = page.locator('[data-testid="checks-log"]');
-    expect(await panels.count(), 'exactly one checks-log panel may be in the HTML').toBe(1);
-    await expect(panels.first()).toBeVisible();
+    expect(await panels.count(), 'the checks log was removed from the home page, see index.tsx').toBe(0);
 
-    const panelBox = await panels.first().boundingBox();
-    const cardBox = await page.locator(visibleCards).first().boundingBox();
-    expect(panelBox).not.toBeNull();
-    expect(cardBox).not.toBeNull();
-    expect(
-      panelBox!.y,
-      `${label}: the filter log starts at y=${Math.round(panelBox!.y)}, the first card at y=${Math.round(cardBox!.y)}`,
-    ).toBeGreaterThan(cardBox!.y);
+    // The property the old assertion was really protecting -- product before argument -- is still
+    // worth pinning, and with the panel gone the first card carries it alone. The fold tests above
+    // measure its position; this one only needs it to exist, so a home page that renders no shelf
+    // at all cannot pass by virtue of having nothing to be above.
+    await expect(page.locator(visibleCards).first()).toBeVisible();
   });
 }
 

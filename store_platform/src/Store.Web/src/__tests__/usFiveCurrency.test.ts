@@ -38,7 +38,7 @@ describe('US-5 — Currency converter unit tests', () => {
   });
 
   it('formatPriceForMarket returns the GBP price for GBP', () => {
-    expect(formatPriceForMarket('49.00', 'GBP')).toBe('£49');
+    expect(formatPriceForMarket('49.00', 'GBP')).toBe('£49.00');
   });
 
   /*
@@ -68,16 +68,16 @@ describe('US-5 — Currency converter unit tests', () => {
     });
 
     it('renders a symbol-prefixed price once, not twice, for GBP', () => {
-      expect(formatPriceForMarket('£49.00', 'GBP')).toBe('£49');
+      expect(formatPriceForMarket('£49.00', 'GBP')).toBe('£49.00');
     });
 
     it('parses a four-figure price with a thousands separator', () => {
-      expect(formatPriceForMarket('£1,049.00', 'GBP')).toBe('£1049');
+      expect(formatPriceForMarket('£1,049.00', 'GBP')).toBe('£1049.00');
     });
 
     it('formatChargeNote never doubles the currency symbol', () => {
       expect(formatChargeNote('£49.00', 'USD')).toBe(
-        'Charged £49 GBP. Your card issuer sets the final rate.',
+        'Charged £49.00 GBP. Your card issuer sets the final rate.',
       );
       expect(formatChargeNote('£49.00', 'USD')).not.toMatch(/££/);
     });
@@ -120,9 +120,9 @@ describe('US-5 — Currency converter unit tests', () => {
     expect(numeric).toBeLessThanOrEqual(60);
   });
 
-  it('formatPriceForMarket strips trailing .00 like formatPrice', () => {
-    expect(formatPriceForMarket('49.00', 'GBP')).toBe('£49');
-    expect(formatPriceForMarket('49', 'GBP')).toBe('£49');
+  it('formatPriceForMarket prints two decimals, like every other price', () => {
+    expect(formatPriceForMarket('49.00', 'GBP')).toBe('£49.00');
+    expect(formatPriceForMarket('49', 'GBP')).toBe('£49.00');
   });
 
   it('formatPriceForMarket keeps the cents when non-zero', () => {
@@ -257,7 +257,7 @@ describe('the CTA quotes the same currency as the price above it', () => {
  * on the served production build, 2026-08-05, `GET /pack/8d5e24fbe6c1f5d3` with
  * `Fly-Client-Country: US`, AFTER the fold fix above was in place:
  *
- *   Unlock this pack · $62.23   Charged £49 GBP...     <- fold, threaded, correct
+ *   Unlock this pack · $62.23   Charged £49.00 GBP...     <- fold, threaded, correct
  *   6 / 6 · 33 sources · Verified 3 days ago    £49    <- related rail, three cards, not threaded
  *
  * The cards render through `SimilarPacks` / `PackGrid`, which have no reason to know about money,

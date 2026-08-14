@@ -59,7 +59,7 @@ import {
   type DiscoveryState,
 
 } from '@/lib/discovery';
-import { DEFAULT_MARKET, groupByMarket, resolveMarket } from '@/lib/market';
+import { DEFAULT_MARKET, groupByMarket, packMarket, resolveMarket } from '@/lib/market';
 import { KIND_NOUN } from '@/lib/facets';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
@@ -266,11 +266,36 @@ function cardLine(text: string | null | undefined, maxWords = 20): string {
 function PackFigure({ stat, weight }: { stat: PackLeadStat; weight: PackWeight }) {
   if (weight === 'row') {
     return (
-      <span className="flex min-w-0 items-baseline gap-1.5">
+      /* `min-w-0` HERE AND ON THE LABEL, and the parent must be able to wrap. All three, or the
+         row breaks in one of two opposite ways -- which is why the first attempt at this fix
+         traded one for the other instead of ending it.
+
+         The reported defect was collision: at 390px "48" printed over "US rules" as "48S rules",
+         and "9" over the evidence bar. The cause was NOT `min-w-0` on this box. It was `min-w-0`
+         on a box whose PARENT could not wrap and had no `min-w-0` of its own, so the meta line
+         overflowed, this box was squeezed toward zero, and the `flex-none` digits kept their
+         natural size and painted outside their own box onto the next item. Removing `min-w-0`
+         here stopped the collision by refusing to shrink at all -- measured at 390px, this box
+         then sat at W=229 inside a W=179 column, hanging 50px into the price's lane.
+
+         229 is not a mystery, it is the automatic minimum size: with no `min-w-0`, `min-width`
+         resolves to this box's MIN-CONTENT, and `truncate` on the label carries
+         `white-space: nowrap`, so the label's min-content contribution is the whole 199px text
+         run -- 24 (figure) + 6 (gap) + 199 = 229 exactly. `min-w-0` on the label sets the
+         LABEL's own used minimum; it does not lower its parent's min-content. So the parent
+         needs its own `min-w-0` to stop being floored by a run of text that was never going to
+         be drawn at full length anyway.
+
+         Collapse-to-zero cannot come back, because the parent now wraps (`:421`): this box gets
+         a line to itself with the column's full width to shrink INTO, the `flex-none` figure
+         keeps the number at natural size, and the label absorbs the squeeze through `truncate`.
+         That is the shrink order the row wants -- the number is the fact, the word beside it is
+         the gloss. `max-w-full` is the belt: whatever the line width, this box cannot exceed it. */
+      <span className="flex min-w-0 max-w-full shrink items-baseline gap-1.5">
         <span className="flex-none font-mono text-body font-semibold tabular-nums text-text">
           {stat.figure}
         </span>
-        <span className="truncate text-caption text-muted">{stat.label}</span>
+        <span className="min-w-0 truncate text-caption text-muted">{stat.label}</span>
       </span>
     );
   }
@@ -370,24 +395,64 @@ function PackCard({
             of them down a column under two near-black plates, reads as forty rows that have not
             finished loading. A shelf whose small element looks like a skeleton of its large one is
             not two treatments, it is one treatment plus a bug. */}
+        {/* THE INK, NOT THE GROUND, WAS THE BUG (2026-08-14, founder review at 390px).
+            The note above is still right that the mark belongs on the instrument ground; what
+            it got wrong was what to draw on it. `--ins-dim2` is #3C4149 and `PackMark` caps
+            unemphasised band opacity at 0.34, so the strata composited to roughly #14171B..
+            #1A1D22 over a #0B0D0F plate -- a near-black mark on a near-black ground. Forty of
+            them down a phone column read as forty solid black blocks, i.e. as images that
+            failed to load, which is a worse misread than the skeleton one this ground was
+            chosen to fix.
+            `--ins-muted` (#8A9099, 6.14:1 on the plate) with `emphasis` lifts the bands to
+            0.26-0.88 of it, so the faintest still reads as drawn. Same seed, same geometry,
+            same `across` axis: the core-sample form and the shelf-to-detail morph are
+            untouched, it is only now visible. */}
         <span
           className={cx(
             'relative h-12 w-7 flex-none overflow-hidden rounded-sm sm:w-8',
-            'bg-ins-bg text-ins-dim2',
+            'bg-ins-bg text-ins-muted',
           )}
         >
-          <PackMark id={pack.id} />
+          <PackMark id={pack.id} emphasis />
         </span>
 
         <span className="min-w-0 flex-1">
+          {/* TWO LINES ON A PHONE, ONE FROM `sm` UP. The reported defect was "cuts at ~50% of
+              available width while empty space remains", and the space is real but it is not the
+              title's to take: measured at 390px the text column runs L=80..R=259 and the price
+              group starts at L=275, so the column ALREADY fills everything up to the 16px gap.
+              There is no missing `min-width: 0` here. The gap the eye sees is the price's own
+              lane, which is blank at the title's y-band only because the price is centred
+              vertically against a three-line row.
+
+              So the column cannot be widened much, and the title needs 439px against 179px
+              available -- 41%, which is where "Freelance pay bench..." comes from. A second line
+              is the only thing that actually buys the words back. Measured after the arrow note
+              below frees its 32px, the column runs L=80..R=286: 2 x 206px is 412px, so nearly
+              the whole title survives instead of two fifths of it.
+              `line-clamp-2` still ellipses, so a pathological title cannot push the row open.
+              From `sm` the single line has the room to be honest, and the shelf keeps the flat
+              scan-down-a-column rhythm the row variant exists for. */}
           <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-body font-semibold text-text">{heading}</span>
+            <span className="line-clamp-2 text-body font-semibold text-text sm:line-clamp-none sm:truncate">
+              {heading}
+            </span>
             {viewed && (
               <span className="flex-none font-mono text-caption text-subtle">seen</span>
             )}
           </span>
           {line && <span className="mt-0.5 block truncate text-meta text-muted">{line}</span>}
-          <span className="mt-1.5 flex items-center gap-3">
+          {/* THE CONTAINER, NOT THE ROWS. This was `flex items-center gap-3` with two
+              `flex-none` children and an evidence bar that cannot shrink below its own tick
+              run, on a line that gets ~246px at 390px. Nothing in it could yield, so the row
+              overflowed and its items collided -- the single cause of three separate reported
+              defects (overlapping meta items, the bar running past the card's padding, and the
+              title truncating early because the overflow stole its space).
+              `flex-wrap` + `gap-y` is the same schema the mid card has always used
+              (`:653`), which is also the answer to the fourth: the two variants stop
+              disagreeing about how this row lays out. A wrapped row is taller; a row whose
+              contents print on top of each other is broken. */}
+          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             {cat.tagged && (
               <span className={cx('flex-none font-mono text-caption', cat.ink)}>{cat.label}</span>
             )}
@@ -402,8 +467,20 @@ function PackCard({
                 The bar goes entirely when the lead figure is already the source count -- at row
                 scale the figure, its label, a sector and a forty-tick run of the same number is
                 a line the eye cannot parse. */}
-            {evidenceLabel && <EvidenceBar count={pack.sourceCount} label={false} />}
-            {pack.market && pack.market !== viewerMarket && (
+            {/* Capped harder HERE than the component's default 40. The cap is honest either
+                way (past it the run draws an over-marker and the numeral carries the exact
+                value), and 40 ticks is a ~79px object competing for a line that has ~246px on
+                a phone for a sector, a figure, a label and a market flag. The bar's job in a
+                row is "more evidence than the row above", which 14 ticks state as well as 40. */}
+            {evidenceLabel && <EvidenceBar count={pack.sourceCount} label={false} cap={14} />}
+            {/* COMPARE LIKE WITH LIKE. `groupByMarket` buckets on `packMarket(pack)` -- which
+                case-folds and applies the null-is-uk rule -- while this test used the RAW
+                field against the already-resolved viewer market. Two different value spaces,
+                so a pack the grouper had correctly placed in the reader's own shelf would
+                still flag itself foreign on any casing variance ("UK" vs "uk"). The guard on
+                the raw field stays: a pack carrying no market at all makes no claim about
+                jurisdiction, so it prints none. */}
+            {pack.market && packMarket(pack) !== viewerMarket && (
               <span className="flex-none font-mono text-caption text-warning">
                 {marketLabel(pack.market)} rules
               </span>
@@ -413,10 +490,17 @@ function PackCard({
 
         <span className="flex flex-none items-center gap-3 sm:gap-4">
           <PriceText className="text-body font-semibold text-text">{price}</PriceText>
+          {/* THE ARROW IS A HOVER AFFORDANCE, so it costs 32px on the one device that cannot
+              hover. Its whole job is `group-hover:translate-x-0.5` -- on touch that never fires,
+              and the entire row is already a link, so at 390px it is 32px (glyph + `gap-3`) spent
+              on nothing. Handing those back to the text column takes it from 179px to a measured
+              206px, which is what makes the two-line title above land at 412px of its 439px
+              instead of 358px. Reclaiming width from a decoration beats squeezing the content
+              that had to be read. */}
           <Icon
             name="arrowRight"
             size={15}
-            className="text-subtle transition-transform group-hover:translate-x-0.5"
+            className="hidden text-subtle transition-transform group-hover:translate-x-0.5 sm:block"
           />
         </span>
       </Link>
@@ -1584,12 +1668,20 @@ function CatalogBrowser({
                   actually means. Each card in the group also carries the "For US rules" chip that
                   the on-market cards no longer waste space on. */}
               {grouped.others.map((group) => (
-                <div key={group.market} className="mt-16">
+                /* A REAL RULE, NOT A GAP (2026-08-14, founder review at 390px). The boundary
+                   between the reader's own shelf and this appendix was `mt-16` and a
+                   `text-meta` heading -- on a phone, after forty rows, that is whitespace
+                   followed by a line barely heavier than the body text. Every row below it
+                   correctly prints "US rules", and the founder read them as UK rows that had
+                   been mistagged: a correct flag on the wrong side of an invisible border
+                   looks exactly like a data bug. The divider carries the same weight as the
+                   distinction it is making now. */
+                <div key={group.market} className="mt-16 border-t border-text pt-8">
                   {/* US PACKS DIVIDER (email §1). The label is now "Built for US rules" -- the
                       divider is about what the buyer would be BUILDING, not what the page has
                       written, and the subtitle states the consequence plainly: the research is
                       American, and the package cannot be transplanted. */}
-                  <h3 className="text-meta font-semibold text-text">
+                  <h3 className="text-body font-semibold text-text">
                     Built for {group.label} rules
                   </h3>
                   <p className="mt-1 max-w-[60ch] text-caption text-subtle">
