@@ -162,8 +162,18 @@ def _normalise_catalog_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 # pre-purchase because it demonstrates the research is real without revealing the how-to.
 _CITED_RE = re.compile(r"\(source\b|https?://|\b20\d\d\b", re.IGNORECASE)
 _MONEY_RE = re.compile(r"\*\*Month 1:\*\*.*?=\s*\*\*(£[\d,]+)\*\*")
-_LTV_RE = re.compile(r"LTV:CAC Ratio\s*\n\s*-\s*\*\*([\d.]+×)\*\*")
-_PAYBACK_RE = re.compile(r"Payback Period\s*\n\s*-\s*\*\*~?(\d+)\s*months?\*\*")
+# Both alternations carry the pre-2026-08-14 header as well as the plain-speech one that
+# replaced it. A snapshot is the headline economics shown BEFORE purchase, and it fails by
+# returning {} — so a regex that silently stopped matching would blank the teaser on every
+# new pack with nothing going red. Packs already on the shelf still carry the old headers.
+_LTV_RE = re.compile(
+    r"(?:LTV:CAC Ratio|Worth against cost)\s*\n\s*-\s*\*\*([\d.]+×)\*\*")
+# Payback moved from a section of its own into a bullet under "What it costs to win a …",
+# so the new form is matched on the bullet alone. The derived branch prints one decimal
+# (`{cac / margin_per_unit:.1f}`), which the old integer-only capture would have truncated.
+_PAYBACK_RE = re.compile(
+    r"(?:Payback Period\s*\n\s*-\s*\*\*~?([\d.]+)\s*months?\*\*"
+    r"|\*\*Paid back in:\s*~?([\d.]+)\s*months?\*\*)")
 
 
 def _sample_excerpts(build_spec: str, proof_point: str, max_items: int = 3) -> List[str]:
@@ -204,7 +214,9 @@ def _financial_snapshot(fin_text: str) -> Dict[str, str]:
         snap["ltvCac"] = m.group(1)
     m = _PAYBACK_RE.search(t)
     if m:
-        snap["paybackMonths"] = f"{m.group(1)} months"
+        # Two alternations, so exactly one group carries the figure: legacy header form
+        # first, plain-speech bullet second.
+        snap["paybackMonths"] = f"{m.group(1) or m.group(2)} months"
     return snap
 
 

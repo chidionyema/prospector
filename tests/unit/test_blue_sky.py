@@ -3,6 +3,15 @@
 The engine always supported `signal_text=""` programmatically, but the CLI rejected
 it. These tests pin the fixed behaviour: an empty signal flows through run_signal to
 generate() as blue-sky, and the --exploration override is honoured.
+
+Each case pins `noncritical_operator` to mock alongside `operator`, and that is a
+precondition rather than tidying. `run_signal` builds the ancillary chain EAGERLY
+(run.py:955) before it knows whether anything will use it, and since the 2026-08-14
+directive that chain is minimax → standardcompute — both key-metered, so
+`_build_operator_chain` raises ProviderExhaustedError at construction wherever the keys
+are absent. CI has no keys, so these three died there while passing on every developer
+machine (run 31793597064). Every consumer of that chain is stubbed out below, so the
+tests were never about ancillary providers; the mock states that.
 """
 from __future__ import annotations
 
@@ -33,6 +42,7 @@ from unittest.mock import MagicMock
 def test_blue_sky_run_reframes_failure_modes_but_signal_run_keeps_raw(monkeypatch):
     cfg = load_config()
     cfg.operator = "mock"
+    cfg.noncritical_operator = ["mock"]  # see the module docstring: keyless CI cannot build it
     captured = {}
     monkeypatch.setattr(runmod, "generate",
                         lambda *a, **k: captured.update(fails=k.get("recent_failure_modes")) or [])
@@ -51,6 +61,7 @@ def test_blue_sky_run_reframes_failure_modes_but_signal_run_keeps_raw(monkeypatc
 def test_run_signal_blue_sky_forwards_empty_signal_and_exploration(monkeypatch):
     cfg = load_config()
     cfg.operator = "mock"
+    cfg.noncritical_operator = ["mock"]  # see the module docstring: keyless CI cannot build it
     captured: dict = {}
 
     def fake_generate(op, cfg, signal_text="", k=None, strategy_lens="",
@@ -72,6 +83,7 @@ def test_run_signal_blue_sky_forwards_empty_signal_and_exploration(monkeypatch):
 def test_run_signal_uses_adaptive_exploration_when_not_overridden(monkeypatch):
     cfg = load_config()
     cfg.operator = "mock"
+    cfg.noncritical_operator = ["mock"]  # see the module docstring: keyless CI cannot build it
     captured: dict = {}
 
     monkeypatch.setattr(runmod, "generate",

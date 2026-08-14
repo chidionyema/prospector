@@ -81,7 +81,17 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 # `artifacts._render_financial_model` appends two model-authored lists at the end, and its
 # own source marks them: those lists "are the only FREE TEXT in this artifact — everything
 # above is Python formatting a number."
-FINANCIAL_MODEL_FREE_TEXT_HEADERS = ("### Key Assumptions", "### Model Weaknesses")
+FINANCIAL_MODEL_FREE_TEXT_HEADERS = ("### What we assumed", "### Where this is weakest")
+
+# The same two lists under the names the renderer used BEFORE the 2026-08-14 plain-speech
+# rewrite. Kept for the packs already on the shelf: every financial model rendered before
+# that commit carries the old headers, and split_rendered_free_text is run over historical
+# artifacts (tools/backfill_pack_currency.py). Without this a legacy pack falls down the
+# all-rendered fallback and its cited foreign comparables read as errors again — the silent
+# re-tightening that test_the_boundary_headers_match_what_the_renderer_actually_emits exists
+# to catch. Deliberately NOT in the tuple above: that one is the CURRENT renderer contract,
+# and the drift guard asserts the renderer still emits every name in it.
+_LEGACY_FREE_TEXT_HEADERS = ("### Key Assumptions", "### Model Weaknesses")
 
 
 def split_rendered_free_text(fin_text: str) -> Tuple[str, str]:
@@ -93,7 +103,9 @@ def split_rendered_free_text(fin_text: str) -> Tuple[str, str]:
     written for.
     """
     text = fin_text or ""
-    cuts = [text.index(h) for h in FINANCIAL_MODEL_FREE_TEXT_HEADERS if h in text]
+    cuts = [text.index(h)
+            for h in FINANCIAL_MODEL_FREE_TEXT_HEADERS + _LEGACY_FREE_TEXT_HEADERS
+            if h in text]
     cut = min(cuts) if cuts else len(text)
     return text[:cut], text[cut:]
 
@@ -258,8 +270,21 @@ def check_arithmetic(fin_text: str) -> List[Problem]:
 # Required sections (renderer contract — presence/emptiness is validate_pack's finding)
 # ---------------------------------------------------------------------------
 
-REQUIRED_FIN_SECTIONS = ("## Financial Model", "### Revenue",
-                         "### Payback Period", "### LTV:CAC Ratio")
+# Only what `_render_financial_model` emits UNCONDITIONALLY (artifacts.py:249 and :253).
+# Every other section is gated on an input the model may not have supplied — payback needs a
+# CAC, "Worth against cost" needs a ratio — and since the 2026-08-14 rewrite a missing input
+# is reported to the buyer under "### What we could not work out" instead of by a hollow
+# heading. Requiring a conditional section here would fail a pack for being honest about a
+# gap. The old list demanded "### Revenue", "### Payback Period" and "### LTV:CAC Ratio",
+# none of which the renderer emits under those names any more.
+REQUIRED_FIN_SECTIONS = ("## Financial Model", "### What it earns")
+
+# What the same section was called before that rewrite. `check_sections` is a SELLABILITY
+# gate — a `sections` error is an error, and an error unlists the pack — so grading a pack
+# rendered last week against this week's header names would take packs off the shelf for a
+# rename. Present here, absent from REQUIRED_FIN_SECTIONS above, so a missing section is
+# still reported under the name the renderer emits today.
+_SECTION_ALIASES = {"### What it earns": ("### Revenue",)}
 
 
 def check_sections(fin_text: str) -> List[Problem]:
@@ -268,7 +293,8 @@ def check_sections(fin_text: str) -> List[Problem]:
         return []  # an empty artifact is validate_pack's finding; don't double-report
     return [
         _err("sections", "financial_model", f"missing required section {s!r}")
-        for s in REQUIRED_FIN_SECTIONS if s not in t
+        for s in REQUIRED_FIN_SECTIONS
+        if s not in t and not any(a in t for a in _SECTION_ALIASES.get(s, ()))
     ]
 
 
