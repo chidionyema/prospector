@@ -1,7 +1,6 @@
 import React from 'react';
 
 import { type Pack } from '@/lib/api/client';
-import { similarPacks } from '@/lib/discovery';
 
 import { DossierCard } from './DossierCard';
 
@@ -11,13 +10,14 @@ import { DossierCard } from './DossierCard';
  * The buyer the row exists for is the one who liked the mechanics of B2B fee recovery and does
  * not want another vets business, so same-sector is a *penalty* in `scoreSimilar`, not a match.
  *
- * The row hides itself entirely when fewer than two candidates score above 0 (AC-21). On a
- * mostly-untagged catalogue that is the common case, and one weak suggestion under "more like
- * this" is a worse signal than no row at all.
+ * `items` arrives pre-scored: the caller (`pages/pack/[id].tsx`) runs `similarPacks` server-side
+ * against the full catalogue and hands this component only the (at most 3) matches, not the
+ * catalogue -- see that page's `similar` prop for why. The row still hides itself entirely on an
+ * empty list (AC-21): `similarPacks` already returns `[]` unless at least two candidates score
+ * above 0, so "no items" here means the same thing it always did.
  */
-export function SimilarPacks({ pack, all }: { pack: Pack; all: Pack[] }) {
-  const similar = similarPacks(pack, all);
-  if (similar.length === 0) return null;
+export function SimilarPacks({ items }: { items: Pack[] }) {
+  if (items.length === 0) return null;
 
   return (
     <section className="mt-12">
@@ -27,7 +27,7 @@ export function SimilarPacks({ pack, all }: { pack: Pack; all: Pack[] }) {
         else.
       </p>
       <ul className="mt-5 grid gap-3 sm:grid-cols-3">
-        {similar.map((candidate) => (
+        {items.map((candidate) => (
           <li key={candidate.id}>
             <DossierCard pack={candidate} />
           </li>

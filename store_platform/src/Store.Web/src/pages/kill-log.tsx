@@ -8,8 +8,8 @@ import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
 import { tightDecimal } from '@/components/ui/Money';
 import { RESEARCH_STATS } from '@/lib/stats';
-import { fetchCatalog } from '@/lib/api/client';
-import type { GetServerSideProps } from 'next';
+import { fetchCatalogStats } from '@/lib/api/client';
+import type { GetStaticProps } from 'next';
 
 /*
   The rejects, published, AS AN INSTRUMENT.
@@ -597,22 +597,27 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
 }
 
 /**
- * The published-pack count has to be LIVE.
+ * The published-pack count has to be LIVE, but "live" does not mean "read on every request".
  *
  * `kill-log-totals.json` is a build-time snapshot, and listing a pack does not trigger a
- * redeploy, so any count baked into this page starts drifting the moment the engine publishes
+ * redeploy, so any count baked into the FILE starts drifting the moment the engine publishes
  * again. This page previously printed the survivor count as if it were the shelf, which is the
- * same class of error with a bigger gap. Reading `/catalog` at request time is what the homepage
- * already does.
+ * same class of error with a bigger gap. Reading the catalogue is what the homepage already does.
  *
- * Best-effort by design: a catalogue outage must not 500 the page whose subject is our own
- * honesty. On failure `listed` is null and every surface that would name a number omits it.
+ * ISR, not `getServerSideProps` (measured 2026-08-14): this function has no per-request input at
+ * all -- no `context` param, nothing from cookies/query/headers -- so every visitor was paying a
+ * live round trip to the API for a single integer no visitor-specific fact depends on. 300s
+ * revalidate means the count is at most 5 minutes stale after a publish, which is a fair trade
+ * for turning every hit but one per window into a cache read. `fetchCatalogStats` (GET
+ * /catalog/stats) replaces `fetchCatalog` for the same reason `pages/index.tsx` does not use it
+ * here: this page only ever needed the COUNT, never the 59 packs' worth of fields the full
+ * catalogue carries.
+ *
+ * Best-effort by design: a catalogue outage must not fail the build/revalidate for the page whose
+ * subject is our own honesty. On failure `listed` is null and every surface that would name a
+ * number omits it.
  */
-export const getServerSideProps: GetServerSideProps = async () => {
-  try {
-    const packs = await fetchCatalog();
-    return { props: { listed: Array.isArray(packs) ? packs.length : null } };
-  } catch {
-    return { props: { listed: null } };
-  }
+export const getStaticProps: GetStaticProps = async () => {
+  const stats = await fetchCatalogStats();
+  return { props: { listed: stats?.listed ?? null }, revalidate: 300 };
 };

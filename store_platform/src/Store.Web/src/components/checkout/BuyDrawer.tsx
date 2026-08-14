@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { buttonClasses, Icon, Modal } from '@/components/ui';
-import { EmbeddedCheckoutPanel } from '@/components/checkout/EmbeddedCheckoutPanel';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { PACK_CONTENTS } from '@/components/marketing/PackContents';
@@ -9,6 +9,15 @@ import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { formatPrice, Pack } from '@/lib/api/client';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { textLinkClass } from '@/components/ui';
+
+// Loaded on demand. `BuyDrawerProvider` mounts on the homepage for EVERY visitor
+// (`pages/index.tsx`), so a static import here put the full `@stripe/react-stripe-js` Elements
+// wrapper into `/`'s own First Load JS for every shelf browser, not just the ones who buy. See
+// the matching note in `pages/pack/[id].tsx`, where the same panel is used the same way.
+const EmbeddedCheckoutPanel = dynamic(
+  () => import('@/components/checkout/EmbeddedCheckoutPanel').then((m) => m.EmbeddedCheckoutPanel),
+  { ssr: false },
+);
 
 /**
  * Buy one pack without leaving the shelf.
