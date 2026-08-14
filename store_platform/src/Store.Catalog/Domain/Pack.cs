@@ -49,6 +49,51 @@ public class Pack
     public long EffectiveFloorPence(DateTime now) =>
         now >= MinBillableEffectiveAt ? PricePence : MinBillablePence;
 
+    // The same pack's price in US cents, for buyers billed in USD (founder decision 2026-08-14:
+    // "as a US buyer you want to be charged in USD"). NULL means this pack has no USD price, and
+    // that is the safe default every pack starts at: the fulfilment fence refuses a currency the
+    // pack has no floor in, so a pack that was never given a USD price cannot be billed in one.
+    //
+    // A SEPARATE COLUMN, NOT A CONVERSION. The alternative — convert the paid USD amount to pence
+    // at some rate and compare against PricePence — makes the fence's verdict depend on which rate
+    // it happened to read, so a buyer who paid exactly the displayed price is refused whenever the
+    // rate moved between checkout and webhook. The rung is declared (config.yaml listing.pricing,
+    // usd_rungs, approved 2026-08-14), never computed at charge time.
+    //
+    // Cents, not pence: the name says the unit because the two are both "minor units of 100" and
+    // that is exactly what makes a silent mix-up invisible. 2499 here is $24.99, not £24.99.
+    public long? PriceUsdCents { get; set; }
+
+    // The USD twin of MinBillablePence — the floor a live USD session could have been minted at
+    // while a price change drains. Same race, same fix; see the long comment above MinBillablePence.
+    // Null when PriceUsdCents is null, and treated as equal to PriceUsdCents when a USD price
+    // exists but no drain is in progress.
+    public long? MinBillableUsdCents { get; set; }
+
+    /// <summary>
+    /// The amount a payment in <paramref name="currency"/> must cover to be fulfilled, in that
+    /// currency's minor units — or null when the pack carries no price in that currency at all.
+    ///
+    /// Null is the refusal: it is the one signal that keeps the pre-USD safety property intact.
+    /// Before this existed the fence compared a bare amount against a GBP-only column and refused
+    /// anything non-GBP outright; now it refuses anything the pack has no floor in, which is the
+    /// same refusal generalised rather than weakened. Nothing becomes billable by adding a column.
+    /// </summary>
+    public long? EffectiveFloorMinorUnits(string currency, DateTime now)
+    {
+        if (string.Equals(currency, "GBP", StringComparison.OrdinalIgnoreCase))
+        {
+            return EffectiveFloorPence(now);
+        }
+
+        if (string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase) && PriceUsdCents is { } usd)
+        {
+            return now >= MinBillableEffectiveAt ? usd : (MinBillableUsdCents ?? usd);
+        }
+
+        return null;
+    }
+
     public string PaymentProvider { get; set; } = "paddle";
     public string? ProviderProductId { get; set; }
     public string? ProviderPriceId { get; set; }
@@ -111,9 +156,10 @@ public class Pack
     public string? FinancialSnapshotJson { get; set; }
 
     // The jurisdiction the OPPORTUNITY is in ("uk", "us", "us-tx"), not the buyer's
-    // locale. A US-market pack is still sold in GBP through the existing rail; this is a
-    // browse/filter facet and a disclosure, never a pricing or tax input. Null on every
-    // pack published before the engine had a market dimension.
+    // locale — and still not a pricing input. Currency follows the BUYER (PriceUsdCents above),
+    // not the pack: a US buyer may buy a UK-market pack and is billed in USD for it, and a UK
+    // buyer may buy a US-market pack and is billed in GBP. This is a browse/filter facet and a
+    // disclosure. Null on every pack published before the engine had a market dimension.
     public string? Market { get; set; }
 
     // The audience persona the engine GENERATED this pack for ("smb_owner", "primary_carer",

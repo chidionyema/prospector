@@ -13,10 +13,10 @@ namespace Store.Api.Services;
 /// </summary>
 public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
 {
-    // The catalogue is priced in GBP pence (see Money). Fulfilment compares the paid amount
-    // against Pack.PricePence, which is only meaningful in the same currency, so a payment in
-    // any other currency is treated as unfulfillable rather than silently honoured.
-    private const string StoreCurrency = "GBP";
+    // Fulfilment compares the paid amount against a floor held in the SAME currency the buyer
+    // was charged in — never a converted one (see Pack.EffectiveFloorMinorUnits). A payment in a
+    // currency the pack carries no price in is unfulfillable rather than silently honoured, which
+    // is the pre-USD behaviour generalised: it used to be "not GBP", it is now "no floor here".
 
 
     public async Task<FulfilmentOutcome> FulfilAsync(PaymentTransaction txn)
@@ -114,14 +114,17 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
     /// </summary>
     private static string? UnderpaymentReason(PaymentTransaction txn, PurchasedItem item, Pack pack)
     {
-        if (!string.Equals(txn.Currency, StoreCurrency, StringComparison.OrdinalIgnoreCase))
+        var currency = (txn.Currency ?? string.Empty).ToUpperInvariant();
+        if (pack.EffectiveFloorMinorUnits(currency, DateTime.UtcNow) is not { } floor)
         {
-            return $"{item.ProductId} (currency {txn.Currency} != {StoreCurrency})";
+            return $"{item.ProductId} (no {currency} price on this pack)";
         }
 
-        var floorPence = pack.EffectiveFloorPence(DateTime.UtcNow);
-        return item.AmountPence < floorPence
-            ? $"{item.ProductId} (paid {item.AmountPence}p < floor {floorPence}p)"
+        // AmountPence is minor units of whatever the buyer was charged in — pence for GBP, cents
+        // for USD — and the floor above is in the same unit by construction. The name predates
+        // multi-currency; the comparison is only ever like-for-like.
+        return item.AmountPence < floor
+            ? $"{item.ProductId} (paid {item.AmountPence} < floor {floor} {currency})"
             : null;
     }
 

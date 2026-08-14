@@ -30,12 +30,22 @@ class PriceDecision:
     rung, and ``None`` otherwise. It is the citation trail for a price change: which
     passages, which domains, what median. A price that moved with no ``evidence`` moved on
     the ladder alone, and the rationale says so.
+
+    ``price_usd_cents`` is the SAME rung read off the USD ladder, for buyers billed in USD
+    (founder decision 2026-08-14). ``None`` means this decision carries no USD price — no
+    ``usd_rungs`` declared, or a fallback path that never resolved a rung index — and None
+    is the safe value, not a gap: the fulfilment fence refuses any currency the pack has no
+    floor in (``Pack.EffectiveFloorMinorUnits``), so a decision without one cannot be billed
+    in USD at all. It is minted HERE, beside the pence, for the reason ``bridge.py`` exists:
+    one decision mints the provider Price and writes the catalogue row, so the two cannot
+    drift into charging one amount and fulfilling against another.
     """
     price_pence: int
     rung: str
     segment: dict[str, str]
     rationale: str
     evidence: Optional[dict[str, Any]] = None
+    price_usd_cents: Optional[int] = None
 
 
 def _anchor_adjustment(rung_idx: int, rungs: list[int],
@@ -82,6 +92,22 @@ def _anchor_adjustment(rung_idx: int, rungs: list[int],
         f"or {direction} the neighbouring rung. Evidence: {ev['n']} cited anchor(s) across "
         f"{len(ev['domains'])} domain(s) ({', '.join(ev['domains'])}).")
     return new_idx, ev, suffix
+
+
+def _usd_at(pricing: dict[str, Any], rung_idx: int) -> Optional[int]:
+    """The USD cents at the same rung POSITION, or None if the USD ladder cannot answer.
+
+    Deliberately returns None rather than falling back to a converted pence figure. A
+    missing or short ``usd_rungs`` is a config gap, and the honest consequence of a config
+    gap on the money path is "this pack has no USD price" — which the fulfilment fence
+    already handles by refusing USD for it. Inventing a rate here would put a number on the
+    rail that no one declared, which is the whole failure mode the fixed ladder exists to
+    prevent.
+    """
+    usd_rungs = [int(r) for r in (pricing.get("usd_rungs") or [])]
+    if not usd_rungs or not (0 <= rung_idx < len(usd_rungs)):
+        return None
+    return usd_rungs[rung_idx]
 
 
 def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
@@ -165,6 +191,7 @@ def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
             rung=rung,
             segment=segment,
             rationale=rationale,
+            price_usd_cents=_usd_at(pricing, rung_idx),
         )
 
     # Classified: tier sets the base rung, market adds an offset. An unknown market earns
@@ -198,4 +225,5 @@ def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
         segment=segment,
         rationale=rationale,
         evidence=evidence,
+        price_usd_cents=_usd_at(pricing, rung_idx),
     )

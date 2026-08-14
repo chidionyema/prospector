@@ -33,8 +33,9 @@ public record PublishRequest(
     string[]? WhatYouGet = null,
     string[]? SampleExtract = null,
     IReadOnlyDictionary<string, string>? FinancialSnapshot = null,
-    // Jurisdiction of the opportunity ("uk", "us", "us-tx"). Independent of the currency
-    // the pack sells in — the store stays GBP-only.
+    // Jurisdiction of the opportunity ("uk", "us", "us-tx"). Independent of the currency the
+    // pack sells in: currency follows the BUYER (see PriceUsdCents below), not the pack, so a
+    // US buyer of a UK-market pack is billed in USD and a UK buyer of a US-market pack in GBP.
     string? Market = null,
     // Legacy fields — accepted for backward compatibility when the provider-agnostic
     // fields above are not present.
@@ -68,5 +69,13 @@ public record PublishRequest(
     // start 400-ing every publish the day that list gained a member — turning a disclosure
     // field into an outage. Unknown facet values are rejected because a buyer FILTERS on a
     // facet; nobody filters on this.
-    string? Audience = null
+    string? Audience = null,
+    // The same rung in US cents, for buyers billed in USD (founder decision 2026-08-14).
+    // Appended last for the same append-only reason as everything above it.
+    //
+    // Null means "this publish carried no USD price", and that is NOT the same as zero: it
+    // leaves the pack unbillable in USD, which the fulfilment fence enforces by refusing any
+    // currency the pack has no floor in. Omission therefore preserves today's behaviour
+    // exactly, and no pack becomes billable in a new currency by deploying this field.
+    long? PriceUsdCents = null
 );
