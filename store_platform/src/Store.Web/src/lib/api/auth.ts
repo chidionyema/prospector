@@ -221,7 +221,7 @@ export const founder = {
    *
    * Asked of the server, never decided here: the allowlist is a server-side secret and a
    * storefront that decided this for itself would be advertising the answer to everyone. This
-   * only chooses whether to RENDER the affordance — the endpoint below re-checks the same fence,
+   * only chooses whether to RENDER the affordance; the endpoint below re-checks the same fence,
    * so a visitor who forces the flag on gets a 404 and nothing else.
    */
   me: () => call<{ founder: boolean }>('/founder/me'),
