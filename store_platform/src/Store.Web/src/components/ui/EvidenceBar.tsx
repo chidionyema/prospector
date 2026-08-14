@@ -31,11 +31,26 @@ export function EvidenceBar({
    */
   cap = 40,
   label = true,
+  /**
+   * `instrument` is the same bar drawn for the dark cover plate (`--ins-bg`), and it exists
+   * because the light one is UNREADABLE there, not because it looked nicer: `--survive` (#047857)
+   * measures 1.9:1 on #0B0D0F. tokens.css states the rule this obeys -- survivors on the
+   * instrument surface carry no hue, they are simply lit -- so the ticks become `--ins-survive`
+   * (#FAFAFA, 18.65:1) and the label `--ins-muted` (#8A9099, 6.14:1).
+   */
+  tone = 'default',
+  /**
+   * `lg` is the cover-plate size: the run is the only artwork on the card, so it is drawn at a
+   * size the eye reads as an object rather than as a footnote beside a number.
+   */
+  size = 'sm',
 }: {
   count?: number | null;
   className?: string;
   cap?: number;
   label?: boolean;
+  tone?: 'default' | 'instrument';
+  size?: 'sm' | 'lg';
 }) {
   // A pack with no source count renders NOTHING, not a zero and not an empty track. An empty
   // evidence bar on a product whose pitch is evidence is the single worst thing this component
@@ -45,6 +60,16 @@ export function EvidenceBar({
   const shown = Math.min(count, cap);
   const over = count > cap;
 
+  // The two sizes are the SAME shape scaled, not two drawings: the 5-step height cycle below is
+  // multiplied, so a 26-source pack draws a recognisably identical skyline in the body and on the
+  // cover. `track` is the tallest step in each, which is what the flex row is sized to.
+  const lg = size === 'lg';
+  const track = lg ? 22 : 12;
+  const tick = lg ? 'w-0.5' : 'w-px';
+  const gap = lg ? 'gap-[1.5px]' : 'gap-px';
+  const ink = tone === 'instrument' ? 'bg-ins-survive' : 'bg-survive';
+  const labelInk = tone === 'instrument' ? 'text-ins-muted' : 'text-subtle';
+
   return (
     <span
       className={cx('inline-flex items-center gap-2', className)}
@@ -53,28 +78,30 @@ export function EvidenceBar({
       role="img"
       aria-label={`${count} cited ${count === 1 ? 'source' : 'sources'}`}
     >
-      <span aria-hidden className="flex items-end gap-px" style={{ height: 12 }}>
+      <span aria-hidden className={cx('flex items-end', gap)} style={{ height: track }}>
         {Array.from({ length: shown }, (_, i) => (
           <span
             key={i}
-            className="w-px bg-survive"
+            className={cx(tick, ink)}
             style={{
               /* Height walks a fixed 5-step cycle rather than a random one. A flat run of equal
                  ticks reads as a progress bar (i.e. "43 of 100"), which is a claim we are not
                  making; a varying skyline reads as a measurement. It is deterministic in the
                  INDEX, not in the pack, so it costs no seed and two packs with the same count
                  draw the same shape -- which is correct, because the same count IS the same fact. */
-              height: [12, 7, 10, 5, 9][i % 5],
+              height: ([12, 7, 10, 5, 9][i % 5] / 12) * track,
               /* The run fades toward its tail so a 40-tick bar does not out-shout a 12-tick one
                  purely by ink volume. The first ticks are the ones being compared. */
               opacity: 0.35 + 0.65 * (1 - i / Math.max(shown, 1)),
             }}
           />
         ))}
-        {over && <span className="ml-0.5 w-px bg-survive/40" style={{ height: 12 }} />}
+        {over && (
+          <span className={cx('ml-0.5 opacity-40', tick, ink)} style={{ height: track }} />
+        )}
       </span>
       {label && (
-        <span className="font-mono text-caption tabular-nums text-subtle">
+        <span className={cx('font-mono text-caption tabular-nums', labelInk)}>
           {count} sources
         </span>
       )}

@@ -586,16 +586,37 @@ function PackPageContent({ pack, catalog, currency }: { pack: PackDetails; catal
              * gives the transition somewhere to land and gives the page the pack's own mark,
              * without spending the fold on decoration.
              *
-             * `cat.tint`/`cat.ink` and NOT a hash-derived hue: the mark draws in `currentColor`,
-             * so form means this pack and colour still means sector. The chip and the dossier
-             * number stay in `PackCover` below rather than being overlaid here, because a label
-             * sitting on top of the mark is the thing that turns a masthead back into a cover.
+             * THE GROUND IS THE INSTRUMENT PLATE (2026-08-14), and this is a correction of the
+             * paragraph that used to sit here arguing for `cat.tint`/`cat.ink` ("colour still
+             * means sector"). That argument was sound about MEANING and wrong about the surface it
+             * chose: on white, low-opacity bars of ragged width are a loading skeleton whichever
+             * way they run -- which is the exact defect the `axis` note below is fighting, one
+             * layer up. Sector still means sector; it is carried by the breadcrumb's last crumb
+             * directly above this strip, in words, which is where a sector belongs.
+             *
+             * It also has to match the shelf or the morph is a lie. `pages/index.tsx` draws the
+             * lead card's mark on `bg-ins-bg` now; a shared-element transition from a near-black
+             * plate to a pale mint one animates a colour change nobody asked for, on top of the
+             * scale that is the point of the transition.
+             *
+             * `emphasis` IS correct here and is not on the shelf: it lifts the bands to 0.26-0.88,
+             * which is unreadable under a readout and exactly right when the mark is alone. Nothing
+             * is overlaid on this strip -- the chip and the dossier number were deliberately kept
+             * out (see below), because a label sitting on the mark turns a masthead back into a
+             * cover.
+             *
+             * The ink is a step DARKER than the shelf's for that reason, not by oversight:
+             * `--ins-dim` (#2E3238) at 0.88 composites to #2A2E33, where the shelf's `--ins-dim2`
+             * at the same strength would give #363B42. At 976x96 this strip is the widest single
+             * graphic above the h1, and the brighter pair rendered as a row of lit blocks that
+             * out-shouted the title it is a masthead for. Strength times area is the quantity that
+             * matters; the shelf can afford the lighter ink because its plate is a quarter of a
+             * card, not a full-measure band across the fold.
              */}
             <div
               className={cx(
                 'relative mb-3 h-20 w-full overflow-hidden rounded-md sm:h-24',
-                cat.tint,
-                cat.ink,
+                'bg-ins-bg text-ins-dim',
               )}
             >
               {/* `axis="down"` because this box is 704x96 -- the one WIDE box the mark lands in.

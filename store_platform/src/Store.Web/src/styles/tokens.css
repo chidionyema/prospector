@@ -192,6 +192,42 @@
      ledger card. Six tokens existed solely to make text legible on a surface that no longer
      exists. --gold was already an alias of --success and is deleted too. */
 
+  /* ── THE INSTRUMENT SURFACE (2026-08-14) ────────────────────────────────────────────────────
+     THIS REVERSES THE PARAGRAPH DIRECTLY ABOVE, and the reversal is a founder decision taken on
+     rendered specimens, not a drift. Five colourways of the identical layout were built and
+     compared side by side -- including one ("Paper") that kept the light ledger card and used
+     --survive/--kill unchanged, i.e. the exact thing the paragraph above installed -- and the
+     dark surface was chosen over it. Recorded here rather than in a commit message because the
+     next person to read the note above will otherwise "fix" this back.
+
+     WHY THIS IS NOT THE CRYPTO-TERMINAL SLAB AGAIN. That slab failed because it was a dark box
+     with green monospace on it: the colour said "terminal" and carried no meaning. The rule this
+     palette ships under is the opposite one, and it is the whole reason the treatment is called
+     PLATE:
+
+       SURVIVORS CARRY NO HUE. THEY ARE SIMPLY LIT.
+
+     --ins-survive is near-WHITE, not green. Red is the only colour on the panel, so the one
+     check that FAILED is the one thing that is coloured. Painting the survivors instead -- which
+     every other colourway did -- spends the loudest mark on the page on the least surprising
+     fact, namely that the pack on sale survived.
+
+     Consequence worth stating: on this surface --survive #047857 measures 1.9:1 and is
+     UNREADABLE. These are not a re-palette of the verdict pair, they are the same two meanings
+     re-measured for a ground the verdict pair was never measured against. They may appear ONLY
+     inside an element painted --ins-bg. Ratios measured on #0B0D0F. */
+  --ins-bg: #0B0D0F;        /* Cool near-black, NOT #000: pure black clips the mark glow and reads
+                                as a hole punched in the page rather than a panel laid on it. */
+  --ins-panel: #131619;     /* A step up, for a panel nested inside the band. */
+  --ins-line: #26292E;      /* The band's hairline. Its --border. */
+  --ins-text: #F4F4F5;      /* Primary text on the band. 17.71:1. AAA. */
+  --ins-muted: #8A9099;     /* Labels and captions on the band. 6.14:1. AA. */
+  --ins-survive: #FAFAFA;   /* Survived. 18.65:1. AAA. No hue, by the rule above. */
+  --ins-kill: #F26D6D;      /* Killed. 6.66:1. AA. The only colour on the panel. */
+  --ins-dim: #2E3238;       /* An unlit mark in the population field. Decoration: like --faint it
+                                may never carry information -- the lit marks and the legend do. */
+  --ins-dim2: #3C4149;      /* Unlit bar in a source-density spark. Same rule. */
+
   /* CATEGORY SCALE. One hue per sector, restored 2026-08-06 after the shelf was measured as
      visually inert -- zero images and no colour on a page selling 63 products, so it read as
      documentation rather than a shop.
@@ -390,6 +426,19 @@
   --color-kill-bg: var(--kill-bg);
   --color-kill-strong: var(--kill-strong);
 
+  /* The instrument surface. Mapped in the SAME commit that declares them, per the rule three
+     blocks up: in Tailwind v4 an unmapped colour utility emits no rule at all, so `bg-ins-bg`
+     would compile to nothing and the band would render white-on-white. */
+  --color-ins-bg: var(--ins-bg);
+  --color-ins-panel: var(--ins-panel);
+  --color-ins-line: var(--ins-line);
+  --color-ins-text: var(--ins-text);
+  --color-ins-muted: var(--ins-muted);
+  --color-ins-survive: var(--ins-survive);
+  --color-ins-kill: var(--ins-kill);
+  --color-ins-dim: var(--ins-dim);
+  --color-ins-dim2: var(--ins-dim2);
+
   /* The category scale, exposed so the `text-cat-` and `bg-cat-` utilities compile. The badge
      tint is an alpha of the same token (a trailing slash-10 on the class) rather than twelve more
      `-bg` values: one source per hue means a tint can never drift from the ink sitting on it.
@@ -491,8 +540,34 @@
      nobody. A caller that forgot it shipped 48px onto a 390px viewport and the token looked
      innocent. Both clamps reach their maximum at 1000px, so every measurement taken at 1280 is
      unaffected; only sub-1000px widths move, which is the point. */
-  --text-display: clamp(2.25rem, 1.5rem + 2.4vw, 3rem);
-  --text-display--line-height: 1.05; --text-display--letter-spacing: -0.02em;  --text-display--font-weight: 560;
+  /* ── DISPLAY IS THE HOMEPAGE HERO, AND NOW ONLY THAT (2026-08-14) ───────────────────────────
+     §3.2 has always said display is "Homepage hero only". It was not: eight surfaces wore
+     `text-display` (about, sample, kill-log, pricing, index, GuideLayout, blocks, MoneyHero,
+     PageHeader), most of them as `text-h1 md:text-display`, i.e. using it as "h1, but at
+     desktop". So the token was doing two jobs at one size, and the hero could not be sized
+     without resizing seven other page titles.
+
+     The fix keeps the six-step rule intact -- no seventh token, which is what --text-mega was
+     deleted for. Display is retuned to the size the hero actually needs and every non-hero call
+     site is moved down to `text-h1` in the same commit, so `text-display` now has exactly ONE
+     consumer and its weight and tracking below can be tuned for that one job.
+
+     WHAT THIS COSTS, stated rather than buried: the seven moved surfaces drop from 48px to 36px
+     at desktop. That is a deliberate re-establishment of hierarchy -- the homepage hero should be
+     the largest type on the site, and at 48px everywhere it was tied with six other pages.
+
+     Tracking and weight move with the size because they have to: -0.02em is correct at 48px and
+     reads as loose at 72px, and 560 at 72px reads as light rather than as the same voice.
+
+     The four values below are transcribed from the rendered specimen the founder approved
+     ("ok i like the concept" / "ok lets try plate"), not chosen here: 72px / 0.94 / -0.036em / 660.
+     660 breaks the "no scale weight above 600" policy on purpose and with the same justification
+     the Logo exemption already carries -- Switzer is a VARIABLE face with a 100-900 axis, so 660
+     is a real cut rather than a synthesised bold, and the policy exists to stop synthesis. It is
+     a one-token exemption: the ban still holds for every other step, and
+     `weightAndCasePolicy.test.ts` was widened to name display specifically rather than raised. */
+  --text-display: clamp(2.25rem, 1.2rem + 4vw, 4.5rem);
+  --text-display--line-height: 0.94; --text-display--letter-spacing: -0.036em; --text-display--font-weight: 660;
   --text-h1: clamp(1.75rem, 1.25rem + 1.6vw, 2.25rem);
   --text-h1--line-height: 1.1;       --text-h1--letter-spacing: -0.02em;       --text-h1--font-weight: 560;
   --text-h2: 1.5rem;        --text-h2--line-height: 1.2;       --text-h2--letter-spacing: -0.015em;      --text-h2--font-weight: 520;

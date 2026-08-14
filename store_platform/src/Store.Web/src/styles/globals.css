@@ -291,6 +291,29 @@ h1, h2, h3 {
   letter-spacing: -0.01em;
 }
 
+/* ...and this is what makes "the finer control" true (2026-08-14). Every rule in this file is
+   UNLAYERED, and unlayered CSS beats everything Tailwind emits into `@layer utilities` regardless
+   of specificity. So the element rule above was silently winning over the scale tokens: the
+   homepage h1 wearing `text-display` measured font-weight 560 / letter-spacing -0.01em in the
+   browser, not the 640 / -0.032em the token declares, and `font-semibold` on the same element was
+   inert too. A display step tuned at 72px and then rendered at the 16px body tracking is not the
+   type it was drawn as.
+   The fix stays unlayered and wins on specificity (0,1,1 over 0,0,1) rather than re-layering the
+   whole file, which would change the outcome of every element rule in it at once. Only the three
+   heading steps are named -- a heading wearing no scale token still takes the floor above. */
+:is(h1, h2, h3).text-display {
+  font-weight: var(--text-display--font-weight);
+  letter-spacing: var(--text-display--letter-spacing);
+}
+:is(h1, h2, h3).text-h1 {
+  font-weight: var(--text-h1--font-weight);
+  letter-spacing: var(--text-h1--letter-spacing);
+}
+:is(h1, h2, h3).text-h2 {
+  font-weight: var(--text-h2--font-weight);
+  letter-spacing: var(--text-h2--letter-spacing);
+}
+
 /*
   Geist Mono is the DATA voice, and only that (founder decision, 2026-08-05): amounts, IDs and
   refs, filenames, scores, source hostnames, keyboard keys, kill-gate tags. Every decorative use

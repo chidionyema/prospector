@@ -114,10 +114,17 @@ describe('Design contract — global tokens (globals.css)', () => {
     expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.02em/);
   });
 
-  it('sets display at 48px desktop, the largest step there is', () => {
-    // Clamped for the same reason as h1 (spec §3.2: display "mobile: 2.25"). 3rem is still the
-    // ceiling, and `--text-mega` (6rem) is deleted rather than unused -- see tokens.css.
-    expect(css).toMatch(/--text-display:\s*clamp\([^)]*3rem\s*\)/); // 48px at >=1000px
+  it('sets display at 72px desktop, the largest step there is', () => {
+    // Clamped for the same reason as h1 (spec §3.2: display "mobile: 2.25"). `--text-mega` (6rem)
+    // is deleted rather than unused -- see tokens.css.
+    //
+    // 3rem -> 4.5rem (2026-08-14). This is NOT the seventh step returning: display used to be
+    // worn by eight surfaces as "h1, but bigger at desktop", so it could not be sized for the
+    // hero without resizing seven page titles. Those seven moved to `text-h1` in the same commit
+    // and display now has exactly one consumer (`pages/index.tsx`'s hero), which is what the spec
+    // said it was for all along. The step COUNT is unchanged, which is what the deletions below
+    // actually guard.
+    expect(css).toMatch(/--text-display:\s*clamp\([^)]*4\.5rem\s*\)/); // 72px at >=1000px
     expect(css).not.toMatch(/--text-mega:/);
     // A seventh step cannot be reached for: --text-hero/-h3/-small are deleted, not unused.
     expect(css).not.toMatch(/--text-hero:/);

@@ -281,12 +281,18 @@ function PackCard({
       >
         {/* The mark as a SPINE. At row scale a cover is impossible (there is no vertical room for
             one) but an identity is still needed, so the stratigraphy runs as a narrow vertical
-            core sample -- which is the orientation the form was drawn for anyway. */}
+            core sample -- which is the orientation the form was drawn for anyway.
+
+            ON THE INSTRUMENT GROUND like every other pack mark on this shelf (2026-08-14). It kept
+            `cat.tint`/`cat.ink` after the cover and the poster moved, and one screenshot of the
+            page settles what that costs: 32x48 of pale mint or cream with faint bars in it, forty
+            of them down a column under two near-black plates, reads as forty rows that have not
+            finished loading. A shelf whose small element looks like a skeleton of its large one is
+            not two treatments, it is one treatment plus a bug. */}
         <span
           className={cx(
             'relative h-12 w-7 flex-none overflow-hidden rounded-sm sm:w-8',
-            cat.tint,
-            cat.ink,
+            'bg-ins-bg text-ins-dim2',
           )}
         >
           <PackMark id={pack.id} />
@@ -363,8 +369,26 @@ function PackCard({
                whose content is 271px tall -- absorbed the difference as a 162px hole above the
                price. The cap keeps the proportion that was already working at any card width. */
             'relative h-36 w-full flex-none overflow-hidden sm:h-44 lg:h-auto lg:w-[34%] lg:max-w-[20rem]',
-            cat.tint,
-            cat.ink,
+            /* THE POSTER IS ON THE INSTRUMENT GROUND (2026-08-14), the same plate the shelf cards
+               wear, and for the same reason. `cat.tint`+`cat.ink` here rendered the largest single
+               graphic on the homepage -- measured 305x305 at 1440 -- as a stack of pale mint or
+               grey bars: a big pastel slab, on the card the page is trying hardest to sell. The
+               mark's own docblock has been chasing this defect through two fixes already (opacity,
+               then axis), and both were right about the geometry and wrong about the GROUND. On
+               white, low-opacity bars of ragged width are a loading skeleton no matter which way
+               they run. On near-black they are strata.
+               THE MARK IS FURNITURE HERE AND ITS INK IS PICKED FOR THE READOUT ON TOP OF IT.
+               Founder, on the deployed shelf: "the text against background isnt clear" for this
+               section. It was measured wrong, not judged wrong -- the first attempt drew the
+               strata in `--ins-muted` (#8A9099) WITH `emphasis`, i.e. bands at up to 0.88 of the
+               exact token the sector label and the evidence figure are printed in. Label on band
+               computes to ~1.2:1 there, so the readout vanished into its own texture.
+               The two things are separated by a full step of the instrument scale instead:
+               `--ins-dim2` (#3C4149) at the default 0.10-0.34, so the worst band composites to
+               #1C1F23 and `--ins-muted` on it still measures 5.14:1 (WCAG 2.1, computed from the
+               tokens, same method as `categoryScale.test.ts`). `emphasis` stays off the shelf --
+               it exists for the detail masthead, where the mark is alone with nothing over it. */
+            'bg-ins-bg text-ins-dim2',
           )}
         >
           {/* `axis="down"` for the same reason the detail masthead uses it, and the reason is
@@ -378,18 +402,20 @@ function PackCard({
               Matching the masthead also makes the shared-element morph a clean scale instead of a
               transpose, since both ends of the transition now run the same way. */}
           <PackMark id={pack.id} morph axis="down" />
+
+          {/* THE POSTER CARRIES THE READOUT TOO, not just the texture. Same two facts as the
+              shelf card's plate, in the same two corners, at poster scale: the sector as one line
+              of mono, the evidence run as the only lit thing on the ground. The pill and its 12px
+              icon are gone with the tint that made a pill necessary -- a chip exists to lift a
+              label off busy artwork, and there is no busy artwork here any more. */}
           {cat.tagged && (
-            <span
-              className={cx(
-                'absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-sm',
-                'bg-surface/90 px-2.5 py-1 text-caption font-medium',
-                cat.ink,
-              )}
-            >
-              <Icon name={cat.icon} size={12} className="flex-none" />
+            <span className="absolute left-5 top-5 right-5 truncate font-mono text-caption text-ins-muted">
               {cat.label}
             </span>
           )}
+          <span className="absolute bottom-5 left-5">
+            <EvidenceBar count={pack.sourceCount} tone="instrument" size="lg" />
+          </span>
         </span>
 
         {/* THREE COLUMNS AT `lg`, NOT TWO: mark / what it is / what it costs.
@@ -404,7 +430,10 @@ function PackCard({
           <span className="flex flex-1 flex-col">
             <span className="block text-h2 font-semibold text-text">{heading}</span>
             {line && <span className="mt-2 block max-w-[58ch] text-body text-muted">{line}</span>}
-            <EvidenceBar className="mt-4" count={pack.sourceCount} />
+            {/* The evidence run moved onto the plate (2026-08-14) and is not drawn twice on one
+                card. On the poster it is the largest thing on the largest graphic on the page,
+                which is where a shop whose pitch is "the checking already happened" should put the
+                one number that varies between two products. */}
           </span>
           <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
             <PriceText className="text-h1 font-semibold text-text">{price}</PriceText>
@@ -461,12 +490,13 @@ function PackCard({
             and nothing else. */}
         {line && <p className="mt-1.5 line-clamp-3 text-meta text-muted">{line}</p>}
 
-        {/* The evidence bar, in the BODY rather than on the artwork. It replaces the cover's
-            `8 documents · N sources` chip: the document half was a constant (`PACK_CONTENTS.length`
-            is the same 8 on every pack), so it was the first thing the eye read on all 57 cards
-            and it distinguished none of them. Here it sits at a fixed y in the text column, which
-            is what makes two adjacent cards' source counts comparable at a glance. */}
-        <EvidenceBar className="mt-3" count={pack.sourceCount} />
+        {/* THE EVIDENCE BAR MOVED ONTO THE COVER (2026-08-14) and is not drawn twice.
+            It was put in the body on 2026-08-07 for a good reason -- "at a fixed y in the text
+            column, which is what makes two adjacent cards' source counts comparable" -- and that
+            reason survives the move intact: the cover is a fixed 112px, so the run now sits at a
+            fixed y too, and higher up the card where the eye lands before it starts reading.
+            What changed is that the artwork it was avoiding no longer exists. There is nothing
+            left on the cover to float ON; the run IS the cover. */}
 
         {/* `mt-auto` is what equalises card heights in the grid: the price row sits at the same y
             on every card in a row regardless of how long the title ran. */}
@@ -514,20 +544,17 @@ function PackCard({
  * group -- and only there -- the same chip is the single most important thing on the card, because
  * that is where a reader can buy the wrong country's rules by accident.
  */
-/**
- * The hairline weave every cover carries, tagged or not.
- *
- * Written as a full literal because Tailwind scans source text. It is stated in plain `rgb(0 0 0 /
- * a)` rather than a design token on purpose: this is a surface texture, not a semantic colour, and
- * a token would invite someone to "fix" its contrast against text that is never printed on it.
- *
- * Its whole job is to make an untagged cover read as DELIBERATELY blank instead of as a region
- * that failed to load. 9 of the 63 live packs carry no sector, so on a three-up grid roughly every
- * other row contained one flat, empty, pale rectangle sitting beside two covers with a mark on
- * them -- which is the same "is this broken?" signal as a missing image.
+/*
+ * `COVER_WEAVE` -- a 3%-black diagonal hairline texture -- was declared here and is DELETED
+ * (2026-08-14), not merely unused, because a class string left behind is a class string somebody
+ * re-applies. Its stated job was "to make an untagged cover read as DELIBERATELY blank instead of
+ * as a region that failed to load", for the 9 of 63 live packs that carry no sector. The cover it
+ * textured no longer exists (see `PackCoverArt`), and the problem it solved cannot recur on the
+ * one that replaced it: the plate is identical on all 63 cards, so an untagged pack is missing one
+ * line of mono rather than missing its artwork. The one rule it existed to demonstrate survives it
+ * -- Tailwind scans source text, so any arbitrary-value class must be a full literal and never
+ * built by interpolation.
  */
-const COVER_WEAVE =
-  'bg-[image:repeating-linear-gradient(135deg,rgb(0_0_0/0.03)_0px,rgb(0_0_0/0.03)_1px,transparent_1px,transparent_10px)]';
 
 function PackCoverArt({
   pack,
@@ -544,57 +571,78 @@ function PackCoverArt({
     /* 112px. It was 96px, and the extra 16px is bought outright: the sector chip moved up here out
        of the body, which took ~34px off the text block, so the card is net SHORTER than it was
        while the cover is bigger. */
-    <div className={cx('relative h-28 overflow-hidden border-b border-border', category.tint)}>
-      {/* The UNTAGGED FALLBACK is "no mark", not "a different mark".
-          What stood here was a 5.5rem monogram of the card heading's initials, drawn for the 9 of
-          63 live packs that carry no `sector` (measured on the live /catalog, 2026-08-06). On the
-          rendered shelf it reads as `HA` and `SE` floating in the header of a product card: two
-          capitals that map to nothing the buyer can look up, sitting where a picture goes, which
-          is indistinguishable from placeholder art or a code you are expected to recognise. The
-          argument for it was that a flat tint "reads as an empty box" -- true of the tint alone,
-          and no longer true, because the tint now carries the spec strip below. A cryptic mark is
-          worse than no mark: it makes the reader stop and fail to decode something. */}
-      <div className={cx('pointer-events-none absolute inset-0', COVER_WEAVE)} />
-
-      {/* ONE mark, fully inside the frame, in the same place on every card.
-          What stood here was two marks at 36px and 88px, the small one at one of five seeded
-          `left-[n%]` offsets and the large one at `-bottom-7 -right-6`, i.e. clipped by two edges
-          at once. On the built shelf that reads as a rendering artifact rather than as art: the
-          eye sees a shape cut off on the corner and looks for the thing that cropped it, and no
-          two cards in a row cropped it the same way.
-
-          The seeded jitter existed to stop the grid looking uniform. That was solving the wrong
-          problem -- variety across the shelf already comes from twelve hues and twelve icons, and
-          a mark that lands somewhere different on each card does not read as variety, it reads as
-          unaligned. A grid of 63 products looks designed when the furniture repeats exactly. */}
-      {category.tagged ? (
-        <Icon
-          name={category.icon}
-          size={72}
-          className={cx(
-            'pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-[0.14]',
-            category.ink,
-          )}
-        />
-      ) : null}
-
-      {/* THE SECTOR, moved here from the body -- see the note in `PackCard` about the title
-          baseline. `bg-surface/90` rather than `cat.tint`, because the cover IS `cat.tint`: the
-          chip's own tint over the same tint at full strength is an invisible chip. The ink stays
-          the category's, so the chip still carries the hue, and it now matches the other three
-          corner chips instead of being a fourth treatment. */}
-      {category.tagged && (
-        <span
-          className={cx(
-            'absolute left-3 top-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5',
-            'truncate rounded-sm bg-surface/90 px-2.5 py-1 text-caption font-medium',
-            category.ink,
-          )}
-        >
-          <Icon name={category.icon} size={12} className="flex-none" />
-          {category.label}
-        </span>
+    <div
+      className={cx(
+        'relative flex h-28 flex-col justify-between overflow-hidden px-5 py-4',
+        'border-b border-ins-line bg-ins-bg',
       )}
+    >
+      {/* ══ THE COVER IS THE PACK'S OWN RECORD NOW (2026-08-14) ══════════════════════════════
+          WHAT IT REPLACES, and why that had to go. The header was a pastel sector tint, a 3%-black
+          diagonal weave, and the sector's icon at 72px and 14% opacity -- a briefcase for
+          professional services, a scale for legal. Rendered on the shelf at 1440 that is a pale
+          rectangle with a faint clip-art silhouette in it: stock-photo furniture on a product
+          whose entire proposition is that the checking already happened and you can audit it. It
+          carried exactly one fact (the sector) and drew it twice, as a hue and as a pictogram,
+          while the number that actually differs between two packs sat below the fold of the card.
+
+          WHAT REPLACES IT is the only thing on the card a buyer cannot get anywhere else: the
+          evidence run, drawn large, on the instrument ground. One tick per cited source, so the
+          shelf becomes comparable at a glance -- a 32-source pack is visibly a longer run than an
+          18-source one -- and the ground makes the run read as a readout rather than as
+          decoration. The sector stays, as one line of mono, because it is a fact and not a
+          picture. The rule the tokens carry applies here: survivors on this surface are lit, not
+          hued (#FAFAFA at 18.65:1), so no verdict colour appears on the plate.
+
+          THE UNTAGGED FALLBACK IS FIXED RATHER THAN PATCHED. 9 of 63 live packs carry no sector,
+          and the previous cover's whole weave existed so those nine did not render as one flat
+          empty rectangle beside two decorated ones. On this cover there is nothing to fall back
+          FROM: the plate is identical on all 63 and the sector line is simply absent on nine of
+          them, which reads as "this pack has no sector", not as a failed image. */}
+      <div
+        aria-hidden
+        className={cx(
+          'pointer-events-none absolute inset-0',
+          // Bottom-left lift, at 7% of the survivor white. Stated as a literal rgb() for the same
+          // reason COVER_WEAVE was: it is a surface texture, not a semantic colour, and a token
+          // here would invite someone to "fix" its contrast against text never printed on it.
+          'bg-[image:radial-gradient(120%_80%_at_12%_100%,rgb(250_250_250/0.07),transparent_60%)]',
+        )}
+      />
+
+      <div className="relative flex items-start justify-between gap-3">
+        {/* Mono, because it is a facet you can filter the shelf by, not a headline. Sentence
+            case and no letterspacing: the site's case policy bans wide-tracked caps outright
+            (`weightAndCasePolicy.test.ts`), and it is right to -- that device is what made v2
+            read as a brochure. */}
+        <span className="min-w-0 flex-1 truncate font-mono text-caption text-ins-muted">
+          {category.tagged ? category.label : null}
+        </span>
+
+        {/* FOUR CORNERS, one fact each, unchanged in ROLE -- top-left what it is about, top-right
+            whose rules it is written for, bottom-left what is in the box, bottom-right whether you
+            have been here before. Only the palette moved: `bg-surface/90` was a white pill, which
+            on this ground is a hole punched in the plate. */}
+        {pack.market && pack.market !== viewerMarket && (
+          <span className="flex-none rounded-sm border border-ins-line bg-ins-panel px-2 py-1 text-caption font-medium text-ins-muted">
+            For {marketLabel(pack.market)} rules
+          </span>
+        )}
+      </div>
+
+      <div className="relative flex items-end justify-between gap-3">
+        {/* The same component the card body used to carry, moved up and scaled: one tick per
+            source, deterministic in the index, capped at 40. Nothing here is invented -- the
+            shelf's data has `sourceCount` and no per-check verdicts (`lib/api/client.ts:88`), so
+            the cover draws the count and does NOT draw eight verdict marks it cannot source. */}
+        <EvidenceBar count={pack.sourceCount} tone="instrument" size="lg" />
+
+        {viewed && (
+          <span className="flex-none rounded-sm border border-ins-line bg-ins-panel px-2 py-1 text-caption font-medium text-ins-muted">
+            Viewed
+          </span>
+        )}
+      </div>
 
       {/* THE SPEC STRIP -- what you are actually buying, on the shelf.
           A £49 digital product whose card shows no page count, no file count and no preview is
@@ -619,24 +667,9 @@ function PackCoverArt({
 
           The argument the old chip made ("a £49 download with no spec is bought blind") is
           sound and is preserved, in two better places: the fixed document count now appears
-          ONCE per page as prose, and `EvidenceBar` renders the varying number in the card body
-          as a physical bar you can compare across cards without reading a digit. */}
-
-      {/* FOUR CORNERS, one fact each, and each corner always holds the same KIND of fact:
-          top-left what it is about, top-right whose rules it is written for, bottom-left what is
-          in the box, bottom-right whether you have been here before. `viewed` was top-left, which
-          is now the sector's corner -- two chips fighting for one corner is how the market chip
-          and the sector badge ended up competing before. */}
-      {pack.market && pack.market !== viewerMarket && (
-        <span className="absolute right-3 top-3 rounded-sm bg-surface/90 px-2.5 py-1 text-caption font-medium text-muted">
-          For {marketLabel(pack.market)} rules
-        </span>
-      )}
-      {viewed && (
-        <span className="absolute bottom-2.5 right-3 rounded-sm bg-surface/90 px-2.5 py-1 text-caption font-medium text-subtle">
-          Viewed
-        </span>
-      )}
+          ONCE per page as prose, and `EvidenceBar` renders the varying number as a physical bar
+          you can compare across cards without reading a digit -- since 2026-08-14 on the cover
+          itself, at `size="lg"`, which is where the eye lands first. */}
     </div>
   );
 }
@@ -1680,16 +1713,31 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 protected is no longer underneath.
 
                 THE 96px STEP IS GONE (2026-08-08, §3.2). `lg:text-mega` was a seventh size on a
-                six-size scale; the spec puts the homepage hero at --text-display, 3rem, and that
-                token now carries its own mobile size as a clamp, so the whole responsive ladder
-                collapses to one class. The fold argument above still holds and is now slack
-                rather than tight: dropping 96px to 48px can only give the fold more room.
+                six-size scale; the hero is --text-display and nothing else, and that token now
+                carries its own mobile size as a clamp, so the whole responsive ladder collapses to
+                one class.
+
+                --text-display IS NOW 72px AT THE DESKTOP END, not the 48px this comment described
+                until 2026-08-14, and the fold argument above is what makes that affordable rather
+                than a reversal of it: the retune only bites at `lg`, where the headline no longer
+                sits above the product. The clamp is `clamp(2.25rem, 1.2rem + 4vw, 4.5rem)`, so the
+                one-column widths this paragraph is about still set 36px and the measured fold is
+                untouched. Anything that reads a fixed px out of this comment is reading a stale
+                number; `tokens.css` is the declaration and `storefrontDesignContract.test.ts`
+                is what holds it.
 
                 The 44rem cap went with it. It existed because 96px in an 812px column fits about
-                17 characters, so 56rem would have set ragged three-line display text. At 48px
-                that column reads as an ordinary measure and the tighter cap would just make the
-                headline wrap early for no reason. */}
-            <h1 className="w-full min-w-0 max-w-full text-display font-semibold text-text md:max-w-[56rem] md:text-balance">
+                17 characters, so 56rem would have set ragged three-line display text. 72px in the
+                two-column slot this cap applies to (`md:` and up) reads as an ordinary measure,
+                and the tighter cap would just make the headline wrap early for no reason. */}
+            {/* NO `font-semibold`. It was on this h1 and it was INERT, which is worth a line
+                because the reason is not local to this file: `globals.css` is unlayered, so its
+                `h1, h2, h3 { font-weight: 560 }` beat the utility Tailwind emits into
+                `@layer utilities` no matter what was written here. The heading takes its weight
+                from the scale token (`--text-display--font-weight`, 660) via the
+                `:is(h1,h2,h3).text-display` rule added alongside that fix. A class that does
+                nothing is worse than no class: it reads as the answer to "what weight is this?" */}
+            <h1 className="w-full min-w-0 max-w-full text-display text-text md:max-w-[56rem] md:text-balance">
               {variant.globalHookLead}
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
