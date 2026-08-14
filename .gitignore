@@ -132,3 +132,7 @@ tools/experiments/_hhem_score_cache.json
 !.crew/graphs/
 !.crew/artifacts/.gitkeep
 !.crew/graphs/.gitkeep
+# Operator-only pack preview: R2 downloads and the generated reader (tools/preview_packs.py).
+# Both are derived from what is already published; neither is source.
+.cache/
+publish/preview/
