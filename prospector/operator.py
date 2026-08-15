@@ -1645,7 +1645,6 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     prefixes = _PROVIDER_MODEL_PREFIX.get(kind, ())
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
     model = cfg_model if model_matches else None
-    has_cfg_model = model_matches
     if kind == "claude_cli":
         # cfg.model is an API pin; don't leak it to the claude CLI.
         from .claude_cli import ClaudeCliOperator
@@ -1669,6 +1668,20 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             default_model=md.minimax if md else None,
             fast_model=md.minimax_fast if md else None,
         )
+    if kind == "minimax_m27":
+        # The SECOND non-critical tier, added 2026-08-15. Same account, same adapter, a
+        # DIFFERENT model — that is the entire point. `noncritical_operator: [minimax]` was one
+        # tier deep and produced 231 terminal `Generation chain EXHAUSTED` against 67 for the
+        # two-tier moat chain, so the gap was chain DEPTH, not model behaviour, and a second
+        # tier pinned to the SAME model would have inherited every stall it was meant to survive.
+        #
+        # It is a separate `kind` string on purpose: FallbackOperator keys both its in-run
+        # breaker and its persisted dead mark on the chain's tier NAME (`_raw`, above), so
+        # reusing "minimax" would have benched this tier the moment M3 was benched — an inert
+        # fallback that reads as depth. It must never LEAD: M2.7 measured 29.5s against M3's
+        # 8.1s on a generation prompt (2026-08-15), so it buys survivability, never latency.
+        m27 = (md.minimax_m27 if md else None) or "MiniMax-M2.7"
+        return MiniMaxOperator(cheap=fast, default_model=m27, fast_model=m27)
     if kind == "deepseek":
         # Routed to non-verification tasks only (prescreen, scoring, content).
         # MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
@@ -1704,7 +1717,9 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             "measured at its usage limit and every call paid a guaranteed failure first). "
             "Use claude_cli. Update config.yaml `operator:`/`artifact_operator:`.")
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected claude_cli|minimax|deepseek|ollama|mock)")
+                     "(expected claude_cli|minimax|minimax_m27|deepseek|ollama|mock). "
+                     "Note `minimax_fast` is NOT an operator name — it is a `model_defaults` "
+                     "field consumed by the `minimax` branch above.")
 
 
 def make_operator(cfg, fast: bool = False) -> Operator:

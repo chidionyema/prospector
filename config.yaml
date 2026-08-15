@@ -126,7 +126,14 @@ moat_primary: [minimax, claude_cli]
 # behaviour, not a gap — but it does mean a minimax outage stops generation, not just slows it.
 # NOTE: the moat (`operator:`) and the pack prose (`artifact_operator:`) are UNCHANGED — this
 # directive is about ancillary work, and the £49 deliverable is not ancillary.
-noncritical_operator: [minimax]
+# DEPTH ADDED 2026-08-15. The line above described the residual exposure exactly, and the log
+# then measured it: 231 terminal `Generation chain EXHAUSTED` against 67 for the two-tier moat
+# chain over 2026-08-06..08-15. The difference is chain DEPTH, not model behaviour. `minimax_m27`
+# is the second tier — the same MiniMax account and adapter, pinned to a DIFFERENT model, so an
+# M3 stall does not imply it. It is slower (M3 8.1s vs M2.7 29.5s) and so must stay SECOND: it
+# is a failover tier, never a routing choice. `minimax_fast` is NOT a name that can go here —
+# it is a model_defaults FIELD, and `_build_operator` would raise `unknown operator`.
+noncritical_operator: [minimax, minimax_m27]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -193,6 +200,9 @@ model_defaults:
   deepseek:     "deepseek-v4-pro"       # DeepSeekOperator default
   minimax:      "MiniMax-M3"           # MiniMaxOperator (full reasoning)
   minimax_fast: "MiniMax-M3"           # MiniMaxOperator (fast — also M3 per standing order)
+  minimax_m27:  "MiniMax-M2.7"         # the `minimax_m27` operator kind — SECOND non-critical
+                                       # tier only. Different model, NOT a faster one: measured
+                                       # 2026-08-15 M3 8.1s vs M2.7 29.5s on a generation prompt.
   ollama:       "qwen2.5-coder:7b"     # OllamaOperator default
   # `standardcompute` removed 2026-08-15 with its adapter — see prospector/operator.py.
   search:
