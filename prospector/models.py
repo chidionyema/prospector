@@ -38,6 +38,25 @@ class Decision(str, Enum):
 # retrieved). build_dossier() maps it to Decision.DEFER — it is NOT a real kill gate.
 DEFER_GATE = "retrieval_unavailable"
 
+#: Every `gate_fired` value that means "not ruled" rather than "ruled against".
+#:
+#: This is a CLOSED SET and the closure is the point. `build_dossier` decides KILL for any
+#: `gate_fired` it does not recognise, which is correct for real gates — an unknown gate name
+#: is still a gate that fired — and silently catastrophic for a deferral: a mistyped or
+#: newly-added defer reason mints an evidentiary KILL on a candidate no check ever looked at.
+#: That is precisely the defect `store/dossiers/2102bacc6dd75cf9.kill.json` records, where a
+#: fail-safe wore a verdict's clothes, and it was one string literal away from recurring when
+#: the producer's `queued_for_vetting` was added. Naming the set means a new defer reason is
+#: added HERE, next to the invariant, instead of appended to a tuple inside an `if`.
+#:
+#: - retrieval_unavailable — a decisive check could not be retrieved
+#: - moat_exhausted        — no trusted brain was available to rule
+#: - vet_budget_spent      — the tick's vetting clock ran out before this candidate started
+#: - queued_for_vetting    — a producer enqueued it; no consumer has taken it yet
+DEFER_REASONS = frozenset({
+    DEFER_GATE, "moat_exhausted", "vet_budget_spent", "queued_for_vetting",
+})
+
 
 # The check VOCABULARY (questions). A check's role — hard-kill / score-only / off — and
 # its bar are set per ambition LANE (config.lanes), not here: a durable-moat check is right

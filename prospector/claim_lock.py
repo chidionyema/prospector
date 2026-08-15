@@ -61,9 +61,18 @@ logger = logging.getLogger(__name__)
 #: the same day. Overridable via `claim_lock.stale_after_s`.
 DEFAULT_STALE_AFTER_S = 3600.0
 
-#: The only purpose in use today. It is part of the key, not a comment: a future "publish" or
-#: "backfill" claim on the same candidate must not collide with a re-vet claim.
+#: The re-vet claim (`kill_decay.REVET_PURPOSE` is this string). Purpose is part of the KEY,
+#: not a comment: a publish claim on a candidate must not collide with a re-vet claim on the
+#: same candidate — they exclude different things and are held for different durations.
 DEFAULT_PURPOSE = "revet"
+
+#: The publish claim (`run.publish_and_record`). Added 2026-08-15 with the producer/consumer
+#: split, which is what first made concurrent publishing reachable: `consume --publish` is meant
+#: to run as more than one worker, and publishing mints a provider Price AND writes the
+#: catalogue row, so two winners means two prices for one pack. The queue lease (`store.claim`)
+#: does not cover it — that lease excludes two consumers from VETTING one row, and says nothing
+#: about a manual `vet --resume --publish` racing a consumer.
+PUBLISH_PURPOSE = "publish"
 
 _STEAL_SUFFIX = ".steal"
 #: A steal is a handful of syscalls. Anything older than this is a worker that died holding it.

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  THE CONSUMER: the vetting half of the producer/consumer split.
+
+  It pulls DEFER rows off the queue (`store/prospector.db`), vets each one, and publishes the
+  ones that pass. It has NO deadline, which is the entire point: vetting used to be the middle
+  third of a 3h tick, so a 4127s vet (measured 2026-08-15, against a ~251s median) either
+  starved generation or was force-exited mid-verdict. Five `os._exit` breaches 2026-08-13..15.
+
+  RUN IT ONLY ALONGSIDE A PRODUCER. Set `schedule.producer_mode: true` in config.yaml at the
+  same time you load this. The two are one deployment:
+    - producer_mode false + no consumer  = today's tick. Correct, and the default.
+    - producer_mode true  + this loaded  = the split. Correct.
+    - producer_mode true  + NO consumer  = the queue fills and nothing drains it, QUIETLY —
+      a producer tick is all-DEFER by construction, so `alerts_for_tick` deliberately does not
+      page on it. What to watch instead is THIS job's heartbeat, not the producer's ticks.
+    - producer_mode false + this loaded  = safe but pointless: both halves drain, the queue
+      lease keeps them off each other's rows, and the tick still carries its deadline.
+
+  THE RAILS, AND WHICH HALF EACH ONE STOPS
+    store/scheduler/PAUSE             BOTH halves. The liability rail; a rail with exceptions
+                                      is not a rail.
+    store/scheduler/PAUSE_GENERATION  the PRODUCER only — generation idles, the drain keeps
+                                      working.
+    store/scheduler/PAUSE_CONSUMER    the CONSUMER only — vetting idles, generation keeps
+                                      filling the queue. The mirror image, added with this
+                                      job so "hold the drain while I look at the moat" never
+                                      has to be expressed by reaching for the liability rail.
+    spend.daily_cap_usd               BOTH, read through the daemon's own `guard_check` so
+                                      the two processes can never disagree about whether
+                                      spending is allowed. It is a cap on the DAY's billed
+                                      total, not a per-role allowance — splitting it would
+                                      let the two halves sum past the liability ceiling.
+
+  All four are re-read every cycle, so lifting one resumes work without a restart.
+
+  KeepAlive=true and the loop sleeps rather than exits on a blocked rail. Both, because they
+  answer different questions: KeepAlive covers a crash, the sleep covers a pause. Exiting on a
+  pause would NOT re-couple the halves — the durable queue does the decoupling, not this
+  process's uptime — but it would re-pay config load, `make_operator` (which makes network
+  calls) and a guard evaluation that re-scans the spend ledger, measured at 108s on a 157 MB
+  one. `consume –once` under an external supervisor is a legitimate deployment of the same
+  code if you would rather pay that.
+
+  SEPARATE LOG FILES from the scheduler's, deliberately. Two resident processes appending to
+  one file interleave mid-line under concurrent writes, and the first thing anyone does with
+  these logs is attribute a failure to a phase — which is exactly what interleaving destroys.
+
+  Install:  cp deploy/com.prospector.consumer.plist ~/Library/LaunchAgents/
+            launchctl load   ~/Library/LaunchAgents/com.prospector.consumer.plist
+  Stop:     launchctl unload ~/Library/LaunchAgents/com.prospector.consumer.plist
+  Pause:    touch store/scheduler/PAUSE_CONSUMER      (no unload needed)
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.prospector.consumer</string>
+    <!-- Direct Python invocation, same reason as the scheduler plist: the Homebrew python here
+         has macOS TCC access to ~/Documents and a /bin/bash wrapper does not. The process loads
+         the gitignored .env itself, so API keys never live in this tracked file. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
+        <string>-m</string>
+        <string>prospector.run</string>
+        <!-- `<config>` is declared on the TOP-LEVEL parser (run.py:3651), so it goes BEFORE
+             the subcommand. argparse does not hand unknown options back up from a subparser:
+             put it after `consume` and launchd gets an exit-2 usage error every 120s. -->
+        <string>--config</string>
+        <string>/Users/chidionyema/Documents/code/prospector/config.yaml</string>
+        <string>consume</string>
+        <string>--publish</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/chidionyema/Documents/code/prospector</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/Users/chidionyema</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <!-- Longer than the scheduler's 30s. A consumer that dies at startup (bad config, dead
+         store) would otherwise respawn twice a minute forever; at 120s a genuine crash loop is
+         still obvious in the log within minutes, and costs a fraction of the setup churn. -->
+    <key>ThrottleInterval</key>
+    <integer>120</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/chidionyema/Documents/code/prospector/store/scheduler/consumer.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/chidionyema/Documents/code/prospector/store/scheduler/consumer.err.log</string>
+</dict>
+</plist>

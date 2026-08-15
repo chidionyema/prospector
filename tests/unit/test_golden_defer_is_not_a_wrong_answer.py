@@ -26,7 +26,7 @@ import pytest
 
 from prospector.config import load_config
 from prospector.golden import run_golden_set
-from prospector.models import CheckResult, Candidate, Decision, Source, Verdict
+from prospector.models import Candidate, CheckResult, Decision, Source, Verdict
 
 
 def _FakeCheck() -> CheckResult:

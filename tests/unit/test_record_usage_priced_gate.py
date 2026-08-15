@@ -13,7 +13,6 @@ this from the other side).
 from __future__ import annotations
 
 from prospector import telemetry
-from prospector.config import Config
 
 
 def _spend_events(records):

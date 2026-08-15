@@ -15,6 +15,7 @@ from typing import Any, Optional
 from . import admissibility, trimming
 from .models import (
     DEFER_GATE,
+    DEFER_REASONS,
     AdversarialResult,
     Candidate,
     CheckResult,
@@ -109,13 +110,21 @@ def build_dossier(
     The caller is responsible for computing `score` whenever gate_fired is None
     (i.e., the candidate survived all hard gates and needs ranking).
     """
-    if gate_fired in (DEFER_GATE, "moat_exhausted", "vet_budget_spent"):
-        # Not a kill: a decisive check could not be retrieved, the moat was unavailable, or
-        # the tick ran out of vetting budget before this candidate started.
+    if gate_fired in DEFER_REASONS:
+        # Not a kill: a decisive check could not be retrieved, the moat was unavailable, the
+        # tick ran out of vetting budget before this candidate started, or a producer queued
+        # it and no consumer has taken it yet.
         # Park the candidate for re-vet — never publish, never count as an evidentiary kill.
         decision = Decision.DEFER
         failed = next((c for c in checks if getattr(c, "retrieval_failed", False)), None)
-        if gate_fired == "vet_budget_spent":
+        if gate_fired == "queued_for_vetting":
+            # The producer's row. Same care as the budget reason below and for the same
+            # reason: nothing was retrieved and nothing failed, so any wording implying a
+            # check ran would be a fabricated verdict on a candidate nobody has looked at.
+            reason = ("Deferred — queued for vetting and not yet taken by a consumer. NOT an "
+                      "evidentiary kill and NOT an outage: no check has run. It is ruled at "
+                      "full cost by the next `vet --resume`.")
+        elif gate_fired == "vet_budget_spent":
             # The honest reason, and deliberately NOT the retrieval one below. Nothing was
             # retrieved, nothing failed, and no gate was consulted: the batch hit its time
             # ceiling first. Saying "could not retrieve evidence" here would manufacture an

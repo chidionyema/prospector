@@ -120,6 +120,7 @@ class _FakeStore:
         # is off (these call sites pass cfg=None, so `drain_state.max_attempts` returns 0), but
         # `drain_survey` binds to it, so the double has to carry it.
         self._root = Path(root) if root is not None else Path("/nonexistent-fake-store")
+        self._leases: dict = {}
 
     @property
     def root(self):
@@ -141,6 +142,17 @@ class _FakeStore:
         """Same criterion as `get()` without the read — see `Store.has_dossier`."""
         return self.get(cid) is not None
 
+    # The queue lease. Single-consumer by construction here — one `_cmd_resume` call, no peer
+    # process — so every claim is granted and the owner is merely recorded. Contention is not
+    # fakeable and is not faked: it is pinned in tests/unit/test_queue_lease.py against the real
+    # sqlite compare-and-swap, which is the only place the property can actually be proven.
+    def claim(self, cid, owner, ttl_s):
+        self._leases[cid] = owner
+        return True
+
+    def release(self, cid, owner):
+        return self._leases.pop(cid, None) == owner
+
 
 def _stub_vetting(monkeypatch, seen):
     """Replace the real vet with a recorder, so a test asserts on WHAT WAS RE-VETTED.
@@ -149,6 +161,16 @@ def _stub_vetting(monkeypatch, seen):
     row was orphaned — so it passed while proving only that the banner mentioned the oldest id,
     never that the candidate was actually put through the moat.
     """
+    # ORDER IS PINNED AT ONE WORKER, DELIBERATELY. The drain became a ThreadPoolExecutor on
+    # 2026-08-15 (`_cmd_resume`), so rows are SUBMITTED in the rank-then-age order these tests
+    # assert but COMPLETE in whatever order they finish. The priority sort is still the thing
+    # under test and still load-bearing: it decides which rows enter a bounded pass, and which
+    # ones the budget cancels — the un-started tail, which is the lowest-ranked precisely because
+    # submission follows the sort. What a pool cannot promise is that completion order equals
+    # submission order, and asserting that would pin a scheduler artefact instead of the policy.
+    # Same instrument and same reason as tests/unit/test_grounding_outage_does_not_kill_daemon.py.
+    monkeypatch.setenv("PROSPECTOR_VET_WORKERS", "1")
+
     from prospector.models import Decision
 
     def fake_vet(cand, *_a, **_k):

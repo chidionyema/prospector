@@ -195,6 +195,27 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
             tmp.unlink()
 
 
+def producer_mode(cfg) -> bool:
+    """`schedule.producer_mode` — is this daemon the PRODUCER half of the split?
+
+    False (the default) is the tick exactly as it has always been: drain, then generate, vet,
+    and publish, all inside one 3-hour deadline. Nothing about the split changes a deployment
+    that has not asked for it — the flag is the only thing that moves.
+
+    True makes the tick a producer: it generates, parks every survivor in the queue as a DEFER
+    row (`run.enqueue_candidates`), and returns. It does NOT vet, does NOT publish, and does NOT
+    drain — a consumer process (`python -m prospector.run consume`) owns all three.
+
+    THE DRAIN IS SKIPPED HERE ON PURPOSE, and it is the part worth stating. Leaving it on would
+    be SAFE — the queue lease (`store.claim`) already stops two workers vetting one row — but it
+    would put the tick back on the moat's clock, which is the entire thing the split exists to
+    end: a generation tick would once again stall behind a benched brain, and the 3-hour deadline
+    would once again be shared by a phase that cannot be bounded. Half a split is the worst of
+    both, so the flag moves both halves at once.
+    """
+    return bool(_sched(cfg, "producer_mode", False))
+
+
 def _resume_per_tick(cfg) -> int:
     """How many backlogged candidates one tick may re-vet. 0 disables the drain."""
     schedule = getattr(cfg, "schedule", None) or {}
@@ -1093,7 +1114,10 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # immediately before calling this function (`threading.Timer(_TICK_HARD_DEADLINE_S, ...)`,
     # ~line 1424), so this instant is the tick's T0 to within the cost of one log line.
     _tick_started_mono = time.monotonic()
-    resumed = _drain_pass(cfg, _resume_per_tick(cfg))
+    # PRODUCER MODE owns both halves of the tick or neither (see `producer_mode`). A producer
+    # does not drain: the consumer process does, on the queue's schedule instead of this one's.
+    _producer = producer_mode(cfg)
+    resumed = None if _producer else _drain_pass(cfg, _resume_per_tick(cfg))
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
     # the single implicit default — `generation.operator_archetype: solo_agent`. The four
@@ -1172,7 +1196,11 @@ def _default_generate(cfg, batch_size: int) -> dict:
                "vet_budget_s": vet_budget, "tick_deadline_s": _TICK_HARD_DEADLINE_S,
                "drain_spent_s": _spent, "tick_remaining_s": _left,
                "batch_size": batch_size})
-    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes,
+    # `vet=False` returns after the survivors are queued, so `publish` could only ever be inert
+    # in producer mode — it is passed as False rather than left True so the call states what the
+    # tick actually does. `_cmd_generate` refuses the same combination outright (run.py:2858).
+    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=not _producer, lanes=lanes,
+                          vet=not _producer,
                           gen_time_budget_s=budget,
                           artifact_time_budget_s=art_budget,
                           vet_time_budget_s=vet_budget)
@@ -1192,6 +1220,18 @@ def _default_generate(cfg, batch_size: int) -> dict:
     provisional = sum(1 for d in dossiers if getattr(d, "provisional", False))
     out = {"dossiers": len(dossiers), "passes": passes, "defers": defers,
            "provisional": provisional}
+    if _producer:
+        # THE TICK MUST SAY WHICH KIND OF TICK IT WAS, or the alerter reads a healthy producer
+        # as an outage: every row a producer writes is a DEFER, so `defers >= dossiers` — the
+        # exact condition of the CRITICAL "Moat outage: all N candidates DEFERRED" page
+        # (alerts.py:466). That would fire on EVERY tick, and an alert that always fires trains
+        # the founder to ignore the channel that carries the real ones.
+        #
+        # `queued` rather than reusing `passes`: a producer's success metric is rows handed to
+        # the queue, and it has no verdict to report by construction. Anything downstream that
+        # wants "did the factory work" must read the number the factory actually produces.
+        out["mode"] = "producer"
+        out["queued"] = len(dossiers)
     if resumed is not None:
         out["resumed"] = resumed
     # Which market this batch was generated for. Recorded whenever rotation is ON, so the tick

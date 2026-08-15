@@ -81,6 +81,14 @@ class _Store:
         # an empty backlog would pass these tests via the wrong early return.
         return cid in {"c1", "c2"}
 
+    # The queue lease. These tests never reach a vet — the preflight is the thing under test —
+    # but the double must still answer, because a store that cannot lease cannot be drained.
+    def claim(self, cid, owner, ttl_s):
+        return True
+
+    def release(self, cid, owner):
+        return True
+
 
 def _cfg(operator=("claude_cli",)):
     return types.SimpleNamespace(operator=list(operator))

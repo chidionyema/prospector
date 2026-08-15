@@ -55,20 +55,33 @@ class TestPublishFailureIsRecorded:
         cand.candidate_id = "cid-publish-outcome"
         return Dossier(candidate=cand, decision=Decision.PASS, checks=[_check("value_durability")])
 
-    def test_a_raising_publish_is_recorded_as_failed(self, monkeypatch):
+    def _cfg(self, tmp_path):
+        """A config with a REAL store_dir, because publishing now takes a per-candidate claim.
+
+        A bare `object()` used to be enough: publish_and_record read nothing off the config. Since
+        the producer/consumer split it wraps the money step in `claim_lock.claiming(...)`, and
+        that lock deliberately REFUSES to guess a directory — a cwd-relative default under
+        pytest resolves to the LIVE store, which is how a test suite ends up writing lock files
+        into production state. So the test supplies one, exactly as the error message asks.
+        """
+        return types.SimpleNamespace(store_dir=tmp_path,
+                                     claim_lock={"enabled": True, "dir": str(tmp_path),
+                                                 "stale_after_s": 3600})
+
+    def test_a_raising_publish_is_recorded_as_failed(self, monkeypatch, tmp_path):
         d = self._pass_dossier()
         import publish.publish as pp
         monkeypatch.setattr(pp, "publish", lambda *a, **k: (_ for _ in ()).throw(
             RuntimeError("store API refused the push")))
 
-        status = run_mod.publish_and_record(d, cfg=object())
+        status = run_mod.publish_and_record(d, cfg=self._cfg(tmp_path))
 
         assert status == "failed"
         assert d.publish_status == "failed"
         assert "RuntimeError" in d.publish_error
         assert "store API refused the push" in d.publish_error
 
-    def test_a_publish_that_RETURNS_a_refusal_is_also_failed(self, monkeypatch):
+    def test_a_publish_that_RETURNS_a_refusal_is_also_failed(self, monkeypatch, tmp_path):
         """The half the old code could not have caught even with a broader `except`.
 
         `publish()` reports most refusals by RETURN VALUE ({"status": "error"|"skipped"|...}),
@@ -81,20 +94,20 @@ class TestPublishFailureIsRecorded:
                         {}):
             d = self._pass_dossier()
             monkeypatch.setattr(pp, "publish", lambda *a, _r=refusal, **k: _r)
-            assert run_mod.publish_and_record(d, cfg=object()) == "failed", refusal
+            assert run_mod.publish_and_record(d, cfg=self._cfg(tmp_path)) == "failed", refusal
             assert d.publish_status == "failed"
             assert repr(refusal.get("status", "")) in d.publish_error or "unknown" in d.publish_error
 
-    def test_a_real_publish_is_recorded_as_published(self, monkeypatch):
+    def test_a_real_publish_is_recorded_as_published(self, monkeypatch, tmp_path):
         d = self._pass_dossier()
         import publish.publish as pp
         monkeypatch.setattr(pp, "publish", lambda *a, **k: {"status": "published"})
 
-        assert run_mod.publish_and_record(d, cfg=object()) == "published"
+        assert run_mod.publish_and_record(d, cfg=self._cfg(tmp_path)) == "published"
         assert d.publish_status == "published"
         assert d.publish_error is None
 
-    def test_the_outcome_is_RE_SAVED_so_the_persisted_dossier_carries_it(self, monkeypatch):
+    def test_the_outcome_is_RE_SAVED_so_the_persisted_dossier_carries_it(self, monkeypatch, tmp_path):
         """The record only counts if it survives the process. The dossier is saved BEFORE the
         publish attempt, so without a re-save the field would exist and always be None on disk."""
         d = self._pass_dossier()
@@ -103,7 +116,7 @@ class TestPublishFailureIsRecorded:
         saved: list = []
         store = types.SimpleNamespace(save=saved.append)
 
-        run_mod.publish_and_record(d, cfg=object(), store=store)
+        run_mod.publish_and_record(d, cfg=self._cfg(tmp_path), store=store)
 
         assert saved == [d], "the dossier must be re-saved after the publish attempt"
         assert saved[0].publish_status == "published"

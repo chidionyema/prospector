@@ -11,6 +11,11 @@ requests>=2.31
 # (the real one is hand-rolled in errors.py/health.py, which no library was found to match).
 json_repair>=0.63
 pytest>=8.0
+# NOT optional, despite being a speed plugin: `pytest.ini addopts` now carries `-n auto`, so an
+# environment without xdist does not run the suite slowly — it dies at startup on
+# `unrecognized arguments: -n`, before collecting a single test. CI installs from this file
+# only (ci.yml:60), which is exactly the environment that would have hit it.
+pytest-xdist>=3.5
 # The linter, declared so a lint receipt is reproducible rather than a property of whichever
 # machine happens to have it. Rule set is pinned in ruff.toml; without it ruff's own defaults
 # drift between versions and two checkouts disagree about whether the tree is clean.

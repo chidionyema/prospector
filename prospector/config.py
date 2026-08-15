@@ -642,6 +642,10 @@ class Config:
     # `evidence_budget.artifacts_cfg` apply, which leave the old prompt behaviour intact.
     artifacts: dict[str, Any] = field(default_factory=dict)
     schedule: dict[str, Any] = field(default_factory=dict)
+    # The CONSUMER loop's pacing (batch size + the three backoffs). Empty means the shipped
+    # defaults in `consumer.consumer_config` apply, so a config predating the producer/consumer
+    # split runs the consumer at defaults rather than failing to start it.
+    consumer: dict[str, Any] = field(default_factory=dict)
     spend: Spend = field(default_factory=Spend)
     store: dict[str, Any] = field(default_factory=lambda: {"dir": "store"})
     # Entitlements API key for the /entitlements check. Read from the
@@ -1079,6 +1083,7 @@ def load_config(path: str | Path | None = None) -> Config:
         pack_data=_validate_block("pack_data", raw.get("pack_data")),
         artifacts=_validate_block("artifacts", raw.get("artifacts")),
         schedule=raw.get("schedule") or {},
+        consumer=raw.get("consumer") or {},
         spend=Spend(**(raw.get("spend") or {})),
         store=raw.get("store") or {"dir": "store"},
         model_defaults=_parse_model_defaults(raw.get("model_defaults")),

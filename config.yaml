@@ -2110,7 +2110,56 @@ schedule: { cadence: daily, batch_size: 50, backlog_cap: 0, max_resume_attempts:
             # goes to rows that can still reach the publish gate.
             revet_provisional_kills: true, gate_generation_on_grounding: true,
             reload_on_code_change: true, gen_budget_frac: 0.35,
+            # `lease_ttl_s: 7200` — how long a worker may hold a queue row before the lease
+            # expires and the row returns to the queue. Sized off the WORST measured vet, not the
+            # median: a drain row took 4127s on 2026-08-15 (content phase 51-56% of it) against a
+            # ~251s average. A TTL near the average would expire mid-vet and hand a LIVE row to a
+            # second worker, manufacturing the double-work the lease exists to prevent — and doing
+            # it most reliably on the slowest, most expensive rows. Too long is the safe
+            # direction: it delays one row after a crash, where too short duplicates paid work and
+            # can reach the Stripe mint twice. Expiry is the ONLY release path that survives a
+            # SIGKILL, so this number is also the per-row backstop the tick's `threading.Timer`
+            # used to provide for a whole tick. PROSPECTOR_LEASE_TTL_S overrides for ops.
+            lease_ttl_s: 7200,
+            # `producer_mode: false` — which HALF of the split this daemon is. False is the tick
+            # exactly as it has always been: drain, generate, vet, publish, all inside one
+            # deadline. True makes the daemon a pure PRODUCER — it generates, parks every
+            # survivor in the queue as a DEFER row, and returns; it does not vet, publish or
+            # drain, because a consumer (`python -m prospector.run consume`) owns all three.
+            #
+            # It moves BOTH halves at once on purpose. Leaving the drain on in producer mode
+            # would be SAFE — the queue lease already stops two workers vetting one row — but it
+            # would put the tick back on the moat's clock, which is the whole thing the split
+            # exists to end. Half a split is the worst of both: the deadline is still there and
+            # now there are two processes.
+            #
+            # Flip this ONLY together with a running consumer. A producer with no consumer fills
+            # the queue and nothing drains it — and that failure is quiet by design, because a
+            # producer tick is all-DEFER by construction, so `alerts_for_tick` suppresses the
+            # page that would once have fired ("all N candidates DEFERRED"). The consumer's own
+            # liveness is what to watch, not the producer's ticks.
+            producer_mode: false,
             market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
+
+# The CONSUMER loop (`python -m prospector.run consume`) — the vetting half of the
+# producer/consumer split. It has NO deadline by design; these four numbers are its pacing.
+consumer:
+  # Rows per drain pass before the loop regains control and re-reads the rails. NOT a
+  # throughput limit: a pass still vets `retrieval.vet_workers` (8) rows in parallel. Smaller
+  # means PAUSE and the spend cap take effect sooner, at one more pass of operator setup;
+  # larger amortises that setup and defers the rail check by up to one batch. 5 sits just
+  # under vet_workers so a pass is one wave, and a stop is never more than one wave away.
+  batch: 5
+  # Queue had work — the drain itself is the slow part, so there is nothing to pace.
+  busy_s: 0
+  # Queue was empty: how fast the consumer notices the producer filling it. A minute is well
+  # under the generation cadence, so the consumer is never the reason a row waits.
+  idle_s: 60
+  # A rail refused the pass (PAUSE, spend cap, blind moat): how fast it notices the block
+  # lifted. Longest of the three because a blocked cycle costs a guard evaluation that
+  # re-scans the spend ledger — measured at 108s on a 157 MB one — so polling it hard would
+  # spend more on asking than the pass would have spent working.
+  blocked_s: 300
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.

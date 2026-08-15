@@ -160,7 +160,29 @@ def test_the_lock_lives_in_this_working_trees_own_git_dir():
     assert path.parent.is_dir(), f"{path.parent} is not a directory — .git treated as a path?"
 
 
-def test_a_second_gate_in_the_same_tree_is_refused_not_queued(capsys):
+@pytest.fixture
+def isolated_lock(monkeypatch, tmp_path):
+    """Point the single-flight lock at tmp_path for the tests that ACQUIRE it.
+
+    THE GATE WAS FAILING BECAUSE IT WAS RUNNING. These three tests took the REAL lock, in the
+    real working tree, and asserted they got it — but the pre-commit gate runs this suite while
+    holding exactly that lock, so `single_flight()` correctly returned False and the gate failed
+    on its own liveness. Measured 2026-08-15: 12/12 pass standalone, the same 3 fail inside the
+    gate. That is not flake and it is not concurrency between sessions (the lock is per-worktree
+    by construction, `popdd_verify.py:332-341`) — it is one tree colliding with itself, so the
+    gate could never go green in any tree, for anyone.
+
+    The lock's REAL path is still pinned, by `test_the_lock_lives_in_this_working_trees_own_git_
+    dir` above, which only READS it. Reading is safe; acquiring is what collides. Isolating the
+    acquirers keeps both properties: the path is verified, and the exclusion mechanism is
+    exercised without the test needing to be the only gate on the machine.
+    """
+    lock = tmp_path / "popdd-gate.lock"
+    monkeypatch.setattr(pv, "_gate_lock_path", lambda: lock)
+    return lock
+
+
+def test_a_second_gate_in_the_same_tree_is_refused_not_queued(capsys, isolated_lock):
     with pv.single_flight() as first:
         assert first is True
         with pv.single_flight() as second:
@@ -173,7 +195,7 @@ def test_a_second_gate_in_the_same_tree_is_refused_not_queued(capsys):
         assert "setup_worktree.sh" in out, "the refusal must print the fix, not just the fault"
 
 
-def test_the_lock_is_released_when_the_gate_finishes():
+def test_the_lock_is_released_when_the_gate_finishes(isolated_lock):
     with pv.single_flight() as acquired:
         assert acquired is True
     assert not pv._gate_lock_path().exists()
@@ -181,7 +203,7 @@ def test_the_lock_is_released_when_the_gate_finishes():
         assert again is True
 
 
-def test_the_lock_is_released_even_when_the_gate_raises():
+def test_the_lock_is_released_even_when_the_gate_raises(isolated_lock):
     with pytest.raises(RuntimeError):
         with pv.single_flight() as acquired:
             assert acquired is True
@@ -189,7 +211,7 @@ def test_the_lock_is_released_even_when_the_gate_raises():
     assert not pv._gate_lock_path().exists()
 
 
-def test_a_dead_holder_does_not_brick_the_repo():
+def test_a_dead_holder_does_not_brick_the_repo(isolated_lock):
     """A crash or a SIGKILL must not leave a lock that blocks every future commit — that
     would just be a new way to be stuck. PID 2^31-1 does not exist."""
     path = pv._gate_lock_path()
@@ -202,7 +224,7 @@ def test_a_dead_holder_does_not_brick_the_repo():
         path.unlink(missing_ok=True)
 
 
-def test_an_unreadable_lock_is_treated_as_stale():
+def test_an_unreadable_lock_is_treated_as_stale(isolated_lock):
     path = pv._gate_lock_path()
     path.write_text("{ this is not json")
     try:
@@ -212,7 +234,7 @@ def test_an_unreadable_lock_is_treated_as_stale():
         path.unlink(missing_ok=True)
 
 
-def test_a_wedged_holder_is_named_so_it_can_be_cleared(capsys):
+def test_a_wedged_holder_is_named_so_it_can_be_cleared(capsys, isolated_lock):
     """Past its own ceiling, the holder is not slow, it is wedged. The operator needs the PID
     and the command, not a suggestion to be patient."""
     path = pv._gate_lock_path()

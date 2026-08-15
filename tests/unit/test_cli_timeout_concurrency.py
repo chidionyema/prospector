@@ -15,15 +15,25 @@ def test_config_loads_concurrency_and_timeout_knobs():
     cfg = load_config()
     r = cfg.retrieval
     assert r.claude_concurrency == 4
-    # Cut 5 -> 3 on 2026-08-06. It was 5 against a cursor_concurrency of 8; with cursor_cli
-    # gone, claude_concurrency is the whole ceiling and 5 workers would oversubscribe it.
-    assert r.vet_workers == 3
+    assert r.vet_workers == 8
     assert not hasattr(r, "cursor_concurrency"), "cursor_cli knob was removed 2026-08-06"
-    # The invariant that outlives the tuned numbers: a vet runs its checks SEQUENTIALLY
-    # (verify.py:667, required by kill-fast), so it holds at most one CLI slot at a time.
-    # vet_workers > the CLI ceiling would therefore guarantee slot starvation and re-create
-    # the "grounding queue saturated" failure this change exists to remove.
-    assert r.vet_workers <= r.claude_concurrency, "workers must not outnumber CLI slots"
+    # THE INVARIANT, retargeted 2026-08-15. It outlives the tuned numbers and it was never
+    # really about claude_cli: a vet runs its checks SEQUENTIALLY (verify.py:667, required by
+    # kill-fast), so it holds at most one slot on ONE brain at a time. More workers than that
+    # brain has slots guarantees starvation and re-creates the "grounding queue saturated"
+    # failure.
+    #
+    # What changed is WHICH brain. `claude_concurrency` was the whole ceiling only while
+    # claude_cli was the only brain in the chain; since minimax was promoted to head both
+    # `operator:` and `moat_primary:` (config.yaml:58,81), the head's ceiling is the one that
+    # binds and claude_concurrency bounds the FAILOVER. Pinning the old brand here is pinning
+    # the roster, not the invariant — the same defect tests/test_drain_moat_preflight.py's
+    # fixture docstring records — so this reads the head of the configured chain.
+    head = cfg.operator[0] if isinstance(cfg.operator, list) else cfg.operator
+    ceiling = getattr(r, f"{head}_concurrency", None)
+    assert ceiling is not None, f"the chain head {head!r} declares no concurrency ceiling"
+    assert r.vet_workers <= ceiling, (
+        f"workers ({r.vet_workers}) must not outnumber {head} slots ({ceiling})")
     assert r.query_gen_timeout == 90
     assert r.query_gen_timeout_max == 90
     assert r.query_gen_retries == 0
