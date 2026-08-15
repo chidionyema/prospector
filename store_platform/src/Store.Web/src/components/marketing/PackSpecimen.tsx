@@ -171,18 +171,32 @@ export function PackSpecimen({ className }: { className?: string }) {
               the page's own white it would read as a bordered div. It HUGS the sheet -- the grey is
               a margin, not a stage. The padding is asymmetric because the stack is offset down and
               right and must not touch the plinth's edge. */}
-          <div className="rounded-md border border-border bg-surface3 p-4 sm:p-8">
-            <div className="relative pb-3 pr-3">
+          {/* ONE PADDED CONTAINER BELOW 640px (founder review, 2026-08-15, measured at 390).
+              The plinth, the stack offset and the document margins each contributed their own
+              horizontal padding, and they compounded: 16+16 (plinth `p-4`) + 12 (`pr-3`) + 24+24
+              (`px-6`) = 92px of nested chrome inside a 342px frame, leaving the excerpt a 246px
+              text column -- 63% of the viewport, a realised measure of 27 characters, and prose
+              wrapping at four or five words a line.
+
+              Three of the four contributors are DECORATION -- the grey ground, the border and the
+              two offset sheets underneath all exist to make the sheet read as paper laid on a
+              surface. On a phone there is no room for a surface to be visible around the paper
+              anyway: 16px of grey either side reads as a stray border, not as a plinth. So below
+              `sm` the plinth stops painting entirely and the article keeps only its own document
+              margin. The composition from `sm` up is byte-identical -- every class that was here
+              is still here behind an `sm:` prefix. */}
+          <div className="rounded-md sm:border sm:border-border sm:bg-surface3 sm:p-8">
+            <div className="relative sm:pb-3 sm:pr-3">
               {/* THE SHEETS UNDERNEATH: two, not three -- at three the offsets start reading as a
                   deliberate graphic rather than as a stack that happens to be there. They are
                   `aria-hidden` and carry no text: a screen reader gets the page once. */}
               <div
                 aria-hidden
-                className="absolute left-3 top-3 h-full w-full rounded-sm border border-border bg-surface"
+                className="absolute left-3 top-3 hidden h-full w-full rounded-sm border border-border bg-surface sm:block"
               />
               <div
                 aria-hidden
-                className="absolute left-1.5 top-1.5 h-full w-full rounded-sm border border-border bg-surface"
+                className="absolute left-1.5 top-1.5 hidden h-full w-full rounded-sm border border-border bg-surface sm:block"
               />
 
               {/* THE PAGE. `overflow-hidden` is the crop; nothing inside it is sticky (that
@@ -200,22 +214,48 @@ export function PackSpecimen({ className }: { className?: string }) {
               <article className="relative max-h-[36rem] overflow-hidden rounded-sm border border-border bg-surface sm:max-h-[38rem]">
                 {/* DOCUMENT MARGINS, not card padding. Wider at the sides than a card would be,
                     and the type inside runs to a ~62ch measure rather than to the container. */}
-                <div className="px-6 pb-10 pt-7 sm:px-12 sm:pb-14 sm:pt-11">
+                <div className="px-5 pb-10 pt-7 sm:px-12 sm:pb-14 sm:pt-11">
                   {/* THE RUNNING HEAD. Sans, because both halves are titles -- human language. The
                       hairline under it is the single most "this is a typeset page" signal
                       available for one border-width of cost. */}
-                  <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
+                  {/* THE RUNNING HEAD STACKS ON A PHONE, and that is a fix for lost information
+                      rather than a layout preference (founder review, 2026-08-15).
+
+                      The two halves shared the row by CONTENT LENGTH, not by fraction: the title
+                      was `min-w-0 truncate` (flex `0 1 auto`, so it shrinks) and the section
+                      label was `flex-none` (so it never does). Every pixel of shortfall was
+                      therefore charged to the one half that carries information. Measured at
+                      390px: the title rendered 94px wide as "The S…" -- an ellipsis with no
+                      content in front of it -- while its sibling "Everything we read, once", a
+                      constant string that is the same on every pack, rendered whole at 137px.
+
+                      Equal fractions would only move the damage: at 143px each, the static label
+                      truncates too and the title still loses most of itself. A running head is
+                      two lines' worth of text and one line's worth of room, so it gets two lines.
+                      Stacked, the title has the full measure and NEITHER half truncates. The `sm`
+                      row is unchanged. */}
+                  <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
                     <span className="min-w-0 truncate text-caption font-medium text-text">
                       {report.title}
                     </span>
-                    <span className="flex-none text-caption text-subtle">{SECTION_TITLE}</span>
+                    <span className="min-w-0 truncate text-caption text-subtle sm:flex-none">
+                      {SECTION_TITLE}
+                    </span>
                   </div>
 
                   {/* THE MID-SENTENCE OPENING. Real text: the closing clause of the check printed
                       immediately before this one, quoted with a leading ellipsis. This is the line
                       that does the "there are pages before this one" work, and it does it without
                       claiming a page count we cannot substantiate. */}
-                  <p className="mt-6 max-w-[62ch] text-body leading-[1.75] text-muted">
+                  {/* LEADING IS TIED TO THE REALISED MEASURE, not to the one `max-w-[62ch]`
+                      names (founder review, 2026-08-15). That cap is 571px and has never bound on
+                      a phone: the column is ~302px after the collapse above, so the measure is
+                      about 33 characters. 1.75 is the correct ratio for 62ch and is far too open
+                      for 33 -- short lines set that loosely stop reading as a paragraph and start
+                      reading as a list of disconnected fragments, which is exactly what the
+                      founder saw. 1.5 below `sm`, 1.75 from `sm` up where the 62ch cap does bind
+                      and the ratio it was chosen for is the ratio in effect. */}
+                  <p className="mt-6 max-w-[62ch] text-body leading-[1.5] text-muted sm:leading-[1.75]">
                     …{sentenceTail(PRECEDING?.rationale ?? '')}
                   </p>
 
@@ -263,7 +303,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                       thing a phone reader sees is a complete clause that stops, rather than a word
                       dissolving. `sm:line-clamp-none` because from `sm` up the sheet is 38rem and
                       the paragraph fits whole -- the desktop composition is unchanged. */}
-                  <p className="mt-5 line-clamp-5 max-w-[62ch] text-body leading-[1.75] text-text sm:line-clamp-none">
+                  <p className="mt-5 line-clamp-5 max-w-[62ch] text-body leading-[1.5] text-text sm:line-clamp-none sm:leading-[1.75]">
                     {FAILED?.rationale}
                   </p>
 

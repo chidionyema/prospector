@@ -58,7 +58,9 @@ describe('Design contract — global tokens (globals.css)', () => {
     // Brand v3 (2026-08-06): a neutral grey scale. The v2 values pinned here were
     // #0A0A0A text and #E5E5E5 border; v3 moves to the Zinc-derived ramp so text, muted,
     // subtle and border are steps of ONE scale rather than four separately-chosen greys.
-    assertContains('page bg', css, /--bg:\s*#FFFFFF/i);
+    // 2026-08-15 (founder directive): the ground goes warm and SPLITS from the surface. Both are
+    // pinned so a later edit cannot re-flatten them to one colour without failing here.
+    assertContains('page bg', css, /--bg:\s*#FAF9F7/i);
     assertContains('surface', css, /--surface:\s*#FFFFFF/i);
     assertContains('text', css, /--text:\s*#171717/i);
     assertContains('muted', css, /--muted:\s*#52525B/i);
@@ -80,8 +82,12 @@ describe('Design contract — global tokens (globals.css)', () => {
     // token file instead of a thing twelve components have to agree about.
     assertContains('primary', css, /--primary:\s*var\(--action\)/i);
     assertContains('primary-hover', css, /--primary-hover:\s*var\(--action-hover\)/i);
-    assertContains('action', css, /--action:\s*#1B3F8B/i);
-    assertContains('action-hover', css, /--action-hover:\s*#143069/i);
+    // 2026-08-15, LATER: the navy is out. It was a visual orphan beside the teal identity -- the
+    // founder read it as a placeholder -- so the fill is charcoal and the teal moved onto the
+    // secondary's outline. The contract above is unchanged and is the load-bearing half: one
+    // action colour, reached through an alias. Only the literal moved.
+    assertContains('action', css, /--action:\s*#2D3436/i);
+    assertContains('action-hover', css, /--action-hover:\s*#1F2426/i);
 
     // The money colour is GONE, not merely unused. In Tailwind v4 an unmapped colour utility
     // emits no rule at all, so a surviving `--azure` mapping is how a half-finished repaint

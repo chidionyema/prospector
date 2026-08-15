@@ -294,7 +294,24 @@ export function StepFlow({
               and the icons were decorative (the same `briefcase` stood for three different
               answers). Chips make the answers scannable in one line each and make this control
               visibly the same control as the filter bar, which is what it is. */}
-          <div className="mt-4 flex flex-wrap gap-2">
+          {/* EQUAL FRACTIONS, NOT CONTENT WIDTH (founder review, 2026-08-15).
+              This was `flex flex-wrap`, so each answer took the width of its own label and the
+              rows packed greedily. Two consequences, both visible at 390 and worse at 320.
+              Measured live: row one held "Suits builders" (132px) and "Suits sellers" (124px),
+              row two "Suits operators" (144px) and "Suits an audience" (152px) -- so the second
+              column started at x=164 on one row and x=352 on the next, and the four answers to
+              ONE question did not line up as a set. At 320 the pair on row two no longer fits
+              (144+8+152 = 304 in ~272 of usable width), the last answer wraps alone, and the
+              question ends on a single chip with a ragged gap beside it.
+
+              A two-column grid fixes both at once: equal fractions means the columns align down
+              the page, and an equal share is also a MINIMUM legible width -- no answer can be
+              squeezed by a longer sibling. The `last:nth-child(odd)` variant is what handles an
+              odd count, which is the founder's actual sighting: the orphan spans both columns
+              instead of sitting alone next to a hole, so the grid always ends on a full row.
+              From `sm` up the old flex row returns unchanged -- there is width for it there, and
+              a 2-up grid on a desktop sheet would waste most of the line. */}
+          <div className="mt-4 grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
             {currentGroup.values.map((value) => {
               const active = currentGroup.activeValues.includes(value);
               const isAdvantage = currentGroup.kind === 'advantage';
@@ -558,18 +575,25 @@ export function FilterSheet({
 
 export function FilterFab({
   anchorRef,
+  endRef,
   state,
   open,
   onOpen,
 }: {
   /** The inline controls block. The trigger appears only once this has scrolled off the top. */
   anchorRef: React.RefObject<HTMLElement | null>;
+  /**
+   * The END of the thing this filters. The trigger disappears again once the reader reaches it.
+   * Optional: a page with nothing after its shelf can omit it and keep the old behaviour.
+   */
+  endRef?: React.RefObject<HTMLElement | null>;
   state: DiscoveryState;
   /** The sheet's open state: the trigger hides while the thing it opens is already open. */
   open: boolean;
   onOpen: () => void;
 }) {
   const [scrolledPast, setScrolledPast] = React.useState(false);
+  const [pastEnd, setPastEnd] = React.useState(false);
   const activeCount = activeFacetSelectionCount(state);
 
   /* There is deliberately no `mounted` flag here, though portalling to <body> is normally a reason
@@ -593,6 +617,38 @@ export function FilterFab({
     return () => io.disconnect();
   }, [anchorRef]);
 
+  /* A FILTER HAS A JURISDICTION, AND IT ENDS (founder review, 2026-08-15).
+     The observer above asks one question -- "have the controls left the top?" -- and on the home
+     page that is true for the whole remaining 5,000px of document. So the trigger stayed pinned
+     across the entire marketing tail and came to rest on top of the pack specimen's source
+     citation, which is the founder's sighting. The occluder padding below cannot help: it moves
+     the END of the document, and this was landing in the MIDDLE of it.
+
+     The missing fact is where the shelf stops. `endRef` is a zero-height sentinel the page places
+     immediately after its last shelf branch, and `pastEnd` is true once that sentinel has risen
+     into the top half of the viewport -- the `-50%` bottom margin shrinks the observer's root to
+     that half. Not the default root: with it, `isIntersecting` fires the moment the sentinel
+     crosses the BOTTOM edge, which is while the last row of packs is still on screen and still
+     worth filtering. `|| top < 0` keeps it true after the sentinel has scrolled off entirely,
+     since an element above the viewport reports `isIntersecting: false` exactly like one below
+     it -- the same asymmetry the anchor observer handles.
+
+     Scrolling back up into the shelf restores it, because both flags are recomputed rather than
+     latched. */
+  React.useEffect(() => {
+    const el = endRef?.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      ([entry]) => setPastEnd(entry.isIntersecting || entry.boundingClientRect.top < 0),
+      { threshold: 0, rootMargin: '0px 0px -50% 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [endRef]);
+
+  /** The single answer. The occluder's padding and the render guard must never disagree. */
+  const visible = scrolledPast && !pastEnd && !open;
+
   /* THE OCCLUDER RESERVES ITS OWN SPACE (2026-08-14, founder review at 390px).
      This button is `fixed` and portalled to <body>, so no page that mounts it can know it is
      there, and none of them padded for it: at the bottom of the shelf it sat on top of the last
@@ -608,16 +664,16 @@ export function FilterFab({
      notched phone. Restored on unmount, so scrolling back up returns the page to its own
      geometry rather than leaving a permanent gap under the footer. */
   React.useEffect(() => {
-    if (!scrolledPast || open) return;
+    if (!visible) return;
     const { body } = document;
     const previous = body.style.paddingBottom;
     body.style.paddingBottom = 'calc(4.5rem + env(safe-area-inset-bottom))';
     return () => {
       body.style.paddingBottom = previous;
     };
-  }, [scrolledPast, open]);
+  }, [visible]);
 
-  if (!scrolledPast || open) return null;
+  if (!visible) return null;
 
   return createPortal(
     /* z-40: above the shelf, below `Modal`'s z-50, so the sheet it opens covers it rather than
