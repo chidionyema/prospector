@@ -5,8 +5,9 @@
 > **Implementing this? Start at §17 (Execution spec) and read §15 (edge cases) beside it.**
 > §17 is the frozen contract — config keys, routes, JSON shapes, entities, error codes, test names,
 > per-phase definition of done. §§1–16 are the reasoning behind it, and are what you consult when
-> §17 tells you *what* but you need *why*. **P1 and P2 are executable today; P3 hard-blocks on
-> §13.2 (VAT / Merchant of Record).**
+> §17 tells you *what* but you need *why*. **P1, P2 and P3 are all executable today.** §13.2
+> (VAT / Merchant of Record) was the one hard block; **§18 resolves it** into a config fence plus a
+> single yes/no for the founder (§18.4), whose default is safe in every branch.
 > Companion specs: `docs/PAYMENT_RAIL_INDEPENDENCE_SPEC.md` (the provider seam this extends),
 > `docs/SITE_SPEC_PROGRAM.md` (the copy this must reconcile with),
 > `docs/COMMERCIAL_READINESS_PROGRAM.md` (the yield baseline).
@@ -41,6 +42,14 @@ defects in §§3–4 as first drafted (an unspendable rung cap, a mode switch th
 claims, an allowance derived from Stripe's period fields instead of a paid invoice, and plan terms
 read live from config), all fixed above. **§16 summarises those four and the two cases it could not
 close.**
+
+**§18 clears the last blocker.** VAT / Merchant of Record was written as an open choice between
+three options. It is not one — **61 of 61 live packs already bill through Stripe**, which *is* the
+seller-of-record option, so the liability it creates exists on the direct rail today and
+subscriptions multiply it rather than create it. §18 bounds it with one config key
+(`Commerce.SellableCountries`, default `["GB"]`, enforced server-side at acquisition only, built in
+P1) and reduces the founder's part to a single question: **which tax registrations already exist in
+the Stripe dashboard.** No phase now waits on a research task.
 
 ---
 
@@ -608,12 +617,14 @@ that recurring revenue is the actual business and one-off was the wrong opener. 
 is (a)**, because P1+P2 cost little and commit nothing, and because a first sale is the cheapest
 demand evidence available. This is a judgement about the business, not about the code.
 
-**13.2 — VAT and Merchant of Record. Blocking.**
-Recurring supply of digital services to consumers sharpens the place-of-supply question that
-one-off sales already raise, and it compounds monthly. `PAYMENT_RAIL_INDEPENDENCE_SPEC.md §8`
-already lays out three options. Paddle-as-MoR would settle it and the provider seam already
-supports Paddle. **This must be answered before P3, not after.** I have not verified the current
-tax setup and am not qualified to rule on it — flagging, not deciding.
+**13.2 — VAT and Merchant of Record. UNBLOCKED 2026-08-15 — see §18.**
+This was written as an open choice between the three options in
+`PAYMENT_RAIL_INDEPENDENCE_SPEC.md §8`. It is not one: **the code already chose.** All 61 live packs
+bill through Stripe (`paymentProvider: stripe`, 61/61 on the live catalogue), which is Option B —
+Stripe-direct, seller-of-record, VAT liability ours. §18 establishes what that means, what is
+actually owed today, and the one config fence that unblocks P3 without pretending to answer a tax
+question. **Founder confirmation still required, but it is now a single yes/no (§18.4), not a
+research task.**
 
 **13.3 — Is Desk allowed to undercut direct pay?**
 Desk at **£149/mo** covers 3 claims at any rung — up to **£299.97** of shelf if all three are taken
@@ -629,7 +640,9 @@ one config value and changing it later is a config edit, not a code change (§17
 - **USD.** 0 of 61 live packs carry a USD price (§1.1), so the declared US-billed-in-USD decision is
   not in effect on the shelf. Subscription USD pricing inherits this. Separate from this programme
   but it lands in the same rail.
-- **Tax.** §13.2 — unverified, deliberately.
+- **Tax.** No longer a blocker — §18 bounds it. What is still genuinely open: whether any Stripe Tax
+  registration exists today (§18.4 — a dashboard fact I cannot read from here), and whether to take a
+  non-Union OSS registration before the first EU consumer sale rather than after.
 - **`GET /commerce` caching.** ISR at 300s (`pricing.tsx:279`) means a mode switch takes up to five
   minutes to appear. Acceptable; stated so nobody reads it as a bug.
 - **Auth at load.** The identity stack is built (§1.6a) but has never carried a real user. P3 is the
@@ -1008,11 +1021,11 @@ wrong column name or a wrong status code is a migration and a client break.
 | § | Decision | Blocks | Default if unanswered |
 |---|---|---|---|
 | 13.1 | Build before the first sale? | P3+ | **Build P1+P2 now.** They commit nothing and are worth doing regardless (§12). |
-| 13.2 | VAT / Merchant of Record | **P3 hard-blocks** | **None. Do not start P3 without an answer.** Recurring supply compounds the place-of-supply question monthly. This is the one place where guessing is not allowed. |
+| 13.2 | VAT / Merchant of Record | **nothing — unblocked 2026-08-15, see §18** | **`Commerce.SellableCountries: ["GB"]`, built in P1.** The seller-of-record choice was already made in code (61/61 live packs bill through Stripe). The founder's answer (§18.4) sets that array's contents; it does not decide whether work starts. |
 | 13.3 | Desk claim count | P4 config only | Build as specified: 3 claims, any rung. |
 | 13.4 | Catalogue-exhaustion credit policy (§15.B-13) | nothing in v1 | Not implemented. No code path. |
 
-**P1 and P2 are executable today.** P3 onward waits on 13.2.
+**P1, P2 and P3 are executable today.** Nothing in this programme waits on an unanswered question.
 
 ### 17.4 Config contract (frozen)
 
@@ -1023,6 +1036,7 @@ startup makes "configurable" mean "configurable with a restart"):
 "Commerce": {
   "Mode": "direct",                     // "direct" | "subscription" | "both". Required.
   "OnModeExit": "serve_to_period_end",  // "serve_to_period_end" | "cancel_at_period_end"
+  "SellableCountries": ["GB"],          // ISO-3166-1 alpha-2. Acquisition only. [] = unrestricted. §18.4
   "Plans": [
     {
       "Code": "watch",                  // frozen id, referenced by Subscription.PlanCode
@@ -1053,6 +1067,8 @@ do not degrade:**
 | every available plan has a non-empty `ProviderPriceIds[provider]["GBP"]` | a plan that cannot be billed must not be advertised |
 | `Code` unique, non-empty, stable | it is a foreign key in the DB |
 | `PricePence > 0`, `PackClaimsPerPeriod >= 0`, `BriefsPerPeriod >= 0` | — |
+| every `SellableCountries` entry is 2 uppercase letters, ISO-3166-1 alpha-2 | §18.4 — a typo must not silently narrow or widen where we are willing to sell |
+| `SellableCountries: []` is legal and means **unrestricted** | the fence must be switchable off, but only by writing the empty array deliberately — never by omission |
 | a plan referenced by any live `Subscription` may not be **deleted** from config | §15.B-8 — but see the snapshot rule below |
 
 **Snapshot rule (§15.B-8).** On subscription creation, copy `PackClaimsPerPeriod`, `BriefsPerPeriod`
@@ -1078,9 +1094,9 @@ config.** Config governs new subscriptions only. This is the same reasoning as
 | Route | Auth | Mode | Success | Refusals |
 |---|---|---|---|---|
 | `GET /commerce` | none | any | 200 | — |
-| `POST /packs/{id}/checkout` | none | `direct`,`both` | 200 (unchanged) | **409** `mode_disabled` in `subscription` |
-| `POST /checkout` | none | `direct`,`both` | 200 (unchanged) | **409** `mode_disabled` in `subscription` |
-| `POST /subscriptions/checkout` | **required** | `subscription`,`both` | 200 `{checkoutUrl}` | 409 `mode_disabled` in `direct` · 403 `email_not_confirmed` · 409 `plan_unavailable` · 409 `no_watchable_entitlements` (Watch plan, zero entitlements — §15.C-8) · 409 `already_subscribed` |
+| `POST /packs/{id}/checkout` | none | `direct`,`both` | 200 (unchanged) | **409** `mode_disabled` in `subscription` · **451** `country_not_served` |
+| `POST /checkout` | none | `direct`,`both` | 200 (unchanged) | **409** `mode_disabled` in `subscription` · **451** `country_not_served` |
+| `POST /subscriptions/checkout` | **required** | `subscription`,`both` | 200 `{checkoutUrl}` | 409 `mode_disabled` in `direct` · 403 `email_not_confirmed` · 409 `plan_unavailable` · 409 `no_watchable_entitlements` (Watch plan, zero entitlements — §15.C-8) · 409 `already_subscribed` · **451** `country_not_served` |
 | `GET /subscriptions/me` | **required** | any | 200 (`null` if none) | 403 `email_not_confirmed` |
 | `POST /subscriptions/portal` | **required** | any | 200 `{portalUrl}` | 404 if no subscription |
 | `POST /packs/{id}/claim` | **required** | **any** | 200 `{grantToken, alreadyOwned:bool}` | 403 `subscription_not_active` · 403 `plan_has_no_claims` · 403 `allowance_exhausted` · 409 `pack_not_listed` · 403 `email_not_confirmed` |
@@ -1093,6 +1109,11 @@ specifically, to re-render a stale ISR page in place instead of showing a generi
 **Consumption routes are never gated on mode** — note `POST /packs/{id}/claim` and
 `GET /download/{token}` say **any**. This is §4.2 I2 and it is the single most likely thing to be
 got wrong by pattern-matching the other rows.
+
+**`country_not_served` (451) is an acquisition fence, not a mode fence** (§18.4). It applies to all
+three checkout routes and to **neither** consumption route, for the same reason as I2: someone who
+already paid keeps everything, including after they move country. It is evaluated on the billing
+country the provider resolves, server-side — never on an IP guess and never by hiding the button.
 
 **`already_entitled` is not a refusal.** Claiming a pack the buyer already owns returns **200** with
 `alreadyOwned: true`, returns the existing `GrantToken`, and **consumes no allowance** (§15.C-2).
@@ -1151,7 +1172,7 @@ estate's standing rule is that state is a probe, not a sentence.
 |---|---|
 | **P1** | `dotnet test store_platform/src/Store.Tests --filter Category=CommerceMode` passes, and it contains the full 3-mode matrix of §17.9 including the "API refuses even when the UI would not show it" case. `GET /commerce` returns the §17.5 shape in all three modes. **`Mode=direct` behaviour is byte-identical to today** — the existing checkout tests pass unmodified. |
 | **P2** | Migration `AddEntitlementGrantSource` applies and rolls back cleanly. Existing entitlements all read `GrantSource="order"` with `OrderId` intact. Full existing `Store.Tests` suite green with zero test-file edits. |
-| **P3** | **13.2 answered first.** Then: subscription created, renewed, failed, recovered, cancelled and refunded — each as a webhook-replay test against recorded fixtures, no live Stripe call. Out-of-order and duplicate delivery covered (§17.9 B-block). |
+| **P3** | Subscription created, renewed, failed, recovered, cancelled and refunded — each as a webhook-replay test against recorded fixtures, no live Stripe call. Out-of-order and duplicate delivery covered (§17.9 B-block). |
 | **P4** | Claim allowance tests green including the concurrency case (C-1) and the already-owned case (C-2). Delivery failure routes to `PendingDelivery`, verified by asserting the row exists — not by asserting an exception. |
 | **P5** | A re-vet delta on an owned pack produces exactly one email; a re-vet with no gate change produces none. |
 | **P6** | A brief becomes a signal file; a DEFER does **not** consume the allowance (§15.F-2); the brief budget is separate from `spend.daily_cap_usd` (§15.F-5 — **this is unresolved, raise it before starting P6**). |
@@ -1169,6 +1190,10 @@ Category=CommerceMode                                                           
   Mode_HotReload_TakesEffect_WithoutRestart                                      (A-6)
   Mode_ApiRefuses_EvenWhenUiWouldHideIt                                          (I2)
   Mode_NoAvailablePlan_FailsAtStartup                                            (A-7)
+  Commerce_SellableCountries_BlocksAcquisition_451                              (§18.4)
+  Commerce_SellableCountries_NeverBlocksConsumption                             (§18.4)
+  Commerce_SellableCountries_Empty_MeansUnrestricted                            (§18.4)
+  Commerce_SellableCountries_AppliesToBothRails                                 (§18.4)
 
 Category=Subscription                                                            (P3)
   Webhook_InvoicePaid_BeforeSubscriptionCreated_Upserts                          (B-1)
@@ -1210,7 +1235,7 @@ than an oversight): A-3, B-12, B-13, D-4, D-6, E-1, E-4, E-5, F-6, G-1, G-5, H-2
 
 | Phase | Create | Modify |
 |---|---|---|
-| P1 | `Store.Api/Commerce/CommerceOptions.cs`, `CommerceEndpoints.cs`, `Store.Tests/Endpoints/CommerceModeTests.cs` | `Program.cs` (bind options, map route), `Endpoints/CheckoutEndpoints.cs:24,40` (mode refusal) |
+| P1 | `Store.Api/Commerce/CommerceOptions.cs`, `CommerceEndpoints.cs`, `Store.Tests/Endpoints/CommerceModeTests.cs` | `Program.cs` (bind options, map route), `Endpoints/CheckoutEndpoints.cs:24,40` (mode refusal **and** the `SellableCountries` refusal — same place, no new file) |
 | P2 | `Store.Catalog/Migrations/*_AddEntitlementGrantSource.cs` | `Domain/Entitlement.cs`, `Persistence/StoreDbContext.cs` |
 | P3 | `Domain/Subscription.cs`, `SubscriptionInvoice.cs`, `SubscriptionStatus.cs`, `InvoiceStatus.cs`, `Store.Api/Endpoints/SubscriptionEndpoints.cs`, `Migrations/*_AddSubscriptions.cs` | `Payments/StripeProvider.cs:69,418`, `Payments/IPaymentProvider.cs` (subscription methods, default-NotSupported so Paddle needs no change), `Program.cs` |
 | P4 | `Store.Api/Services/ClaimService.cs` | `Services/FulfilmentService.cs:115-133` (fence generalises, does not fork) |
@@ -1235,5 +1260,131 @@ were written by the same author on the same day and a disagreement means one of 
 
 ---
 
+## 18. VAT / Merchant of Record — resolving §13.2
+
+> **I am not a tax adviser and this is not tax advice.** What follows is: what the code already
+> does, what the published rules say with sources, and an engineering fence that bounds the
+> exposure. The registration question itself goes to an accountant. The point of this section is
+> that P3 no longer waits on that conversation.
+
+### 18.1 The choice was already made, in code, not in a document
+
+| Finding | Receipt |
+|---|---|
+| Every live pack bills through Stripe, not Paddle | `curl https://api.mumchimp.com/catalog` → `Counter({'stripe': 61})`, 61 of 61 |
+| Stripe Tax is wired and **defaults ON** | `StripeProvider.cs:439-442` — `Enabled = !string.Equals(config["Stripe:AutomaticTax"], "false", …)`. Off requires an explicit `"false"`. |
+| No override is committed | no `Stripe:AutomaticTax` key in `appsettings.json` or `appsettings.Development.json` |
+| Paddle is still the code default for a pack | `Order.PaymentProvider` defaults to `"paddle"` — a default no live pack uses |
+
+`PAYMENT_RAIL_INDEPENDENCE_SPEC.md §8` recommended **Option B** (Stripe-direct + Stripe Tax) and
+flagged that it "transfers VAT/MoR/chargeback liability to you". That is the deployed state. The
+subscription programme does not choose Option B; it **inherits** it.
+
+### 18.2 Enabled is not compliant
+
+Stripe Tax calculates only where you have told it you are registered:
+
+> "As a business, you're required to identify the states, provinces, and countries where you have
+> tax obligations. You must then register with the tax authorities in the applicable jurisdictions,
+> and add your registrations to Stripe… **Adding your registrations allows Stripe to calculate and
+> collect the taxes you're responsible for remitting.**"
+> — [Stripe: Register for sales tax, VAT, and GST](https://docs.stripe.com/tax/registering)
+
+Two consequences, both load-bearing:
+
+1. **With no registrations added, `automatic_tax: enabled` calculates nothing.** The switch being on
+   is not evidence that tax is being handled. It is evidence that tax *would* be calculated if a
+   registration existed.
+2. **Stripe never remits.** The phrase is "taxes you're responsible for remitting". Filing is ours
+   under Option B, in every jurisdiction, forever. That is the actual cost of the option the code
+   picked — not the calculation, the quarterly filing.
+
+### 18.3 What is owed today, at £0 of revenue
+
+| Jurisdiction | Rule | Position at zero sales |
+|---|---|---|
+| **UK** | Registration required once taxable turnover passes **£90,000** in 12 months (up from £85,000 on 1 April 2024) | **Nothing owed.** Turnover is £0 (§1.4). Voluntary registration is possible and not required. |
+| **EU (B2C digital)** | **No threshold** for a business not established in the EU — VAT is due on the **first** sale, at the customer's country's rate. Handled either by registering in every member state or via the **non-Union OSS** scheme, one registration, one quarterly return | **Exposure begins at the first EU consumer sale.** In Stripe this is registration type `oss_non_union`. |
+| **US** | Economic nexus is per-state and threshold-based | Not reachable at this revenue. |
+
+Sources: [GOV.UK — VAT thresholds](https://www.gov.uk/how-vat-works/vat-thresholds) ·
+[GOV.UK — Register for VAT](https://www.gov.uk/register-for-vat) ·
+[Stripe — Introduction to EU VAT and VAT OSS](https://stripe.com/guides/introduction-to-eu-vat-and-european-vat-oss) ·
+[Your Europe (European Commission) — One Stop Shop](https://europa.eu/youreurope/business/taxation/vat/one-stop-shop/index_en.htm) ·
+[Stripe — registration types, `oss_non_union`](https://docs.stripe.com/tax/registering)
+
+**The sharp edge is the EU, and it is sharp on the first sale, not the hundredth.**
+
+**This exposure already exists on the direct rail.** Nothing in the checkout path restricts the
+buyer's country — an EU consumer can buy a pack today. Zero sales means zero liability so far, so
+this is a fence that is missing rather than a breach that has happened. A subscription does not
+create the problem; it **multiplies** it, because one mispriced one-off sale is one invoice and one
+mispriced subscription is an invoice every month until someone notices.
+
+### 18.4 The fence that unblocks P3
+
+Do not answer a tax question in order to ship. **Bound the surface instead**, in config, using
+exactly the mechanism §17.4 already establishes:
+
+```jsonc
+"Commerce": {
+  "SellableCountries": ["GB"]     // ISO-3166-1 alpha-2. Frozen key. Empty array = no restriction.
+}
+```
+
+- **Applies to both rails**, direct and subscription, at *acquisition* only — never to consumption
+  (§4.2 I2, so an existing buyer who moves country keeps everything).
+- **Default `["GB"]`.** A country enters this list only after a registration exists for it and has
+  been added to Stripe Tax. Expanding it is then a config edit, reviewed, with a receipt — the same
+  shape as promoting a provider into `moat_primary`.
+- Enforced **server-side** on the buyer's Stripe-resolved billing country, returning
+  **451 `country_not_served`** with a sentence explaining we are not yet registered to sell there.
+  Not a hidden button (§4.2 I2).
+- Costs nothing to reverse and nothing to widen. It is the cheapest possible expression of "we sell
+  where we are registered."
+
+**What the founder confirms — one question, not a project:** *are there any tax registrations
+currently added in the Stripe dashboard, and is the business UK VAT registered?*
+
+| Answer | Consequence |
+|---|---|
+| No registrations, not VAT registered | `SellableCountries: ["GB"]`, no VAT charged (below the £90k threshold), **P3 proceeds.** Revisit when revenue approaches the threshold or when EU demand justifies an OSS registration. |
+| UK VAT registered | Add the UK registration in Stripe so `automatic_tax` actually calculates; still `["GB"]`; **P3 proceeds.** |
+| Registrations exist for other countries | Add those ISO codes to the list; **P3 proceeds.** |
+
+**In every branch P3 proceeds.** That is what unblocked means. What the answer changes is the
+contents of one config array, not whether work can start.
+
+### 18.5 If the answer later becomes "we don't want to own VAT ops"
+
+The escape hatch is already built and costs no new architecture: **Paddle is a Merchant of Record**
+and is already behind `IPaymentProvider` (`Program.cs:103-104`), which is precisely why
+`PAYMENT_RAIL_INDEPENDENCE_SPEC.md` insisted the seam be built before the MoR choice was settled.
+Switching makes Paddle the legal seller and the VAT question theirs, at roughly 5% + 50¢ versus
+Stripe's ~1.5–2.9% (`PAYMENT_RAIL_INDEPENDENCE_SPEC.md §2`). **Do not build for this now.** It is
+recorded so that the decision stays reversible, which is the only property that matters while
+revenue is zero.
+
+### 18.6 What this changed in the execution spec
+
+**Already applied above** — this table is the index, so a reviewer can see the delta without
+re-reading §17.
+
+
+| Where | Addition |
+|---|---|
+| §17.3 | 13.2 row becomes: **unblocked**. P3 proceeds on the §18.4 fence; the founder's answer sets the array contents. |
+| §17.4 | `Commerce.SellableCountries` — frozen key, `string[]`, default `["GB"]`. Validation: every entry a 2-letter uppercase ISO-3166-1 alpha-2 code; `[]` means unrestricted and must be set deliberately. |
+| §17.5 | New refusal `country_not_served` → **451**, on `POST /packs/{id}/checkout`, `POST /checkout` and `POST /subscriptions/checkout`. **Never** on `/packs/{id}/claim` or `/download/{token}`. |
+| §17.9 | `Commerce_SellableCountries_BlocksAcquisition_451` · `Commerce_SellableCountries_NeverBlocksConsumption` · `Commerce_SellableCountries_Empty_MeansUnrestricted` · `Commerce_SellableCountries_AppliesToBothRails` (Category=CommerceMode, **P1** — it is a mode-adjacent fence and belongs in the phase that commits nothing) |
+| §17.10 | P1 gains the country check in `CheckoutEndpoints.cs`; no new file. |
+
+Building the fence in **P1** rather than P3 is deliberate: it is the phase that ships with
+`Mode=direct` and changes no behaviour, and the fence is the one piece of this programme that
+improves the *existing* rail whether or not a subscription is ever sold.
+
+---
+
 *Design and execution spec. No engine or store code was changed by this document. Measured
-2026-08-15 against the live prod catalogue, `store/prospector.db`, and the working tree.*
+2026-08-15 against the live prod catalogue, `store/prospector.db`, and the working tree. Tax rules
+in §18 are cited to primary sources and are not tax advice.*
