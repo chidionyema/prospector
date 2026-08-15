@@ -11,4 +11,17 @@ namespace Store.Api.Payments;
 /// WHICH packs were bought and grant the right entitlements.
 /// </param>
 /// <param name="ProviderPriceId">The provider's price object for that pack.</param>
-public sealed record CheckoutLine(string PackId, string ProviderPriceId);
+/// <param name="Currency">
+/// The ISO-4217 currency the buyer is billed in, resolved SERVER-SIDE from the request (see
+/// <c>CheckoutEndpoints.ResolveBuyerCurrency</c>). Appended last with a "GBP" default so every
+/// existing construction site — and every provider that sells in one currency — keeps compiling
+/// and keeps today's behaviour.
+///
+/// It rides on the LINE rather than on the session signature for two reasons: the alternative was
+/// a new parameter on three interface methods and their three implementations, and the value has
+/// to survive <see cref="SmokeTestPricing"/>'s <c>with</c>-rewrite of the price id, which copies
+/// the record. A checkout is nonetheless billed in exactly ONE currency —
+/// <c>StripeProvider.BuildSessionOptions</c> refuses a lines list carrying more than one rather
+/// than silently billing everything in the first line's.
+/// </param>
+public sealed record CheckoutLine(string PackId, string ProviderPriceId, string Currency = "GBP");

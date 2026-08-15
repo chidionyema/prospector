@@ -281,7 +281,10 @@ class _FakeProvisioner:
     def create_product(self, name, description, metadata):
         return "prod_real_123"
 
-    def create_price(self, product_id, amount_pence, currency="gbp"):
+    # See the identical fake in test_publish_facet_warning.py: `usd_cents` joined the
+    # ProductProvisioner protocol on 2026-08-14, and a fake missing it fails as a publish that
+    # quietly went UNLISTED rather than as a signature error.
+    def create_price(self, product_id, amount_pence, currency="gbp", usd_cents=None):
         return "price_real_123"
 
 

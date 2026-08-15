@@ -522,8 +522,14 @@ class ProductProvisioner(Protocol):
         """Returns the provider's product ID."""
         ...
 
-    def create_price(self, product_id: str, amount_pence: int, currency: str) -> str:
-        """Returns the provider's price ID."""
+    def create_price(self, product_id: str, amount_pence: int, currency: str,
+                     usd_cents: Optional[int] = None) -> str:
+        """Returns the provider's price ID.
+
+        `usd_cents` asks for the SAME price object to also be billable in US dollars at a
+        declared amount (never a converted one). Optional with a None default so an
+        implementation that cannot do it — or a caller that has no USD rung — is unchanged.
+        """
         ...
 
     def describe_price(self, price_id: str) -> Optional[ExistingPrice]:
@@ -1202,6 +1208,14 @@ class EngineBridge:
             return False
 
         applied_price_pence = price.price_pence
+        # The USD amount actually MINTED onto the provider Price in this call, not the one the
+        # ladder decided. It stays None on every path that does not mint — a reused live price
+        # (whose currency_options we did not write and cannot inspect from here), a Paddle rail,
+        # a missing provisioner — because the catalogue's USD figure is what the fulfilment fence
+        # bills against, and recording a price the provider was never told about is how a buyer
+        # is charged in a currency the rail then refuses. None costs a US buyer a GBP checkout;
+        # a wrong number costs them a failed purchase.
+        minted_usd_cents: Optional[int] = None
         if reused is not None:
             provider_product_id, provider_price_id, applied_price_pence = reused
             if applied_price_pence != price.price_pence:
@@ -1258,8 +1272,16 @@ class EngineBridge:
                     product_id=provider_product_id,
                     # C2 — the L1 ladder decides, not a flat constant. The SAME
                     # PriceDecision feeds the catalogue write below; see `price` above.
-                    amount_pence=price.price_pence
+                    amount_pence=price.price_pence,
+                    # The same rung read off the USD ladder (config.yaml
+                    # listing.pricing.usd_rungs), never a conversion of the pence. None when
+                    # the ladder declares no USD rung, which leaves the pack GBP-only.
+                    usd_cents=price.price_usd_cents,
                 )
+                # Recorded only AFTER create_price returned: the two must land together, or
+                # the catalogue advertises a USD price on a provider price that has no USD
+                # option and every US checkout 400s at Stripe.
+                minted_usd_cents = price.price_usd_cents
 
             except Exception as e:
                 logger.error(f"EngineBridge: {payment_provider} provisioning failed: {e}")
@@ -1371,6 +1393,9 @@ class EngineBridge:
             # different amount is the exact disagreement the fulfilment fence turns into a
             # charged-but-undelivered order.
             price_pence=applied_price_pence,
+            # Same rule, in the currency the fence reads second: only the USD amount actually
+            # written onto the provider Price above. See `minted_usd_cents`.
+            price_usd_cents=minted_usd_cents,
             metadata=catalog_meta,
         )
 
@@ -1906,7 +1931,8 @@ class EngineBridge:
                         content_key: Optional[str] = None,
                         content_hash: Optional[str] = None,
                         content_version: int = 1,
-                        metadata: Optional[Dict[str, Any]] = None) -> bool:
+                        metadata: Optional[Dict[str, Any]] = None,
+                        price_usd_cents: Optional[int] = None) -> bool:
         """Call the .NET Store API's /internal/catalog endpoint.
 
         `price_pence` is REQUIRED and has no default on purpose (C2). A default here would
@@ -1930,6 +1956,13 @@ class EngineBridge:
             "pricePence": int(price_pence),
             "contentVersion": content_version,
         }
+        # OMITTED, not null, when there is no minted USD amount. The Store's PATCH contract
+        # reads an omitted priceUsdCents as "unchanged" (PricePatchRequest), so sending an
+        # explicit null on a republish that reused a live price would be indistinguishable
+        # from a deliberate clear — taking US billability off a pack as a side effect of a
+        # republish that never touched the currency at all.
+        if price_usd_cents is not None:
+            payload["priceUsdCents"] = int(price_usd_cents)
         if content_key is not None:
             payload["contentKey"] = content_key
         if content_hash is not None:
@@ -2077,7 +2110,15 @@ class PaddleClient:
         resp.raise_for_status()
         return resp.json()["data"]["id"]
 
-    def create_price(self, product_id: str, amount_pence: int, currency: str = "GBP") -> str:
+    def create_price(self, product_id: str, amount_pence: int, currency: str = "GBP",
+                     usd_cents: Optional[int] = None) -> str:
+        """`usd_cents` is accepted to satisfy the ProductProvisioner protocol and DELIBERATELY
+        ignored: Paddle prices a product per-currency through its own overrides API, which this
+        client does not call. Ignoring it is safe because the catalogue only records a USD price
+        when the provisioner returns one (see EngineBridge's `minted_usd_cents`), so a Paddle
+        pack simply stays GBP-only and the fulfilment fence refuses USD for it — rather than the
+        pack being advertised in a currency Paddle was never told about.
+        """
         url = f"{self.base_url}/prices"
         payload = {
             "product_id": product_id,
@@ -2185,15 +2226,35 @@ class StripeProvisioner:
         logger.info(f"StripeProvisioner: Created product {product.id}")
         return product.id
 
-    def create_price(self, product_id: str, amount_pence: int, currency: str = "gbp") -> str:
+    def create_price(self, product_id: str, amount_pence: int, currency: str = "gbp",
+                     usd_cents: Optional[int] = None) -> str:
         """Create a Stripe Price. Returns price ID. (Product must already exist.) Idempotent on
-        (product, amount, currency); Stripe errors re-raised as ProvisioningError."""
+        (product, amount, currency, usd_cents); Stripe errors re-raised as ProvisioningError.
+
+        `usd_cents` adds a USD `currency_options` entry to the SAME Price object rather than
+        minting a second Price. A second Price would give the pack two ids, and the catalogue
+        stores one — so the fulfilment fence would be reading the floor of a price object the
+        buyer was not charged against, which is the exact charged-then-refused failure the
+        one-decision rule in this module exists to prevent. The checkout session picks between
+        the entries by setting its own currency (StripeProvider.BuildSessionOptions).
+
+        It is part of the idempotency key because Stripe rejects a replayed key with changed
+        parameters outright: without it, the first republish that added a USD amount to a pack
+        priced within the 24h window would fail the whole publish rather than mint the option.
+        """
+        options: dict[str, Any] = {}
+        if usd_cents is not None:
+            options["usd"] = {"unit_amount": int(usd_cents)}
         try:
             price = self._stripe.Price.create(
                 product=product_id,
                 unit_amount=amount_pence,
                 currency=currency,
-                idempotency_key=f"prospector-price-{product_id}-{amount_pence}-{currency}",
+                idempotency_key=(
+                    f"prospector-price-{product_id}-{amount_pence}-{currency}"
+                    + (f"-usd{int(usd_cents)}" if usd_cents is not None else "")
+                ),
+                **({"currency_options": options} if options else {}),
             )
         except self._stripe.error.StripeError as e:
             raise self._provisioning_error("price", e) from e
