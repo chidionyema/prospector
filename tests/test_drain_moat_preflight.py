@@ -20,8 +20,42 @@ from __future__ import annotations
 import types
 from pathlib import Path
 
+import pytest
+
 import prospector.health as H
+import prospector.operator as O
 from prospector import run as R
+
+
+@pytest.fixture(autouse=True)
+def _pin_the_roster():
+    """Every test in this file reasons about TRUSTED vs UNTRUSTED, so none of them may inherit
+    whichever roster the previous test happened to leave behind.
+
+    `moat_primary()` reads a module-global (`operator.py:1362`) that `config.load_config`
+    writes via `set_moat_primary`. That is correct for the daemon — one process, one config —
+    and it makes these tests order-dependent: they were written when the default
+    `{"claude_cli"}` was also the live roster, so "minimax" was untrusted by both accident and
+    intent. On 2026-08-15 minimax was promoted into `config.yaml moat_primary:`, and from then
+    on ANY earlier test in the session that loaded the real config.yaml flipped minimax to
+    trusted underneath this file. The result was the worst kind of red: green in isolation,
+    red in the full suite, and pointing at the drain rather than at test isolation.
+
+    Pinning here rather than in conftest on purpose — a global autouse reset would also hide
+    the config plumbing from the tests that exist to check it (`tests/unit/test_model_config.py`).
+    What this file needs is a KNOWN roster, not a suppressed one.
+    """
+    previous = O._MOAT_PRIMARY  # the RAW global, not moat_primary() — see below
+    O.set_moat_primary(["claude_cli"])
+    try:
+        yield
+    finally:
+        # Restore the raw value, including `None`. `moat_primary()` folds None into
+        # MOAT_PRIMARY_DEFAULT, so restoring what IT returns would leave the roster explicitly
+        # set where it had never been set — turning this fixture into the same order-dependence
+        # it exists to remove, one level down.
+        with O._MOAT_PRIMARY_LOCK:
+            O._MOAT_PRIMARY = previous
 
 
 class _Store:
@@ -83,10 +117,26 @@ def test_the_preflight_fires_before_every_other_short_circuit():
     assert "skipped" in out, "the limit=0 exit won the race; the preflight is too far down"
 
 
-def test_one_live_trusted_brain_is_enough_to_drain():
-    """A degraded moat still rules. The guard is a floor, not a fair-weather switch."""
-    H.get_health().mark_exhausted("claude_cli", 3600.0, error="usage limit")
-    out = _resume(_cfg(operator=("claude_cli", "claude")))
+def test_a_degraded_chain_still_drains_while_one_trusted_brain_lives():
+    """A degraded moat still rules. The guard is a floor, not a fair-weather switch.
+
+    REWRITTEN 2026-08-15 with the narrowing of `MOAT_PRIMARY` to `{"claude_cli"}`. This test
+    used to mark `claude_cli` dead and pair it with a live `claude` — a second TRUSTED brain,
+    which the paid Anthropic API tier was until it was deleted. There is no such pair to build
+    any more, and the test failed in CI naming a brain `_build_operator` now raises on. Same
+    defect shape as `tests/faults/test_synthetic_exhaustion_harness.py`, fixed in this branch:
+    a test that pins a two-trusted-brain world after the world became one-brain.
+
+    What survives the rewrite is the assertion that actually has teeth, and it is the MIRROR of
+    `test_a_live_untrusted_brain_does_not_unblind_the_drain` below. That one proves a dead
+    trusted brain is not rescued by a live provisional one; this one proves the converse — a
+    dead PROVISIONAL brain must not blind a drain whose trusted brain is up. Without it,
+    `moat_blind_reason(trusted_only=True)` could stop filtering to `moat_brains` and start
+    refusing on any dead mark anywhere on the chain, and every other test in this file would
+    still pass: `minimax`'s mark is invisible to a correct classifier and fatal to a broken one.
+    """
+    H.get_health().mark_exhausted("minimax", 3600.0, error="usage limit")
+    out = _resume(_cfg(operator=("claude_cli", "minimax")))
 
     assert "skipped" not in out, "the drain must proceed past the preflight"
     assert out["backlog"] == 2

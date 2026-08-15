@@ -272,6 +272,17 @@ def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
                 extra={"candidate_id": getattr(candidate, "candidate_id", None)})
         return PriceDecision(
             price_pence=price_pence,
+            # THE USD RUNG IS NOT OPTIONAL ON ANY PATH THAT CAN REACH A BUYER. This branch
+            # omitted it until 2026-08-15, and the omission was invisible because it is a
+            # default (`price_usd_cents: Optional[int] = None`, :69) rather than a required
+            # field — so it failed by silently pricing in one currency, not by raising.
+            # `bridge.py` always passes `source_count`, so this is the branch MOST packs take
+            # at publish: every one of them would have been minted with no USD price at all,
+            # against the standing decision that US buyers are billed in USD. The two tier
+            # paths below (:308, :342) always set it; a third path that quietly did not is the
+            # drift `bridge.py` exists to prevent — one PriceDecision mints the provider Price
+            # AND the catalogue row, so a field missing here is missing in both.
+            price_usd_cents=_usd_at(pricing, rung_idx),
             rung=f"depth band {rung_idx + 1} of {len(rungs)} ({span} sources)",
             segment={**segment, "priced_by": "source_count",
                      "source_count": str(int(source_count))},

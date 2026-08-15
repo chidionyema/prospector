@@ -143,6 +143,28 @@ class _RaisesValueError(Operator):
 @pytest.mark.parametrize("label,text,kind,window_s", SHAPES, ids=SHAPE_IDS)
 def test_failover_serves_from_the_live_brain_and_marks_only_the_dead_one(label, text, kind,
                                                                         window_s):
+    """The tail brain serves, and whether that is PROVISIONAL is asked of the ROSTER.
+
+    This used to pair a dead `claude_cli` with a live `claude` and assert
+    `served_is_provisional() is False`. The paid Anthropic tier `claude` was deleted with its
+    adapter on 2026-08-15, so that pairing no longer exists anywhere in this estate and the test
+    was re-pointed at the chain the engine actually runs: claude_cli dies, minimax serves, only
+    the dead brain is benched (founder directive 2026-08-08 -- provisional first, DEFER only when
+    the tail is down too).
+
+    WHY THE ASSERTION DEFERS TO `is_provisional_provider` INSTEAD OF HARDCODING A BOOLEAN. An
+    earlier draft wrote `is True` with the rationale "minimax is outside MOAT_PRIMARY, and
+    asserting otherwise would let a cheap tail rule as trusted-final". Hours later
+    `moat_primary` became config-declared and the founder promoted minimax into it
+    (`config.yaml:81`, `moat_primary: [minimax, claude_cli]`), on three consecutive golden runs
+    at discrimination 1.00 -- and that hardcoded `True` would have failed, reading as a broken
+    trust fence when the only thing that had changed was the roster.
+
+    The fence under test is "whoever is outside `moat_primary()` is stamped provisional"
+    (`operator.py:1451`). It is a rule about MEMBERSHIP, not about any particular brand, so the
+    test asks the same function the engine asks. A test that names a provider pins the roster;
+    this one pins the fence, and stays true whichever way the roster moves next.
+    """
     dead = _Exhausted("claude_cli", text)
     alive = _Alive("minimax")
     chain = FallbackOperator([("claude_cli", dead), ("minimax", alive)])
@@ -167,7 +189,7 @@ def test_failover_serves_from_the_live_brain_and_marks_only_the_dead_one(label, 
 
 def test_every_brain_exhausted_raises_so_the_caller_defers():
     chain = FallbackOperator([("claude_cli", _Exhausted("claude_cli", "HTTP 402 Payment Required")),
-                              ("claude", _Exhausted("claude", "HTTP 429 Too Many Requests"))])
+                              ("minimax", _Exhausted("minimax", "HTTP 429 Too Many Requests"))])
     with pytest.raises(ProviderExhaustedError) as ei:
         chain._raw("sys", "user", 0.0)
     assert "all brains exhausted" in str(ei.value)

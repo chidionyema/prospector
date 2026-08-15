@@ -16,7 +16,11 @@ import { SectionBand, Section } from '@/components/marketing/blocks';
 // manifest itself. /pricing keeps bare filenames only (`pricing.tsx:123`), which is the same
 // section's other half of the ownership split, not a duplicate.
 import { PACK_DOCUMENTS, PackContentsSection } from '@/components/marketing/PackContents';
-import { EvidenceRecordPanel } from '@/components/marketing/EvidenceRecordPanel';
+// `EvidenceRecordPanel` is no longer imported here. `PackSpecimen` took its render site and its
+// job -- it shows the same failed check as a typeset PAGE rather than as a web table, which is the
+// claim that component's own eyebrow ("A real page from a real pack") was already making. The file
+// is left in the tree, unused, rather than deleted in the same commit that replaces it.
+import { PackSpecimen } from '@/components/marketing/PackSpecimen';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
@@ -219,19 +223,62 @@ export function packWeight(pack: Pack): PackWeight {
  * the middle of a clause reads as a broken string, not as a summary, and it is the LAST thing the
  * eye sees before the price.
  *
- * So the card gets its own line, cut at a WORD boundary at 20 words, independent of whatever
- * length the full description happens to be. No ellipsis is appended: at a clean word boundary
- * the line reads as a complete short summary, and an ellipsis would reintroduce the "there is
- * more and you are missing it" signal this exists to remove.
+ * A WORD BOUNDARY WAS NEVER THE THING THAT MATTERED (2026-08-15, founder: this is "the worst
+ * thing on the shelf"). This function used to cut at 20 words and append nothing, on the
+ * argument that "at a clean word boundary the line reads as a complete short summary". Measured
+ * against the live catalogue (all 59 packs, GET api.mumchimp.com/catalog): SIXTEEN of them ended
+ * on a dangling function word -- "...and the approved contractor booking, so a", "...exactly
+ * which permit, licence and", "...the contractor must withhold part of". Word 20 is not a
+ * meaning boundary, so cutting there lands mid-clause about a quarter of the time, and no
+ * ellipsis is what makes it read as broken DATA rather than as an elision.
+ *
+ * The engine is not at fault and was wrongly blamed for this: the same fetch shows all 59
+ * `oneLine` values arriving whole, every one ending in terminal punctuation, longest 268 chars
+ * against `bridge.py`'s 280 cap. The shelf was cutting its own copy.
+ *
+ * THREE BOUNDARIES, IN DESCENDING ORDER OF MEANING. The first sentence, because these strings
+ * are one sentence by construction and a second one is a restatement of the purchase terms.
+ * Then a clause boundary inside the window, because a line ending on a comma's clause is a
+ * finished thought. Only then a word boundary -- and there, back off over any trailing function
+ * word, which is the specific defect: a line may not end on "so", "the", "which", "part of".
+ *
+ * 30 words rather than 20 because the cap now costs something. At 30, 44 of 59 pass through
+ * WHOLE (median 155 chars, max 203) against 6 of 59 at 20, and the dangling count is 0 at both
+ * -- so the lower cap was mutilating three quarters of the shelf to buy nothing. Still capped
+ * rather than unbounded because the card clamps in CSS, and a clamp reached mid-word puts the
+ * browser's own ellipsis back on the card.
  */
-function cardLine(text: string | null | undefined, maxWords = 20): string {
+const DANGLING_TAIL = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'so', 'to', 'of', 'in', 'on', 'at', 'for', 'with',
+  'that', 'which', 'what', 'they', 'by', 'from', 'its', 'their', 'as', 'into', 'per', 'up',
+  'out', 'over', 'under', 'is', 'are', 'was', 'were', 'be', 'been', 'when', 'while', 'after',
+  'before', 'than', 'then', 'if', 'this', 'these', 'those', 'part', 'each', 'every', 'both',
+]);
+
+export function cardLine(text: string | null | undefined, maxWords = 30): string {
   if (!text) return '';
-  const clean = text.replace(/\s*[…]\s*$/, '').replace(/\s*\.\.\.\s*$/, '').trim();
+  let clean = text.replace(/\s*[…]\s*$/, '').replace(/\s*\.\.\.\s*$/, '').trim();
+  // The first sentence only. Split on `. ` rather than `.` so a decimal or an abbreviation
+  // mid-sentence cannot cut the line short -- the same rule `ideas/index.tsx`'s `firstSentence`
+  // uses on landing descriptions.
+  const stop = clean.search(/\.\s/);
+  if (stop !== -1) clean = clean.slice(0, stop);
+  clean = clean.replace(/\.$/, '').trim();
+
   const words = clean.split(/\s+/);
   if (words.length <= maxWords) return clean;
-  // Drop a trailing comma/semicolon left dangling by the cut -- "the knee, neck and wrist," is a
-  // worse ending than "the knee, neck and wrist".
-  return words.slice(0, maxWords).join(' ').replace(/[,;:]$/, '');
+
+  const head = words.slice(0, maxWords);
+  // A clause boundary inside the window beats a word boundary at the end of it. Bounded to the
+  // last 8 words so a comma near the start cannot amputate the line to three words.
+  for (let i = head.length - 1; i >= Math.max(head.length - 8, 0); i -= 1) {
+    if (/[,;:]$/.test(head[i])) return head.slice(0, i + 1).join(' ').replace(/[,;:]+$/, '');
+  }
+  // Otherwise back off over trailing function words, so the line cannot end on "so the".
+  while (head.length > 0 && DANGLING_TAIL.has(head[head.length - 1].replace(/[,;:]$/, '').toLowerCase())) {
+    head.pop();
+  }
+  return head.join(' ').replace(/[,;:]+$/, '');
 }
 
 /**
@@ -2329,12 +2376,35 @@ export default function Home({ packs, stats, initialState, market, currency, per
             sourcing promise six, which is what makes a page read as though it is trying to
             convince you rather than sell you something. One statement, in the row that says it
             is the statement. */}
-        {/* A list of filenames names the documents; this shows one. The fear on a digital download
-            page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
-            rows from the free sample, including the check that failed, a preview of eight
-            green ticks would advertise better and claim something the shop does not. */}
-        <PackContentsSection heading="What's inside your pack" />
-        <EvidenceRecordPanel />
+        {/* THE ORDER INVERTS HERE, and that is the point of the section.
+            It used to be the manifest first and `EvidenceRecordPanel` under it: a list of nine
+            titles, then a web table of eight verdicts. Both were CLAIMS about what a buyer
+            receives, and the founder's verdict on the pair was "underwhelming... show not tell".
+            So the object goes first and the inventory goes under it -- you show someone the page,
+            then tell them how many more there are.
+
+            `EvidenceRecordPanel` is GONE from this page, not merely reordered. It rendered these
+            same eight verdicts under the eyebrow "A real page from a real pack" while looking like
+            a web table, so it made the specimen's claim and could not back it; keeping both would
+            put two evidence objects 200px apart, which is the duplication this pass exists to
+            remove. Nothing is lost -- the record's SHAPE is still in the hero
+            (`HeroEvidenceStrip`) and its full CONTENT is on /sample, where this section's only
+            call to action points. */}
+        <PackSpecimen />
+        {/* The manifest, DEMOTED to what it is: the contents page, read after the specimen rather
+            than instead of it. It stays on this page and stays owned by this page --
+            `__tests__/factOwnership.test.ts` pins Home as the owner of `<PackContentsSection`, and
+            on 2026-08-07 two concurrent sessions each deleted one of this section's two halves and
+            the manifest left the site entirely. The heading changes because its job changed: it is
+            no longer the answer to "what am I buying", it is the answer to "what else is in
+            there". "The full contents" and NOT "the other eight documents", which was the first
+            draft of this heading: the specimen shows a page of one of the nine, but the list below
+            still lists all nine, so a heading that subtracted the one shown would have been an
+            arithmetic claim its own list contradicts. */}
+        <PackContentsSection
+          className="mt-16 border-t border-border pt-12"
+          heading="The full contents"
+        />
         {/*
           `MethodCostAnchor` and `ComparisonBlock` were REMOVED from the homepage (2026-08-06) and
           are not deleted -- both are cited, carefully-sourced arguments, and both belong to

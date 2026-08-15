@@ -103,7 +103,7 @@ def test_tier1_swallowed_failures_never_increase(sites):
         "new tier-1 swallowed failures — the caller cannot tell these from a real empty "
         "answer:\n" + "\n".join(
             f"  {f}: {was} -> {now}" for f, (was, now) in sorted(regressions.items()))
-        + "\n\nRun: .venv/bin/python tools/audit_swallow_sites.py --tier 1")
+        + f"\n\nRun: {sys.executable} tools/audit_swallow_sites.py --tier 1")
 
 
 def test_the_escape_hatch_stays_rare_and_stays_argued(sites):

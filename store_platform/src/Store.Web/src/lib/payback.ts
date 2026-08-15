@@ -20,7 +20,8 @@ export interface Payback {
   priceLabel: string;
   /** The modelled month-1 revenue, exactly as the engine wrote it. */
   revenueLabel: string;
-  /** revenue / price, rounded down. Only ever >= 1 (see `paybackEquation`). */
+  /** revenue / price, rounded down. Only ever 1..`CREDIBLE_MULTIPLE_CEILING` (see
+   *  `paybackEquation`) -- bounded at both ends, for opposite reasons. */
   multiple: number;
   /** Modelled payback period, when the engine stated one. Never derived. */
   paybackMonths: string | null;
@@ -57,14 +58,40 @@ function parsePrice(price: string): number | null {
 }
 
 /**
+ * The largest multiple this shop will state, anywhere.
+ *
+ * Founder, 2026-08-15, on seeing 123x on the live shelf: "123x is the number that makes a buyer
+ * distrust the other 58 cards. exactly." The argument is about the reader, not the arithmetic --
+ * the division is exact, and a claim that a pack returns 123 times its price inside thirty days
+ * is still read as a lie, which then retroactively prices every honest 6x beside it as marketing.
+ * An implausible number is not a strong claim; it is a solvent applied to the credible ones.
+ *
+ * Set at 20 because the live distribution and the plausibility argument break in the same place.
+ * Measured over all 59 listed packs (2026-08-15), the 36 renderable multiples were
+ *   2 2 3 3 4 5 6 6 6 6 7 7 7 8 8 9 9 9 9 10 12 12 13 13 14 16 17 17 | 21 22 25 30 45 76 89 123
+ * -- the body ends at 17x (28 of 36, p75 = 17) and the rest is a tail, not a continuation. And
+ * 20x of a 49.99 pack is a modelled £1,000 in month one, the top of what a person starting from
+ * nothing reads as possible; above it the claim runs to £6,150 and stops being arguable.
+ *
+ * It lives HERE rather than at a render site because the founder's answer to "apply it to the
+ * detail page too?" was yes: one rule, one place, both readers. A ceiling enforced per-caller is
+ * a ceiling the next caller forgets.
+ */
+export const CREDIBLE_MULTIPLE_CEILING = 20;
+
+/**
  * Build the equation, or return null so the page renders nothing.
  *
  * Returns null, rather than a weaker version, whenever the comparison would not be honest:
- * no modelled revenue, an unparseable or ranged figure, or a modelled month-1 revenue that
- * does not even cover the pack price. That last case is the important one: this must not
- * become a widget that only ever appears when it flatters the sale. If the modelled economics
- * do not clear £49, the buyer reads the "Modelled economics" box further down and judges for
- * themselves; the storefront does not get to reframe it into a multiple below 1.
+ * no modelled revenue, an unparseable or ranged figure, a modelled month-1 revenue that does not
+ * even cover the pack price, or one so far above it that stating it costs more credibility than
+ * it buys. The bottom case is what stops this becoming a widget that only appears when it
+ * flatters the sale; the top case is what stops it flattering so hard nobody believes the shelf.
+ * Either way the buyer reads the "Modelled economics" box further down and judges for themselves;
+ * the storefront does not get to reframe those numbers into a multiple it cannot defend.
+ *
+ * Null and not a clamp, deliberately: "20x+" makes the same claim less precisely and invites the
+ * reader to wonder what was capped.
  */
 export function paybackEquation(price: string, snapshot?: FinancialSnapshot): Payback | null {
   if (!snapshot) return null;
@@ -74,7 +101,7 @@ export function paybackEquation(price: string, snapshot?: FinancialSnapshot): Pa
   if (priceValue === null || revenueValue === null) return null;
 
   const multiple = Math.floor(revenueValue / priceValue);
-  if (multiple < 1) return null;
+  if (multiple < 1 || multiple > CREDIBLE_MULTIPLE_CEILING) return null;
 
   return {
     priceLabel: price.replace(/[.,]00\b/, ''),

@@ -17,21 +17,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-def _anthropic_works() -> bool:
-    """The anthropic SDK depends on jiter (a native module). If jiter is
-    broken in this venv, Claude tests would error on import — skip them
-    rather than masking the real env issue. The other providers are
-    sufficient to verify the model-config refactor.
-    """
-    try:
-        from anthropic import Anthropic  # noqa: F401
-        return True
-    except Exception:
-        return False
-
-
 # Each (kind, default_env_var) pair needs its API key set for the operator
 # to construct. We use patch.dict to set the env var at test time.
+#
+# `claude` (the paid Anthropic API tier) was removed here on 2026-08-15 with the tier itself:
+# `_build_operator("claude")` raises by design (operator.py:1346), so the parameter tested a
+# deleted branch. It survived because its `skipif(not _anthropic_works())` guard fires on any
+# machine without a working anthropic/jiter install — this laptop skipped it, CI has the SDK
+# and ran it, which is why the suite was green locally and red on the PR.
 PROVIDERS = [
     # ("claude", "ANTHROPIC_API_KEY") removed 2026-08-15 with the paid Anthropic API tier's
     # adapter; `_build_operator("claude", ...)` now raises ValueError by design.
@@ -49,7 +42,6 @@ def _make_cfg(model: str, model_fast: str, kind: str):
     cfg.operator = kind
     cfg.retrieval = MagicMock()
     cfg.model_defaults = MagicMock()
-    cfg.model_defaults.claude = "claude-sonnet-4-5"
     return cfg
 
 

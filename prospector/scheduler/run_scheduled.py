@@ -495,16 +495,40 @@ def _generation_suppressed(cfg, decision=None) -> str:
     try:
         cap = int(cap)
     except (TypeError, ValueError):
-        # FAIL CLOSED, matching the `backlog is None` branch below rather than contradicting it.
-        # `cap is None` above is the documented "brake off" value; anything else present in the
-        # config is an operator who OPTED IN, and a value we cannot parse is not consent to
-        # generate — it is a brake whose threshold we cannot read. Returning "" here meant a
-        # single config typo disabled the floor-of-last-resort with nothing but a warning line
-        # that never reaches launchd.err.log.
-        logger.error("schedule.backlog_cap=%r is not an integer — the brake cannot be evaluated, "
-                     "so this tick only drains", cap)
-        return (f"backlog brake UNREADABLE: schedule.backlog_cap={cap!r} is not an integer, so the "
-                f"brake cannot prove it is safe to generate — draining only until the config parses")
+        # FAIL OPEN — the brake goes OFF, generation continues — and this is deliberately the
+        # OPPOSITE of the `backlog is None` branch below. The two look symmetrical and are not:
+        #
+        #   * `backlog is None` is an operator who opted in with a VALID cap, whose rail then
+        #     could not count. The threshold is known; only the reading failed. Stopping is
+        #     honest and it self-clears the moment the count works.
+        #   * an unparseable cap is a config that never expressed a threshold at all. There is
+        #     no number to be under or over, so there is nothing to prove safe — and nothing
+        #     self-clears, because the config does not change on its own. Failing closed here
+        #     freezes generation indefinitely on a typo, which is exactly the unbounded-memory
+        #     failure that "gate on the RATE, not the stock" exists to kill (CLAUDE.md).
+        #
+        # It is also the only consistent reading: `cap <= 0` below already treats 0 AND -1 —
+        # equally unusable thresholds from an operator who "opted in" — as brake-off. Singling
+        # out a bad STRING to freeze on, while waving through a bad INT, is not a safety policy.
+        #
+        # This branch briefly failed closed on the integrate/minimax-into-main branch (0b5e655)
+        # and is restored here on merge. Its grievance was real and is answered without the
+        # freeze: a typo used to be a log line nobody reads, so it now raises a CRITICAL
+        # operator alert. The floor-of-last-resort being off is worth waking someone for; it is
+        # not worth stopping the supply of the storefront for.
+        logger.critical("schedule.backlog_cap=%r is not an integer — the backlog brake is OFF "
+                        "until this is fixed; generation continues unbraked", cap)
+        try:
+            from prospector.scheduler.alerts import emit_alert
+            emit_alert(cfg, severity="critical", key="backlog_cap_unreadable",
+                       title="Backlog brake is OFF: schedule.backlog_cap does not parse",
+                       message=(f"schedule.backlog_cap={cap!r} is not an integer, so the brake "
+                                f"has no threshold to apply. Generation is running UNBRAKED. "
+                                f"Fix the value in config.yaml; the daemon reads it on restart."),
+                       backlog_cap=repr(cap))
+        except Exception as exc:  # alerting must never decide whether the daemon generates
+            logger.error("Could not raise the backlog_cap_unreadable alert: %s", exc)
+        return ""
     if cap <= 0:
         return ""
     backlog = _backlog_size(cfg)

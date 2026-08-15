@@ -8,10 +8,35 @@ read with the same value it uses for a healthy, boring answer:
     number returned `""`, which is the word for "the burn is under the ceiling". A config
     typo therefore removed the ceiling, silently, on the meter that recorded $438.68 of
     ungoverned subscription burn in a day.
-  * `_generation_suppressed` — a `backlog_cap` that is not an integer returned `""` the
-    same way, disabling the floor-of-last-resort against unbounded queue growth. The
-    branch immediately below it already did the opposite (an uncountable backlog engages
-    the brake), so the rail contradicted itself depending on WHICH half it could not read.
+  * `_generation_suppressed` — THE ONE RAIL ON THIS LIST THAT DELIBERATELY FAILS OPEN, and
+    the exception is what makes the rule legible. This file originally braked on an
+    unreadable `backlog_cap` too, for symmetry with the branch below it (an uncountable
+    backlog DOES brake). On merging to main 2026-08-15 that met main's
+    `test_a_malformed_cap_disables_the_brake_rather_than_freezing`, and main was right —
+    not by seniority, by cost:
+
+      unreadable SPEND ceiling, failed open  -> burn is unbounded and unrecoverable
+                                                (measured: $438.68 in one day)
+      unreadable SPEND ceiling, failed closed-> generation stops; cost is one config edit
+
+      unreadable BACKLOG cap, failed open    -> generation runs unbraked into a queue the
+                                                drain works off. This is ALSO the normal
+                                                state of every deployment that never set
+                                                the cap, since it is default-0 = OFF.
+      unreadable BACKLOG cap, failed closed  -> generation stops INDEFINITELY. Nothing
+                                                self-clears a typo, and "one stale
+                                                condition suppresses generation forever"
+                                                is the exact failure that "gate on the
+                                                RATE, not the stock" was written to kill
+                                                (CLAUDE.md, founder decision 2026-08-06).
+
+    The symmetry argument was also weaker than it looked: `cap <= 0` already treats 0 AND
+    -1 as brake-off, so braking on a bad STRING while waving through a bad INT was never a
+    consistent policy. The real distinction is not "which half could I not read" but
+    "does this rail govern MONEY or THROUGHPUT". Money fails closed. A default-off
+    throughput floor fails open and SHOUTS — the grievance that a typo used to be an
+    invisible log line is answered by a CRITICAL `backlog_cap_unreadable` operator alert,
+    which is pinned below.
   * `_unlist_pass` — an unreadable `pending_unlist.jsonl` returned `None`, which is this
     function's word for "the queue is empty, no pack needs pulling off sale". Every other
     failure path in it returns `{"error": ...}` at CRITICAL, because the cost of not
@@ -99,24 +124,48 @@ def test_an_unparseable_subscription_cap_brakes_instead_of_removing_the_ceiling(
 
 # ---------------------------------------------------- the backlog rail: cap vs count
 
-def test_an_unparseable_backlog_cap_brakes_the_same_way_an_uncountable_backlog_does(tmp_path,
-                                                                                    monkeypatch):
-    """The two halves of one rail must not disagree about what "cannot read" means."""
+def test_an_unparseable_backlog_cap_fails_open_but_pages_instead_of_going_quiet(tmp_path,
+                                                                                monkeypatch,
+                                                                                caplog):
+    """The deliberate exception: THROUGHPUT rail, default-off, so it fails OPEN — loudly.
+
+    This is the one place in this file where "could not read" is allowed to keep working,
+    and it is allowed only because it does not go quiet. The thing that made the original
+    fail-open a defect was silence, not the direction: it disabled a rail with a
+    `logger.warning` nobody reads. So the assertion here is not "generation continues" on
+    its own — it is "generation continues AND the operator is paged". Either half alone is
+    the bug: continuing quietly hides a broken rail, and braking freezes the storefront's
+    supply on a typo that nothing self-clears.
+
+    Contrast `test_an_unparseable_subscription_cap_brakes_instead_of_removing_the_ceiling`
+    directly above, which fails CLOSED on the same class of input. The two are not
+    inconsistent; see the module docstring for the cost asymmetry that separates them.
+    """
     monkeypatch.setattr(rs, "_backlog_size", lambda cfg: 0)
+    caplog.set_level(logging.CRITICAL, logger="prospector.scheduler.run_scheduled")
 
     bad = rs._generation_suppressed(_cfg(tmp_path, schedule={"backlog_cap": "fifteen"}))
-    assert "backlog brake" in bad and "UNREADABLE" in bad
+    assert bad == "", "a cap that never expressed a threshold must not freeze generation"
+    assert [r for r in caplog.records if r.levelno >= logging.CRITICAL], (
+        "the brake is OFF and nobody was told — logger.warning does not reach "
+        "launchd.err.log, which is how a disabled rail stays disabled for weeks")
 
-    # The neighbouring half, unchanged, for the comparison this test is named after:
+    # The neighbouring half, which DOES brake, because a valid cap whose COUNT failed is a
+    # different animal: the threshold is known, only the reading failed, and it self-clears
+    # on the very next tick. That distinction is the point of keeping both in one test.
     monkeypatch.setattr(rs, "_backlog_size", lambda cfg: None)
     uncountable = rs._generation_suppressed(_cfg(tmp_path, schedule={"backlog_cap": 5}))
     assert "could not be counted" in uncountable
 
-    # FALSIFIERS — a readable config still generates:
+    # FALSIFIERS — a readable config still generates, so this is not "never suppress".
     monkeypatch.setattr(rs, "_backlog_size", lambda cfg: 1)
     assert rs._generation_suppressed(_cfg(tmp_path, schedule={"backlog_cap": None})) == ""
     assert rs._generation_suppressed(_cfg(tmp_path, schedule={"backlog_cap": 0})) == ""
     assert rs._generation_suppressed(_cfg(tmp_path, schedule={"backlog_cap": 5})) == ""
+    # ...and the brake still engages when it CAN read both halves, or the test above would
+    # pass just as well against a rail that was deleted outright.
+    monkeypatch.setattr(rs, "_backlog_size", lambda cfg: 999)
+    assert rs._generation_suppressed(_cfg(tmp_path, schedule={"backlog_cap": 5})) != ""
 
 
 def test_a_failed_backlog_count_is_reported_at_error_not_warning(tmp_path, caplog, monkeypatch):

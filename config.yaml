@@ -87,12 +87,15 @@ moat_primary: [minimax, claude_cli]
 # explicit ValueError on the name; a stale plist or config fails at startup instead of quietly
 # building a shorter chain. The paid Anthropic API tier `claude` went the same day, for the same
 # reason (no ANTHROPIC_API_KEY) — `claude_cli`, the SUBSCRIPTION CLI, is a different tier and is
-# untouched, and it is now the ONLY name in MOAT_PRIMARY.
+# untouched.
 #
-# minimax remains the guardrailed emergency tail: NOT in MOAT_PRIMARY, so a ruling it serves is
-# stamped `provisional`, never publishes on PASS (run.py:528) and is auto re-vetted. That fence is
-# what makes a cheap tail safe. To promote a cheap brain to trusted-final, the gate is the one
-# named above (specs/offline-moat-validation.md).
+# WHAT THE FENCE IS NOW, so this comment cannot be read against the line above it: MOAT_PRIMARY is
+# `[minimax, claude_cli]` — BOTH are trusted-final as of 2026-08-15, so neither stamps its rulings
+# `provisional`. The fence has not been removed, it has been moved: `is_provisional_provider`
+# (operator.py:1451) still stamps ANY ruler outside that list, and such a ruling never publishes on
+# PASS (run.py:864) and is auto re-vetted. That is what keeps a future cheap tail safe. To promote
+# a NEW cheap brain to trusted-final, the gate is the one named above
+# (specs/offline-moat-validation.md), run against that provider on the current parser.
 #
 # The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
 # its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
@@ -117,6 +120,10 @@ moat_primary: [minimax, claude_cli]
 # so the chain was already one deep in practice and the second name only bought a guaranteed
 # failed call. A name that cannot serve is not depth. If a real second cheap tier is funded, add
 # it here — the key is config-driven precisely so that costs a config line, not a deploy.
+# The residual exposure, stated so it is not discovered during an outage: if minimax fails,
+# non-critical work raises ProviderExhaustedError and the signal is parked for `generate --resume`,
+# rather than silently promoting a trusted brain into ancillary work. That is the intended
+# behaviour, not a gap — but it does mean a minimax outage stops generation, not just slows it.
 # NOTE: the moat (`operator:`) and the pack prose (`artifact_operator:`) are UNCHANGED — this
 # directive is about ancillary work, and the £49 deliverable is not ancillary.
 noncritical_operator: [minimax]
@@ -162,11 +169,20 @@ marketing_operator: [minimax, claude_cli]
                                   # (bridge.py:820 content_ok, since 967457f): a weak minimax
                                   # pack fails currency/citation/completeness and stays UNLISTED
                                   # rather than reaching a buyer. Generation is non-critical by
-                                  # the standing rule; NO VERDICT moves here — minimax is
-                                  # outside MOAT_PRIMARY (operator.py:997) and anything it RULES
-                                  # is stamped provisional and refused publication (run.py:543).
-                                  # Regenerating a pack re-uses the stored trusted verdict and
-                                  # never re-rules, so nothing published this way is provisional.
+                                  # the standing rule; NO VERDICT moves here. Regenerating a pack
+                                  # re-uses the STORED verdict and never re-rules, so this chain
+                                  # cannot change what a pack was judged to be — that, not the
+                                  # identity of the brain, is why cheap copy is safe here.
+                                  #
+                                  # This clause used to read "safe because minimax is outside
+                                  # MOAT_PRIMARY, so anything it RULES is provisional". That
+                                  # became FALSE on 2026-08-15 when minimax was promoted into
+                                  # `moat_primary:` above — and the safety argument was never
+                                  # really about who minimax was. It is about this chain not
+                                  # being on the verdict path at all. Stated the old way, the
+                                  # comment would now read as "the fence is gone", which is the
+                                  # wrong lesson: the fence (operator.py:1451) is intact and
+                                  # still stamps every ruler outside the roster.
 
 # --- Model defaults (Part: HARDCODED_MODEL_AUDIT_TICKET) ---
 # Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:
@@ -973,20 +989,35 @@ generation:
   # UNPROVEN either way — prescreen-rejected candidates never get a dossier, so the retro
   # corpus cannot answer it. The measurement is forward: pass rate per VETTED candidate
   # before vs after this change, at fixed batch_size.
-  # CUT 50 -> 20 on 2026-08-14. The paragraph above is unchanged and still true — k=50 vs k=20
-  # is unproven on YIELD — but k=50 turned out to be unaffordable in TIME, which is a separate
-  # measurement and a decisive one:
+  #
+  # THIS KEY IS INERT ON THE DAEMON PATH, and reading it as the daemon's k has already cost
+  # one wrong diagnosis. `run_scheduled.py` calls `run_signal(..., k=batch_size, ...)` and
+  # `generate.py` only falls back to this value `if k is None`, so the scheduler never reads
+  # it — raising it 5 -> 50 (9089ebc, 2026-08-13) changed nothing about what the daemon
+  # generated, and neither did cutting it back. The daemon's real k is `schedule.batch_size`
+  # below. This value still governs `vet`/`generate` invoked directly from the CLI, which is
+  # why it is left at 50 rather than deleted.
+  #
+  # The 2026-08-14 barren streak (21 ticks, 0 dossiers) was NOT caused by this number. Cause:
+  # d704595 took claude_cli off `noncritical_operator` (correctly — founder directive), then
+  # standardcompute's free trial expired at 05:17Z, leaving MiniMax alone on generation with
+  # a `max_tokens` ceiling its reasoning had outgrown. See prospector/operator.py.
+  #
+  # A BRANCH CUT THIS TO 20 ON 2026-08-14 AND THE CUT WAS REVERTED HERE ON MERGE (2026-08-15),
+  # because it was the same wrong diagnosis a second time. That branch's reasoning was "k=50 is
+  # unaffordable in TIME", citing real receipts:
   #   store/scheduler/alerts.jsonl 2026-08-14T20:48:25Z  critical  tick_error
   #     "tick_hard_deadline: exceeded 10800s during generation (batch=15); force-exited"
   #   store/scheduler/alerts.jsonl 11:23-15:57Z          critical  barren_streak x18
   #     "The generation chain has produced nothing for 21 ticks in a row"
-  # Generation was not returning empty; it was never returning. A tick force-exited at the 3h
-  # deadline mid-generation vets nothing, so the pool k widens is a pool nothing ever selects
-  # from: measured yield at k=50 is 0 passes across 21 consecutive ticks. k=20 still exceeds
-  # `schedule.batch_size` (15), so prescreen keeps a real choice to make.
-  # `load_config` runs ONCE in run_scheduled.main (:1944) — this value only takes effect on a
-  # daemon RESTART, never on the next tick.
-  candidates_per_signal: 20
+  # The receipts are real and the attribution is not: the tick that blew the 3h deadline was
+  # generating at k=`schedule.batch_size`, NOT at k=50, because `run_scheduled.py:908` passes
+  # `k=batch_size` explicitly and `generate.py:274` only reads this key `if k is None`. Editing
+  # this line could not have shortened that tick by one second. Re-verified on the merged tree
+  # 2026-08-15. Founder constraint stands: k stays 50 and the fix is to make generation FAST.
+  # `load_config` runs ONCE in run_scheduled.main — this value only takes effect on a daemon
+  # RESTART, never on the next tick.
+  candidates_per_signal: 50
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
   # FLOOR on ideas requested per call (2026-08-14). The old wave formula floored the CALL
   # count at the lens count instead, so the daemon's per-lane remainder (batch_size 15 over

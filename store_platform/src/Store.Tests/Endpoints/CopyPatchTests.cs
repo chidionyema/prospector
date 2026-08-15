@@ -22,6 +22,14 @@ namespace Store.Tests.Endpoints;
 /// (Program.cs: the ids are now only overwritten when the request carried one). It is kept,
 /// inverted, as the regression that stops the unconditional assignment coming back.
 ///
+/// It was inverted a SECOND time on 2026-08-15, for the other half of the same asymmetry. Its tail
+/// asserted that a republish carrying a different ProviderPriceId still moved the pointer — which
+/// was true, and was the defect: this endpoint never reassigns PricePence, so moving the pointer
+/// alone charged a number the card did not show. Nine of 59 live packs were desynced that way,
+/// two by as much as £49.00 shelf against £99.99 rail. The price pointer is now held when a real
+/// one is already stored; the product pointer, which carries no amount, still moves. The tail
+/// asserts that split, and <see cref="PublishPricePointerTests"/> pins the whole rule.
+///
 /// The endpoint still earns its place: a copy job routed through publish must re-send the entire
 /// body, which re-runs the pricing ladder and the provisioner. This PATCH reaches copy and
 /// nothing else.
@@ -68,6 +76,22 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
         var response = await Client().PostAsJsonAsync("/internal/catalog", body);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    /// <summary>
+    /// A republish carrying BOTH provider ids and no pricePence — the shape that did the damage.
+    /// </summary>
+    private Task<HttpResponseMessage> RepublishWithIdsAsync(string id, string productId, string priceId) =>
+        Client().PostAsJsonAsync("/internal/catalog", new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["id"] = id,
+            ["title"] = $"Pack {id}",
+            ["oneLine"] = "One line.",
+            ["dossierRef"] = $"dossier:{id}",
+            ["paymentProvider"] = "stripe",
+            ["providerProductId"] = productId,
+            ["providerPriceId"] = priceId,
+            ["isListed"] = true,
+        });
 
     [Fact]
     public async Task Replaces_copy_without_touching_price_provider_ids_or_listing_state()
@@ -362,23 +386,22 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
         // rail that does not exist.
         Assert.Equal("stripe", root.GetProperty("paymentProvider").GetString());
 
-        // Sending a DIFFERENT id still moves it: this guards omission, not change. Without this
-        // the guard could be implemented as "never overwrite", which would strand every pack on
-        // its first rail forever.
-        var moved = await Client().PostAsJsonAsync("/internal/catalog", new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["id"] = "copy-republish-hazard",
-            ["title"] = "Pack copy-republish-hazard",
-            ["oneLine"] = "One line.",
-            ["dossierRef"] = "dossier:copy-republish-hazard",
-            ["paymentProvider"] = "stripe",
-            ["providerProductId"] = "prod_moved",
-            ["providerPriceId"] = "price_moved",
-            ["isListed"] = true,
-        });
+        // Sending a DIFFERENT id: the PRODUCT pointer still moves, the PRICE pointer no longer
+        // does. That asymmetry is the 2026-08-15 repair and it follows from what this endpoint is
+        // allowed to write. A product carries no amount, so re-pointing it contradicts nothing the
+        // shelf shows. A price does: PricePence is assigned on INSERT only, so accepting the new
+        // pointer would change what the buyer is charged while the card kept the old number. Nine
+        // of 59 live packs were in that state. "Never overwrite" is still not the guard — see
+        // PublishPricePointerTests, where a stub id is still repairable and an equal id is a no-op.
+        // A real rail change goes through PATCH /internal/catalog/{id}/price, which moves the
+        // amount, the floor and the PackPriceHistory row in one transaction.
+        var moved = await RepublishWithIdsAsync("copy-republish-hazard", "prod_moved", "price_moved");
         using var movedDoc = JsonDocument.Parse(await moved.Content.ReadAsStringAsync());
         Assert.Equal("prod_moved", movedDoc.RootElement.GetProperty("providerProductId").GetString());
-        Assert.Equal("price_moved", movedDoc.RootElement.GetProperty("providerPriceId").GetString());
+        Assert.Equal("price_real", movedDoc.RootElement.GetProperty("providerPriceId").GetString());
+
+        // And the shelf number the refusal exists to protect is the one the pack was inserted with.
+        Assert.Equal(4900L, movedDoc.RootElement.GetProperty("pricePence").GetInt64());
 
         // The copy PATCH remains the narrow door, and still touches none of it.
         var patched = await Client().PatchAsJsonAsync(
@@ -387,7 +410,7 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
         using var patchedDoc = JsonDocument.Parse(await patched.Content.ReadAsStringAsync());
         Assert.Equal("A second card line", patchedDoc.RootElement.GetProperty("cardLine").GetString());
         Assert.Equal("prod_moved", patchedDoc.RootElement.GetProperty("providerProductId").GetString());
-        Assert.Equal("price_moved", patchedDoc.RootElement.GetProperty("providerPriceId").GetString());
+        Assert.Equal("price_real", patchedDoc.RootElement.GetProperty("providerPriceId").GetString());
         Assert.True(patchedDoc.RootElement.GetProperty("isListed").GetBoolean());
     }
 }
