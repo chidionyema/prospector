@@ -26,8 +26,8 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from nltk.stem import PorterStemmer
-import re
 import http.client
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -495,6 +495,12 @@ class RelevanceRankedProvider(SearchProvider):
         return kept
 
 
+# Below this, an extraction is a page title or an error page, not a passage. Set just under the
+# 222-char mean of the search snippets this function exists to REPLACE: returning less than the
+# snippet we already hold is a downgrade, and the caller reads None as "keep what you had".
+_MIN_PAGE_TEXT = 200
+
+
 def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
                     max_bytes: int = 400_000, query: Optional[str] = None) -> Optional[str]:
     """GET a grounding URL and return its readable text, or None.
@@ -585,6 +591,54 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
     except (etree.ParserError, etree.XMLSyntaxError, ValueError, UnicodeDecodeError):
         # unparseable markup. Narrowed for the same reason as the fetch above: an
         # AttributeError from changing the xpath list read exactly like a broken page.
+        #
+        # MERGE 2026-08-15: origin/main narrowed this handler and this branch changed its
+        # BODY from `return None` to `text = ""`. Both, not either — the narrowing is about
+        # which exceptions may be swallowed, the body is about what happens after one is.
+        # Falling through rather than returning is what gives the fallback below its turn:
+        # trafilatura is a different parser and routinely reads a page lxml could not.
+        text = ""
+
+    # TRAFILATURA IS THE FALLBACK, NOT THE PRIMARY (2026-08-15, and the sizing is measured).
+    #
+    # The ladder above returns the page TITLE and nothing else on a page that carries its body
+    # outside every landmark it knows: measured on the 12 fetchable URLs cited by pack
+    # e698149e137fc164, it produced 15 chars for isbe.net/Pages/SOPPA-Contracts.aspx ("SOPPA
+    # Contracts"), 182 for edprivacy.com/state-guides/illinois and 96 for a geekwire article —
+    # 3 of 12 pages where the enrichment silently did nothing.
+    #
+    # It is a FALLBACK because the honest measurement of what it buys is small. `PageTextEnricher`
+    # (:630) only replaces a snippet on a gain of `min_gain_chars`, and 10 of those 12 passages
+    # were already at the 1500-char cap, so there was no headroom to win: swapping extractors
+    # upgrades ONE passage of twelve. Running it first would also cost ~0.55s/page of CPU on the
+    # 9 pages the cheap path already handles, for nothing. So it runs only where the cheap path
+    # came back with something too short to be a passage at all, which is the case it fixes.
+    #
+    # A page that yields under _MIN_PAGE_TEXT after both is NO PASSAGE, not a short one. The
+    # caller keeps the search snippet, which averages 222 chars — strictly more than a title.
+    # This is also what stops a 404 body ("Page not found – GeekWire", 25 chars) being handed
+    # to a verdict brain as the evidence for a check.
+    if len(text) < _MIN_PAGE_TEXT:
+        # Two handlers, not one, on origin/main's rule (2026-08-15): the absent optional
+        # dependency and a parser failure are different facts, and a bare `except Exception`
+        # over both would also swallow an AttributeError or NameError from a refactor of this
+        # very block — which would present as "no page on the open web has a passage", in
+        # silence, forever. That is the failure mode main's narrowing pass exists to end.
+        try:
+            import trafilatura  # declared in requirements.txt; lazy, same as requests above
+        except ImportError:     # not installed: keep whatever the ladder found
+            trafilatura = None  # type: ignore[assignment]
+        if trafilatura is not None:
+            try:
+                better = trafilatura.extract(raw, include_comments=False, include_tables=True,
+                                             favor_precision=True) or ""
+            except (etree.ParserError, etree.XMLSyntaxError, ValueError, TypeError,
+                    UnicodeDecodeError):
+                better = ""     # a third-party parser on hostile markup: keep what we have
+            better = " ".join(better.split())
+            if len(better) > len(text):
+                text = better
+    if len(text) < _MIN_PAGE_TEXT:
         return None
     # Select the passage that answers the query rather than the top of the page. `query=None`
     # (any caller predating 2026-08-14) still gets the head slice, byte for byte.

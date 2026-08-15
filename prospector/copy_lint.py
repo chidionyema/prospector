@@ -439,3 +439,230 @@ def check_grammar(texts: Dict[str, str], *, max_per_1k: float = 0.0,
     if max_per_1k > 0 and rate > max_per_1k:
         return [_err("grammar", "-", detail + f" -- exceeds max_grammar_defects_per_1k={max_per_1k}")]
     return [_warn("grammar", "-", detail)] if total else []
+
+
+# ---------------------------------------------------------------------------
+# 5. Abstraction and hedging: zombie nouns and non-committal language
+#
+# NOT the "register" check. `register_lint` owns that name and measures other things (banned
+# phrases, house constructions, cross-document repeats, sentence-length and clause-load
+# rates). The function below was called `check_register` until 2026-08-15 and collided with
+# it; see its docstring for the rename and for what is and is not wired.
+# ---------------------------------------------------------------------------
+#
+# THE ONE RULE FROM THE NARRATIVE PROGRAMME THAT CAN BE MEASURED RATHER THAN ASKED FOR.
+#
+# `docs/PACK_NARRATIVE_PROGRAM.md` proposes four voice amendments. Three of them are prompt
+# instructions and will drift the moment a model changes: nothing checks them, so nothing can
+# tell you they stopped working. These two are arithmetic over the finished text, which means
+# they keep answering after the prompt has moved on.
+#
+# NOMINALISATION. Helen Sword's "zombie nouns" (NYT Opinionator, 2012-07-23): nouns built from
+# verbs and adjectives that "cannibalize active verbs, suck the lifeblood from adjectives and
+# substitute abstract entities for human beings". Her own diagnostic is a density threshold --
+# the Writer's Diet test flags prose at roughly 5% nominalisations by word count -- which is
+# what makes it implementable here at all. "We implemented a reduction in onboarding duration"
+# and "onboarding drops from six weeks to four days" carry the same fact; only the second has
+# anything happening in it.
+#
+# HEDGING. `prompts/content_gen.md` and `prompts/artifacts.md` now ban hedging LANGUAGE while
+# requiring stated UNCERTAINTY, and the distinction is the whole point: "one source, dated
+# 2024, says X; nothing corroborates it" is honest and readable, "this may to some extent
+# suggest X" is neither. Only the second shape is countable, so only the second is checked.
+# A pack that names its evidence's limits scores zero here, which is the intended incentive.
+#
+# BOTH ARE WARNINGS, DELIBERATELY. House doctrine is to ship the measurement, sweep the live
+# catalogue, then choose the number -- a threshold picked before the sweep is a guess wearing
+# a decimal point. Neither may unlist a pack: flat prose is a quality defect, not a truth
+# defect, and this repo's gates exist for truth. `pack_linter` surfaces them for a human.
+
+# Suffixes that build a noun out of a verb or adjective. `-ing` is NOT here, because a gerund
+# is usually doing real work.
+#
+# Tested with `str.endswith` over a single tokenisation rather than by regex alternation. The
+# regex form (`\b[a-z]{3,}(?:tion|sion|...)s?\b`) is QUADRATIC: the greedy prefix eats the word
+# and then backtracks one character at a time hunting for a suffix, at every start position. On
+# the 140-bundle sweep that ran past two minutes and was killed; this form finishes it in
+# seconds. Same matches -- `tests/unit/test_copy_lint_register.py`,
+# `test_the_endswith_form_matches_the_regex_alternation_it_replaced`, pins the equivalence
+# by running both forms over the same corpus and comparing the hit lists. That citation was
+# false until 2026-08-15: the file did not exist, so the claim "same matches" was an
+# assertion about a rewrite made for speed, backed by nothing.
+_NOMINALISATION_SUFFIXES: tuple[str, ...] = (
+    "tion", "tions", "sion", "sions", "ment", "ments", "ance", "ances",
+    "ence", "ences", "ity", "ities", "ness", "nesses",
+)
+_MIN_NOMINALISATION_LEN = 6   # "city"/"ity" alone are not derived nouns
+_WORD_TOKEN_RE = re.compile(r"\b[A-Za-z][A-Za-z'\-]*\b")
+
+# Words the pattern catches that are NOT zombie nouns in this domain: either no verb form
+# exists in the relevant sense, or the noun IS the ordinary word a buyer would use. Flagging
+# these would train a writer to avoid the plainest term available, which is the opposite of
+# the rule's purpose. Kept deliberately short -- an allow-list that grows to meet every
+# complaint stops measuring anything.
+_NOMINALISATION_ALLOW: Set[str] = {
+    "business", "businesses", "government", "governments", "department", "departments",
+    "information", "quality", "qualities", "opportunity", "opportunities", "community",
+    "communities", "security", "university", "universities", "authority", "authorities",
+    "insurance", "maintenance", "compliance", "evidence", "experience", "experiences",
+    "audience", "audiences", "licence", "licences", "commission", "commissions",
+    "equipment", "instrument", "instruments", "document", "documents", "agreement",
+    "agreements", "payment", "payments", "management", "requirement", "requirements",
+    "regulation", "regulations", "legislation", "profession", "professions", "condition",
+    "conditions", "solution", "solutions", "question", "questions", "section", "sections",
+    "option", "options", "position", "positions", "operation", "operations",
+    "organisation", "organisations", "organization", "organizations", "subscription",
+    "subscriptions", "transaction", "transactions", "invention", "inventions",
+    "capacity", "capacities", "majority", "minority", "priority", "priorities",
+    "liability", "liabilities", "utility", "utilities", "facility", "facilities",
+    "entity", "entities", "city", "cities", "charity", "charities", "county", "counties",
+}
+
+# Hedges that carry no information. Every one of them is deletable without changing what the
+# sentence claims -- that is the test used to build the list, not a preference about tone.
+# Phrases before single words, so "to some extent" is counted once rather than as "some".
+_HEDGE_PHRASES: tuple[str, ...] = (
+    "to some extent", "to a certain degree", "to a certain extent", "in some cases",
+    "it could be argued", "it may be that", "it is widely regarded", "it is generally",
+    "research has shown", "studies have shown", "some would say", "many would argue",
+    "generally speaking", "broadly speaking", "more or less", "in many respects",
+    "may to some extent", "could potentially", "might possibly", "it seems likely that",
+    "there is a possibility", "it is possible that", "tends to suggest",
+)
+_HEDGE_WORDS: tuple[str, ...] = (
+    "arguably", "potentially", "somewhat", "relatively", "fairly", "rather",
+    "seemingly", "presumably", "conceivably", "ostensibly", "reportedly",
+    "virtually", "essentially", "basically", "actually", "quite",
+)
+
+_HEDGE_PHRASE_RE = re.compile(
+    "|".join(re.escape(p) for p in _HEDGE_PHRASES), re.IGNORECASE)
+_HEDGE_WORD_RE = re.compile(
+    r"\b(?:" + "|".join(_HEDGE_WORDS) + r")\b", re.IGNORECASE)
+
+
+def _prose_words(text: str) -> int:
+    return len(_WORD_TOKEN_RE.findall(text))
+
+
+def nominalisation_rate(text: str) -> tuple[float, List[str]]:
+    """``(percent_of_words, the offending words)`` for buyer-facing prose.
+
+    Code spans, inline spans and URLs are stripped first, exactly as the identifier check
+    strips them: a build spec naming a `payment_authorisation` column is documentation, and
+    grading it as writing is the category error that delisted a live pack on 2026-08-08.
+    """
+    body = _strip_code(text or "")
+    tokens = _WORD_TOKEN_RE.findall(body)
+    if not tokens:
+        return 0.0, []
+    hits = [
+        tok for tok in tokens
+        if len(tok) >= _MIN_NOMINALISATION_LEN
+        and tok.lower().endswith(_NOMINALISATION_SUFFIXES)
+        and tok.lower() not in _NOMINALISATION_ALLOW
+    ]
+    return (100.0 * len(hits) / len(tokens)), hits
+
+
+def hedge_hits(text: str) -> List[str]:
+    """Every hedging phrase and word in buyer-facing prose, in order of appearance."""
+    body = _strip_code(text or "")
+    found = [m.group(0) for m in _HEDGE_PHRASE_RE.finditer(body)]
+    # Blank the phrase spans so a word inside a counted phrase is not counted twice.
+    body = _HEDGE_PHRASE_RE.sub(" ", body)
+    found += [m.group(0) for m in _HEDGE_WORD_RE.finditer(body)]
+    return found
+
+
+def check_abstraction_and_hedging(texts: Dict[str, str], *,
+                                  max_nominalisation_pct: float = 5.0,
+                                  max_hedges_per_1k: float = 2.0) -> List[Problem]:
+    """Warn where prose has gone abstract or non-committal.
+
+    RENAMED FROM `check_register` 2026-08-15, AND IT IS STILL NOT WIRED
+    ------------------------------------------------------------------
+    `register_lint.check_register` has that name too, and it is a DIFFERENT check measuring
+    different things: banned phrases, house constructions, the same sentence sold in two
+    documents, and sentence-length and clause-load rates. It returns `register`,
+    `register_repeat` and `register_rate` problems; this function returns `nominalisation`
+    and `hedging` and can produce none of those. Two functions with one name in one package
+    is how a reader concludes one of them must be the live one. Renamed to what it measures.
+
+    NEITHER IS CALLED. Measured on this tree, 2026-08-15, over the whole repo including
+    `prospector/`, `tools/`, `scripts/` and `tests/`:
+
+        $ rg -n 'check_register' .
+        ./prospector/register_lint.py:445:def check_register(...)
+        ./prospector/copy_lint.py:558:def check_register(...)
+        ./tests/unit/test_register_lint.py:{13,81,98,100,122,125,130}
+
+    So `register_lint`'s has tests and no production caller, and this one had neither. The
+    publish path reaches this module for `buyer_readable` / `is_prose_artifact`
+    (bridge.py:25) and for the checks `pack_linter` imports (pack_linter.py:27); this
+    function is in neither set.
+
+    It stays unwired rather than being wired in here, because the gate it belongs to is
+    `pack_linter`, outside this branch's edit scope. What it must not do meanwhile is look
+    live. `tests/unit/test_copy_lint_register.py` pins its behaviour and its unwired status,
+    so wiring it later is a one-line change against a tested function rather than a
+    rediscovery.
+
+    THE THRESHOLDS ARE MEASURED, AND THE MEASUREMENT CORRECTED THE DIAGNOSIS
+    ------------------------------------------------------------------------
+    Swept 2026-08-15 over the three prose documents of 107 built bundles carrying >=300
+    prose words (`publish/bundles/*/*.zip` -- the BUILT bundle, not what R2 serves):
+
+        nominalisation, % of words:  median 3.08  p75 4.43  p90 5.24  max 7.11
+                                     over Sword's 5%: 14 of 107 (13%)
+        hedges per 1k words:         median 1.78  p75 2.54  p90 3.07  max 7.41
+                                     over 2.0/1k:    43 of 107 (40%)
+
+    `docs/PACK_NARRATIVE_PROGRAM.md` proposed this check on the theory that the packs were
+    abstract. At a median of 3.08% they are not: by Sword's own threshold 87% of the
+    catalogue passes, and abstraction is a tail defect worth catching rather than the cause
+    of the founder's "hurried and cryptic" reading. HEDGING is the live one at 40% over
+    threshold, which is the finding that matters -- and it is the defect the split-confidence
+    rewrite of `prompts/content_gen.md` and `prompts/artifacts.md` targets directly.
+
+    `max_nominalisation_pct` is therefore Sword's published 5%, kept because the sweep shows
+    it lands on a real tail (p90 = 5.24) rather than on everything. `max_hedges_per_1k` is
+    2.0, just above the measured median, so the check fires on the worse half and can show
+    the rewrite working. Both numbers now have a distribution behind them.
+
+    Only prose artifacts are graded (`is_prose_artifact`), so a CSV of column headers is
+    never scored as writing.
+    """
+    problems: List[Problem] = []
+    for name, text in sorted(texts.items()):
+        if not isinstance(text, str) or not text.strip():
+            continue
+        if not is_prose_artifact(name, text):
+            continue
+        words = _prose_words(_strip_code(text))
+        if words < 120:  # too short for a rate to mean anything
+            continue
+
+        pct, hits = nominalisation_rate(text)
+        if pct > max_nominalisation_pct:
+            sample = ", ".join(sorted(set(h.lower() for h in hits))[:8])
+            problems.append(_warn(
+                "nominalisation", name,
+                f"{pct:.1f}% of words in `{name}` are nouns built from verbs "
+                f"(threshold {max_nominalisation_pct:.1f}%). Prefer the verb: "
+                f"\"onboarding drops to four days\", not \"a reduction in onboarding "
+                f"duration\". Seen: {sample}.",
+            ))
+
+        hedges = hedge_hits(text)
+        per_1k = 1000.0 * len(hedges) / words
+        if per_1k > max_hedges_per_1k:
+            sample = ", ".join(sorted(set(h.lower() for h in hedges))[:8])
+            problems.append(_warn(
+                "hedging", name,
+                f"{len(hedges)} hedging words in `{name}` ({per_1k:.1f} per 1k words, "
+                f"threshold {max_hedges_per_1k:.1f}). Delete the hedge and name the "
+                f"evidence's limit instead: \"one source, dated 2024, says X; nothing "
+                f"corroborates it\". Seen: {sample}.",
+            ))
+    return problems
