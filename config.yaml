@@ -2059,8 +2059,27 @@ dedup_token_threshold: 0.34
 # unreached row keeps its state and its place in the priority sort and is picked up next
 # tick, so unlike the vetting batch there is nothing to park and nothing paid for to lose.
 # 0 disables the wall and the drain becomes unbounded again.
+#
+# `artifact_budget_floor_s: 1200` — the LEAST time a PASS's content phase may get, whatever
+# `artifact_budget_frac` works out to. This closes a trap we set for ourselves.
+# A share shrinks when some OTHER phase runs long, and on 2026-08-15 it shrank to nothing:
+# candidate f2ac7df9995c334e cleared all seven checks and then published UNLISTED with
+# build_spec, gtm_plan and ops_plan all empty. Its three retries logged in the SAME second
+# (15:36:08Z) because the share was already spent before the phase began — and the error
+# read "generation produced nothing", which points at the operator, when the operator was
+# healthy (store/provider_health_noncritical.json was `{}`).
+# The content phase is the WORST thing to cut. Generation, prescreen, dedup, retrieval,
+# seven verdict calls and adversarial review are all paid for by the time it runs; it is the
+# step that turns that spend into something sellable, and it is the cheapest thing in the
+# tick (~90s/call). Cutting it strands everything upstream to save almost nothing. When a
+# tick cannot afford everything, the phase to cut is GENERATION — fewer candidates costs
+# nothing already spent — never the finishing of a candidate that already passed.
+# 1200s is ~13x a healthy call, so it only ever bites a chain that is actually hung, and it
+# cannot overrun the tick: run.py:559-561 clamps it against the batch's vet deadline, which
+# stops the batch regardless. 0 disables the floor and restores the pure-share behaviour.
 schedule: { cadence: daily, batch_size: 50, backlog_cap: 0, max_resume_attempts: 5,
             artifact_budget_frac: 0.40, vet_budget_frac: 0.85, drain_budget_frac: 0.15,
+            artifact_budget_floor_s: 1200,
             # revet_provisional_kills: false -> true, 2026-08-15. The 176 provisional KILLs the
             # drain refused every cycle ("No backlogged candidate the drain can work on") were
             # ruled under a confidence metric that scored citation VOLUME, not evidence

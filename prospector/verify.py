@@ -15,6 +15,7 @@ from __future__ import annotations
 import contextvars
 import json
 import re
+import time as _time
 from typing import Callable, Optional
 
 from .admissibility import corroboration_reason, demotion_reason, health_demotion_reason
@@ -942,6 +943,7 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
            query_op: Optional[Operator] = None,
            skip_adversarial: bool = False,
            full_vet: bool = False,
+           deadline_mono: Optional[float] = None,
            ) -> tuple[list[CheckResult], Optional[AdversarialResult], Optional[str]]:
     """Run the six checks kill-fast. Returns (checks_run, adversarial_or_None,
     first_failing_gate_or_None). Stops at the first hard fail (skips remaining checks
@@ -960,7 +962,8 @@ def verify(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
     # borrow each other's authority list.
     with market_retrieval(cfg):
         return _verify_inner(op, search, cfg, cand, on_check=on_check, query_op=query_op,
-                             skip_adversarial=skip_adversarial, full_vet=full_vet)
+                             skip_adversarial=skip_adversarial, full_vet=full_vet,
+                             deadline_mono=deadline_mono)
 
 
 def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candidate,
@@ -968,6 +971,7 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
                   query_op: Optional[Operator] = None,
                   skip_adversarial: bool = False,
                   full_vet: bool = False,
+                  deadline_mono: Optional[float] = None,
                   ) -> tuple[list[CheckResult], Optional[AdversarialResult], Optional[str]]:
     checks: list[CheckResult] = []
     # Kill-fast order is driven by config (cheapest decisive gates first), so config
@@ -1020,6 +1024,49 @@ def _verify_inner(op: Operator, search: SearchProvider, cfg: Config, cand: Candi
                                     n=cfg.retrieval.queries_per_check, cfg=cfg))
 
     for idx, name in enumerate(run_order):
+        # THE ONLY BOUND ON THE EXPENSIVE END OF THE TICK. Every budget added before this one
+        # bounded a CHEAP phase — generation (~3 min of a 180 min tick), artifacts (~90s a
+        # call) — while query gen, retrieval and seven verdict calls ran with no ceiling at
+        # all. So a ceiling could be spent 5x over and still read as enforced:
+        #
+        #   2026-08-15T15:22:55Z  Drain budget: 270s for 3 row(s)
+        #   2026-08-15T15:47:16Z  ... 1462s already spent on the drain, 338s left
+        #
+        # 1462s against a 270s wall, because the wall was checked BETWEEN rows and the row
+        # itself was unbounded. A check that only runs between items cannot bound an item
+        # that outlasts the whole budget.
+        #
+        # Stopping here is the DOCUMENTED honest verdict, not a new one: an unevaluated check
+        # is `retrieval_failed`, which the gate below turns into DEFER (`DEFER_GATE`). It can
+        # never manufacture a KILL — that is the same rule as "an exception is never
+        # evidence; a failed call DEFERS", applied to running out of time rather than out of
+        # quota. The candidate keeps everything it has banked and `vet --resume` finishes it.
+        if deadline_mono is not None and _time.monotonic() >= deadline_mono:
+            for _remaining in run_order[idx:]:
+                checks.append(CheckResult(
+                    check_name=_remaining,
+                    verdict=Verdict.UNVERIFIABLE,
+                    confidence=0.0,
+                    rationale=("Vetting time budget spent before this check ran; deferred "
+                               "rather than ruled on evidence that was never fetched."),
+                    sources=[],
+                    degraded=True,
+                    retrieval_failed=True,
+                    provider=_served_provider(op)))
+            logger.warning(
+                "Vet budget spent after %d of %d check(s) for %s; the rest DEFER",
+                idx, len(run_order), getattr(cand, "candidate_id", "") or "?",
+                extra={"candidate_id": getattr(cand, "candidate_id", "") or "",
+                       "checks_run": idx, "checks_total": len(run_order),
+                       "vet_budget_exhausted": True})
+            # RETURN, not `break`. Falling out of the loop would run price_comparables AND
+            # the adversarial pass — two more unbounded brain calls on a tick that has
+            # already run out of time, and an adversarial argument against checks that
+            # never ran. This is byte-for-byte the path a mid-loop retrieval failure takes
+            # (`return checks, None, first_failing_gate` below), so running out of time
+            # lands in the SAME documented DEFER, not a second one that could drift.
+            return checks, None, DEFER_GATE
+
         res = run_check(op, search, cfg, cand, name, query_op=query_op,
                         precomputed_queries=precomputed_queries)
         checks.append(res)

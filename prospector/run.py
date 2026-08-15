@@ -564,6 +564,8 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
     marketing: list = []
     problems: list = []
     breaches: list = []
+    attempt = 0
+    _budget_spent = False
     for attempt in range(1, _MAX_PACK_GEN_ATTEMPTS + 1):
         # Regenerate the ARTIFACTS only when the artifacts are what failed. A shelf line that
         # trails off is not a reason to re-pay the deliverable chain for three long documents
@@ -602,13 +604,31 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
                 extra={"candidate_id": cand.candidate_id, "shelf_copy_breaches": breaches,
                        "problems": problems})
 
+        # A RETRY AGAINST A SPENT BUDGET IS NOT A RETRY. The three attempts share ONE
+        # deadline (converted above), so once it passes, `generate_artifacts` and
+        # `generate_marketing_content` return without calling anything: the remaining
+        # attempts are no-ops that only make the log claim the chain failed three times.
+        # Measured 2026-08-15 on candidate f2ac7df9995c334e — attempts 1, 2 and 3 all
+        # logged at 15:36:08Z, the same second.
+        if _art_deadline is not None and _time.monotonic() >= _art_deadline:
+            _budget_spent = True
+            break
+
     logger.error(
-        "Pack content STILL not sellable after %d attempts for %s; it will publish UNLISTED "
-        "and needs `tools/publish_passes.py <dossier>` once the operator is healthy: %s%s",
-        _MAX_PACK_GEN_ATTEMPTS, cand.candidate_id, problems,
+        # NAME THE REAL CAUSE. "generation produced nothing" reads as a prose-operator
+        # outage and sends the next reader to debug the operator; when the budget is what
+        # ran out, the operator was healthy and the ceiling is the thing to change.
+        "Pack content STILL not sellable for %s after %d attempt(s) — %s; it will publish "
+        "UNLISTED and needs `tools/publish_passes.py <dossier>`: %s%s",
+        cand.candidate_id, attempt,
+        ("the content phase ran out of TIME BUDGET, not a failing operator; raise "
+         "`schedule.artifact_budget_floor_s`" if _budget_spent
+         else "the content chain returned unsellable output"),
+        problems,
         f" shelf-copy breaches: {breaches}" if breaches else "",
         extra={"candidate_id": cand.candidate_id, "problems": problems,
-               "shelf_copy_breaches": breaches})
+               "shelf_copy_breaches": breaches, "attempts": attempt,
+               "artifact_budget_exhausted": _budget_spent})
     return artifacts, marketing
 
 
@@ -898,7 +918,17 @@ def vet_candidate(
         checks, adversarial, gate = verify(op, search, cfg, cand,
                                            on_check=on_check, query_op=query_op,
                                            skip_adversarial=skip_adversarial,
-                                           full_vet=full_vet)
+                                           full_vet=full_vet,
+                                           # THE HOP THAT WAS MISSING. Until now this deadline
+                                           # reached only `_generate_pack_content`, where it
+                                           # clamped the ARTIFACT ceiling (run.py:559-561) —
+                                           # the cheap end. Query gen, retrieval and seven
+                                           # verdict calls, which are where the time actually
+                                           # goes, never saw it. That is why the drain's 270s
+                                           # wall was measured spending 1462s on 2026-08-15:
+                                           # the wall stopped new ROWS and could not stop the
+                                           # row that was running.
+                                           deadline_mono=vet_deadline_mono)
     except ProviderExhaustedError as e:
         # Both Claude AND Gemini are exhausted — the moat is down.  This is NOT a
         # candidate quality failure; defer the candidate for re-vet when the moat

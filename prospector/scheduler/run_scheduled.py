@@ -305,6 +305,36 @@ def _artifact_budget_frac(cfg) -> float:
         return 0.40
 
 
+_ARTIFACT_BUDGET_FLOOR_S = 1200.0
+
+
+def _artifact_budget_floor_s(cfg) -> float:
+    """`schedule.artifact_budget_floor_s` — the least time a PASS's content phase may get.
+
+    THE TRAP THIS CLOSES. `artifact_budget_frac` is a SHARE, so it shrinks whenever another
+    phase runs long, and on 2026-08-15 it shrank to nothing: candidate f2ac7df9995c334e
+    cleared all seven checks and then published UNLISTED with three empty artifacts, its
+    three retries all logged in the same second because the share was already spent.
+
+    Cutting this phase is the most expensive cut available. Generation, prescreen, dedup,
+    retrieval, seven verdict calls and adversarial review have all been PAID FOR by the time
+    it runs; it is the step that turns that spend into something sellable. Cutting it strands
+    100% of the upstream cost to save the cheapest thing in the tick (~90s/call, run.py:462).
+    If a tick cannot afford everything, the phase to cut is GENERATION — fewer candidates
+    costs nothing already spent — never the finishing of a candidate that already passed.
+
+    So the ceiling exists only to stop a HUNG chain, and 1200s is ~13x a healthy call. It
+    cannot overrun the tick: `_generate_pack_content` clamps it against the batch's vet
+    deadline (run.py:559-561), which stops the batch regardless. 0 disables the floor and
+    restores the pure-share behaviour.
+    """
+    try:
+        return max(0.0, float(_sched(cfg, "artifact_budget_floor_s",
+                                     _ARTIFACT_BUDGET_FLOOR_S)))
+    except (TypeError, ValueError):
+        return _ARTIFACT_BUDGET_FLOOR_S
+
+
 def _vet_budget_frac(cfg) -> float:
     """`schedule.vet_budget_frac` — the share of the tick deadline the WHOLE vetting loop
     (`run.py::run_signal`'s ThreadPoolExecutor over every prescreened candidate, artifacts
@@ -1111,6 +1141,24 @@ def _default_generate(cfg, batch_size: int) -> dict:
     #                returns what it banked, so the tick ends by decision, not by force-exit.
     art_frac = _artifact_budget_frac(cfg)
     art_budget = (art_frac * _left) if art_frac > 0 else None
+    # THE CEILING IS A HANG DETECTOR, NOT A SHARE OF THE TICK. Measured 2026-08-15 in the
+    # k=50 proof run: candidate f2ac7df9995c334e PASSED all seven checks, then published
+    # UNLISTED with build_spec/gtm_plan/ops_plan all empty, because a share-of-the-remainder
+    # ceiling had already been spent by the time its content phase began. All three retries
+    # logged in the SAME second (15:36:08Z) — the phase never ran at all.
+    #
+    # A share is the trap: it shrinks when some OTHER phase is slow, so a healthy artifact
+    # call (~90s, run.py:462) gets killed because generation was slow — punishing the phase
+    # that did nothing wrong, and cutting the LAST step, which is the one that converts a
+    # paid-for PASS into something sellable. Everything upstream is stranded with it.
+    #
+    # A floor makes it what it should always have been: enough for a healthy chain, plus
+    # slack, so it only bites a chain that is actually hung. Raising it cannot overrun the
+    # tick — `_generate_pack_content` clamps this against the batch's own vet deadline
+    # (run.py:559-561, `min(...)`), so the batch rail still has the last word.
+    art_floor = _artifact_budget_floor_s(cfg)
+    if art_budget is not None and art_floor > 0:
+        art_budget = max(art_budget, art_floor)
     vet_frac = _vet_budget_frac(cfg)
     vet_budget = (vet_frac * _left) if vet_frac > 0 else None
     logger.critical(
