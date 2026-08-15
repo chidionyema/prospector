@@ -83,10 +83,26 @@ def test_the_preflight_fires_before_every_other_short_circuit():
     assert "skipped" in out, "the limit=0 exit won the race; the preflight is too far down"
 
 
-def test_one_live_trusted_brain_is_enough_to_drain():
-    """A degraded moat still rules. The guard is a floor, not a fair-weather switch."""
-    H.get_health().mark_exhausted("claude_cli", 3600.0, error="usage limit")
-    out = _resume(_cfg(operator=("claude_cli", "claude")))
+def test_a_degraded_chain_still_drains_while_one_trusted_brain_lives():
+    """A degraded moat still rules. The guard is a floor, not a fair-weather switch.
+
+    REWRITTEN 2026-08-15 with the narrowing of `MOAT_PRIMARY` to `{"claude_cli"}`. This test
+    used to mark `claude_cli` dead and pair it with a live `claude` — a second TRUSTED brain,
+    which the paid Anthropic API tier was until it was deleted. There is no such pair to build
+    any more, and the test failed in CI naming a brain `_build_operator` now raises on. Same
+    defect shape as `tests/faults/test_synthetic_exhaustion_harness.py`, fixed in this branch:
+    a test that pins a two-trusted-brain world after the world became one-brain.
+
+    What survives the rewrite is the assertion that actually has teeth, and it is the MIRROR of
+    `test_a_live_untrusted_brain_does_not_unblind_the_drain` below. That one proves a dead
+    trusted brain is not rescued by a live provisional one; this one proves the converse — a
+    dead PROVISIONAL brain must not blind a drain whose trusted brain is up. Without it,
+    `moat_blind_reason(trusted_only=True)` could stop filtering to `moat_brains` and start
+    refusing on any dead mark anywhere on the chain, and every other test in this file would
+    still pass: `minimax`'s mark is invisible to a correct classifier and fatal to a broken one.
+    """
+    H.get_health().mark_exhausted("minimax", 3600.0, error="usage limit")
+    out = _resume(_cfg(operator=("claude_cli", "minimax")))
 
     assert "skipped" not in out, "the drain must proceed past the preflight"
     assert out["backlog"] == 2
