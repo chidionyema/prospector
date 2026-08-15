@@ -150,7 +150,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
             one fact the visitor already has, and pushes a facet that varies off the end of the
             row. `landing.kind`/`landing.value` are the same two fields `packMatchesLanding` filters
             on, so the chip that disappears is exactly the chip the page guarantees. */}
-        <PackGrid packs={packs} omitFacet={{ kind: landing.kind, value: landing.value }} />
+        <PackGrid packs={packs} />
 
         <p className="mt-10 text-meta leading-relaxed text-muted">
           Every pack on this page faced the same checks: {checksSentence()}. Each then survived an
