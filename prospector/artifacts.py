@@ -1133,8 +1133,15 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
         ok, violations = verify_claims_detail(check_op, check_text, claims)
         if ok:
             return piece
+        # Say which of the two actually happens. Since the ancillary pieces lost their
+        # repair turn (`attempts` above), this line logged "regenerating (attempt 1/1)"
+        # on every dropped piece — a retry that the loop then never performs, which reads
+        # in the log as a rewrite that silently produced nothing.
+        last_attempt = attempt + 1 >= attempts
         logger.info(
-            f"Content {t} failed claim-check, regenerating (attempt {attempt + 1}/{attempts})",
+            f"Content {t} failed claim-check, "
+            f"{'no repair turn left' if last_attempt else 'regenerating'} "
+            f"(attempt {attempt + 1}/{attempts})",
             extra={"type": t, "violations_n": len(violations)})
         feedback = (
             "Your previous draft FAILED claim-check. Rewrite so every factual statement "
