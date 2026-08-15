@@ -82,6 +82,16 @@ def _make_golden_router():
         if "Passages:" in user:
             m = re.search(r"\[([a-f0-9]{16})\]", user)
             first_id = m.group(1) if m else ""
+            # EVERY passage id, not just the first. `verify._confidence` COMPUTES confidence
+            # from the citations (it does not take the model's number): citation fraction
+            # 0-0.30, domain diversity 0-0.40, keyword relevance 0-0.30. Citing 1 of the 3
+            # passages a PASS case now carries scores 1/3*0.30 + 0.10 (one domain) ~= 0.2,
+            # under the grounded-supported floor, so `pass_ceiling` fired `moat_ungrounded`
+            # on both PASS cases — a mock artefact, not an engine defect. A competent brain
+            # shown three passages that all support the claim cites all three; this makes the
+            # mock do that, and in doing so the test finally exercises the diversity term
+            # instead of passing by accident on single-source cases.
+            all_ids = list(dict.fromkeys(re.findall(r"\[([a-f0-9]{16})\]", user)))
             
             # Find which idea we are talking about
             active_idea = None
@@ -113,15 +123,15 @@ def _make_golden_router():
             
             # PASS logic — all checks now follow positive polarity (supported = GOOD)
             v = "supported"
-            
+
             # Surface the rationale in pain_reality for PASS cases
             rat = exp.get("rationale") if (not kill_gate and current_check == "pain_reality") else "No evidence to the contrary."
-            
+
             return {
                 "verdict": v,
-                "confidence": 0.9,
+                "confidence": 0.9,      # ignored — verify._confidence recomputes it
                 "rationale": rat,
-                "citations": [first_id]
+                "citations": all_ids or [first_id]
             }
 
         # 4. Scoring
@@ -168,7 +178,13 @@ def test_golden_set_discrimination_is_perfect_with_mock_data():
     
     golden_set_path = Path(__file__).parent.parent / "fixtures" / "golden_set.json"
     
-    discrimination, results = run_golden_set(op, search, cfg, str(golden_set_path), verbose=True)
+    # `fixtures=` binds each case to its own `fixture_key` namespace, which is what the real
+    # promotion gate does since 2026-08-15. Without it this test ran the FUZZY key match and
+    # so measured a different harness than the one being gated on — and the fuzzy match is
+    # exactly what served `Construction Statutory Adjudication Arbitrage` the retention
+    # case's insolvency passage. `search` remains the fallback for an unbound case.
+    discrimination, results = run_golden_set(op, search, cfg, str(golden_set_path),
+                                             verbose=True, fixtures=fixtures)
     
     assert discrimination == 1.0, f"Expected 100% discrimination, got {discrimination:.1%}"
     assert len(results) == 9

@@ -6,6 +6,7 @@ moat-down detection, costs, and golden runs.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -314,11 +315,67 @@ class TestLoadGoldenRuns:
     def test_latest_golden_returns_most_recent(self):
         runs = readers.load_golden_runs()
         latest = readers.latest_golden()
-        if runs:
-            assert latest == runs[0]
-            assert latest == sorted(runs, key=lambda r: r.get("_mtime", 0), reverse=True)[0]
+        real = [r for r in runs if str(r.get("operator", "")).lower() != "mock"]
+        if real:
+            # Newest by MTIME, not by filename: filenames lead with the operator name,
+            # so a reverse lexical sort ranks brains alphabetically, not chronologically.
+            assert latest == sorted(real, key=lambda r: r.get("_mtime", 0),
+                                    reverse=True)[0]
         else:
             assert latest is None
+
+    def test_a_mock_run_is_never_the_estates_score(self, tmp_path, monkeypatch):
+        """THE DEFECT, measured 2026-08-15.  `store/golden_runs/` held eight
+        `mock_*.json` records written by tests/integration/test_golden_promotion_cli.py
+        into the PRODUCTION store (the `--store-dir` flag that should have redirected
+        them was never read by `main()`).  Two bugs then compounded:
+
+          1. `load_golden_runs()` sorted by FILENAME while promising "newest first", so
+             `mock_20260814T2149…` outranked `minimax_20260815T0046…`;
+          2. `latest_golden()` took runs[0] whatever it was.
+
+        The cockpit therefore reported the moat's gate score as 1.0 — the mock's
+        by-construction perfect run — while the brain actually under test had scored
+        0.667.  A dashboard that prints a green it did not measure is the exact failure
+        this repo has a probe rule for.  Both halves are pinned here.
+        """
+        golden = tmp_path / "golden_runs"
+        golden.mkdir()
+        # Written oldest -> newest, with names chosen so LEXICAL order is the reverse of
+        # chronological order: "mock" > "minimax" > "claude_cli".
+        for name, payload in (
+            ("claude_cli_20260101T000000000000.json", {"operator": "claude_cli",
+                                                       "discrimination": 0.78}),
+            ("mock_20260102T000000000000.json", {"operator": "mock",
+                                                 "discrimination": 1.0}),
+            ("minimax_20260103T000000000000.json", {"operator": "minimax",
+                                                    "discrimination": 0.667}),
+        ):
+            (golden / name).write_text(json.dumps(payload), encoding="utf-8")
+        # Stamp the chronology explicitly — three files written in the same millisecond
+        # would otherwise leave the order to filesystem timestamp granularity.
+        for i, name in enumerate(("claude_cli_20260101T000000000000.json",
+                                  "mock_20260102T000000000000.json",
+                                  "minimax_20260103T000000000000.json")):
+            t = 1_700_000_000 + i * 60
+            os.utime(golden / name, (t, t))
+
+        monkeypatch.setattr(readers.paths, "store_path", lambda *a: tmp_path.joinpath(*a))
+        readers.load_golden_runs.clear()
+        readers.latest_golden.clear()
+        try:
+            runs = readers.load_golden_runs()
+            assert [r["operator"] for r in runs] == ["minimax", "mock", "claude_cli"], (
+                "load_golden_runs must order by mtime; a filename sort would put mock "
+                "first because 'mock' > 'minimax' lexically")
+            latest = readers.latest_golden()
+            assert latest is not None and latest["operator"] == "minimax", (
+                "the newest REAL run is the estate's score")
+            assert latest["discrimination"] == pytest.approx(0.667), (
+                "a mock's 1.0 must never be displayed as a measured gate result")
+        finally:
+            readers.load_golden_runs.clear()
+            readers.latest_golden.clear()
 
 
 class TestLoadPendingSignals:

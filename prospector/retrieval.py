@@ -1975,9 +1975,16 @@ def _market_block(cfg) -> dict:
 def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
     r = cfg.retrieval
     if name == "fixture":
-        # raise_on_miss=True so FallbackSearchProvider can fall through to live
-        # search when a fixture entry is missing (partial fixture coverage).
-        return FixtureProvider(fixtures=fixtures, raise_on_miss=bool(fixtures))
+        # raise_on_miss=False. It was `bool(fixtures)`, which existed so
+        # FallbackSearchProvider could catch FixtureMiss and fall through to live search on
+        # partial fixture coverage. `make_provider` no longer builds that fallback — under
+        # fixtures the chain is the fixture provider ALONE — so there is nothing left to
+        # catch the exception and a missing entry would abort the check instead of grounding
+        # it. `[]` is the honest answer: no passage, so `verdict.md` rules `unverifiable`.
+        # A silent `[]` is its own trap, which is why the golden audit now records
+        # `sources: []` per check and `run_golden_set` prints a NO EVIDENCE line — the miss
+        # is visible without being fatal.
+        return FixtureProvider(fixtures=fixtures, raise_on_miss=False)
     if name == "claude_cli":
         from .claude_cli import ClaudeCliGroundingProvider, configure_concurrency
         configure_concurrency(r.claude_concurrency)
@@ -2014,11 +2021,24 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
     # provider may be a single name or an ordered fallback chain.
     names = cfg.retrieval.provider
     names = [names] if isinstance(names, str) else list(names)
-    # When fixtures are provided (e.g. golden-set harness), pin retrieval to the
-    # fixture provider first so that results are deterministic and attributable to
-    # the brain, not search variance.
-    if fixtures:
-        names = ["fixture", *names]
+    # When fixtures are provided (e.g. golden-set harness), retrieval is pinned to the
+    # fixture provider ALONE so results are deterministic and attributable to the brain,
+    # not search variance.
+    #
+    # THIS USED TO PREPEND, NOT REPLACE (`names = ["fixture", *names]`), and that made the
+    # promotion gate unmeasurable. The live providers stayed in the chain behind the
+    # fixtures, and `FallbackSearchProvider`'s relevance failover (see `min_relevance` below,
+    # ~line 1868) escalates off ANY provider whose result set scores under the floor. A
+    # one-passage fixture scores ~0% query coverage against a 35% floor, so every golden-set
+    # query escalated straight past the fixture into live DDG/Exa. Measured 2026-08-15:
+    # claude_cli 0.78 and minimax 0.67 on the same nine cases, with ZERO fixture URLs
+    # recoverable from either audit — neither number could be attributed to the brain.
+    # A single-element chain also skips `FallbackSearchProvider` entirely (see the `built[0]`
+    # branch below), so there is no escalation path left to re-open by accident.
+    # `is not None`, not truthiness: an EMPTY dict still means fixture mode — same reasoning
+    # as `_pinned` below, where truthiness once let a fixture chain reach the real network.
+    if fixtures is not None:
+        names = ["fixture"]
     # Every provider is stamped AS THE CHAIN IS BUILT, so attribution is a property of the
     # composition rather than of each provider class remembering to set it. This also covers
     # the single-provider config below, where `FallbackSearchProvider` is skipped entirely.
@@ -2052,7 +2072,11 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
                                 max_workers=getattr(r, "fetch_max_workers", 8),
                                 min_gain_chars=getattr(r, "fetch_min_gain_chars", 400),
                                 max_bytes=getattr(r, "fetch_max_bytes", 400_000))
-    if not cfg.retrieval.cache:
+    # `_pinned` bypasses the cross-tick DiskCache. Golden-set queries are stable strings,
+    # and store/_cache is full of entries written by earlier UNPINNED runs against live DDG
+    # and Exa — so a pinned run would be served yesterday's live web under a fixture chain,
+    # silently undoing the pin for exactly the queries the gate cares about most.
+    if not cfg.retrieval.cache or _pinned:
         return base
     return DiskCache(base, ttl_s=cfg.retrieval.cache_ttl_s,
                      key_salt=str(_market_block(cfg).get("cache_salt", "") or ""))

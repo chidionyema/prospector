@@ -696,7 +696,12 @@ def run_calibration(cfg: Config,
     op = make_operator(diag_cfg)
     search = make_provider(diag_cfg, fixtures=fixtures)
 
-    discrimination, results = run_golden_set(op, search, diag_cfg, golden_set_path)
+    # `fixtures=` binds each case to its own `fixture_key` namespace instead of letting
+    # FixtureProvider's fuzzy query match pick a key — without it this diagnostic scores
+    # brains on whichever neighbouring case happened to share a word. Same reason as the
+    # promotion gate; see the binding note in fixtures/golden_fixtures.json `_README`.
+    discrimination, results = run_golden_set(op, search, diag_cfg, golden_set_path,
+                                             fixtures=fixtures)
     cases = [{
         "idea": r.get("idea") or r.get("title"),
         "expected": r.get("expected_decision"),

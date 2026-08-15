@@ -69,12 +69,20 @@ def test_config_exposes_dedup_threshold_default():
 
 
 def test_make_provider_passes_cache_ttl_from_config(tmp_path):
+    """A LIVE provider name, and no `fixtures=`: both are load-bearing since 2026-08-15.
+
+    A pinned run (fixtures passed, or "fixture" among the provider names) now bypasses
+    DiskCache entirely — a fixture read is already in memory, and caching it let one
+    golden run's canned passages answer the NEXT run's query, which is a promotion gate
+    scoring a brain on another brain's evidence.  This test is about the cache_ttl_s
+    plumbing, so it must exercise the path that actually has a cache.
+    """
     from prospector.retrieval import make_provider
     cfg = load_config()
-    cfg.retrieval.provider = ["fixture"]
+    cfg.retrieval.provider = ["ddg"]
     cfg.retrieval.cache = True
     cfg.retrieval.cache_ttl_s = 999
-    prov = make_provider(cfg, fixtures={})
+    prov = make_provider(cfg)
     assert isinstance(prov, DiskCache)
     assert prov.ttl_s == 999
 

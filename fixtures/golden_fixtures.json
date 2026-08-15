@@ -1,38 +1,97 @@
 {
+  "_README": [
+    {
+      "url": "about:fixtures",
+      "text": "SYNTHETIC HARNESS EVIDENCE — not published claims. These passages exist to hold the brain's inputs constant so a golden-set score is attributable to the brain rather than to search variance. Rewritten 2026-08-15. THE RULE THAT SHAPES THIS FILE: retrieval.results_per_query is 3 (config.yaml:178) and FixtureProvider returns items[:k] for EVERY query under a matched key, so each of the six checks sees only the FIRST THREE passages here. A case therefore gets at most three passages, and any case expected to PASS must cover all six checks (pain_reality, value_durability, incumbency, payer_solvency, distribution, legality) across those three. Before 2026-08-15 each pass case carried ONE one-sentence passage against six checks, while prompts/verdict.md:1-3 orders 'unverifiable' whenever a passage does not address the question — so the composite floor (min_composite_to_pass 2.5) starved and killed them. Measured that day: claude_cli and minimax BOTH killed both pass cases, claude_cli on the same gate for both. The fixture was the defect, not the brain.",
+      "published_at": "2026-08-15"
+    },
+    {
+      "url": "about:fixture-binding",
+      "text": "BINDING, NOT MATCHING (2026-08-15). Every golden case names its passages through its own `fixture_key` in fixtures/golden_set.json, and golden.run_golden_set builds a provider holding ONLY that key for the duration of the case. Reason: FixtureProvider ranks keys by overlap/len(key_words) with _FIXTURE_MIN_MATCH_RATIO = 0.0 (retrieval.py:51,767), so a SHORT key sharing one common word outranks the long key that describes the case. Measured that day: the key 'Construction retention' scored 1.0 against three of 'Construction Statutory Adjudication Arbitrage''s six check queries and served them the retention case's insolvency passage; the resulting 1.000 for claude_cli was luck, not discrimination. Lengthening the key recovered three checks and STILL left payer_solvency and pain_reality on the wrong case's evidence — key-tuning is whack-a-mole because the matcher cannot know which case is running. Consequences of binding: (1) a key no golden case names is DEAD, never served, which is why 'AI subscription spend-audit', 'Token/credit resale', 'Unified-API niche bridge' and 'Construction smash-and-grab' were removed here rather than left to read as live evidence; (2) a case whose fixture_key is absent from this file gets an EMPTY namespace and prints NO FIXTURE BINDING / NO EVIDENCE instead of silently scoring the brain on a neighbour's passages.",
+      "published_at": "2026-08-15"
+    }
+  ],
   "Haulage HMRC fuel-duty": [
-    {"url": "https://gov.uk/red-diesel-reform-2022", "text": "2022 red-diesel reform removed off-road entitlement for haulage", "published_at": "2022-04-01"}
+    {
+      "url": "https://gov.uk/red-diesel-reform-2022",
+      "text": "2022 red-diesel reform removed off-road entitlement for haulage",
+      "published_at": "2022-04-01"
+    }
   ],
-  "Construction retention": [
-    {"url": "https://insolvency.example.com/construction", "text": "retentions being banned; loss is insolvency-driven", "published_at": "2023-01-01"}
-  ],
-  "AI subscription spend-audit": [
-    {"url": "https://saas-market.example.com", "text": "funded incumbents already ship SaaS-spend management", "published_at": "2024-01-01"}
+  "Construction retention recovery retentions banned insolvency": [
+    {
+      "url": "https://insolvency.example.com/construction",
+      "text": "retentions being banned; loss is insolvency-driven",
+      "published_at": "2023-01-01"
+    }
   ],
   "Care-home council fee": [
-    {"url": "https://council-funding.example.com", "text": "councils chronically under-funded; payer can't pay", "published_at": "2024-05-01"}
-  ],
-  "Token/credit resale": [
-    {"url": "https://tos.example.com", "text": "resale/account-sharing violates provider terms", "published_at": "2024-01-01"}
+    {
+      "url": "https://council-funding.example.com",
+      "text": "councils chronically under-funded; payer can't pay",
+      "published_at": "2024-05-01"
+    }
   ],
   "Generic AI meal-planner": [
-    {"url": "https://app-store.example.com", "text": "saturated consumer category, no acute pain", "published_at": "2024-01-01"}
-  ],
-  "Unified-API niche bridge": [
-    {"url": "https://api-economy.example.com", "text": "proven pattern; moat = un-shortcuttable integration work", "published_at": "2024-01-01"}
-  ],
-  "Construction smash-and-grab": [
-    {"url": "https://statutory-adjudication.example.com", "text": "solvent payer + statutory adjudication forcing mechanism", "published_at": "2024-01-01"}
+    {
+      "url": "https://app-store.example.com",
+      "text": "saturated consumer category, no acute pain",
+      "published_at": "2024-01-01"
+    }
   ],
   "Construction Statutory Adjudication Arbitrage": [
-    {"url": "https://statutory-adjudication.example.com", "text": "Statutory adjudication is a mandatory legal right for construction contracts in the UK, providing a forcing mechanism for payment.", "published_at": "2024-01-01"}
+    {
+      "url": "https://statutory-adjudication.example.com/right",
+      "text": "Statutory adjudication is a mandatory legal right for construction contracts in the UK under the Housing Grants, Construction and Regeneration Act 1996, providing a lawful forcing mechanism for payment: either party may refer a payment dispute at any time and the adjudicator's decision binds until finally determined. Nothing about preparing or referring such a claim requires breaking the law or falsifying data.",
+      "published_at": "2024-01-01"
+    },
+    {
+      "url": "https://construction-payment.example.com/late-payment",
+      "text": "Late payment is endemic in UK construction: subcontractors wait an average of 71 days to be paid and unpaid sums are the leading cause of otherwise-profitable firms failing, so the problem is acute and firms already pay solicitors to chase it. The payers are solvent main contractors and their clients — the money contractually exists and is withheld, not absent.",
+      "published_at": "2024-02-01"
+    },
+    {
+      "url": "https://construction-legal-services.example.com/gap",
+      "text": "No provider dominates adjudication claim preparation for sub-£100k construction disputes; construction-law firms decline claims of that size as uneconomic, leaving the segment open. The statutory right is permanent legislation rather than a temporary scheme, so the basis for the service is durable, and subcontractors are reachable through trade federations and builders' merchant partner programmes that already sell vendor access.",
+      "published_at": "2024-03-01"
+    }
+  ],
+  "NFT marketplace generic": [
+    {
+      "url": "https://nft-market.example.com/collapse",
+      "text": "The NFT market collapsed: trading volume fell more than 95% from its 2021 peak and the overwhelming majority of listed collections now record no sales at all, so the value the marketplace would take a fee on no longer exists.",
+      "published_at": "2024-01-01"
+    }
   ],
   "Illegal LinkedIn Scraping Hub": [
-    {"url": "https://linkedin.com/legal/user-agreement", "text": "scraping LinkedIn violates section 8.2 of the User Agreement; it is a breach of contract and illegal under CFAA.", "published_at": "2024-01-01"}
+    {
+      "url": "https://linkedin.com/legal/user-agreement",
+      "text": "scraping LinkedIn violates section 8.2 of the User Agreement; it is a breach of contract and illegal under CFAA.",
+      "published_at": "2024-01-01"
+    }
   ],
   "Niche Dental Practice CRM (<3 staff)": [
-    {"url": "https://dental-tech.example.com", "text": "Small dental practices with <3 staff are ignored by enterprise CRM vendors like Salesforce, creating a gap for vertical tools.", "published_at": "2024-01-01"}
+    {
+      "url": "https://dental-tech.example.com/segment-gap",
+      "text": "Small dental practices with <3 staff are ignored by enterprise CRM vendors like Salesforce, whose minimum seat counts and implementation fees price the segment out, and no vertical incumbent serves it. Recall and reactivation workflows are tied to the clinical calendar and are not commoditised by general-purpose CRM or by any free first-party tool.",
+      "published_at": "2024-01-01"
+    },
+    {
+      "url": "https://dental-practice-economics.example.com",
+      "text": "Independent dental practices lose a measurable share of revenue to missed recall appointments and already pay monthly for practice-management software, so the pain is acute and paid-for today. Average practice turnover comfortably supports a software budget of several hundred pounds a month, and practices are financially stable private businesses paid directly by patients and insurers.",
+      "published_at": "2024-02-01"
+    },
+    {
+      "url": "https://dental-associations.example.com/vendor-access",
+      "text": "Dental associations, group-purchasing bodies and trade shows sell vendor access to member practices directly, giving a low-friction executable route to buyers that does not require a specialist salesforce. Processing patient contact details for recall is lawful under UK GDPR with the practice as controller and the software vendor as processor under a standard data-processing agreement.",
+      "published_at": "2024-03-01"
+    }
   ],
   "Generic E-commerce Platform for SMBs": [
-    {"url": "https://ecomm-market.example.com", "text": "Shopify and Amazon already own 90% of the small-seller e-commerce market; incumbency is total.", "published_at": "2024-01-01"}
+    {
+      "url": "https://ecomm-market.example.com",
+      "text": "Shopify and Amazon already own 90% of the small-seller e-commerce market; incumbency is total.",
+      "published_at": "2024-01-01"
+    }
   ]
 }

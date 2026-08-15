@@ -51,10 +51,20 @@ def _write_cases(path: Path, cases: list[dict]) -> None:
 
 
 def _run_main(tmp_path: Path, cases: list[dict], extra_args: list[str] | None = None) -> int:
-    """Write cases to tmp_path, call golden_main() with given extra_args, return exit code."""
+    """Write cases to tmp_path, call golden_main() with given extra_args, return exit code.
+
+    `--store-dir tmp_path` is not tidiness, it is a containment fence.  Until 2026-08-15
+    the flag existed but `main()` never read it, so every run of this file wrote its
+    `mock_*.json` audit records into the REPO's `store/golden_runs/` — where
+    `control_center.readers.latest_golden()` reads the estate's live gate score.  Eight
+    such records were found there, the newest of them presenting `discrimination: 1.0`
+    from a canned mock as the moat's measured result.  A test may not write to the
+    store the operator reads.
+    """
     path = tmp_path / "cases.json"
     _write_cases(path, cases)
-    args = ["golden", "--golden-set", str(path), "--operator", "mock", "--mock-vet"]
+    args = ["golden", "--golden-set", str(path), "--operator", "mock", "--mock-vet",
+            "--store-dir", str(tmp_path / "store")]
     if extra_args:
         args.extend(extra_args)
     old_argv = sys.argv
@@ -116,19 +126,38 @@ def test_golden_cli_accepts_real_operators(op: str):
 # §6 test 4: --runs N writes N audit files
 # ---------------------------------------------------------------------------
 def test_golden_cli_runs_flag(tmp_path: Path):
-    """--runs 3 writes 3 audit files to store/golden_runs/."""
-    audit_dir = REPO_ROOT / "store" / "golden_runs"
-    audit_dir.mkdir(parents=True, exist_ok=True)
-    for f in audit_dir.glob("mock_*.json"):
-        f.unlink(missing_ok=True)
+    """--runs 3 writes 3 audit files to <store-dir>/golden_runs/.
 
+    The audit dir is now the run's OWN tmp store, so no glob-and-unlink of the
+    operator's records is needed to make the count meaningful — that cleanup step was
+    itself deleting real files from the shared store on every CI run.
+    """
     exit_code = _run_main(tmp_path, _CORRECT_CASES, extra_args=["--runs", "3"])
     assert exit_code == 0, f"Expected zero exit, got {exit_code}"
 
+    audit_dir = tmp_path / "store" / "golden_runs"
     files = sorted(audit_dir.glob("mock_*.json"))
     assert len(files) == 3, (
         f"Expected 3 audit files, got {len(files)}"
     )
+
+
+def test_golden_cli_writes_nothing_to_the_operators_store(tmp_path: Path):
+    """The fence itself: a CLI run under --store-dir must leave the repo store alone.
+
+    Without this, the containment is a convention that the next `_write_audit` call site
+    can quietly break — and its breakage is invisible, because the test that broke it
+    still passes.
+    """
+    repo_golden = REPO_ROOT / "store" / "golden_runs"
+    before = set(repo_golden.glob("*.json")) if repo_golden.exists() else set()
+
+    assert _run_main(tmp_path, _CORRECT_CASES, extra_args=["--runs", "2"]) == 0
+
+    after = set(repo_golden.glob("*.json")) if repo_golden.exists() else set()
+    assert after == before, (
+        f"the CLI wrote into the operator's store: {sorted(p.name for p in after - before)}")
+    assert len(list((tmp_path / "store" / "golden_runs").glob("*.json"))) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -171,17 +200,12 @@ def test_golden_cli_mock_no_warning(tmp_path: Path):
 def test_golden_cli_audit_file_schema(tmp_path: Path):
     """Each audit file contains: timestamp, operator, model_version, discrimination,
     run_index, total_runs, per_case."""
-    audit_dir = REPO_ROOT / "store" / "golden_runs"
-    audit_dir.mkdir(parents=True, exist_ok=True)
-    before = set(audit_dir.glob("mock_*.json"))
-
     exit_code = _run_main(tmp_path, _CORRECT_CASES)
     assert exit_code == 0
 
-    after = set(audit_dir.glob("mock_*.json"))
-    new_files = after - before
+    new_files = sorted((tmp_path / "store" / "golden_runs").glob("mock_*.json"))
     assert len(new_files) == 1, f"Expected 1 audit file, got {len(new_files)}"
-    record = json.loads(new_files.pop().read_text(encoding="utf-8"))
+    record = json.loads(new_files[0].read_text(encoding="utf-8"))
 
     for field in ("timestamp", "operator", "model_version", "discrimination",
                  "run_index", "total_runs", "per_case"):
