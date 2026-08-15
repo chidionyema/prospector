@@ -111,6 +111,10 @@ _ATTRIB = re.compile(r"^\*\*(?P<host>[^*]+)\*\*(?:,\s*(?P<year>\d{4}))?"
                      r"(?:\s*—\s*(?P<label>.+?))?\s*$")
 _LINK_ONLY = re.compile(r"^\[(?P<url>https?://[^\]]+)\]\((?P=url)\)$")
 
+# URLs whose attribution line survived but whose excerpt did not -- see the drop in `_blocks`.
+# Module-level because `_blocks` is called once per shown section and `main` reports the total.
+_DROPPED_SOURCES: List[str] = []
+
 
 class _InlineTree(HTMLParser):
     """mistune's inline HTML to a nested node tree, refusing anything off the whitelist.
@@ -224,6 +228,27 @@ def _blocks(markdown: str) -> List[Dict[str, Any]]:
             if i < len(lines) and lines[i].strip().startswith("> "):
                 quote = lines[i].strip()[2:]
                 i += 1
+            # A SOURCE WITH NO QUOTE IS NOT A CARD (2026-08-15).
+            #
+            # `pack_field._passage_block` (`prospector/pack_field.py:263`) deliberately withholds
+            # an excerpt it has already printed in this section: two URLs on one site routinely
+            # return byte-identical body text, and the same paragraph under two links makes the
+            # evidence look padded rather than corroborated. In markdown the result is fine — an
+            # attribution line and a link, which reads as a second reference.
+            #
+            # Rendered as a CARD it is not fine. The section says "Excerpts from the pages the
+            # search returned ... Quoted rather than summarised", and a card whose entire purpose
+            # is the quote arrives empty underneath that sentence. Measured on the shipped sample
+            # fixture: `host='getyooz.com' quote_len=0`, the first card the reader meets.
+            #
+            # So the quoteless source is dropped from the excerpt rather than rendered hollow, and
+            # the drop is REPORTED by `main` below. A cap that trims silently reads as "we showed
+            # you everything" when it did not; this one has to say so out loud. The source itself
+            # is not lost — the pack's own sources section lists every URL, and `sourceCount` on
+            # this fixture still counts it.
+            if not quote:
+                _DROPPED_SOURCES.append(link.group("url"))
+                continue
             out.append({
                 "type": "source",
                 "host": attrib.group("host"),
@@ -313,6 +338,8 @@ def main() -> None:
         for s in fixture["excerpt"]:
             print(f"  {s['title']:<38} {len(s['blocks']):>3} blocks")
         print(f"  withheld: {len(fixture['withheld'])} sections")
+        for url in _DROPPED_SOURCES:
+            print(f"  dropped (no excerpt to quote): {url}")
         print(f"  block types: {sorted(counts)}")
         print(f"  legacy fields: {fixture['supported']}/{fixture['total']} supported, "
               f"{fixture['sourceCount']} sources, {len(fixture['checks'])} checks, "
