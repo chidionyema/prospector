@@ -1,59 +1,61 @@
 {
   "buckets": {
-    "self_ref": 13,
-    "traceable": 141,
-    "untraceable": 14
+    "other_passage": 1,
+    "self_ref": 11,
+    "traceable": 149,
+    "untraceable": 19
   },
   "by_check": {
     "buyer_intent": {
-      "traceable": 11
+      "traceable": 13
     },
     "claims_verifiable": {
-      "traceable": 7,
-      "untraceable": 1
+      "self_ref": 1,
+      "traceable": 11,
+      "untraceable": 2
     },
     "currency": {
-      "traceable": 14
+      "traceable": 20
     },
     "distribution": {
-      "self_ref": 1,
-      "traceable": 6
-    },
-    "incumbency": {
-      "traceable": 4
+      "traceable": 5,
+      "untraceable": 2
     },
     "legality": {
-      "traceable": 4
+      "traceable": 3,
+      "untraceable": 1
     },
     "pain_reality": {
       "traceable": 22,
       "untraceable": 2
     },
     "payer_solvency": {
-      "self_ref": 12,
-      "traceable": 52,
-      "untraceable": 11
+      "other_passage": 1,
+      "self_ref": 10,
+      "traceable": 61,
+      "untraceable": 12
     },
     "value_durability": {
-      "traceable": 21
+      "traceable": 14
     }
   },
   "by_verdict": {
     "refuted": {
-      "self_ref": 2,
-      "traceable": 8,
-      "untraceable": 2
+      "other_passage": 1,
+      "self_ref": 3,
+      "traceable": 13,
+      "untraceable": 4
     },
     "supported": {
-      "self_ref": 11,
-      "traceable": 133,
-      "untraceable": 12
+      "self_ref": 8,
+      "traceable": 136,
+      "untraceable": 15
     }
   },
-  "checks_all_traceable": 74,
-  "checks_with_figures": 85,
-  "checks_with_untraceable": 11,
-  "dossiers": 56,
+  "checks_all_traceable": 68,
+  "checks_with_figures": 84,
+  "checks_with_untraceable": 16,
+  "dossiers": 50,
   "examples": [
     {
       "candidate": "08b22037fc2afc07",
@@ -69,6 +71,81 @@
       "rationale": "The passages describe the exact group this service charges \u2014 family carers who have cut or given up paid work \u2014 as financially squeezed: 62% of Carer's Allowance recipients, about half a million people, live in poverty, 26% of unpaid carers have had to borrow money, and being out",
       "untraceable_figures": [
         "320"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "08dbe23f7be7af97",
+      "check": "distribution",
+      "cited_hosts": [
+        "facebook.com",
+        "newstardom.com"
+      ],
+      "cited_tiers": [
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "One passage shows 76% of Gen Z learn about personal finance from TikTok and YouTube, so a cheap, open social channel already reaches this exact audience with money-related content [0be537bbdb30be3c], and other passages confirm the target buyers exist in numbers, with Gen Z routin",
+      "untraceable_figures": [
+        "1.99"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "08dbe23f7be7af97",
+      "check": "legality",
+      "cited_hosts": [
+        "acas.org.uk",
+        "fastbull.com",
+        "fca.org.uk",
+        "legislation.gov.uk",
+        "tlwsolicitors.co.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "government",
+        "other"
+      ],
+      "rationale": "The passages show that UK regulations expressly grant irregular-hours workers paid holiday and set out how that pay is worked out \u2014 a 52-week averaging reference period, ACAS guidance on which weeks to count, and a permitted 12.07% uplift method \u2014 so helping a worker calculate an",
+      "untraceable_figures": [
+        "53601"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "0cc434887c47cb9a",
+      "check": "distribution",
+      "cited_hosts": [
+        "amazon.co.uk",
+        "ebay.co.uk",
+        "thermometersdirect.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passages show fridge and freezer thermometers being sold self-serve online in the UK \u2014 an eBay UK listing, a low-price web shop (Thermometers Direct), and a multipack explicitly marketed to restaurants, bars and caf\u00e9s \u2014 proving the target buyers already shop for this category",
+      "untraceable_figures": [
+        "149"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "13d41ccee9e96e2d",
+      "check": "claims_verifiable",
+      "cited_hosts": [
+        "dentons.com",
+        "gov.uk",
+        "hayhills.com",
+        "mills-reeve.com",
+        "ons.gov.uk"
+      ],
+      "cited_tiers": [
+        "government",
+        "other"
+      ],
+      "rationale": "The passages do confirm the basic mechanics the pitch rests on \u2014 main contractors hold retention money under standard JCT and NEC building contracts, disputes over it are common, and adjudication is a recognised way to recover it [9c7308eeea9a5d0a]. But they also contradict a cen",
+      "untraceable_figures": [
+        "7412"
       ],
       "verdict": "refuted"
     },
@@ -91,6 +168,25 @@
       "verdict": "refuted"
     },
     {
+      "candidate": "5923c35906c3930b",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "co-oplegalservices.co.uk",
+        "lawhive.co.uk",
+        "theguardian.com",
+        "warnergoodman.co.uk"
+      ],
+      "cited_tiers": [
+        "media",
+        "other"
+      ],
+      "rationale": "One passage reports that two in five adults said they had concerns about their parents' finances and many were prepared to pay an average of \u00a3761 a month to help with their parents' pension shortfall, which shows adult children have both the motive and far more than the \u00a349 neede",
+      "untraceable_figures": [
+        "49"
+      ],
+      "verdict": "supported"
+    },
+    {
       "candidate": "6171136b72015134",
       "check": "claims_verifiable",
       "cited_hosts": [
@@ -111,68 +207,53 @@
       "verdict": "supported"
     },
     {
-      "candidate": "65d1d898e62cf5b9",
+      "candidate": "7c333417348e25ea",
       "check": "payer_solvency",
       "cited_hosts": [
-        "calculatorcollection.org",
-        "esportsearnings.com"
+        "drewberryinsurance.co.uk",
+        "jamesedison.co.uk"
       ],
       "cited_tiers": [
         "other"
       ],
-      "rationale": "The passages establish that real, substantial prize money flows to esports players ($1.68B across 134,373 players per [46fb40c44724db26]), and that players already routinely cede a percentage cut of their winnings (10\u201330% to orgs per [93a0481a7c33c191]) \u2014 since this service is co",
+      "rationale": "UK mobile valeters\u2019 minimum viable daily take is \u00a3150\u2013\u00a3200, so a \u00a349 monthly premium sits well within that cashflow. Self-employed buyers already pay for income-protection cover (up to 70% of monthly income), which shows motive to buy products that replace lost earnings.",
       "untraceable_figures": [
-        "1.68",
-        "134373"
+        "49"
       ],
       "verdict": "supported"
     },
     {
-      "candidate": "6817348413f4658c",
+      "candidate": "7dc94c897c7d28f4",
       "check": "payer_solvency",
       "cited_hosts": [
-        "fluxnote.io"
+        "accountantseastlondon.com",
+        "uktaxdrag.co.uk"
       ],
       "cited_tiers": [
         "other"
       ],
-      "rationale": "Passage [5ee4589f6ec4f5c3] confirms Twitch offers real monetization/revenue streams to streamers in 2026, establishing that the payer segment earns income they can spend and stand to lose \u2014 the ad+sub revenue the service protects. This shows motive and a plausible budget, though ",
+      "rationale": "UK estates sit under IHT bands of \u00a3325,000\u2013\u00a31,000,000 for couples, so the people facing valuation disputes hold substantial assets. Probate already involves variable fees that include hiring specialist professionals, so that group both can afford a \u00a349 report and already pays for",
       "untraceable_figures": [
-        "5000"
+        "49"
       ],
       "verdict": "supported"
     },
     {
-      "candidate": "823a9920812ab3d4",
+      "candidate": "871ba1e244fba2d4",
       "check": "payer_solvency",
       "cited_hosts": [
-        "carmarthenshire.gov.wales",
-        "employersforcarers.org"
+        "digitalbyalan.co.uk",
+        "narpsuk.co.uk",
+        "salaryexpert.com",
+        "urpetpals.com"
       ],
       "cited_tiers": [
         "other"
       ],
-      "rationale": "Passages [31e1b98e5e00fb65] and [2e4fad601f8267cf] confirm carers face real, worsening financial hardship, which \u2014 under a \u00a30-upfront contingency model paid from recovered funds \u2014 gives an acute motive to pay and no solvency barrier, since the fee comes out of money the broker re",
+      "rationale": "The passages show UK dog walkers earn a real working income \u2014 an average of about \u00a326,436 a year (\u00a312.71/hour), with a 2026 guide describing \u00a3400\u2013600 per week as achievable \u2014 and that the trade is run as a business with pricing and overheads [01c87b48e788f591, 55c871d6755fe6bf, 2",
       "untraceable_figures": [
-        "0"
-      ],
-      "verdict": "supported"
-    },
-    {
-      "candidate": "8ce5270ade208070",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "alltracksacademy.com",
-        "natives.co.uk",
-        "nonstopsnow.com",
-        "xtremegapyear.co.uk"
-      ],
-      "cited_tiers": [
-        "other"
-      ],
-      "rationale": "The same 18-26 UK demographic demonstrably spends substantial money on ski-season entry \u2014 gap-year instructor courses are 'a lot of money' yet have sustained providers like ALLTRACKS for almost 20 years \u2014 so a \u00a339 audit is safely within budget for a segment already paying far mor",
-      "untraceable_figures": [
-        "39"
+        "34.95",
+        "12.95"
       ],
       "verdict": "supported"
     },
@@ -197,6 +278,23 @@
       "verdict": "supported"
     },
     {
+      "candidate": "9c47244fd5f734b2",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "avecsport.com",
+        "suffolk.gov.uk"
+      ],
+      "cited_tiers": [
+        "government",
+        "other"
+      ],
+      "rationale": "One passage shows a rugby club already paying \u00a3770 a year to insure its team minibus, and another shows grassroots teams budgeting \u00a3700\u2013\u00a31,750 a season on fees, so these small clubs do hold and spend real money on running a minibus. Spending of that size makes an annual cost of r",
+      "untraceable_figures": [
+        "216"
+      ],
+      "verdict": "supported"
+    },
+    {
       "candidate": "9d79ec9bd617b4c0",
       "check": "payer_solvency",
       "cited_hosts": [
@@ -211,25 +309,6 @@
       "untraceable_figures": [
         "4.99",
         "9.99"
-      ],
-      "verdict": "supported"
-    },
-    {
-      "candidate": "a2c9948e0cc21cad",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "reddit.com",
-        "tfl.gov.uk",
-        "uber.com"
-      ],
-      "cited_tiers": [
-        "government",
-        "other",
-        "ugc_social"
-      ],
-      "rationale": "The passages show this exact payer already spends real money on licensing \u2014 \u00a3120 for a GP medical declaration, \u00a3310 for a renewal, plus council application fees \u2014 so a \u00a369 pack is within demonstrated budget, and the forum applicant actively totting up costs shows live motive to s",
-      "untraceable_figures": [
-        "69"
       ],
       "verdict": "supported"
     },
@@ -254,24 +333,47 @@
         "800"
       ],
       "verdict": "supported"
+    },
+    {
+      "candidate": "cee21a292219c61a",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "britwealth.com",
+        "carersuk.org",
+        "freedomisntfree.co.uk",
+        "homecaredirect.co.uk"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The passages describe the buyer group \u2014 UK adults caring for ageing parents \u2014 as financially squeezed rather than able to spend: Carers UK's 2024 report counts 1.2 million unpaid carers living in poverty and 400,000 in deep poverty [93680e5178560e2f], and the poverty rate among u",
+      "untraceable_figures": [
+        "299"
+      ],
+      "verdict": "refuted"
     }
   ],
-  "figures": 168,
-  "live_items": 56,
+  "figures": 180,
+  "live_items": 50,
   "live_items_dirty": [
     "08b22037fc2afc07",
+    "08dbe23f7be7af97",
+    "0cc434887c47cb9a",
+    "13d41ccee9e96e2d",
     "1723d378cff66ebc",
+    "5923c35906c3930b",
     "6171136b72015134",
-    "65d1d898e62cf5b9",
-    "6817348413f4658c",
-    "823a9920812ab3d4",
-    "8ce5270ade208070",
+    "7c333417348e25ea",
+    "7dc94c897c7d28f4",
+    "871ba1e244fba2d4",
     "939b559421982379",
+    "9c47244fd5f734b2",
     "9d79ec9bd617b4c0",
-    "a2c9948e0cc21cad",
-    "ac755ca1473e57fa"
+    "ac755ca1473e57fa",
+    "cee21a292219c61a"
   ],
-  "ruled_cited_checks": 268,
+  "ruled_cited_checks": 245,
   "scope": "LIVE CATALOGUE",
   "verdict_passage_truncate": 600
 }

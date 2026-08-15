@@ -43,7 +43,14 @@ def _safe_read_json(path: Path) -> dict | None:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, ValueError) as exc:
-        logger.warning("status_snapshot: %s unreadable, ignoring (%s)", path, exc)
+        # ERROR, not warning: this function returns None for TWO different things — "the file is
+        # not there yet" (the early return above, a real answer on a fresh store) and "the file is
+        # there and we could not read it". The callers cannot tell them apart and mostly should
+        # not have to, but the log must: an unreadable `provider_health.json` becomes
+        # `moat_blind: False, dead: []` in `_read_providers`, i.e. a confident "every brain is
+        # healthy" derived from a file nobody could open.
+        logger.error("status_snapshot: %s EXISTS but is unreadable (%s) — the fields derived from "
+                     "it are defaults, not measurements", path, exc)
         return None
 
 
@@ -80,12 +87,18 @@ def _iter_real_ticks(cfg) -> list[dict]:
     Tolerates a torn trailing line and JSON decode errors per the
     `prospector.jsonl_atomic.read_jsonl` contract — the daemon appends here too, and the
     snapshot must not raise on a half-written row."""
-    try:
-        from prospector.jsonl_atomic import read_jsonl
-        rows = read_jsonl(paths.scheduler_dir(cfg) / "ticks.jsonl", tail=_TICK_SCAN_LINES,
-                          warn=False)
-    except (OSError, ValueError) as exc:
-        logger.warning("status_snapshot: ticks.jsonl unreadable (%s)", exc)
+    # `read_jsonl_with_stats`, not the plain reader inside a try. The try/except here was DEAD
+    # (2026-08-15): `iter_jsonl` catches its own open failure and hands back an empty iterator,
+    # so nothing ever reached this handler and an unopenable tick log arrived as `[]` —
+    # identical to a store with no ticks yet, and it drives BOTH `_last_real_tick`
+    # (→ "no tick recorded") and `_read_spend` (→ today_usd None, i.e. "$0 so far"). The reader
+    # now CARRIES the failure in `ReadStats.read_error`; the caller has to look at it.
+    from prospector.jsonl_atomic import read_jsonl_with_stats
+    rows, stats = read_jsonl_with_stats(
+        paths.scheduler_dir(cfg) / "ticks.jsonl", tail=_TICK_SCAN_LINES, warn=False)
+    if stats.read_error:
+        logger.error("status_snapshot: ticks.jsonl unreadable (%s) — last-tick and spend fields "
+                     "in this snapshot are defaults, not measurements", stats.read_error)
         return []
     out: list[dict] = []
     for row in rows:

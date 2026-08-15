@@ -52,8 +52,8 @@ def wired(monkeypatch, tmp_path):
     cfg.operator = "mock"
     # The ancillary chain is mocked for the same reason the moat is, and it is a precondition
     # rather than tidying. `run_signal` builds it EAGERLY (run.py:955) before knowing whether
-    # anything will use it, and since the 2026-08-14 directive it is minimax → standardcompute,
-    # both key-metered: `_build_operator_chain` raises ProviderExhaustedError at construction
+    # anything will use it, and since standardcompute's removal on 2026-08-15 it is minimax
+    # alone, key-metered: `_build_operator_chain` raises ProviderExhaustedError at construction
     # wherever the keys are absent. CI has none, so all six cases here died there while passing
     # on every developer machine (run 31793597064). `generate`, `dedup` and `prescreen` — the
     # only consumers of that chain — are stubbed below, so these tests never exercised it.

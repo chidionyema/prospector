@@ -1,30 +1,51 @@
 """Reports & Economics — read-only demand metrics. Never loads full audit on open."""
 from __future__ import annotations
 
+import logging
+
 import streamlit as st
 
 from prospector.control_center import readers
 from prospector.control_center.components.chrome import go_page, page_hero
 
+logger = logging.getLogger(__name__)
+
 
 def render():
     kpis = readers.load_overview_kpis()
+    # Every number on this page comes out of that one dict via `.get(key, 0)`. When the read
+    # threw, the dict is empty and the page reads "Today $0.00 · PASS 0 · KILL 0 · 0
+    # dossiers" — a quiet estate and a broken store are the same screen. They may not be.
+    kpi_error = readers.overview_kpis_error()
     spend = float(kpis.get("today_spend") or 0.0)
     cap = float(kpis.get("daily_cap") or 50.0)
     total = int(kpis.get("total") or 0)
-    glance = (
-        f"Today ${spend:.2f} / ${cap:.0f} · "
-        f"PASS {kpis.get('pass_count', 0)} · KILL {kpis.get('kill_count', 0)} · "
-        f"{total} dossiers"
-    )
-    page_hero("Reports", glance, tone="warn" if spend > 0.8 * cap else "idle")
+    if kpi_error:
+        page_hero("Reports", "Metrics unavailable · the store could not be read", tone="fail")
+        st.error(
+            f"Overview KPIs failed to load ({kpi_error}). Spend, PASS and KILL below are "
+            "shown as unavailable rather than zero — nothing here is a measurement."
+        )
+    else:
+        glance = (
+            f"Today ${spend:.2f} / ${cap:.0f} · "
+            f"PASS {kpis.get('pass_count', 0)} · KILL {kpis.get('kill_count', 0)} · "
+            f"{total} dossiers"
+        )
+        page_hero("Reports", glance, tone="warn" if spend > 0.8 * cap else "idle")
     st.caption("Read-only. Demand never overrides truth — tune gates on Parameters.")
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Spend today", f"${spend:.2f}")
-    c2.metric("Daily cap", f"${cap:.0f}")
-    c3.metric("PASS", kpis.get("pass_count", 0))
-    c4.metric("KILL", kpis.get("kill_count", 0))
+    if kpi_error:
+        c1.metric("Spend today", "—")
+        c2.metric("Daily cap", "—")
+        c3.metric("PASS", "—")
+        c4.metric("KILL", "—")
+    else:
+        c1.metric("Spend today", f"${spend:.2f}")
+        c2.metric("Daily cap", f"${cap:.0f}")
+        c3.metric("PASS", kpis.get("pass_count", 0))
+        c4.metric("KILL", kpis.get("kill_count", 0))
 
     b1, b2 = st.columns(2)
     with b1:
@@ -39,6 +60,8 @@ def render():
 
     cfg = readers.load_config_typed()
     st.markdown("**Throughput**")
+    if cfg is None:
+        st.error(f"Config unavailable — {readers.config_load_error()}")
     if cfg:
         try:
             from prospector.report import metrics_data
@@ -84,6 +107,9 @@ def _render_lifetime_costs():
         from prospector.report import costs_data as _costs_data
         costs = _costs_data("store/prospector.jsonl")
     except Exception as e:
+        # Broad: this scans a 70MB+ ledger written by every run. The operator sees the
+        # message; without the trace the cause dies with the rerun.
+        logger.exception("control_center: lifetime cost scan failed")
         st.warning(f"Cost scan failed: {e}")
         return
     if not costs or costs.get("error"):

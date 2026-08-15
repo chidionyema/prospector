@@ -33,16 +33,14 @@ def _anthropic_works() -> bool:
 # Each (kind, default_env_var) pair needs its API key set for the operator
 # to construct. We use patch.dict to set the env var at test time.
 PROVIDERS = [
-    pytest.param("claude", "ANTHROPIC_API_KEY",
-                 marks=pytest.mark.skipif(
-                     not _anthropic_works(),
-                     reason="anthropic SDK / jiter import broken in this env")),
+    # ("claude", "ANTHROPIC_API_KEY") removed 2026-08-15 with the paid Anthropic API tier's
+    # adapter; `_build_operator("claude", ...)` now raises ValueError by design.
     ("deepseek", "DEEPSEEK_API_KEY"),
     ("minimax", "MINIMAX_API_KEY"),
 ]
 
 
-PROVIDER_PREFIXES = {"claude": "claude-", "deepseek": "deepseek-", "minimax": "minimax-"}
+PROVIDER_PREFIXES = {"deepseek": "deepseek-", "minimax": "minimax-"}
 
 def _make_cfg(model: str, model_fast: str, kind: str):
     cfg = MagicMock()

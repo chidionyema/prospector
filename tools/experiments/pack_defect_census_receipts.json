@@ -1,0 +1,4868 @@
+{
+  "_meta": {
+    "experiment": "pack_defect_census",
+    "run_at_utc": "2026-08-15T06:54:45Z",
+    "source": "r2",
+    "catalogue": "https://prospector-store-api.fly.dev"
+  },
+  "verdict": "59 packs audited; P2a_text_cut_mid_word=59/59; P2c_candidate_id_blank=59/59; P3_source_count_padded_by_repeats=59/59; P4_same_sentences_in_multiple_documents=59/59",
+  "n_audited": 59,
+  "tally": {
+    "P0_pass_banner_over_a_refuted_check": 11,
+    "P1_financial_model_placeholders": 20,
+    "P1_monthly_arpu_on_a_one_off": 3,
+    "P2a_text_cut_mid_word": 59,
+    "P2b_sources_used_is_bare_separators": 52,
+    "P2c_candidate_id_blank": 59,
+    "P2d_operator_chain_shown_to_buyer": 49,
+    "P3_non_primary_sources_cited": 43,
+    "P3_source_count_padded_by_repeats": 59,
+    "P4_same_sentences_in_multiple_documents": 59,
+    "P5_markdown_zip_no_typeset_artefact": 0,
+    "P6_asset_sells_our_pack_not_their_product": 59,
+    "P6_launch_email_has_no_subject": 12,
+    "P6_listing_page_is_an_email": 1,
+    "P7_prints_an_expiry_date": 0
+  },
+  "skipped": [],
+  "packs": [
+    {
+      "id": "0bf4d472ef2b90ad",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "187 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "510 repeated host citations across 30 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "11/528 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nWhat you get: A written method for judging whether an outside software component is still being maintained, built only",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Abandoned-vendor alerts for UK software operations managers",
+      "price": "\u00a3149.99"
+    },
+    {
+      "id": "a8333b00e91eec66",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "219 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"medium.com\": 22}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "614 repeated host citations across 32 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "16/654 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nMaterial price cover for UK trades on fixed quotes.\n\nA tradesperson gives a customer a fixed price today. The material",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Material price cover for UK self-employed tradespeople",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "a884727a1b90447c",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "196 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "360 repeated host citations across 24 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "8/551 sentences (1%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor anyone building software for UK freelancers, this pack sets out the tool, the buyer, and the sourced evidence behi",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Scope-creep pricing desk for UK freelance creatives",
+      "price": "\u00a3149.99"
+    },
+    {
+      "id": "64c58072e2585c2b",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "242 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "493 repeated host citations across 23 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "8/505 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor someone who wants to run a small paid writing service, this pack sets out the method, the templates and the plan f",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "HMRC \u00a3100 late-filing penalty appeals for UK self-filers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "b94760e86e62585a",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "173 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.tiktok.com\": 12}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "344 repeated host citations across 22 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "11/342 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor NHS doctors, senior nurses and other staff who often work more than their contracted hours, and for the employment",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Unpaid-hours audits for NHS doctors and nurses",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "904b6a0bd834ae08",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "168 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"medium.com\": 20}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "415 repeated host citations across 25 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "12/331 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nSee what freelancers like you actually charge, so you can price with confidence\n\nFor UK freelance creatives, designers",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nUK freelance creatives often aren't sure what to charge. One LinkedIn survey post cites 67% of freelancers as underpri",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Freelance pay benchmarks for UK creatives and developers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "9e662c07c2fc308c",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "233 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "610 repeated host citations across 30 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "7/623 sentences (1%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nKnow what contract wording actually held up when a freelance dispute reached court\n\nFor UK freelance designers, copywr",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nA monthly email and a searchable archive of plain English summaries of published UK court decisions, written for freel",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Court case digest for UK freelance creatives",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "2abc23c3c0d05bab",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "226 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "486 repeated host citations across 24 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "11/400 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor parents billed for the High Income Child Benefit Charge, often years after their income crossed the threshold, thi",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nIf you've received an HMRC letter or discovery assessment demanding the High Income Child Benefit Charge, this service",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "HMRC child benefit charge appeals for parents",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "8d5a441749448b69",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "164 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.scribd.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "357 repeated host citations across 21 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "17/334 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThis is a self guided kit for someone going through divorce who wants to check whether their ex partner's declared fin",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Asset cross-check service for divorcing spouses",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "939b559421982379",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "245 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 26, \"www.instagram.com\": 16}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "656 repeated host citations across 32 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "19/668 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA term of school run collections booked from a parent already making that drive\n\nWhat you get: A booking platform laun",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nParents book school run seats from other parents at cost. One parent already drives to the school with empty seats. An",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "School run seat booking for local working parents",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "256f0861192932ff",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "212 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.youtube.com\": 22, \"www.tiktok.com\": 12}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "649 repeated host citations across 41 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "15/577 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nWhat you get: A one page fit card template the customer keeps, holding their bike, their final numbers, what changed a",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Home bike setup service for NHS and council staff",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "ee78bd28f1919e8c",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "223 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"facebook.com\": 2, \"www.reddit.com...\": 1, \"www.reddit.com...&quot;\": 1}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "621 repeated host citations across 43 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "18/612 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor someone who wants to run a small software business selling to self-employed tipper, grab and skip lorry drivers, t",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Overload defence for self-employed tipper and grab drivers",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "224578cd860491c9",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "201 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.tiktok.com\": 24, \"www.youtube.com\": 14}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "581 repeated host citations across 29 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "6/596 sentences (1%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nWhat you get: An operating plan for taking one claim from the rider's first message through to a decision, including w",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Injury claim service for delivery riders, fixed fee",
+      "price": "\u00a3149.99"
+    },
+    {
+      "id": "82a9c38fea398376",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "296 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 48}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "833 repeated host citations across 37 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "23/688 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nRun the local service that takes driveway crossing applications from first visit to council decision\n\nFor someone who ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nKerb Cut is a local service. It gets a householder permission to drive across the pavement onto their own front garden",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Dropped kerb application service for car owners",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "1723d378cff66ebc",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "214 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 104, \"www.reddit.com\": 12, \"www.youtube.com\": 14}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "550 repeated host citations across 22 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "22/443 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA Blue Badge is the parking permit that lets a disabled person park close to where they need to be. Since 2019 the sch",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Blue Badge refusal appeals for carers of disabled relatives",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "736fe5aefb119af1",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "239 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 68, \"www.tiktok.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "710 repeated host citations across 38 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "14/604 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": ", a generic UK sole-trader setup guide, a footwear retailer, a small-business advice site, and one page with no descript",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Weekly judgment brief for UK subcontractors",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "ea773998f6a925b0",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "261 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.instagram.com\": 16, \"www.facebook.com\": 12}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "745 repeated host citations across 43 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "10/661 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nWhat you get: A route to reach buyers through VTCT approved training providers, which VTCT lists publicly in a searcha",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Per-client records for UK mobile beauty therapists",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "fcf4a559f0ea0851",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "252 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.etsy.com\": 24, \"www.youtube.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "668 repeated host citations across 38 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "15/585 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor a solo operator who wants a physical product to sell online to small residential landlords and managing agents in ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Bin store recycling signs for small flat landlords",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "08b22037fc2afc07",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "224 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.quora.com\": 18}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "649 repeated host citations across 25 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "20/690 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThe plan for a paid writing service that challenges council cuts to care hours\n\nFor one person with a laptop, this is ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nA council reassesses someone's mother and cuts her care hours. The letter is short and the reasons are vague. For a fi",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Care hours cut challenge service for family carers",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "9c47244fd5f734b2",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "246 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.reddit.com\": 20, \"www.facebook.com\": 26, \"www.youtube.com\": 14}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "722 repeated host citations across 26 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "18/631 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA free trip checker for minibus drivers, and a paid record of every check\n\nFor the person who drives the minibus at a ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nSafeSeat is a free web page for the person about to drive a minibus for a UK school, club or charity. It asks a short ",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Minibus permit and licence checker for small charities",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "6778067cc84ea422",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "162 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 14}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "469 repeated host citations across 17 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "18/556 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# CareFeeRefund \u2014 the retrospective NHS Continuing Healthcare claim that recovers what the NHS owed your parent, for t",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "NHS care fee reclaim service for bereaved carers",
+      "price": "\u00a3149.99"
+    },
+    {
+      "id": "13d41ccee9e96e2d",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "266 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 14}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "798 repeated host citations across 36 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "13/668 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# RetainRelease \u2014 the subcontractor's automated retention chaser that forces main contractors to release the 3-5% they",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Retention chasing service for building subcontractors",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "e9a4c091e0db09a6",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "295 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 88}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "807 repeated host citations across 29 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "10/593 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# GrossStick \u2014 the fixed-fee appeal that wins back your CIS gross payment when HMRC refuses\n\nFor UK construction subco",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Tax deduction status appeals for building subcontractors",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "cee21a292219c61a",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "240 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 90}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "723 repeated host citations across 29 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "21/575 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# ForgetMeRefund \u2014 drops the parent's Council Tax when dementia qualifies\n\nA solo operator files the doctor's certific",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nForgetMeRefund is a service run by one person. It files the dementia Council Tax discount and chases the backdated ref",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Council Tax exemption claims for dementia carers",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "871ba1e244fba2d4",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "218 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 58}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "779 repeated host citations across 25 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "22/612 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# LeadPouch \u2014 the UK dog walker's belt first-aid and incident log\n\nA weatherproof belt pouch of dog-specific first-aid",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nLeadPouch is a weatherproof pouch that clips to a belt, packed with first aid items chosen for dogs rather than people",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Dog first-aid and incident log kits for UK dog walkers",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "c5345daf18c5f186",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "6x e.g. ['(price or customer target not specified)', '(COGS not specified)', '(not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "231 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "527 repeated host citations across 25 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "24/396 sentences (6%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# RateRebase \u2014 the small shop\u2019s tool that challenges your business rates valuation and gets it lowered\n\nA web app that",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Business rates challenge service for UK shop owners",
+      "price": "\u00a3149.99"
+    },
+    {
+      "id": "d6f72b9dc9a45c45",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "333 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.youtube.com\": 12}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "943 repeated host citations across 31 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "8/613 sentences (1%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nCalifornia's workplace safety regulator, Cal/OSHA, inspects workplaces and issues citations or fines when hazards are ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Cal/OSHA citation contest tool for California employers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "6171136b72015134",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "260 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "723 repeated host citations across 35 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "15/639 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor a founder who wants to build a small software business in eldercare, this pack sets out what to build, how to run ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Long term care claim evidence service for family carers",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "8d5e24fbe6c1f5d3",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "5x e.g. ['(price or customer target not specified)', '(COGS not specified)', '(not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": true,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "261 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.scribd.com\": 26, \"www.facebook.com\": 44, \"www.pinterest.com\": 36, \"developers.facebook.com\": 14, \"www.youtube.com\": 14, \"jeffreydachmd.com\": 14}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "902 repeated host citations across 38 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "11/680 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": true,
+          "evidence": "\n\nSubject: A printed picture book that stars one child, sold to parents who already buy aids\n\nHere is a new opportunity ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nParents of autistic children often use social stories \u2014 short picture books that explain what to expect in a new or st",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Personalised social story books for autism parents",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "dbe0e82deb13daa2",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "308 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.tiktok.com\": 20, \"www.facebook.com\": 30}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "794 repeated host citations across 32 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "16/583 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nTexas has money that pays for a break from caring. Getting at it means paperwork.\n\nThe state's own respite guide tells",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Respite care grant applications for Texas family carers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "36f79259569ba915",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "174 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "504 repeated host citations across 30 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "17/436 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor someone who wants a local, physical business, this pack lays out the on site audit visit, the customer report, the",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Hands on waste audits for UK cafes, shops and takeaways",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "0cc434887c47cb9a",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "192 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 18, \"www.pinterest.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "541 repeated host citations across 27 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "17/415 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA complete plan to build and sell a fridge logger that prints daily hygiene sheets\n\nA full build, operations and launc",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Fridge hygiene loggers for small UK caf\u00e9s and takeaways",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "d4ef1efc5328d8cf",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "218 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 34}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "562 repeated host citations across 28 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "28/551 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# ToolClaim Pro \u2014 the fixed-fee insurance claim advocate for California tradespeople when their tools are stolen\n\nWe h",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Stolen tool claim handling for California tradespeople",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "d8aa7528aa73eabb",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "236 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "574 repeated host citations across 34 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "20/434 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nStorefrontShield is a plan for a small product business. It sells a boxed kit that helps a California shop owner find ",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Disability access fix kits for California shop owners",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "e31bceb456619111",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "228 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "623 repeated host citations across 29 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "19/540 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA researched plan for a skin care brand aimed at nurses with hand dermatitis.\n\nHospital hand hygiene damages skin. A p",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Hand repair kit for NHS nurses with hand-rub damage",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "08dbe23f7be7af97",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "246 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 34, \"www.youtube.com\": 10, \"www.instagram.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "558 repeated host citations across 28 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "15/431 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# HolidayPay Tracker \u2013 the app that turns every zero-hour shift into holiday money you can actually claim\n\nAutomatical",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Holiday pay claim service for zero-hours gig workers",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "fbd10d6bdfcd5e31",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "246 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"medium.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "748 repeated host citations across 30 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "24/513 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nPolicyCash is a plan for a brokerage that helps a family carer sell an elderly parent's unused life insurance policy f",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nPolicyCash is a ready\u2011to\u2011build blueprint for a life settlement brokerage aimed at primary carers. A life settlement se",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Life insurance broker for elderly owners and caregivers",
+      "price": "\u00a3199.99"
+    },
+    {
+      "id": "48977b86df56eaac",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "180 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.youtube.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "723 repeated host citations across 29 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "59/552 sentences (11%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThis is a leave forecast tool for California public school teachers. A teacher enters pay details, district, and leave",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Leave pay and pension calculator for California teachers",
+      "price": "\u00a399.99"
+    },
+    {
+      "id": "729098fd44756d74",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "232 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.reddit.com\": 74, \"www.tiktok.com\": 110, \"www.youtube.com\": 60, \"www.instagram.com\": 42}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "745 repeated host citations across 35 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "23/473 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nDashFlow sends an installer to your parking spot to fit a delivery-ready cockpit in your car. Full-time delivery drive",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Delivery car setup service for full-time drivers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "0ce623e80658e97c",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "6x e.g. ['(price or customer target not specified)', '(COGS not specified)', '(not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "202 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 52}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "451 repeated host citations across 15 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "18/414 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA primary carer who holds a direct payment from a local authority or NHS body becomes the legal employer when they use",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Hiring setup for carers who employ a personal assistant",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "7a6c07535fd8a998",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "214 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.youtube.com\": 14}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "690 repeated host citations across 26 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "18/508 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThis listing is a plan to build and sell a tool that helps California adults prepare a Small Estate Affidavit for pers",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Small estate affidavit service for California heirs",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "c464a9ecb559d3c3",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "188 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.reddit.com\": 28}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "518 repeated host citations across 30 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "19/441 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThis is a plan for a paid service built around California tow fee dispute rights. It is for operators who want to help",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": true,
+          "evidence": "\n\nIn Los Angeles, predatory towing is a documented problem. In one July 2025 case, police recovered over 140 cars taken ",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Illegal tow and storage fee refund service for drivers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "60fa04b1387f0965",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "186 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 28, \"www.youtube.com\": 20}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "402 repeated host citations across 18 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "17/446 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nCompliance gap checker for owner driver hauliers.\n\nA plain English checklist of compliance gaps likely to draw an insp",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Fleet compliance gap checks for owner driver hauliers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "8dbeb92cb54de87e",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "168 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "428 repeated host citations across 18 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "14/386 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThis opportunity is a plan to build a web tool for people who own a leasehold flat. The aim is to help them estimate w",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Lease extension and freehold price estimates for flat owners",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "7dc94c897c7d28f4",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "132 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "312 repeated host citations across 16 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "18/368 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nYou sell a one-off data report to people facing an inheritance tax challenge from HMRC over how an asset was valued. T",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Inheritance tax valuation reports for retirees",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "85bf91bd2895305c",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "165 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.tiktok.com\": 34, \"www.facebook.com\": 22}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "452 repeated host citations across 24 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "23/448 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nCash for a hire van when your work van fails its MOT. This is a paid cover for self employed UK tradespeople who drive",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Fixed cash payouts for tradespeople whose van fails MOT",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "f71ad0c4cf8b5344",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "4x e.g. ['(price or customer target not specified)', '(not specified)', '(cannot compute without CLV and CAC)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "144 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.etsy.com\": 42, \"www.pinterest.com\": 20, \"www.youtube.com\": 30}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "621 repeated host citations across 27 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "21/448 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThis opportunity is a plan to sell a downloadable pack of completed COSHH assessments for nail work chemicals. The pay",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Prefilled chemical safety assessments for nail technicians",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "9d79ec9bd617b4c0",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "2x e.g. ['(not specified)', '(cannot compute without CLV and CAC)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": true,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "135 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 32}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "648 repeated host citations across 34 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "35/537 sentences (7%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# RateGuard \u2013 the tool that catches unfair gig ratings and gets them overturned\n\nA dashboard for gig workers that spot",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Rating appeal service for UK delivery and rides drivers",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "86a2b4eb9a66df28",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "162 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "720 repeated host citations across 14 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "36/606 sentences (6%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# DLAChild \u2014 The Primary Carer's DLA Child Claim Engine\n\nA web app that turns a parent's daily-life notes into a DWP-r",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Disability Living Allowance claim packs for parent carers",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "176ec4f0fb04c4a5",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": true,
+          "evidence": "banner=True refuted_marker=\u274c",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "150 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "558 repeated host citations across 24 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "37/506 sentences (7%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# CureSafe Strip \u2014 the gel nail tech\u2019s lamp-output test card that shows when curing power drops below safe levels\n\nA c",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "UV lamp test cards for self-employed gel nail techs",
+      "price": "\u00a329.99"
+    },
+    {
+      "id": "c0fff95b45d53f4a",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "5x e.g. ['(price or customer target not specified)', '(COGS not specified)', '(not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": true,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "169 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 64, \"www.reddit.com\": 32}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "561 repeated host citations across 27 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "21/475 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nPetShift Console is a planned web app for solo UK pet sitters and dog walkers. It is meant to help them manage booking",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Booking calendar and owner updates for solo pet sitters",
+      "price": "\u00a379.99"
+    },
+    {
+      "id": "11e87faa54ca3684",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "184 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "406 repeated host citations across 20 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "21/468 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nStop missing street trading licence renewals across every UK council you trade in.\n\nFor mobile food vendors, market st",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Street trading licence tracker for market traders",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "7fc5a381ad82c1ed",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "189 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"business.facebook.com\": 20, \"www.facebook.com\": 38}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "542 repeated host citations across 22 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "22/600 sentences (4%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nSome domestic electrical work has to be reported to building control before it can be signed off. An electrician who i",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Notifiable-work certification for sole-trader electricians",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "a03a2ba029b408a7",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "177 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 24}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "441 repeated host citations across 25 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "16/511 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA worked plan for selling frost day income cover to self employed bricklayers\n\nOne bricklaying company's own winter gu",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Frost-day income cover for self-employed bricklayers",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "0c6c74267f7485a3",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "206 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 18}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "566 repeated host citations across 18 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "13/627 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nA harvest, purge or hold call per shellfish lease, with the data behind it.\n\nFor UK shellfish farms deciding whether t",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Harvest, purge or hold calls for UK shellfish farms",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "3e72d5a5f1a60068",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "202 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 32}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "366 repeated host citations across 20 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "14/581 sentences (2%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\n# DustHalt Hold \u2014 The Sole-Trader Stonemason & Worktop Fabricator's Silica Enforcement Stand-Down Income Bond\n\nA solo-",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Daily income cover for stone worktop fabricators",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "85f8b738c8454c56",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "174 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": false,
+          "evidence": "{}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "471 repeated host citations across 19 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "15/537 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFor unpaid carers on Universal Credit who suspect missed carer element months, the rules are published free but the or",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Back payment claims for unpaid carers on Universal Credit",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "ac755ca1473e57fa",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": true,
+          "evidence": "1x e.g. ['(price or customer target not specified)']",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": true,
+          "evidence": "Judged by:** fallback(",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "142 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.facebook.com\": 26}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "613 repeated host citations across 21 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "18/579 sentences (3%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nThis pack shows how to run a fee recovery desk for UK parent carers when a nursery or childminder closes suddenly. You",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "Prepaid fee recovery service for parents of closed nurseries",
+      "price": "\u00a349.99"
+    },
+    {
+      "id": "5923c35906c3930b",
+      "checks": {
+        "P0_pass_banner_over_a_refuted_check": {
+          "hit": false,
+          "evidence": "banner=True refuted_marker=None",
+          "kind": "literal"
+        },
+        "P1_financial_model_placeholders": {
+          "hit": false,
+          "evidence": "0x e.g. []",
+          "kind": "literal"
+        },
+        "P1_monthly_arpu_on_a_one_off": {
+          "hit": false,
+          "evidence": "ARPU quoted per month",
+          "kind": "literal"
+        },
+        "P2b_sources_used_is_bare_separators": {
+          "hit": true,
+          "evidence": "Sources used:     ,    ,    ,    ,    ,     \n  ",
+          "kind": "literal"
+        },
+        "P2c_candidate_id_blank": {
+          "hit": true,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2d_operator_chain_shown_to_buyer": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        },
+        "P2a_text_cut_mid_word": {
+          "hit": true,
+          "evidence": "192 suspected clips",
+          "kind": "heuristic"
+        },
+        "P3_non_primary_sources_cited": {
+          "hit": true,
+          "evidence": "{\"www.reddit.com\": 6, \"www.youtube.com\": 10}",
+          "kind": "literal"
+        },
+        "P3_source_count_padded_by_repeats": {
+          "hit": true,
+          "evidence": "567 repeated host citations across 35 hosts",
+          "kind": "heuristic"
+        },
+        "P4_same_sentences_in_multiple_documents": {
+          "hit": true,
+          "evidence": "19/385 sentences (5%) appear in 2+ documents",
+          "kind": "literal"
+        },
+        "P5_markdown_zip_no_typeset_artefact": {
+          "hit": false,
+          "evidence": "9 .md files, 1 .pdf",
+          "kind": "literal"
+        },
+        "P6_listing_page_is_an_email": {
+          "hit": false,
+          "evidence": "\n\nFind out whether your parent's State Pension was underpaid, and what to do next. This is for adult children of retired",
+          "kind": "literal"
+        },
+        "P6_launch_email_has_no_subject": {
+          "hit": false,
+          "evidence": "no section",
+          "kind": "literal"
+        },
+        "P6_asset_sells_our_pack_not_their_product": {
+          "hit": true,
+          "evidence": "buyer-facing copy refers to OUR pack",
+          "kind": "heuristic"
+        },
+        "P7_prints_an_expiry_date": {
+          "hit": false,
+          "evidence": "",
+          "kind": "literal"
+        }
+      },
+      "title": "DWP underpayment audits for adult children of retirees",
+      "price": "\u00a349.99"
+    }
+  ]
+}

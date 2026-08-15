@@ -673,7 +673,11 @@ def generate_artifacts(
             else Dossier(candidate=cand, decision=Decision.PASS, checks=checks, score=score),
             cfg, financial_assumptions=financial_assumptions))
     except Exception as e:
-        logger.warning(f"pack_data artifacts skipped: {e}", extra={"error": str(e)})
+        # Stays broad — a data file is a nice-to-have and the £49 prose is not — but at ERROR
+        # with a traceback: this is now where a genuine pack_data bug lands, because the
+        # helpers below it no longer answer a crash with an empty price-anchor set.
+        logger.exception(f"pack_data artifacts SKIPPED, the bundle ships without them: {e}",
+                         extra={"error": str(e)})
 
     return results
 
@@ -894,7 +898,16 @@ def _currency_rule(cfg: Optional[Any], cand: Candidate) -> str:
     try:
         from .pack_linter import expected_currency
         symbol = expected_currency(market)
-    except Exception:  # noqa: BLE001 — an unmapped market must not break generation
+    except ImportError as e:
+        # An unmapped market already returns None from `expected_currency`
+        # (`pack_linter.py:61-66`) — it does not raise — so the only failure this can own is
+        # the import itself. Caught broadly, a bug in the linter's table produced `""` here:
+        # the generator is told nothing about currency, the linter still grades against the
+        # table, and the pack is refused at publish for a symbol nobody asked for. That is the
+        # exact drift this function exists to close, so it is logged at ERROR, and anything
+        # other than an ImportError now propagates instead of being read as "no market".
+        logger.error(f"currency rule unavailable for market {market!r}: {e}",
+                     extra={"market": market, "error": str(e)})
         symbol = ""
     if not symbol:
         return ""

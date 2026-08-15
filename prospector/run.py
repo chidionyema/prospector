@@ -207,6 +207,24 @@ def _save_pending_signal(signal_text: str, cfg: Config) -> Optional[Path]:
         return None
 
 
+def _save_pending_signal_or_shout(signal_text: str, cfg: Config) -> Optional[Path]:
+    """`_save_pending_signal`, but a failed write is never left to the log alone.
+
+    The saver returns None on a failed write and every caller here used to discard that
+    return, so "the signal is safely queued for `generate --resume`" and "the signal is gone"
+    printed the same reassuring progress line. When the queue file cannot be written the
+    signal TEXT itself goes to the log at CRITICAL, because the log is then the only place it
+    still exists.
+    """
+    path = _save_pending_signal(signal_text, cfg)
+    if path is None:
+        logger.critical(
+            "PENDING SIGNAL LOST — it could not be queued for `generate --resume` and is "
+            "recoverable only from this line. Signal text: %s", signal_text,
+            extra={"signal_lost": True, "signal_text": signal_text})
+    return path
+
+
 def _load_pending_signals() -> list[tuple[Path, str]]:
     """Return all pending signals as (path, text) pairs."""
     if not _PENDING_DIR.exists():
@@ -216,8 +234,13 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
             results.append((p, data.get("signal_text", "")))
-        except Exception:
-            pass
+        except (OSError, ValueError) as e:
+            # Narrow on purpose: an unreadable or corrupt queue file is a signal that will
+            # never be resumed, so it is logged at ERROR rather than skipped in silence —
+            # and a TypeError from a future refactor now surfaces instead of quietly
+            # emptying the resume queue.
+            logger.error(f"pending signal {p.name} is unreadable and will NOT be resumed: {e}",
+                         extra={"path": str(p), "error": str(e)})
     return results
 
 # Base imports for the deferred import block below; see _INFRA_GATES comment for the rationale.
@@ -301,14 +324,16 @@ def _get_verify():
 # Ollama REJECTED 2026-07-01 (markdown, not JSON). Module-level so run_signal, `operators`, and
 # the proof tools all reference the SAME chain.
 #
-# HEAD CHANGED 2026-08-08 (founder directive: "non critical, use standardcompute first").
+# HEAD CHANGED 2026-08-08 (founder directive: "non critical, use standardcompute first";
+# standardcompute has since been removed entirely — see the note above _NONCRITICAL_ORDER).
 # claude_cli headed this chain from 2026-08-06 only because the alternatives were dead at the
 # time (deepseek measured HTTP 402, cursor_cli at its usage limit). That made "non-critical"
 # a name with no cost meaning: the cheap chain and the moat chain were the SAME three
 # providers in the same order, so ancillary generation was paying the moat's price. Measured
 # on the 2026-08-08 republish of 34 packs: 36 claude_cli calls, 3227s of CLI wall-clock, ~90s
-# each. standardcompute is live (no dead mark in store/provider_health_noncritical.json), so
-# it takes the head and claude_cli becomes the failover it was always meant to be.
+# each. standardcompute was live at the time (no dead mark in provider_health_noncritical.json),
+# so it took the head and claude_cli became the failover it was always meant to be. Both names
+# have since left this chain — see the 2026-08-14/08-15 notes below; this paragraph is history.
 #
 # Scope is deliberately ONLY the non-critical chain. `cfg.operator` (the moat) and
 # `cfg.artifact_operator` (the pack prose) are untouched, and claim-check still runs on
@@ -322,13 +347,20 @@ def _get_verify():
 # so it is absent here AND stripped in `_noncritical_order` — the rule is enforced where the chain
 # is BUILT, not merely where it is configured.
 #
-# minimax takes the HEAD rather than standardcompute, which the 2026-08-08 directive gave it,
-# because standardcompute is measurably out of allowance — store/provider_health_noncritical.json
-# carries strikes: 6 and last_error "StandardCompute returned an out-of-allowance notice instead
-# of a completion: You've used up your free trial". Heading with it would buy a guaranteed failed
-# call before every generation. It stays as the failover tier: a chain of one is not a chain, and
-# it is the cheapest tier again the day the account is funded.
-_NONCRITICAL_ORDER = ("minimax", "standardcompute")
+# standardcompute REMOVED ENTIRELY 2026-08-15 (founder directive), adapter and all. It took the
+# head on 2026-08-08, lost it to minimax on 2026-08-14 because it was measurably out of allowance
+# (store/provider_health_noncritical.json: strikes 4, last_error "StandardCompute returned an
+# out-of-allowance notice instead of a completion: You've used up your free trial"), and was kept
+# one more day as "the failover tier: a chain of one is not a chain". That reasoning does not
+# survive contact with the measurement: a name that answers every call with an upsell body is not
+# depth, it is a guaranteed failed call before each fall-through. STANDARDCOMPUTE_API_KEY is unset
+# here and the trial is spent, so the tier could not have served even if it were healthy.
+#
+# The chain is therefore minimax alone, and `prospector/operator._build_operator` now raises an
+# explicit ValueError on the name so a stale config or plist fails loudly at startup rather than
+# quietly building a shorter chain. Funding a real second cheap tier is a config.yaml line
+# (`noncritical_operator:`), not a source edit — that is what `_noncritical_order` is for.
+_NONCRITICAL_ORDER = ("minimax",)
 
 #: Providers that may never appear on the non-critical chain, whatever config.yaml says.
 _NONCRITICAL_FORBIDDEN = frozenset({"claude_cli", "claude"})
@@ -476,7 +508,8 @@ def _noncritical_order(cfg: Config | None = None) -> tuple[str, ...]:
     candidates it makes, how often, under what spend ceiling — is a config line the operator can
     move from a phone, while the one that decides what the ancillary work COSTS could only be
     moved by editing source and re-execing the daemon. That is backwards: the head of this chain
-    has changed three times in two weeks (deepseek → claude_cli → standardcompute), each time by
+    has changed three times in two weeks (deepseek → claude_cli → standardcompute, all three since
+    removed from it), each time by
     a source edit, and each edit was a code deploy to express a billing fact.
 
     Deliberately NOT extended to `cfg.operator`: the verdict chain must stay led by a trusted
@@ -1083,7 +1116,7 @@ def run_signal(
     if not candidates:
         # Generation chain exhausted — save the signal text so the operator can
         # re-run it later with `generate --resume`.  Never lose a signal.
-        _save_pending_signal(signal_text, cfg)
+        _save_pending_signal_or_shout(signal_text, cfg)
         logger.warning(f"Generation chain exhausted ({'/'.join(_noncritical_order(cfg))} all "
                        f"unavailable or quota depleted). Signal saved for retry. Run "
                        f"`generate --resume` when generation chain recovers.")
@@ -1093,7 +1126,7 @@ def run_signal(
         # PARTIAL exhaustion: some candidates came back, then the chain died. The candidates in
         # hand are real and are vetted below — but the signal was NOT fully generated, so it is
         # saved for `generate --resume` exactly as a total exhaustion would be.
-        _save_pending_signal(signal_text, cfg)
+        _save_pending_signal_or_shout(signal_text, cfg)
         _errs = "; ".join(str(e) for e in _gen_diag.get("exhaustion_errors", [])[:3])
         logger.error(
             f"Generation chain exhausted MID-RUN after producing {len(candidates)} "
@@ -1102,6 +1135,27 @@ def run_signal(
             extra={"chain_exhausted": True, "candidates": len(candidates)})
         progress.step(f"generation chain exhausted MID-RUN after {len(candidates)} candidate(s) "
                       f"— signal saved, re-run with generate --resume")
+    elif _gen_diag.get("batch_failures") or _gen_diag.get("lane_failures"):
+        # A generation CALL THREW (bad JSON, a crashed adapter, one lane dying) rather than
+        # hitting a quota wall. `generate` returns `[]` for that exactly as it does for a wave
+        # the model had no ideas for, so with a sibling wave producing survivors the run reads
+        # as a normal, slightly thin batch and the signal is dropped — the zero-yield defect
+        # this engine has re-diagnosed six times. Treated like partial exhaustion: the
+        # candidates in hand are real and are vetted below, but the signal was not fully
+        # generated, so it is saved for `generate --resume`.
+        _save_pending_signal_or_shout(signal_text, cfg)
+        _errs = "; ".join(str(e) for e in _gen_diag.get("batch_errors", [])[:3])
+        logger.error(
+            f"Generation PARTIALLY FAILED: {_gen_diag.get('batch_failures', 0)} batch(es) and "
+            f"{_gen_diag.get('lane_failures', 0)} lane(s) raised after producing "
+            f"{len(candidates)} candidate(s). Signal saved for `generate --resume`. "
+            f"Causes: {_errs}",
+            extra={"batch_failures": _gen_diag.get("batch_failures", 0),
+                   "lane_failures": _gen_diag.get("lane_failures", 0),
+                   "candidates": len(candidates)})
+        progress.step(f"generation partially FAILED ({_gen_diag.get('batch_failures', 0)} batch, "
+                      f"{_gen_diag.get('lane_failures', 0)} lane) — signal saved, re-run with "
+                      f"generate --resume")
     logger.info(f"Generated {len(candidates)} candidates")
     progress.step(f"generated {len(candidates)} candidates")
 
@@ -2584,17 +2638,28 @@ def _cmd_markets(args: argparse.Namespace, cfg: Config, log_path: Path) -> None:
     action = getattr(args, "markets_action", "list") or "list"
 
     if action == "list":
+        import sqlite3
         store = Store(cfg)
+        counts_readable = True
         try:
             counts = store.markets_present()
-        except Exception:  # noqa: BLE001 — a fresh install has no catalogue yet
-            counts = {}
+        except (sqlite3.Error, OSError) as e:
+            # Narrow: "a fresh install has no catalogue yet" is a missing/empty DB, not any
+            # exception at all. `{}` prints a table of zero dossiers per market — a confident
+            # number — so an unreadable catalogue now says so instead of reading as empty.
+            logger.error(f"markets: catalogue unreadable, dossier counts unavailable: {e}",
+                         extra={"error": str(e)})
+            counts, counts_readable = {}, False
+        if not counts_readable:
+            print("warning: catalogue unreadable — dossier counts shown as '?', not 0",
+                  file=sys.stderr)
         default = cfg.default_market
         print(f"{'code':<10}{'status':<10}{'dossiers':>9}  label")
         for code in sorted(c for c in (cfg.markets or {}) if c != "default"):
             block = cfg.market_config(code)
             flag = " (default)" if code == default else ""
-            print(f"{code:<10}{cfg.market_status(code):<10}{counts.get(code, 0):>9}  "
+            shown = counts.get(code, 0) if counts_readable else "?"
+            print(f"{code:<10}{cfg.market_status(code):<10}{shown:>9}  "
                   f"{block.get('label', '')}{flag}")
         unknown = {m: n for m, n in counts.items() if m and m not in (cfg.markets or {})}
         if unknown:

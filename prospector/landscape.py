@@ -230,8 +230,17 @@ def incumbent_brief(cfg: Any, signal_text: str = "", sector: str = "",
             if path.exists():
                 try:
                     cache = json.loads(path.read_text(encoding="utf-8"))
-                except Exception:
-                    cache = {}  # a corrupt cache is a cold cache, never an error
+                except (OSError, ValueError) as e:
+                    # A corrupt cache is a cold cache, never an error — but it is never
+                    # SILENT either. This branch is the difference between "one fetch per
+                    # distinct audience per ttl window" and "one fetch per call": if it
+                    # fires every time, incumbent seeding is quietly paying full retrieval
+                    # cost on every lane, and nothing else in the run would say so.
+                    # Narrow: unreadable file (OSError) or unparseable JSON (ValueError).
+                    logger.error(
+                        f"incumbent_seed cache at {path} is unreadable and is being treated "
+                        f"as cold — every topic will re-fetch until it is rewritten: {e}")
+                    cache = {}
             entry = cache.get(key)
             if entry and (now - float(entry.get("fetched_at", 0))) < ttl:
                 return str(entry.get("brief", "") or "")
@@ -260,6 +269,15 @@ def incumbent_brief(cfg: Any, signal_text: str = "", sector: str = "",
                 logger.warning(f"incumbent_seed cache write failed, returning brief anyway: {e}")
 
             return brief
-    except Exception as e:
-        logger.warning(f"incumbent_seed failed, skipping: {e}")
+    except Exception as e:  # noqa: BLE001 — see below; deliberately total
+        # The except stays TOTAL: this runs inside the generation loop (generate.py:473) and
+        # a seed that cannot be built must never end a tick —
+        # `tests/unit/test_landscape.py::test_never_raises` pins exactly that. The defect was
+        # the log LEVEL. "" is also what the gate-off and no-topic paths return a few lines
+        # up, so at warning this branch was unfindable: incumbent seeding could be enabled and
+        # dead for every candidate in a run, and nothing downstream would read as broken —
+        # the batch would simply look like one where incumbents did not matter. ERROR plus a
+        # traceback makes a bug of ours attributable without costing the tick.
+        logger.error(f"incumbent_seed is enabled but produced no brief; this candidate is "
+                     f"being generated WITHOUT incumbent context: {e}", exc_info=True)
         return ""

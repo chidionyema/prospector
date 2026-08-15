@@ -91,17 +91,25 @@ def test_the_bounded_helper_still_enforces_a_deadline(helper):
 def test_the_adapters_that_hung_are_specifically_covered():
     """Name the call sites from the incident, so a future refactor cannot quietly drop them.
 
-    StandardCompute is the one that was live in the chain during the 46-hour wedge
-    (`config.yaml:53` operator, `:76` noncritical_operator).
+    StandardCompute was the adapter live in the chain during the 46-hour wedge
+    (`config.yaml` operator + noncritical_operator). It was DELETED on 2026-08-15 by founder
+    directive, so it is no longer named here — the incident is recorded in the module docstring
+    above and in `prospector/operator.py`'s tombstone. What the incident actually proved is that
+    the bound belongs to the SHARED HELPER, not to one adapter, so the surviving metered adapters
+    are what this asserts.
     """
     text = OPERATOR.read_text()
-    for adapter in ("StandardComputeOperator", "DeepSeekOperator", "OllamaOperator",
-                    "OpenRouterOperator"):
+    assert "class StandardComputeOperator" not in text, (
+        "StandardComputeOperator is back — it was removed 2026-08-15; if it is genuinely being "
+        "restored, re-derive this test and re-add it to the list below")
+    for adapter in ("DeepSeekOperator", "OllamaOperator", "OpenRouterOperator"):
         assert f"class {adapter}" in text, f"{adapter} vanished — re-derive this test"
 
     # Every adapter class must reach a bounded helper at least once. MiniMax moved to the SSE
     # helper on 2026-08-14, so count both — the invariant is "bounded", not "which helper".
+    # Was >= 6 until standardcompute's adapter was deleted on 2026-08-15 (one call site + its
+    # own MiniMax cross-reference comment went with it). Re-derived, not merely decremented.
     calls = sum(text.count(f"{h}(") for h in _HELPERS)
-    assert calls >= 6, (
+    assert calls >= 7, (
         f"expected every metered adapter to call one of {_HELPERS}; found "
         f"{calls} call(s) including the definitions")

@@ -6,10 +6,10 @@ generate() as blue-sky, and the --exploration override is honoured.
 
 Each case pins `noncritical_operator` to mock alongside `operator`, and that is a
 precondition rather than tidying. `run_signal` builds the ancillary chain EAGERLY
-(run.py:955) before it knows whether anything will use it, and since the 2026-08-14
-directive that chain is minimax → standardcompute — both key-metered, so
-`_build_operator_chain` raises ProviderExhaustedError at construction wherever the keys
-are absent. CI has no keys, so these three died there while passing on every developer
+(run.py:955) before it knows whether anything will use it, and since standardcompute's
+removal on 2026-08-15 that chain is minimax alone — key-metered, so
+`_build_operator_chain` raises ProviderExhaustedError at construction wherever the key
+is absent. CI has no keys, so these three died there while passing on every developer
 machine (run 31793597064). Every consumer of that chain is stubbed out below, so the
 tests were never about ancillary providers; the mock states that.
 """

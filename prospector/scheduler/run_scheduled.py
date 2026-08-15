@@ -270,7 +270,13 @@ def _backlog_size(cfg) -> int | None:
             print(note, file=sys.stderr, flush=True)
         return len(survey.workable)
     except Exception as exc:  # noqa: BLE001 — a brake that crashes the daemon is worse than no brake
-        logger.warning("Backlog count failed, brake cannot engage this tick: %s", exc)
+        # ERROR + stderr, not warning, for the reason spelled out above: logger.warning never
+        # reaches launchd.err.log (measured 2026-08-05), so the one line that says "the rail could
+        # not read its own input" was written where no operator would ever see it. The caller
+        # (`_generation_suppressed`) fails CLOSED on this None — a silent brake is still a brake,
+        # but an operator has to be able to find out WHY the daemon stopped generating.
+        logger.error("Backlog count failed, brake cannot engage this tick: %s", exc)
+        print(f"↻ backlog brake: count FAILED ({exc}) — draining only", file=sys.stderr, flush=True)
         return None
 
 
@@ -314,9 +320,17 @@ def _subscription_soft_cap_reason(cfg, decision) -> str:
     try:
         cap = float(cap or 0.0)
     except (TypeError, ValueError):
-        logger.warning("spend.daily_subscription_soft_cap_usd=%r is not a number — soft cap "
-                       "disabled", cap)
-        return ""
+        # FAIL CLOSED, not open. This used to return "" — i.e. a typo in the one knob that caps
+        # subscription burn silently removed the cap and the tick generated as if no ceiling had
+        # ever been configured, at warning level, on the rail that recorded $438.68 of ungoverned
+        # burn in a day (see above). An unparseable ceiling is not consent to spend, exactly as
+        # `_backlog_size`'s None is not consent to generate; the drain keeps running either way,
+        # so this is a brake and not a halt, and the next tick re-reads the config.
+        logger.error("spend.daily_subscription_soft_cap_usd=%r is not a number — the subscription "
+                     "brake cannot be evaluated, so this tick only drains", cap)
+        return (f"subscription soft cap UNREADABLE: daily_subscription_soft_cap_usd={cap!r} is not "
+                f"a number, so the brake cannot prove it is safe to generate — draining only "
+                f"until the config parses")
     if cap <= 0:
         return ""
     spent = float(getattr(decision, "today_subscription_usd", 0.0) or 0.0)
@@ -474,8 +488,16 @@ def _generation_suppressed(cfg, decision=None) -> str:
     try:
         cap = int(cap)
     except (TypeError, ValueError):
-        logger.warning("schedule.backlog_cap=%r is not an integer — brake disabled", cap)
-        return ""
+        # FAIL CLOSED, matching the `backlog is None` branch below rather than contradicting it.
+        # `cap is None` above is the documented "brake off" value; anything else present in the
+        # config is an operator who OPTED IN, and a value we cannot parse is not consent to
+        # generate — it is a brake whose threshold we cannot read. Returning "" here meant a
+        # single config typo disabled the floor-of-last-resort with nothing but a warning line
+        # that never reaches launchd.err.log.
+        logger.error("schedule.backlog_cap=%r is not an integer — the brake cannot be evaluated, "
+                     "so this tick only drains", cap)
+        return (f"backlog brake UNREADABLE: schedule.backlog_cap={cap!r} is not an integer, so the "
+                f"brake cannot prove it is safe to generate — draining only until the config parses")
     if cap <= 0:
         return ""
     backlog = _backlog_size(cfg)
@@ -672,8 +694,16 @@ def _unlist_pass(cfg) -> dict | None:
     try:
         if not queue.exists() or queue.stat().st_size == 0:
             return None
-    except OSError:
-        return None
+    except OSError as exc:
+        # NOT None. None is this function's word for "the queue is empty, nothing to pull off
+        # sale", and every other failure path below already returns {"error": ...} at CRITICAL.
+        # A queue we cannot stat is the one state where "nothing queued" and "a KILLed pack may
+        # still be selling" looked identical to the caller (`_decay_pass` merges this into the
+        # tick dict) — the exact silence that left 6 killed packs on sale on 2026-08-09.
+        out = {"error": f"queue unreadable: {type(exc).__name__}: {exc}"}
+        logger.critical("Unlist queue unreadable — killed pack(s) may still be selling: %s", exc)
+        print(f"🛒 unlist queue UNREADABLE (tick continues): {exc}", file=sys.stderr, flush=True)
+        return out
 
     script = Path(__file__).resolve().parents[2] / "tools" / "unlist_killed.py"
     if not script.exists():
@@ -800,7 +830,11 @@ def _rotate_market(cfg):
     try:
         if path.is_file():
             idx = int(json.loads(path.read_text(encoding="utf-8")).get("next", 0))
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError, TypeError) as exc:
+        # Narrowed from `except Exception`: these three are everything read_text/json.loads/int
+        # can actually raise here (json.JSONDecodeError subclasses ValueError). A broad catch made
+        # a refactor's AttributeError look exactly like a missing cursor file — silently pinning
+        # the rotation to codes[0] forever, which is the failure this cursor exists to prevent.
         logger.warning("market rotation cursor unreadable (%s); restarting at 0", exc)
         idx = 0
     code = codes[idx % len(codes)]
@@ -1376,8 +1410,15 @@ def _run_coverage_check() -> "subprocess.CompletedProcess | None":
             [sys.executable, str(script)],
             capture_output=True, text=True, timeout=_COVERAGE_TIMEOUT_S,
         )
-    except Exception as exc:  # noqa: BLE001 — a monitoring check must never break the daemon
-        logger.warning("Shelf-coverage check did not run: %s", exc)
+    except (subprocess.SubprocessError, OSError) as exc:
+        # Narrowed (TimeoutExpired is a SubprocessError) and raised to ERROR. The alert path reads
+        # None as "did not look", which is also what the pytest fence and a missing script return —
+        # indistinguishable to the caller by design, since none of the three may alert. But a check
+        # that stopped running has to be findable in the log: this monitor exists precisely because
+        # three PASSes sat unbuyable while nothing said so, and a monitor that silently stops is
+        # that same defect one level up.
+        logger.error("Shelf-coverage check did not run (%s) — stranded PASSes are UNMONITORED "
+                     "this tick", exc)
         return None
 
 
@@ -1450,16 +1491,26 @@ def _emit_tick_digest(cfg, tick: dict) -> None:
     at the same six sites as `_emit_tick_alerts` so the founder sees the same digest on
     every branch — a skipped, errored, moat-blind or healthy tick all push one.
     """
+    # Both handlers below split the EXPECTED condition from OUR OWN BUGS and log the second at
+    # ERROR with a traceback. The daemon still survives either — a digest may never break a tick —
+    # but a `TypeError` from a refactor no longer reads in the log exactly like an absent module,
+    # which is how the founder's only continuous visibility surface could go dark unnoticed.
     try:
         from prospector.scheduler.status import format_status_snapshot, status_snapshot
-    except Exception as exc:  # noqa: BLE001 — a missing module must never break the daemon
+    except ImportError as exc:
         logger.warning("status digest unavailable (modules not importable): %s", exc)
+        return
+    except Exception:  # noqa: BLE001 — a broken status module must never break the daemon
+        logger.exception("status module failed to IMPORT (this is a bug, not a missing estate); "
+                         "tick digest skipped")
         return
     try:
         snap = status_snapshot(cfg)
         text = format_status_snapshot(snap)
-    except Exception as exc:  # noqa: BLE001 — a snapshot failure must never break the daemon
-        logger.warning("status_snapshot() failed; tick digest skipped: %s", exc)
+    except Exception:  # noqa: BLE001 — status_snapshot documents "never raises"; if it did, that
+        # is our bug and it needs a traceback, not a one-line warning that reads like a missing file.
+        logger.exception("status_snapshot() raised despite its never-raises contract; "
+                         "tick digest skipped")
         return
     send = _load_hermes_sender()
     if send is None:
@@ -1736,8 +1787,13 @@ def _tail_errors(cfg, n: int = 4) -> list[str]:
         return []
     try:
         lines = [line.rstrip() for line in path.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
-    except OSError:
-        return []
+    except OSError as exc:
+        # The failure goes into the readout, not into a silent []. `[]` is this function's word for
+        # "the daemon logged no errors", which is the single most reassuring thing --status can
+        # say; printing it because we could not OPEN the log is the whole blind spot this function
+        # was written to close ("a dead daemon looked alive for 15h").
+        logger.error("Cannot read %s for the status readout: %s", path, exc)
+        return [f"(stderr log at {path} UNREADABLE: {exc} — 'no errors' below is not evidence)"]
     return lines[-n:]
 
 
@@ -1945,7 +2001,10 @@ def _kill_stale_daemon(cfg) -> None:
     try:
         cmdline = subprocess.run(["ps", "-p", str(pid), "-o", "command="],
                                  capture_output=True, text=True, timeout=5).stdout
-    except Exception as exc:  # noqa: BLE001 — a broken ps must not crash the watchdog
+    except (subprocess.SubprocessError, OSError) as exc:
+        # Narrowed from `except Exception` (TimeoutExpired is a SubprocessError): refusing to kill
+        # is the right answer to a broken `ps`, but it is the WRONG answer to a bug in this code,
+        # and the broad catch made the two identical while the daemon stayed wedged.
         logger.error("Watchdog: could not inspect pid %d (%s); refusing to kill blind.", pid, exc)
         return
     if "prospector" not in cmdline:

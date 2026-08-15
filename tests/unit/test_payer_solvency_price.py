@@ -53,8 +53,13 @@ def test_unclassified_pack_is_asked_about_the_default_rung(cfg):
     ("side_hustle", "uk", "£29.99"),   # index 1, no offset
     ("smb", "uk", "£49.99"),           # index 2, no offset
     ("growth", "uk", "£79.99"),        # index 3, no offset
-    ("venture", "uk", "£149.99"),      # index 5, no offset
-    ("venture", "us", "£199.99"),      # index 5 + 1 us offset = 6
+    # The ladder was capped at £99.99 on 2026-08-15 (founder: "i dont think we should have
+    # inventory over 99.99"), which deleted the £149.99 and £199.99 rungs and moved
+    # `tier_rung_index.venture` from 5 to 4. Both venture rows now land on the top rung, and
+    # the `us` offset is inert there because `pricing.py:178` clamps to the last index — a
+    # real consequence of the cap, pinned so it is a decision rather than a surprise.
+    ("venture", "uk", "£99.99"),       # index 4, no offset
+    ("venture", "us", "£99.99"),       # index 4 + 1 us offset, clamped to the £99.99 ceiling
     ("smb", "us", "£79.99"),           # index 2 + 1 = 3
 ])
 def test_the_question_follows_the_ladder(cfg, tier, market, expected):

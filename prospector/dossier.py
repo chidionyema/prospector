@@ -22,6 +22,7 @@ from .models import (
     Dossier,
     ScoreResult,
     Verdict,
+    distinct_sources,
 )
 from .score import passes_composite
 
@@ -318,6 +319,25 @@ def _verdict_of(chk: Any) -> str:
     return str(getattr(chk.verdict, "value", chk.verdict) or "").strip().lower()
 
 
+def _mapping(obj: Any) -> dict:
+    """A dict-shaped field as a real dict, whichever shape it arrived in.
+
+    The same lesson as `_verdict_of`, on the other kind of field. `pack_manifest._ns`
+    (`pack_manifest.py:354`) descends into every dict it meets, so a field whose KEYS are
+    data rather than field names — `score.scores`, `score.justification`, a refinement
+    entry's `before` — comes back from a stored dossier as a `SimpleNamespace`, and
+    `.items()` / `.get()` on it raise. That is why every stored PASS dossier was
+    unrenderable, and so unreachable for a re-render of the pack it was sold with.
+
+    Read it here rather than teaching `_ns` which dicts are data: `_ns` sees only a dict
+    and cannot tell the two apart, while the renderer knows exactly which fields are maps.
+    One reader, both shapes.
+    """
+    if isinstance(obj, dict):
+        return obj
+    return dict(vars(obj)) if hasattr(obj, "__dict__") else {}
+
+
 def check_label(name: str) -> str:
     """The buyer-facing question a check answers. Public because `pack_reference` renders the
     same checks into the consolidated evidence document, and two label maps is how the QA
@@ -584,7 +604,7 @@ def render_markdown(dossier: Dossier) -> str:
                      "Here's what changed.")
         lines.append("")
         for entry in cand.refinement_history:
-            before = entry.get("before", {})
+            before = _mapping(_mapping(entry).get("before", {}))
             lines.append("#### Changes:")
             if before.get("title") != cand.title:
                 lines.append(f"- **Title**: ~~{before.get('title')}~~ → {cand.title}")
@@ -668,8 +688,9 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append("")
         lines.append("| What we rated | Score | Why |")
         lines.append("|---------------|------:|-----|")
-        for ax, val in sc.scores.items():
-            just = sc.justification.get(ax, "")
+        justification = _mapping(sc.justification)
+        for ax, val in _mapping(sc.scores).items():
+            just = justification.get(ax, "")
             lines.append(f"| {_labelled(ax, _AXIS_LABEL)} | {val}/5 | {just} |")
         lines.append("")
 
@@ -682,7 +703,10 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append("")
 
     # --- All sources ---
-    all_src = dossier.all_sources
+    # The module function, not the `Dossier.all_sources` property: a stored record arrives
+    # here as a `pack_manifest._ns` tree with no properties at all, and `distinct_sources`
+    # exists (models.py:390-395) precisely so both shapes yield the same dedup.
+    all_src = distinct_sources(dossier.checks)
     if all_src:
         lines.append("---")
         lines.append("## Every source we used")

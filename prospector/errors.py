@@ -9,8 +9,13 @@ empty result (real evidence of nothing — never a failover).
 from __future__ import annotations
 
 import datetime as _dt
+import logging
 import re
 from typing import Optional
+
+# stdlib logging, not `from .telemetry import logger`: this module is the leaf every adapter
+# and health.py imports, and it must stay importable with nothing but the standard library.
+logger = logging.getLogger(__name__)
 
 
 class ProviderExhaustedError(RuntimeError):
@@ -145,7 +150,8 @@ _HTTP_PERMANENT_RE = re.compile(r"\b402\b")
 _BILLING_RE = re.compile(r"\bbilling\b[^.\n]{0,60}\b(limit|quota|credits?|plan|upgrade)\b")
 # The upsell shape: a provider that is out of allowance and says so in marketing prose rather
 # than in an error. Measured 2026-08-09 in store/scheduler/launchd.err.log, StandardCompute
-# returned this as an HTTP 200 completion body:
+# (the adapter was removed 2026-08-15; the PATTERN stays, because it matches a family of vendor
+# nouns, not one vendor) returned this as an HTTP 200 completion body:
 #     "You've used up your free usage — let's keep going.\n\nContinue at a flat monthly price
 #      — no per-token billing, no surprise charges.\n\nSet up your plan at
 #      https://standardcompute.com/dashboard/billing."
@@ -359,6 +365,16 @@ def _parse_absolute_reset(text: str, now: Optional[_dt.datetime] = None) -> Opti
         try:
             when = _dt.datetime.fromisoformat(raw)
         except ValueError:
+            # The WINDOW must not change here: an unreadable timestamp falls through to the
+            # clock form and then to the caller's DEFAULT_EXHAUSTION_S, which is the safe
+            # guess. What must change is that it stops being silent. `_RESET_AT_ISO` matched,
+            # so the provider DID state a reset time and we failed to read it — i.e. the
+            # format moved under us. That is the same defect class this whole section was
+            # written to close (see the 2026-08-06 note above: absolute resets parsed to
+            # nothing for months and the only symptom was an hourly full-price probe).
+            logger.error(
+                "provider stated a reset timestamp we could not parse (%r); falling back to "
+                "the default bench window — the provider's reset format may have changed", raw)
             when = None
         if when is not None:
             if when.tzinfo is None:

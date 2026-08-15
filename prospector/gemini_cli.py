@@ -22,7 +22,7 @@ from typing import Optional
 
 from .errors import ProviderExhaustedError, looks_exhausted
 from .models import Source
-from .operator import Operator, _extract_json
+from .operator import Operator, ParseError, _extract_json
 from .retrieval import SearchProvider
 from .telemetry import logger, record_usage, track_latency
 
@@ -222,11 +222,28 @@ class GeminiCliGroundingProvider(SearchProvider):
         try:
             data = _extract_json(resp)
         except Exception as e:
-            # The search RAN but returned no parseable JSON. That is a legitimate empty
-            # result (the model found nothing usable), not an outage -> return [].
-            logger.warning(f"Gemini CLI Search: unparseable response, treating as empty: {e}",
-                           extra={"error": str(e)})
-            return []
+            # The comment that stood here read: "The search RAN but returned no parseable
+            # JSON. That is a legitimate empty result (the model found nothing usable), not
+            # an outage -> return []." That reasoning is the bug class in one sentence, and
+            # it is wrong twice over.
+            #
+            # First, it conflates the search running with the ANSWER being read. We got
+            # bytes back and could not parse them; that is a fact about our parser, not about
+            # the web. Second, `[]` is the exact value a genuinely-empty search returns, so
+            # the chain cannot tell the two apart: it books a breaker SUCCESS, clears the
+            # dead mark, and short-circuits (retrieval.py:1860-1895). The verdict then rules
+            # on zero passages and that counts as a finding in the kill gates.
+            #
+            # Measured 2026-08-15 on the sibling adapter: `_extract_json` parsed strict and
+            # scanned `[`before `{`, so ONE literal newline in a model's reply made it return
+            # the wrong array — our defect, arriving downstream dressed as "the web has
+            # nothing on this". Raising sends it to retrieval.py:1905 (breaker failure,
+            # fail over); only a whole dead chain becomes a DEFER.
+            logger.error(f"Gemini CLI Search: unparseable response, failing over: {e}",
+                         extra={"error": str(e), "chars": len(resp or "")})
+            raise ParseError(
+                f"Gemini CLI Search returned {len(resp or '')} chars of unparseable "
+                f"response for {query!r}: {e}") from e
         if isinstance(data, dict):
             data = data.get("results") or data.get("passages") or []
         # Verify each URL actually resolves (HEAD), dropping fabricated/dead ones —

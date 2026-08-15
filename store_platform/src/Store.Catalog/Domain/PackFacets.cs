@@ -117,6 +117,42 @@ public static class PackFacets
     }
 
     /// <summary>
+    /// Validate a market code — the jurisdiction of the opportunity (<see cref="Pack.Market"/>).
+    ///
+    /// Deliberately a SHAPE rule, not a closed set like every facet above it. Market is the one
+    /// dimension the domain says is hierarchical and open-ended ("uk", "us", "us-tx"), so
+    /// enumerating it here would mean a code change every time the engine opens a state or a
+    /// province — and a validator that has to be edited to accept correct data is a validator
+    /// that gets bypassed. What it does bar is the thing that actually hurts: anything that is
+    /// not a lowercase machine token, which is what would reach a `Set-Cookie` header and a
+    /// URL on the storefront's market switcher.
+    ///
+    /// Null and empty stay valid, on the same terms as every facet: absent is a legitimate
+    /// state, and the empty string is how a wrong tag is withdrawn.
+    /// </summary>
+    public static bool TryValidateMarket(string? value, out string? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(value)) return true;
+
+        // <2 letters>(-<2..3 alphanumerics>)? — "uk", "us", "us-tx", "ca-on". Lowercase only,
+        // because every reader of this field (the /catalog filter, groupByMarket, KNOWN_MARKETS)
+        // compares against lowercase constants, and a "UK" here would silently form its own
+        // shelf next to "uk" rather than joining it.
+        if (System.Text.RegularExpressions.Regex.IsMatch(
+                value, "^[a-z]{2}(?:-[a-z0-9]{2,3})?$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant
+                    | System.Text.RegularExpressions.RegexOptions.ExplicitCapture,
+                TimeSpan.FromMilliseconds(100)))
+        {
+            return true;
+        }
+
+        error = $"market: '{value}' is not a market code. Expected a lowercase code like 'uk', 'us' or 'us-tx'.";
+        return false;
+    }
+
+    /// <summary>
     /// Validate the multi-valued advantage list. Null is valid; an empty array is valid;
     /// any unknown member fails the whole request so a partial write can never happen.
     /// </summary>

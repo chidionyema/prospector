@@ -32,6 +32,7 @@ from .models import Candidate, Dossier
 from .operator import Operator, make_operator
 from .retrieval import SearchProvider, make_provider
 from .run import vet_candidate
+from .verify import NO_RATIONALE_RATIONALE
 
 OPERATOR_CHOICES = [
     # `claude_cli` was missing here, which made the incumbent unmeasurable: the only stored
@@ -226,17 +227,39 @@ def run_golden_set(
         # RUN inconclusive (see `deferred` in the return payload): a discrimination computed
         # over six cases is not comparable with one computed over nine, so it may neither
         # promote a challenger nor fail one.
-        deferred = (actual_decision == "defer")
+        # NOT EVERY DEFER IS OUR FAULT, and the difference decides whether the run can
+        # conclude anything at all.  `verify` DEFERs on two very different events:
+        #   * the provider was exhausted or the transport failed — WE could not ask, so
+        #     nothing was measured and nothing may be concluded (excluded, run inconclusive);
+        #   * the brain replied with a verdict and NO rationale — it answered, unusably.
+        #     That IS a measurement of the brain, and a damning one.
+        # Treating the second like the first was a defect I introduced the same morning I
+        # added the empty-rationale guard: minimax deferred 2 of 9 cases on empty rationales,
+        # both were excluded, and the run went INCONCLUSIVE — so a brain whose failure mode
+        # is answering without reasons became structurally unable to fail this gate, and the
+        # gate became unable ever to decide on it.  A brain is not protected from its own
+        # defect by the fact that the defect makes it unusable.
+        _no_reason = [c.check_name for c in (getattr(dossier, "checks", None) or [])
+                      if getattr(c, "rationale", "") == NO_RATIONALE_RATIONALE]
+        unusable = bool(_no_reason)
+        deferred = (actual_decision == "defer") and not unusable
         if deferred:
             deferred_count += 1
 
-        passed = decision_match and not deferred
+        passed = decision_match and not deferred and not unusable
         if passed:
             correct_count += 1
 
         if verbose:
-            status = "⏸ DEFER" if deferred else ("✅ PASS" if passed else "❌ FAIL")
+            status = ("⏸ DEFER" if deferred
+                      else ("❌ NO REASON" if unusable
+                            else ("✅ PASS" if passed else "❌ FAIL")))
             print(f"  Result: {status}")
+            if unusable:
+                print(f"    - SCORED WRONG: the brain returned a verdict with no rationale "
+                      f"on {', '.join(_no_reason)} — an answer with no reason is not a "
+                      f"finding (verify.py), and producing one is the brain's failure, not "
+                      f"an outage. Counted against it.")
             if deferred:
                 print(f"    - NOT SCORED: the brain never ruled (reason: "
                       f"{str(getattr(dossier, 'reason', '') or '')[:120]}). This case is "
@@ -288,6 +311,10 @@ def run_golden_set(
             "gate_match": gate_match,
             "surfaced": surfaced,
             "deferred": deferred,
+            # Distinct from `deferred` on purpose: this case WAS scored, and scored wrong,
+            # because the brain answered without a reason. See the split above.
+            "unusable": unusable,
+            "no_reason_checks": _no_reason,
             "checks": [
                 {
                     "check": c.check_name,
@@ -321,6 +348,13 @@ def run_golden_set(
         # Reported, never scored — see the docstring. Printed unconditionally so a run
         # that separates KILL from PASS by luck of the wrong gate cannot present itself
         # as a run that reasoned correctly.
+        _unusable = [r for r in results if r.get("unusable")]
+        if _unusable:
+            print(f"[Golden Set] {len(_unusable)} of {total} cases were SCORED WRONG for "
+                  f"answering with no rationale: "
+                  f"{', '.join(r['idea'][:40] for r in _unusable)}. This is a property of "
+                  f"the brain, not of provider availability — it does not make the run "
+                  f"inconclusive.")
         _ruled = [r for r in results if not r["deferred"]]
         _gate_ok = sum(1 for r in _ruled if r["gate_match"])
         _surf_ok = sum(1 for r in _ruled if r["surfaced"])

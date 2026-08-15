@@ -26,7 +26,7 @@ from .cli_auth import subscription_env
 from .cli_governor import make_governor
 from .errors import ProviderExhaustedError, cause_context, looks_exhausted
 from .models import Source
-from .operator import Operator, _extract_json
+from .operator import Operator, ParseError, _extract_json
 from .retrieval import SearchProvider
 from .telemetry import logger, record_usage, track_latency
 
@@ -373,9 +373,29 @@ class ClaudeCliGroundingProvider(SearchProvider):
         try:
             data = _extract_json(resp)
         except Exception as e:
-            logger.warning(f"Claude CLI Search: unparseable response, treating as empty: {e}",
-                           extra={"error": str(e)})
-            return []
+            # PROPAGATE. This used to `return []`, which is the same bytes as "I searched the
+            # web and there is nothing there" — and the chain reads that as evidence: it
+            # records a breaker SUCCESS, clears the provider's dead mark, and short-circuits
+            # (`FallbackSearchProvider.search`, retrieval.py:1860-1895). A verdict then rules
+            # `unverifiable` on no passages and that flows into the kill gates as a finding.
+            # So an unreadable reply could kill an idea, and the dossier would look reasoned.
+            #
+            # We do not know what the model found. "Unparseable" is a statement about OUR
+            # ability to read the answer, never about the web. Measured 2026-08-15, and this
+            # is why the distinction is not academic: `_extract_json` was itself losing
+            # perfectly good replies — one literal newline inside a JSON string made it
+            # return the wrong array — so our own parser defect was arriving downstream
+            # wearing the costume of a search that found nothing.
+            #
+            # Raising lands in `except Exception` at retrieval.py:1905: breaker failure,
+            # fail over to the next provider. Only if EVERY provider is gone does the chain
+            # raise `GroundingInfrastructureError`, which run_check turns into a DEFER.
+            # "An exception is never evidence; a failed call DEFERS."
+            logger.error(f"Claude CLI Search: unparseable response, failing over: {e}",
+                         extra={"error": str(e), "chars": len(resp or "")})
+            raise ParseError(
+                f"Claude CLI Search returned {len(resp or '')} chars of unparseable "
+                f"response for {query!r}: {e}") from e
         if isinstance(data, dict):
             data = data.get("results") or data.get("passages") or []
         # Resolve URLs in PARALLEL, dropping dead/fabricated ones (identical to serial).

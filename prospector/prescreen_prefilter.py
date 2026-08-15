@@ -629,8 +629,19 @@ def record_shadow(
             llm_reason=llm_reason,
             llm_called=llm_called,
         )
-    except Exception as e:
-        logger.warning(f"prescreen prefilter shadow record failed: {e}")
+    except Exception as e:  # noqa: BLE001 — see below; deliberately total
+        # The except stays TOTAL and that is not an oversight: this observer sits inside a
+        # keep-biased gate, so any exception it can propagate is a prescreen decision change
+        # by another name — pinned by
+        # `tests/unit/test_prescreen_prefilter.py::test_record_shadow_never_raises_on_a_broken_recorder`.
+        # What was wrong was the SILENCE, not the breadth. At warning level a shadow recorder
+        # that had stopped recording entirely was indistinguishable from a run where the
+        # prefilter never fired, and the E6 agreement metric is computed from these rows — so
+        # a quiet stop makes the METRIC wrong, not merely thin. ERROR plus a traceback is how
+        # a bug of ours becomes visible and attributable without ever reaching the gate.
+        logger.error(f"prescreen prefilter shadow record failed, row dropped "
+                     f"(E6 agreement will be computed from an incomplete log): {e}",
+                     exc_info=True)
         return None
 
 

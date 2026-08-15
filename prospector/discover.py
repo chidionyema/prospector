@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from .config import Config
+from .errors import ProviderExhaustedError
 from .operator import Operator
 from .prompts import render
 from .telemetry import logger, track_latency
@@ -28,7 +29,8 @@ def discover_signals(
 ) -> list[dict[str, Any]]:
     """Surface n diverse, sector-spread signals. Returns [{title, signal_text, sector}].
 
-    Never raises on a bad model response — returns [] so the caller can decide.
+    Never raises on a bad model RESPONSE — returns [] so the caller can decide. It does raise
+    `ProviderExhaustedError`, because that is not a response: see the `except` below.
     """
     sectors = sectors or _DEFAULT_SECTORS
     logger.info("Signal discovery started", extra={"n": n})
@@ -36,6 +38,17 @@ def discover_signals(
 
     try:
         data = op.complete_json(system, user, temperature=0.9)
+    except ProviderExhaustedError:
+        # The one failure that must NOT become []. The caller (run.py:2864) prints
+        # "No signals discovered (model returned nothing usable)" and exits 1 — a statement
+        # about the MODEL'S ANSWER. When every tier of the chain is out of quota there was no
+        # answer to be unusable, and that sentence is simply false: the same run on a live
+        # brain would have produced signals. Exhaustion is the estate's typed failover signal
+        # (errors.py:16) precisely so a caller can tell "the brain is benched, come back" from
+        # "the brain replied with rubbish"; swallowing it here erased that distinction.
+        logger.error("Signal discovery aborted: every operator tier is exhausted",
+                     extra={"n": n})
+        raise
     except Exception as e:  # noqa: BLE001 — never crash the hunt on a parse/model error
         logger.error(f"Signal discovery failed: {e}", extra={"error": str(e)})
         return []

@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import socket
@@ -52,6 +53,8 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Optional
+
+logger = logging.getLogger(__name__)
 
 #: Default expiry. Long enough that a slow but LIVE re-vet is never stolen from (a full vet is
 #: minutes, not an hour), short enough that a crashed worker's candidate re-enters the drain
@@ -67,6 +70,14 @@ _STEAL_SUFFIX = ".steal"
 _STEAL_STALE_S = 60.0
 
 _SAFE = re.compile(r"[^A-Za-z0-9._-]+")
+
+#: `_age` for a lock file that EXISTS but could not be read. It is deliberately NOT `None`
+#: (which `_is_stale` reads as "absent — retry the create") and deliberately not a large age
+#: (which reads as "expired — steal it"). An unreadable lock must be assumed LIVE, so it dates
+#: as freshly taken and expiry declines to touch it. Before this, an EACCES/EIO on a HELD lock
+#: returned exactly what an absent lock returns, i.e. it read as permission to steal — the
+#: fail-open direction in the one module whose whole job is that exactly one caller wins.
+_AGE_UNREADABLE = 0.0
 
 
 # --------------------------------------------------------------------------------------
@@ -180,7 +191,17 @@ class ClaimLock:
         if token is not None:
             try:
                 holder = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
+            except FileNotFoundError:
+                return                    # already gone: released, or legitimately stolen
+            except (OSError, ValueError) as exc:
+                # PRESENT but unreadable, so we cannot prove the claim is still ours and must not
+                # unlink it. The consequence is real and was invisible: this key stays locked
+                # until `stale_after_s` expires it (an hour by default), so the drain skips the
+                # same candidate every pass. Silence made that indistinguishable from a release.
+                logger.error(
+                    "claim_lock: cannot verify the holder of %s, so the claim is NOT released and "
+                    "the candidate stays locked until it expires (%.0fs): %s",
+                    path, self._stale_after_s, exc)
                 return
             if holder.get("token") != token:
                 return
@@ -188,8 +209,10 @@ class ClaimLock:
             path.unlink()
         except FileNotFoundError:
             pass
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.error(
+                "claim_lock: could not unlink %s; the claim is held until it expires (%.0fs): %s",
+                path, self._stale_after_s, exc)
 
     def holder(self, candidate_id: str, purpose: str = DEFAULT_PURPOSE) -> Optional[dict]:
         """The recorded holder of a live claim (pid/host/ts/token), or None. Diagnostics only —
@@ -197,7 +220,14 @@ class ClaimLock:
         path = self.path_for(candidate_id, purpose)
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except FileNotFoundError:
+            return None                   # nobody holds it: the honest answer
+        except (OSError, ValueError) as exc:
+            # A lock that exists and cannot be read is reported here as "unheld", which it may
+            # well not be. That is the safe direction for a diagnostic (this never decides
+            # anything — `claim()` does) but it is a LIE with a confident face if it is silent.
+            logger.error("claim_lock: %s exists but is unreadable; reporting it as unheld, which "
+                         "it may not be: %s", path, exc)
             return None
         return data if not self._stale_record(data, path) else None
 
@@ -246,13 +276,19 @@ class ClaimLock:
 
         Prefers the `ts` written INSIDE the file over the inode mtime: the injected clock has
         to govern expiry for expiry to be testable, and a file copied/rsynced between trees
-        keeps its content but not necessarily its mtime."""
+        keeps its content but not necessarily its mtime.
+
+        ABSENT AND UNREADABLE ARE DIFFERENT ANSWERS. Both used to return None, and None means
+        "stale" to `_is_stale` — so an EACCES/EIO on a lock a peer was actively holding read as
+        an expired corpse. See `_AGE_UNREADABLE`."""
         try:
             raw = path.read_text(encoding="utf-8")
         except FileNotFoundError:
             return None
-        except OSError:
-            return None
+        except OSError as exc:
+            logger.error("claim_lock: %s exists but is unreadable; dating it as freshly held "
+                         "rather than stealable: %s", path, exc)
+            return _AGE_UNREADABLE
         try:
             ts = float(json.loads(raw).get("ts", 0) or 0)
         except (ValueError, AttributeError, TypeError):
@@ -260,8 +296,12 @@ class ClaimLock:
         if ts <= 0:
             try:
                 ts = path.stat().st_mtime
-            except OSError:
+            except FileNotFoundError:
                 return None
+            except OSError as exc:
+                logger.error("claim_lock: cannot stat %s to date it; treating it as freshly held "
+                             "rather than stealable: %s", path, exc)
+                return _AGE_UNREADABLE
         return self._clock() - ts
 
     def _stale_record(self, data: dict, path: Path) -> bool:

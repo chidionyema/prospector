@@ -169,6 +169,14 @@ def measured_lane_quota(cfg: Any, lanes: list[str],
                 "lanes": lanes, "value": {k: round(v, 4) for k, v in value.items()},
                 "reserve": reserve, "quota": quota, "total": static_total})
         return quota
-    except Exception as e:
-        logger.warning(f"measured lane quota failed, falling back to static: {e}")
+    except (TypeError, ValueError, KeyError, AttributeError, ZeroDivisionError) as e:
+        # The fallback stands — a quota this cannot compute must become the static split,
+        # never a crashed tick — but the three `return None`s above are the DESIGNED "not
+        # enough measured signal yet" answer, and this one used to be indistinguishable from
+        # them at warning level. An operator reading the logs would conclude measured mode
+        # was running and merely undecided, when in fact it had not run at all since some
+        # refactor. ERROR, and only the conditions the arithmetic and config reads above can
+        # actually raise; the `lane_quota_mode=measured` line's ABSENCE is the other half.
+        logger.error(f"measured lane quota could not be computed; this tick falls back to "
+                     f"the STATIC split (measured mode is not in effect): {e}", exc_info=True)
         return None

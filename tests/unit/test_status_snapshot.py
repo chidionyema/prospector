@@ -145,11 +145,11 @@ def test_spend_is_read_from_tick_history(tmp_path):
 def test_moat_blind_is_true_when_every_brain_dead(tmp_path):
     from prospector.scheduler.status import status_snapshot
 
-    _write_provider_health(tmp_path, dead=["claude_cli", "standardcompute", "minimax"],
-                            moat_brains=["claude_cli", "standardcompute", "minimax"])
+    _write_provider_health(tmp_path, dead=["claude_cli", "minimax"],
+                            moat_brains=["claude_cli", "minimax"])
     snap = status_snapshot(_cfg(tmp_path))
     assert snap["providers"]["moat_blind"] is True
-    assert set(snap["providers"]["dead"]) == {"claude_cli", "standardcompute", "minimax"}
+    assert set(snap["providers"]["dead"]) == {"claude_cli", "minimax"}
 
 
 def test_active_alerts_are_returned(tmp_path):

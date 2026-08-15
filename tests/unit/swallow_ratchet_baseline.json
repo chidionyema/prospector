@@ -1,0 +1,24 @@
+{
+  "_why": "Generated from the post-batch-fix tree, 2026-08-15. THE NUMBER MAY FALL FREELY AND MAY NOT RISE without a human editing this file in the same commit as the code, where a reviewer sees it. Raising an entry is a decision to ship a failure the caller cannot distinguish from a real empty answer. Read the fix ladder in tools/audit_swallow_sites.py first: propagate a typed error, or carry the failure in the return value, or (best-effort paths only) narrow the except and log at ERROR. A per-file count can also rise for an innocent reason -- splitting one `except (OSError, ValueError)` into a silent FileNotFoundError branch plus a logged one scores as TWO sites, because the tool counts returns inside handlers and cannot see log levels. Say which it is in the commit message.",
+  "tier1_by_file": {
+    "prospector/archive.py": 1,
+    "prospector/bridge.py": 2,
+    "prospector/control_center/pages/_diagnostics.py": 1,
+    "prospector/control_center/pages/_reports.py": 1,
+    "prospector/control_center/readers.py": 1,
+    "prospector/control_center/runner.py": 1,
+    "prospector/coverage.py": 2,
+    "prospector/denylist.py": 2,
+    "prospector/discover.py": 1,
+    "prospector/diversity.py": 1,
+    "prospector/generate.py": 2,
+    "prospector/landscape.py": 1,
+    "prospector/numeric_citation.py": 1,
+    "prospector/pack_data.py": 2,
+    "prospector/prescreen_prefilter.py": 1,
+    "prospector/run.py": 1,
+    "prospector/scheduler/alerts.py": 1,
+    "prospector/scheduler/run_scheduled.py": 4
+  },
+  "waivers": 1
+}

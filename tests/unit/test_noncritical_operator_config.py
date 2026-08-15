@@ -67,13 +67,13 @@ def test_bare_string_is_a_one_tier_chain_not_one_tier_per_character():
 def test_entries_are_stripped_and_blanks_dropped():
     # NOT claude_cli: it is barred from this chain since 2026-08-14 and would be stripped,
     # which would make this test about the ban rather than about whitespace handling.
-    cfg = SimpleNamespace(noncritical_operator=["  minimax ", "", "   ", "standardcompute"])
-    assert _noncritical_order(cfg) == ("minimax", "standardcompute")
+    cfg = SimpleNamespace(noncritical_operator=["  minimax ", "", "   ", "deepseek"])
+    assert _noncritical_order(cfg) == ("minimax", "deepseek")
 
 
 def test_order_is_preserved_because_a_chain_is_an_order():
-    cfg = SimpleNamespace(noncritical_operator=["minimax", "deepseek", "standardcompute"])
-    assert _noncritical_order(cfg) == ("minimax", "deepseek", "standardcompute")
+    cfg = SimpleNamespace(noncritical_operator=["minimax", "deepseek", "ollama"])
+    assert _noncritical_order(cfg) == ("minimax", "deepseek", "ollama")
 
 
 def test_the_verdict_chain_is_not_reachable_from_this_key():

@@ -45,8 +45,17 @@ def typicality_directive(cfg: Any, k: int) -> str:
             "specifically nameable payer, a real wedge, and the same commodity pre-mortem as every "
             "other idea here."
         )
-    except Exception as e:
-        logger.warning(f"verbalized_sampling directive failed, skipping: {e}")
+    except (TypeError, ValueError) as e:
+        # Everything between the gate check and the return is arithmetic over config values,
+        # so a malformed `atypical_threshold` / `min_atypical_fraction` is the only failure
+        # this can legitimately have; a broad `except Exception` here would swallow a
+        # refactor's bug into the SAME "" the gate-off path returns. That matters more than
+        # it looks: the directive is measured by the diversity meter, so an "" from a config
+        # typo does not read as "the feature is broken", it reads as "verbalized sampling
+        # was enabled and did not move the batch". ERROR, because the gate says ON.
+        logger.error(f"verbalized_sampling is enabled but its directive could not be built "
+                     f"(check listing generation.verbalized_sampling config); the batch will "
+                     f"be generated WITHOUT it: {e}", exc_info=True)
         return ""
 
 

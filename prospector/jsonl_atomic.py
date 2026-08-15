@@ -270,22 +270,28 @@ def consume_jsonl(path: Union[str, Path], *, fsync: bool = True) -> list:
 class ReadStats:
     """What a tolerant read had to throw away. Observability, not control flow."""
 
-    __slots__ = ("rows", "torn_tail_bytes", "corrupt_lines", "first_corrupt_lineno")
+    __slots__ = ("rows", "torn_tail_bytes", "corrupt_lines", "first_corrupt_lineno",
+                 "read_error")
 
     def __init__(self) -> None:
         self.rows = 0
         self.torn_tail_bytes = 0
         self.corrupt_lines = 0
         self.first_corrupt_lineno: Optional[int] = None
+        #: Set when the file could not be OPENED (not when it was merely absent). This is the
+        #: one condition under which zero rows is not a fact about the file's contents, and
+        #: without it "no ticks yet" and "ticks.jsonl is unreadable" are the same empty list.
+        self.read_error: Optional[str] = None
 
     @property
     def clean(self) -> bool:
-        return self.torn_tail_bytes == 0 and self.corrupt_lines == 0
+        return (self.torn_tail_bytes == 0 and self.corrupt_lines == 0
+                and self.read_error is None)
 
     def __repr__(self) -> str:  # pragma: no cover - debug aid
         return (
             f"ReadStats(rows={self.rows}, torn_tail_bytes={self.torn_tail_bytes}, "
-            f"corrupt_lines={self.corrupt_lines})"
+            f"corrupt_lines={self.corrupt_lines}, read_error={self.read_error!r})"
         )
 
 
@@ -321,16 +327,25 @@ def iter_jsonl(
     Streams line-by-line with a one-line lookahead: `ticks.jsonl` is already ~1300 lines and the
     ledger-shaped trails run to hundreds of thousands, so the reader must not need the file in
     memory. Missing file → empty iterator. Never raises on content.
+
+    `warn` governs tolerance of CONTENT — a torn tail, unparseable lines. It does NOT silence a
+    failure to open the file, because that is not a fact about the content: every live caller
+    passes `warn=False` (`scheduler/status.py:85`, `scheduler/run_scheduled.py:1288,1779`), so an
+    unreadable `ticks.jsonl` used to return the same empty list as a daemon that had never
+    ticked, with nothing logged anywhere. `status.py:85` even wraps this call in
+    `except (OSError, ValueError)` — a handler that could never fire, because the error was
+    swallowed here. `ReadStats.read_error` is how a caller tells the two apart.
     """
     p = Path(path)
     st = stats if stats is not None else ReadStats()
     try:
         fh = open(p, "rb")
     except FileNotFoundError:
-        return
+        return                            # genuinely no records: nothing has been appended yet
     except OSError as exc:
-        if warn:
-            logger.error("Cannot read %s: %s", p, exc)
+        st.read_error = f"{type(exc).__name__}: {exc}"
+        logger.error("Cannot read %s: %s — returning 0 records, which is NOT evidence the file "
+                     "is empty", p, exc)
         return
     with fh:
         lineno = 0

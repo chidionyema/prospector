@@ -45,6 +45,7 @@ document instead of silently discarding half of it.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import re
@@ -57,6 +58,7 @@ from typing import Any, Dict, List, Optional
 # (verify.py:376). Shipping more would let an agent "re-verify" against evidence the ruling never
 # saw, and conclude we were wrong on a paragraph we were never shown. Imported rather than
 # duplicated so the two cannot drift.
+from .models import Candidate, Dossier
 from .verify import VERDICT_PASSAGE_TRUNCATE
 
 MANIFEST_FILENAME = "manifest.jsonld"
@@ -359,6 +361,40 @@ def _ns(value: Any) -> Any:
     return value
 
 
+def _fill_defaults(ns: Any, cls: Any) -> Any:
+    """Give a loaded namespace the fields its dataclass has and the stored row does not.
+
+    The docstring above says the persisted keys ARE the dataclass field names, and refuses a
+    real `from_dict` so a row that predates a field does not fail to load. But it only avoided
+    failing at LOAD time: a row written before `persona` / `publish_status` existed loads fine
+    and then raises `AttributeError` the moment a reader touches that field. Every stored PASS
+    dossier was unrenderable for exactly this reason, which put the packs already on the shelf
+    out of reach of a re-render.
+
+    The defaults are read off the dataclass itself, so this is still no mapping table and still
+    nothing to remember when a field is renamed — a field added tomorrow gets its declared
+    default here for free. Present keys are never overwritten, including a stored `None`.
+    """
+    try:
+        spec = dataclasses.fields(cls)
+    except TypeError:  # not a dataclass — nothing to fill
+        return ns
+    for f in spec:
+        if hasattr(ns, f.name):
+            continue
+        if f.default is not dataclasses.MISSING:
+            setattr(ns, f.name, f.default)
+        elif f.default_factory is not dataclasses.MISSING:  # type: ignore[misc]
+            setattr(ns, f.name, f.default_factory())  # type: ignore[misc]
+        else:
+            setattr(ns, f.name, None)  # required field absent: a hole, not a crash
+    return ns
+
+
 def dossier_from_dict(data: Dict[str, Any]) -> Any:
     """A stored dossier JSON, in the shape `render_manifest` reads."""
-    return _ns(data)
+    ns = _ns(data)
+    _fill_defaults(ns, Dossier)
+    if getattr(ns, "candidate", None) is not None:
+        _fill_defaults(ns.candidate, Candidate)
+    return ns
