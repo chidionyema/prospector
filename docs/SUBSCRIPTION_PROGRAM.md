@@ -628,7 +628,7 @@ Stripe-direct, seller-of-record, VAT liability ours. §18 establishes what that 
 actually owed today, and the one config fence that unblocks P3 without pretending to answer a tax
 question. **ANSWERED 2026-08-15 — UK-registered company, NOT VAT registered (§18.4). This decision
 is closed:** `SellableCountries: ["GB"]`, no VAT charged, no registrations, P3 proceeds. §18.5 is the
-checklist for the day that changes.
+measured state of the live Stripe account, read on the same day.
 
 **13.3 — Is Desk allowed to undercut direct pay?**
 Desk at **£149/mo** covers 3 claims at any rung — up to **£299.97** of shelf if all three are taken
@@ -647,8 +647,8 @@ one config value and changing it later is a config edit, not a code change (§17
 - **Tax.** Closed, not open — §18. UK company, not VAT registered, `SellableCountries: ["GB"]`. What
   remains is a *future* judgement rather than an open item: when revenue approaches £90,000, or when
   EU demand justifies a non-Union OSS registration. **§18.5 lists the three pre-conditions** that
-  must be met before either happens — chiefly that no price in this estate declares whether it is
-  gross or net of VAT.
+  is already settled, but only by a dashboard default (`inferred_by_currency` ⇒ **GBP inclusive**),
+  so registering costs **16.7% of gross revenue** and changes no shelf price. §18.5.
 - **`GET /commerce` caching.** ISR at 300s (`pricing.tsx:279`) means a mode switch takes up to five
   minutes to appear. Acceptable; stated so nobody reads it as a bug.
 - **Auth at load.** The identity stack is built (§1.6a) but has never carried a real user. P3 is the
@@ -1027,7 +1027,7 @@ wrong column name or a wrong status code is a migration and a client break.
 | § | Decision | Blocks | Default if unanswered |
 |---|---|---|---|
 | 13.1 | Build before the first sale? | P3+ | **Build P1+P2 now.** They commit nothing and are worth doing regardless (§12). |
-| 13.2 | VAT / Merchant of Record | **nothing — answered 2026-08-15, see §18** | **`Commerce.SellableCountries: ["GB"]`, built in P1. Not a default — the settled value.** UK-registered company, not VAT registered, so no VAT is charged and no Stripe Tax registration exists. §18.5 is the checklist for the day that changes. |
+| 13.2 | VAT / Merchant of Record | **nothing — answered 2026-08-15, see §18** | **`Commerce.SellableCountries: ["GB"]`, built in P1. Not a default — the settled value.** UK-registered company, not VAT registered, so no VAT is charged. Live Stripe Tax reads `active` with **0 registrations**, so tax calculates to zero — verified, not assumed (§18.5). |
 | 13.3 | Desk claim count | P4 config only | Build as specified: 3 claims, any rung. |
 | 13.4 | Catalogue-exhaustion credit policy (§15.B-13) | nothing in v1 | Not implemented. No code path. |
 
@@ -1178,7 +1178,7 @@ estate's standing rule is that state is a probe, not a sentence.
 |---|---|
 | **P1** | `dotnet test store_platform/src/Store.Tests --filter Category=CommerceMode` passes, and it contains the full 3-mode matrix of §17.9 including the "API refuses even when the UI would not show it" case. `GET /commerce` returns the §17.5 shape in all three modes. **`Mode=direct` behaviour is byte-identical to today** — the existing checkout tests pass unmodified. |
 | **P2** | Migration `AddEntitlementGrantSource` applies and rolls back cleanly. Existing entitlements all read `GrantSource="order"` with `OrderId` intact. Full existing `Store.Tests` suite green with zero test-file edits. |
-| **P3** | Subscription created, renewed, failed, recovered, cancelled and refunded — each as a webhook-replay test against recorded fixtures, no live Stripe call. Out-of-order and duplicate delivery covered (§17.9 B-block). |
+| **P3** | **Test-mode head office must be set first** — `automatic_tax` fails session creation in test mode until it is (§18.5b), so no fixture can be recorded. Then: subscription created, renewed, failed, recovered, cancelled and refunded — each as a webhook-replay test against recorded fixtures, no live Stripe call. Out-of-order and duplicate delivery covered (§17.9 B-block). |
 | **P4** | Claim allowance tests green including the concurrency case (C-1) and the already-owned case (C-2). Delivery failure routes to `PendingDelivery`, verified by asserting the row exists — not by asserting an exception. |
 | **P5** | A re-vet delta on an owned pack produces exactly one email; a re-vet with no gate change produces none. |
 | **P6** | A brief becomes a signal file; a DEFER does **not** consume the allowance (§15.F-2); the brief budget is separate from `spend.daily_cap_usd` (§15.F-5 — **this is unresolved, raise it before starting P6**). |
@@ -1366,7 +1366,8 @@ Two things this answer *does* pin down, both worth stating because they are easy
   **not established in the EU**, which is exactly the case that carries **no threshold** (§18.3).
   Being a UK company is the reason `["GB"]` is a fence and not a formality.
 - **Below the threshold is a fact about turnover, not a permanent state.** The trigger is a rolling
-  12-month total, so the review point is revenue, not the calendar. §18.5 is the checklist.
+  12-month total, so the review point is revenue, not the calendar, and it costs **16.7% of gross**
+  rather than raising any price (§18.5a). §18.5 is the measured state of the account it lands in.
 
 ### 18.5 The live Stripe Tax state — measured, not assumed
 
