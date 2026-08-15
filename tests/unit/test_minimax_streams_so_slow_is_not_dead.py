@@ -131,6 +131,10 @@ def test_silence_longer_than_the_stall_timeout_still_fails(op, monkeypatch):
     thing being preserved, not traded away."""
     monkeypatch.setattr(MiniMaxOperator, "_STALL_TIMEOUT_S", 0.2, raising=False)
     monkeypatch.setattr(MiniMaxOperator, "_TOTAL_DEADLINE_S", 30.0, raising=False)
+    # A stall is retried once (`test_minimax_stall_retry.py`), so this exercises TWO stall
+    # bounds. The backoff between them is zeroed because what is under test here is the bound,
+    # not the retry policy — paying the real 5s would measure the policy's constant instead.
+    monkeypatch.setattr(MiniMaxOperator, "_RETRY_STALL_BACKOFF_S", 0.0, raising=False)
     frames = [(0.01, _sse({"choices": [{"delta": {"content": "<think>"}}]})),
               (99.0, b'data: never\n')]
     _serve(monkeypatch, frames)

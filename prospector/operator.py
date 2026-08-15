@@ -544,7 +544,8 @@ def _read_sse_bounded(req, *, stall_timeout: float,
             resp.close()  # break the wedged socket so the reader thread unblocks (no fd leak)
         except Exception:
             pass
-        raise TimeoutError(f"streamed response exceeded {total_deadline:.0f}s hard deadline")
+        raise _MiniMaxDeadline(
+            f"streamed response exceeded {total_deadline:.0f}s hard deadline")
     if "err" in box:
         raise box["err"]
     return "".join(box["parts"]), box["usage"], box["finish"]
@@ -558,6 +559,33 @@ class _MiniMaxTruncated(RuntimeError):
     prompt), while everything above it must see a plain RuntimeError so the chain fails over
     normally once the re-asks are spent. It is deliberately NOT a ProviderExhaustedError —
     nothing is exhausted, the model simply talked too long.
+    """
+
+
+class _MiniMaxDeadline(TimeoutError):
+    """The hard ceiling in `_read_sse_bounded` — a body that trickled for the whole deadline.
+
+    A TimeoutError subclass so every existing caller and message match is unchanged, but a
+    DISTINCT type from the per-recv stall because the two earn opposite treatment. A stall is
+    90s of silence: cheap to detect and worth one re-ask. This is 600s of a live stream that
+    never stopped, so a re-ask most likely buys a second 600s of the same — and would put a
+    single call's worst case at 1205s inside a tick budget. 345 stalls against 13 of these
+    (`store/scheduler/launchd.err.log`, 2026-08-06 → 08-15): retrying the wrong one of the two
+    is nearly all of the cost and almost none of the recovery.
+    """
+
+
+class _MiniMaxStalled(RuntimeError):
+    """The wire went silent — `_STALL_TIMEOUT_S` of nothing, or the hard deadline hit.
+
+    Distinct from `_MiniMaxTruncated` because they have opposite causes and the same cure.
+    M3 emits its reasoning as `<think>…</think>` INSIDE `delta.content` (see the truncation
+    check in `_raw_once`, which strips it with `_RE_THINK`), so a reasoning call is streaming
+    bytes the whole time it thinks. Silence on that stream is therefore NOT the model
+    thinking: it is server-side queueing or a wedged socket, i.e. transient and worth
+    re-asking, exactly like a truncation. Measured 2026-08-06→08-15 in
+    `store/scheduler/launchd.err.log`: 345 `read operation timed out` against 23 truncations,
+    and only the truncations were ever retried.
     """
 
 
@@ -613,6 +641,12 @@ class MiniMaxOperator(Operator):
     _STALL_TIMEOUT_S = float(os.environ.get("PROSPECTOR_MINIMAX_STALL_S", "90"))
     _TOTAL_DEADLINE_S = float(os.environ.get("PROSPECTOR_MINIMAX_DEADLINE_S", "600"))
     _RETRY_TRUNCATED_MAX = int(os.environ.get("PROSPECTOR_MINIMAX_TRUNCATION_RETRIES", "2"))
+    # ONE stall retry, not two. A stall costs its full bound before it is even detected
+    # (90s of silence, or 600s of trickle), so the budget here buys wall-clock at a much
+    # worse rate than the truncation budget does — and if the cause is server-side queueing
+    # under `minimax_concurrency`, a wide retry budget feeds the thing it is recovering from.
+    _RETRY_STALL_MAX = int(os.environ.get("PROSPECTOR_MINIMAX_STALL_RETRIES", "1"))
+    _RETRY_STALL_BACKOFF_S = float(os.environ.get("PROSPECTOR_MINIMAX_STALL_BACKOFF_S", "5"))
 
     # MiniMax API endpoint (OpenAI-compatible /v1/chat/completions).
     # The flagship reasoning model and the stable non-reasoning option for
@@ -661,17 +695,32 @@ class MiniMaxOperator(Operator):
         the line, not to grind a genuinely over-long prompt: three failures in a row is a
         prompt problem, and the exception then reaches the chain so the next tier can answer.
         """
+        from .telemetry import logger as _log
         last: Optional[Exception] = None
-        for attempt in range(self._RETRY_TRUNCATED_MAX + 1):
+        truncations = stalls = 0
+        while True:
             try:
                 return self._raw_once(system, user, temperature)
             except _MiniMaxTruncated as e:
                 last = e
-                from .telemetry import logger as _log
+                truncations += 1
+                if truncations > self._RETRY_TRUNCATED_MAX:
+                    break
                 _log.warning(
                     f"MiniMax spent its whole budget reasoning and returned no answer; "
-                    f"re-asking (attempt {attempt + 1}/{self._RETRY_TRUNCATED_MAX})",
+                    f"re-asking (attempt {truncations}/{self._RETRY_TRUNCATED_MAX})",
                     extra={"provider": self.name})
+            except _MiniMaxStalled as e:
+                last = e
+                stalls += 1
+                if stalls > self._RETRY_STALL_MAX:
+                    break
+                delay = self._RETRY_STALL_BACKOFF_S * stalls
+                _log.warning(
+                    f"MiniMax went silent on the wire; re-asking in {delay:.0f}s "
+                    f"(attempt {stalls}/{self._RETRY_STALL_MAX})",
+                    extra={"provider": self.name, "delay_s": delay})
+                time.sleep(delay)
         raise RuntimeError(str(last))
 
     def _raw_once(self, system: str, user: str, temperature: float) -> str:
@@ -763,6 +812,15 @@ class MiniMaxOperator(Operator):
                 if looks_exhausted(msg):
                     raise ProviderExhaustedError(f"MiniMax quota exhausted: {e}",
                                                  provider=self.name)
+                # SILENCE is retriable — see `_MiniMaxStalled`. Both bounds land here: the
+                # per-recv stall arrives as `socket.timeout` ("The read operation timed out",
+                # which IS `TimeoutError` on 3.10+) and the hard ceiling as the explicit
+                # `TimeoutError` raised by `_read_sse_bounded`. Matched on the type AND the
+                # message so a wrapped or renamed socket error cannot slip past the type check
+                # and be re-classified as a permanent failure.
+                if not isinstance(e, _MiniMaxDeadline) and (
+                        isinstance(e, TimeoutError) or "timed out" in msg.lower()):
+                    raise _MiniMaxStalled(f"MiniMax call failed: {e}") from e
                 raise RuntimeError(f"MiniMax call failed: {e}") from e
 
         # Track token usage (OpenAI-compatible usage block, delivered as the stream's last event)

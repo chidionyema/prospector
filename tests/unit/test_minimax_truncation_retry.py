@@ -67,8 +67,13 @@ def test_a_clean_first_answer_costs_exactly_one_call(op, monkeypatch):
 
 
 def test_any_other_failure_is_not_retried(op, monkeypatch):
-    """Only truncation earns a re-ask. A 402 or a wedged socket must reach the chain at once,
-    so the next tier answers instead of paying two more full-budget calls first."""
+    """Only a truncation earns a re-ask on THIS budget. A 402 must reach the chain at once, so
+    the next tier answers instead of paying two more full-budget calls first.
+
+    A stall is the other retriable case and carries its own, narrower budget — see
+    `test_minimax_stall_retry.py`. It is deliberately not counted here: the two failures have
+    opposite costs (a truncation is detected after a full emitted body, a stall after 90s of
+    nothing), so one shared counter would price them the same."""
     fake, calls = _scripted([RuntimeError("MiniMax call failed: HTTP Error 402"), '{"ok": 1}'])
     monkeypatch.setattr(MiniMaxOperator, "_raw_once", fake)
     with pytest.raises(RuntimeError, match="402"):
