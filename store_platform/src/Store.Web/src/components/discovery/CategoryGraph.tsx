@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { cx } from '@/components/ui/cx';
+import { PriceText } from '@/components/ui';
 
 export interface CategoryNode {
   /** The landing slug. Passed to `filterPath` to build the href. */
@@ -118,16 +119,25 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
           {/* Presentational: the count is spelled out immediately to the right of it, and the
               link's own aria-label carries both. A screen reader must not walk 28 pickets.
 
-              THE RUN IS NEUTRAL, NOT GREEN (2026-08-14). It was `bg-survive`, and that is the
-              colour this site uses for one specific thing: a cited source (`EvidenceBar`, the pack
-              covers, the source glyph). Here one mark is one PACK. So the same figure in the same
-              colour counted two different nouns depending on which page you were on, and the page
-              it counted packs on is the page a visitor reaches first. Grey keeps the comparison the
-              run exists for -- a 28-pack category is visibly longer than a 5-pack one -- and stops
-              the shelf claiming 28 sources. */}
+              THE RUN IS GREEN AGAIN -- founder directive, 2026-08-15, reversing the 2026-08-14
+              change to `bg-subtle`.
+
+              What that change argued, so it is not lost and not repeated: `--survive` is the colour
+              this site uses for a cited source (`EvidenceBar`, the pack covers, the source glyph),
+              and here one mark is one PACK, so the same figure in the same colour counted two
+              different nouns depending on which page you were on. The counter-argument that carried
+              the day is that both nouns are the SAME claim -- a source that was checked and a pack
+              that survived the checks -- and a page of grey pickets spends the site's one meaningful
+              hue on nothing while the shelf's whole proposition is "these survived". The literal
+              collision it worried about needs a reader to compare a mark count on /ideas with a mark
+              count on a pack card and infer that the units match; the cost it accepted was a first
+              page with no colour on it at all.
+
+              If this is reversed a third time, change the FACT, not the paint: what the run counts
+              is stated in the link's own aria-label, not by its colour. */}
           <span aria-hidden className="flex items-end gap-[1.5px]">
             {Array.from({ length: marks }, (_, i) => (
-              <span key={i} className="block h-3 w-[1.5px] bg-subtle" />
+              <span key={i} className="block h-3 w-[1.5px] bg-survive" />
             ))}
           </span>
           <span className="w-[3ch] text-right font-mono text-caption tabular-nums text-text">
@@ -138,10 +148,17 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
               measured at 390px on 2026-08-13, the row used ~110px of 326 and had the room. Only
               the fixed 18ch column is held back to `sm`, because a fixed column is what makes the
               prices line up, and below `sm` there is nothing to line them up against. */}
+          {/* `PriceText`, not a hand-rolled mono span, and `--azure`, not `--subtle` (2026-08-15).
+              Founder, looking at /ideas: "why are the prices in black?" -- because this row
+              reproduced the price treatment instead of calling the component that owns it, so the
+              money colour applied to every `<PriceText>` on the shelf and the pack page stopped at
+              this page's door. The tree-wide test in `storefrontDesignContract.test.ts` could not
+              catch it either: it walks `<PriceText>` call sites, and this was not one. Calling the
+              component is what puts this row inside that fence. */}
           {node.price && (
-            <span className="font-mono text-caption tabular-nums text-subtle sm:w-[18ch] sm:text-right">
+            <PriceText className="text-caption text-azure sm:w-[18ch] sm:text-right">
               {node.price}
-            </span>
+            </PriceText>
           )}
         </span>
       </Link>

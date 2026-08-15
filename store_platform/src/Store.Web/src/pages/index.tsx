@@ -428,7 +428,10 @@ function PackCard({
         href={`/pack/${pack.id}`}
         className={cx(
           'group flex items-center gap-4 px-3 py-4 sm:gap-5 sm:px-4',
-          'transition-colors hover:bg-surface3',
+          // Hover LIFTS to paper (`--surface`) rather than sinking to `--surface3`, which is now
+          // the shelf's own ground -- a hover state painted the same colour as the surface under
+          // it is not a hover state. Same direction as the cards: white = a thing you can pick up.
+          'transition-colors hover:bg-surface',
           focusRing,
         )}
       >
@@ -536,7 +539,7 @@ function PackCard({
         </span>
 
         <span className="flex flex-none items-center gap-3 sm:gap-4">
-          <PriceText className="text-body font-semibold text-text">{price}</PriceText>
+          <PriceText className="text-body font-semibold text-azure">{price}</PriceText>
           {/* THE ARROW IS A HOVER AFFORDANCE, so it costs 32px on the one device that cannot
               hover. Its whole job is `group-hover:translate-x-0.5` -- on touch that never fires,
               and the entire row is already a link, so at 390px it is 32px (glyph + `gap-3`) spent
@@ -663,7 +666,7 @@ function PackCard({
             <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
           </span>
           <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
-            <PriceText className="text-h1 font-semibold text-text">{price}</PriceText>
+            <PriceText className="text-h1 font-semibold text-azure">{price}</PriceText>
             <span
               className={cx(
                 'inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2.5',
@@ -831,7 +834,7 @@ function PackCard({
               inherited body size with only `font-semibold` distinguishing it. Mono because a price
               is a checkable quantity, which is exactly the rule the house style already states,
               and `tabular-nums` so £49 and £149 align on the decimal down a column. */}
-          <PriceText className="text-h2 font-semibold text-text">{price}</PriceText>
+          <PriceText className="text-h2 font-semibold text-azure">{price}</PriceText>
           <span
             className={cx(
               'inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2',
@@ -2261,7 +2264,10 @@ export default function Home({ packs, stats, initialState, market, currency, per
           between the shelf and the section below, on every viewport, as a side effect of a
           mobile-only fold fix. `:last-child` is DOM order, not flex order, so this holds at
           both breakpoints. */}
-      <Section bg="bg" width="7xl" outerClassName="!border-b" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
+      {/* `bg="surface3"` (was `bg`): the shelf's ground, so 57 white cards read as paper on a
+          gutter instead of as hairline outlines on the same white as the page. See the tone's
+          note in blocks.tsx for why the tint goes UNDER the cards rather than on them. */}
+      <Section bg="surface3" width="7xl" outerClassName="!border-b" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
         {/* THE SHELF HAS A NAME AT EVERY WIDTH NOW.
             This block was `hidden sm:block` outright, to buy fold budget on a phone. What that
             actually bought was a phone reader going from the hero's last line straight into a

@@ -154,7 +154,7 @@ export default function PackBuyButton({
    * would have been synthesised by the browser -- a smeared 600 -- on the single most important
    * control on the site. `weightAndCasePolicy.test.ts` now guards that tree-wide.
    */
-  const shapeClasses = buttonClasses({ size: 'lg' });
+  const shapeClasses = buttonClasses({ variant: 'buy', size: 'lg' });
 
   // Not buyable yet. The card / drawer flow cannot tell from here whether the drawer
   // WILL be buyable (the drawer's own `usePackCheckout` may differ), so it always

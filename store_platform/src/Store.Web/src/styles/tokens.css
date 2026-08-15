@@ -127,6 +127,30 @@
   --on-primary: #FFFFFF;    /* 17.93:1 on --primary. AAA. */
   --primary-hover: #2E2E33; /* White on it is 13.51:1. AAA. */
 
+  /* THE MONEY COLOUR -- founder override, 2026-08-15, the second sanctioned exception to §3.1's
+     "no brand colour" after the logo mark (2026-08-08). ONE hue, on exactly TWO things: the price
+     and the buy button. Nothing else may consume it.
+
+     The argument it is answering: every card on the shelf was ink on white, so the one element a
+     buyer has to find -- what it costs and how to get it -- had no more visual claim than the
+     body copy around it. §3.1's rule survives intact because azure is not a verdict hue: the
+     verdict system is green/amber/red, and a reader still cannot mistake a blue price for a
+     check that passed.
+
+     MEASURED 2026-08-15 (WCAG 2.1 relative luminance, script in the session log):
+       white on --azure        10.04:1  AAA
+       --azure on white        10.04:1  AAA  (the price, as text)
+       white on --azure-hover   6.86:1  AAA at the button's 16px/500
+       --azure on --surface3    9.14:1  AAA  (the price on the shelf gutter)
+
+     Deliberately NOT wired through --primary: that token feeds Checkbox, RadioGroup,
+     SegmentedControl and every secondary CTA on the site, so pointing it at azure would repaint
+     twelve components the founder did not ask to repaint. Reverting is deleting the `buy` variant
+     in Button.tsx and two `text-azure` call sites. */
+  --azure: #0B3D91;         /* Price text, buy button fill. */
+  --azure-hover: #1554C0;   /* Lighter on hover, matching --primary-hover's direction. */
+  --on-azure: #FFFFFF;      /* 10.04:1 on --azure. AAA. */
+
   /* ── §3.1 (2026-08-08): THE ACCENT IS NO LONGER A HUE ──────────────────────────────────────
      Spec §3.1: "The only colour on the site is the verdict system; colour therefore MEANS 'a
      verdict.'" Blue was the last colour on this site doing a non-verdict job -- it carried links,
@@ -415,6 +439,9 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
+  --color-azure: var(--azure);
+  --color-azure-hover: var(--azure-hover);
+  --color-on-azure: var(--on-azure);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-brand-mark: var(--brand-mark); /* Logo.tsx's BrandMark only -- see the token above. */
