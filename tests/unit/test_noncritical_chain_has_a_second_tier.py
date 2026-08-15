@@ -30,6 +30,15 @@ def cfg():
     return load_config()
 
 
+@pytest.fixture(autouse=True)
+def _key(monkeypatch):
+    """`MiniMaxOperator.__init__` raises `RuntimeError("MINIMAX_API_KEY not set")`
+    (`operator.py:665`) before it ever records a model, so these tests cannot construct one
+    on a machine without the key — which is every CI runner. The key is never used: nothing
+    here makes a call. Same pattern as `test_minimax_stall_retry.py:30`."""
+    monkeypatch.setenv("MINIMAX_API_KEY", "test-key-not-used")
+
+
 def test_the_second_tier_is_a_different_model_from_the_first(cfg):
     first = _build_operator("minimax", cfg, fast=False)
     second = _build_operator("minimax_m27", cfg, fast=False)
