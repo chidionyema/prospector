@@ -35,6 +35,63 @@ from .telemetry import stage as telemetry_stage
 # cursor_cli often emits the markdown body without the JSON envelope.
 _PROSE_ARTIFACT_TYPES = frozenset({"build_spec", "gtm_plan", "ops_plan"})
 
+#: Where the claim-check verdict on the PAID artifacts is recorded, on the candidate's own
+#: free-form `tags` dict — the same channel that already carries `artifacts`, `marketing`
+#: and `price_decision` (`bridge.py:765-775`, `:1167`). It is a tag rather than a fifth
+#: entry in the returned artifacts dict because that dict is written to the buyer's bundle
+#: file-by-file: the evidence of a failed claim belongs in the operator's dossier, never in
+#: the zip. `Candidate.tags` is serialised with the dossier, so "violations are recorded"
+#: stops being a claim about a log line and becomes a fact about a file on disk.
+UNVERIFIED_CLAIMS_TAG = "unverified_claims"
+
+#: Default for `listing.claim_check_block`. ON, unlike its `listing.lint_*` siblings, and
+#: the asymmetry is the point: the siblings grade STYLE (a repeated sentence, a grammar
+#: defect) where unlisting a paid pack over a false positive is the expensive mistake. This
+#: one grades TRUTH, and the repo's constitution — "Publish only on PASS", "no unsourced
+#: numbers ship, ever", "truth metrics veto what may ship" — has no exception for the
+#: expensive document. Founder decision 2026-08-15.
+CLAIM_CHECK_BLOCK_DEFAULT = True
+
+
+def _listing_cfg(cfg: Optional[Any]) -> Dict[str, Any]:
+    """The `listing:` config block as a plain dict, tolerant of dict/object/absent.
+
+    Mirrors `evidence_budget.artifacts_cfg` (`evidence_budget.py:199-207`) rather than
+    importing a reader from `bridge`, which would make this module depend on the money rail
+    to answer a question about prose.
+    """
+    raw: Any = None
+    if cfg is not None:
+        raw = getattr(cfg, "listing", None)
+        if raw is None and isinstance(cfg, dict):
+            raw = cfg.get("listing")
+    if isinstance(raw, dict):
+        return raw
+    if raw is not None:
+        return {k: v for k, v in vars(raw).items() if not k.startswith("_")}
+    return {}
+
+
+def claim_check_blocks_listing(cfg: Optional[Any]) -> bool:
+    """Whether surviving claim-check violations on a PAID artifact stop the listing.
+
+    `config.yaml listing.claim_check_block`, default ON. Separate from
+    `artifacts.claim_check`, which decides whether the check RUNS at all: turning the gate
+    off must not also turn off the measurement that justifies turning it back on.
+    """
+    return bool(_listing_cfg(cfg).get("claim_check_block", CLAIM_CHECK_BLOCK_DEFAULT))
+
+
+def unverified_claims_block_listing(cand: Any) -> bool:
+    """True when this candidate carries paid-artifact claim violations that must not sell.
+
+    The single predicate the publish gate calls, so the policy lives with the check that
+    produced it instead of being re-derived from the tag's shape at every reader.
+    """
+    tags = getattr(cand, "tags", None)
+    record = tags.get(UNVERIFIED_CLAIMS_TAG) if isinstance(tags, dict) else None
+    return bool(isinstance(record, dict) and record.get("blocks_listing"))
+
 
 def _coerce_bare_markdown_artifact(text: str, t: str) -> dict:
     """Wrap a bare-markdown CLI reply into the prose artifact JSON envelope."""
@@ -486,11 +543,14 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
     buyer's bundle could never ship a spreadsheet or a machine-readable financial file
     (register F1/F3). It is ``None`` for every other artifact type.
 
-    ``violations`` is what the claim-check said about the finished prose, and is empty
-    when ``check_op`` is None. It is REPORTED, never fatal: dropping an unverified
-    marketing piece costs the buyer a tweet, but dropping build_spec costs them the pack,
-    so the artifact ships with its violations recorded and the decision to gate on them is
-    a separate, config-declared step taken once the live rate is known.
+    ``violations`` is what the claim-check said about the finished prose after the repair
+    turn below, and is empty when ``check_op`` is None. This function never drops the
+    content: dropping an unverified marketing piece costs the buyer a tweet, but dropping
+    build_spec would make the pack structurally INCOMPLETE, and the failure would then
+    surface as "artifact 'build_spec' is empty" — an outage's signature, not an invention's.
+    The decision the caller takes on a non-empty ``violations`` is the config-declared
+    listing gate in `generate_artifacts` (`listing.claim_check_block`, on since 2026-08-15):
+    the content is kept, the violations are recorded, and the PACK does not list.
     """
     claims = claims or []
     feedback = ""
@@ -788,16 +848,49 @@ def generate_artifacts(
                 logger.error(f"financial_model prose-chain retry also failed: {e}",
                              extra={"type": "financial_model", "error": str(e)})
 
-    # The measurement that decides whether this becomes a listing gate. Recorded rather
-    # than enforced on purpose: the house rollout doctrine is to ship the check, measure
-    # the live rate, repair, and only then flip an actuator. A threshold chosen before the
-    # sweep is a guess, and this one would be a guess that unlists the catalogue.
+    # THE TRUTH GATE ON THE DOCUMENTS THE BUYER PAYS FOR (founder decision 2026-08-15).
+    #
+    # Until now this path and the marketing path ran the SAME `verify_claims_detail` and did
+    # opposite things with the answer: `_gen_one_content` regenerates with the violations fed
+    # back and then DROPS the piece if they survive, while these three shipped theirs, logged
+    # and unenforced, on the strength of "measure the live rate first". The rate has been
+    # measured: build_spec / gtm_plan / ops_plan fail attempt 1 at 88-92% against 74% for
+    # marketing copy on the same checker, so this is not a short-copy artefact of the checker,
+    # and the sampled violations are real invention — a 90-day figure contradicting a cited
+    # 20-day statutory deadline, a citation naming `voxa.com` where the source is
+    # `voxamtd.com`. "Publish only on PASS" and "no unsourced numbers ship, ever" do not have
+    # an exception for the expensive document.
+    #
+    # ONE deliberate difference from marketing: the content is KEPT. Deleting build_spec would
+    # trip `pack_validation.py:65` as "generation produced nothing", which is what a provider
+    # outage looks like — it reads as an oversight and it destroys the evidence of what
+    # actually went wrong. Buyer-facing outcome identical (nothing sells); operator-facing
+    # outcome is the difference between a missing file and a named false claim.
+    #
+    # The record is cleared unconditionally first: `run.py:432` re-runs this function when the
+    # artifacts were what failed, and a stale block from a superseded draft would unlist a pack
+    # whose replacement is clean.
+    tags = cand.tags if isinstance(getattr(cand, "tags", None), dict) else None
+    if tags is not None:
+        tags.pop(UNVERIFIED_CLAIMS_TAG, None)
+
     if claim_check_on:
-        logger.info(
-            "artifact claim-check: %s of %s prose artifacts carry unverified statements",
-            len(unverified), len(evidence_budget.PROSE_TYPES),
+        blocks = bool(unverified) and claim_check_blocks_listing(cfg)
+        if unverified and tags is not None:
+            tags[UNVERIFIED_CLAIMS_TAG] = {
+                # Keyed by artifact so the operator sees WHICH document to repair, with the
+                # checker's own rows underneath it — not a count.
+                "artifacts": {t: unverified[t] for t in sorted(unverified)},
+                "count": sum(len(v) for v in unverified.values()),
+                "blocks_listing": blocks,
+            }
+        (logger.error if blocks else logger.info)(
+            "artifact claim-check: %s of %s prose artifacts carry unverified statements "
+            "(blocks_listing=%s)",
+            len(unverified), len(evidence_budget.PROSE_TYPES), blocks,
             extra={"unverified_artifacts": sorted(unverified),
                    "unverified_n": sum(len(v) for v in unverified.values()),
+                   "blocks_listing": blocks,
                    "candidate_id": getattr(cand, "candidate_id", "")})
 
     # Register F1/F2 — the deterministic, zero-LLM data files (scorecard, financial model
