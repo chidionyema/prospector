@@ -160,7 +160,7 @@ def _resolve_live_path(checks: tuple[str, ...]) -> dict[str, str]:
     reason for the live path's first proof of existence to be a billed run. This is the same
     principle as `--preflight` itself, applied to the wiring rather than to the arms.
     """
-    from prospector.operator import MOAT_PRIMARY, is_provisional_provider, make_operator
+    from prospector.operator import is_provisional_provider, make_operator, moat_primary
     from prospector.retrieval import make_provider
     from prospector.verify import gen_queries_batched, run_check  # noqa: F401 - existence check
 
@@ -182,7 +182,7 @@ def _resolve_live_path(checks: tuple[str, ...]) -> dict[str, str]:
     if provisional:
         raise SystemExit(
             f"REFUSING: cfg.operator {ruling} includes provisional provider(s) {provisional}; "
-            f"only {sorted(MOAT_PRIMARY)} may rule a verdict, so an E1 delta measured here "
+            f"only {sorted(moat_primary())} may rule a verdict, so an E1 delta measured here "
             "would describe the fallback tail, not the moat.")
 
     op = make_operator(cfg)

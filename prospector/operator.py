@@ -37,6 +37,30 @@ class ParseError(Exception):
 _RE_THINK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 
+def _loads(candidate: str) -> Any:
+    """`json.loads` with `strict=False` — the ONLY loader this module may use.
+
+    `strict=True` (the default) rejects a literal newline or tab INSIDE a string with
+    `Invalid control character`.  Models write multi-sentence rationales and put real line
+    breaks in them; the JSON spec says escape them, and a model that doesn't is not
+    thereby saying nothing.  `strict=False` accepts the control character and returns the
+    string intact.
+
+    MEASURED 2026-08-15, and it is the reason this exists.  A minimax verdict of the form
+
+        {"verdict":"supported","confidence":0.8,"rationale":"…statutory.<LF>…28-day
+        timetable.","citations":["a1b2c3d4e5f6a7b8"]}
+
+    failed every strategy below on that one newline.  It did not fail loudly: Strategy 2
+    scans for `[`…`]` BEFORE `{`…`}`, so it found the citations array, parsed it happily,
+    and `_extract_json` returned `['a1b2c3d4e5f6a7b8']` — a list where the caller expects
+    the verdict dict.  The check came out `unverifiable, conf 0.0, rationale ""`, and the
+    golden gate then recorded that the BRAIN had answered without a reason.  It had not.
+    It answered in full and we threw the answer away, then blamed it for the silence.
+    """
+    return json.loads(candidate, strict=False)
+
+
 def _extract_json(text: str) -> Any:
     """Multi-strategy JSON extraction from verbose model output."""
     from .telemetry import logger
@@ -46,19 +70,28 @@ def _extract_json(text: str) -> Any:
     # Strip markdown code fences
     t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.MULTILINE).strip()
     try:
-        return json.loads(t)
+        return _loads(t)
     except json.JSONDecodeError:
         pass
 
     # Strategy 2: Find the largest possible range between braces/brackets
     # This works if the model outputs one main JSON block with noise around it.
-    for start_char, end_char in [("[", "]"), ("{", "}")]:
+    #
+    # ORDER IS OUTERMOST-FIRST, not `[` before `{`. The fixed order was a silent
+    # mis-extraction whenever an object failed to parse but contained an array: the
+    # citations list of a verdict, the `queries` list of a query-gen reply. It returned a
+    # LIST where every caller expects a dict, so the failure surfaced far away as a
+    # missing field rather than here as a parse error. Whichever delimiter opens first in
+    # the text is the outer structure, and that is the one the model meant to return.
+    _pairs = [("[", "]"), ("{", "}")]
+    _pairs.sort(key=lambda p: (text.find(p[0]) if text.find(p[0]) != -1 else len(text) + 1))
+    for start_char, end_char in _pairs:
         start = text.find(start_char)
         end = text.rfind(end_char)
         if start != -1 and end != -1 and end > start:
             candidate = text[start:end+1]
             try:
-                data = json.loads(candidate)
+                data = _loads(candidate)
                 logger.info(f"JSON Strategy 2 success: found {len(candidate)} chars from {start} to {end}")
                 return data
             except json.JSONDecodeError:
@@ -87,7 +120,7 @@ def _extract_json(text: str) -> Any:
                     if depth == 0:
                         candidate = text[start:i + 1]
                         try:
-                            data = json.loads(candidate)
+                            data = _loads(candidate)
                             logger.info(f"JSON Strategy 3 success: found {len(candidate)} balanced chars starting at {start}")
                             return data
                         except json.JSONDecodeError as e:
@@ -114,7 +147,7 @@ def _extract_json(text: str) -> Any:
     for source in (t, text):
         for candidate in _tail_json_candidates(source):
             try:
-                data = json.loads(candidate)
+                data = _loads(candidate)
                 logger.info(
                     f"JSON Strategy 4 success: {len(candidate)} chars taken from the tail of "
                     f"{len(source)}")
@@ -302,9 +335,14 @@ class GeminiOperator(Operator):
                 return list(embeddings[0].values)
             return []
         except Exception as e:
+            # PROPAGATE. `[]` is what line 336 returns on the success path when the response
+            # carries no values, so a failed embedding call and an empty one were the same
+            # bytes — and an empty embedding is not a vector, it is the absence of one.
+            # Downstream (dedup, prescreen_prefilter) a zero-length vector silently scores
+            # every comparison the same way, which reads as "nothing is a duplicate".
             from .telemetry import logger
-            logger.warning(f"Gemini embedding failed: {e}")
-            return []
+            logger.error(f"Gemini embedding failed: {e}")
+            raise
 
 
 def _urlopen_read_bounded(req, *, timeout: float, total_deadline: float) -> bytes:
@@ -1196,14 +1234,88 @@ class MockOperator(Operator):
 # The same historical-dossier note as cursor_cli applies: `is_provisional_provider` is only ever
 # called on the name of the brain that just served a LIVE call, never on a stored dossier field,
 # so removing `claude` cannot retroactively flip a past PASS.
-MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli"})
+# CONFIG-DECLARED 2026-08-15. This was a bare module constant with no config key, which made it
+# the ONLY tier knob in the engine that needed a source edit and a daemon re-exec to move, while
+# `operator:`, `noncritical_operator:`, `artifact_operator:` and `marketing_operator:` beside it
+# were all config lines — a direct breach of this repo's own constraint ("Deterministic on config.
+# Swapping operators requires no code change, only config.yaml"). It cost throughput, not just
+# tidiness: with the trusted set welded to claude_cli, MiniMax's concurrency was unusable no
+# matter how wide the chain ran, because everything it ruled was stamped `provisional` and could
+# never publish. Promotion is now a config line + the golden gate, not a patch.
+# The name is `MOAT_PRIMARY_DEFAULT`, not `MOAT_PRIMARY`: a stale `from ... import MOAT_PRIMARY`
+# must fail at import rather than silently read a set the config has since overridden.
+MOAT_PRIMARY_DEFAULT: frozenset[str] = frozenset({"claude_cli"})
+
+# Tier names `_build_operator` can actually construct. A `moat_primary` naming anything else is a
+# typo, and a typo here fails SILENTLY in the worst direction: every ruling would be stamped
+# provisional, nothing would publish, and the engine would look merely unproductive. Same doctrine
+# as the removed-operator ValueErrors below — fail loudly at declaration time.
+_BUILDABLE_TIERS: frozenset[str] = frozenset(
+    {"claude_cli", "minimax", "deepseek", "ollama", "mock"})
+
+MOAT_PRIMARY_ENV = "PROSPECTOR_MOAT_PRIMARY"
+
+# Process override, installed by `config.load_config`. `is_provisional_provider(name)` is called
+# with a bare brain name from ~10 sites that hold no Config, so the effective set has to be
+# process state; `load_config` writes it on EVERY load (absent key => back to the default), so it
+# is idempotent and one config can never poison the next.
+_MOAT_PRIMARY: frozenset[str] | None = None
+_MOAT_PRIMARY_LOCK = threading.Lock()
+
+
+def _coerce_moat_primary(names, *, source: str) -> frozenset[str]:
+    """Validate a declared trusted set. Raises ValueError on empty or unbuildable names."""
+    if isinstance(names, str):
+        names = [n for n in re.split(r"[,\s]+", names) if n]
+    resolved = frozenset(str(n).strip() for n in (names or []) if str(n).strip())
+    if not resolved:
+        raise ValueError(
+            f"{source} declares an EMPTY trusted verdict set. Every ruling would be stamped "
+            "`provisional`, nothing would ever publish on PASS, and the engine would look "
+            "unproductive rather than misconfigured. Name at least one tier.")
+    unknown = sorted(resolved - _BUILDABLE_TIERS)
+    if unknown:
+        raise ValueError(
+            f"{source} names unbuildable operator tier(s) {unknown}; expected a subset of "
+            f"{sorted(_BUILDABLE_TIERS)}. A name that no tier ever serves would stamp every "
+            "ruling `provisional` without ever saying why.")
+    return resolved
+
+
+def moat_primary() -> frozenset[str]:
+    """The TRUSTED moat brains, as currently declared. THE reader of the trust fence.
+
+    Precedence: `PROSPECTOR_MOAT_PRIMARY` (comma/space separated, ops override, matches
+    `PROSPECTOR_VET_WORKERS`) > `config.yaml moat_primary:` > `MOAT_PRIMARY_DEFAULT`.
+    """
+    env = os.environ.get(MOAT_PRIMARY_ENV, "").strip()
+    if env:
+        return _coerce_moat_primary(env, source=f"${MOAT_PRIMARY_ENV}")
+    with _MOAT_PRIMARY_LOCK:
+        current = _MOAT_PRIMARY
+    return current if current is not None else MOAT_PRIMARY_DEFAULT
+
+
+def set_moat_primary(names) -> frozenset[str]:
+    """Install the process-wide trusted set (called by `config.load_config`).
+
+    Falsy `names` RESETS to `MOAT_PRIMARY_DEFAULT` rather than leaving the previous load's
+    value in place: a config with no `moat_primary:` key must mean the default, in every
+    process, whatever was loaded before it.
+    """
+    global _MOAT_PRIMARY
+    resolved = (_coerce_moat_primary(names, source="config.yaml `moat_primary:`")
+                if names else None)
+    with _MOAT_PRIMARY_LOCK:
+        _MOAT_PRIMARY = resolved
+    return resolved if resolved is not None else MOAT_PRIMARY_DEFAULT
 
 
 def is_provisional_provider(name: str) -> bool:
     """True if a ruling served by brain `name` must be treated as provisional (a cheap
     fallback brain, not a trusted moat primary). An empty/unknown name is conservatively
     treated as trusted=False -> provisional, so we never silently finalise an unknown."""
-    return name not in MOAT_PRIMARY
+    return name not in moat_primary()
 
 
 class FallbackOperator(Operator):

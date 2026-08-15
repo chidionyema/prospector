@@ -50,14 +50,38 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [claude_cli, standardcompute, minimax]
-# standardcompute inserted ahead of minimax 2026-08-08 (founder directive: "fall back for claude
-# ahead of minimax"). It is a TAIL, not a head — claude_cli still leads, per the standing rule that
-# the chain must stay led by a trusted brain. It is NOT in MOAT_PRIMARY (`prospector/operator.py`), so a
-# ruling it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto
-# re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
-# To promote it to trusted-final, the gate is the one named below:
-#   python -m prospector.golden --operator standardcompute --fixtures fixtures/golden_fixtures.json --runs 3
+operator: [claude_cli, minimax]
+#
+# WHICH of those tiers may rule FINALLY. Anything on `operator:` but NOT here is stamped
+# `provisional` when it rules: it keeps throughput up during a moat outage, but never publishes on
+# PASS and is auto re-vetted. Blank/absent => operator.MOAT_PRIMARY_DEFAULT (`claude_cli`), the
+# single definition of the default. `PROSPECTOR_MOAT_PRIMARY=minimax` overrides for one process
+# without touching this file (an experiment, not a promotion).
+#
+# CONFIG-DECLARED 2026-08-15. It was a hardcoded frozenset in operator.py with no config key —
+# the only tier knob in the engine that needed a source edit and a daemon re-exec to move, while
+# `operator:` / `noncritical_operator:` / `artifact_operator:` / `marketing_operator:` were all
+# config lines. That is what made MiniMax's throughput unusable at any concurrency: widening the
+# cheap chain cannot help while everything it rules is unpublishable by construction.
+#
+# CHANGING THIS LINE DECIDES WHAT MAY BE SOLD. The gate for adding a cheap brain is the PROMOTION
+# GATE above (specs/offline-moat-validation.md), measured on the current parser — not a judgement
+# that it "looked good in a run".
+moat_primary: [claude_cli]
+# standardcompute REMOVED from this chain 2026-08-15 (founder directive), along with its adapter.
+# It sat between claude_cli and minimax from 2026-08-08 ("fall back for claude ahead of minimax"),
+# but STANDARDCOMPUTE_API_KEY is unset here and the free trial is spent — the tier answered live
+# calls with an out-of-allowance upsell body instead of a completion, so it was a guaranteed
+# failure paid before every fall-through rather than a failover. `_build_operator` now raises an
+# explicit ValueError on the name; a stale plist or config fails at startup instead of quietly
+# building a shorter chain. The paid Anthropic API tier `claude` went the same day, for the same
+# reason (no ANTHROPIC_API_KEY) — `claude_cli`, the SUBSCRIPTION CLI, is a different tier and is
+# untouched, and it is now the ONLY name in MOAT_PRIMARY.
+#
+# minimax remains the guardrailed emergency tail: NOT in MOAT_PRIMARY, so a ruling it serves is
+# stamped `provisional`, never publishes on PASS (run.py:528) and is auto re-vetted. That fence is
+# what makes a cheap tail safe. To promote a cheap brain to trusted-final, the gate is the one
+# named above (specs/offline-moat-validation.md).
 #
 # The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
 # its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
@@ -65,7 +89,8 @@ operator: [claude_cli, standardcompute, minimax]
 # in `run.py` as a module constant until 2026-08-10, which made the one knob whose entire subject
 # is "what does the ancillary work cost" the only one that needed a source edit and a daemon
 # re-exec to move, while every throughput knob beside it was a config line. Its head changed
-# three times in two weeks (deepseek → claude_cli → standardcompute), each time by editing code
+# three times in two weeks (deepseek → claude_cli → standardcompute, all three since removed
+# from it), each time by editing code
 # to express a billing fact. Blank/absent => the historical default, byte for byte.
 # 2026-08-14 — claude_cli REMOVED, not demoted (founder: "we are over using claude cli and we
 # have Minimax, claude should never be used for non-critical"). This line had it at the HEAD as
@@ -74,13 +99,16 @@ operator: [claude_cli, standardcompute, minimax]
 # that never rules a verdict. `prospector/run.py::_noncritical_order` also STRIPS claude_cli when
 # it builds the chain, so editing this line back cannot quietly reinstate it.
 #
-# minimax heads it because standardcompute is out of allowance on disk right now —
-# store/provider_health_noncritical.json: strikes 6, last_error "You've used up your free trial".
-# standardcompute stays as the failover tier: a chain of one is not a chain, and it is the
-# cheapest tier again the day the account is funded.
+# 2026-08-15 — standardcompute REMOVED too (founder directive), so this chain is minimax alone.
+# It had been kept as the failover tier on the reasoning that "a chain of one is not a chain", but
+# the tier was measurably out of allowance the whole time it sat here
+# (store/provider_health_noncritical.json: strikes 4, last_error "You've used up your free trial"),
+# so the chain was already one deep in practice and the second name only bought a guaranteed
+# failed call. A name that cannot serve is not depth. If a real second cheap tier is funded, add
+# it here — the key is config-driven precisely so that costs a config line, not a deploy.
 # NOTE: the moat (`operator:`) and the pack prose (`artifact_operator:`) are UNCHANGED — this
 # directive is about ancillary work, and the £49 deliverable is not ancillary.
-noncritical_operator: [minimax, standardcompute]
+noncritical_operator: [minimax]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -133,15 +161,13 @@ marketing_operator: [minimax, claude_cli]
 # Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:
 # are empty or unset for a given provider context.
 model_defaults:
-  claude:       "claude-sonnet-4-5"     # ClaudeOperator default
+  # `claude` (the paid Anthropic API tier) removed 2026-08-15 with its adapter — see
+  # prospector/operator.py. `claude_cli` takes no model pin from here.
   deepseek:     "deepseek-v4-pro"       # DeepSeekOperator default
   minimax:      "MiniMax-M3"           # MiniMaxOperator (full reasoning)
   minimax_fast: "MiniMax-M3"           # MiniMaxOperator (fast — also M3 per standing order)
   ollama:       "qwen2.5-coder:7b"     # OllamaOperator default
-  # StandardCompute (api.stdcmpt.com) — OpenAI-compatible, key in .env as
-  # STANDARDCOMPUTE_API_KEY, base URL overridable via STANDARDCOMPUTE_BASE_URL.
-  # Wire format verified live 2026-08-08: /v1/chat/completions 200, /v1/messages 404.
-  standardcompute: "standardcompute"    # StandardComputeOperator default
+  # `standardcompute` removed 2026-08-15 with its adapter — see prospector/operator.py.
   search:
     deepseek:    "deepseek-v4-flash"
     minimax:     "MiniMax-M3"
@@ -1460,27 +1486,73 @@ listing:
     # storefront events (D2) exist to produce. They are pinned here so the ladder is
     # deterministic and so moving one is a visible, reviewable act.
     # Charm pricing was introduced 2026-08-09 (founder: "round figure is not right, we should
-    # have pence, cents also") and REVERSED 2026-08-14 (founder: ".00 everywhere", "not
-    # realistic at all"). Every rung ends in a flat pound again: £19 / £29 / £49 / £79 / £99 /
-    # £149 / £199. The rung POSITIONS are unchanged — default_rung_index, tier_rung_index and
-    # market_rung_offset below all index into this same 7-element array — so only the numbers
-    # moved, not the ladder shape, and no pack changes tier as a result of this edit.
+    # have pence, cents also"). On 2026-08-14 it was briefly flattened to £19/£29/£49/… on a
+    # MISREADING of the founder's ".00 everywhere" as an instruction; it was the complaint, not
+    # the request — "round figures make no sense" (2026-08-15). Restored to the 2026-08-09
+    # ladder. The rung POSITIONS never moved — default_rung_index, tier_rung_index and
+    # market_rung_offset all index into this same 7-element array — so no pack changed tier
+    # through either edit.
+    #
+    # The cosmetic argument is settled and it was never the real objection. The founder's
+    # standing complaint is that this array is "silly, predictable and unscientific", and a
+    # trailing 99p does not answer that: seven numbers typed by hand are a guess whichever
+    # digit they end on. Measured 2026-08-14, the evidence that would answer it exists and is
+    # not wired in — 16 of 24 recently-vetted ideas carry CITED willingness-to-pay anchors, and
+    # where they do the median job the buyer already pays for is £170, which makes the £199
+    # rung cost more than the problem it solves. `comparables.rung_adjust_enabled` (false) is
+    # the switch that would let that evidence move a rung. That is the fix; this line is not.
     #
     # Note what this edit does NOT do. It governs the price a pack is assigned at listing
     # time; it does not touch a pack already on the shelf, because a catalogue row and its
     # provider Price object are minted together by one PriceDecision (bridge.py) and rewriting
     # either one alone charges a buyer an amount the fulfilment fence then rejects. Bringing
     # the live shelf onto this ladder is a separate, deliberate repricing operation.
-    rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
+    # Ceiling: £99.99 (founder, 2026-08-15 — "i dont think we should have inventory over
+    # 99.99"). The £149.99 and £199.99 rungs are GONE, not merely unused, so nothing can
+    # route back onto them. This shortens the array from 7 to 5, and every index below is
+    # an index into THIS array — see `tier_rung_index.venture`, which was 5 and had to move
+    # rather than be silently clamped by `pricing.py:176`.
+    rungs: [1999, 2999, 4999, 7999, 9999]
+
+    # ---- L2 DEPTH BANDS (2026-08-15) — which rung, and why a buyer can tell ----
+    # Lower edges, in CITED SOURCES, of rungs 2..5. A pack citing >= 25 sources lists at
+    # rung 2, >= 30 at rung 3, and so on; below 25 it sits on rung 1. Exactly
+    # len(rungs) - 1 strictly-increasing integers, or `pricing.py::_usable_bands` refuses
+    # them LOUDLY and the tier ladder takes over (it never silently half-applies).
+    #
+    # This replaces ambition_tier as the rung selector wherever the caller knows the count
+    # (the publish path always does; `verify._check_question` does not and still gets the
+    # tier ladder). The founder's constraint is the whole reason: "a user should be able to
+    # intuit why one pack is priced more or less than another." `ambition_tier` cannot
+    # satisfy it — it is not rendered anywhere a buyer can see. `sourceCount` is on every
+    # catalogue row already.
+    #
+    # MEASURED 2026-08-15 against the live shelf (59 rows, GET api.mumchimp.com/catalog),
+    # which is what makes these numbers a finding rather than seven more hand-typed ones:
+    #   * price ran BACKWARDS against sourceCount — £29.99 mean 36.5 sources, £49.99 mean
+    #     31.0, £149.99 mean 28.6. The dearest tier carried the FEWEST sources.
+    #   * 18 of 58 adjacent pairs, sorted by source count, had the dearer pack citing less.
+    #     Under these bands that count is 0, by construction, not by luck.
+    #   * distribution: min 17, p20 26, median 33, p80 42, max 51.
+    # The edges are the population quintiles (26/31/35/42) ROUNDED to multiples of 5, so
+    # the rule stays sayable out loud — "every five sources of extra depth moves a band" —
+    # while each rung still holds roughly a fifth of the shelf (9/11/15/15/9 packs).
+    #
+    # What this does NOT do: it prices what a pack is LISTED at from here on. It does not
+    # touch a live row — `bridge._resolve_money_rail` keeps a pack that is already on sale
+    # on the exact price it sells at, because the catalogue row and the Stripe Price object
+    # are minted together. Bringing the shelf onto these bands is a separate, deliberate
+    # repricing, and it is worth -£330 across the 59 live packs at today's counts.
+    source_count_bands: [25, 30, 35, 45]
 
     # A human-readable label for the ladder below, recorded on every D3 rationale record
     # (prospector/price_rationale.py). It is a LABEL, not the truth: a stale label that
     # nobody bumped after editing `rungs` would misattribute a price. The record also
     # carries the rung numbers themselves plus a `fingerprint` digest over them, and the
     # fingerprint is what proves which ladder actually ran.
-    ladder_version: L1-ladder-2026-08-14-flat
+    ladder_version: L1-ladder-2026-08-09-charm
 
-    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4900: an
+    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4999: an
     # unclassified pack is one we know nothing about, and guessing at its price is
     # strictly worse than holding the price the whole catalogue already sells at.
     default_rung_index: 2
@@ -1489,11 +1561,15 @@ listing:
     # proxy we have for the buyer's own scale — a side_hustle pack is bought by an
     # individual, a venture pack by someone raising against it. side_hustle sits at
     # 2900 because config already calls it "the £30-pack lane" (see lanes.side_hustle).
+    # venture moved 5 -> 4 when the ladder was capped at £99.99. `pricing.py:176/:178` clamps
+    # with min(last_idx, …), so leaving it at 5 would have produced the right price by accident
+    # while the config still claimed a rung that no longer exists — and the `us` offset below
+    # would have been silently swallowed by the same clamp. Stated, not clamped.
     tier_rung_index:
-      side_hustle: 1             # 2900
-      smb: 2                     # 4900
-      growth: 3                  # 7900
-      venture: 5                 # 14900
+      side_hustle: 1             # 2999
+      smb: 2                     # 4999
+      growth: 3                  # 7999
+      venture: 4                 # 9999 — the ceiling
 
     # `market` is the jurisdiction the OPPORTUNITY lives in, not the buyer's locale —
     # packs sell in GBP wherever they sell (models.py Candidate.market). A US-market

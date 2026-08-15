@@ -244,12 +244,10 @@ class ModelDefaults:
     """
     # Operator defaults (one per provider kind, plus a `_fast` split for the
     # cheap/structured variant where it exists).
-    claude: str = "claude-opus-4-8"
     deepseek: str = "deepseek-chat"
     minimax: str = "MiniMax-M3"        # full reasoning model
     minimax_fast: str = "MiniMax-M3"  # also M3 per standing order
     ollama: str = "qwen2.5-coder:7b"
-    standardcompute: str = "standardcompute"
     # Search provider defaults (the LLM that decomposes queries for the
     # function-calling search providers). One per search provider.
     search: dict[str, str] = field(default_factory=lambda: {
@@ -275,22 +273,17 @@ class Pricing:
     `telemetry.PRICING` are the defaults; `config.yaml`'s `pricing` block
     overrides them.
     """
-    claude: PriceTier = field(default_factory=lambda: PriceTier(3.00, 15.00))
     deepseek: PriceTier = field(default_factory=lambda: PriceTier(0.27, 1.10))
     minimax: PriceTier = field(default_factory=lambda: PriceTier(0.30, 0.30))
     ollama: PriceTier = field(default_factory=lambda: PriceTier(0.00, 0.00))
     mock: PriceTier = field(default_factory=lambda: PriceTier(0.00, 0.00))
 
-    # Deliberately `None`, not PriceTier(0, 0). StandardCompute publishes no
-    # machine-readable rates: /v1/pricing, /v1/usage, /v1/billing and
-    # /v1/models/standardcompute all 404 (probed 2026-08-08), and /v1/models
-    # returns only {"id": "StandardCompute"}. A 0/0 default would satisfy
-    # `getattr(cfg.pricing, provider)` in telemetry.get_price and SILENCE the
-    # "not in cfg.pricing; returning $0" warning — converting a loud unknown
-    # into a confident zero, which is exactly how spend.daily_cap_usd ends up
-    # governing a fiction. None keeps the warning firing until real rates are
-    # entered under a top-level `pricing:` block in config.yaml.
-    standardcompute: PriceTier | None = None
+    # `claude` (the paid Anthropic API tier) and `standardcompute` were removed 2026-08-15
+    # with their adapters. The rule their absence encoded stays live in `telemetry.get_price`:
+    # a provider missing from `cfg.pricing` returns $0 WITH a warning, never a silent zero,
+    # because a confident zero is exactly how spend.daily_cap_usd ends up governing a fiction.
+    # Any new metered provider gets a real rate under a top-level `pricing:` block in
+    # config.yaml, not a 0/0 default here.
 
 
 @dataclass
@@ -544,11 +537,22 @@ class Config:
     # whole purpose is "what does the ancillary work cost" could only be moved by editing
     # source and re-execing the daemon, while every throughput knob beside it was a config
     # line. Empty => the historical default below, byte for byte.
-    # claude_cli removed 2026-08-14 (founder: "claude should never be used for non-critical").
+    # claude_cli removed 2026-08-14 (founder: "claude should never be used for non-critical");
+    # standardcompute removed 2026-08-15 with its adapter, leaving minimax alone.
     # Must stay equal to run.py::_NONCRITICAL_ORDER — test_noncritical_operator_config.py pins
     # the two together, and caught this default drifting when the constant moved.
     noncritical_operator: "str | list[str]" = field(
-        default_factory=lambda: ["minimax", "standardcompute"])
+        default_factory=lambda: ["minimax"])
+    # The TRUSTED verdict set: which tiers on `operator:` may rule FINALLY. Anything outside it
+    # that rules is stamped `provisional` (`operator.is_provisional_provider`), never publishes on
+    # PASS, and is auto re-vetted. EMPTY => `operator.MOAT_PRIMARY_DEFAULT`, the single definition
+    # of the default — deliberately NOT restated here, because `noncritical_operator` above proves
+    # what a default restated in four places does (it drifted, and the dataclass silently outvoted
+    # the config every time the key was absent). `load_config` installs it process-wide via
+    # `operator.set_moat_primary`; `PROSPECTOR_MOAT_PRIMARY` overrides both.
+    # Promoting a cheap brain into this set is a PROMOTION GATE, not a preference: run
+    # `python -m prospector.golden` on it first (specs/offline-moat-validation.md).
+    moat_primary: list[str] = field(default_factory=list)
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
     admissibility: Admissibility = field(default_factory=Admissibility)
@@ -866,12 +870,10 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
     # (nested under `search:`). The shape mirrors ModelDefaults exactly.
     search = raw_md.get("search") or {}
     return ModelDefaults(
-        claude=raw_md.get("claude", "claude-opus-4-8"),
         deepseek=raw_md.get("deepseek", "deepseek-chat"),
         minimax=raw_md.get("minimax", "MiniMax-M3"),
         minimax_fast=raw_md.get("minimax_fast", ModelDefaults.minimax_fast),
         ollama=raw_md.get("ollama", "qwen2.5-coder:7b"),
-        standardcompute=raw_md.get("standardcompute", "standardcompute"),
         search=search,
     )
 
@@ -891,17 +893,13 @@ def _parse_pricing(raw_pr: dict | None) -> Pricing:
             output=float(d.get("output", default.output)),
         )
     return Pricing(
-        claude=_tier(raw_pr.get("claude"), Pricing().claude),
         deepseek=_tier(raw_pr.get("deepseek"), Pricing().deepseek),
         minimax=_tier(raw_pr.get("minimax"), Pricing().minimax),
         ollama=_tier(raw_pr.get("ollama"), Pricing().ollama),
         mock=_tier(raw_pr.get("mock"), Pricing().mock),
-        # `None` when unset, NOT a 0/0 tier — see the Pricing.standardcompute comment.
-        # A 0/0 default here would satisfy the getattr in telemetry.get_price and mute
-        # the unpriced-provider warning, which is the only thing currently telling the
-        # operator that standardcompute spend is missing from the daily cap.
-        standardcompute=(_tier(raw_pr.get("standardcompute"), PriceTier(0.0, 0.0))
-                         if raw_pr.get("standardcompute") else None),
+        # `claude` and `standardcompute` keys are no longer parsed — both tiers were removed
+        # 2026-08-15 with their adapters. A `pricing:` block in config.yaml naming either is
+        # inert, not an error; the operator itself fails loudly at `_build_operator`.
     )
 
 
@@ -1012,6 +1010,15 @@ def _validate_weights(raw_weights: dict | None) -> dict[str, float]:
     return {k: float(v) for k, v in raw_weights.items()}
 
 
+def _as_list(raw) -> list[str]:
+    """`a` / `[a, b]` / `a, b` / absent -> a list of non-empty names."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [n.strip() for n in raw.replace(",", " ").split() if n.strip()]
+    return [str(n).strip() for n in raw if str(n).strip()]
+
+
 def load_config(path: str | Path | None = None) -> Config:
     p = Path(path) if path else REPO_ROOT / "config.yaml"
     raw = yaml.safe_load(p.read_text()) if p.exists() else {}
@@ -1026,7 +1033,10 @@ def load_config(path: str | Path | None = None) -> Config:
         # _NONCRITICAL_ORDER, config.yaml, here). claude_cli removed 2026-08-14 — a default
         # is a decision, and this one silently outvoted the config every time the key was absent.
         noncritical_operator=(raw.get("noncritical_operator")
-                              or ["minimax", "standardcompute"]),
+                              or ["minimax"]),
+        # No `or [<default>]`: an absent key stays EMPTY and `set_moat_primary` below resolves
+        # it to operator.MOAT_PRIMARY_DEFAULT, so the trusted set has exactly one definition.
+        moat_primary=_as_list(raw.get("moat_primary")),
         retrieval=_validate_retrieval(raw.get("retrieval")),
         thresholds=Thresholds(**(raw.get("thresholds") or {})),
         admissibility=_validate_admissibility(raw.get("admissibility")),
@@ -1109,4 +1119,11 @@ def load_config(path: str | Path | None = None) -> Config:
         cfg = cfg.for_profile(cfg.active_profile)
     if cfg.active_persona:
         cfg = cfg.for_persona(cfg.active_persona)
+    # Install the trust fence process-wide. `is_provisional_provider(name)` is called with a bare
+    # brain name from sites that hold no Config, so this is the only place the config CAN reach
+    # it. Written on every load, including when the key is absent (=> reset to the default), so
+    # one process loading a fixture config cannot poison the next load. Invalid values raise here
+    # — at startup, loudly — rather than silently stamping every ruling `provisional`.
+    from prospector.operator import set_moat_primary
+    set_moat_primary(cfg.moat_primary)
     return cfg

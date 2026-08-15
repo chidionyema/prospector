@@ -173,8 +173,8 @@ def test_success_clears_the_mark_and_the_strikes(tmp_path):
 # ---------------------------------------------------------------- cursor_cli is gone
 
 def test_cursor_cli_is_not_a_moat_brain():
-    from prospector.operator import MOAT_PRIMARY, is_provisional_provider
-    assert "cursor_cli" not in MOAT_PRIMARY
+    from prospector.operator import is_provisional_provider, moat_primary
+    assert "cursor_cli" not in moat_primary()
     assert is_provisional_provider("cursor_cli")
 
 
@@ -229,11 +229,11 @@ def test_the_verdict_chain_is_led_by_a_trusted_brain():
     reached only on failover — never as the normal case.
     """
     from prospector.config import load_config
-    from prospector.operator import MOAT_PRIMARY
+    from prospector.operator import moat_primary
     ops = load_config().operator
     ops = [ops] if isinstance(ops, str) else list(ops)
     assert ops, "verdict chain must not be empty"
-    assert ops[0] in MOAT_PRIMARY, (
+    assert ops[0] in moat_primary(), (
         f"the verdict chain is led by {ops[0]!r}, which cannot rule finally; every normal "
         "verdict would be provisional and the catalogue would stop publishing entirely")
 
@@ -245,11 +245,12 @@ def test_every_untrusted_tier_on_the_verdict_chain_is_fenced():
     the two below pin the rest.
     """
     from prospector.config import load_config
-    from prospector.operator import MOAT_PRIMARY, is_provisional_provider
+    from prospector.operator import is_provisional_provider, moat_primary
     ops = load_config().operator
     ops = [ops] if isinstance(ops, str) else list(ops)
+    trusted = moat_primary()
     for name in ops[1:]:
-        if name not in MOAT_PRIMARY:
+        if name not in trusted:
             assert is_provisional_provider(name), (
                 f"{name!r} sits on the verdict chain and is NOT stamped provisional — it would "
                 "rule as trusted-final and its PASSes would publish")

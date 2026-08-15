@@ -88,9 +88,27 @@ class ProviderHealth:
         try:
             return json.loads(self._path.read_text())
         except (FileNotFoundError, ValueError):
+            # Expected and benign: no file yet (first run), or a torn write mid-flight. `{}`
+            # is the honest answer — we hold no dead marks — and the caller re-probing a
+            # live provider costs one call.
             return {}
-        except Exception as e:  # corrupt/unreadable -> treat as no knowledge, never crash a run
-            logger.warning(f"provider_health unreadable, ignoring: {e}", extra={"path": str(self._path)})
+        except OSError as e:
+            # NARROWED from `except Exception` and RAISED from warning to error, 2026-08-15.
+            #
+            # `{}` here means "no provider is dead", so every exhausted brain is treated as
+            # live and re-probed on every call. That is the safe DIRECTION to fail — the
+            # alternative, inventing dead marks, would bench working brains — but it is not
+            # a harmless one: this file is what stops the daemon hammering a brain that has
+            # spent its allowance, and losing it is invisible from the outside. It has to be
+            # loud, and ERROR is the level the alerting reads.
+            #
+            # The breadth mattered more than the level. `except Exception` also caught our
+            # own bugs — a `TypeError` from changing `self._path` to a str, an
+            # `AttributeError` after a refactor — and every one of them would have presented
+            # as "no dead marks", which is a plausible, common, entirely unremarkable state.
+            # The health rail would have been silently off and nothing would have looked wrong.
+            logger.error(f"provider_health unreadable, proceeding with NO dead marks: {e}",
+                         extra={"path": str(self._path), "error": str(e)})
             return {}
 
     def _save(self, data: dict) -> None:
@@ -262,10 +280,11 @@ def get_noncritical_health() -> ProviderHealth:
 
 def moat_brains(cfg) -> list[str]:
     """The trusted verdict brains on this config's chain, in order."""
-    from prospector.operator import MOAT_PRIMARY
+    from prospector.operator import moat_primary
+    trusted = moat_primary()
     ops = getattr(cfg, "operator", None) or []
     ops = [ops] if isinstance(ops, str) else list(ops)
-    return [str(o) for o in ops if str(o) in MOAT_PRIMARY]
+    return [str(o) for o in ops if str(o) in trusted]
 
 
 def verdict_brains(cfg) -> list[str]:

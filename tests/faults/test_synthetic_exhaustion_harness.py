@@ -33,7 +33,7 @@ import pytest
 
 import prospector.health as H
 from prospector.errors import PERMANENT, TRANSIENT, ProviderExhaustedError, classify_exhaustion
-from prospector.operator import MOAT_PRIMARY, FallbackOperator, Operator
+from prospector.operator import FallbackOperator, Operator, is_provisional_provider, moat_primary
 from prospector.scheduler import run_scheduled as rs
 from prospector.scheduler.alerts import CRITICAL, alerts_for_tick, emit_alert
 
@@ -144,14 +144,25 @@ class _RaisesValueError(Operator):
 def test_failover_serves_from_the_live_brain_and_marks_only_the_dead_one(label, text, kind,
                                                                         window_s):
     dead = _Exhausted("claude_cli", text)
-    alive = _Alive("claude")
-    chain = FallbackOperator([("claude_cli", dead), ("claude", alive)])
+    alive = _Alive("minimax")
+    chain = FallbackOperator([("claude_cli", dead), ("minimax", alive)])
 
     assert chain._raw("sys", "user", 0.0) == "ok"
-    assert chain.last_served() == "claude"
-    assert chain.served_is_provisional() is False, "'claude' is a MOAT_PRIMARY brain"
+    assert chain.last_served() == "minimax"
+    # STALE UNTIL 2026-08-15, and failing all 10 parametrised cases the whole time: the alive
+    # tier here was `claude`, asserted trusted with `is False`. `claude` (the PAID Anthropic API
+    # tier) left the trusted set when its adapter was deleted. It went unseen because
+    # `tests/faults` sits outside the suite command this repo actually runs.
+    #
+    # It is NOT restated as `is True` on minimax. This test is about FAILOVER — the chain serves
+    # from the live brain and benches only the dead one — and which brains are trusted is a
+    # config decision (`config.yaml moat_primary:`) that must be free to change without editing
+    # a fault test. Hardcoding either answer here re-welds the thing that key exists to unweld.
+    # The fence itself is pinned once, against the declaration, in
+    # tests/unit/test_moat_primary_is_config_declared.py.
+    assert chain.served_is_provisional() is is_provisional_provider("minimax")
     assert H.get_health().dead_until("claude_cli") is not None
-    assert H.get_health().dead_until("claude") is None, "a live brain must never be benched"
+    assert H.get_health().dead_until("minimax") is None, "a live brain must never be benched"
 
 
 def test_every_brain_exhausted_raises_so_the_caller_defers():
@@ -207,7 +218,7 @@ def test_moat_blind_check_does_not_spend_the_half_open_probe(tmp_path):
 def test_a_non_moat_brain_going_dead_never_blinds_the_moat(tmp_path):
     """The founder fence: a non-critical brain (minimax) is outside MOAT_PRIMARY, so its
     exhaustion must not be able to stop a tick."""
-    assert "minimax" not in MOAT_PRIMARY
+    assert "minimax" not in moat_primary()
     cfg = _cfg(tmp_path, operators=("claude_cli", "minimax"))
     chain = FallbackOperator([("minimax", _Exhausted("minimax", "HTTP 402 Payment Required")),
                               ("claude_cli", _Alive("claude_cli"))])
