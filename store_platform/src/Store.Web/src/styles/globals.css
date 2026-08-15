@@ -394,7 +394,26 @@ h1, h2, h3 {
 
 /* Structural Spacing: Fluid whitespace */
 section {
-  scroll-margin-top: 4rem;
+  scroll-margin-top: 5.5rem;
+}
+
+/*
+  ANY jump target clears the sticky header, not just a `<section>`.
+
+  The header is `sticky top-0` and `h-20` (5rem), shrinking to `h-16` (4rem) once the page has
+  scrolled (`MarketingLayout`). The old rule here was `4rem` on `section` alone, and both halves
+  of that were wrong. 4rem equals the SCROLLED header exactly, so a jump landed the heading's top
+  edge flush against the header's bottom edge -- touching it, with no air, which reads as clipped
+  even when the text is technically visible. And the rule only covered `<section>`, so every
+  target that is an `<h2 id>`, an `<h3 id>` or a `<div id>` -- which is most of them on /sample,
+  /pricing and the legal pages -- got NO clearance at all and went straight under the header.
+
+  5.5rem is the tall header (5rem) plus 0.5rem of air, so it clears the header in BOTH states
+  rather than being tuned to whichever one happens to be showing at the moment of the jump.
+  Components that already opt into more (`scroll-mt-24` = 6rem) still win: this is a floor.
+*/
+[id] {
+  scroll-margin-top: 5.5rem;
 }
 
 /*

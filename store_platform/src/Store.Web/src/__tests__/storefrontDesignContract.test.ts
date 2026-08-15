@@ -65,12 +65,28 @@ describe('Design contract — global tokens (globals.css)', () => {
     assertContains('border', css, /--border:\s*#E4E4E7/i);
   });
 
-  it('defines primary and primary-hover', () => {
-    // Brand v3: --primary is INK. v2 pinned the vermillion #FF5A1F here, and a saturated
-    // orange fill on every CTA is the single loudest thing the founder rejected. The buy
-    // button is now the darkest element on the page, which is what makes it the only one.
-    assertContains('primary', css, /--primary:\s*#171717/i);
-    assertContains('primary-hover', css, /--primary-hover:\s*#2E2E33/i);
+  it('defines primary as the one action colour', () => {
+    // The third value this has held, and the reason for each is worth keeping.
+    //
+    // v2 pinned the vermillion #FF5A1F -- a saturated orange fill on every CTA, the single
+    // loudest thing the founder rejected. v3 moved it to ink #171717, on the argument that the
+    // darkest element on the page is the only one. That was true right up until a SECOND fill
+    // appeared: the buy button took the azure money colour while every other button stayed ink,
+    // so the page had two primary colours and neither one meant anything.
+    //
+    // 2026-08-15 (founder directive, "give blue one job"): there is one action colour, it is the
+    // ink-navy --action, and --primary POINTS AT IT rather than holding its own value. The
+    // indirection is the contract -- it is what makes "no two primary fills" a property of the
+    // token file instead of a thing twelve components have to agree about.
+    assertContains('primary', css, /--primary:\s*var\(--action\)/i);
+    assertContains('primary-hover', css, /--primary-hover:\s*var\(--action-hover\)/i);
+    assertContains('action', css, /--action:\s*#1B3F8B/i);
+    assertContains('action-hover', css, /--action-hover:\s*#143069/i);
+
+    // The money colour is GONE, not merely unused. In Tailwind v4 an unmapped colour utility
+    // emits no rule at all, so a surviving `--azure` mapping is how a half-finished repaint
+    // renders colourless instead of failing the build.
+    expect(css, 'the second primary fill (--azure) must be gone').not.toMatch(/--azure(-hover)?:/);
   });
 
   it('defines the semantic success pair used by the evidence surfaces', () => {
@@ -418,7 +434,8 @@ describe('Design contract — primary CTAs', () => {
     // The money control specifically. If this ever goes back to a literal class string, the day
     // `SIZES.lg` changes every CTA on the site follows it except the one that takes the payment.
     // Loosened 2026-08-15: it pinned the ARGUMENTS (`{ size: 'lg' }`) when the contract is the
-    // CALL. The buy button moved to `variant: 'buy'` (the azure money colour, tokens.css), which
+    // CALL. The buy button moved to `variant: 'primary'` (2026-08-15: the `buy` variant is gone,
+    // because `--primary` now IS the action navy and two primary fills was the bug), which
     // is the shape being sourced from Button.tsx exactly as this test demands -- yet the old
     // regex failed it. A test that fails on a change it was not written to catch teaches people
     // to edit the test, which is how the real contract gets deleted by hand one day. `size: 'lg'`
@@ -429,19 +446,27 @@ describe('Design contract — primary CTAs', () => {
     );
   });
 
-  it('every price on the site is the money colour', () => {
+  it('no price is painted the action colour', () => {
     /*
-     * FOUND BY THE FOUNDER, 2026-08-15, on the live landing page: "why the inconsistency in price
-     * colour, some have azure and the later ones don't". The shelf renders THREE card variants
-     * (row, lead, mid) and each has its own `<PriceText>` call. Azure was applied to one of them,
-     * because the search that located "the price" answered with a single line and I treated one
-     * answer as the whole population. The page then read as a half-finished repaint, which is
-     * worse than the ink it replaced -- inconsistent emphasis tells a reader the difference means
-     * something when it means nothing.
+     * THIS TEST WAS INVERTED ON 2026-08-15, on the founder's directive, and the history matters
+     * because the old version was RIGHT about the mechanism and WRONG about the rule.
      *
-     * So the rule is enforced over the TREE, not per file: `--azure` has exactly two sanctioned
-     * consumers (the price and the buy button, tokens.css), and "the price" means all of them.
-     * A fourth card variant added tomorrow fails here rather than shipping grey.
+     * It used to require `text-azure` on every `<PriceText>`. That came from a real defect the
+     * founder found the same week -- "why the inconsistency in price colour, some have azure and
+     * the later ones don't" -- where a repaint reached one of three shelf card variants and the
+     * page read as half-finished. The fix for THAT was enforcing the rule over the TREE rather
+     * than per file, and that part is kept below verbatim in spirit.
+     *
+     * But painting every price blue cured the inconsistency by spreading the deeper bug: blue on
+     * this site means "do something", and it filled the buy button. A price that is not a control
+     * wore the colour of a control, so a reader tapped 49.99 and nothing happened. Blue now has
+     * exactly one job, prices are ink, and a price is told apart from a button by WEIGHT and SIZE.
+     *
+     * So the tree-wide scan stays and its polarity flips: no `<PriceText>` may carry the action
+     * colour, under any of its names. The positive half of the contract -- that a price IS
+     * distinguished -- cannot be asserted at a call site any more, because it moved INTO the
+     * component; the second expectation below pins it there, which is the only place it can now
+     * be got wrong.
      */
     /*
      * Comments are BLANKED before the scan, not merely skipped. The first cut of this test read
@@ -460,15 +485,27 @@ describe('Design contract — primary CTAs', () => {
       blankComments(file.src)
         .split('\n')
         .forEach((line, i) => {
-          if (/<PriceText\b/.test(line) && !line.includes('text-azure')) {
+          if (/<PriceText\b/.test(line) && /\btext-(azure|action|primary)\b/.test(line)) {
             offenders.push(`${file.path}:${i + 1}  ${line.trim().slice(0, 100)}`);
           }
         });
     }
     expect(
       offenders,
-      `every <PriceText> must carry text-azure:\n${offenders.join('\n')}`,
+      `a price is not a control -- drop the action colour from these <PriceText> call sites:\n${offenders.join('\n')}`,
     ).toEqual([]);
+
+    // And the treatment that REPLACED the colour lives in the component, so a call site cannot
+    // forget it. `text-azure` was a class five call sites had to remember; ink + weight is one
+    // string in one file. If this ever moves back out to the call sites, the scan above stops
+    // being sufficient and this failure says so.
+    const money = readSource('../components/ui/Money.tsx');
+    expect(money, 'PriceText must bake in the ink colour and the weight').toMatch(
+      /font-semibold[^'"`]*text-text|text-text[^'"`]*font-semibold/,
+    );
+    expect(money, 'the currency symbol steps back to 0.8em -- size, not hue').toContain(
+      'text-[0.8em]',
+    );
   });
 
   it('nowhere in the tree declares the filter-chip SHAPE except Button.tsx', () => {
