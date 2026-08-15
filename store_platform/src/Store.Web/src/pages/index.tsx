@@ -964,6 +964,19 @@ function SectorChips({
          "there is more this way". `sm:` and up the chips wrap and there is nothing to fade. */
       className={cx(
         '-mx-4 mb-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0',
+        /* SCROLL-SNAP, below `sm` only (founder review, 2026-08-15). Measured on the live rail at
+           390: `scroll-snap-type: none` on the scroller and `scroll-snap-align: none` on all
+           eleven chips, so no scroll position was ever visually resolved -- the row came to rest
+           wherever momentum left it, which is how a reader ends up looking at "…efits claims" on
+           the left and half a chip on the right. The mask above was doing the whole job of
+           explaining that state, and a fade can only say "there is more"; it cannot stop a
+           resting position from slicing two labels at once.
+
+           `scroll-px-4` matches the `px-4` gutter this scroller already carries, so a snapped
+           chip lands ON the gutter rather than flush against the clipped edge -- without it
+           `snap-start` would align each chip to the padding box and undo the inset. `sm:snap-none`
+           because from `sm` up the chips wrap and there is nothing to scroll. */
+        'snap-x snap-mandatory scroll-px-4 sm:snap-none sm:scroll-px-0',
         '[mask-image:linear-gradient(to_right,transparent_0,black_1rem,black_calc(100%-2.5rem),transparent_100%)]',
         'sm:[mask-image:none]',
       )}
@@ -975,7 +988,7 @@ function SectorChips({
           onClick={() => onChange({ ...state, sector: null })}
           className={chipClasses({
             selected: state.sector === null,
-            className: 'gap-1.5 whitespace-nowrap',
+            className: 'snap-start gap-1.5 whitespace-nowrap',
           })}
         >
           All packs
@@ -991,12 +1004,24 @@ function SectorChips({
               type="button"
               aria-pressed={active}
               onClick={() => onChange({ ...state, sector: active ? null : (cat.key as Sector) })}
-              className={chipClasses({ selected: active, className: 'gap-1.5 whitespace-nowrap' })}
+              className={chipClasses({ selected: active, className: 'snap-start gap-1.5 whitespace-nowrap' })}
             >
-              {/* The hue is the card's hue, so the chip and the pill on the card it filters to are
-                  visibly the same object. On the selected (ink-filled) chip the sector ink would
-                  fail contrast, so the glyph inherits the fill's own text colour instead. */}
-              <Icon name={cat.icon} size={12} className={active ? undefined : cat.ink} />
+              {/* THE GLYPH IS NEUTRAL (founder review, 2026-08-15). It used to take `cat.ink`, on
+                  the argument recorded here before -- "the hue is the card's hue, so the chip and
+                  the pill on the card it filters to are visibly the same object". That argument
+                  is sound and the rail is where it stopped paying: eleven chips in one scrolling
+                  line put every sector hue on screen at once, so instead of one chip matching one
+                  card, the reader gets the entire category scale as a stripe of unexplained
+                  colour. Measured on the live rail: mustard rgb(122,74,11) beside magenta
+                  rgb(157,23,77) beside violet rgb(109,40,217) -- the founder read it as
+                  off-palette, and as the per-category colouring that was deliberately taken OFF
+                  the catalogue cards coming back in through the filter bar.
+
+                  The hue still lives on the card's own sector tag, where there is exactly one of
+                  it and a label beside it. Here the glyph is a wayfinding mark, not a claim about
+                  which sector this is -- the text next to it says that -- so it takes the same
+                  `--subtle` as the count on its other side. */}
+              <Icon name={cat.icon} size={12} className={active ? undefined : 'text-subtle'} />
               {cat.label}
               <span className={cx('font-mono text-caption', active ? 'text-white/70' : 'text-subtle')}>
                 {counts[cat.key]}
@@ -1155,6 +1180,10 @@ function CatalogBrowser({
      `shelfControls`. */
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const shelfControlsRef = React.useRef<HTMLDivElement>(null);
+  /* Where the shelf STOPS. `FilterFab` needs both edges of the region it filters, not just the
+     top one -- see the `pastEnd` observer in FacetBar.tsx for why one edge left the trigger
+     floating over the specimen at the bottom of this page. */
+  const shelfEndRef = React.useRef<HTMLDivElement>(null);
 
   /* Measured height of the inline StepFlow block, kept live while it's mounted so the spacer
      below can stand in for it. WHY THIS EXISTS: opening the sheet unmounts that block (see the
@@ -1296,7 +1325,25 @@ function CatalogBrowser({
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
-      <h3 className="mb-3 text-body font-semibold text-text">Narrow it down</h3>
+      <h3 className="text-body font-semibold text-text">Narrow it down</h3>
+
+      {/* THE THREE CONTROLS ARE ONE FILTER (founder review, 2026-08-15).
+          A search field, a sector rail and a three-question router stack vertically in this block
+          with nothing saying how they relate, so they read as three competing filters and the
+          reader has to guess which one is THE one -- or fears that using the second undoes the
+          first. They do not compete: all three write to the same `DiscoveryState` through the
+          same `apply`, and `filterPacks` ANDs every field, so they compose.
+
+          That is a fact about the code, and one sentence is enough to state it. I am deliberately
+          NOT collapsing three mechanisms into two here: each answers a different question a
+          reader actually arrives with (I know the words / I know the sector / I know only my own
+          situation), and deleting one is a product decision about which of those readers we stop
+          serving -- the founder's call to make, not a defect for me to patch out silently. The
+          defect named in the review is the missing relationship, and this is that. */}
+      <p className="mb-4 max-w-prose text-meta text-muted">
+        Three ways in, one list. Search the words, pick a sector, or answer the questions: they
+        stack, and the count updates as you go.
+      </p>
 
       {/* Toolbar: search, count, sort. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1883,6 +1930,12 @@ function CatalogBrowser({
             <DiscoveryWaitlist query={state.q} onReset={() => apply(EMPTY_DISCOVERY_STATE)} />
           )}
 
+      {/* The end of the shelf, as a measurable thing. All three branches above are shelf, and
+          everything below this line is the marketing tail -- so this is the last point at which
+          "narrow it down" is an offer about what the reader is looking at. Zero-height and
+          aria-hidden: it is a coordinate, not content. */}
+      <div ref={shelfEndRef} aria-hidden="true" />
+
       <CommandPalette
         packs={packs}
         open={open}
@@ -1895,6 +1948,7 @@ function CatalogBrowser({
           the palette keeps every page-level overlay in one place. */}
       <FilterFab
         anchorRef={shelfControlsRef}
+        endRef={shelfEndRef}
         state={state}
         open={filtersOpen}
         onOpen={() => setFiltersOpen(true)}
