@@ -1368,26 +1368,68 @@ Two things this answer *does* pin down, both worth stating because they are easy
 - **Below the threshold is a fact about turnover, not a permanent state.** The trigger is a rolling
   12-month total, so the review point is revenue, not the calendar. §18.5 is the checklist.
 
-### 18.5 Before any of this changes — the pre-conditions
+### 18.5 The live Stripe Tax state — measured, not assumed
 
-Do not treat "add a registration" as a one-line change. Each of these must be true *before* a
-registration is added to Stripe or a country is added to `SellableCountries`:
+Read from the live account on 2026-08-15 (`GET /v1/tax/settings` and `GET /v1/tax/registrations`,
+read-only, nothing created):
 
-1. **Declare whether shelf prices are gross or net.** Nothing in the code says. `PriceCreateOptions`
-   (`StripeProvider.cs:291-297`) sets `UnitAmount` and `Currency` and **no `TaxBehavior`** — there
-   is no `TaxBehavior` anywhere in `store_platform/src` (`rg -nw 'TaxBehavior|tax_behavior'` → no
-   matches). So the moment a registration exists, `£49.99` becomes ambiguous: charged as-is with VAT
-   carved out of it, or £49.99 + 20% at checkout. That is a **£10 swing on a live price**, and
-   `price-change-breaks-fulfilment` is already a known failure mode in this estate.
-2. **Re-check that checkout still builds a session.** `AutomaticTax.Enabled` is on today
-   (`StripeProvider.cs:439-442`) and the storefront has taken **zero sales, ever** (§1.4) — so the
-   combination of automatic tax with tax-behaviour-unspecified prices has never been exercised
-   against real Stripe. Prove it with one test-mode session before it matters, not after.
-3. **No VAT copy exists on the storefront.** `rg -rni -w 'VAT|inclusive'` over the web source
-   returns nothing, so a registration also creates a copy task (§9), not just a config change.
+| Field | Live value | What it means |
+|---|---|---|
+| `status` | **`active`** | Stripe Tax is switched on and functional in live mode. |
+| `head_office.address` | London, **GB** | The precondition `automatic_tax` needs. Present. |
+| `defaults.tax_behavior` | **`inferred_by_currency`** | See below — this silently answers the gross-or-net question. |
+| `defaults.tax_code` | `txcd_10000000` | Stripe's general-goods default. |
+| registrations | **0** | No jurisdiction is registered, so no tax is collected anywhere. |
 
-None of the three blocks anything today, precisely because there is no registration. They are listed
-so that the day one is added, this is a checklist rather than an incident.
+**Live checkout is not broken by any of this.** With Stripe Tax active and zero registrations, the
+calculation returns zero: *"tax isn't collected on a transaction in some situations, and the
+resulting tax amount is zero… **Not registered**: You must register before collecting tax in a
+jurisdiction"* ([docs.stripe.com/tax/zero-tax](https://docs.stripe.com/tax/zero-tax)). That is the
+correct behaviour for an unregistered seller and matches §18.4 exactly.
+
+**Two things this measurement found that were not otherwise visible:**
+
+**(a) The shelf is already priced VAT-INCLUSIVE, by a dashboard default, not by anything in this
+repo.** No price sets `TaxBehavior` — `PriceCreateOptions` (`StripeProvider.cs:291-297`) sets only
+`UnitAmount` and `Currency`, and `rg -nw 'TaxBehavior|tax_behavior' store_platform/src` returns
+nothing. Stripe therefore falls back to the account default, which is `inferred_by_currency`:
+*"Stripe excludes tax from prices in USD and CAD, but includes it in prices for all other
+currencies"* ([docs.stripe.com/tax/set-up](https://docs.stripe.com/tax/set-up)). **GBP is
+inclusive.** So the answer is settled and it is the buyer-friendly one — but it lives in a web form,
+where flipping one toggle re-prices all 61 packs with no diff, no review and no receipt.
+
+The consequence is worth stating in money, because it is a **revenue** event and not a price event.
+On the day a UK VAT registration is added:
+
+| | Before registration | After |
+|---|---|---|
+| Buyer pays for a £49.99 pack | £49.99 | **£49.99 — unchanged** |
+| We keep | £49.99 | **£41.66** (£49.99 ÷ 1.2) |
+| VAT to HMRC | £0 | £8.33 |
+
+**A UK VAT registration is a 16.7% revenue cut, not a price rise.** That is the right trade — it
+protects the shelf's stated prices and `price-change-breaks-fulfilment` — but it must be a decision,
+not a discovery. **Action, cheap and worth doing now:** set `TaxBehavior = Inclusive` explicitly in
+`PriceCreateOptions` so the answer is in version control instead of a dashboard.
+
+**(b) Test mode is misconfigured and will fail any money-path harness.** The same read against the
+test account returns `status: pending`, `head_office: null`, `missing_fields: ["head_office"]`, and a
+test-mode session with `automatic_tax[enabled]=true` **fails outright**:
+
+> `invalid_request_error` — *"You must have a valid head office address to enable automatic tax
+> calculation in test mode."*
+
+Reproduced 2026-08-15 against `sk_test_`. Live is unaffected. But this means **every test-mode
+checkout with the shipped default is a hard failure**, so WS01-style proof harnesses and any
+subscription webhook fixtures recorded from a real test-mode session cannot be created until the
+test-mode head office is filled in. **This blocks P3's definition of done** (§17.8 requires
+webhook-replay tests against recorded fixtures). Fixing it is a one-field dashboard edit at
+`dashboard.stripe.com/test/settings/tax`.
+
+**(c) No VAT copy exists on the storefront.** `rg -rni -w 'VAT|inclusive'` over the web source
+returns nothing. Prices are inclusive but never say so, which is a §9 copy task the day a
+registration exists — and arguably one worth doing before, since "price includes VAT" is a trust
+signal even at £0 VAT.
 
 ### 18.6 If the answer later becomes "we don't want to own VAT ops"
 
