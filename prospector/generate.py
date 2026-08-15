@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from .config import Config
 from .coverage import plan_cells
-from .critique import critique_revise
+from .critique import _axes_brief, critique_revise
 from .errors import ProviderExhaustedError
 from .landscape import incumbent_brief
 from .models import Candidate
@@ -178,6 +178,52 @@ _AUDIENCE_DESCRIPTIONS: dict[str, str] = {
     "ecommerce_seller":
         "an online-store operator (Shopify, Amazon, eBay) who pays for anything that raises conversion, cuts fulfilment or returns cost, or defends against platform policy shifts",
 }
+
+
+def _scoring_directive(cfg: Any) -> str:
+    """The rubric the ideas will be SCORED against, rendered from the scorer's own weights.
+
+    MEASURED BASIS, 331 scored dossiers since 2026-08-01 (`store/dossiers/*.json`):
+    `build_feasibility` is the HIGHEST axis at 3.14/5, while `money_provability` sits at 1.65
+    and `defensibility` at 1.69 — together 45% of the composite weight — and 270 of those 331
+    died on `min_composite`. The ideas are buildable and unfundable.
+
+    The cause was structural, not stylistic. `prompts/score.md` names all six axes;
+    `prompts/generate.md` names ZERO of them, and `prompts/generate_system.md` never says
+    "money_provability" or "willing to pay" anywhere in 161 lines. Generation was being graded
+    on a rubric it had never been shown. That is the same defect `config.yaml:1169` already
+    records for the refine prompt.
+
+    It reuses `critique._axes_brief` rather than restating the axes, so the generator, the
+    critic and the scorer all read one source (`cfg.weights`). A local copy would have kept
+    generation tuned to the old formula through a re-weighting, silently — exactly the failure
+    that function's own docstring exists to prevent.
+
+    This is a QUALITY demand, not a survival one (founder rule
+    `feedback-generation-quality-not-kill-rate`): it asks each idea to NAME the budget line and
+    the accumulating asset. It cannot manufacture a pass, because every one of those claims
+    still has to survive the moat's cited-evidence gates — an idea that names a budget line
+    which does not exist dies there instead of here.
+    """
+    brief = _axes_brief(cfg)
+    if not brief:  # a Config with no weights renders nothing, so the prompt stays as it was
+        return ""
+    return (
+        "HOW THESE IDEAS WILL BE SCORED. A composite below the pass bar kills an idea however "
+        "well it is written, so this is part of the brief, not feedback.\n"
+        f"{brief}\n\n"
+        "Two of these are where this engine's ideas actually die. Answer them INSIDE the idea, "
+        "not in the pitch:\n"
+        "- money_provability: name the specific budget line the buyer ALREADY pays from today "
+        "(the incumbent invoice, agency retainer, salary, fine, or licence fee this displaces). "
+        "\"They would pay for this\" is not an answer. \"They currently pay X for Y\" is.\n"
+        "- defensibility: name what ACCUMULATES here that a competent copy starting tomorrow "
+        "would not have (proprietary data, a registration, an exclusive supply relationship, "
+        "switching costs already paid).\n"
+        "An idea that cannot name both is a weaker idea, not a worse-worded one. Do not assert "
+        "either: a downstream gate checks both against cited evidence, so an invented budget "
+        "line is caught rather than rewarded."
+    )
 
 
 def plan_wave(remaining: int, n_axis: int, n_lenses: int, max_per_call: int,
@@ -504,8 +550,16 @@ def generate(
             cfg, signal_text=signal_text, sector=sector, market=run_market,
             audience=audience)
         # Order matters: the landscape is context the model should read before it is told HOW
-        # to sample, so it lands first.
-        for _extra in (landscape_directive, sampling_directive):
+        # to sample, so it lands first. The scoring rubric lands LAST, as the quality bar the
+        # finished ideas must clear — see `_scoring_directive` for why it exists at all.
+        #
+        # Appended to the RENDERED prompt rather than added as a {placeholder} in
+        # prompts/generate.md, for the reason documented above at the G2/G4 block: render()
+        # ships an unsubstituted token to the model VERBATIM, and two call sites render
+        # "generate" without passing it (run.py:2039, tests/unit/test_moat_discipline.py:44).
+        # Appending in Python is golden-safe by construction — the helper returns "" when
+        # `cfg.weights` is empty, and an empty suffix leaves the prompt byte-identical.
+        for _extra in (landscape_directive, sampling_directive, _scoring_directive(cfg)):
             if _extra:
                 user = f"{user}\n\n{_extra}"
         # gen_op is the non-critical generation chain (claude_cli primary → minimax tail); falls

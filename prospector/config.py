@@ -251,6 +251,10 @@ class ModelDefaults:
     deepseek: str = "deepseek-chat"
     minimax: str = "MiniMax-M3"        # full reasoning model
     minimax_fast: str = "MiniMax-M3"  # also M3 per standing order
+    # The SECOND non-critical tier. Its whole value is being a DIFFERENT model, so an M3
+    # stall does not imply this one is stalling too; it is NOT faster (measured 2026-08-15:
+    # M3 8.1s vs M2.7 29.5s on a generation prompt) and must never lead a chain.
+    minimax_m27: str = "MiniMax-M2.7"
     ollama: str = "qwen2.5-coder:7b"
     # Search provider defaults (the LLM that decomposes queries for the
     # function-calling search providers). One per search provider.
@@ -884,6 +888,7 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
         deepseek=raw_md.get("deepseek", "deepseek-chat"),
         minimax=raw_md.get("minimax", "MiniMax-M3"),
         minimax_fast=raw_md.get("minimax_fast", ModelDefaults.minimax_fast),
+        minimax_m27=raw_md.get("minimax_m27", ModelDefaults.minimax_m27),
         ollama=raw_md.get("ollama", "qwen2.5-coder:7b"),
         search=search,
     )
