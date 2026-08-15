@@ -1303,7 +1303,21 @@ function CatalogBrowser({
         <div className="w-full sm:w-64">
           <SearchTrigger onOpen={() => setOpen(true)} triggerRef={triggerRef} />
         </div>
-        <div className="flex items-center gap-4">
+        {/* Wraps on a phone, and that is a bug fix rather than a tidy-up.
+
+            2026-08-15, measured on the live shelf at 320/360/390: this row put a
+            `whitespace-nowrap` caption 295px wide next to a fixed `w-40` control with a 16px
+            gap -- 471px of content in at most 342px of usable width -- inside an ancestor that
+            clips on the x axis. So the sort control was laid out at x=335 and simply cut: at
+            390px it read "Newes", and at 320px it began past the right edge and was invisible
+            and untappable. Nothing scrolled and nothing overflowed the document, because the
+            clip swallowed it, which is why five viewports' worth of `scrollWidth == innerWidth`
+            checks all passed while the control was unreachable on every phone.
+
+            `flex-wrap` plus a caption that only refuses to break from `sm` up is the whole fix:
+            the dropdown drops to its own line under the count on a phone and the desktop row is
+            byte-identical. */}
+        <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 sm:w-auto sm:flex-nowrap">
           {/* Count and freshness in one mono caption -- both are quantities, and this is the only
               place either is stated on the shelf now.
 
@@ -1320,13 +1334,13 @@ function CatalogBrowser({
               `visible.length === packs.length` is a label branch and nothing else -- `visible` is
               `filterPacks(packs, state)` re-sorted, so the two are equal exactly when no filter is
               narrowing anything. */}
-          <span className="whitespace-nowrap font-mono text-caption text-subtle">
+          <span className="font-mono text-caption text-subtle sm:whitespace-nowrap">
             {visible.length === packs.length
               ? `${packs.length} packs in the catalogue`
               : `${visible.length} of ${packs.length} packs match`}
             {lastVerified && ` · updated ${lastVerified.replace(/^Verified /, '')}`}
           </span>
-          <div className="w-40">
+          <div className="w-40 shrink-0">
             <Dropdown<SortKey> label="Sort packs" value={sort} options={SORTS} onChange={setSort} />
           </div>
         </div>
