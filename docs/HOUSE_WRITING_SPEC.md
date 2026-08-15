@@ -400,28 +400,86 @@ buyer.** Everything else is aspiration. Rows are filled from measurement, never 
 `enforced by` column carries a `file:line`, and `mode` is BLOCK (a violation stops a render, a
 publish or a commit) or ADVISORY (it is recorded and shipped anyway).
 
+There are two enforcement lanes and they share one set of rule ids:
+
+* **The pack lane** (Python). `pack_linter.lint_pack:1494` composes every check; its report is
+  ANDed into `is_listed` at `bridge.py:1094`, so ADVISORY there means "recorded in
+  `<id>.lint.json` and shipped", and BLOCK means the pack does not list.
+* **The storefront lane** (Vale). `.vale.ini` + `styles/Mumchimp/*.yml`, over `.md`, `.tsx` and
+  `.ts` — the files a human edits. Vale cannot reach a pack: a pack is assembled in memory and
+  zipped, and materialising it to shell out would put `/usr/local/bin/vale` on the daemon's
+  critical path, which launchd's PATH does not carry.
+
+`corpus violations` is measured over 2,187 dossiers / 41,168 sentences / 1.16M words of engine
+prose on 2026-08-15. It is the reason every actuator is off: a ceiling set at today's numbers
+does not improve the writing, it empties the catalogue.
+
 | rule | enforced by | runs where | mode | corpus violations | measured |
 |---|---|---|---|---|---|
-| R1 sentence length | | | | | |
-| R2 semicolons / clauses | | | | | |
-| R3 one claim per sentence | | | | | |
-| R4 four-item lists | | | | | |
-| R5 figure without source | | | | | |
-| R6 vague quantity | | | | | |
-| R7 passive / nominalisation | | | | | |
-| R8 sentence opens on a relative pronoun | | | | | |
-| R9 banned register | | | | | |
-| R10 prediction as fact | | | | | |
-| R11 one-liner printed once | | | | | |
-| Q1 quote is a complete unit | | | | | |
-| Q2 no spliced fragments | | | | | |
-| Q3 no page furniture | | | | | |
-| Q4 attribution format | | | | | |
-| Q5 absent quote is stated | | | | | |
+| R1 sentence length | `register_lint.check_register:445` (25 words) + `house_style:226` reports the spec's 28 | pack lane; `styles/Mumchimp/SentenceLength.yml` on `.md` only | ADVISORY — `listing.max_long_sentence_rate: 0.0` | **43.9%** over 28 words; mean sentence 28.2 words | 2026-08-15 |
+| R2 semicolons / clauses | `register_lint.check_register:445` (clause load) + `styles/Mumchimp/Semicolon.yml` | pack lane; Vale on `.md` (disabled on `.tsx`/`.ts` — a statement terminator is not a semicolon in claim text) | ADVISORY — `listing.max_clause_load_rate: 0.0` | **10.4%** carry a semicolon | 2026-08-15 |
+| R3 one claim per sentence | **nothing** | — | — | not measurable without a claim parser | — |
+| R4 four-item lists | `house_style._LIST_RE:63` | pack lane | ADVISORY — `listing.max_four_item_list_rate: 0.0` | **13.8%** | 2026-08-15 |
+| R5 figure without source | `house_style._FIGURE_RE:74` / `_SOURCE_RE` | pack lane | ADVISORY — `listing.max_unsourced_figure_rate: 0.0` | 17 on the live `/sample` fixture | 2026-08-15 |
+| R6 vague quantity | `house_style._VAGUE_RE:117` + `styles/Mumchimp/VagueQuantity.yml` | pack lane; Vale on `.md`/`.tsx`/`.ts` | ADVISORY (warning; no rate actuator) | **1.4%** | 2026-08-15 |
+| R7 passive / nominalisation | **nothing** | — | — | not measured — needs a POS tagger, and this repo has no NLP dependency | — |
+| R8 sentence opens on a relative pronoun | `house_style._ORPHAN_OPEN_RE:133` + `styles/Mumchimp/OrphanClause.yml`; caused at the renderer by `pack_floors._ORPHAN_THAT` | pack lane; Vale on `.md` | ADVISORY (warning) | **2.4%** | 2026-08-15 |
+| R9 banned register | `register_lint.BANNED_SPEC` via `check_register:445` + `styles/Mumchimp/Register.yml` | pack lane; Vale on `.md`/`.tsx`/`.ts` | ADVISORY — `listing.house_spec_block_register: false` | **4.1%** (compounds ×354, increasingly ×238, wedge ×218, moat ×208, at scale ×91, ecosystem ×81) | 2026-08-15 |
+| R10 prediction as fact | `house_style._PREDICTION_RE:149` | pack lane | ADVISORY — `listing.house_spec_block_predictions: false` | **0.1%** | 2026-08-15 |
+| R11 one-liner printed once | `pack_linter.check_repetition:1546` (any repeated sentence, not only the one-liner); `tools/build_sample_fixture.py` drops the repeat on the sample | pack lane | ADVISORY — `listing.lint_repetition_block: false` | 33 repeats on pack e698149e137fc164 before the renderer fix, 0 blocking / 12 warnings after | 2026-08-15 |
+| Q1 quote is a complete unit | `house_style._quote_problem:209` (≥8 words, does not open mid-clause) | pack lane | ADVISORY — `listing.house_spec_block_quotes: false` | **unmeasured on the corpus.** `checks[].citations` holds hex passage ids, not quote text, so the corpus cannot answer this — the run that appeared to say "100% of quotes under 8 words" was counting id strings and is not a finding | — |
+| Q2 no spliced fragments | `house_style._SPLICE_GLUED` / `_SPLICE_ELLIPSIS:209` | pack lane | ADVISORY — same actuator as Q1 | as Q1 | — |
+| Q3 no page furniture | `house_style._FURNITURE_RE:162` | pack lane | ADVISORY — same actuator as Q1 | 1 on the live `/sample` fixture (`Pros & Cons.Payapps is…`) | 2026-08-15 |
+| Q4 attribution format | **nothing** | — | — | — | — |
+| Q5 absent quote is stated | `pack_floors` prints "What we could not settle" carrying what was found | render only, not gated | ADVISORY | — | 2026-08-15 |
+
+### Two open conflicts, both the founder's to settle
+
+1. **R9's word list.** The spec bans `moat`, `wedge`, `leverage`, `ecosystem` and `compounds`.
+   `register_lint.py:65-67` deliberately keeps `foster`, `leverage`, `bespoke` and `ecosystem`
+   OUT, on a stated bar: foster care, financial leverage, bespoke tailoring and a supplier
+   ecosystem are real subjects a pack may be about on a storefront that sells every sector.
+   `moat`, `wedge` and `compounds` are the engine's own house vocabulary and are the top three
+   hits in the corpus. Adopting the spec's list verbatim means accepting that a pack about
+   financial leverage cannot say so.
+2. **R1's ceiling.** The spec says 28 words. `register_lint.LONG_SENTENCE_WORDS` is 25 and is the
+   number wired to an actuator. Two limits, one rule; the report currently prints the rate at
+   both, and only the 25 can block.
 
 ## Adoption log
 
 Newest first. Each entry names the commit and the receipt.
+
+### 2026-08-15 — the spec reaches the publish gate
+
+`prospector/house_style.py` (new) implements the eight rules Part Six lists as beyond Vale's
+reach: R4, R5, R6, R8, R10, Q1, Q2, Q3. `pack_linter.lint_pack:1602-1607` now calls it and
+`register_lint.check_register` on the assembled read, and `bridge.py:1172` binds every actuator
+to a `config.yaml listing:` key.
+
+Two things this fixed that were not style problems:
+
+* **`check_register` had ZERO callers.** 67 banned phrases, three rate actuators, a full test
+  suite, and nothing in the engine had ever called it — so it blocked nothing and, worse,
+  measured nothing, which is why no one could say what threshold to set. Verified with `rg`
+  before the change: only its own definition, seven test lines and two comments.
+* **A citation link is DELETED before a sentence exists.** `register_lint.sentences` runs
+  `_normalise`, which substitutes every URL with a space (`register_lint.py:261`) so a link
+  cannot inflate a word count. R5 asks whether a figure names its source, so it would have
+  read every properly-cited sentence as uncited. Caught by
+  `test_a_figure_with_a_link_in_the_sentence_passes`, which failed against a regex matching
+  text the check never receives. URLs are now substituted with a word before splitting.
+
+**Everything is ADVISORY.** See the ledger for why: 43.9% of engine sentences break R1 today, so
+a ceiling switched on now unlists the catalogue rather than improving it. Each pack's
+`house_spec` numbers land in `<id>.lint.json` from this commit forward, which is what earns a
+threshold later. The prose fix is upstream — the rules belong in the generator prompt (Part
+Five, Stage 2), which this commit does NOT do.
+
+Receipts: `tests/unit/test_house_style.py` 39 passed, `tests/unit/test_q2_pack_linter.py` 43
+passed. Measured against the shipped `/sample` fixture, the checks fire on the prose live on the
+page right now: 1 R10 (`Late copiers cannot catch up because the data compounds with every
+contract`), 1 R8, 12 R4, 17 R5.
 
 ### 2026-08-15 — spec written down; first six defects fixed at the renderer
 

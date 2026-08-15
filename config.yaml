@@ -1503,6 +1503,42 @@ listing:
   # motivated it. Unlisting a paid pack over a repeated sentence is an expensive way to discover
   # the threshold was wrong.
   lint_repetition_block: false
+  # HOUSE WRITING SPEC (docs/HOUSE_WRITING_SPEC.md, enforced by prospector/register_lint.py
+  # and prospector/house_style.py, both wired into pack_linter.lint_pack on 2026-08-15).
+  #
+  # Every knob here is 0.0 or false, and every one of them is MEASURED anyway: the report
+  # writes a `house_spec` block into <id>.lint.json on every pack, pass or fail. That is
+  # deliberate, and it is the lesson of `register_lint` itself — it shipped with 67 banned
+  # phrases, a full test suite, three rate actuators and ZERO callers, so it neither blocked
+  # anything nor accrued a single number that could have earned it a threshold.
+  #
+  # THE BASELINE THAT SAYS WHY NOT ONE OF THEM IS ON. Measured 2026-08-15 across 2,187
+  # dossiers / 41,168 sentences / 1.16M words of engine prose:
+  #   R1 sentence over 28 words   43.9%   mean sentence 28.2 words — the corpus average
+  #                                       sits exactly ON the spec's hard ceiling
+  #   R4 four-item parallel list  13.8%
+  #   R2 semicolon in claim text  10.4%
+  #   R9 banned register           4.1%   compounds x354, increasingly x238, wedge x218,
+  #                                       moat x208, at scale x91, ecosystem x81
+  #   R8 opens on that/which       2.4%
+  #   R6 quantity word, no figure  1.4%
+  #   R10 prediction as fact       0.1%
+  # A rate ceiling set above 0 today fails essentially every pack in the catalogue. The prose
+  # has to move first, which is why the rules belong in the generator prompt (spec Part Five,
+  # Stage 2) and this gate is the backstop rather than the fix.
+  #
+  # The booleans sit apart from the rates because their defects are decidable rather than
+  # statistical: an unsourced claim about the future is wrong once, not wrong at a rate, and
+  # a "quote" that is a cookie banner is not evidence at any frequency. They are the first
+  # two that should flip, once `house_spec` in the live reports shows what they would block.
+  house_spec_block_predictions: false   # R10 -> error
+  house_spec_block_quotes: false        # Q1/Q2/Q3 -> error
+  house_spec_block_register: false      # R9 banned register -> error
+  max_register_per_1k: 0.0              # R9 rate ceiling; 0 = measure only
+  max_long_sentence_rate: 0.0           # R1, at register_lint's 25-word ceiling
+  max_clause_load_rate: 0.0             # R2
+  max_four_item_list_rate: 0.0          # R4
+  max_unsourced_figure_rate: 0.0        # R5
   # PAID-ARTIFACT CLAIM CHECK (artifacts.claim_check_blocks_listing). Added 2026-08-15.
   #
   # What it is: when build_spec / gtm_plan / ops_plan still carry claim-check violations after

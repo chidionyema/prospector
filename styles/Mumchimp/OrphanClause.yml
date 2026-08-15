@@ -1,0 +1,11 @@
+# R8 -- no sentence may begin with that / which / and that / so that.
+#
+# This is the defect the founder read off the live sample page on 2026-08-15: a
+# reporting verb was stripped from "The passages show that A, that B, and that C" and
+# the surviving complementisers reported to a verb no longer in the sentence.
+extends: existence
+message: "Sentence begins with a relative pronoun (R8)."
+link: docs/HOUSE_WRITING_SPEC.md
+level: error
+raw:
+  - '(?m)^\s*(That|Which|And that|So that)\b'

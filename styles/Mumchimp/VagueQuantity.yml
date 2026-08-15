@@ -1,0 +1,19 @@
+# R6 -- no quantity word without a quantity.
+#
+# Vale cannot see whether a figure sits in the same sentence, so this fires on the word
+# and the writer supplies or cuts. The pack lane's version (prospector/house_style.py)
+# suppresses the finding when a digit is present in the same sentence.
+extends: existence
+message: "'%s' with no figure (R6). Give the number or cut the sentence."
+link: docs/HOUSE_WRITING_SPEC.md
+level: error
+ignorecase: true
+scope: sentence
+tokens:
+  - numerous
+  - a trail of
+  - a fraction of
+  - dozens of
+  - significant(ly)?
+  - substantial(ly)?
+  - considerable

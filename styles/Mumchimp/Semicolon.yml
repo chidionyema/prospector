@@ -1,0 +1,18 @@
+# R2 -- no semicolons in claim text.
+#
+# A semicolon is how two facts get into one sentence, which is R3's defect wearing
+# punctuation.
+#
+# WHY `nonword` AND NOT THE SPEC'S LITERAL FORM (2026-08-15). HOUSE_WRITING_SPEC.md
+# Part Six writes this rule as `tokens: [';']`. Vale wraps every entry in `tokens` in
+# \b...\b, and a semicolon has no word boundary on either side, so that form compiles
+# and matches nothing. Proven on a probe file whose first line carries a semicolon:
+# the four other Mumchimp rules fired on it and this one was silent. `nonword: true`
+# drops the boundary wrapping.
+extends: existence
+message: "Semicolon in claim text (R2). Use a full stop."
+link: docs/HOUSE_WRITING_SPEC.md
+level: error
+nonword: true
+tokens:
+  - ';'
