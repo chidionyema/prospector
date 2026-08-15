@@ -53,6 +53,73 @@ def test_exec_summary_and_checklist_non_empty():
     assert "SMEs" in first_week_checklist_md(cand)
 
 
+class TestGenericChecklistSpeaksToTheBuyer:
+    """`pack_checklist.render` handles the packs it can describe; this is the other ones.
+
+    The generic template was the last surface in a pack still written in the engine's own
+    vocabulary — "kill/pass gates", "SUPPORTED", "claim-check", and the schema key `who_pays`
+    in a code span — and `exec_summary_md` closes by naming this section as where to start, so
+    the opening promise pointed straight at it. These pin the two properties that make the
+    rewrite worth shipping, and one that keeps it honest.
+    """
+
+    #: Words that belong to our pipeline, not to the person who paid for the pack. Cased
+    #: deliberately: `SUPPORTED` is the engine's verdict token, while the ordinary English
+    #: word "supported" is fine in a sentence and must not trip this.
+    ENGINE_VOCABULARY = (
+        "who_pays", "claim-check", "claim-safe", "kill/pass", "QA report",
+        "citation URL", "dossier", "SUPPORTED", "UNVERIFIABLE",
+    )
+
+    def test_no_engine_vocabulary_reaches_the_reader(self):
+        md = first_week_checklist_md(
+            Candidate(title="Pack", one_liner="One", who_pays="SMEs"))
+        leaked = [w for w in self.ENGINE_VOCABULARY if w.lower() in md.lower()]
+        assert not leaked, f"engine vocabulary in the buyer's checklist: {leaked}"
+
+    def test_no_snake_case_key_in_a_code_span(self):
+        """The specific shape of the original defect: `who_pays` printed as code.
+
+        Asserting on the SHAPE rather than on that one key is the point — a future edit that
+        interpolates some other schema field the same way is the same defect, and the string
+        test above would not catch it.
+        """
+        md = first_week_checklist_md(
+            Candidate(title="Pack", one_liner="One", who_pays="SMEs"))
+        assert not re.search(r"`[a-z]+_[a-z_]+`", md)
+
+    def test_a_pack_with_no_payer_is_told_to_find_one_not_to_confirm_one(self):
+        """This template prints mainly BECAUSE the payer is missing (`pack_checklist.render`
+        returns "" without one), so the missing case is the common case, not the edge.
+
+        The old copy printed the literal words "the stated buyer" — a default standing exactly
+        where the reader needed a name, in the one document guaranteed not to have one — and
+        then told them to confirm that non-existent buyer "matches reality".
+        """
+        md = first_week_checklist_md(Candidate(title="Pack", one_liner="One"))
+        assert "the stated buyer" not in md
+        assert "naming who you are looking for" in md
+
+    def test_it_names_no_section_it_cannot_stand_behind(self):
+        """A generic template sending the reader to a named section is how the previous copy
+        broke: it pointed at `QA_Report.md` after that file stopped being in the download.
+        """
+        md = first_week_checklist_md(
+            Candidate(title="Pack", one_liner="One", who_pays="SMEs"))
+        assert ".md" not in md
+
+    def test_it_survives_the_publish_pass_whole(self):
+        """`bridge._create_bundle` runs every document through the publish pass, which DELETES
+        any line it empties. A checklist that loses steps between generation and the zip is
+        the numbering defect `_supported_bullets` already carries a comment about.
+        """
+        md = first_week_checklist_md(
+            Candidate(title="Pack", one_liner="One", who_pays="SMEs"))
+        before = [ln for ln in md.splitlines() if ln.strip()]
+        after = [ln for ln in publish_pass_document(md).splitlines() if ln.strip()]
+        assert len(after) == len(before)
+
+
 class TestExecSummaryOpensInNewspaperOrder:
     """The first page is now genuinely first (bridge.py reads in BUNDLE_READING_ORDER; that
     constant was called BUNDLE_FILES until 2026-08-15, when the read order and the archive
