@@ -14,6 +14,13 @@ could see it:
 So the pair covered "is every promised file present" and left "is anything else present" to
 nobody. `BUNDLE_BONUS_FILES` + `undeclared_bundle_entries` close that side, and these tests are
 what make the registry load-bearing rather than a comment.
+
+2026-08-15: the archive stopped being markdown. `BUNDLE_FILES` is now the rendered pack
+(index.html, Complete_Pack.pdf, First_Fortnight.html, Assumptions.csv, Marketing_Assets.txt)
+and `PACK_DOCUMENTS` is the render input, which reaches the buyer only through those files.
+`TestNoMarkdownReachesTheBuyer` at the bottom is the regression guard for that whole change —
+the founder's requirement was one sentence ("i dont like md files at all, we are not selling to
+developers") and it is one assertion.
 """
 
 import zipfile
@@ -23,9 +30,12 @@ import pytest
 from prospector.bridge import (
     BUNDLE_BONUS_FILES,
     BUNDLE_FILES,
+    PACK_DOCUMENTS,
+    EngineBridge,
     audit_bundle,
     undeclared_bundle_entries,
 )
+from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict
 
 
 def _write_zip(path, names):
@@ -50,9 +60,22 @@ class TestBonusRegistry:
 
         assert pack_manifest.MANIFEST_FILENAME in BUNDLE_BONUS_FILES
 
-    def test_reader_filename_is_declared(self):
-        """`_create_bundle` writes the literal "index.html"; the registry must carry that literal."""
-        assert "index.html" in BUNDLE_BONUS_FILES
+    def test_the_reader_is_a_promised_deliverable_not_a_bonus(self):
+        """Renamed and inverted 2026-08-15 (was `test_reader_filename_is_declared`, which
+        asserted `"index.html" in BUNDLE_BONUS_FILES`).
+
+        index.html was a bonus while the renderer was new and unproven: a fault in it must not
+        be able to delist a pack whose eight markdown deliverables had all arrived. It is not
+        unproven now (all 59 live packs carry it, measured against the objects R2 serves), and
+        it is no longer additive — it is the pack. So the consequence is inverted on purpose:
+        a bundle without a reader has nothing readable in it at all, and `audit_bundle` must
+        hold it UNLISTED rather than wave it through.
+
+        `_create_bundle` still writes the literal "index.html"; the contract carries that
+        literal, which is what this test checks.
+        """
+        assert "index.html" in BUNDLE_FILES
+        assert "index.html" not in BUNDLE_BONUS_FILES
 
 
 class TestUndeclaredEntries:
@@ -61,7 +84,7 @@ class TestUndeclaredEntries:
         assert undeclared_bundle_entries(path) == []
 
     def test_the_bonus_files_are_not_reported(self, tmp_path):
-        """The real shape of a current bundle: eight deliverables plus both bonus files."""
+        """The real shape of a current bundle: every contract file plus every declared bonus."""
         path = _write_zip(tmp_path / "full.zip", list(BUNDLE_FILES) + list(BUNDLE_BONUS_FILES))
         assert undeclared_bundle_entries(path) == []
 
@@ -103,3 +126,68 @@ class TestTheTwoAuditsAreComplementary:
 
     def test_undeclared_entries_sees_it(self, bundle_with_a_stray_file):
         assert undeclared_bundle_entries(bundle_with_a_stray_file) == ["stray.bin"]
+
+
+@pytest.fixture
+def bridge(monkeypatch, tmp_path):
+    """_create_bundle writes to a relative publish/bundles path — keep it out of the repo."""
+    monkeypatch.chdir(tmp_path)
+
+    class _Cfg:
+        entitlements_api_key = ""
+        store_payments = {"active_provider": "stripe"}
+
+    return EngineBridge(_Cfg())
+
+
+def _dossier():
+    cand = Candidate(
+        candidate_id="d" * 16,
+        title="Classification scheduling for UK oyster farms",
+        one_liner="Scheduling aid for UK oyster farms.",
+        market="uk",
+        who_pays="owner-operated shellfish farms",
+        why_now="new sampling rules",
+    )
+    check = CheckResult(
+        check_name="buyer_intent", verdict=Verdict.SUPPORTED, confidence=0.8,
+        rationale="Growers search for closure guidance (SAGB, 2025).",
+        citations=[], sources=[], queries=[],
+    )
+    return Dossier(candidate=cand, decision=Decision.PASS, checks=[check],
+                   created_at="2026-07-31T00:00:00Z")
+
+
+def _full_artifacts():
+    body = ("## Section\n\nGrounded prose about the opportunity. " * 20)
+    return {k: f"# {k}\n\n{body}" for k in
+            ("build_spec", "gtm_plan", "ops_plan", "financial_model")}
+
+
+class TestNoMarkdownReachesTheBuyer:
+    """THE REGRESSION GUARD for the 2026-08-15 change, stated as the founder stated it.
+
+    "i dont like md files at all, we are not selling to developers." Everything else about that
+    change — five contract files instead of eight, `PACK_DOCUMENTS` as render input, the reading
+    order derived from it, `Marketing_Assets.txt` as the one editable concession — is machinery
+    in service of this one observable property, so it gets its own assertion rather than being
+    implied by a set comparison somewhere else.
+
+    Asserted on a bundle the engine actually BUILT, not on the tuples: the tuples are intent in
+    source (that is exactly what `packContents.test.ts` already checks and what let the "8 files"
+    claim drift), and only the written archive can answer what a buyer receives.
+    """
+
+    def test_a_freshly_built_bundle_contains_no_markdown_entry_whatsoever(self, bridge):
+        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
+        with zipfile.ZipFile(path) as zf:
+            entries = zf.namelist()
+
+        assert not [n for n in entries if n.endswith(".md")], (
+            f"markdown reached the buyer's zip: {[n for n in entries if n.endswith('.md')]}")
+        # The documents still exist — as the render input. None of them is an archive entry,
+        # and the second half of that sentence is the half a buyer can observe.
+        assert not (set(PACK_DOCUMENTS) & set(entries))
+        # And nothing was quietly substituted in their place: the archive is exactly what the
+        # two registries declare, no more and no less.
+        assert set(entries) == set(BUNDLE_FILES) | set(BUNDLE_BONUS_FILES)

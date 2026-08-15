@@ -23,7 +23,12 @@ import re
 import pytest
 
 from prospector import pack_manifest, pack_reference
-from prospector.bridge import BUNDLE_BONUS_FILES, BUNDLE_FILES, BUNDLE_READING_ORDER
+from prospector.bridge import (
+    BUNDLE_BONUS_FILES,
+    BUNDLE_FILES,
+    BUNDLE_READING_ORDER,
+    PACK_DOCUMENTS,
+)
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict
 
 _HEX = "1e62e0c381e1c8d3"
@@ -138,11 +143,25 @@ class TestItReadsBothRecordShapes:
 
 
 class TestItHasAPlaceInTheRead:
-    def test_it_is_a_bonus_file_not_a_promised_deliverable(self):
-        """BUNDLE_FILES is the drift-tested sellability contract with the storefront's
-        PackContents.tsx. A render failure here must never be able to block a listing."""
-        assert pack_reference.FILENAME in BUNDLE_BONUS_FILES
+    def test_it_is_a_document_and_belongs_to_neither_archive_list(self):
+        """Renamed 2026-08-15 from `test_it_is_a_bonus_file_not_a_promised_deliverable`.
+
+        The reasoning it carried was: BUNDLE_FILES is the drift-tested sellability contract
+        with the storefront's PackContents.tsx, so a render failure in a new document must
+        never be able to block a listing. That is still why this file cannot be in
+        BUNDLE_FILES — and it is no longer a bonus ENTRY either, because it is no longer an
+        entry at all. It is a DOCUMENT: composed into `written`, placed in the reading order,
+        and delivered through index.html and the PDF like every other section.
+
+        Being in neither list is the load-bearing half. `audit_bundle` iterates BUNDLE_FILES
+        asking "did it arrive?" and `undeclared_bundle_entries` iterates the archive asking
+        "what is this?" — a name in neither list is invisible to the first and REPORTED by the
+        second, so if this document ever leaked back into the zip the shop's file count would
+        go wrong loudly instead of quietly.
+        """
+        assert pack_reference.FILENAME in BUNDLE_READING_ORDER
         assert pack_reference.FILENAME not in BUNDLE_FILES
+        assert pack_reference.FILENAME not in BUNDLE_BONUS_FILES
 
     def test_it_is_read_immediately_before_the_qa_report(self):
         """The two evidence documents belong together: what we found, then how well we found
@@ -151,6 +170,17 @@ class TestItHasAPlaceInTheRead:
         order = list(BUNDLE_READING_ORDER)
         assert order.index(pack_reference.FILENAME) + 1 == order.index("QA_Report.md")
 
-    def test_the_reading_order_still_contains_every_promised_deliverable(self):
-        assert set(BUNDLE_FILES) <= set(BUNDLE_READING_ORDER)
-        assert len(BUNDLE_READING_ORDER) == len(BUNDLE_FILES) + 1
+    def test_the_reading_order_is_every_document_plus_this_one(self):
+        """Was `test_the_reading_order_still_contains_every_promised_deliverable`, over
+        `BUNDLE_FILES`. That arithmetic died on 2026-08-15: the reading order is derived from
+        `PACK_DOCUMENTS` now, and BUNDLE_FILES is a different list of a different length, so
+        `len(READING_ORDER) == len(BUNDLE_FILES) + 1` was comparing two unrelated counts and
+        would have passed or failed by coincidence.
+
+        The property is the same one it always was: the read contains every composed document,
+        plus this file, and nothing else — so no document can be composed and then silently
+        left out of what the buyer reads.
+        """
+        assert set(PACK_DOCUMENTS) <= set(BUNDLE_READING_ORDER)
+        assert len(BUNDLE_READING_ORDER) == len(PACK_DOCUMENTS) + 1
+        assert set(BUNDLE_READING_ORDER) - set(PACK_DOCUMENTS) == {pack_reference.FILENAME}

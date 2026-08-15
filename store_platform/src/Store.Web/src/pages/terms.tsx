@@ -41,7 +41,8 @@ export default function TermsPage() {
       <LegalText>
         We sell digital information products (&ldquo;Packs&rdquo;). Each Pack is an
         AI-generated, evidence-backed set of documents on one business opportunity,
-        delivered as a digital download (a zip archive of Markdown files). Packs are <strong>information
+        delivered as a digital download (a zip archive containing a readable web page, a PDF, a
+        spreadsheet and a plain-text file). Packs are <strong>information
         products only</strong>, they are not financial advice, investment advice, legal advice,
         or any other form of professional advisory service.
       </LegalText>

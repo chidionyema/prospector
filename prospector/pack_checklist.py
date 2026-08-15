@@ -41,6 +41,28 @@ GTM_PLAN = "02_Marketing_Plan_GTM.md"
 OPS_PLAN = "03_Operations_Plan.md"
 FINANCIAL_MODEL = "04_Financial_Model.md"
 
+# The names above are KEYS into the composed `docs` mapping. The names below are what this
+# document calls those documents when it points a buyer at one, and the two must not be the same
+# string any more.
+#
+# Until 2026-08-15 the prose interpolated the keys, so the one page a buyer pins up said things
+# like "It is in *04_Financial_Model.md*". On that date the `.md` stopped being archive entries
+# (bridge.py split `PACK_DOCUMENTS`, the render input, from `BUNDLE_FILES`, the archive contract),
+# which turned every cross-reference on this page into a direction to open a file that is not in
+# the download. The reader ships those documents as SECTIONS of one page, so a section title is
+# both what the buyer can actually find and what was meant all along -- note that the two
+# references already written by hand on this page, to *Evidence and Constraints*, were section
+# titles rather than filenames, which is the tell that interpolating the key was an accident.
+#
+# These must match the headings the reader prints, which are `bridge._SECTION_TITLES`;
+# `tests/unit/test_pack_checklist.py` pins them to it. They are duplicated here rather than
+# imported because `bridge` imports this module, and a cosmetic import cycle on the money rail is
+# not worth the DRY -- the same trade `pack_floors.QA_SECTION` makes.
+BUILD_SPEC_SECTION = "The Blueprint (Build Spec)"
+GTM_PLAN_SECTION = "The Go-To-Market Plan"
+OPS_PLAN_SECTION = "The Operations Plan"
+FINANCIAL_MODEL_SECTION = "The Financial Model"
+
 _HEADING_RE = re.compile(r"^##\s+(?P<body>\S.*?)\s*$", re.M)
 # "## 4. The council file" — the numbering is the document's own, and quoting a heading with
 # its number inside a sentence reads as a footnote marker.
@@ -161,11 +183,12 @@ def render(dossier: Any, docs: Optional[Dict[str, str]] = None) -> str:
             "in this pack to change your mind.")
     if FINANCIAL_MODEL in docs:
         week_one.append(
-            f"Say the price out loud to those five. It is in *{FINANCIAL_MODEL}*, with the "
+            f"Say the price out loud to those five. It is in *{FINANCIAL_MODEL_SECTION}*, with the "
             "arithmetic behind it. Nobody flinching means it is too low; everybody flinching "
             "means the model is wrong — and either way you know in week one, for nothing.")
     if GTM_PLAN in docs:
-        where = f"“{gtm_head}” in *{GTM_PLAN}*" if gtm_head else f"*{GTM_PLAN}*"
+        where = (f"“{gtm_head}” in *{GTM_PLAN_SECTION}*" if gtm_head
+                 else f"*{GTM_PLAN_SECTION}*")
         week_one.append(
             f"Pick ONE channel out of {where} and ignore the rest until it works. A plan that "
             "runs three channels badly in week one tells you nothing about any of them.")
@@ -173,16 +196,17 @@ def render(dossier: Any, docs: Optional[Dict[str, str]] = None) -> str:
     week_two: List[str] = []
     if build_head:
         week_two.append(
-            f"Cut “{build_head}” in *{BUILD_SPEC}* down to what one person can finish "
+            f"Cut “{build_head}” in *{BUILD_SPEC_SECTION}* down to what one person can finish "
             "in five days, and build only that. Everything you removed is still written down; "
             "none of it is lost by starting smaller.")
     else:
         week_two.append(
-            f"Build the smallest version described in *{BUILD_SPEC}* — the one that answers "
+            f"Build the smallest version described in *{BUILD_SPEC_SECTION}* — the one that "
+            "answers "
             "whatever your five buyers asked about most — and nothing beyond it.")
     if ops_head:
         week_two.append(
-            f"Work through *{OPS_PLAN}* from “{ops_head}” onwards while there is "
+            f"Work through *{OPS_PLAN_SECTION}* from “{ops_head}” onwards while there is "
             "no customer waiting. Every hour of it is cheaper now than it is the day a real "
             "one arrives.")
     week_two += [

@@ -235,7 +235,20 @@ def _financial_snapshot(fin_text: str) -> Dict[str, str]:
 # 20-byte "# Marketing Assets\n\n") without second-guessing `validate_pack`, which remains the
 # real sellability gate. The claim-safe financial-model stub is ~150 bytes and must pass.
 _MIN_BUNDLE_ENTRY_BYTES = 120
-BUNDLE_FILES = (
+
+# The documents the engine COMPOSES. Until 2026-08-15 this tuple was `BUNDLE_FILES` and each
+# entry was also a zip entry; the founder's brief killed that — "i dont like md files at all,
+# we are not selling to developers". These are now the render INPUT and nothing else: the
+# reader (`index.html`), the typeset edition (`Complete_Pack.pdf`) and the machine index all
+# draw their sections from here, and none of them reaches the buyer as markdown.
+#
+# Deleting them from the archive costs a buyer nothing readable, and that is measured, not
+# assumed: across a 12-pack sample, 0 of 853 headings, 0 of 208 table cells and 0 of 6,743
+# prose runs of eight words or more were absent from `index.html`
+# (docs/HANDOFF_PACK_CONTENTS_REVIEW.md). The one thing markdown carried that a rendered page
+# does not is EDITABILITY, and that is why `Marketing_Assets.txt` exists below — the marketing
+# copy is the document a buyer pastes elsewhere, so it keeps a plain-text form.
+PACK_DOCUMENTS = (
     "00_Executive_Summary.md",
     "01_Blueprint_BuildSpec.md",
     "02_Marketing_Plan_GTM.md",
@@ -244,6 +257,29 @@ BUNDLE_FILES = (
     "05_First_Week_Checklist.md",
     "Marketing_Assets.md",
     "QA_Report.md",
+)
+
+# Every file a complete bundle must contain — the sellability contract, drift-tested against
+# the storefront's PackContents.tsx.
+#
+# What changed on 2026-08-15: this tuple used to name the eight markdown documents, and the
+# rendered artefacts sat in BUNDLE_BONUS_FILES where a missing one could not block a listing.
+# That was the right shape while the renderers were new and unproven. They are no longer
+# unproven: all 59 live packs carry index.html, Complete_Pack.pdf, First_Fortnight.html and
+# Assumptions.csv (measured against the objects R2 actually serves, NOT against
+# publish/bundles/ — see memory `publish-bundles-is-not-the-shelf`). So the rendered pack is
+# now the product and the contract says so.
+#
+# The consequence is deliberate and is the point of the change: if the PDF fails to render,
+# the pack does not list. Previously it listed anyway, silently short. `audit_bundle` is what
+# enforces that, and the renderers stay individually guarded so a fault is a WARNING plus an
+# unlisted pack rather than an exception on the retry path.
+BUNDLE_FILES = (
+    "index.html",            # the reader — every document above, in reading order
+    "Complete_Pack.pdf",     # the typeset edition (pack_pdf.FILENAME)
+    "First_Fortnight.html",  # the one printable page (pack_card.FILENAME)
+    "Assumptions.csv",       # the assumptions register a spreadsheet opens (pack_table.FILENAME)
+    "Marketing_Assets.txt",  # the one document a buyer EDITS, so it stays plain text
 )
 
 # Files a bundle MAY additionally contain. Bonus, never contract: a missing one must not block a
@@ -264,22 +300,20 @@ BUNDLE_FILES = (
 # and a module-level import here would reverse that. The duplication is pinned by
 # `tests/unit/test_bundle_declared_entries.py`, so it cannot drift silently.
 BUNDLE_BONUS_FILES = (
-    "index.html",                    # the rendered reader (pack_html.py)
     "manifest.jsonld",               # the machine-readable half (pack_manifest.MANIFEST_FILENAME)
-    "Evidence_and_Constraints.md",   # the evidence, once (pack_reference.py) — P4
-    "First_Fortnight.html",          # the one printable page (pack_card.py) — P5
-    "Assumptions.csv",               # the machine-readable table (pack_table.py) — P5
-    "Complete_Pack.pdf",             # the typeset edition (pack_pdf.FILENAME) — P5
 )
 
-# Reading order for the in-bundle reader, which is NOT the same list as the sellability
-# contract: `Evidence_and_Constraints.md` is a bonus file (a missing one must never block a
-# listing) but it has a place in the read, immediately before the QA report — the two evidence
-# documents together, after the plans that apply them. Defined once here because the generator
-# and `tools/backfill_bundle_html.py` both order the reader, and two orderings is how a
-# backfilled pack comes to open on a different page from a freshly generated one.
+# Reading order for the in-bundle reader. `Evidence_and_Constraints.md` is composed like the
+# eight above but is not one of them, and it has a place in the read: immediately before the QA
+# report — the two evidence documents together, after the plans that apply them. Defined once
+# here because the generator and `tools/backfill_bundle_html.py` both order the reader, and two
+# orderings is how a backfilled pack comes to open on a different page from a freshly
+# generated one.
+#
+# Derived from PACK_DOCUMENTS, not from BUNDLE_FILES: since 2026-08-15 those are different
+# lists — one is what the pack SAYS, the other is what the archive HOLDS.
 BUNDLE_READING_ORDER = tuple(
-    x for name in BUNDLE_FILES
+    x for name in PACK_DOCUMENTS
     for x in (("Evidence_and_Constraints.md", name) if name == "QA_Report.md" else (name,))
 )
 
@@ -298,6 +332,19 @@ _SECTION_TITLES = {
     "Marketing_Assets.md": "Marketing Assets",
     "Evidence_and_Constraints.md": "Evidence and Constraints",
     "QA_Report.md": "The QA Report, with the receipts",
+}
+
+# Titles for the ARCHIVE entries, which since 2026-08-15 are a different list from the
+# documents above. `manifest.jsonld` describes the zip, so it needs a name for each thing the
+# zip actually holds; `_SECTION_TITLES` names the sections INSIDE the reader and cannot serve
+# both jobs without one of them being wrong.
+_FILE_TITLES = {
+    "index.html": "The pack, readable",
+    "Complete_Pack.pdf": "The pack, typeset for print",
+    "First_Fortnight.html": "Your first fortnight, on one page",
+    "Assumptions.csv": "Every assumption, as a spreadsheet",
+    "Marketing_Assets.txt": "Marketing copy, ready to paste",
+    "manifest.jsonld": "Machine-readable index",
 }
 
 
@@ -1433,7 +1480,19 @@ class EngineBridge:
             # accumulated here, which means adding a file or re-sequencing a write cannot
             # silently reorder what the buyer reads. Reordering the pack now requires editing
             # the contract, which is the only place it should ever have been editable.
+            # `written` is the DOCUMENTS (PACK_DOCUMENTS + the evidence reference). Since
+            # 2026-08-15 none of these is a zip entry: they are composed here, then rendered
+            # into the files the buyer actually gets. Keeping them keyed by their old .md name
+            # is deliberate — `_SECTION_TITLES`, `BUNDLE_READING_ORDER`, `pack_checklist`,
+            # `pack_card` and `pack_manifest` all address them by that name, and renaming the
+            # keys would be a rename with no reader-visible effect and five call sites to miss.
             written: Dict[str, str] = {}
+            # What the ARCHIVE actually holds, name -> exact content written. Populated only
+            # AFTER a successful write, never from the intent to write: manifest.jsonld states a
+            # sha256 for every entry it lists, and listing an entry the zip does not contain
+            # would make the one file whose job is to be machine-checkable the one file that
+            # lies. Typed Any, not str: `Complete_Pack.pdf` is bytes.
+            zip_written: Dict[str, Any] = {}
 
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # 1-3. The prose deliverable. `_add_to_zip` writes nothing for empty content, so
@@ -1451,17 +1510,14 @@ class EngineBridge:
                 # ends in an ellipsis.
                 build_spec_md = prose_pass_document(
                     artifacts.get("build_spec", "") or _held_back_md("Blueprint / build spec"))
-                self._add_to_zip(zipf, "01_Blueprint_BuildSpec.md", build_spec_md)
                 written["01_Blueprint_BuildSpec.md"] = build_spec_md
 
                 gtm_md = prose_pass_document(
                     artifacts.get("gtm_plan", "") or _held_back_md("Go-to-market plan"))
-                self._add_to_zip(zipf, "02_Marketing_Plan_GTM.md", gtm_md)
                 written["02_Marketing_Plan_GTM.md"] = gtm_md
 
                 ops_md = prose_pass_document(
                     artifacts.get("ops_plan", "") or _held_back_md("Operations plan"))
-                self._add_to_zip(zipf, "03_Operations_Plan.md", ops_md)
                 written["03_Operations_Plan.md"] = ops_md
 
                 # 4. Financial Model — its own file, with a provenance banner. The arithmetic is
@@ -1497,7 +1553,6 @@ class EngineBridge:
                         "_No verified numeric inputs were available to compute a model. "
                         "Prospector does not invent revenue, cost, or TAM figures._\n"
                     )
-                self._add_to_zip(zipf, "04_Financial_Model.md", financials)
                 written["04_Financial_Model.md"] = financials
 
                 # 5. QA Report
@@ -1508,7 +1563,6 @@ class EngineBridge:
                 # "0.0" without the sentence that says what the scale means.
                 qa_report = prose_pass_document(
                     render_markdown(dossier), keep_confidence_figures=True)
-                self._add_to_zip(zipf, "QA_Report.md", qa_report)
                 written["QA_Report.md"] = qa_report
 
                 # 6. Marketing Assets (Social, Email, SEO) — never a bare header stub.
@@ -1542,7 +1596,6 @@ class EngineBridge:
                     ]
                 marketing_text = prose_pass_document(
                     "# Marketing Assets\n\n" + "\n".join(sections))
-                self._add_to_zip(zipf, "Marketing_Assets.md", marketing_text)
                 written["Marketing_Assets.md"] = marketing_text
 
                 # 7–8. Epic C lite floors (deterministic, claim-safe)
@@ -1550,7 +1603,6 @@ class EngineBridge:
                 # verdict-brain prose and carries the same passage ids as everything else.
                 exec_summary_content = prose_pass_document(
                     exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or []))
-                self._add_to_zip(zipf, "00_Executive_Summary.md", exec_summary_content)
                 written["00_Executive_Summary.md"] = exec_summary_content
 
                 # The action document. `pack_checklist.render` is preferred and the six-line
@@ -1569,28 +1621,24 @@ class EngineBridge:
                 if not checklist_content:
                     checklist_content = prose_pass_document(
                         first_week_checklist_md(dossier.candidate))
-                self._add_to_zip(zipf, "05_First_Week_Checklist.md", checklist_content)
                 written["05_First_Week_Checklist.md"] = checklist_content
 
-                # 9. index.html — the ONE non-.md file in the bundle: the same eight
-                # deliverables above, rendered to a single polished, self-contained reading
-                # experience (pack_html.py). Deliberately NOT added to BUNDLE_FILES/audit_bundle
-                # — that tuple is the sellability contract with the storefront's PackContents.tsx
-                # (a drift test binds the two), and this file is a bonus convenience, not a
-                # promised deliverable a missing copy of which should block listing.
-                # Guarded because the sentence above must be TRUE at runtime, not just in
-                # intent: an unguarded render exception here would fail _create_bundle and
-                # block the listing — exactly what "bonus, not promised" forbids. Loud
-                # (warning, never silent) so a broken renderer can't rot unnoticed.
-                # Files shipped that are NOT promised deliverables. Populated only AFTER a
-                # successful write, never from the intent to write: the manifest below states a
-                # sha256 for every entry it lists, and listing an entry the zip does not contain
-                # would make the one file whose job is to be machine-checkable the one file that
-                # lies.
-                # Typed Any, not str: `Complete_Pack.pdf` is bytes. Every consumer below either
-                # filters by suffix (`readable`) or hashes through `pack_manifest._as_bytes`,
-                # which takes both.
-                extra_written: Dict[str, Any] = {}
+                # 8a. Marketing_Assets.txt — the one document a buyer EDITS. Everything else in
+                # this pack is something to read; the marketing copy is something to paste into
+                # an ad account, a mail tool or a landing page, and a rendered page is a worse
+                # carrier for that than plain text. This is the single concession to the
+                # "where did my editable files go" objection, and it is a concession made on
+                # purpose rather than by leaving all eight .md in place.
+                #
+                # `keep_link_urls=True` because a cited URL in marketing copy is the evidence
+                # behind the claim: dropping the target would leave a sentence asserting
+                # something with its receipt silently removed.
+                from .plain_text import to_plain_text
+                marketing_txt = to_plain_text(
+                    written.get("Marketing_Assets.md", ""), keep_link_urls=True)
+                if marketing_txt:
+                    self._add_to_zip(zipf, "Marketing_Assets.txt", marketing_txt)
+                    zip_written["Marketing_Assets.txt"] = marketing_txt
 
                 # 8b. Evidence_and_Constraints.md — P4: the shared evidence, stated ONCE.
                 # Measured 2026-08-14 over 62 live packs: the same cited source is leaned on by
@@ -1600,13 +1648,15 @@ class EngineBridge:
                 # from the dossier, which is what lets the same renderer backfill packs already
                 # sold. Bonus on the same terms as index.html: guarded, and never a listing
                 # blocker. It is written BEFORE index.html so the reader can include it.
+                # It is a DOCUMENT, not an archive entry: it goes into `written` so the reader
+                # and the PDF both carry it (BUNDLE_READING_ORDER places it immediately before
+                # the QA report), and it is no longer a .md file in the zip.
                 try:
                     from . import pack_reference
                     reference_md = pack_reference.render(dossier)
                     if reference_md:
-                        self._add_to_zip(zipf, pack_reference.FILENAME, reference_md)
-                        extra_written[pack_reference.FILENAME] = reference_md
-                except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
+                        written[pack_reference.FILENAME] = reference_md
+                except Exception as e:  # noqa: BLE001 — one section of the read, not the whole pack
                     logger.warning(
                         f"{pack_reference.FILENAME} render failed for {candidate_id}: {e}; "
                         "shipping the bundle without it")
@@ -1628,15 +1678,20 @@ class EngineBridge:
                     )
                     if card_html:
                         self._add_to_zip(zipf, pack_card.FILENAME, card_html)
-                        extra_written[pack_card.FILENAME] = card_html
+                        zip_written[pack_card.FILENAME] = card_html
                     table_csv = pack_table.render(dossier)
                     if table_csv:
                         self._add_to_zip(zipf, pack_table.FILENAME, table_csv)
-                        extra_written[pack_table.FILENAME] = table_csv
-                except Exception as e:  # noqa: BLE001 — bonus files; the 8 .md deliverables ship regardless
+                        zip_written[pack_table.FILENAME] = table_csv
+                # Still guarded, but the consequence changed on 2026-08-15: both files are in
+                # BUNDLE_FILES now, so a failure here no longer means "ships without them" — it
+                # means `audit_bundle` finds them missing and the pack is held UNLISTED. The
+                # guard exists so that outcome arrives as a warning plus an unlisted row rather
+                # than as an exception on the register-unlisted retry path.
+                except Exception as e:  # noqa: BLE001 — warn + let audit_bundle hold the listing
                     logger.warning(
                         f"P5 card/table render failed for {candidate_id}: {e}; "
-                        "shipping the bundle without them")
+                        "the pack cannot list without them")
 
                 try:
                     from . import pack_html
@@ -1657,22 +1712,19 @@ class EngineBridge:
                     # partially-built bundle renderable — such a pack is held UNLISTED by the
                     # completeness gate below, and a bonus file must never be the thing that
                     # raises on the retry path.
-                    # `written` holds the eight promised deliverables; `extra_written` holds the
-                    # bonus documents that reached the zip. The reader draws from BOTH, in the
-                    # shared reading order — but only from what was actually written, so a
-                    # partially-built bundle stays renderable and a bonus file that failed to
+                    # `written` holds every composed document. The reader draws from it in the
+                    # shared reading order, and only from what was actually composed, so a
+                    # partially-built bundle stays renderable and a document that failed to
                     # render simply is not in the read.
-                    readable = {**written, **{k: v for k, v in extra_written.items()
-                                              if k.endswith(".md")}}
                     md_entries: List[Tuple[str, str]] = [
-                        (_SECTION_TITLES[name], readable[name])
+                        (_SECTION_TITLES[name], written[name])
                         for name in BUNDLE_READING_ORDER
-                        if name in readable
+                        if name in written
                     ]
                     index_html = pack_html.render_pack_html(md_entries, pack_meta)
                     self._add_to_zip(zipf, "index.html", index_html)
                     if index_html:
-                        extra_written["index.html"] = index_html
+                        zip_written["index.html"] = index_html
 
                     # 9b. Complete_Pack.pdf — the same eight sections, typeset. index.html
                     # answers "I want to read this now"; the PDF answers "I want to read this
@@ -1692,15 +1744,18 @@ class EngineBridge:
                             # always fed bytes. The cost of the omission was a bundle carrying a
                             # file its own machine-readable index denied existed, which is the
                             # one failure mode manifest.jsonld exists to make impossible.
-                            extra_written[pack_pdf.FILENAME] = pdf_bytes
-                    except Exception as e:  # noqa: BLE001 — bonus file
+                            zip_written[pack_pdf.FILENAME] = pdf_bytes
+                    except Exception as e:  # noqa: BLE001 — warn + let audit_bundle hold the listing
                         logger.warning(
                             f"Complete_Pack.pdf render failed for {candidate_id}: {e}; "
-                            "shipping the bundle without it")
-                except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
+                            "the pack cannot list without it")
+                # index.html is the pack now — a failure here leaves an archive with no readable
+                # edition at all, which `audit_bundle` catches and holds UNLISTED. Caught rather
+                # than raised for the same reason as above: the retry path must still register.
+                except Exception as e:  # noqa: BLE001 — warn + let audit_bundle hold the listing
                     logger.warning(
                         f"index.html render failed for {candidate_id}: {e}; "
-                        "shipping the 8-file bundle without it")
+                        "the pack cannot list without it")
 
                 # 10. manifest.jsonld — the machine-readable half of the pack: every file with its
                 # sha256, every check with its verdict and confidence, and every source with its
@@ -1708,11 +1763,15 @@ class EngineBridge:
                 # pack_manifest.py for why the passage travels with the pack and why the PRICE
                 # never does.
                 #
-                # A bonus file on exactly the same terms as index.html above, and for the same
-                # reason: BUNDLE_FILES is the sellability contract that storefront's
-                # PackContents.tsx is drift-tested against, and a manifest is not one of the eight
-                # documents a buyer is promised. Guarded so that a renderer fault can never be the
-                # thing that blocks a listing — and loud, so it cannot rot unnoticed either.
+                # The one file still in BUNDLE_BONUS_FILES, and the only one that belongs there:
+                # a buyer never opens it, so a missing copy is not a short delivery and must not
+                # block a listing. Guarded so a renderer fault can never be that block — and
+                # loud, so it cannot rot unnoticed either.
+                #
+                # Fed `zip_written`, NOT `written`: since 2026-08-15 those differ, and the
+                # manifest's entire job is to describe the ARCHIVE. Handing it the composed
+                # documents would make it assert a sha256 for eight files the zip does not
+                # contain — the exact failure this file exists to make impossible.
                 #
                 # Written LAST, after index.html, so it can describe index.html. It describes
                 # itself by omission: `render_manifest` skips MANIFEST_FILENAME, because a file
@@ -1721,14 +1780,13 @@ class EngineBridge:
                     from . import pack_manifest
                     manifest_json = pack_manifest.render_manifest(
                         dossier,
-                        written,
+                        zip_written,
                         BUNDLE_FILES,
-                        _SECTION_TITLES,
+                        _FILE_TITLES,
                         candidate_id,
-                        extra_files=extra_written,
                     )
                     self._add_to_zip(zipf, pack_manifest.MANIFEST_FILENAME, manifest_json)
-                except Exception as e:  # noqa: BLE001 — bonus file; the 8 .md deliverables ship regardless
+                except Exception as e:  # noqa: BLE001 — bonus file; the pack ships regardless
                     logger.warning(
                         f"manifest.jsonld render failed for {candidate_id}: {e}; "
                         "shipping the bundle without it")

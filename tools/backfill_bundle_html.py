@@ -1,37 +1,57 @@
 #!/usr/bin/env python3
-"""Backfill (or correct) the two GENERATED files on already-listed packs: the in-zip HTML
-reader, index.html, and the machine-readable manifest, manifest.jsonld.
+"""Re-render an already-listed pack's zip from the Markdown it was built from, so the
+archive holds the RENDERED pack (index.html, Complete_Pack.pdf, First_Fortnight.html,
+Assumptions.csv, Marketing_Assets.txt, manifest.jsonld) and not the render input.
 
-Packs bundled before prospector/pack_html.py shipped contain only the eight .md
-deliverables. This tool retrofits index.html WITHOUT regenerating anything: the
-.md bytes are read out of the pack's existing zip in R2 and copied into the new
-zip byte-identical — zero model calls, zero content changes. (Deliberately NOT
-`publish --reuse-artifacts`, which silently regenerates — model calls and a live
-publish — whenever validate_pack is incomplete.)
+WHAT THIS TOOL DOES CHANGED ON 2026-08-15, and the old behaviour is worth stating
+because most of this file was written for it. It used to ADD index.html and
+manifest.jsonld beside the eight .md deliverables, copying those .md bytes into the
+new zip byte-identical. It now uses them and DROPS them: they are the render input,
+and shipping them beside the render output is what put fourteen entries in a £49
+download. Measured across the 59 live packs, 0 of 853 headings, 0 of 208 table cells
+and 0 of 6,743 prose runs in the .md were absent from index.html — they were pure
+duplication. Founder's verdict: "why do we need 14 files? ... i dont like md files at
+all, we are not selling to developers".
 
-It also CORRECTS a reader that is present but wrong, which is the case for every
-pack listed today. The reader used to be built from the zip's own entry order,
-and the bundle is written 01, 02, 03, 04, QA, Marketing, 00, 05 — so the reader
-opened on the build spec, buried the executive summary seventh, and put the
-first-week checklist, the one document that tells a buyer what to do, last. The
-generator was fixed to take its order from the BUNDLE_FILES contract instead;
-this tool now does the same, so the shelf can be brought in line with it.
+Still true, and still the point: WITHOUT REGENERATING ANY CONTENT. The .md are read
+out of the pack's existing zip in R2 and rendered locally — zero model calls, zero new
+claims, no re-vet. (Deliberately NOT `publish --reuse-artifacts`, which silently
+regenerates — model calls and a live publish — whenever validate_pack is incomplete.)
 
-The generated files (index.html, manifest.jsonld) are written or replaced freely.
-The .md deliverables of record are copied byte-identical with exactly ONE
-exception, taken deliberately and kept as narrow as a single line: the retired
-`Evidence goes stale after: <ISO stamp>` footer (see `patched_md`). That line
-printed an internal cron stamp as if it were a warranty expiry on a document
-someone paid £49.99 for; leaving it in place is not neutrality, it is continuing
-to make a promise we never priced. Every other byte of every deliverable is
-untouched, and rewriting anything further is a different decision and not this
-tool's to make.
+Measured on pack 0bf4d472ef2b90ad, 2026-08-15: 14 entries -> 6, -40,697 bytes (-15.4%),
+no .md remaining, and a second pass over the new zip is a no-op.
 
-manifest.jsonld carries the evidence (every check, verdict and cited passage),
-which exists only in this repo's store/dossiers, never in the shipped zip. A pack
-whose dossier is no longer on disk therefore gets its reader corrected and is
-reported `no-dossier` — it is never given an EMPTY manifest, which an agent would
-read as "this pack was never verified".
+THE CONVERSION IS ONE-WAY, and two guards exist for it:
+  * A source zip with NO .md returns None immediately. There is nothing left to render
+    a reader FROM, so a second run would otherwise write an EMPTY index.html over a
+    good pack. This is what makes the tool safe to re-run.
+  * `dossier is None` returns None too. Without the dossier there is no manifest, and
+    carrying the OLD manifest forward would assert sha256s for eight entries that are
+    no longer in the zip; dropping it would ship a pack that fails audit_bundle. Such a
+    pack is reported `no-dossier` and left exactly as it is. (Measured 2026-08-15: 0 of
+    the 59 live packs are in this state, so it is a guard, not a gap.)
+The old object is never overwritten (content-addressed keys, below), so the
+pre-conversion zip remains fetchable if a conversion ever needs undoing.
+
+It also CORRECTS a reader that is present but wrong. The reader used to be built from
+the zip's own entry order, and the bundle is written 01, 02, 03, 04, QA, Marketing, 00,
+05 — so the reader opened on the build spec, buried the executive summary seventh, and
+put the first-week checklist, the one document that tells a buyer what to do, last. The
+generator was fixed to take its order from the contract instead (now
+BUNDLE_READING_ORDER, which is PACK_DOCUMENTS with the evidence document inserted
+before the QA report); this tool does the same.
+
+The .md text reaches the rendered output with exactly ONE edit, taken deliberately and
+kept as narrow as a single line: the retired `Evidence goes stale after: <ISO stamp>`
+footer (see `patched_md`). That line printed an internal cron stamp as if it were a
+warranty expiry on a document someone paid £49.99 for; leaving it in place is not
+neutrality, it is continuing to make a promise we never priced. Every other word is
+carried through unchanged, and rewriting anything further is a different decision and
+not this tool's to make.
+
+manifest.jsonld carries the evidence (every check, verdict and cited passage), which
+exists only in this repo's store/dossiers, never in the shipped zip. It is regenerated
+here rather than copied, because it asserts a sha256 per entry and the entries change.
 
 Content storage is content-addressed (packs/<id>/<sha256-of-zip>.zip,
 bridge.py:_sha256/content_key), so the new zip lands at a NEW object key and the
@@ -43,9 +63,12 @@ presigned download URL already in a buyer's hands keeps working.
 Safety model:
   * --dry-run (default): fetch, rebuild, report. No upload, no PATCH.
   * --apply: upload new zip, then PATCH the listing. Requires STORE_INTERNAL_API_KEY.
-  * A pack whose index.html already renders exactly what this tool would write is
-    skipped. Idempotency is by CONTENT, not by presence — a pack carrying the old
-    write-order reader is corrected, not treated as already done.
+  * A pack whose zip holds no .md is skipped, and that IS the idempotency check
+    (see the one-way note above): no .md means the pack is already converted and
+    there is nothing to render it from. It is a check on SHAPE, not on content. The
+    content comparison this tool used to run is gone -- while the conversion was
+    additive it correctly caught a pack that already had the right reader, but a
+    subtractive conversion changes every input that reaches it, so it could not fire.
   * A pack with several objects under packs/<id>/ is AMBIGUOUS (the API does not
     expose the current contentKey): skipped unless --take-newest, which uses the
     most recently modified object and says so in the report.
@@ -80,7 +103,14 @@ from prospector import (  # noqa: E402
     pack_reference,
     pack_table,
 )
-from prospector.bridge import _SECTION_TITLES, BUNDLE_FILES, BUNDLE_READING_ORDER  # noqa: E402
+from prospector import plain_text  # noqa: E402
+from prospector.bridge import (  # noqa: E402
+    _FILE_TITLES,
+    _SECTION_TITLES,
+    BUNDLE_BONUS_FILES,
+    BUNDLE_FILES,
+    BUNDLE_READING_ORDER,
+)
 
 # Env-overridable so a backfill can be pointed at staging. This script PATCHes live
 # catalogue rows; a hardcoded production constant means there is no way to rehearse
@@ -149,8 +179,8 @@ def patched_md(name: str, raw: bytes) -> bytes:
 def ordered_md_entries(src: zipfile.ZipFile) -> List[Tuple[str, str]]:
     """The zip's .md files as ``(display_title, markdown)``, in READING order.
 
-    Reading order comes from the ``BUNDLE_FILES`` contract, exactly as the generator now takes
-    it (bridge.py, the `md_entries` comprehension feeding render_pack_html) — deliberately NOT
+    Reading order comes from ``BUNDLE_READING_ORDER``, exactly as the generator now takes it
+    (bridge.py, the `md_entries` comprehension feeding render_pack_html) — deliberately NOT
     from the zip's own entry order. Those two are not the same thing: the bundle is written
     01, 02, 03, 04, QA, Marketing, 00, 05, so a reader built from write order opens on the
     build spec and buries the executive summary seventh and the checklist last. That is the
@@ -221,27 +251,32 @@ def rebuild_zip_with_index(
     dossier: Any = None,
     pack_id: str = "",
 ) -> Optional[bytes]:
-    """Return new zip bytes carrying a correct index.html and manifest.jsonld, or None if both
-    are already correct.
+    """Return new zip bytes holding the RENDERED pack, or None if there is nothing to do.
 
-    Every .md entry is copied byte-identical, in its original order, so the deliverables of
-    record are untouched — only the two GENERATED files are written or replaced.
+    The source zip's .md entries are the render INPUT. They are read, patched by `patched_md`,
+    composed into index.html / Complete_Pack.pdf / First_Fortnight.html / Assumptions.csv /
+    Marketing_Assets.txt, and then NOT carried into the output. Before 2026-08-15 they were
+    copied through byte-identical beside the rendered files, which is what made a £49 download
+    fourteen entries of which eight were duplicates of a ninth.
 
-    Idempotency is by CONTENT, not by presence. The first version of this tool skipped any
-    bundle that already had an index.html, which meant a pack backfilled with the old
-    write-order reader could never be corrected: it was permanently "done" while opening on
-    the wrong page. Rendering and comparing costs one render per pack and makes the tool safe
-    to re-run after any reader change. The manifest is held to the same rule and for the same
-    reason — and note the check is an AND: a pack with a correct reader and no manifest must
-    convert, which a presence test on index.html alone would have skipped.
+    Returns None in three cases, and the first two are the one-way-conversion guards:
+      * no .md in the source  — already converted; there is nothing to render FROM, and
+        proceeding would write an EMPTY reader over a good pack.
+      * `dossier is None`     — no evidence record on disk, so no manifest can be minted.
+        Carrying the old one forward would assert sha256s for entries that no longer exist,
+        and omitting it entirely would ship a pack that fails `audit_bundle` and is delisted.
+        Reported `no-dossier`; the pack is left exactly as it is.
 
-    `dossier` is optional. Without one the tool behaves exactly as it did before this feature
-    (reader only), which is what keeps a pack whose evidence record is no longer on disk from
-    being handed an empty manifest. See `load_local_dossier`.
+    There used to be a third: the rebuilt archive equalling the source zip's contents
+    byte-for-byte. That was the idempotency check while the conversion was ADDITIVE. It is gone,
+    because since the conversion became subtractive it can never be true — reaching it means the
+    source held a .md, and the output never does. Idempotency is now decided by the FIRST case
+    above, and the comment at the site where the comparison used to be states the cost: a reader
+    change can no longer be backfilled in place onto a converted pack.
 
-    The manifest is rendered AFTER index.html so it can carry index.html's digest, and it is
-    given the .md entries as BYTES read straight out of the source zip, so the digests it
-    publishes are of the files that actually ship rather than of a decode round-trip.
+    The manifest is rendered LAST so it can carry every other entry's digest, and it is given
+    the archive as BYTES, so the digests it publishes are of the files that actually ship
+    rather than of a decode round-trip.
 
     A dossier also buys `Evidence_and_Constraints.md` (P4): the shared evidence stated once,
     rendered from the same `pack_reference` the generator calls, so a backfilled pack and a
@@ -250,16 +285,36 @@ def rebuild_zip_with_index(
     """
     src = zipfile.ZipFile(io.BytesIO(zip_bytes))
     names = src.namelist()
-    # Rewritten from scratch every run rather than copied. The PDF joins them because it is
+
+    # The composed DOCUMENTS, read out of the source zip. Since 2026-08-15 these are the render
+    # INPUT and are not written back: the founder's brief ("i dont like md files at all, we are
+    # not selling to developers") took markdown out of the buyer's archive entirely.
+    #
+    # CONVERSION IS ONE-WAY, and this guard is what keeps it safe. A pack already converted has
+    # no .md left, so there is nothing to render a reader FROM — without this the tool would
+    # render an empty index.html over a perfectly good pack on its second run. Returning None
+    # makes an already-converted pack a no-op rather than a casualty.
+    #
+    # The cost of that is real and worth stating: once a pack is converted, this tool can no
+    # longer re-render its reader. The escape hatch is that R2 keys are content-addressed
+    # (bridge.py, `content_key = f"packs/{candidate_id}/{content_hash}.zip"`), so the
+    # PRE-CONVERSION object carrying the .md is never overwritten and stays fetchable — a future
+    # reader change re-renders from that object, not from the converted one.
+    documents: Dict[str, bytes] = {
+        n: patched_md(n, src.read(n)) for n in names if n.endswith(".md")}
+    if not documents:
+        return None
+
+    # Rewritten from scratch every run rather than copied. The PDF is in here because it is
     # BINARY: `patched_md` decodes every other entry to look for the retired shelf-life line,
     # and a binary file taken through a lossy decode/encode round trip is a corrupted file.
-    generated = {"index.html", pack_manifest.MANIFEST_FILENAME, pack_pdf.FILENAME}
+    generated = {"index.html", pack_manifest.MANIFEST_FILENAME, pack_pdf.FILENAME,
+                 pack_card.FILENAME, pack_table.FILENAME, "Marketing_Assets.txt"}
 
-    # Everything that will ship, keyed by name: the originals (with the one shelf-life rewrite)
-    # plus any bonus document this run can add. Built ONCE and then used for the reader, the
-    # manifest digests, the idempotency check and the write — four consumers that must agree.
-    payload: Dict[str, bytes] = {
-        n: patched_md(n, src.read(n)) for n in names if n not in generated}
+    # What the OUTPUT archive will hold. Built once and then used for the manifest digests, the
+    # idempotency check and the write — three consumers that must agree.
+    archive: Dict[str, bytes] = {}
+    payload = documents  # name kept: `ordered_md_entries` and pack_checklist both read it
     if dossier is not None:
         reference_md = pack_reference.render(dossier)
         if reference_md:
@@ -287,12 +342,21 @@ def rebuild_zip_with_index(
             pack_id=pack_id,
         )
         if card_html:
-            payload[pack_card.FILENAME] = card_html.encode("utf-8")
+            archive[pack_card.FILENAME] = card_html.encode("utf-8")
         table_csv = pack_table.render(dossier)
         if table_csv:
-            payload[pack_table.FILENAME] = table_csv.encode("utf-8")
+            archive[pack_table.FILENAME] = table_csv.encode("utf-8")
+
+    # The one document a buyer EDITS, kept in a form they can paste from. Same renderer and same
+    # `keep_link_urls=True` as the generator (bridge.py, section 8a), so a backfilled pack and a
+    # freshly generated one carry the identical file rather than two implementations that drift.
+    marketing_txt = plain_text.to_plain_text(
+        _text(payload.get("Marketing_Assets.md")), keep_link_urls=True)
+    if marketing_txt:
+        archive["Marketing_Assets.txt"] = marketing_txt.encode("utf-8")
 
     index_html = pack_html.render_pack_html(ordered_md_entries(payload), meta)
+    archive["index.html"] = index_html.encode("utf-8")
 
     # The typeset edition, from the SAME sections the reader is built from, so a pack sold in
     # June gets the identical document a pack published today does. fpdf2 is an optional
@@ -302,80 +366,60 @@ def rebuild_zip_with_index(
     pdf_bytes: Optional[bytes] = None
     try:
         pdf_bytes = pack_pdf.render_pack_pdf(ordered_md_entries(payload), meta)
-    except Exception as e:  # noqa: BLE001 — bonus file
+    except Exception as e:  # noqa: BLE001 — reported, and the pack keeps the PDF it already had
         PDF_FAILURES.append(pack_id)
         print(f"  {pack_id}: Complete_Pack.pdf render failed ({e}); leaving it out", flush=True)
+    if pdf_bytes is not None:
+        archive[pack_pdf.FILENAME] = pdf_bytes
+    elif pack_pdf.FILENAME in names:
+        # The renderer failing this run must not delete a file the buyer already has.
+        archive[pack_pdf.FILENAME] = src.read(pack_pdf.FILENAME)
 
-    manifest_json: Optional[str] = None
-    if dossier is not None:
-        # Every bonus file this run ships is declared to the manifest, not just the reader. A
-        # manifest that omits an entry the zip contains is the same lie as one that lists an
-        # entry the zip lacks — an agent enumerating the archive finds a file nothing accounts
-        # for. `payload` carries the bytes; the manifest wants text, so decode here.
-        extra = {"index.html": index_html}
-        for name in (pack_card.FILENAME, pack_table.FILENAME):
-            if name in payload:
-                extra[name] = _text(payload[name])
-        if pdf_bytes is not None:
-            # Bytes, not text: `pack_manifest._as_bytes` takes either, and the digest has to be
-            # of the bytes that shipped. A PDF decoded with errors="replace" would hash to
-            # something no verifier could reproduce from the zip.
-            extra[pack_pdf.FILENAME] = pdf_bytes
-        manifest_json = pack_manifest.render_manifest(
-            dossier, dict(payload), BUNDLE_FILES, _SECTION_TITLES, pack_id,
-            extra_files=extra,
-        )
-
-    def current(name: str) -> Optional[str]:
-        if name not in names:
-            return None
-        return src.read(name).decode("utf-8", errors="replace")
-
-    reader_ok = current("index.html") == index_html
-    # Compared as BYTES against the zip entry, which is only a meaningful test because
-    # `render_pack_pdf` is byte-deterministic (`pack_pdf._pin_determinism`). Were the creation
-    # date left to the clock this would be False on every pack on every run, and the backfill
-    # would rewrite all 62 bought bundles nightly for no change.
-    pdf_ok = pdf_bytes is None or (
-        pack_pdf.FILENAME in names and src.read(pack_pdf.FILENAME) == pdf_bytes)
-    manifest_ok = manifest_json is None or current(pack_manifest.MANIFEST_FILENAME) == manifest_json
-    # A pack can be reader-correct and manifest-correct and STILL need rewriting, because a
-    # DELIVERABLE changed: the retired shelf-life line, or a bonus document this pack does not
-    # carry yet. Checking only the two generated files would have reported every already-
-    # backfilled pack "already-correct" and left the buyer's own document saying its evidence
-    # expires.
-    deliverables_ok = all(
-        name in names and payload[name] == src.read(name) for name in payload)
-    if reader_ok and manifest_ok and deliverables_ok and pdf_ok:
+    # No dossier means no conversion, full stop — and that is stricter than the rule this tool
+    # used to follow. Two independent reasons, either of which is sufficient:
+    #
+    #   1. Without a dossier there is no First_Fortnight.html and no Assumptions.csv, and both
+    #      are in BUNDLE_FILES now. A converted pack missing them fails `audit_bundle` and is
+    #      held UNLISTED — the tool would be delisting packs that currently sell.
+    #   2. Carrying the pack's EXISTING manifest forward would leave it asserting a sha256 for
+    #      eight .md entries this run just removed. A manifest that lists an entry the zip lacks
+    #      is the one failure mode manifest.jsonld exists to make impossible.
+    #
+    # So a pack whose evidence record is no longer on this disk is reported and left exactly as
+    # it is, which is the honest outcome: it keeps selling in its old shape.
+    if dossier is None:
         return None
+    manifest_json = pack_manifest.render_manifest(
+        dossier, dict(archive), BUNDLE_FILES, _FILE_TITLES, pack_id)
+    archive[pack_manifest.MANIFEST_FILENAME] = manifest_json.encode("utf-8")
 
+    # There is deliberately NO content comparison here, and there used to be one:
+    #
+    #     if {n: src.read(n) for n in names} == archive: return None
+    #
+    # It was the idempotency check while the .md were archive entries and the conversion was
+    # additive — a pack that already had a correct reader compared equal and was skipped. Since
+    # the conversion became SUBTRACTIVE it cannot fire: reaching this line means the source held
+    # at least one .md (the `not documents` guard above returns first otherwise) and `archive`
+    # holds only rendered output, so the two dicts differ by construction on every input that
+    # gets here. Leaving it in place would have been harmless but dishonest — it read as the
+    # thing deciding idempotency when the `not documents` fence had quietly taken that job.
+    #
+    # So idempotency is now by SHAPE, decided at that fence: a converted pack has no .md, and no
+    # .md means nothing to render from, which is a no-op. The consequence is that a reader change
+    # can no longer be backfilled onto an already-converted pack in place — re-render it from its
+    # pre-conversion R2 object, which content-addressed keys guarantee still exists.
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
-        # Original entry order first (the stale generated files are dropped here and rewritten
-        # below, so a corrected bundle can never end up with two index.html members — zipfile
-        # permits duplicates silently and readers disagree about which one wins), then anything
-        # this run added, so an existing pack's entry order is never reshuffled by a new file.
-        for name in names:
-            if name in generated:
-                continue
-            dst.writestr(name, payload[name])
-        for name in payload:
-            if name not in names:
-                dst.writestr(name, payload[name])
-        dst.writestr("index.html", index_html)
-        if pdf_bytes is not None:
-            dst.writestr(pack_pdf.FILENAME, pdf_bytes)
-        elif pack_pdf.FILENAME in names:
-            # Same rule as the manifest below: the renderer failing this run must not delete a
-            # file the buyer already has.
-            dst.writestr(pack_pdf.FILENAME, src.read(pack_pdf.FILENAME))
-        if manifest_json is not None:
-            dst.writestr(pack_manifest.MANIFEST_FILENAME, manifest_json)
-        elif pack_manifest.MANIFEST_FILENAME in names:
-            # No dossier this run, but the pack already HAS a manifest: keep the one it has.
-            # Dropping it would delete shipped evidence because a local file was missing, which
-            # is a data loss disguised as a no-op.
-            dst.writestr(pack_manifest.MANIFEST_FILENAME, src.read(pack_manifest.MANIFEST_FILENAME))
+        # Contract order first, then the bonus file, then anything else this pack happens to
+        # carry — a stable order that does not depend on the source zip's, because the source
+        # order was the legacy .md sequence and none of those entries survive.
+        for name in list(BUNDLE_FILES) + list(BUNDLE_BONUS_FILES):
+            if name in archive:
+                dst.writestr(name, archive[name])
+        for name in archive:
+            if name not in BUNDLE_FILES and name not in BUNDLE_BONUS_FILES:
+                dst.writestr(name, archive[name])
     return out.getvalue()
 
 

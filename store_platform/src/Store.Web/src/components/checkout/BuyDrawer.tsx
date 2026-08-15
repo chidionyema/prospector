@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { buttonClasses, Icon, Modal } from '@/components/ui';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
-import { PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { formatPrice, Pack } from '@/lib/api/client';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
@@ -38,7 +38,7 @@ const EmbeddedCheckoutPanel = dynamic(
  *
  * So the drawer carries that set in full, and the whole page stays one click away:
  *
- *   - main characteristics → the eight deliverables, from the same `PACK_CONTENTS` the pack
+ *   - main characteristics → the nine documents, from the same `PACK_DOCUMENTS` the pack
  *     page and homepage render, so the three surfaces can never promise different things;
  *   - total price → `formatPrice(pack.price)`, the catalogue's own string, never recomputed.
  *     A non-GBP visitor also sees the converted figure, but the GBP line is the one labelled
@@ -158,8 +158,8 @@ function BuyDrawer({
         <div>
           <span className="text-caption font-medium text-subtle">What you get</span>
           <ul className="mt-2 space-y-1.5">
-            {PACK_CONTENTS.map((item) => (
-              <li key={item.filename} className="flex items-start gap-2 text-meta text-text">
+            {PACK_DOCUMENTS.map((item) => (
+              <li key={item.section} className="flex items-start gap-2 text-meta text-text">
                 <Icon name="check" size={14} className="mt-1 flex-none text-success" />
                 <span>{item.title}</span>
               </li>

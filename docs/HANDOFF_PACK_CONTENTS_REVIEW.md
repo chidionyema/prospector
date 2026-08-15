@@ -1,4 +1,4 @@
-# Handoff — pack contents review (opened 2026-08-15, NOT completed)
+# Pack contents review (opened 2026-08-15, ANSWERED and SHIPPED 2026-08-15)
 
 Founder's brief, verbatim:
 
@@ -6,8 +6,75 @@ Founder's brief, verbatim:
 > increase the number of files, do the files actually contain unique content? i dont like
 > md files at all, we are not selling to developers"
 
-Three questions, none of them answered yet. Handed to another agent mid-measurement.
-Everything below is a MEASUREMENT or a LEAD, labelled as such. Nothing here is a verdict.
+All three questions are answered below with the measurement behind each, and the answer has
+been implemented in code. Everything below is a MEASUREMENT or a LEAD, labelled as such.
+
+## What shipped
+
+**14 archive entries became 6, and none of them is Markdown.** A buyer now receives:
+
+```
+index.html            the whole pack as one readable web page
+Complete_Pack.pdf     the same pack typeset for print
+First_Fortnight.html  the one page to pin up
+Assumptions.csv       every assumption as a spreadsheet
+Marketing_Assets.txt  the copy, ready to paste
+manifest.jsonld       machine-readable index (a bonus, not a promise)
+```
+
+The nine Markdown documents are still composed — they are the render INPUT — but they stop
+at the zip boundary. Measured live on pack `0bf4d472ef2b90ad` (its real R2 object, not a
+fixture): **14 entries → 6, −40,697 bytes (−15.4%)**, no `.md` remaining, and a second pass
+over the new zip is a no-op.
+
+The mechanism is a split of one overloaded tuple in `prospector/bridge.py`:
+
+| tuple | what it now means | count |
+|---|---|---|
+| `PACK_DOCUMENTS` | the render input, in composition order | 8 (+1 derived) |
+| `BUNDLE_READING_ORDER` | reading order = the above with `Evidence_and_Constraints.md` before the QA report | 9 |
+| `BUNDLE_FILES` | the archive CONTRACT — `audit_bundle` blocks the listing on any missing one | 5 |
+| `BUNDLE_BONUS_FILES` | in the zip, not promised | 1 |
+
+`BUNDLE_FILES` was doing both jobs at once, which is why "what we render" and "what we sell"
+could not be changed independently.
+
+**Deliberate behaviour change:** because the rendered files are now the contract, a PDF /
+reader / card / CSV render failure takes the pack OFF the shelf (`is_listed` is ANDed with
+`audit_bundle`) rather than shipping it quietly short. That is the trade the 59/59 backfill
+result bought — see "The backfill job" below.
+
+**The conversion is one-way** and is treated as such: once a pack's `.md` are dropped there
+is nothing left to re-render the reader FROM. Two guards refuse rather than write a short
+zip (`if not documents: return None`, `if dossier is None: return None`), and R2 keys are
+content-addressed, so a backfill writes a NEW object and the pre-conversion one is never
+overwritten.
+
+**Two buyer-facing defects the change created, found and fixed the same day.** Both were the
+same mistake: prose that named a document by its FILENAME, which was harmless while the file
+was in the download and became a direction to open something that is not there.
+
+- `prospector/pack_floors.py` — the executive summary, the first block a buyer reads, said
+  "Open **QA_Report.md**". Now names sections (`QA_SECTION`, `CHECKLIST_SECTION`).
+- `prospector/pack_checklist.py` — the fortnight page, the one a buyer pins up, interpolated
+  its own dict KEYS into five sentences ("It is in *04_Financial_Model.md*"). Now has
+  `BUILD_SPEC_SECTION` / `GTM_PLAN_SECTION` / `OPS_PLAN_SECTION` /
+  `FINANCIAL_MODEL_SECTION` beside the key constants.
+
+Both sets of constants are pinned by test to `bridge._SECTION_TITLES`, so the copy cannot
+drift from the heading the reader actually prints. Verified by rendering both documents over
+**92 real local bundles with their real dossiers: zero `*.md` names in the output.**
+
+**The storefront counts two different numbers now.** Nine documents arrive as five files, so
+`PackContents.tsx` exports `PACK_DOCUMENTS` (what you read), `PACK_CONTENTS` (what you get)
+and `PACK_EXTRAS` (what rides along), each count rendered beside the noun it counts.
+`packContents.test.ts` reads all three tuples out of `bridge.py` and fails on drift in either
+direction — including a symmetrical guard that the document count is never called "files"
+and the file count never called "documents", which is the exact false claim that started
+this.
+
+**Still to run:** `scripts/backfill_packs_parallel.sh --apply` rewrites the 59 live archives.
+Until it runs, the shelf still serves 14-entry zips containing `.md`.
 
 ## Measured (re-verifiable)
 
@@ -167,18 +234,32 @@ that needs the sales ledger, not the bundle directory. (The shelf question IS no
 all 59 live packs contain it. `GET /v1/listings` → 404 was a path I invented; the real one
 is `GET /catalog`, used at `tools/backfill_bundle_html.py:417`.)
 
-## Recommended shape (not executed — needs an owner)
+## Recommended shape — EXECUTED 2026-08-15
 
 1. ~~**Backfill first, delete second.**~~ **Backfill is DONE** — 59/59 live packs carry the
-   PDF, card, CSV and evidence doc. The `.md` deletion is now the only remaining step, and
-   the objection that blocked it ("can't promote the rendered files to contract until they
-   generate reliably") is answered by 59/59.
-2. Invert the tuples: contract = `index.html` + `Complete_Pack.pdf`; `.md` demoted or
-   dropped from the zip while still generated internally so `audit_bundle` keeps working.
-3. Keep ONE editable artefact — `Marketing_Assets` is the file a buyer actually edits and
-   pastes. `.docx` or `.txt`, not `.md`.
-4. Both steps move `BUNDLE_FILES` / `BUNDLE_BONUS_FILES` and every test pinning them
-   (`tests/unit/test_bundle_declared_entries.py`, `tests/unit/test_bundle_index_html.py`).
+   PDF, card, CSV and evidence doc. That result is what answered the objection which had
+   blocked the deletion ("can't promote the rendered files to contract until they generate
+   reliably").
+2. ~~Invert the tuples~~ **Done**, though as a SPLIT rather than an inversion: `.md` are
+   still generated internally and are no longer in the zip, but the reason the inversion was
+   awkward to describe is that `BUNDLE_FILES` was two contracts in one name. It is now
+   `PACK_DOCUMENTS` (render input) and `BUNDLE_FILES` (archive contract), and each can move
+   without the other.
+3. ~~Keep ONE editable artefact~~ **Done** — `Marketing_Assets.txt`, converted with
+   `plain_text.to_plain_text`, which strips markup and never rewords. Checked for content
+   loss on the smallest one on the shelf: `0bf4d472ef2b90ad`'s asset renders to 386 bytes,
+   and the source `.md` is itself 391 chars / 65 words — the delta is the `#` markers, not
+   dropped prose.
+4. Tests moved with them: `tests/unit/test_bundle_declared_entries.py`,
+   `tests/unit/test_bundle_index_html.py`, `tests/unit/test_pack_floors.py`,
+   `tests/unit/test_pack_checklist.py`, and `packContents.test.ts` on the storefront side.
+
+**Separate pre-existing issue, surfaced by this work and NOT fixed:** `Marketing_Assets.md`
+word counts across the 59 live packs run min 28 / p25 266 / median 392 / max 1600, with
+**8 of 59 under 150 words** (smallest: `256f0861192932ff` 28, `0bf4d472ef2b90ad` 65,
+`ea773998f6a925b0` 74, `a884727a1b90447c` 78, `b94760e86e62585a` 103) while the shelf
+promises "listing page, outreach, social". That is a content-generation problem, not a
+packaging one, and needs its own owner.
 
 ## Fences that constrain any change here
 

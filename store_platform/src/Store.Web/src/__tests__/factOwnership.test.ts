@@ -25,8 +25,8 @@ import { describe, expect, it } from 'vitest';
  * a prose grep would fail on every legitimate edit and be deleted within a week. A component name
  * survives rewording, which is exactly the property a long-lived guard needs.
  *
- * Scope note: a bare COUNT is not the fact. `PACK_CONTENTS.length` renders in nine files on
- * purpose -- "8 documents" is a number any page may cite, and §1 requires it be read from one
+ * Scope note: a bare COUNT is not the fact. `PACK_DOCUMENTS.length` renders in nine files on
+ * purpose -- the document count is a number any page may cite, and §1 requires it be read from one
  * source rather than typed. What is owned is the enumerated MANIFEST, and that is what
  * `<PackContentsSection` matches.
  */

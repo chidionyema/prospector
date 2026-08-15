@@ -238,7 +238,12 @@ def render_manifest(
             "@id": _frag("file", name),
             "@type": "DigitalDocument",
             "name": section_titles.get(name, name),
-            "encodingFormat": "text/markdown",
+            # By suffix, not the hardcoded "text/markdown" this carried until 2026-08-15. The
+            # promised deliverables were all .md then; they are now index.html, a PDF, an HTML
+            # card, a CSV and a .txt, and a manifest that calls a PDF markdown is a machine-
+            # readable file telling a machine something false.
+            "encodingFormat": _MEDIA_TYPES.get(PurePosixPath(name).suffix.lower(),
+                                               "application/octet-stream"),
             "contentUrl": name,
             "position": position,
             "contentSize": str(len(_as_bytes(content))),

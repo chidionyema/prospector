@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { buttonClasses, Icon } from '@/components/ui';
-import { PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
 import { citedFigure } from '@/lib/sources';
 import { formatGbp, type PriceRange } from '@/lib/priceRange';
@@ -68,7 +68,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           <dd className="mt-2 text-meta text-text">
             <span className="font-mono font-semibold text-text">{range ? range.label : 'One payment'}</span>
             <span className="mt-1 block text-caption text-subtle">
-              one payment, {PACK_CONTENTS.length} documents, every claim sourced
+              one payment, {PACK_DOCUMENTS.length} documents, every claim sourced
             </span>
           </dd>
         </div>
@@ -92,7 +92,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
   */
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'You pay', feed: 'every year, forever', pack: 'once' },
-    { label: 'You get', feed: 'raw leads to vet yourself', pack: `one vetted opportunity, ${PACK_CONTENTS.length} documents` },
+    { label: 'You get', feed: 'raw leads to vet yourself', pack: `one vetted opportunity, ${PACK_DOCUMENTS.length} documents` },
     { label: 'If you cancel', feed: 'you keep nothing', pack: 'it was never a subscription' },
   ];
   return (

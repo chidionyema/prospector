@@ -188,14 +188,26 @@ class TestNothingIsSilentlyDropped:
 
 
 class TestTheBundleContract:
-    def test_the_filename_is_declared_as_a_bonus_file(self):
-        """It must be in BUNDLE_BONUS_FILES and NOT in BUNDLE_FILES: the latter is the
-        drift-tested sellability contract with the storefront's PackContents.tsx, and a
-        missing bonus file must never be able to block a listing."""
+    def test_the_filename_is_a_promised_deliverable(self):
+        """Renamed and inverted 2026-08-15 (was `test_the_filename_is_declared_as_a_bonus_file`).
+
+        The old reasoning, kept because it was right for its moment: BUNDLE_FILES is the
+        drift-tested sellability contract with the storefront's PackContents.tsx, and while the
+        PDF renderer was new a missing PDF must never be able to block the listing of a pack
+        whose eight markdown deliverables had all arrived. The regression two tests below
+        (pack 13d41ccee9e96e2d, "Undefined font: serifBI", shipped with NO PDF) is exactly the
+        failure that tolerance was designed to absorb.
+
+        It is not absorbed any more, deliberately. All 59 live packs carry a PDF (measured
+        against the objects R2 serves), the markdown is gone from the archive, and the typeset
+        edition is now one of only five things a buyer receives. So a PDF that fails to render
+        makes the pack SHORT: `audit_bundle` reports it missing and the pack is held UNLISTED
+        rather than sold incomplete.
+        """
         from prospector.bridge import BUNDLE_BONUS_FILES, BUNDLE_FILES
 
-        assert pack_pdf.FILENAME in BUNDLE_BONUS_FILES
-        assert pack_pdf.FILENAME not in BUNDLE_FILES
+        assert pack_pdf.FILENAME in BUNDLE_FILES
+        assert pack_pdf.FILENAME not in BUNDLE_BONUS_FILES
 
     def test_the_vendored_fonts_are_present(self):
         """The bundle has to render on a laptop with no network and no fonts installed, so the

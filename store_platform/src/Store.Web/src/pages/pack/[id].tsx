@@ -14,7 +14,7 @@ import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
 import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
-import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PackContentsSection, PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { paybackEquation } from '@/lib/payback';
@@ -901,7 +901,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             <div className="mt-12">
               <PackContentsSection
                 heading="What’s inside your pack"
-                lead={`The moment you pay, you download the whole pack. ${PACK_CONTENTS.length} documents, no drip feed, no login.`}
+                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, no drip feed, no login.`}
                 sourceCount={pack.sourceCount}
               />
             </div>

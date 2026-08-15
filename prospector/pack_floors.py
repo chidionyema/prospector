@@ -12,6 +12,23 @@ from typing import Any, Dict, List, Sequence
 from .plain_text import to_plain_text
 from .trimming import clip_to_sentence
 
+# The two places the executive summary sends a buyer NEXT.
+#
+# These were the literal filenames `QA_Report.md` and `05_First_Week_Checklist.md` until
+# 2026-08-15, printed in bold inside the first block a buyer reads. On that date the `.md`
+# stopped being archive entries (bridge.py split `PACK_DOCUMENTS`, the render input, from
+# `BUNDLE_FILES`, the archive contract), which turned the pack's own opening instruction into
+# a direction to open a file that is not in the download. A buyer following step 1 would have
+# gone looking for `QA_Report.md`, failed to find it, and reasonably concluded the pack was
+# short -- in the first five minutes, which is when the refund gets decided.
+#
+# So the copy names SECTIONS now. These strings must match the headings the reader actually
+# prints, which are `bridge._SECTION_TITLES`; `tests/unit/test_pack_floors.py` pins them to it.
+# They are duplicated here rather than imported because `bridge` imports this module, and a
+# cosmetic import cycle on the money rail is not worth the DRY.
+QA_SECTION = "The QA Report, with the receipts"
+CHECKLIST_SECTION = "First-Week Checklist"
+
 
 def _supported_bullets(checks: Sequence[Any], *, limit: int = 5) -> List[str]:
     out: List[str] = []
@@ -107,7 +124,7 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
     That action is to check us. It is the honest micro-win for this product specifically:
     everything else in the pack is downstream of whether the sources say what we claim, so
     verifying one citation is both the smallest possible step and the one that determines
-    whether the other seven files are worth reading. It also cannot flatter us — a buyer who
+    whether the rest of the pack is worth reading. It also cannot flatter us — a buyer who
     follows it and finds we misquoted a source has been handed the evidence for the refund we
     offer, which is the correct outcome and the reason the instruction says so plainly.
 
@@ -125,7 +142,7 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
         "",
         "## Start here — the next ten minutes",
         "",
-        "1. Open **QA_Report.md** and pick any claim marked SUPPORTED.",
+        f"1. Open **{QA_SECTION}** and pick any claim marked SUPPORTED.",
         "2. Click its source link and find the sentence the claim rests on.",
         "3. If the source does not say what we say it says, stop reading and claim the refund "
         "— the pack is wrong and you should not build on it.",
@@ -141,7 +158,7 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
         )
     lines += [
         "",
-        "That is the whole point of the pack: it is checkable. **05_First_Week_Checklist.md** "
+        f"That is the whole point of the pack: it is checkable. **{CHECKLIST_SECTION}** "
         "is what to do once it checks out.",
         "",
         "## Grounded signals",

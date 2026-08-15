@@ -12,10 +12,10 @@ import { cx } from '@/components/ui/cx';
 // terms right) rather than the shared title/lead/two-buttons shape. See the note above it.
 import { SectionBand, Section } from '@/components/marketing/blocks';
 // The home page OWNS the pack manifest (§5.3 of docs/SITE_SPEC_PROGRAM.md, founder-confirmed
-// 2026-08-07). `PACK_CONTENTS` for the count beside the prices, `PackContentsSection` for the
+// 2026-08-07). `PACK_DOCUMENTS` for the count beside the prices, `PackContentsSection` for the
 // manifest itself. /pricing keeps bare filenames only (`pricing.tsx:123`), which is the same
 // section's other half of the ownership split, not a duplicate.
-import { PACK_CONTENTS, PackContentsSection } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS, PackContentsSection } from '@/components/marketing/PackContents';
 import { EvidenceRecordPanel } from '@/components/marketing/EvidenceRecordPanel';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
@@ -1336,7 +1336,7 @@ function CatalogBrowser({
           the better ones", which invites them to distrust the cheap ones and hesitate over the
           dear ones. The rule is real and it is the opposite: `config.yaml listing.pricing` picks a
           rung on a fixed ladder from the opportunity's ambition tier plus a market offset, and
-          every pack ships the identical `PACK_CONTENTS.length` documents. The page already said
+          every pack ships the identical `PACK_DOCUMENTS.length` documents. The page already said
           this, ~6,000px below the shelf, in the "What you get" intro.
           A per-card tier BADGE was the other option and is deliberately not built: the ladder is
           not invertible from the price, because a us/smb pack and a uk/growth pack both land on
@@ -1355,7 +1355,7 @@ function CatalogBrowser({
           one: `e2e/discovery.spec.ts` asserts the first pack card is above the fold at 360x780,
           and the four-line version of this paragraph failed it by 16px. */}
       <p className="mb-4 max-w-[68ch] text-caption text-subtle">
-        Same {PACK_CONTENTS.length} documents in every pack. Bigger opportunity, higher price.{' '}
+        Same {PACK_DOCUMENTS.length} documents in every pack. Bigger opportunity, higher price.{' '}
         <Link href="/pricing" className={textLinkClass('font-medium')}>
           Why prices differ
         </Link>
@@ -2212,7 +2212,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
         <div className="mb-4 sm:mb-6">
           {/* THE CATALOGUE INTRO (email §1).
               The email replaces the 67-word version with a 22-word line that does the whole job:
-              it states what every pack is (same `PACK_CONTENTS.length` documents, COUNTED not
+              it states what every pack is (same `PACK_DOCUMENTS.length` documents, COUNTED not
               typed -- see below), why prices differ (opportunity size,
               not download size), and where to read the longer version (/pricing). The kill-rate
               line is not here because the proof strip above the shelf already carries it -- this
@@ -2280,7 +2280,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
           Two sections used to argue the same thing here. The first was an essay about the ladder:
           which rung a pack lands on, why £29 and £199 buy the same documents, what the ambition
           tier and the market offset do -- that is /pricing's fact, and it is now one line above the
-          shelf ("Same {PACK_CONTENTS.length} documents in every pack...") plus a link. The second,
+          shelf ("Same {PACK_DOCUMENTS.length} documents in every pack...") plus a link. The second,
           `PackContentsSection`, is the manifest, and §5.3 names THIS page its owner: the buyer's
           "what do I actually get for £49" is answered where they meet the price, not one click
           away. /pricing keeps bare filenames only; a pack page lists its own.

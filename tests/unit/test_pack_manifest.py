@@ -1,9 +1,14 @@
 """Proof that every bundle ships `manifest.jsonld`, and that it says what it claims to say.
 
-Companion to test_bundle_index_html.py (the ninth file, the HTML reader); this pins the TENTH,
-the machine-readable one. The eight promised deliverables are pinned by
-test_bundle_completeness.py and are not re-asserted here beyond proving the manifest does not
-disturb them.
+Companion to test_bundle_index_html.py (the HTML reader); this pins the machine-readable half.
+The promised deliverables are pinned by test_bundle_completeness.py and are not re-asserted here
+beyond proving the manifest does not disturb them.
+
+Since 2026-08-15 the manifest is rendered from the ARCHIVE contents and `_FILE_TITLES`, not from
+the composed documents and `_SECTION_TITLES`. Those are two different maps for two different
+jobs: `_SECTION_TITLES` names the sections INSIDE the reader, `_FILE_TITLES` names the things the
+zip actually holds. Handing the manifest the documents would make it assert a sha256 for eight
+files the zip does not contain — the single failure mode this file exists to make impossible.
 
 The assertion that earns this file's keep is `test_the_manifest_carries_no_price`. `bridge.py` is
 the money rail: one PriceDecision mints the provider Price object AND writes the catalogue row so
@@ -19,7 +24,12 @@ import zipfile
 import pytest
 
 from prospector import pack_manifest
-from prospector.bridge import _SECTION_TITLES, BUNDLE_BONUS_FILES, BUNDLE_FILES, EngineBridge
+from prospector.bridge import (
+    _FILE_TITLES,
+    BUNDLE_BONUS_FILES,
+    BUNDLE_FILES,
+    EngineBridge,
+)
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict
 from prospector.verify import VERDICT_PASSAGE_TRUNCATE
 
@@ -101,8 +111,12 @@ class TestTheManifestShipsInTheBundle:
         assert doc["@context"][1]["prospector"] == pack_manifest.PROSPECTOR_NS
         assert doc["prospector:manifestVersion"] == pack_manifest.MANIFEST_VERSION
 
-    def test_the_eight_deliverables_are_untouched(self, bridge):
-        """The manifest is additive. Adding a tenth file must not alter the eight sold."""
+    def test_the_promised_deliverables_are_untouched(self, bridge):
+        """The manifest is additive. Adding it must not alter what is sold.
+
+        Renamed 2026-08-15 (was `test_the_eight_deliverables_are_untouched`): the count in the
+        name became false when the contract became five rendered files.
+        """
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
         with zipfile.ZipFile(path) as zf:
             names = set(zf.namelist())
@@ -118,6 +132,11 @@ class TestTheManifestDescribesWhatShipped:
         `_create_bundle`). A manifest built from the write sequence would tell an agent the
         Executive Summary is the seventh document, which is the exact defect index.html shipped
         with for weeks. `BUNDLE_FILES` is the contract and the manifest takes its order from it.
+
+        The titles come from `_FILE_TITLES` since 2026-08-15, not `_SECTION_TITLES`. The
+        manifest describes the ARCHIVE, and the archive's first entry is index.html, which has
+        no entry in the section map at all — reading the old map here would have raised a
+        KeyError rather than quietly mislabelling, which is the only reason it was caught.
         """
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
         doc = _manifest_from_zip(path)
@@ -128,7 +147,7 @@ class TestTheManifestDescribesWhatShipped:
                     if n.get("prospector:promisedDeliverable") is not False]
         assert [n["contentUrl"] for n in promised] == list(BUNDLE_FILES)
         assert [n["position"] for n in promised] == list(range(1, len(BUNDLE_FILES) + 1))
-        assert promised[0]["name"] == _SECTION_TITLES[BUNDLE_FILES[0]]
+        assert promised[0]["name"] == _FILE_TITLES[BUNDLE_FILES[0]]
 
         import hashlib
         for node in promised:
@@ -144,9 +163,11 @@ class TestTheManifestDescribesWhatShipped:
 
     def test_a_file_that_did_not_ship_is_omitted_not_asserted(self):
         """A partially-built bundle is held UNLISTED; the manifest must still be truthful."""
-        written = {BUNDLE_FILES[0]: "# Exec\n\nbody"}
+        # The archive contents, not the composed documents — `BUNDLE_FILES[0]` is index.html
+        # since 2026-08-15, so the stand-in content is a rendered page rather than markdown.
+        written = {BUNDLE_FILES[0]: "<h1>Exec</h1><p>body</p>"}
         doc = json.loads(pack_manifest.render_manifest(
-            _dossier(), written, BUNDLE_FILES, _SECTION_TITLES, "c" * 16))
+            _dossier(), written, BUNDLE_FILES, _FILE_TITLES, "c" * 16))
         assert [n["contentUrl"] for n in _nodes(doc, "DigitalDocument")] == [BUNDLE_FILES[0]]
 
     def test_a_bonus_file_is_listed_and_flagged_as_not_promised(self, bridge):
@@ -219,7 +240,7 @@ class TestTheManifestCarriesTheEvidence:
         """`unverifiable` is a real third outcome, not a missing value, and an agent has no way to
         know that from the word alone."""
         doc = json.loads(pack_manifest.render_manifest(
-            _dossier(), {}, BUNDLE_FILES, _SECTION_TITLES, "c" * 16))
+            _dossier(), {}, BUNDLE_FILES, _FILE_TITLES, "c" * 16))
         assert set(doc["prospector:verdictScale"]) == {"supported", "refuted", "unverifiable"}
 
 
@@ -293,10 +314,10 @@ class TestTheBackfillPathRendersFromAStoredDossier:
         d = _dossier()
         d.score = ScoreResult(scores={"pain_reality": 4, "distribution": 2},
                               justification={"pain_reality": "growers say so"}, composite=3.4)
-        live = pack_manifest.render_manifest(d, {}, BUNDLE_FILES, _SECTION_TITLES, "c" * 16)
+        live = pack_manifest.render_manifest(d, {}, BUNDLE_FILES, _FILE_TITLES, "c" * 16)
         stored = pack_manifest.render_manifest(
             pack_manifest.dossier_from_dict(json.loads(json.dumps(d.to_dict()))),
-            {}, BUNDLE_FILES, _SECTION_TITLES, "c" * 16)
+            {}, BUNDLE_FILES, _FILE_TITLES, "c" * 16)
         assert json.loads(stored) == json.loads(live)
 
     def test_the_scores_survive_the_namespace_conversion(self):
@@ -304,7 +325,7 @@ class TestTheBackfillPathRendersFromAStoredDossier:
         d = _dossier()
         d.score = ScoreResult(scores={"pain_reality": 4}, justification={}, composite=3.4)
         doc = json.loads(pack_manifest.render_manifest(
-            pack_manifest.dossier_from_dict(d.to_dict()), {}, BUNDLE_FILES, _SECTION_TITLES, "c" * 16))
+            pack_manifest.dossier_from_dict(d.to_dict()), {}, BUNDLE_FILES, _FILE_TITLES, "c" * 16))
         pack = next(n for n in doc["@graph"] if n.get("@type") == "Report")
         assert pack["prospector:scores"] == {"pain_reality": 4}
         assert pack["prospector:compositeScore"] == 3.4

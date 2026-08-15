@@ -51,8 +51,10 @@ def test_exec_summary_and_checklist_non_empty():
 
 
 class TestExecSummaryOpensWithSomethingToDo:
-    """The first page is now genuinely first (bridge.py reads in BUNDLE_FILES order), so what
-    it opens with is a product decision rather than a cosmetic one.
+    """The first page is now genuinely first (bridge.py reads in BUNDLE_READING_ORDER; that
+    constant was called BUNDLE_FILES until 2026-08-15, when the read order and the archive
+    became two different lists), so what it opens with is a product decision rather than a
+    cosmetic one.
 
     It opens with a task, not a summary: a £49 download whose first screen is prose gives the
     buyer nothing to do in the five minutes when a refund gets decided. The task is to check
@@ -66,15 +68,36 @@ class TestExecSummaryOpensWithSomethingToDo:
         assert "## Start here" in md
         assert md.index("## Start here") < md.index("## Grounded signals")
 
-    def test_it_points_at_a_real_file_in_the_bundle(self):
-        from prospector.bridge import BUNDLE_FILES
+    def test_it_points_at_somewhere_that_exists_in_what_the_buyer_downloaded(self):
+        """Was `test_it_points_at_a_real_file_in_the_bundle`, and it guards the same thing it
+        always did: a first instruction that sends the buyer to something the download does not
+        contain is worse than no instruction at all. Only the definition of "exists" changed.
+
+        This one caught a REAL defect on 2026-08-15 rather than going stale. The opening block
+        said "1. Open **QA_Report.md**" and "**05_First_Week_Checklist.md** is what to do once
+        it checks out" — and the archive stopped containing any `.md` at all that day, so the
+        pack's very first page named two files the buyer does not have. `pack_floors.py` now
+        interpolates SECTION titles (`QA_SECTION`, `CHECKLIST_SECTION`), which are headings in
+        index.html and in the PDF, i.e. places that do exist.
+
+        Those two constants are duplicated in `pack_floors` rather than imported from `bridge`,
+        because `bridge` imports `pack_floors` and an import cycle on the money rail is not
+        worth the DRY. Duplication is only safe while something holds the two copies equal, so
+        that is asserted here first — this test is the reason the duplication is allowed.
+        """
+        import re
+
+        from prospector import pack_floors
+        from prospector.bridge import _SECTION_TITLES
+
+        assert pack_floors.QA_SECTION == _SECTION_TITLES["QA_Report.md"]
+        assert pack_floors.CHECKLIST_SECTION == _SECTION_TITLES["05_First_Week_Checklist.md"]
 
         md = exec_summary_md(Candidate(title="Pack", one_liner="One"), [])
-        # A first instruction that names a file the bundle does not contain is worse than no
-        # instruction, so the filenames are asserted against the shipping contract itself.
-        assert "QA_Report.md" in md and "QA_Report.md" in BUNDLE_FILES
-        assert "05_First_Week_Checklist.md" in md
-        assert "05_First_Week_Checklist.md" in BUNDLE_FILES
+        assert re.findall(r"\b[\w/]+\.md\b", md) == [], (
+            "the first page named a markdown file; no .md reaches the buyer's zip any more")
+        assert pack_floors.QA_SECTION in md
+        assert pack_floors.CHECKLIST_SECTION in md
 
     def test_it_tells_the_buyer_to_refund_us_if_the_source_does_not_check_out(self):
         # The instruction has to survive somebody later deciding it is bad for conversion.
