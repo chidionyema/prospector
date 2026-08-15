@@ -992,7 +992,7 @@ function SectorChips({
           })}
         >
           All packs
-          <span className={cx('font-mono text-caption', state.sector === null ? 'text-white/70' : 'text-subtle')}>
+          <span className={cx('text-caption tabular-nums', state.sector === null ? 'text-white/70' : 'text-subtle')}>
             {allCount}
           </span>
         </button>
@@ -1023,7 +1023,7 @@ function SectorChips({
                   `--subtle` as the count on its other side. */}
               <Icon name={cat.icon} size={12} className={active ? undefined : 'text-subtle'} />
               {cat.label}
-              <span className={cx('font-mono text-caption', active ? 'text-white/70' : 'text-subtle')}>
+              <span className={cx('text-caption tabular-nums', active ? 'text-white/70' : 'text-subtle')}>
                 {counts[cat.key]}
               </span>
             </button>
