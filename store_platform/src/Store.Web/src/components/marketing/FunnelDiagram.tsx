@@ -39,8 +39,11 @@ import { textLinkClass } from '@/components/ui';
  * y=16 to y=296, cut by two gaps at the mark's own proportions (the slabs are 32, 24 and 16 units
  * of the mark's 88), so each is both narrower AND shorter than the one above. The viewBox is 440
  * wide rather than the 720 the brief specifies as a maximum, because SVG type does not reflow:
- * at 440 the labels render ~13px inside a 358px mobile column and grow with the graphic, where a
- * 720 viewBox would put them at 11px on a phone -- under the brief's own 12px floor.
+ * at 440 the labels grow with the graphic, where a 720 viewBox would put them at 11px on a phone
+ * -- under the brief's own 12px floor. MEASURED at a 390 viewport: the svg lays out 342px wide, so
+ * the caption's 16 viewBox units render 12.4px and the figures' 30 render 23.3px. The captions were
+ * 15 units and measured 11.7px, which is how close that floor is at this width -- do not lower
+ * them without re-measuring.
  *
  * COLOUR. Ink at three opacities, no hue. `--brand-mark` is reserved to the logo tile by its own
  * token note, and SITE_SPEC §3's one-colour rule is the reason this reads as part of the page
@@ -131,7 +134,7 @@ export function FunnelDiagram({ className }: { className?: string }) {
           <text
             x={CENTRE_X}
             y={midY(SLAB_1) + 22}
-            fontSize={15}
+            fontSize={16}
             className="fill-muted"
           >
             ideas researched
@@ -149,7 +152,7 @@ export function FunnelDiagram({ className }: { className?: string }) {
           <text
             x={CENTRE_X}
             y={midY(SLAB_2) + 22}
-            fontSize={15}
+            fontSize={16}
             className="fill-muted"
           >
             killed on cited evidence

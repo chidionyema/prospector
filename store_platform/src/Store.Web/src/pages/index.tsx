@@ -1942,7 +1942,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
       <Section
         bg="white"
         width="7xl"
-        className="!py-14 md:!py-20"
+        className="!py-10 md:!py-20"
       >
         {/* The three-pill row that stood here is GONE, not restyled. It rendered
             "one payment / 14-day money back / every claim sourced" -- the same three facts, in the
@@ -2024,7 +2024,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
           kill figure is stated once here, by the terms column, and the standalone
           "Find your next business" band is REMOVED from this page (it survives on /how-it-works,
           /ideas and /ideas/[slug], which is where `CtaBand` is still the right closing shape). */}
-      <SectionBand bg="surface2" width="7xl" className="py-16 md:py-24">
+      <SectionBand bg="surface2" width="7xl" className="py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">
           {/*
