@@ -15,9 +15,8 @@ import re
 import pytest
 
 from prospector import dossier as dz
-from prospector import pack_field
+from prospector import pack_field, trimming
 from prospector import plain_text as pt
-from prospector import trimming
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict
 
 # The two real citation ids from that dossier, verified on disk.

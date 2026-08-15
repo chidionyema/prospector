@@ -25,9 +25,6 @@ from __future__ import annotations
 import json
 import threading
 import time
-from concurrent.futures import TimeoutError as FuturesTimeoutError
-
-import pytest
 
 from prospector import artifacts as art_mod
 from prospector.scheduler import run_scheduled as rs_mod

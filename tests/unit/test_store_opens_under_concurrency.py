@@ -131,3 +131,34 @@ def test_a_genuinely_unopenable_database_still_raises(tmp_path: Path):
     (root / "prospector.db").mkdir()
     with pytest.raises(sqlite3.OperationalError):
         Store(_cfg(root))
+
+
+def test_a_lost_migration_race_is_not_an_error(tmp_path: Path):
+    """Two openers that both saw the column missing must both succeed.
+
+    The second CI failure of this shape (2026-08-15), one commit after the WAL one and in the
+    same import: `sqlite3.OperationalError: duplicate column name: tombstone` out of
+    `Store.__init__`, out of `import prospector.api`, reported by xdist as "Different tests were
+    collected between gw3 and gw1". `_init_db` reads PRAGMA table_info and THEN alters, so two
+    processes that read before either wrote both try to add the same column.
+
+    Passing a stale `cols` to a table that already has everything reproduces the loser's exact
+    situation deterministically — the race's observable condition, without racing. Threads would
+    reproduce it only sometimes, which is a flaky test of a flaky bug.
+    """
+    store = Store(_cfg(tmp_path / "store"))
+    with sqlite3.connect(str(store.db), timeout=10.0) as conn:
+        store._add_missing_columns(conn, cols=set())     # every ALTER is a duplicate
+
+
+def test_a_migration_that_is_not_a_duplicate_still_raises(tmp_path: Path):
+    """The narrowing, pinned: the handler must not become "ignore schema errors".
+
+    If this starts passing, a real DDL failure — a typo, a dropped table — is being swallowed,
+    and the next migration fails silently instead of loudly.
+    """
+    store = Store(_cfg(tmp_path / "store"))
+    with sqlite3.connect(str(store.db), timeout=10.0) as conn:
+        conn.execute("DROP TABLE dossiers")
+        with pytest.raises(sqlite3.OperationalError):
+            store._add_missing_columns(conn, cols=set())
