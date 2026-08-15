@@ -129,8 +129,16 @@ export function PackSpecimen({ className }: { className?: string }) {
           ORDER: heading, then the page, then the price argument and the button. A reader on a
           phone must meet the product before the ask, and `lg:row-start-*` is what lets the desktop
           composition disagree with that without reordering the source. */}
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-14">
-        <div className="lg:col-start-1 lg:row-start-1">
+      {/* `min-w-0` on the grid and on every child, because a GRID ITEM'S DEFAULT `min-width` IS
+          `auto`, not zero: the track refuses to shrink below its content's min-content width. The
+          sheet's running head sets a wide min-content, so at 320px this whole section measured 357px
+          inside a 320px viewport (2026-08-15) -- the eyebrow, the headline, the counts line and the
+          right-hand edge of the page itself all ran past the screen. It never showed up as a
+          horizontal scrollbar because an ancestor is `overflow-x: clip`, so the page LOOKED fine and
+          simply cut the content off. That is the worst version of this bug: silent. `min-w-0` lets
+          the track shrink to the viewport and the truncation inside the sheet do its job. */}
+      <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-14">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           {/* The eyebrow is SANS. The wide-tracked all-caps mono eyebrow is the exact pattern
               `__tests__/monoIsTheDataVoice.test.ts` was written to stop spreading: mono is the
               evidence voice -- amounts, IDs, hostnames, scores -- and "a page from the free
@@ -158,7 +166,7 @@ export function PackSpecimen({ className }: { className?: string }) {
           </p>
         </div>
 
-        <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2">
+        <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2">
           {/* THE PLINTH. `--surface3` behind white paper is what makes the paper read as paper; on
               the page's own white it would read as a bordered div. It HUGS the sheet -- the grey is
               a margin, not a stage. The padding is asymmetric because the stack is offset down and
@@ -181,8 +189,15 @@ export function PackSpecimen({ className }: { className?: string }) {
                   combination silently kills every descendant sticky -- memory:
                   `overflow-hidden-kills-every-descendant-sticky`). The heights are the mobile floor
                   described in the docblock, measured to keep four elements above the fade at
-                  360px. */}
-              <article className="relative max-h-[29rem] overflow-hidden rounded-sm border border-border bg-surface sm:max-h-[38rem]">
+                  360px.
+
+                  THE MOBILE FLOOR WENT 29rem -> 36rem (2026-08-15). At 29rem the fade began at
+                  384px and the clamped body paragraph ends at ~484px, so the fade started BEFORE
+                  the prose it was supposed to follow -- the sheet showed three lines of argument
+                  and then dissolved, which reads as a broken box rather than as a page continuing
+                  past its frame. 36rem puts the whole clamped paragraph above the fade and leaves
+                  the fade something real to dissolve: the footnote and its cited source. */}
+              <article className="relative max-h-[36rem] overflow-hidden rounded-sm border border-border bg-surface sm:max-h-[38rem]">
                 {/* DOCUMENT MARGINS, not card padding. Wider at the sides than a card would be,
                     and the type inside runs to a ~62ch measure rather than to the container. */}
                 <div className="px-6 pb-10 pt-7 sm:px-12 sm:pb-14 sm:pt-11">
@@ -232,8 +247,23 @@ export function PackSpecimen({ className }: { className?: string }) {
 
                   {/* THE BODY, at document scale: `text-body` with 1.75 leading and a 62ch measure.
                       This is the paragraph that has to survive being read closely, which is why it
-                      is the report's own words and not a description of them. */}
-                  <p className="mt-5 max-w-[62ch] text-body leading-[1.75] text-text">
+                      is the report's own words and not a description of them.
+
+                      `line-clamp-5` ON MOBILE ONLY, and it is a fix for the crop below rather than
+                      a decision about this paragraph. Measured at 390px on 2026-08-15: the running
+                      head, the quoted tail, the numbered heading and the REFUTED badge consume
+                      ~344px of the 29rem sheet, which leaves about four lines for this paragraph --
+                      so the fade landed in the MIDDLE OF IT and took the word `there` in half.
+                      That is not the effect the frame is going for. The cut is meant to fall on the
+                      section below ("the strongest case against this idea"), where a document
+                      visibly arguing with itself is the point; on a phone that section was never
+                      reached, so all a reader got was a sentence amputated by a gradient.
+
+                      A clamp ends on a WORD boundary and appends its own ellipsis, so the last
+                      thing a phone reader sees is a complete clause that stops, rather than a word
+                      dissolving. `sm:line-clamp-none` because from `sm` up the sheet is 38rem and
+                      the paragraph fits whole -- the desktop composition is unchanged. */}
+                  <p className="mt-5 line-clamp-5 max-w-[62ch] text-body leading-[1.75] text-text sm:line-clamp-none">
                     {FAILED?.rationale}
                   </p>
 
@@ -289,7 +319,7 @@ export function PackSpecimen({ className }: { className?: string }) {
             engine-written, cited, and it was sitting unused in this JSON several thousand pixels
             from a £49 button. Quoting it is the difference between us asserting the pack is cheap
             and the research stating what the alternative costs. */}
-        <div className="lg:col-start-1 lg:row-start-2 lg:self-end">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-end">
           {report.premortem?.strongestAlternative && (
             <blockquote className="border-l-2 border-border pl-4">
               <p className="text-body italic text-muted">{report.premortem.strongestAlternative}</p>

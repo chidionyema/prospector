@@ -16,6 +16,19 @@ const API_ORIGIN = (() => {
   }
 })();
 
+// The ONE host this site is allowed to be reachable on. Everything else that resolves here is
+// redirected to it — see the redirects() note on why that is a session fence, not an SEO nicety.
+// Derived from the same public site URL the canonical <link> uses, so the two can never disagree.
+// Undefined (no NEXT_PUBLIC_SITE_URL, e.g. a bare local dev run) simply installs no redirect.
+const CANONICAL_HOST = (() => {
+  try {
+    const raw = process.env.NEXT_PUBLIC_SITE_URL;
+    return raw ? new URL(raw).host : undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
 const csp = [
   "default-src 'self'",
   // Next's runtime needs inline bootstrap; Stripe.js loads from its own origin.
@@ -114,6 +127,35 @@ const nextConfig: NextConfig = {
   // `/bounties/:id` catch-all, or it would swallow "new" and the "…/proposals" leaf.
   async redirects() {
     return [
+      // ONE canonical host, and it is the apex. Measured 2026-08-15: BOTH mumchimp.com and
+      // www.mumchimp.com answered /account with 200 off the same Fly server, and nothing sent
+      // either to the other — two live origins for one site.
+      //
+      // That is a SESSION bug, not an SEO nicety. The `jwt` cookie is written with no Domain
+      // attribute (Store.Api/Identity/JwtTokenService.cs AppendJwtCookie), so it is host-only:
+      // a cookie stored for mumchimp.com is never sent to www.mumchimp.com. Meanwhile the social
+      // callback returns EVERY user to Email__WebBaseUrl, which is the apex
+      // (ExternalAuthEndpoints.cs:58,66). So a visitor who browses www signs in successfully, is
+      // handed back to the apex where the cookie lands, and then reads as anonymous the moment
+      // anything takes them back to www — with no error anywhere, because nothing failed. The
+      // symptom is a paid CTA where the signed-in one should be.
+      //
+      // The host is spelled out on BOTH sides rather than captured from the request. A named
+      // group in `has.host` cannot be interpolated into the destination's HOST position: Next
+      // lowercases the key and path-to-regexp then compiles the destination with the group
+      // undefined, so every www request 500s with `Expected "apexhost" to be a string` — measured
+      // 2026-08-15 against a dev server before this was rewritten. It must be FIRST: redirects
+      // are evaluated in order and this one is about the origin, not the path.
+      ...(CANONICAL_HOST
+        ? [
+            {
+              source: "/:path*",
+              has: [{ type: "host" as const, value: `www.${CANONICAL_HOST}` }],
+              destination: `https://${CANONICAL_HOST}/:path*`,
+              permanent: true,
+            },
+          ]
+        : []),
       { source: "/bounties/new", destination: "/proposals/new", permanent: true },
       { source: "/bounties/:id/proposals", destination: "/proposals/:id/offers", permanent: true },
       { source: "/bounties/:id", destination: "/proposals/:id", permanent: true },

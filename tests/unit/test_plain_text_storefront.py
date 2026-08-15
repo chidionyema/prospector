@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from prospector.bridge import _sample_excerpts
+from prospector.dossier import check_label
 from prospector.models import Candidate, CheckResult, Verdict
 from prospector.pack_floors import claim_safe_marketing
 from prospector.plain_text import has_markup, plain_lines, to_plain_text
@@ -91,12 +92,33 @@ class TestToPlainText:
 class TestProofPointIsPlain:
     def test_proof_point_has_no_markdown(self):
         """REGRESSION: proof_point was `bullets[0][2:]`, which only trimmed the `- ` list
-        marker and left `**buyer intent:**` intact all the way to the storefront."""
+        marker and left `**buyer intent:**` intact all the way to the storefront.
+
+        Re-pointed 2026-08-15. The markup half of this test is unchanged and is still the
+        reason the file exists. What moved is the LABEL: `_supported_bullets`
+        (`pack_floors.py:150`) now labels each finding with `dossier.check_label`, the
+        buyer-facing question, instead of the gate's own schema key with its underscores
+        swapped for spaces. So the assertion is not deleted, it is inverted — it used to
+        require the schema key at the front of the storefront's proof point, and now it
+        requires that the schema key never reaches the storefront at all.
+
+        That inversion is the stronger statement and it is the one the founder asked for on
+        2026-08-15 (engine vocabulary in buyer-facing copy). Measured against the pre-fix
+        module (`git show 4983ef0~1:prospector/pack_floors.py`), proof_point was
+        `'buyer intent: Growers search for closure guidance (SAGB, 2025).'` — so both new
+        assertions below fail against the behaviour this branch replaced.
+        """
         listing = claim_safe_marketing(_candidate(), [_check()])[0]
         pp = listing["proof_point"]
         assert "**" not in pp
         assert not has_markup(pp)
-        assert pp.startswith("buyer intent:")
+        # Leads with the question the check answers, not with the check's name.
+        assert pp.startswith(check_label("buyer_intent"))
+        # No engine vocabulary on the storefront, in either spelling. Asserted rather than
+        # relying on the startswith above, because this is the property that must hold no
+        # matter how the question is later reworded.
+        assert "buyer intent" not in pp
+        assert "buyer_intent" not in pp
         # the rationale itself must survive intact
         assert "Growers search for closure guidance" in pp
 
@@ -113,9 +135,30 @@ class TestProofPointIsPlain:
 
     def test_pack_markdown_file_keeps_its_formatting(self):
         """The .md deliverable is markdown and must NOT be flattened — only the plain-text
-        catalog fields are sanitized."""
+        catalog fields are sanitized.
+
+        Re-pointed 2026-08-15, and the property under test is unchanged: `copy` keeps its
+        markup, `proof_point` does not. Only the WITNESS moved. This asserted
+        `"**buyer intent:**" in copy`, which worked because the section used to end in a dump
+        of every supported bullet. `claim_safe_marketing` (`pack_floors.py:197-228`) rewrote
+        that section as labelled fields to lift, dropped the bullet dump, and strips the
+        question label off the one surviving proof line (`pack_floors.py:217`) — so the only
+        bold string this test knew about is gone by design.
+
+        The witnesses below are the section's own field labels, which is a better anchor than
+        a bullet was: they are structural, so they cannot vanish because a check was renamed.
+        Both are absent from the pre-fix module (`git show 4983ef0~1:prospector/pack_floors.py`
+        renders neither `**Headline**` nor `**The proof point to lead with**`), so this test
+        fails against the behaviour it replaced rather than merely tolerating it.
+        """
         listing = claim_safe_marketing(_candidate(), [_check()])[0]
-        assert "**buyer intent:**" in listing["copy"]
+        copy = listing["copy"]
+        assert "**Headline**" in copy
+        assert "**The proof point to lead with**" in copy
+        assert has_markup(copy)
+        # The pairing IS the test: the same run produces a marked-up document and a clean
+        # catalog field. Asserting only the first would pass on a build that flattened neither.
+        assert not has_markup(listing["proof_point"])
 
 
 class TestSampleExtractIsPlain:

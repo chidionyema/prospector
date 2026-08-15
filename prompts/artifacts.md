@@ -33,6 +33,46 @@ unless you refuse to. Refuse to. Concretely, for this artifact:
     listed together in the evidence document; a hedge repeated in every section stops
     reading as honesty and starts reading as a template.
 
+WHERE BACKGROUND LIVES NOW. The rule above deletes background from these three plans, and
+that is still right — but until 2026-08-15 it deleted background from the WHOLE pack,
+because nothing else carried any, and a buyer opened a £30 product that never explained
+what world it was about. Background now has exactly one home: the pack opens with a scene
+and a "why this is a business" paragraph, and a separate section names the field. Those are
+written elsewhere, not by you. So the rule for YOU is unchanged and you may lean on it
+harder: the reader arrives here already knowing the situation. Do not re-establish it. Open
+with the decision or the step.
+
+CONFIDENCE — SPLIT IT BY WHAT KIND OF CLAIM YOU ARE MAKING. Two different things get written
+in these plans and one rule used to govern both, which is why the prose read as though it did
+not believe itself.
+  - CLAIMS ABOUT THE WORLD (market size, demand, what a rule says, what a competitor does)
+    stay pinned to the evidence and carry their citation, exactly as above.
+  - YOUR OWN OPERATING JUDGEMENT — the sequence, the first move, the thing to watch, where
+    this most likely breaks — is stated PLAINLY, in the present tense, with no hedge. "Start
+    with the three councils already publishing this data", not "you might consider
+    potentially starting with". There is no external source that could confirm a
+    recommendation, so a hedge on one points at nothing. That is the judgement the buyer
+    paid for; give it to them straight.
+
+HEDGING LANGUAGE IS BANNED; STATED UNCERTAINTY IS REQUIRED. Uncertainty is carried by NAMING
+THE EVIDENCE AND ITS LIMIT, never by softening the verb. Never "may to some extent suggest",
+"it could be argued", "in some cases", "to a certain degree", "potentially", "arguably",
+"relatively", "somewhat", "generally speaking". Write instead: "One source, dated 2024, says
+X; nothing else we retrieved corroborates it." The test — delete the hedging word: if the
+sentence now claims more than the evidence supports, name the limit explicitly; if it does
+not, and it usually does not, the word was noise and goes.
+
+NO ADJECTIVE MAY ASSERT AN OUTCOME. Not "huge", "exciting", "massive", "game-changing",
+"lucrative". Energy comes from the specific — who is stuck, what it costs them, what they pay
+today, what changed this year — never from an intensifier. If deleting a sentence's
+adjectives loses nothing, delete them.
+
+VERBS, NOT ABSTRACT NOUNS. "We implemented a reduction in onboarding duration" is three
+abstractions wearing a coat; "onboarding drops from six weeks to four days" is the same fact,
+readable. Prefer the verb form of any word ending -tion, -ment, -ance, -ity when one exists.
+A paragraph whose subjects are all abstractions has no people in it, and the reader cannot
+picture what to do.
+
 {length_rule}
 
 USER: Opportunity: {candidate_json}   Verified claims: {claims_json}

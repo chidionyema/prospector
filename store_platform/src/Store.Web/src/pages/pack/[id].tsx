@@ -329,7 +329,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           sentence looking for the catch. */}
       <span className="text-caption text-subtle">One-time price</span>
       <div className="mt-1">
-        <PriceText className="text-h2 font-semibold text-azure">{priceLabel}</PriceText>
+        <PriceText className="text-h2">{priceLabel}</PriceText>
       </div>
       {/* The hedge sits with the number it hedges. The old note ("£49 at today's rate") named
           the wrong figure -- £49 is the catalogue's source price, the converted one is what the

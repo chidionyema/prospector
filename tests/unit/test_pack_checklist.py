@@ -221,8 +221,30 @@ class TestItSendsTheBuyerSomewhereThatExists:
             (pack_checklist.GTM_PLAN, pack_checklist.GTM_PLAN_SECTION),
             (pack_checklist.OPS_PLAN, pack_checklist.OPS_PLAN_SECTION),
             (pack_checklist.FINANCIAL_MODEL, pack_checklist.FINANCIAL_MODEL_SECTION),
+            # The fifth, added 2026-08-15. It was a bare literal, "*Evidence and Constraints*",
+            # written by hand in two sentences — and when the reading order was re-titled that
+            # day the four above failed here while this one sailed through, still pointing a
+            # buyer at a heading the reader had stopped printing. A cross-reference nobody
+            # interpolated is not safer than one that is; it is only quieter when it breaks.
+            (pack_checklist.EVIDENCE, pack_checklist.EVIDENCE_SECTION),
         ):
             assert title == _SECTION_TITLES[key], key
+
+    def test_no_section_title_is_left_behind_as_a_hand_written_literal(self):
+        """The rule the test above can only enforce for constants that exist.
+
+        Every buyer-facing cross-reference on this page must go through a `*_SECTION` constant,
+        so this asserts the negative: none of the OLD titles survives anywhere in the source.
+        Grepping the module is the only way to catch the reference somebody writes inline
+        tomorrow, which is precisely how the evidence one was missed.
+        """
+        import pathlib
+
+        src = pathlib.Path(pack_checklist.__file__).read_text(encoding="utf-8")
+        body = "\n".join(ln for ln in src.splitlines() if not ln.lstrip().startswith("#"))
+        for retired in ("Evidence and Constraints", "The Blueprint (Build Spec)",
+                        "The Go-To-Market Plan", "The Operations Plan", "The Financial Model"):
+            assert retired not in body, f"{retired!r} is a heading the reader no longer prints"
 
     def test_no_filename_is_printed_at_the_buyer(self, md):
         """The `md` fixture is a pack that RENDERS — `render()` returns "" when the dossier

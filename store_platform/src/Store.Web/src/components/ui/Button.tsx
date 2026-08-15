@@ -10,17 +10,32 @@ import { cx } from './cx';
  *    button is not a feature: it guarantees the pair drifts the first time either is edited, and
  *    it makes "which button is the most important one on this page?" unanswerable from the code.
  *
- * The fill is INK, not a brand colour. The old vermillion #FF5A1F scored 3.12:1 against white --
- * below the 4.5:1 AA floor for its label size -- which is what forced the black-on-orange pairing
- * the whole site was wearing. Black on safety orange is hazard livery; it reads as a warning, not
- * as an invitation to pay. #171717 on white is 17.93:1.
+ * The fill is --action, the one blue that means "do something" (founder directive 2026-08-15,
+ * tokens.css carries the whole system). It replaced INK, which replaced vermillion #FF5A1F --
+ * that one scored 3.12:1 against white, below the AA floor for its label size, which is what
+ * forced the black-on-orange pairing the whole site was wearing. White on #1B3F8B is 9.86:1.
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'buy';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const VARIANTS: Record<ButtonVariant, string> = {
+  /*
+   * The ONE filled button on the site, buy button included. A fifth variant `buy` used to sit
+   * below this one carrying --azure, and it was deleted with that token: a site with two primary
+   * fills teaches a reader nothing about either, which is the founder's "black buttons disappear
+   * entirely -- no two primary colours".
+   *
+   * Its stated reason for being a separate VARIANT rather than a className override was correct
+   * and is worth keeping: both would emit `bg-*`, and which one wins is decided by the order
+   * Tailwind happens to write the two rules, not by class order -- a coin-flip on the buy button's
+   * fill at every build. That is exactly why `PackBuyButton` now CALLS this variant instead of
+   * overriding it.
+   */
   primary: cx(
     'bg-primary text-on-primary',
     'hover:bg-primary-hover',
+    // The press is a third shade, not an opacity: -14pp lightness reads as the control taking the
+    // press, where a fade reads as the control going away. White on it is 15.16:1.
+    'active:bg-action-active',
     'disabled:opacity-40 disabled:cursor-not-allowed',
   ),
   // The hairline button. `border-strong` (#D4D4D8) rather than `border` (#E4E4E7) because a
@@ -34,18 +49,6 @@ const VARIANTS: Record<ButtonVariant, string> = {
   ghost: cx(
     'bg-transparent text-muted',
     'hover:bg-surface2 hover:text-text',
-    'disabled:opacity-40 disabled:cursor-not-allowed',
-  ),
-  /*
-   * The ONE button that takes money, and the only control allowed to wear --azure (tokens.css
-   * records why that exception exists). It is a separate VARIANT rather than a className override
-   * on `primary` because both would emit `bg-*` and which one wins is decided by the order Tailwind
-   * happens to write the two rules, not by the order they appear in the class attribute -- a
-   * coin-flip on the buy button's fill at every build. White on #0B3D91 is 10.04:1.
-   */
-  buy: cx(
-    'bg-azure text-on-azure',
-    'hover:bg-azure-hover',
     'disabled:opacity-40 disabled:cursor-not-allowed',
   ),
   // White on #DC2626 is 4.83:1, which clears AA for this label (14px/500).
