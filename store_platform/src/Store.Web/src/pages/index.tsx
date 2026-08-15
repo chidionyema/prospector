@@ -1934,7 +1934,7 @@ function CatalogBrowser({
           everything below this line is the marketing tail -- so this is the last point at which
           "narrow it down" is an offer about what the reader is looking at. Zero-height and
           aria-hidden: it is a coordinate, not content. */}
-      <div ref={shelfEndRef} aria-hidden="true" />
+      <div ref={shelfEndRef} data-testid="shelf-end" aria-hidden="true" />
 
       <CommandPalette
         packs={packs}
