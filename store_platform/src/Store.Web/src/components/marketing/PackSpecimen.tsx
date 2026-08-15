@@ -20,12 +20,10 @@ import { Button, Icon, SourceChip, sourceHost } from '@/components/ui';
  * fabricates a flaw in their own product, so a visible failure is the cheapest credibility this
  * shop will ever buy -- and it costs nothing, because `sample-report.json` already ships with
  * `claims_verifiable: "refuted"` in it. The choice is not hardcoded: `FAILED` is the first
- * non-`supported` check the data contains. No COPY asserts the failure -- the sheet's own verdict
- * chip is the only thing that says it, so re-generating the sample with eight clean checks
- * degrades this section to an honest specimen rather than to a lie, with no gate to maintain.
- * Selling the failure in prose was cut 2026-08-15: "why say this at all? how does it help
- * conversion and sales" -- telling a reader we are honest is the seller's voice, and the free
- * sample button below is what lets them check it.
+ * non-`supported` check the data contains, and NO COPY anywhere states which page was chosen or
+ * why. That reasoning is ours; saying it out loud to a buyer is a shop explaining its own
+ * merchandising, which is what the founder rejected on 2026-08-15. Re-generate the sample with
+ * eight clean checks and the sheet simply prints that check's verdict, with nothing to retract.
  *
  * WHY IT REPLACES `EvidenceRecordPanel`. That component rendered these same eight verdicts, in
  * this same section, under the eyebrow "A real page from a real pack" -- while looking like a web
@@ -86,9 +84,10 @@ type Check = {
 const CHECKS = report.checks as Check[];
 
 /**
- * The failed check, found rather than named. The fallback to the last check keeps the component
- * renderable against a sample where everything passed; nothing in the copy claims a failure, so
- * that case needs no gate to stay true.
+ * The failed check, found rather than named. The fallback keeps the component renderable against a
+ * sample where everything passed: the sheet then prints that check's own verdict word instead, so
+ * the specimen degrades to an honest page rather than to a claim about a failure that isn't there.
+ * Nothing here narrates the choice to the reader -- the page is the evidence, not the caption.
  */
 const FAILED_INDEX = CHECKS.findIndex((check) => check.verdict !== 'supported');
 const FAILED = FAILED_INDEX >= 0 ? CHECKS[FAILED_INDEX] : CHECKS[CHECKS.length - 1];
@@ -147,6 +146,7 @@ export function PackSpecimen({ className }: { className?: string }) {
           <h2 className="mt-2 text-h2 font-semibold text-text">
             {PACK_DOCUMENTS.length} documents. Here is one page of one of them.
           </h2>
+
           {/* THE MEASUREMENTS. In the ARGUMENT column, not under the object, because they are the
               numeric half of the same answer: the page beside them settles "is this real writing?"
               and the word count settles "is there enough of it?". Mono, because every one of these
@@ -228,9 +228,6 @@ export function PackSpecimen({ className }: { className?: string }) {
                     <span className="rounded-sm border border-warning-strong bg-warning-bg px-2 py-0.5 text-caption font-semibold tracking-wide text-warning-strong">
                       {(FAILED?.verdict ?? '').toUpperCase()}
                     </span>
-                    <span className="font-mono text-caption text-subtle">
-                      confidence {FAILED?.confidence}
-                    </span>
                   </p>
 
                   {/* THE BODY, at document scale: `text-body` with 1.75 leading and a 62ch measure.
@@ -297,7 +294,7 @@ export function PackSpecimen({ className }: { className?: string }) {
             <blockquote className="border-l-2 border-border pl-4">
               <p className="text-body italic text-muted">{report.premortem.strongestAlternative}</p>
               <footer className="mt-2 text-caption text-subtle">
-                The alternative, as this pack’s own research put it.
+What people pay for this problem today.
               </footer>
             </blockquote>
           )}
