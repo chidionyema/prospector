@@ -93,6 +93,13 @@ builder.Services.AddSingleton<IContentStorage>(sp =>
 });
 builder.Services.AddHttpClient<IEmailSender, MailjetEmailSender>();
 
+// The fulfilment outbox: FulfilmentService enqueues the delivery in the same transaction as the
+// entitlement, and this sweeper is the ONLY thing that sends it. Registering the drain as scoped
+// (the sweeper is a singleton and opens a scope per pass) is what lets it share the request-scoped
+// StoreDbContext lifetime rules and be tested without a host.
+builder.Services.AddScoped<DeliveryDrain>();
+builder.Services.AddHostedService<DeliverySweeper>();
+
 builder.Services.AddKeyedScoped<IPaymentProvider, PaddleProvider>("paddle");
 builder.Services.AddKeyedScoped<IPaymentProvider, StripeProvider>("stripe");
 builder.Services.AddHostedService<MoneyRailConfigGate>();

@@ -17,8 +17,7 @@ public static class WebhookEndpoints
             ILogger<Program> logger,
             FulfilmentService fulfilmentService,
             StoreDbContext db,
-            IEmailSender emailSender,
-            IServiceProvider sp) => HandleWebhook("paddle", request, config, logger, fulfilmentService, db, emailSender, sp));
+            IServiceProvider sp) => HandleWebhook("paddle", request, config, logger, fulfilmentService, db, sp));
     }
 
     private static async Task<IResult> HandleWebhook(
@@ -28,7 +27,6 @@ public static class WebhookEndpoints
         ILogger<Program> logger,
         FulfilmentService fulfilmentService,
         StoreDbContext db,
-        IEmailSender emailSender,
         IServiceProvider sp)
     {
         var paymentProvider = sp.GetKeyedService<IPaymentProvider>(provider);
@@ -74,10 +72,12 @@ public static class WebhookEndpoints
                 txn.TransactionId, string.Join(", ", outcome.Unfulfilled));
         }
 
-        var storeUrl = config["Store:PublicUrl"] ?? Environment.GetEnvironmentVariable("STORE_PUBLIC_URL");
-        await DispatchEmailsAsync(outcome.EntitlementsCreated, db, emailSender, storeUrl, logger)
-            .ConfigureAwait(false);
-
+        // No email is sent here, deliberately. FulfilmentService committed a PendingDelivery row
+        // in the SAME transaction as each entitlement, and DeliverySweeper is the only sender.
+        // That is what removes this handler's worst failure by construction rather than by
+        // patching around it: an inline send lived AFTER the commit and outside it, and the
+        // ALREADY_PROCESSED short-circuit above means the provider's retry never reaches this
+        // line -- so anything that interrupted the process here lost the buyer's link for good.
         return Results.Ok(new
         {
             status = "PROCESSED",
@@ -188,62 +188,4 @@ public static class WebhookEndpoints
 
     private static Task<bool> WebhookAlreadyProcessedAsync(StoreDbContext db, string provider, string eventId) =>
         db.WebhookEvents.AnyAsync(e => e.Provider == provider && e.ProviderEventId == eventId);
-
-    private static async Task DispatchEmailsAsync(
-        IReadOnlyList<Entitlement> entitlements,
-        StoreDbContext db,
-        IEmailSender emailSender,
-        string? storeUrl,
-        ILogger logger)
-    {
-        if (entitlements.Count == 0)
-        {
-            return;
-        }
-
-        // Both of these used to be part of a single silent early return, so a live deployment
-        // with no mail token dispatched nothing and logged nothing — the fulfilment path stayed
-        // green while buyers received no link. Never fail quiet on a path a buyer has paid for.
-        if (string.IsNullOrEmpty(storeUrl))
-        {
-            logger.LogError(
-                "FULFILMENT-EMAIL-SKIPPED for {Count} entitlement(s): Store:PublicUrl / STORE_PUBLIC_URL "
-                + "is not set, so no magic link can be addressed. Buyers must use the success page.",
-                entitlements.Count);
-            return;
-        }
-
-        if (!emailSender.IsConfigured)
-        {
-            logger.LogError(
-                "FULFILMENT-EMAIL-SKIPPED for {Count} entitlement(s): the email sender is not configured "
-                + "(MAILJET_API_KEY / MAILJET_API_SECRET / MAILJET_FROM_EMAIL). Buyers must use the "
-                + "success page.",
-                entitlements.Count);
-            return;
-        }
-
-        var baseUrl = storeUrl.TrimEnd('/');
-        foreach (var ent in entitlements)
-        {
-            var title = await db.Packs
-                .Where(p => p.Id == ent.PackId)
-                .Select(p => p.Title)
-                .FirstOrDefaultAsync()
-                .ConfigureAwait(false) ?? ent.PackId;
-
-            var orderUrl = $"{baseUrl}/orders/{ent.GrantToken}";
-            var sent = await emailSender.SendDownloadLinkAsync(ent.BuyerEmail, title, orderUrl)
-                .ConfigureAwait(false);
-            if (!sent)
-            {
-                // A buyer has paid and their delivery email did not go out. Raised at error
-                // level so it surfaces alongside the paid-without-fulfilment alarm, and it
-                // carries the order URL so an operator can re-issue the link by hand.
-                logger.LogError(
-                    "FULFILMENT-EMAIL-FAILED for {PackId} to {Email}; re-issue manually: {OrderUrl}",
-                    ent.PackId, ent.BuyerEmail, orderUrl);
-            }
-        }
-    }
 }
