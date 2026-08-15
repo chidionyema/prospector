@@ -3,6 +3,7 @@ import React from 'react';
 
 import { EvidenceBar } from '@/components/ui/EvidenceBar';
 import { Icon } from '@/components/ui/Icon';
+import { CATEGORY_LABEL } from '@/components/ui/PackCardHeader';
 import { PriceText } from '@/components/ui/Money';
 import { cx } from '@/components/ui/cx';
 import { marketLabel, type Pack } from '@/lib/api/client';
@@ -96,7 +97,13 @@ export function PackRow({
             thing that actually buys the words back. `line-clamp-2` still ellipses, so a
             pathological title cannot push the row open. */}
         <span className="flex min-w-0 items-center gap-2">
-          <span className="line-clamp-2 text-body font-semibold text-text sm:line-clamp-none sm:truncate">
+          {/* TWO LINES AT EVERY WIDTH (2026-08-15, brief item 3). The `sm:truncate` half of this
+              is gone: `truncate` is a MID-WORD cut, so the widest viewport was the one place a
+              title could still stop inside a word -- "Compliance evidence pack for gel man..." --
+              which is the defect the brief names, and it was hiding on desktop precisely because
+              it bites only the longest titles. `line-clamp-2` ellipses at a line box instead, so
+              a pathological title still cannot push the row open. */}
+          <span className="line-clamp-2 text-body font-semibold text-text">
             {heading}
           </span>
           {viewed && <span className="flex-none font-mono text-caption text-subtle">seen</span>}
@@ -117,7 +124,7 @@ export function PackRow({
               wraps anyway, so a fixed column there would only steal width from a 390px row. */}
           {cat.tagged ? (
             <span className={cx('flex-none truncate text-caption sm:w-44', CATEGORY_LABEL, cat.ink)}>
-              {cat.label}
+              {cat.label.toUpperCase()}
             </span>
           ) : (
             <span className="hidden flex-none sm:block sm:w-44" aria-hidden />
@@ -155,27 +162,6 @@ export function PackRow({
     </Link>
   );
 }
-
-/**
- * THE CATEGORY LABEL, one string, used by both card formats.
- *
- * NOT MONOSPACE ANY MORE (brief Part One item 3). The house rule this site actually holds is
- * `tokens.css` §3.2 -- "Commit Mono for anything the engine produced ... monospace is the site's
- * promise that a string is checkable". A sector is a TAXONOMY, not a measurement: nobody checks
- * "Licensing and admin" against a source. Setting it in the same face as the source counts and
- * the prices spent the promise on a label that makes none, which is what put four mono runs on
- * one row and made the meta line read as a single run-on string.
- *
- * Uppercase at `text-caption` with `0.06em` of tracking is the replacement: it separates the
- * label from the body text by RHYTHM rather than by face, so mono stays meaningful where it is
- * still used (the figure, the price, the market flag, the "seen" marker).
- *
- * THE CAPS ARE NOT IN THIS STRING and must not be. `__tests__/weightAndCasePolicy.test.ts` bans
- * the `uppercase` utility repo-wide: CSS caps leave the accessible name in sentence case while a
- * screen reader may spell out the rendered form, so the house rule is to uppercase the VALUE at
- * the call site (`label.toUpperCase()`). This constant carries the tracking and the weight only.
- */
-export const CATEGORY_LABEL = 'tracking-[0.06em] font-medium';
 
 /**
  * THE CARD'S VISUAL, AND IT IS A NUMBER. Shared by the Row and the Spotlight.

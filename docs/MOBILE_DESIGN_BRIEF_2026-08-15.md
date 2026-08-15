@@ -16,13 +16,13 @@ not a tick.
 |---|---|---|---|
 | 1 | Card system — Row vs Spotlight, shared tokens, delete tile-grid | **DONE** | Four formats → two. `PackCard`'s `weight` prop is gone: `row` moved out verbatim to `components/discovery/PackRow.tsx:45` (now shared by the shelf, the regional group, `PackGrid` on /ideas/<slug>, `SimilarPacks` on the pack page, recently-viewed, personalised, newest and near-miss — eight surfaces, one component); `mid` DELETED (`index.tsx` −2,758→ the branch and its odd-count promotion hack are gone); `DossierCard.tsx` DELETED (`git rm`). `PackSpotlight` (`index.tsx:233`) is the only card left and renders in exactly TWO places, each a single pack alone: the hero's `New this week` slot and the head of the shelf. Shelf is now one spotlight + `divide-y` rows, so no vertical run holds two formats. `tsc --noEmit` clean, `npm run build` exit 0. |
 | 2 | Buttons — one primary sitewide | **DONE** | The spotlight's `View pack` was a hand-rolled fill (`bg-primary px-4 py-2.5` + its own radius/type) and is now `buttonClasses({ className: 'group-hover:bg-primary-hover' })` (`index.tsx`), so it shares the variant, not just the colour. The brief's second primary, **filled navy, does not exist in this build** — `Button.tsx:16-23` records `--action` moving navy `#1B3F8B` → charcoal `#2D3436` on 2026-08-15 ("the navy read as an orphan beside the teal identity"), and no filled navy is reachable. Remaining pair is filled charcoal `primary` + teal-outline `secondary`, which is the one-primary rule. Teal never fills, black never fills: `VARIANTS.secondary` is `bg-surface text-brand-mark border`. |
-| 3a | Category labels — drop monospace | TODO | |
-| 3b | Titles — two-line clamp, no mid-word cut | TODO | |
+| 3a | Category labels — drop monospace | **DONE** | `font-mono` gone from both places a sector is set: `PackCardHeader.tsx` (the Spotlight's band) and `PackRow.tsx:120`. Both now use `CATEGORY_LABEL` = `tracking-[0.06em] font-medium` at `text-caption`. **No background strip** — `bg-surface2` and its `border-b` removed from the band; the fixed `h-10` STAYS, because that is the jitter rule (9 of 63 packs are untagged and an empty reserved box keeps titles on one baseline) and it was never about the fill. Caps come from `label.toUpperCase()`, not the `uppercase` utility, which `weightAndCasePolicy.test.ts` bans repo-wide (CSS caps leave the accessible name in sentence case). |
+| 3b | Titles — two-line clamp, no mid-word cut | **DONE** | `PackRow.tsx:100` was `line-clamp-2 … sm:line-clamp-none sm:truncate`; the `sm:truncate` is removed, so the clamp holds at every width. `truncate` is a MID-WORD cut, which made the widest viewport the only place a title could still stop inside a word — the defect was hiding on desktop because it bites only the longest titles. The Spotlight already clamped at two lines (`index.tsx`, `line-clamp-2 block text-h2`). No character-count truncation exists in `cardHeading` (`lib/discovery.ts`); the 150-char publish cut is repaired by `repairTruncation` before render. |
 | 3c | Filter-tile counts — own right-aligned column | **DONE** | PR #218 (`abdbfa0`). `FacetBar.tsx` StepFlow tile: `justify-between`, `min-w-[2.5ch]`, `text-right`, `tabular-nums`, `font-mono` dropped. Measured 390/320: every count on the padding edge, delta +0; before, `I can run operations` overshot +45px at 320 and clipped. `chipClasses` gained `wrap`. |
 | 4a | Floating "Narrow it down" pill overlaps body | TODO | |
-| 4b | Sticky purchase bar — body text slices through | TODO | |
+| 4b | Sticky purchase bar — body text slices through | **PARTIAL — third conflict, see below** | Two thirds are already live and unchanged: `border-t border-border` on the bar (`pack/[id].tsx`) and the page reserving the bar's height on `body`. The **box-shadow is NOT applied**: `tokens.css:456` is a documented sitewide rule — "§3.4 (2026-08-08): NO BOX-SHADOWS. Depth is a surface step plus a hairline" — with `--shadow-1`/`--shadow-2` both set to `none` and `threeRadiiTwoShadows.test.ts` failing any shadow utility outside those two. I applied `shadow-[0_-8px_24px_rgba(0,0,0,0.06)]`, measured the test fail, and reverted rather than override a shipped rule silently. **Founder decision needed** (same class as the two colour conflicts below).
 | 4c | Pack sample card — 3 nested containers, ~55% measure | TODO | |
-| 4d | Sticky header — `scroll-margin-top` on headings | TODO | |
+| 4d | Sticky header — `scroll-margin-top` on headings | **ALREADY DONE** | `globals.css:416` — `[id] { scroll-margin-top: 5.5rem }`, i.e. EVERY jump target, not just `<section>`. 5.5rem = the tall header (5rem) + 0.5rem of air, so it clears the header in both its states (`h-20` → `h-16` on scroll). Components opting into more (`scroll-mt-24`) still win; this is a floor. No change needed. |
 | 5 | Horizontal overflow in free-sample section | TODO | note: a `w-max` sector rail overflows at 320 BY DESIGN (scroll-snap); do not "fix" that one |
 | 6a | Category chip carousel — snap + end gutters | TODO | |
 | 6b | Filter tile grid — odd item leaves a gap | **PARTIAL** | `[&>*:last-child:nth-child(odd)]:col-span-2` already makes the orphan span both columns (`FacetBar.tsx`). Verify against the brief's intent. |
@@ -50,6 +50,15 @@ exceptions** to the design system, on the grounds that "they carry discovery mea
 reasoning — 8+ categories is past what a colour set can teach, and it is the direct cause of the
 ransom-note effect — is a live argument against that exception, not an oversight of it. Deleting
 `--cat-*` is therefore a change to §3 and must be recorded there in the same commit.
+
+**Third contradiction (item 4b, not colour):** the brief asks the sticky purchase bar for
+`box-shadow: 0 -8px 24px rgba(0,0,0,0.06)`. `tokens.css:456` §3.4 (2026-08-08) is "NO BOX-SHADOWS.
+Depth is a surface step plus a hairline", `--shadow-1`/`--shadow-2` are both `none`, and
+`__tests__/threeRadiiTwoShadows.test.ts` fails any other shadow utility in the tree. The brief's
+defect is real and specific — body copy passing under a 1px hairline meets it mid-glyph and reads
+as a strikethrough — and §3.4's own replacement (a surface step) is weak here because the bar and
+the content behind it are both near-white. Either §3.4 gains a named exception for the one element
+that has to float over scrolling text, or the bar gets a stronger tone step instead. Not my call.
 
 Also already partly satisfied: §3 records `lucide-react` as the other documented exception, "for
 UI **chrome** only". Part Three may be closer to done than the brief assumes — measure which
