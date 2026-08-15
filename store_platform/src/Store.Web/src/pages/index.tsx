@@ -16,7 +16,11 @@ import { SectionBand, Section } from '@/components/marketing/blocks';
 // manifest itself. /pricing keeps bare filenames only (`pricing.tsx:123`), which is the same
 // section's other half of the ownership split, not a duplicate.
 import { PACK_DOCUMENTS, PackContentsSection } from '@/components/marketing/PackContents';
-import { EvidenceRecordPanel } from '@/components/marketing/EvidenceRecordPanel';
+// `EvidenceRecordPanel` is no longer imported here. `PackSpecimen` took its render site and its
+// job -- it shows the same failed check as a typeset PAGE rather than as a web table, which is the
+// claim that component's own eyebrow ("A real page from a real pack") was already making. The file
+// is left in the tree, unused, rather than deleted in the same commit that replaces it.
+import { PackSpecimen } from '@/components/marketing/PackSpecimen';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
@@ -2372,12 +2376,35 @@ export default function Home({ packs, stats, initialState, market, currency, per
             sourcing promise six, which is what makes a page read as though it is trying to
             convince you rather than sell you something. One statement, in the row that says it
             is the statement. */}
-        {/* A list of filenames names the documents; this shows one. The fear on a digital download
-            page is paying £49 for a two-page Google Doc, and a noun does not answer it. Real
-            rows from the free sample, including the check that failed, a preview of eight
-            green ticks would advertise better and claim something the shop does not. */}
-        <PackContentsSection heading="What's inside your pack" />
-        <EvidenceRecordPanel />
+        {/* THE ORDER INVERTS HERE, and that is the point of the section.
+            It used to be the manifest first and `EvidenceRecordPanel` under it: a list of nine
+            titles, then a web table of eight verdicts. Both were CLAIMS about what a buyer
+            receives, and the founder's verdict on the pair was "underwhelming... show not tell".
+            So the object goes first and the inventory goes under it -- you show someone the page,
+            then tell them how many more there are.
+
+            `EvidenceRecordPanel` is GONE from this page, not merely reordered. It rendered these
+            same eight verdicts under the eyebrow "A real page from a real pack" while looking like
+            a web table, so it made the specimen's claim and could not back it; keeping both would
+            put two evidence objects 200px apart, which is the duplication this pass exists to
+            remove. Nothing is lost -- the record's SHAPE is still in the hero
+            (`HeroEvidenceStrip`) and its full CONTENT is on /sample, where this section's only
+            call to action points. */}
+        <PackSpecimen />
+        {/* The manifest, DEMOTED to what it is: the contents page, read after the specimen rather
+            than instead of it. It stays on this page and stays owned by this page --
+            `__tests__/factOwnership.test.ts` pins Home as the owner of `<PackContentsSection`, and
+            on 2026-08-07 two concurrent sessions each deleted one of this section's two halves and
+            the manifest left the site entirely. The heading changes because its job changed: it is
+            no longer the answer to "what am I buying", it is the answer to "what else is in
+            there". "The full contents" and NOT "the other eight documents", which was the first
+            draft of this heading: the specimen shows a page of one of the nine, but the list below
+            still lists all nine, so a heading that subtracted the one shown would have been an
+            arithmetic claim its own list contradicts. */}
+        <PackContentsSection
+          className="mt-16 border-t border-border pt-12"
+          heading="The full contents"
+        />
         {/*
           `MethodCostAnchor` and `ComparisonBlock` were REMOVED from the homepage (2026-08-06) and
           are not deleted -- both are cited, carefully-sourced arguments, and both belong to
