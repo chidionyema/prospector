@@ -108,7 +108,27 @@ def _whole_sentences(text: str, budget: int = 280) -> str:
 _REPORTING_OPENER = re.compile(
     r"^(?:the\s+)?(?:passages?|sources?|retrieved\s+\w+)\s+"
     r"(?:show|describe|discuss|indicate|say|state|suggest|confirm|establish)"
-    r"(?:\s+that)?\s+", re.I)
+    r"(?:\s+(?P<that>that))?\s+", re.I)
+# THE OPENER GOVERNED MORE THAN ITS OWN CLAUSE (2026-08-15, founder on the live sample page).
+#
+# "The passages show THAT a, THAT b, and THAT c" is one verb with three complements. Deleting
+# only the first four words leaves the other two `that`s reporting to a verb that is no longer
+# there, and the first bullet of the first section of the free sample shipped as:
+#
+#     "Main contractors in the UK routinely withhold a percentage ... until milestones are met,
+#      that unpaid subcontractors cause serious cash flow problems, and that Carillion's 2018
+#      collapse left a trail ..."
+#
+# which is not a sentence. This removes the stranded conjunctions along with the verb that
+# licensed them, and ONLY when the opener actually consumed a `that` -- "The passages show the
+# Federation of Master Builders is ..." has no complementiser to strip and is left alone.
+_ORPHAN_THAT = re.compile(r"([,;])(\s+)(and\s+|or\s+|but\s+)?that\s+", re.I)
+# Some rationales are reporting voice in a shape the opener cannot take off cleanly ("The
+# passages DO confirm the basic mechanics ... But they also contradict ..."): the verb carries
+# an auxiliary, and stripping through it leaves a subject with no predicate. Detecting the
+# residue is cheap and lets callers who can afford to say nothing say nothing, rather than
+# print a sentence about our own retrieval to a reader who paid for a sentence about theirs.
+_REPORTING_RESIDUE = re.compile(r"^(?:the\s+)?(?:passages?|sources?|retrieved)\b", re.I)
 
 
 def _finding(rationale: str) -> str:
@@ -119,9 +139,15 @@ def _finding(rationale: str) -> str:
     defect the heading arithmetic in `exec_summary_md` was shipping.
     """
     body = _whole_sentences(rationale)
-    stripped = _REPORTING_OPENER.sub("", body, count=1)
-    if stripped == body or not stripped:
+    match = _REPORTING_OPENER.match(body)
+    if not match:
         return body
+    stripped = body[match.end():]
+    if not stripped:
+        return body
+    if match.group("that"):
+        stripped = _ORPHAN_THAT.sub(
+            lambda m: f"{m.group(1)}{m.group(2)}{m.group(3) or ''}", stripped)
     # The opener carried the sentence's capital letter with it.
     return stripped[0].upper() + stripped[1:]
 
@@ -361,9 +387,19 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
     #
     # `bullets` is now the single source of both, so the two cannot drift again, whatever
     # thins the list — the cap, an empty rationale, or a line the publish pass would delete.
+    #
+    # AND IT SAYS SO WHEN IT IS A SUBSET (2026-08-15). The count above was made honest against
+    # the list; it was still read against the STOREFRONT, which prints "6 checks cleared" over
+    # the same pack. Four bullets under a heading that says four, beside a badge that says six,
+    # is the same arithmetic failing one surface later. Naming the denominator costs three words
+    # and turns a contradiction into a promise the rest of the pack keeps.
     if bullets:
-        noun = "thing that holds" if len(bullets) == 1 else "things that hold"
-        lines += [f"## What we found — {len(bullets)} {noun} up", ""]
+        if len(settled) > len(bullets):
+            head = f"## What we found — {len(bullets)} of the {len(settled)} things that hold up"
+        else:
+            noun = "thing that holds" if len(bullets) == 1 else "things that hold"
+            head = f"## What we found — {len(bullets)} {noun} up"
+        lines += [head, ""]
         lines += bullets + [""]
     elif settled:
         # Supported checks exist but none of them is quotable here. Saying "nothing came back
@@ -389,11 +425,42 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
         # They are set as a list rather than a comma run because `check_label` returns
         # QUESTIONS: "Is it legal?, Can the customer afford it?" is not a sentence, and reading
         # them as a list is also how a buyer would use them.
-        questions = sorted({check_label(getattr(c, "check_name", "") or "")
-                            for c in open_checks if getattr(c, "check_name", "")})
-        if questions:
-            lines += ["## What we could not settle", ""]
-            lines += [f"- {q}" for q in questions]
+        #
+        # A BARE QUESTION IS NOT INFORMATION (2026-08-15, founder on the live sample page).
+        #
+        # This shipped as three questions with nothing under them -- "Can the claims be
+        # checked? / Is someone already doing this well? / Will this still be worth money
+        # later?" -- which reads as three dead ends and tells the buyer only that we gave up.
+        # It is also the founder's "we talk down the opportunity" in its purest form, because
+        # what we actually HELD for two of those three was substantive: that retention is
+        # still standard practice at the 3-5% level as of February 2025, and that the
+        # incumbents we found handle applications for payment rather than retention release.
+        # Both belong to the reader. "Could not settle" means the evidence did not CLOSE the
+        # question, never that the search came back empty.
+        #
+        # The finding is printed only when `_finding` produced one in the buyer's voice.
+        # A rationale that is still talking about our retrieval after that is dropped to the
+        # bare question rather than published, because the alternative is a sentence about our
+        # search where the reader is owed a sentence about their market.
+        seen_labels: set = set()
+        items: List[str] = []
+        for chk in open_checks:
+            label = check_label(getattr(chk, "check_name", "") or "")
+            if not label or label in seen_labels:
+                continue
+            seen_labels.add(label)
+            finding = _finding((getattr(chk, "rationale", None) or "").strip())
+            if finding and not _REPORTING_RESIDUE.match(finding):
+                line = f"- **{label}** {finding}"
+            else:
+                line = f"- **{label}**"
+            if publish_pass(line):
+                items.append(line)
+        if items:
+            lines += ["## What we could not settle", "",
+                      "The evidence points, but it does not close these. What we did find is "
+                      "under each one.", ""]
+            lines += sorted(items)
             lines += ["", "These are not omissions. Each one is argued at full strength further "
                           "down, because the case against is the half that decides whether you "
                           "spend a year on this.", ""]
@@ -411,10 +478,16 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
     # The guarantee survives, stated as our commitment rather than their homework, and the
     # sources it refers to are cited inline throughout and listed in full at the end for
     # anyone who wants them. Nobody is asked to go and look.
+    # The guarantee is ONE sentence, and the pointer is a second one. Written as a single
+    # sentence it read "...that is a refund, not an argument — **Every check, in full** at the
+    # end has each check with its sources", which stutters "each check" straight after a
+    # section title that already contains the word: a section name is a noun phrase, and
+    # splicing one mid-clause makes the sentence around it ungrammatical wherever the title
+    # happens to end in a preposition or a comma.
     lines += ["---", "",
               "Every claim in this pack names the page it came from. If one of them does not "
-              f"say what we say it says, that is a refund, not an argument — **{QA_SECTION}** "
-              "at the end has each check with its sources, for anyone who wants to look.", "",
+              "say what we say it says, that is a refund, not an argument.", "",
+              f"The page behind every claim is at the end, in **{QA_SECTION}**. "
               f"**{CHECKLIST_SECTION}** is where to start.", ""]
     return "\n".join(lines)
 

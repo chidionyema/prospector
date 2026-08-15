@@ -387,12 +387,6 @@
       "title": "Where this starts",
       "blocks": [
         {
-          "type": "callout",
-          "nodes": [
-            "RetainRelease tracks every retention balance across every contract, sends the chase letters proven to release the cash, and files construction adjudication if a main contractor refuses."
-          ]
-        },
-        {
           "type": "p",
           "nodes": [
             "The person already paying for this problem, in time if not in money:"
@@ -428,7 +422,7 @@
         {
           "type": "h2",
           "nodes": [
-            "What we found — 4 things that hold up"
+            "What we found — 4 of the 6 things that hold up"
           ]
         },
         {
@@ -441,7 +435,7 @@
                   "Is the problem real?"
                 ]
               },
-              " Main contractors in the UK routinely withhold a percentage of subcontractors' money — commonly 5% of the subcontract sum — until milestones are met, that unpaid subcontractors cause serious cash flow problems, and that Carillion's 2018 collapse left a trail of unpaid retentions with money outstanding across the UK."
+              " Main contractors in the UK routinely withhold a percentage of subcontractors' money — commonly 5% of the subcontract sum — until milestones are met, unpaid subcontractors cause serious cash flow problems, and Carillion's 2018 collapse left a trail of unpaid retentions with money outstanding across the UK."
             ],
             [
               {
@@ -479,16 +473,39 @@
           ]
         },
         {
+          "type": "p",
+          "nodes": [
+            "The evidence points, but it does not close these. What we did find is under each one."
+          ]
+        },
+        {
           "type": "ul",
           "items": [
             [
-              "Can the claims be checked?"
+              {
+                "tag": "strong",
+                "children": [
+                  "Can the claims be checked?"
+                ]
+              }
             ],
             [
-              "Is someone already doing this well?"
+              {
+                "tag": "strong",
+                "children": [
+                  "Is someone already doing this well?"
+                ]
+              },
+              " Construction payment software exists in the UK — Payapps handles subcontractor applications for payment and integrates with accounting/ERP systems, and another product processes progress billings and pays subcontractors with retention deducted — but none of them is described as chasing overdue retention for subcontractors or filing adjudication, and no passage gives any market-share or customer-count figure."
             ],
             [
-              "Will this still be worth money later?"
+              {
+                "tag": "strong",
+                "children": [
+                  "Will this still be worth money later?"
+                ]
+              },
+              " Holding back retention money is still standard practice in UK construction contracts as of February 2025, at the 3–5% level the candidate describes, so the cash the tool would chase genuinely exists and no free or bundled alternative is shown to have taken it."
             ]
           ]
         },
@@ -504,19 +521,20 @@
         {
           "type": "p",
           "nodes": [
-            "Every claim in this pack names the page it came from. If one of them does not say what we say it says, that is a refund, not an argument — ",
+            "Every claim in this pack names the page it came from. If one of them does not say what we say it says, that is a refund, not an argument."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The page behind every claim is at the end, in ",
             {
               "tag": "strong",
               "children": [
                 "Every check, in full"
               ]
             },
-            " at the end has each check with its sources, for anyone who wants to look."
-          ]
-        },
-        {
-          "type": "p",
-          "nodes": [
+            ". ",
             {
               "tag": "strong",
               "children": [
@@ -648,19 +666,11 @@
         },
         {
           "type": "source",
-          "host": "researchgate.net",
-          "year": "",
-          "label": "",
-          "url": "https://www.researchgate.net/publication/360963312_Late_payment_to_subcontractors_in_the_construction_industry",
-          "quote": "retention and their effects on construction subcontractors in the UK. chasing the final retention on its due date."
-        },
-        {
-          "type": "source",
           "host": "payapps.com",
           "year": "",
           "label": "",
           "url": "https://www.payapps.com/uk/",
-          "quote": "Discover why construction professionals in the UK and globally are using Payapps to streamline their management of subcontractor applications for payment.Construction software for easy management of subcontractor applications for payment."
+          "quote": "Discover why construction professionals in the UK and globally are using Payapps to streamline their management of subcontractor applications for payment. Construction software for easy management of subcontractor applications for payment."
         },
         {
           "type": "source",
@@ -676,7 +686,7 @@
           "year": "",
           "label": "",
           "url": "https://www.capterra.com/p/238884/Payapps/",
-          "quote": "Payapps Logo Payapps Software Review 2026: Features, Integrations, Pros & Cons.Payapps includes invoice management, purchase order management, and accounting integration for financial tracking, along with contractor, subcontractor, and supplier management."
+          "quote": "Payapps includes invoice management, purchase order management, and accounting integration for financial tracking, along with contractor, subcontractor, and supplier management."
         }
       ]
     }
